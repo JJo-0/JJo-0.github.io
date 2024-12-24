@@ -26,8 +26,11 @@ toc_label: "페이지 주요 목차"
 
 ### AI를 이용한 방법
 
-#### **"Human Height Estimation Using AI-Assisted Computer Vision for Intelligent Video Surveillance System"**  
+---
 
+#### 0. 논문 제목
+
+**"Human Height Estimation Using AI-Assisted Computer Vision for Intelligent Video Surveillance System"**  
 **📚 출처:** KI Ratthi, B Yogameena, SS Perumaal - *Measurement*, 2024  
 **🔗 논문 링크:** [ScienceDirect 논문 링크](https://www.sciencedirect.com/science/article/pii/S0263224124010182)  
 **📄 PDF 다운로드:** [PDF 파일 링크](https://icvgip.in/downloads/185_YFS.pdf)  
@@ -96,8 +99,9 @@ pdf는 논문 링크 타고 들어가서 다운로드 받으면 자세하게 논
 
 ### 고전적인 방법
 
-#### **"Efficient Height Measurement Method of Surveillance Camera Image"**  
+#### 0. 논문 제목
 
+**"Efficient Height Measurement Method of Surveillance Camera Image"**  
 **📚 출처:** H Würschinger, N Hanenkamp – *Measurement*, **2007**  
 **🔗 논문 링크:** [ScienceDirect 논문 링크](https://www.sciencedirect.com/science/article/pii/S0263224124023455)  
 
@@ -178,8 +182,9 @@ pdf는 논문 링크 타고 들어가서 다운로드 받으면 자세하게 논
 
 ---
 
-#### **"A Simplified Nonlinear Regression Method for Human Height Estimation in Video Surveillance"**
+#### 0. 논문 제목
 
+**"A Simplified Nonlinear Regression Method for Human Height Estimation in Video Surveillance"**  
 **📚 출처:** S Li, VH Nguyen, M Ma, CB Jin, TD Do – *EURASIP Journal on Image and Video Processing*, **2015**  
 **🔗 논문 링크:** [Springer Link](https://link.springer.com/article/10.1186/s13640-015-0086-1)  
 **📄 PDF 다운로드:** [PDF 파일 링크](https://link.springer.com/content/pdf/10.1186/s13640-015-0086-1.pdf)  
@@ -258,9 +263,9 @@ pdf는 논문 링크 타고 들어가서 다운로드 받으면 자세하게 논
 
 ---
 
+#### 0. 논문 제목
 
-#### **"A Real-Time Human Height Measurement Algorithm Based on Monocular Vision"**
-
+**"A Real-Time Human Height Measurement Algorithm Based on Monocular Vision"**  
 **📚 출처:** IEEE Xplore  
 **🔗 논문 링크:** [IEEE Xplore 논문 링크](https://ieeexplore.ieee.org/document/8469428)  
 
