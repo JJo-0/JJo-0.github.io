@@ -1,6 +1,6 @@
 ---
-title: "Human pose estimate"
-date: 2024-12-24 18:14:00
+title: "[Paper research] Human pose estimate"
+date: 2024-01-02 18:14:00
 categories:
   - 정리
   - 논문

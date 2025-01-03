@@ -1,5 +1,5 @@
 ---
-title: "Human height estimation Paper Research"
+title: "[Paper Research] Human height estimation "
 date: 2024-12-24 14:19:00
 categories:
   - 정리
