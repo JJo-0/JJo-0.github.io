@@ -1,6 +1,6 @@
 ---
 title: "monocular camera, estimation of human height"
-date: 2024-12-24 14:19:00
+date: 2024-12-26 16:58:00
 categories:
   - 정리
   - 논문
@@ -13,16 +13,19 @@ toc_sticky: true
 toc_label: "페이지 주요 목차"
 ---
 
-# Paper Research
+# Paper Review
 
 ---
 
-## 주제
+## A Real-Time Human Height Measurement Algorithm Based on Monocular Vision
 
-- Monocular Camera를 이용한 사람의 신장 추정   
-단안 카메라(일반 카메라)를 사용하여 사람의 신장을 추정하는 방법에 대한 논문을 찾았다.   
-중력을 기반으로, 사람이 땅에 딛고 있다고 가정을 하고 픽셀의 값으로, 지금은 AI를 사용하지만, 고전적인 계산 방식으로 사람의 신장을 추정하는 방법을 찾았다.
-그래도 혹시 몰라서 AI 를 이용한 것도 찾았다.  
+### 논문을 고른 이유
+
+이유는 단순하다.  
+
+1. 2018년에 나온 논문이라 TopDown 하기 쉬웠다.  
+2. 실시간으로 처리 -> 빠른 속도로 처리 한다는 것은 기존의 이미지 처리 기반 방식이라 적용되기 쉽다고 판단.  
+3. 모두 코드가 없었다.
 
 ## AI를 이용한 방법
 
