@@ -1,5 +1,5 @@
 ---
-title: "monocular camera, estimation of human height"
+title: "Human pose estimate"
 date: 2024-12-24 18:14:00
 categories:
   - 정리

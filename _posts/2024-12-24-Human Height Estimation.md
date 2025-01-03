@@ -1,5 +1,5 @@
 ---
-title: "monocular camera, estimation of human height"
+title: "Human height estimation Paper Research"
 date: 2024-12-24 14:19:00
 categories:
   - 정리
