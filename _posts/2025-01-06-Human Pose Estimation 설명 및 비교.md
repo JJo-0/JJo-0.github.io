@@ -24,7 +24,6 @@ toc_label: "페이지 주요 목차"
 ## **"From Methods to Applications: A Review of Deep 3D Human Motion Capture"**
 방법과 응용까지, 3D 인간 모션 캡처에 대한 리뷰
 
-논문 관련
 <details>
   <summary>**논문 관련 정보!**</summary>
   
@@ -50,38 +49,38 @@ toc_label: "페이지 주요 목차"
       - RGB 및 RGB-D 카메라 데이터를 사용해 포즈와 움직임을 추정.  
       - 딥러닝 아키텍처 (예: ResNet, Transformer) 활용.
 
-   1. **센서 융합(Sensor Fusion):**  
+   2. **센서 융합(Sensor Fusion):**  
       - IMU, LiDAR, RGB-D 데이터를 통합하여 포즈 정확도 개선.  
       - 센서 기반 접근법의 강건성을 강조.
 
-   2. **Graph-Based Methods:**  
+   3. **Graph-Based Methods:**  
       - 그래프 뉴럴 네트워크(GNN)를 사용해 키포인트 간의 관계를 모델링.  
       - 시간적 일관성(Temporal Consistency) 유지.
 
-   3. **Zero-shot Learning 및 Few-shot Learning:**  
+   4. **Zero-shot Learning 및 Few-shot Learning:**  
       - 학습 데이터 부족 문제를 해결하기 위한 접근법.  
       - 새로운 환경에서도 신속하게 적응 가능.
 
-   4. **Interpretable Models:**  
+   5. **Interpretable Models:**  
       - 모델 해석 가능성을 향상시켜 사용자 신뢰성 확보.  
       - 실시간 상호작용 및 적용 사례 최적화.
 
    ---
 
    #### **3. 응용 사례**  
-   1. **스마트 감시(Smart Surveillance):**  
+   6. **스마트 감시(Smart Surveillance):**  
       - 이상 행동 및 위험 상황 감지.  
 
-   2. **스포츠 및 훈련(Sports & Training):**  
+   7. **스포츠 및 훈련(Sports & Training):**  
       - 선수의 움직임을 실시간으로 분석하여 최적화된 훈련 제공.
 
-   3. **의료 및 재활(Medical Rehabilitation):**  
+   8. **의료 및 재활(Medical Rehabilitation):**  
       - 환자의 자세 및 움직임을 모니터링하여 맞춤형 치료 제공.
 
-   4. **게임 및 VR/AR:**  
+   9. **게임 및 VR/AR:**  
       - 사용자의 움직임을 가상 환경에 정확히 반영.
 
-   5. **로봇 공학(Robotics):**  
+   10. **로봇 공학(Robotics):**  
       - 인간의 행동을 실시간으로 인식하고 협업 로봇에 적용.
 
    ---
@@ -119,3 +118,4 @@ toc_label: "페이지 주요 목차"
 
    **🗓️ 출판 연도:** **2024**  
 </details>
+

@@ -16,67 +16,47 @@ toc_label: "Raspberry pi 5 설정"
 # 🍽️ Raspberry pi 5 설정   
 라즈베리파이 5 시키고 환경설정을 정리하기 위해 글을 끄적여본다.    
 
-    
-🚨 대용량 파일 처리가 Colab에서 안된다는 것을 깨닫고.. 로컬에서 돌렸다. 파이썬으로!  
+## 라즈베리파이 5 구매
+라즈베리파이 5를 구매하였다, 졸업작품을 제작하기 위해서 컴퓨터 파워가 필요한데, 전력을 적게 쓰면서 사용할 수 있는 미니 PC 중에서 소스가 많고 사용하기 좋은 Raspberry pi 5를 선택하였다.  
 
-### 데이터 전처리, 데이터 합치기 (Data Preprocessing, Data Merging)   
----
-데이터 전처리는 파일 명 안에 어떤 형태인지 다 모아놨을 텐데, 이를 한 개의 데이터로 합치는 과정이다.    
-먼저 비지도 학습, PCA를 써보기 위해서 데이터를 합쳐보자.   
-```python
-import pandas as pd
-import os
-from sklearn.decomposition import PCA
+## 라즈베리파이 5 스펙
+[관련 링크](https://www.raspberrypi.com/products/raspberry-pi-5/)  
 
-# 모든 데이터를 저장할 빈 데이터프레임 생성
-df_all = pd.DataFrame()
+<details>
+  <summary>**스펙 간략하게**</summary>
+  Broadcom BCM2712 2.4GHz quad-core 64-bit Arm Cortex-A76 CPU, with cryptography extensions, 512KB per-core L2 caches and a 2MB shared L3 cache
+  VideoCore VII GPU, supporting OpenGL ES 3.1, Vulkan 1.2
+  Dual 4Kp60 HDMI® display output with HDR support
+  4Kp60 HEVC decoder
+  LPDDR4X-4267 SDRAM (2GB, 4GB, and 8GB)
+  Dual-band 802.11ac Wi-Fi®
+  Bluetooth 5.0 / Bluetooth Low Energy (BLE)
+  microSD card slot, with support for high-speed SDR104 mode
+  2 × USB 3.0 ports, supporting simultaneous 5Gbps operation
+  2 × USB 2.0 ports
+  Gigabit Ethernet, with PoE+ support (requires separate PoE+ HAT)
+  2 × 4-lane MIPI camera/display transceivers
+  PCIe 2.0 x1 interface for fast peripherals (requires separate M.2 HAT or other adapter)
+  5V/5A DC power via USB-C, with Power Delivery support
+  Raspberry Pi standard 40-pin header
+  Real-time clock (RTC), powered from external battery
+  Power button
+</details>
 
-# 엑셀 파일 읽기
-df_info = pd.read_excel('/Volumes/{열에대한정보파일}.xlsx')
+## 라즈베리파이 5 OS 설치
+라즈베리파이 5에 OS를 설치하기 위해서는 라즈베리파이 공식 홈페이지에서 제공하는 Raspberry Pi Imager를 사용하면 된다.
 
-# 모든 csv 파일에 대해 반복
-for filename in os.listdir('/Volumes/Data'):
-    if filename.endswith('.csv'):
-        # CSV 파일 읽기
-        df_data = pd.read_csv(f'/Volumes/Data/{filename}', header=None)
+### 초기 세팅
+1. 라즈베리파이 공식 홈페이지에서 Raspberry Pi Imager를 다운로드 받는다.
+2. Raspberry Pi Imager를 실행하고, OS를 선택한다. (Ubuntu 24.04 LTS를 선택하였다.)
+3. SD 카드를 선택하고, Write 버튼을 눌러 OS를 설치한다. (쓰기 전 와이파이 설정, 국가 설정 필수)
+4. SD 카드를 라즈베리파이 5에 삽입하고 부팅한다.
 
-        # 첫 행에 엑셀 파일의 데이터 추가
-        df_data.columns = df_info.columns.tolist()
-        # 필요 없는 열 삭제
-        df_data = df_data.drop(['필요없는 속성 삭제'], axis=1)
-        # "Time Data"가 들어간 열 제거
-        time_columns = [col for col in df_data.columns if 'Time Data' in col]
-        df_data = df_data.drop(columns=time_columns)
-        
-        # 데이터 출력
-        print(df_data.head(3))
+여기서 와이파이 설정을 다른 나라로 할 경우 와이파이 연결이 안될 수도 있다.  
+특히 모니터, 키보드가 없는 상황에서 초기 세팅을 하기 위해서는 SSH로 원격으로 들어가서 설정을 해줘야 하는데, 이때 와이파이 설정을 잘못하면 접속이 안되면 곤란하다.
 
-        # df_data를 df_all에 붙이기
-        df_all = pd.concat([df_all, df_data])
+### SSH 설정
+라즈베리파이 5에 OS를 설치하고 초기 세팅을 완료했다면, SSH를 통해 원격으로 접속할 수 있다.
+인터넷이 연결되어 있다는 상황이다.  
 
-# 데이터 출력
-# PCA를 적용하여 차원 축소, 99%의 분산을 유지하도록 함 = 99%의 정보를 유지하도록 함
-# whiten=True로 설정하여 데이터를 정규화(Normalization)함
-pca = PCA(n_components=0.99, whiten=True)
-df_all_pca = pca.fit_transform(df_all)
-
-# PCA 결과의 설명력 출력
-explained_variance_ratio = pca.explained_variance_ratio_
-print("PCA 결과의 설명력:")
-print(explained_variance_ratio)
-
-```   
-비지도 학습을 위해 PCA를 적용하였다.
-```    
-PCA 결과의 설명력:
-[0.78608101 0.09318127 0.0513852  0.03209065 0.01289721 0.00484044
- 0.00421308 0.0034297  0.00244788] 
- ```    
-    
-### 데이터 시각화 (Data Visualization)
----
-데이터 시각화가 먼저인 것을 깨달았다. 시각화가 안된 데이터를 가지고 돌릴 때 왜 이런 데이터가 높은 분산을 가지는지.. 아니면 왜 안나오는지, 설명할 수 가 없었다. 그래서 먼저 데이터 시각화를 하려고 한다.       
-16GB 되는 데이터를 시각화를 하는 것은 말도 안되기 때문에 이것을 어떻게 하면 줄일까?, 어떻게 하면 효율적으로 시간을  
-
-
-
+라즈베리파이 설정 구체적으로 IP가 세팅한 값으로 될텐데, imager
