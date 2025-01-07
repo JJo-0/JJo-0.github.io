@@ -254,8 +254,9 @@ Motion Capture 시스템의 설계 및 평가 필수 요소들
 
 
 
-[^1]: Y. Huang, M. Kaufmann, E. Aksan, M. J. Black, O. Hilliges, and G. Pons-Moll, “Deep inertial poser: Learning to reconstruct human pose from sparse inertial measurements in real time,” ACM Trans. Graph., vol. 37, no. 6, pp. 1–15, Dec. 2018.  
-가속도 에러는 모션의 변화량을 측정하여, 이 변화량이 너무 크거나 작을 때 에러로 판단한다.  
-[^2]: T. Flash and N. Hogan, “The coordination of arm movements: An experimentally confirmed mathematical model,” J. Neurosci., vol. 5, no. 7, pp. 1688–1703, Jul. 1985.  
-지터 에러는 모션의 불안정성을 측정하여, 이 불안정성이 너무 크거나 작을 때 에러로 판단한다.
+[^1]: Y. Huang, M. Kaufmann, E. Aksan, M. J. Black, O. Hilliges, and G. Pons-Moll, “Deep inertial poser: Learning to reconstruct human pose from sparse inertial measurements in real time,” ACM Trans. Graph., vol. 37, no. 6, pp. 1–15, Dec. 2018. 가속도 에러는 모션의 변화량을 측정하여, 이 변화량이 너무 크거나 작을 때 에러로 판단한다.  
+
+[^2]: T. Flash and N. Hogan, “The coordination of arm movements: An experimentally confirmed mathematical model,” J. Neurosci., vol. 5, no. 7, pp. 1688–1703, Jul. 1985. 지터 에러는 모션의 불안정성을 측정하여, 이 불안정성이 너무 크거나 작을 때 에러로 판단한다.   
+
+
 
