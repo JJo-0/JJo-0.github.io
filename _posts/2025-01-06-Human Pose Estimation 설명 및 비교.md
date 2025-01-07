@@ -235,10 +235,10 @@ Motion Capture 시스템의 설계 및 평가 필수 요소들
      - 예) Martinez, VideoPose...
    - **Direct Estimation methods:** 
      - 2D 입력 이미지에서 3D 포즈로 직접 변환하는 방법.
-       - Top-down 
+       - Top-down  
          사람 탐지기 -> 각 개인 감지 + 자르기 -> 3D 포즈 추정
          - 예) CLIFF
-       - Bottom-up
+       - Bottom-up  
          추론 속도 저하하지 X, 다른 인체 구별하는데 중점
          - 예) XNect,LCR-Net, 
    
