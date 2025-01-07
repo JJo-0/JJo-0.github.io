@@ -108,6 +108,12 @@ toc_label: "페이지 주요 목차"
 
 ### RGB-D 기반의 3D 포즈 추정
 
+#### 모델
+
+|model 명|연도|특징|학회|input|output|단점|
+|:--:|:--:|:--|:--|:--|:--|:--|
+|**[Real-time RGBD-Based Extended Body Pose Estimation](https://github.com/rmbashirov/rgbd-kinect-pose)**|2021|RGB-D 카메라 기반 실시간 확장된 신체 포즈 추정|WACV|RGB-D 이미지|3D 포즈|가려짐 문제에 대한 한계점, 부자연성, 특정 디바이스 필요|
+
 <details>
   <summary>논문 관련 정보!</summary>
   
@@ -183,16 +189,16 @@ toc_label: "페이지 주요 목차"
 
 ## 모델별 특징
 
-[paperwithcode_3D_HPE](https://paperswithcode.com/task/3d-multi-person-pose-estimation/latest)
-[CVPR](https://github.com/52CV/CVPR-2024-Papers?tab=readme-ov-file)
+[paperwithcode_3D_HPE](https://paperswithcode.com/task/3d-multi-person-pose-estimation/latest)   
+[CVPR](https://github.com/52CV/CVPR-2024-Papers?tab=readme-ov-file)   
 
 |model 명|연도|특징|학회|input|output|단점|
 |:--:|:--:|:--|:--|:--|:--|:--|
 |**[Multi-HMR](https://github.com/naver/multi-hmr)**|2025|백본 ViT-S 사용시 높은 성능|ICCV|RGB 이미지(Single RGB Image)|다중 인물의 3D 메쉬|복잡한 가려짐(Occlusion) 상황에서 정확도 저하 가능성, 고사양 장치 요구|
-|**[Sapien](https://github.com/facebookresearch/sapiens)|2024|멀티 모달 모델 : 깊이 추정, 포즈 추정 미세 조정 가능|ECCV|이미지, 비디오, 텍스트 데이터|Pose, Seg, Depth|Fps 에 대한 데이터 없음, 고사양 장치 요구할 수도|
+|**[Sapien](https://github.com/facebookresearch/sapiens)**|2024|멀티 모달 모델 : 깊이 추정, 포즈 추정 미세 조정 가능|ECCV|이미지, 비디오, 텍스트 데이터|Pose, Seg, Depth|Fps 에 대한 데이터 없음, 고사양 장치 요구할 수도|
 |**[Gan-base model](https://www.sciencedirect.com/science/article/abs/pii/S0921889024000605)**|2024|GAN 기반 모델, 생성기, 판별기 균형|...|RGB 이미지|3D 포즈|code 데이터 셋의 부족|
 |**[DensePose](https://github.com/facebookresearch/Densepose)**|2018|인간의 3D 포즈를 2D 이미지에 투영|CVPR|RGB 이미지|3D 인간 메쉬 모델 좌표(U, V, I)|가려짐, 손, 얼굴 구체적 신체구조 구현 부족|
-|**[Lifting 2D to 3D pose](https://cs231n.stanford.edu/reports/2022/pdfs/121.pdf)|2017|실시간성, |CVPR|2D 키포인트|3D 포즈 좌표|가려짐, 손, 얼굴 구체적 신체구조 구현 부족|
+|**[Lifting 2D to 3D pose](https://cs231n.stanford.edu/reports/2022/pdfs/121.pdf)**|2017|실시간성, |CVPR|2D 키포인트|3D 포즈 좌표|가려짐, 손, 얼굴 구체적 신체구조 구현 부족|
 
 ### 2D Pose detectors
 
