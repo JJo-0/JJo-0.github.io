@@ -23,7 +23,7 @@ toc_label: "페이지 주요 목차"
 방법과 응용까지, 3D 인간 모션 캡처에 대한 리뷰
 
 <details style="margin: 1em 0; padding: 0.5em; border: 1px solid #ccc; border-radius: 5px; background-color: #f9f9f9;">
-  <summary style="cursor: pointer; font-weight: bold; font-size: 1.1em; margin-bottom: 0.5em; color: #333;">논문 관련 정보!</summary>
+  <summary style="cursor: pointer; font-weight: bold; font-size: 1em; margin-bottom: 0.5em; color: #333;">논문 관련 정보!</summary>
 
   <h3 style="color: #0056b3; margin-top: 1em;">"From Methods to Applications: A Review of Deep 3D Human Motion Capture"</h3>
 
@@ -101,7 +101,7 @@ toc_label: "페이지 주요 목차"
 |**[HuMoR](https://github.com/davrempe/humor)**|2021|딥러닝 기반 자세 추정, 가려짐 강함|ICCV|RGB-D 이미지 <br> 3D 포인트 클라우드 <br> 2D 키포인트|3D 포즈|실시간성, 등 결과 데이터 없음|
 
 <details style="margin: 1em 0; padding: 0.5em; border: 1px solid #ccc; border-radius: 5px; background-color: #f9f9f9;">
-  <summary style="cursor: pointer; font-weight: bold; font-size: 1.1em; margin-bottom: 0.5em; color: #333;">논문 관련 정보!</summary>
+  <summary style="cursor: pointer; font-weight: bold; font-size: 1em; margin-bottom: 0.5em; color: #333;">논문 관련 정보!</summary>
 
   <h3 style="color: #0056b3; margin-top: 1em;">"Real-time RGBD-Based Extended Body Pose Estimation"</h3>
 
