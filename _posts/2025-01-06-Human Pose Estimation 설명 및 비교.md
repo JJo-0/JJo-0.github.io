@@ -19,75 +19,6 @@ toc_label: "페이지 주요 목차"
 앞에서는 선택한 논문들의 요약을 살펴보았다면 이제는 설명을 하려고 한다. 2024년 11월에 나온 리뷰 논문이 있어서 읽고 약간의 설명을 함께 붙여놓려고 한다. 
 
 ---
-## "From Methods to Applications: A Review of Deep 3D Human Motion Capture"
-방법과 응용까지, 3D 인간 모션 캡처에 대한 리뷰
-
-<details style="margin: 1em 0; padding: 0.5em; border: 1px solid #ccc; border-radius: 5px; background-color: #f9f9f9;">
-  <summary style="cursor: pointer; font-weight: bold; font-size: 1em; margin-bottom: 0.5em; color: #333;">논문 관련 정보!</summary>
-
-  <h3 style="color: #0056b3; margin-top: 1em;">"From Methods to Applications: A Review of Deep 3D Human Motion Capture"</h3>
-
-  <p><strong>📚 출처:</strong> AH AH, OO Khalifa, AA Ibrahim – <em>PERINTIS eJournal</em>, <strong>2024</strong></p>
-  <p><strong>🔗 논문 링크:</strong> 
-    <a href="https://perintis.org.my/ejournalperintis/index.php/PeJ/article/view/180" style="color: #0078D4;">PERINTIS eJournal 링크</a>
-  </p>
-  <p><strong>📄 PDF 다운로드:</strong> 
-    <a href="https://perintis.org.my/ejournalperintis/index.php/PeJ/article/download/180/148" style="color: #0078D4;">PDF 파일 링크</a>
-  </p>
-  <p><strong>🧠 저자 정보:</strong></p>
-  <ul style="list-style-type: disc; margin-left: 1em;">
-    <li><a href="https://scholar.google.com/citations?user=AHProfile" style="color: #0078D4;">AH AH</a></li>
-    <li><a href="https://scholar.google.com/citations?user=KhalifaProfile" style="color: #0078D4;">OO Khalifa</a></li>
-    <li><a href="https://scholar.google.com/citations?user=IbrahimProfile" style="color: #0078D4;">AA Ibrahim</a></li>
-  </ul>
-
-  <hr style="border: none; border-top: 1px solid #ddd; margin: 1em 0;">
-
-  <h4 style="color: #0056b3;">1. 연구 목적</h4>
-  <p>✅ <strong>3D 인간 모션 캡처(3D Human Motion Capture)</strong> 기술의 최근 발전과 응용 사례를 검토.</p>
-  <p>✅ <strong>딥러닝(Deep Learning)</strong> 기반 접근법을 분석하여 다양한 기술적 방법론과 실제 응용 사례를 강조.</p>
-  <p>✅ 기존 기술의 한계점을 파악하고, 향후 연구 방향을 제시.</p>
-
-  <h4 style="color: #0056b3;">2. 기술적 접근법 및 분류</h4>
-  <ul style="list-style-type: disc; margin-left: 1em;">
-    <li><strong>비전 기반 모션 캡처(Vision-Based Motion Capture):</strong> RGB 및 RGB-D 카메라 데이터를 사용해 포즈와 움직임을 추정.</li>
-    <li><strong>센서 융합(Sensor Fusion):</strong> IMU, LiDAR, RGB-D 데이터를 통합하여 포즈 정확도 개선.</li>
-    <li><strong>Graph-Based Methods:</strong> 그래프 뉴럴 네트워크(GNN)를 사용해 키포인트 간의 관계를 모델링.</li>
-    <li><strong>Zero-shot Learning 및 Few-shot Learning:</strong> 학습 데이터 부족 문제를 해결.</li>
-    <li><strong>Interpretable Models:</strong> 실시간 상호작용 및 적용 사례 최적화.</li>
-  </ul>
-
-  <h4 style="color: #0056b3;">3. 응용 사례</h4>
-  <ul style="list-style-type: disc; margin-left: 1em;">
-    <li><strong>스마트 감시(Smart Surveillance):</strong> 이상 행동 및 위험 상황 감지.</li>
-    <li><strong>스포츠 및 훈련(Sports & Training):</strong> 최적화된 훈련 제공.</li>
-    <li><strong>의료 및 재활(Medical Rehabilitation):</strong> 맞춤형 치료 제공.</li>
-    <li><strong>게임 및 VR/AR:</strong> 가상 환경에 정확하게 반영.</li>
-    <li><strong>로봇 공학(Robotics):</strong> 인간의 행동을 실시간으로 인식.</li>
-  </ul>
-
-  <h4 style="color: #0056b3;">4. 실험 및 결과</h4>
-  <p>✅ <strong>데이터셋:</strong> Human3.6M, MPI-INF-3DHP, CMU Panoptic.</p>
-  <p>✅ <strong>정확도:</strong> 평균 오차율(MPJPE)이 개선됨.</p>
-  <p>✅ <strong>처리 속도:</strong> 실시간 추론 속도 향상.</p>
-
-  <h4 style="color: #0056b3;">5. 주요 기여</h4>
-  <p>✅ <strong>종합적 리뷰:</strong> 기술적, 응용적 측면 포괄 분석.</p>
-  <p>✅ <strong>기술적 통찰:</strong> 다양한 접근법 검토.</p>
-  <p>✅ <strong>실질적 응용:</strong> 스마트 감시, 스포츠, 의료 등 강조.</p>
-
-  <h4 style="color: #0056b3;">6. 한계 및 향후 연구 방향</h4>
-  <p>✅ 가려짐(Occlusion) 문제.</p>
-  <p>✅ 실시간 처리 속도 한계.</p>
-  <p>✅ 데이터셋 부족 문제.</p>
-  <p>✅ 윤리적 문제 및 기술적 규제 필요.</p>
-
-  <h4 style="color: #0056b3;">7. 결론</h4>
-  <p>✅ <strong>3D 인간 모션 캡처 기술의 딥러닝 기반 접근법</strong> 분석.</p>
-  <p>✅ 다양한 산업 분야(스마트 감시, 스포츠, 의료, 게임, 로봇 공학)에서 활용 가능성 입증.</p>
-
-  <p><strong>🗓️ 출판 연도:</strong> <strong>2024</strong></p>
-</details>
 
 ## 고른 것
 
@@ -163,11 +94,7 @@ toc_label: "페이지 주요 목차"
   <p><strong>🗓️ 출판 연도:</strong> <strong>2021</strong></p>
 </details>
 
-
-## 모델별 특징
-
-[paperwithcode_3D_HPE](https://paperswithcode.com/task/3d-multi-person-pose-estimation/latest)   
-[CVPR](https://github.com/52CV/CVPR-2024-Papers?tab=readme-ov-file)   
+### 2D image 기반 3D 포즈 추정
 
 |model 명|연도|특징|학회|input|output|단점|
 |:--:|:--:|:--|:--|:--|:--|:--|
@@ -185,6 +112,82 @@ toc_label: "페이지 주요 목차"
 |**[CPN](https://github.com/GengDavid/pytorch-cpn)**|2018|이미지에서 관절 keypoints heatmap 형태 추출|CVPR|RGB 이미지|2D 포즈|
 |**[OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose)**|2018|실시간 2D 인간 포즈 추정 + 3D keypoints|CVPR|RGB 이미지|2D 포즈, 3D pose keypoints|
 
+#### 관련 사이트
+
+[paperwithcode_3D_HPE](https://paperswithcode.com/task/3d-multi-person-pose-estimation/latest)   
+[CVPR](https://github.com/52CV/CVPR-2024-Papers?tab=readme-ov-file)   
+
+### 비교 논문 리뷰
+
+### "From Methods to Applications: A Review of Deep 3D Human Motion Capture"
+방법과 응용까지, 3D 인간 모션 캡처에 대한 리뷰   
+
+<details style="margin: 1em 0; padding: 0.5em; border: 1px solid #ccc; border-radius: 5px; background-color: #f9f9f9;">
+  <summary style="cursor: pointer; font-weight: bold; font-size: 1em; margin-bottom: 0.5em; color: #333;">논문 관련 정보!</summary>
+
+  <h3 style="color: #0056b3; margin-top: 1em;">"From Methods to Applications: A Review of Deep 3D Human Motion Capture"</h3>
+
+  <p><strong>📚 출처:</strong> AH AH, OO Khalifa, AA Ibrahim – <em>PERINTIS eJournal</em>, <strong>2024</strong></p>
+  <p><strong>🔗 논문 링크:</strong> 
+    <a href="https://perintis.org.my/ejournalperintis/index.php/PeJ/article/view/180" style="color: #0078D4;">PERINTIS eJournal 링크</a>
+  </p>
+  <p><strong>📄 PDF 다운로드:</strong> 
+    <a href="https://perintis.org.my/ejournalperintis/index.php/PeJ/article/download/180/148" style="color: #0078D4;">PDF 파일 링크</a>
+  </p>
+  <p><strong>🧠 저자 정보:</strong></p>
+  <ul style="list-style-type: disc; margin-left: 1em;">
+    <li><a href="https://scholar.google.com/citations?user=AHProfile" style="color: #0078D4;">AH AH</a></li>
+    <li><a href="https://scholar.google.com/citations?user=KhalifaProfile" style="color: #0078D4;">OO Khalifa</a></li>
+    <li><a href="https://scholar.google.com/citations?user=IbrahimProfile" style="color: #0078D4;">AA Ibrahim</a></li>
+  </ul>
+
+  <hr style="border: none; border-top: 1px solid #ddd; margin: 1em 0;">
+
+  <h4 style="color: #0056b3;">1. 연구 목적</h4>
+  <p>✅ <strong>3D 인간 모션 캡처(3D Human Motion Capture)</strong> 기술의 최근 발전과 응용 사례를 검토.</p>
+  <p>✅ <strong>딥러닝(Deep Learning)</strong> 기반 접근법을 분석하여 다양한 기술적 방법론과 실제 응용 사례를 강조.</p>
+  <p>✅ 기존 기술의 한계점을 파악하고, 향후 연구 방향을 제시.</p>
+
+  <h4 style="color: #0056b3;">2. 기술적 접근법 및 분류</h4>
+  <ul style="list-style-type: disc; margin-left: 1em;">
+    <li><strong>비전 기반 모션 캡처(Vision-Based Motion Capture):</strong> RGB 및 RGB-D 카메라 데이터를 사용해 포즈와 움직임을 추정.</li>
+    <li><strong>센서 융합(Sensor Fusion):</strong> IMU, LiDAR, RGB-D 데이터를 통합하여 포즈 정확도 개선.</li>
+    <li><strong>Graph-Based Methods:</strong> 그래프 뉴럴 네트워크(GNN)를 사용해 키포인트 간의 관계를 모델링.</li>
+    <li><strong>Zero-shot Learning 및 Few-shot Learning:</strong> 학습 데이터 부족 문제를 해결.</li>
+    <li><strong>Interpretable Models:</strong> 실시간 상호작용 및 적용 사례 최적화.</li>
+  </ul>
+
+  <h4 style="color: #0056b3;">3. 응용 사례</h4>
+  <ul style="list-style-type: disc; margin-left: 1em;">
+    <li><strong>스마트 감시(Smart Surveillance):</strong> 이상 행동 및 위험 상황 감지.</li>
+    <li><strong>스포츠 및 훈련(Sports & Training):</strong> 최적화된 훈련 제공.</li>
+    <li><strong>의료 및 재활(Medical Rehabilitation):</strong> 맞춤형 치료 제공.</li>
+    <li><strong>게임 및 VR/AR:</strong> 가상 환경에 정확하게 반영.</li>
+    <li><strong>로봇 공학(Robotics):</strong> 인간의 행동을 실시간으로 인식.</li>
+  </ul>
+
+  <h4 style="color: #0056b3;">4. 실험 및 결과</h4>
+  <p>✅ <strong>데이터셋:</strong> Human3.6M, MPI-INF-3DHP, CMU Panoptic.</p>
+  <p>✅ <strong>정확도:</strong> 평균 오차율(MPJPE)이 개선됨.</p>
+  <p>✅ <strong>처리 속도:</strong> 실시간 추론 속도 향상.</p>
+
+  <h4 style="color: #0056b3;">5. 주요 기여</h4>
+  <p>✅ <strong>종합적 리뷰:</strong> 기술적, 응용적 측면 포괄 분석.</p>
+  <p>✅ <strong>기술적 통찰:</strong> 다양한 접근법 검토.</p>
+  <p>✅ <strong>실질적 응용:</strong> 스마트 감시, 스포츠, 의료 등 강조.</p>
+
+  <h4 style="color: #0056b3;">6. 한계 및 향후 연구 방향</h4>
+  <p>✅ 가려짐(Occlusion) 문제.</p>
+  <p>✅ 실시간 처리 속도 한계.</p>
+  <p>✅ 데이터셋 부족 문제.</p>
+  <p>✅ 윤리적 문제 및 기술적 규제 필요.</p>
+
+  <h4 style="color: #0056b3;">7. 결론</h4>
+  <p>✅ <strong>3D 인간 모션 캡처 기술의 딥러닝 기반 접근법</strong> 분석.</p>
+  <p>✅ 다양한 산업 분야(스마트 감시, 스포츠, 의료, 게임, 로봇 공학)에서 활용 가능성 입증.</p>
+
+  <p><strong>🗓️ 출판 연도:</strong> <strong>2024</strong></p>
+</details>
 
 ### 평가 요소
 Motion Capture 시스템의 설계 및 평가 필수 요소들
