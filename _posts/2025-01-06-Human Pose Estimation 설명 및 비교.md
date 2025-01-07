@@ -120,42 +120,43 @@ toc_label: "페이지 주요 목차"
   
   ### **"Real-time RGBD-Based Extended Body Pose Estimation"**
 
-   **📚 출처:** R Bashirov, A Ianina, K Iskakov – *Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)*, **2021**  
-   **🔗 논문 링크:** ![WACV 논문 링크](http://openaccess.thecvf.com/content/WACV2021/html/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.html)  
-   **📄 PDF 다운로드:** ![PDF 파일 링크](https://openaccess.thecvf.com/content/WACV2021/papers/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.pdf)  
-   **🧠 저자 정보:**  
-   - [R Bashirov](https://scholar.google.com/citations?user=1pFCtykAAAAJ&hl=en)  
-   - [K Iskakov](https://scholar.google.com/citations?user=YSYA9_4AAAAJ&hl=en)  
-   **📦 코드 저장소:** ![GitHub Repository](https://github.com/rmbashirov/rgbd-kinect-pose)  
+  **📚 출처:** R Bashirov, A Ianina, K Iskakov – *Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)*, **2021**  
+  **🔗 논문 링크:** ![WACV 논문 링크](http://openaccess.thecvf.com/content/WACV2021/html/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.html)  
+  **📄 PDF 다운로드:** ![PDF 파일 링크](https://openaccess.thecvf.com/content/WACV2021/papers/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.pdf)  
+  **🧠 저자 정보:**  
+  - [R Bashirov](https://scholar.google.com/citations?user=1pFCtykAAAAJ&hl=en)  
+  - [K Iskakov](https://scholar.google.com/citations?user=YSYA9_4AAAAJ&hl=en)  
+  **📦 코드 저장소:** ![GitHub Repository](https://github.com/rmbashirov/rgbd-kinect-pose)  
 
-   #### **1. 연구 목적**  
-   - **RGB-D 카메라(Kinect Azure RGB-D Camera)**를 사용해 **실시간 확장된 신체 포즈 추정(Extended Body Pose Estimation)** 시스템을 개발.  
-   - **파라메트릭 3D 인간 메쉬 모델(SMPL-X)**을 기반으로 신체 포즈, 손 포즈, 얼굴 표정을 통합적으로 예측.  
-   - 실시간 성능을 유지하면서 **높은 정확도와 일관성**을 보장.
+  #### **1. 연구 목적**  
+  
+  - **RGB-D 카메라(Kinect Azure RGB-D Camera)**를 사용해 **실시간 확장된 신체 포즈 추정(Extended Body Pose Estimation)** 시스템을 개발.  
+  - **파라메트릭 3D 인간 메쉬 모델(SMPL-X)**을 기반으로 신체 포즈, 손 포즈, 얼굴 표정을 통합적으로 예측.  
+  - 실시간 성능을 유지하면서 **높은 정확도와 일관성**을 보장.
 
-   #### **2. 기술적 접근법**  
-   1. **SMPL-X Representation:**  
-   - **3D 변형 가능한 인간 메쉬 모델(Parametric 3D Deformable Human Mesh Model, SMPL-X)**을 사용하여 전체 신체, 손, 얼굴을 표현.  
-   1. **Body Pose Estimation:**  
-   - Kinect Azure RGB-D 카메라로부터 얻은 데이터를 사용해 신체 포즈 파라미터를 예측.  
-   - **AMASS Dataset**과 사용자 정의 데이터셋(56명의 포즈 데이터)을 학습에 사용.
-   1. **Hand Pose Estimation:**  
-   - 기존에 발표된 손 포즈 예측 모델을 직접 활용.  
-   - 신체 포즈와 손 포즈를 일관되게 통합.
-   1. **Facial Expression Estimation:**  
-   - 대규모 **Talking Face Dataset**으로 훈련된 얼굴 표정 추출기 사용.  
-   - RGB-D 데이터를 통해 얼굴 표정 특징을 세밀하게 추출.
-   1. **Temporal Smoothing:**  
-   - 시간적 일관성(Temporal Consistency)을 유지하기 위해 연속된 프레임을 정교하게 조정.  
+  #### **2. 기술적 접근법**  
+  1. **SMPL-X Representation:**  
+     - **3D 변형 가능한 인간 메쉬 모델(Parametric 3D Deformable Human Mesh Model, SMPL-X)**을 사용하여 전체 신체, 손, 얼굴을 표현.  
+  2. **Body Pose Estimation:**  
+     - Kinect Azure RGB-D 카메라로부터 얻은 데이터를 사용해 신체 포즈 파라미터를 예측.  
+     - **AMASS Dataset**과 사용자 정의 데이터셋(56명의 포즈 데이터)을 학습에 사용.
+  3. **Hand Pose Estimation:**  
+     - 기존에 발표된 손 포즈 예측 모델을 직접 활용.  
+     - 신체 포즈와 손 포즈를 일관되게 통합.
+  4. **Facial Expression Estimation:**  
+     - 대규모 **Talking Face Dataset**으로 훈련된 얼굴 표정 추출기 사용.  
+     - RGB-D 데이터를 통해 얼굴 표정 특징을 세밀하게 추출.
+  5. **Temporal Smoothing:**  
+     - 시간적 일관성(Temporal Consistency)을 유지하기 위해 연속된 프레임을 정교하게 조정.  
 
-   #### **3. 알고리즘 설계**  
-   - **입력:** RGB-D 데이터(Kinect Azure).  
-   - **Step 1:** RGB-D 입력에서 랜드마크 검출.  
-   - **Step 2:** 신체, 손, 얼굴 표정 파라미터 추정.  
-   - **Step 3:** 시간적 일관성 보정 (Temporal Smoothing).  
-   - **출력:** 신체, 손, 얼굴 표정을 포함한 통합 3D 포즈 예측.
+  #### **3. 알고리즘 설계**  
+  - **입력:** RGB-D 데이터(Kinect Azure).  
+  - **Step 1:** RGB-D 입력에서 랜드마크 검출.  
+  - **Step 2:** 신체, 손, 얼굴 표정 파라미터 추정.  
+  - **Step 3:** 시간적 일관성 보정 (Temporal Smoothing).  
+  - **출력:** 신체, 손, 얼굴 표정을 포함한 통합 3D 포즈 예측.
 
-   #### **4. 실험 및 결과**  
+  #### **4. 실험 및 결과**  
    - **벤치마크 데이터셋:** AMASS Dataset, 사용자 정의 Kinect Azure 데이터셋 (56명).  
    - **정확도 개선:** RGB 전용(RGB-Only) 방법보다 뛰어난 성능.  
    - **실시간 처리:** GPU 서버에서 평균 **25 FPS** 유지.  
