@@ -13,8 +13,6 @@ toc_sticky: true
 toc_label: "페이지 주요 목차"
 ---
 
----
-
 ## 주제
 
 - 사람의 3d 포즈 추정(HPE, Human Pose Estimation)   
@@ -25,17 +23,17 @@ toc_label: "페이지 주요 목차"
 방법과 응용까지, 3D 인간 모션 캡처에 대한 리뷰
 
 <details>
-  <summary>**논문 관련 정보!**</summary>
+  <summary>논문 관련 정보!</summary>
 
   ### **"From Methods to Applications: A Review of Deep 3D Human Motion Capture"**
   
   **📚 출처:** AH AH, OO Khalifa, AA Ibrahim – *PERINTIS eJournal*, **2024**  
-  **🔗 논문 링크:** [PERINTIS eJournal 링크](https://perintis.org.my/ejournalperintis/index.php/PeJ/article/view/180)  
-  **📄 PDF 다운로드:** [PDF 파일 링크](https://perintis.org.my/ejournalperintis/index.php/PeJ/article/download/180/148)  
+  **🔗 논문 링크:** ![PERINTIS eJournal 링크](https://perintis.org.my/ejournalperintis/index.php/PeJ/article/view/180)  
+  **📄 PDF 다운로드:** ![PDF 파일 링크](https://perintis.org.my/ejournalperintis/index.php/PeJ/article/download/180/148)  
   **🧠 저자 정보:**  
-  - [AH AH](https://scholar.google.com/citations?user=AHProfile)  
-  - [OO Khalifa](https://scholar.google.com/citations?user=KhalifaProfile)  
-  - [AA Ibrahim](https://scholar.google.com/citations?user=IbrahimProfile)  
+  - ![AH AH](https://scholar.google.com/citations?user=AHProfile)  
+  - ![OO Khalifa](https://scholar.google.com/citations?user=KhalifaProfile)  
+  - ![AA Ibrahim](https://scholar.google.com/citations?user=IbrahimProfile)  
 
   ---
 
@@ -111,17 +109,17 @@ toc_label: "페이지 주요 목차"
 ### RGB-D 기반의 3D 포즈 추정
 
 <details>
-  <summary>**논문 관련 정보!**</summary>
+  <summary>논문 관련 정보!</summary>
   
   ### **"Real-time RGBD-Based Extended Body Pose Estimation"**
 
    **📚 출처:** R Bashirov, A Ianina, K Iskakov – *Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)*, **2021**  
-   **🔗 논문 링크:** [WACV 논문 링크](http://openaccess.thecvf.com/content/WACV2021/html/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.html)  
-   **📄 PDF 다운로드:** [PDF 파일 링크](https://openaccess.thecvf.com/content/WACV2021/papers/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.pdf)  
+   **🔗 논문 링크:** ![WACV 논문 링크](http://openaccess.thecvf.com/content/WACV2021/html/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.html)  
+   **📄 PDF 다운로드:** ![PDF 파일 링크](https://openaccess.thecvf.com/content/WACV2021/papers/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.pdf)  
    **🧠 저자 정보:**  
    - [R Bashirov](https://scholar.google.com/citations?user=1pFCtykAAAAJ&hl=en)  
    - [K Iskakov](https://scholar.google.com/citations?user=YSYA9_4AAAAJ&hl=en)  
-   **📦 코드 저장소:** [GitHub Repository](https://github.com/rmbashirov/rgbd-kinect-pose)  
+   **📦 코드 저장소:** ![GitHub Repository](https://github.com/rmbashirov/rgbd-kinect-pose)  
 
    #### **1. 연구 목적**  
    - **RGB-D 카메라(Kinect Azure RGB-D Camera)**를 사용해 **실시간 확장된 신체 포즈 추정(Extended Body Pose Estimation)** 시스템을 개발.  
