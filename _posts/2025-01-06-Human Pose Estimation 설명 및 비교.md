@@ -115,77 +115,67 @@ toc_label: "페이지 주요 목차"
 |**[Real-time RGBD-Based Extended Body Pose Estimation](https://github.com/rmbashirov/rgbd-kinect-pose)**|2021|RGB-D 카메라 기반 실시간 확장된 신체 포즈 추정|WACV|RGB-D 이미지|3D 포즈|가려짐 문제에 대한 한계점, 부자연성, 특정 디바이스 필요|
 |**[HuMoR](https://github.com/davrempe/humor)**|2021|딥러닝 기반 자세 추정, 가려짐 강함|ICCV|RGB-D 이미지 <br> 3D 포인트 클라우드 <br> 2D 키포인트|3D 포즈|실시간성, 등 결과 데이터 없음|
 
-<details>
-  <summary>논문 관련 정보!</summary>
-  
-  ### **"Real-time RGBD-Based Extended Body Pose Estimation"**
+<details style="margin: 1em 0; padding: 0.5em; border: 1px solid #ccc; border-radius: 5px; background-color: #f9f9f9;">
+  <summary style="cursor: pointer; font-weight: bold; font-size: 1.1em; margin-bottom: 0.5em; color: #333;">**논문 관련 정보!**</summary>
 
-  **📚 출처:** R Bashirov, A Ianina, K Iskakov – *Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)*, **2021**  
-  **🔗 논문 링크:** ![WACV 논문 링크](http://openaccess.thecvf.com/content/WACV2021/html/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.html)  
-  **📄 PDF 다운로드:** ![PDF 파일 링크](https://openaccess.thecvf.com/content/WACV2021/papers/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.pdf)  
-  **🧠 저자 정보:**  
-  - [R Bashirov](https://scholar.google.com/citations?user=1pFCtykAAAAJ&hl=en)  
-  - [K Iskakov](https://scholar.google.com/citations?user=YSYA9_4AAAAJ&hl=en)  
-  **📦 코드 저장소:** ![GitHub Repository](https://github.com/rmbashirov/rgbd-kinect-pose)  
+  <h3 style="color: #0056b3; margin-top: 1em;">**"Real-time RGBD-Based Extended Body Pose Estimation"**</h3>
 
-  #### **1. 연구 목적**  
-  
-  - **RGB-D 카메라(Kinect Azure RGB-D Camera)**를 사용해 **실시간 확장된 신체 포즈 추정(Extended Body Pose Estimation)** 시스템을 개발.  
-  - **파라메트릭 3D 인간 메쉬 모델(SMPL-X)**을 기반으로 신체 포즈, 손 포즈, 얼굴 표정을 통합적으로 예측.  
-  - 실시간 성능을 유지하면서 **높은 정확도와 일관성**을 보장.
+  <p><strong>📚 출처:</strong> R Bashirov, A Ianina, K Iskakov – *Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)*, <strong>2021</strong></p>
+  <p><strong>🔗 논문 링크:</strong> 
+    <a href="http://openaccess.thecvf.com/content/WACV2021/html/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.html" style="color: #0078D4;">WACV 논문 링크</a>
+  </p>
+  <p><strong>📄 PDF 다운로드:</strong> 
+    <a href="https://openaccess.thecvf.com/content/WACV2021/papers/Bashirov_Real-Time_RGBD-Based_Extended_Body_Pose_Estimation_WACV_2021_paper.pdf" style="color: #0078D4;">PDF 파일 링크</a>
+  </p>
+  <p><strong>🧠 저자 정보:</strong></p>
+  <ul style="list-style-type: disc; margin-left: 1em;">
+    <li><a href="https://scholar.google.com/citations?user=1pFCtykAAAAJ&hl=en" style="color: #0078D4;">R Bashirov</a></li>
+    <li><a href="https://scholar.google.com/citations?user=YSYA9_4AAAAJ&hl=en" style="color: #0078D4;">K Iskakov</a></li>
+  </ul>
+  <p><strong>📦 코드 저장소:</strong> 
+    <a href="https://github.com/rmbashirov/rgbd-kinect-pose" style="color: #0078D4;">GitHub Repository</a>
+  </p>
 
-  #### **2. 기술적 접근법**  
-  1. **SMPL-X Representation:**  
-     - **3D 변형 가능한 인간 메쉬 모델(Parametric 3D Deformable Human Mesh Model, SMPL-X)**을 사용하여 전체 신체, 손, 얼굴을 표현.  
-  2. **Body Pose Estimation:**  
-     - Kinect Azure RGB-D 카메라로부터 얻은 데이터를 사용해 신체 포즈 파라미터를 예측.  
-     - **AMASS Dataset**과 사용자 정의 데이터셋(56명의 포즈 데이터)을 학습에 사용.
-  3. **Hand Pose Estimation:**  
-     - 기존에 발표된 손 포즈 예측 모델을 직접 활용.  
-     - 신체 포즈와 손 포즈를 일관되게 통합.
-  4. **Facial Expression Estimation:**  
-     - 대규모 **Talking Face Dataset**으로 훈련된 얼굴 표정 추출기 사용.  
-     - RGB-D 데이터를 통해 얼굴 표정 특징을 세밀하게 추출.
-  5. **Temporal Smoothing:**  
-     - 시간적 일관성(Temporal Consistency)을 유지하기 위해 연속된 프레임을 정교하게 조정.  
+  <hr style="border: none; border-top: 1px solid #ddd; margin: 1em 0;">
 
-  #### **3. 알고리즘 설계**  
-  - **입력:** RGB-D 데이터(Kinect Azure).  
-  - **Step 1:** RGB-D 입력에서 랜드마크 검출.  
-  - **Step 2:** 신체, 손, 얼굴 표정 파라미터 추정.  
-  - **Step 3:** 시간적 일관성 보정 (Temporal Smoothing).  
-  - **출력:** 신체, 손, 얼굴 표정을 포함한 통합 3D 포즈 예측.
+  <h4 style="color: #0056b3;">**1. 연구 목적**</h4>
+  <p>✅ **RGB-D 카메라(Kinect Azure RGB-D Camera)**를 사용해 **실시간 확장된 신체 포즈 추정(Extended Body Pose Estimation)** 시스템을 개발.</p>
+  <p>✅ **파라메트릭 3D 인간 메쉬 모델(SMPL-X)**을 기반으로 신체 포즈, 손 포즈, 얼굴 표정을 통합적으로 예측.</p>
+  <p>✅ 실시간 성능을 유지하면서 **높은 정확도와 일관성**을 보장.</p>
 
-  #### **4. 실험 및 결과**  
-   - **벤치마크 데이터셋:** AMASS Dataset, 사용자 정의 Kinect Azure 데이터셋 (56명).  
-   - **정확도 개선:** RGB 전용(RGB-Only) 방법보다 뛰어난 성능.  
-   - **실시간 처리:** GPU 서버에서 평균 **25 FPS** 유지.  
-   - **성능 비교:** 더 느린 RGB-D 최적화 기반 솔루션과 유사한 정확도 달성.
+  <h4 style="color: #0056b3;">**2. 기술적 접근법**</h4>
+  <ul style="list-style-type: disc; margin-left: 1em;">
+    <li><strong>SMPL-X Representation:</strong> 3D 변형 가능한 인간 메쉬 모델(SMPL-X) 사용.</li>
+    <li><strong>Body Pose Estimation:</strong> Kinect Azure RGB-D 카메라 데이터 사용.</li>
+    <li><strong>Hand Pose Estimation:</strong> 기존 손 포즈 예측 모델 활용.</li>
+    <li><strong>Facial Expression Estimation:</strong> 얼굴 표정 특징을 세밀하게 추출.</li>
+    <li><strong>Temporal Smoothing:</strong> 시간적 일관성을 유지.</li>
+  </ul>
 
-   #### **5. 주요 기여**  
-   - **✅ SMPL-X 모델 활용:** 신체, 손, 얼굴을 통합적으로 표현.  
-   - **✅ RGB-D 기반 포즈 추정:** RGB-Only 접근법보다 높은 정확도 제공.  
-   - **✅ Temporal Smoothing:** 프레임 간 일관성 유지로 포즈의 안정성 향상.  
-   - **✅ 실시간 처리:** GPU 환경에서 초당 25 프레임으로 안정적인 실시간 예측.
+  <h4 style="color: #0056b3;">**3. 알고리즘 설계**</h4>
+  <p>✅ <strong>입력:</strong> RGB-D 데이터(Kinect Azure).</p>
+  <p>✅ <strong>Step 1:</strong> RGB-D 입력에서 랜드마크 검출.</p>
+  <p>✅ <strong>Step 2:</strong> 신체, 손, 얼굴 표정 파라미터 추정.</p>
+  <p>✅ <strong>Step 3:</strong> 시간적 일관성 보정.</p>
+  <p>✅ <strong>출력:</strong> 신체, 손, 얼굴 표정을 포함한 통합 3D 포즈 예측.</p>
 
-   #### **6. 응용 분야**  
-   - 🎮 **게임 및 VR/AR:** 캐릭터 포즈와 표정을 실시간으로 정확하게 재현.  
-   - 🩺 **의료 및 재활:** 환자의 자세 및 표정 분석을 통해 치료 계획 수립.  
-   - 🛡️ **스마트 감시 시스템:** 비정상적인 움직임 및 행동 감지.  
-   - 🤖 **로봇 비전:** 인간 포즈 및 표정을 분석하여 로봇과 자연스러운 상호작용 구현.
+  <h4 style="color: #0056b3;">**4. 실험 및 결과**</h4>
+  <p>✅ <strong>벤치마크 데이터셋:</strong> AMASS Dataset, Kinect Azure 데이터셋(56명).</p>
+  <p>✅ <strong>정확도 개선:</strong> RGB 전용 방법보다 높은 성능.</p>
+  <p>✅ <strong>실시간 처리:</strong> GPU 서버에서 평균 **25 FPS** 유지.</p>
 
-   #### **7. 한계 및 향후 연구 방향**  
-   - 가려짐(Occlusion) 문제에서 성능 저하 가능성.  
-   - 다양한 환경 조건(조명, 배경)에서의 추가 검증 필요.  
-   - 엣지 디바이스 환경에서의 성능 최적화 필요.
+  <h4 style="color: #0056b3;">**5. 주요 기여**</h4>
+  <p>✅ SMPL-X 모델로 신체, 손, 얼굴 통합 표현.</p>
+  <p>✅ RGB-D 기반 포즈 예측.</p>
+  <p>✅ Temporal Smoothing.</p>
+  <p>✅ 실시간 처리.</p>
 
-   #### **8. 결론**  
-   - **RGB-D 기반 실시간 확장 신체 포즈 추정 시스템**은 SMPL-X 모델을 통해 **신체, 손, 얼굴 포즈 및 표정을 통합적으로 예측**.  
-   - **시간적 일관성**을 보장하며 높은 정확도와 실시간 처리 속도를 달성.  
-   - **게임, 의료, 감시, 로봇 공학 등 다양한 응용 분야**에 효과적으로 활용될 수 있음.
+  <h4 style="color: #0056b3;">**6. 결론**</h4>
+  <p>✅ RGB-D 기반 실시간 확장 신체 포즈 추정 시스템.</p>
+  <p>✅ 시간적 일관성과 높은 정확도.</p>
+  <p>✅ 다양한 산업 분야 활용 가능.</p>
 
-   **🗓️ 출판 연도:** **2021**  
-
+  <p><strong>🗓️ 출판 연도:</strong> <strong>2021</strong></p>
 </details>
 
 
