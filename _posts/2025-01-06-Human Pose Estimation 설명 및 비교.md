@@ -113,6 +113,7 @@ toc_label: "페이지 주요 목차"
 |model 명|연도|특징|학회|input|output|단점|
 |:--:|:--:|:--|:--|:--|:--|:--|
 |**[Real-time RGBD-Based Extended Body Pose Estimation](https://github.com/rmbashirov/rgbd-kinect-pose)**|2021|RGB-D 카메라 기반 실시간 확장된 신체 포즈 추정|WACV|RGB-D 이미지|3D 포즈|가려짐 문제에 대한 한계점, 부자연성, 특정 디바이스 필요|
+|**[HuMoR](https://github.com/davrempe/humor)**|2021|딥러닝 기반 자세 추정, 가려짐 강함|ICCV|RGB-D 이미지 <br> 3D 포인트 클라우드 <br> 2D 키포인트|3D 포즈|실시간성, 등 결과 데이터 없음|
 
 <details>
   <summary>논문 관련 정보!</summary>
@@ -205,7 +206,7 @@ toc_label: "페이지 주요 목차"
 |model 명|연도|특징|학회|input|output|
 |:--:|:--:|:--|:--|:--|:--|
 |**[AlphaPose](https://github.com/MVIG-SJTU/AlphaPose)**|2022|top-down 방식, OpenPose 기반, 높은 정확도|CVPR|RGB 이미지|2D 포즈|
-|**[CPN](https://github.com/GengDavid/pytorch-cpn)**|2018|이미지에서 관절 keypoints heatmap 형태 추출|IEEE|RGB 이미지|2D 포즈|
+|**[CPN](https://github.com/GengDavid/pytorch-cpn)**|2018|이미지에서 관절 keypoints heatmap 형태 추출|CVPR|RGB 이미지|2D 포즈|
 |**[OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose)**|2018|실시간 2D 인간 포즈 추정 + 3D keypoints|CVPR|RGB 이미지|2D 포즈, 3D pose keypoints|
 
 
@@ -228,24 +229,25 @@ Motion Capture 시스템의 설계 및 평가 필수 요소들
 
 #### Monocular 3D human pose estimation
 
-1) Multi-Person Architecture
-다중 인물 시나리오의 모노큘러 카메라 기반 3D 사람 자세 추정은 크게 2가지로 나뉜다. 
-   - **Lifting-based methods:** 
-     - 2D 키포인트를 3D 공간으로 변환하는 방법.
-     - 예) Martinez, VideoPose...
+**1) Multi-Person Architecture**  
+다중 인물 시나리오의 모노큘러 카메라 기반 3D 사람 자세 추정은 크게 2가지로 나뉜다.  
+   - **Lifting-based methods:**   
+     - **2D Human Pose Estimation의  3D 공간으로 변환하는 방법.**   
+       - 예) Martinez : 2D human pose(input) + adapting a suitable network structure -> 3D human pose(output)   
+       - 예) VideoPose : 2D human pose(input) + utilizes temporal information -> 3D human pose(output)   
    - **Direct Estimation methods:** 
      - 2D 입력 이미지에서 3D 포즈로 직접 변환하는 방법.
        - Top-down  
          사람 탐지기 -> 각 개인 감지 + 자르기 -> 3D 포즈 추정
-         - 예) CLIFF
+         - 예) CLIFF, 
        - Bottom-up  
          추론 속도 저하하지 X, 다른 인체 구별하는데 중점
-         - 예) XNect,LCR-Net, 
+         - 예) XNect,LCR-Net, ROMP
    
-2) Performance Enhancement
+**2) Performance Enhancement**   
 카메라 입력에 의존하다보니, 정확도 높이기 위한 Camera model 개선, 보조 정보(Auxiliary Information) 활용, 새로운 표현(new representation) 사용 하는 것.
 
-3) Reality Enhancement
+**3) Reality Enhancement**  
 떨림, 물리 법칙 위반, 인간 얼굴 손 세부 사항 부족을 해결하고자 하는 것.  
 후처리 기법, Physical Constraints(물리적 제약) 통합, 자세 추정 방법 위한 Whole-body models 개발 등. 
 
