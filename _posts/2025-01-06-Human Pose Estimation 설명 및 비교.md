@@ -99,6 +99,7 @@ toc_label: "페이지 주요 목차"
 |model 명|연도|특징|학회|input|output|단점|
 |:--:|:--:|:--|:--|:--|:--|:--|
 |**[Multi-HMR](https://github.com/naver/multi-hmr)**|2025|백본 ViT-S 사용시 높은 성능|ICCV|RGB 이미지(Single RGB Image)|다중 인물의 3D 메쉬|복잡한 가려짐(Occlusion) 상황에서 정확도 저하 가능성, 고사양 장치 요구|
+|**[TRAM](https://github.com/yufu-wang/tram?tab=readme-ov-file)**|2025|in-the-wild videos에서 인간의 3D 전역 궤적 및 동작 복원하기 위해 제안된 2단계 방법|ECCV|RGB 이미지|글로벌 좌표에서 동작|복잡한 가려짐(Occlusion) 상황에서 정확도 저하|
 |**[Sapien](https://github.com/facebookresearch/sapiens)**|2024|멀티 모달 모델 : 깊이 추정, 포즈 추정 미세 조정 가능|ECCV|이미지, 비디오, 텍스트 데이터|Pose, Seg, Depth|Fps 에 대한 데이터 없음, 고사양 장치 요구할 수도|
 |**[Gan-base model](https://www.sciencedirect.com/science/article/abs/pii/S0921889024000605)**|2024|GAN 기반 모델, 생성기, 판별기 균형|...|RGB 이미지|3D 포즈|code 데이터 셋의 부족|
 |**[DensePose](https://github.com/facebookresearch/Densepose)**|2018|인간의 3D 포즈를 2D 이미지에 투영|CVPR|RGB 이미지|3D 인간 메쉬 모델 좌표(U, V, I)|가려짐, 손, 얼굴 구체적 신체구조 구현 부족|
