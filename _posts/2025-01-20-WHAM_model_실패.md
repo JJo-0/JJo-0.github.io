@@ -89,4 +89,4 @@ bash fetch_demo_data.sh
 
 ### 돌리다가 그만 두었다.
 - 왜냐하면, 모델이 너무 무거워서, 8GB GPU에서는 추론 조차 안되었다.
-- Github Issue 들어가보면 알 수 있다.
+- Github Issue 들어가보면 알 수 있다.   
