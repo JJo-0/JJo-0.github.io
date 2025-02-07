@@ -93,27 +93,65 @@ WSL에서 CUDA 설정 링크 참조 : [WSL](https://cjkangme.github.io/posts/202
 WSL 관련 프로그램 설치 : [WSL_GUI_앱_실행](https://learn.microsoft.com/ko-kr/windows/wsl/tutorials/gui-apps)
 
 
-```bash
-### ~/.bashrc file 내부
 
-# Miniforge3 경로 추가
-export PATH="/home/jo/.pyenv/versions/miniforge3-24.11.0-1/bin:$PATH"
+```bash
+# > ~/.bashrc file 내부
+
+#####################
+### User Setting ###
+#####################
 
 # Pyenv 초기화
 export PATH="/home/jo/.pyenv/bin:$PATH"
 eval "$(pyenv init --path)"
-eval "$(pyenv virtualenv-init -)"
+eval "$(pyenv virtualenv-init -)" # Miniforge3 경로 추가
+export PATH="/home/jo/.pyenv/versions/miniforge3-24.11.0-1/bin:$PATH"
 
-# Cuda 11.8 환경변수
-alias cuda-11.8='sudo update-alternatives --set gcc /usr/bin/gcc-12 && gcc --version && g++ --version && sudo update-alternatives --set cuda /usr/local/cuda-11.8 && export PATH=/usr/local/cuda-11.8/bin:$PATH && export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH && nvcc --version'
-# Cuda 12.4 환경변수
-alias cuda-12.4='sudo update-alternatives --set gcc /usr/bin/gcc-13 && gcc --version && g++ --version && sudo update-alternatives --set cuda /usr/local/cuda-12.4 && export PATH=/usr/local/cuda-12.4/bin:$PATH && export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64:$LD_LIBRARY_PATH && nvcc --version'
-# Cuda 12.6 환경변수
-alias cuda-12.6='sudo update-alternatives --set gcc /usr/bin/gcc-13 && gcc --version && g++ --version && sudo update-alternatives --set cuda /usr/local/cuda-12.6 && export PATH=/usr/local/cuda-12.6/bin:$PATH && export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH && nvcc --version'
-# update-alternative auto
-alias cuda-auto='sudo update-alternatives --auto gcc && sudo update-alternatives --auto cuda && gcc --version && g++ --version && nvcc --version'
-# User Setting #
 alias update='sudo apt update && sudo apt upgrade -y && sudo apt autoclean -y && sudo apt autoremove -y'
+
+function switch_cuda {
+    local version=$1
+    local gcc_version
+
+    case "$version" in
+        11.3)
+            gcc_version="gcc-9"
+            cuda_path="/usr/local/cuda-11.3"
+            ;;
+        11.8)
+            gcc_version="gcc-12"
+            cuda_path="/usr/local/cuda-11.8"
+            ;;
+        12.4)
+            gcc_version="gcc-13"
+            cuda_path="/usr/local/cuda-12.4"
+            ;;
+        12.6)
+            gcc_version="gcc-13"
+            cuda_path="/usr/local/cuda-12.6"
+            ;;
+        *)
+            echo "지원되지 않는 CUDA 버전입니다. 사용 가능한 버전: 11.3, 11.8, 12.4, 12.6"
+            return 1
+            ;;
+    esac
+
+    # GCC 전환
+    sudo update-alternatives --set gcc /usr/bin/$gcc_version
+
+    # CUDA 전환
+    sudo update-alternatives --set cuda $cuda_path
+
+    # 환경 변수 설정
+    export PATH=$cuda_path/bin:$PATH
+    export LD_LIBRARY_PATH=$cuda_path/lib64:$LD_LIBRARY_PATH
+
+    echo "CUDA 버전 $version 로 전환되었습니다."
+    gcc --version
+    g++ --version
+    nvcc --version
+}
+
 ```
 
 #### 명령어
@@ -126,22 +164,38 @@ alias update='sudo apt update && sudo apt upgrade -y && sudo apt autoclean -y &&
 CUDA(Compute Unified Device Architecture)는 NVIDIA가 개발한 병렬 컴퓨팅 플랫폼. CUDA를 통해 개발자들은 GPU의 병렬 처리 능력을 활용할 수 있게 되었습니다. CUDA는 GPU의 가상 명령어 집합과 병렬 연산 요소에 직접 접근할 수 있는 소프트웨어 계층을 제공하며, C 언어 등 표준 언어로 GPU 기반의 병렬 처리 알고리즘을 작성할 수 있습니다  
 
 1. CUDA의 주요 특징은 다음과 같습니다. 
-   1. 첫째, GPU의 병렬 처리 기능을 활용하여 계산 생물학, 암호학 등 다양한 분야에서 10배 이상의 성능 향상을 가져왔습니다 
-   2. 둘째, 흩뿌린 읽기, 고속 공유 메모리, 정수 및 비트 단위 연산 지원 등 GPU 고유의 특성을 활용할 수 있습니다 
-   3. 셋째, 저수준 API와 고수준 API를 모두 제공하여 개발자의 편의성을 높였습니다 
+   1. 첫째, GPU의 병렬 처리 기능을 활용하여 계산해 다양한 분야에서 10배 이상의 성능 향상 시킴
+   2. 둘째, 흩뿌린 읽기, 고속 공유 메모리, 정수 및 비트 단위 연산 지원 등 GPU 고유의 특성을 활용 가능
+   3. 셋째, 저수준 API와 고수준 API를 모두 제공하여 개발자의 편의성 상승
    
 CUDA의 개념, 특성, 버전별 차이점, 설치 및 구성 방법, 멀티 CUDA 환경 구축 등   
 CUDA 플랫폼에 대한 전반적인 내용을 다루고자 합니다. 이를 통해 CUDA의 중요성과 활용 방법을 소개하고, 관련 기술에 대한 이해를 높이고자 합니다.   
 
-### CUDA 개요
-CUDA(Compute Unified Device Architecture)는 NVIDIA가 개발한 병렬 컴퓨팅 플랫폼입니다. CUDA를 통해 개발자들은 GPU의 병렬 처리 능력을 활용할 수 있게 되었습니다. GPU는 CPU와 달리 병렬 다수 코어 구조를 가지고 있어, 수천 개의 스레드를 동시에 실행할 수 있습니다. 이를 활용하면 병렬처리에 적합한 응용프로그램의 성능을 크게 향상시킬 수 있습니다 2.
-
-CUDA의 주요 특징은 다음과 같습니다. 첫째, 흩뿌린 읽기, 고속 공유 메모리, 정수 및 비트 단위 연산 지원 등 GPU 고유의 특성을 활용할 수 있습니다 4. 둘째, 디바이스 상의 읽기, 쓰기 속도가 호스트보다 더 빠릅니다 4. 셋째, 계산 생물학, 암호학 등 다양한 분야에서 10배 이상의 성능 향상을 가져왔습니다 2. CUDA는 저수준 API와 고수준 API를 모두 제공하여 개발자의 편의성을 높였습니다 2.
+### CUDA 개념
+CUDA(Compute Unified Device Architecture)는 NVIDIA가 개발한 병렬 컴퓨팅 플랫폼이다.  
+GPU는 CPU와 달리 병렬 다수 코어 구조를 가지고 있어, 수천 개의 스레드를 동시에 실행할 수 있다.  
+  
+### CUDA 특징  
+1. 흩뿌린 읽기, 고속 공유 메모리, 정수 및 비트 단위 연산 지원 등 GPU 고유의 특성을 활용 가능 
+2. 디바이스 상의 읽기, 쓰기 속도가 호스트보다 더 빠르다.
 
 CUDA 버전별 차이점
-CUDA의 주요 버전 및 출시 연도는 다음과 같습니다. CUDA 1.0은 2007년에 처음 공개되었고, 이후 2.0(2008년), 3.0(2010년), 4.0(2011년), 5.0(2012년), 6.0(2014년), 7.0(2015년), 8.0(2016년), 9.0(2017년), 10.0(2018년), 11.0(2020년) 등으로 지속적인 업데이트가 이루어졌습니다 17.
+CUDA의 주요 버전 및 출시 연도.  
+CUDA 1.0은 2007년에 처음 공개,  
+CUDA 2.0(2008년),  
+CUDA 3.0(2010년),  
+CUDA 4.0(2011년),   
+CUDA 5.0(2012년),   
+CUDA 6.0(2014년),   
+CUDA 7.0(2015년),   
+CUDA 8.0(2016년),   
+CUDA 9.0(2017년),   
+CUDA 10.0(2018년),   
+CUDA 11.0(2020년)   
+등으로 지속적인 업데이트가 이루어지고 있다. 
 
-각 CUDA 버전의 주요 기능 및 성능 변화를 살펴보면 다음과 같습니다. CUDA 2.0에서는 GPU 직접 액세스, 동적 병렬 처리, 동적 메모리 할당 등이 추가되었고, 3.0에서는 병렬 처리 및 메모리 관리 기능이 개선되었습니다. 이후 버전에서는 SIMD(Single Instruction, Multiple Data) 처리 성능 향상, 에너지 효율 개선, 메모리 관리 최적화, 새로운 GPU 아키텍처 지원 등 다양한 발전이 있었습니다 4.
+각 CUDA 버전의 주요 기능 및 성능 변화를 살펴보면 다음과 같습니다.  
+CUDA 2.0에서는 GPU 직접 액세스, 동적 병렬 처리, 동적 메모리 할당 등이 추가되었고, 3.0에서는 병렬 처리 및 메모리 관리 기능이 개선되었습니다. 이후 버전에서는 SIMD(Single Instruction, Multiple Data) 처리 성능 향상, 에너지 효율 개선, 메모리 관리 최적화, 새로운 GPU 아키텍처 지원 등 다양한 발전이 있었습니다 4.
 
 CUDA 버전별 하드웨어 및 소프트웨어 호환성은 매우 중요한 고려사항입니다. 각 CUDA 버전은 특정 NVIDIA GPU 아키텍처를 지원하며, 이에 따라 하드웨어 호환성이 달라집니다. 또한 운영 체제, 컴파일러, 라이브러리 등 소프트웨어 의존성도 버전마다 다르기 때문에 개발 환경 구축 시 이를 확인해야 합니다 17.
 
