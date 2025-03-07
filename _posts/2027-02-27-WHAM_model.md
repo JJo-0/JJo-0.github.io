@@ -1,10 +1,10 @@
 ---
-title: "WHAM Model 실패.."
+title: "WHAM Model"
 classes: wide
 toc: true
 toc_sticky: true
 toc_label: "-"
-date: 2025-01-20 11:15:00
+date: 2025-02-27 16:30:00
 categories:
   - 정리
   - 개발
@@ -19,9 +19,11 @@ tags:
 ## 주제
 WSL에서 conda 모델 돌리기  
 
-| 목차 | 설명 |
-|:---:|:---:|
-| [Window](#Window) | Window에서의 Multi-Cuda Setting |
+| 목차 | 설명 | 링크 |
+|:---:|:---:|:---:|
+| 환경 | Window 11, WSL 2.0 |<a href="#환경">바로가기</a>|
+| 코드 | WHAM Installation 코드 |<a href="#코드">바로가기</a>|
+| 구현 코드 | WHAM Installation 코드 |<a href="#구현-코드">바로가기</a>|
 
 ### 환경 
 - Window 11
