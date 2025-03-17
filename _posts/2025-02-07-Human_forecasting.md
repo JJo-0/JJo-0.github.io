@@ -16,8 +16,7 @@ toc_label: "페이지 주요 목차"
 ---
 
 ## 주제
-
-- 사람의 3d 포즈 추정(HPE, Human Pose forcasting)   
+- 사람의 3d 포즈 추정(HPE, Human Pose forcasting)과 Trajectory Prediction(사람의 이동 경로 예측)은 차이가 크다는 것을 알게 되었다. 
 
 먼저 리뷰 논문들을 찾아보기 시작했다. 
 
