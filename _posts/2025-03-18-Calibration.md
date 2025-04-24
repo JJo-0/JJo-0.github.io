@@ -33,3 +33,20 @@ toc_label: "페이지 주요 목차"
 카메라의 좌표계는 밑에 처럼, World Coordinate, Camera Coordinate, Pixel Coordinate(Image Coordinate) 이렇게 있다.  
 ![https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Ft1.daumcdn.net%2Fcfile%2Ftistory%2F995410365E9F957133]
 
+Calibration Parameters는 intrinsic parameters, extrinsic parameters로 나뉘다.  
+  
+**extrinsic parameters**  
+extrinsic parameters는 카메라 pose에 대한 것인다 (Position, Orientation).
+  
+**intrinsic parameters**  
+intrinsic parameters는 카메라 내부 파라미터에 대한 것이다. (Focal length, Principal point, Distortion parameters)  
+  
+**Rigid**  
+좌표 시스템 변환은 rigid transformation으로 이루어진다.  
+rigid transformation이란 scale, rotation, translation으로 이루어진 변환을 말한다.  
+rigid 란 뜻은 '단단한' 이라는 뜻이다.  
+
+---  
+
+**Transformations에 대한 간략한 설명**  
+
