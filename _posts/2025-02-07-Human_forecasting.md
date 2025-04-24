@@ -18,7 +18,7 @@ toc_label: "페이지 주요 목차"
 ## 주제
 
 - 사람의 **3D 포즈 추정(HPE, Human Pose Forecasting)**과 **Trajectory Prediction(사람의 이동 경로 예측)**은 차이가 크다는 것을 알게 되었습니다.
-- 관련 보고서입니다.
+- 관련 보고서이다. Google gemini Deep Search 기능을 통한 보고서이다. 
 
 ---
 
