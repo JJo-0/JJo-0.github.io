@@ -1,26 +1,29 @@
 ---
 layout: default
 ---
-
-{% if page.header.overlay_color or page.header.overlay_image or page.header.image %}
-  {% include page__hero.html %}
-{% elsif page.header.video.id and page.header.video.provider %}
-  {% include page__hero_video.html %}
-{% endif %}
-
-{% if page.url != "/" and site.breadcrumbs %}
-  {% unless paginator %}
-    {% include breadcrumbs.html %}
-  {% endunless %}
-{% endif %}
-
 <div id="main" role="main">
-  {% include sidebar.html %}
+  {% if page.author_profile or layout.author_profile %}
+    {% include sidebar.html %}
+  {% endif %}
 
   <div class="archive">
     {% unless page.header.overlay_color or page.header.overlay_image %}
-      <h1 id="page-title" class="page__title">{{ page.title }}</h1>
+      <h1 id="page-title" class="page__title">{{ page.title | default: "Archive" }}</h1>
     {% endunless %}
-    {{ content }}
+
+    {{ content }} {# Content from the page using this layout (e.g., _pages/all-posts.md) #}
+
+    <div class="entries-{{ page.entries_layout | default: 'list' }}">
+      {% assign posts_to_display = site.posts %}
+      {% if paginator.posts %} {# If pagination is active on the page, use paginated posts #}
+        {% assign posts_to_display = paginator.posts %}
+      {% endif %}
+
+      {% for post in posts_to_display %}
+        {% include archive-single.html type=(page.entries_layout | default: 'list') %}
+      {% endfor %}
+    </div>
+
+    {% include paginator.html %}
   </div>
 </div>

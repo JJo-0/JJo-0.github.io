@@ -1,33 +1,29 @@
 ---
-layout: archive
+layout: default
 ---
-
-{{ content }}
-
-<h3 class="archive__subtitle">{{ site.data.ui-text[site.locale].recent_posts | default: "Recent Posts" }}</h3>
-
-{% comment %} Filter posts by 'Dev' category for the home page {% endcomment %}
-{% if paginator %}
-  {% assign posts_all = paginator.posts %}
-{% else %}
-  {% assign posts_all = site.posts %}
-{% endif %}
-
-{% assign posts = "" | split: "" %} {% comment %}Initialize empty array{% endcomment %}
-{% for post in posts_all %}
-  {% if post.categories contains "Dev" %}
-    {% assign posts = posts | push: post %}
+<div id="main" role="main">
+  {% if page.author_profile or layout.author_profile %}
+    {% include sidebar.html %}
   {% endif %}
-{% endfor %}
 
-{% assign entries_layout = page.entries_layout | default: 'list' %}
-<div class="entries-{{ entries_layout }}">
-  {% for post in posts %} {% comment %}Iterate over the filtered posts{% endcomment %}
-    {% include archive-single.html type=entries_layout %}
-  {% endfor %}
+  <div class="archive">
+    <h1 id="page-title" class="page__title">{% if page.title %}{{ page.title }}{% else %}Dev Posts{% endif %}</h1>
+    
+    {{ content }} {# Content from index.html if any #}
+
+    {% assign dev_posts = "" | split: "" %}
+    {% for p_item in site.posts %}
+      {% if p_item.categories contains "Dev" %}
+        {% assign dev_posts = dev_posts | push: p_item %}
+      {% endif %}
+    {% endfor %}
+
+    <div class="entries-{{ page.entries_layout | default: 'list' }}">
+      {% for post in dev_posts %}
+        {% include archive-single.html type=(page.entries_layout | default: 'list') %}
+      {% endfor %}
+    </div>
+    {% comment %} Pagination for this filtered list is not straightforward with standard jekyll-paginate.
+        For now, no pagination on the home page for the "Dev" category posts. {% endcomment %}
+  </div>
 </div>
-
-{% comment %} Pagination might need adjustment if using jekyll-paginate with category filtering. 
-    Consider using jekyll-paginate-v2 for more robust category pagination 
-    or removing pagination from the home layout if only showing a limited number of posts. {% endcomment %}
-{% comment %} {% include paginator.html %} {% endcomment %}
