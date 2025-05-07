@@ -11,19 +11,20 @@ layout: default
       <h1 id="page-title" class="page__title">{{ page.title | default: "Archive" }}</h1>
     {% endunless %}
 
-    {{ content }} {# Content from the page using this layout (e.g., _pages/all-posts.md) #}
+    {{ content }} {# Renders content from the markdown file using this layout, if any #}
 
     <div class="entries-{{ page.entries_layout | default: 'list' }}">
-      {% assign posts_to_display = site.posts %}
-      {% if paginator.posts %} {# If pagination is active on the page, use paginated posts #}
-        {% assign posts_to_display = paginator.posts %}
+      {% assign all_blog_posts = site.posts %}
+      {% if all_blog_posts.size > 0 %}
+        {% for post in all_blog_posts %}
+          {% include archive-single.html type=(page.entries_layout | default: 'list') %}
+        {% endfor %}
+      {% else %}
+        <p>No posts found in the site.posts collection.</p>
       {% endif %}
-
-      {% for post in posts_to_display %}
-        {% include archive-single.html type=(page.entries_layout | default: 'list') %}
-      {% endfor %}
     </div>
 
-    {% include paginator.html %}
+    {% comment %} Temporarily disable pagination on this page to simplify debugging {% endcomment %}
+    {% comment %} {% include paginator.html %} {% endcomment %}
   </div>
 </div>
