@@ -6,17 +6,28 @@ layout: archive
 
 <h3 class="archive__subtitle">{{ site.data.ui-text[site.locale].recent_posts | default: "Recent Posts" }}</h3>
 
+{% comment %} Filter posts by 'Dev' category for the home page {% endcomment %}
 {% if paginator %}
-  {% assign posts = paginator.posts %}
+  {% assign posts_all = paginator.posts %}
 {% else %}
-  {% assign posts = site.posts %}
+  {% assign posts_all = site.posts %}
 {% endif %}
+
+{% assign posts = "" | split: "" %} {% comment %}Initialize empty array{% endcomment %}
+{% for post in posts_all %}
+  {% if post.categories contains "Dev" %}
+    {% assign posts = posts | push: post %}
+  {% endif %}
+{% endfor %}
 
 {% assign entries_layout = page.entries_layout | default: 'list' %}
 <div class="entries-{{ entries_layout }}">
-  {% for post in posts %}
+  {% for post in posts %} {% comment %}Iterate over the filtered posts{% endcomment %}
     {% include archive-single.html type=entries_layout %}
   {% endfor %}
 </div>
 
-{% include paginator.html %}
+{% comment %} Pagination might need adjustment if using jekyll-paginate with category filtering. 
+    Consider using jekyll-paginate-v2 for more robust category pagination 
+    or removing pagination from the home layout if only showing a limited number of posts. {% endcomment %}
+{% comment %} {% include paginator.html %} {% endcomment %}
