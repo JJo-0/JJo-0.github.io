@@ -1,6 +1,7 @@
 ---
 title: "Computer Vision Terminology: Essential Vocabulary for Research and Development"
 categories:
+  - Dev
   - English Study
   - Computer Science
 tags:

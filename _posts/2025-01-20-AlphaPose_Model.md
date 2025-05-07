@@ -7,7 +7,7 @@ toc_label: "-"
 date: 2025-01-20 11:15:00
 categories:
   - 정리
-  - 개발
+  - Project
   - AI Model
 tags:
   - setting

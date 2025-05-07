@@ -2,6 +2,7 @@
 title: "Raspberry pi 5 설정"
 date: 2024-04-05 02:06:00
 categories:
+  - Dev
   - 정리
   - 하드웨어
   - AMR

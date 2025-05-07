@@ -5,6 +5,7 @@ categories:
   - 정리
   - 개발
   - Project
+  - Dev
 tags:
   - linux
 katex: true
