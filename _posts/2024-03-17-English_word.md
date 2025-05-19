@@ -1,5 +1,5 @@
 ---
-title: "Computer Vision Terminology: Essential Vocabulary for Research and Development"
+title: "Essential Vocabulary"
 categories:
   - Dev
   - English Study
@@ -14,15 +14,7 @@ last_modified_at: 2024-03-17
 ---
 
 <div id="study-section">
-## Introduction to Computer Vision Terminology
 
-컴퓨터 비전(Computer Vision)은 인공지능의 핵심 분야 중 하나로, 컴퓨터가 디지털 이미지나 비디오를 이해하고 처리하는 기술을 다룹니다. 이 분야에서 자주 사용되는 전문 용어들을 학습해보겠습니다.
-
-// ... existing code ...
-
-## 마무리
-
-이러한 전문 용어들은 컴퓨터 비전 분야의 논문을 읽거나 작성할 때, 또는 관련 기술 문서를 이해하는 데 매우 중요합니다. 각 용어의 정확한 의미와 용례를 이해하고 있으면 전문적인 의사소통에 큰 도움이 될 것입니다.
 </div>
 
 <div id="quiz-section" style="display: none;">
@@ -444,6 +436,114 @@ function returnToStudy() {
   
 - **Plausible** (형용사): 그럴듯한, 타당한
   - Example: The system generates plausible reconstructions of 3D scenes.
+
+### 9. Industrial Human-Robot Collaboration (산업 현장 인간-로봇 협업)
+
+- **Pose Forecasting** (명사구): 자세 예측
+  - Example: Pose forecasting is crucial for safe human-robot interaction.
+- **Ablation** (명사): (신경망 등에서) 일부 제거, 절제
+  - Example: Ablation studies help understand the contribution of different model components.
+- **Endow** (동사): 부여하다, 주다
+  - Example: The new sensor endows the robot with better perceptive capabilities.
+- **Perceptive** (형용사): 지각하는, 통찰력 있는
+  - Example: Perceptive robots can adapt to dynamic environments.
+- **Harm** (명사/동사): 해, 손상 / 해를 끼치다
+  - Example: The primary goal is to prevent any harm to the human worker.
+- **Transmission of contact wrenches** (명사구): 접촉력 전달
+  - Example: Accurate transmission of contact wrenches is vital for haptic feedback.
+- **On-the-fly** (부사구): 즉석에서, 실시간으로
+  - Example: The robot can adjust its path on-the-fly to avoid obstacles.
+- **Adjacency** (명사): 인접, 근접
+  - Example: Adjacency matrices are used to represent connections in a graph.
+- **Sparse** (형용사): 희소한, 드문드문 있는
+  - Example: Sparse data can be challenging for some machine learning models.
+- **Sparsity** (명사): 희소성
+  - Example: Sparsity is a desirable property in many high-dimensional datasets.
+- **Abide** (동사): (규칙 등을) 준수하다, 지키다
+  - Example: Robots must abide by safety protocols.
+- **Genuine** (형용사): 진짜의, 진정한
+  - Example: The system aims to achieve genuine collaboration between humans and robots.
+- **Foresee** (동사): 예견하다, 예측하다
+  - Example: It is difficult to foresee all possible scenarios in a complex environment.
+- **Exploited** (동사, 수동태 또는 과거형): 활용된, 이용된
+  - Example: The robot's capabilities were fully exploited in the task.
+- **Aspect** (명사): 측면, 양상
+  - Example: Safety is a critical aspect of human-robot collaboration.
+- **Intersection** (명사): 교차점, 교집합
+  - Example: The intersection of AI and robotics has led to many innovations.
+- **Prune** (동사): (가지 등을) 치다, 제거하다, 간결하게 하다
+  - Example: Pruning the neural network can reduce its complexity.
+- **Factorize** (동사): 인수분해하다, 요인으로 분석하다
+  - Example: We can factorize the matrix to understand its underlying structure.
+- **Adjacency** (명사): 인접, 근접 (중복된 단어입니다. 필요시 하나를 삭제하거나 다른 의미로 사용된 경우 설명을 추가해주세요.)
+  - Example: Adjacency lists are another way to represent graph connections.
+- **Spectral** (형용사): 스펙트럼의, 분광의
+  - Example: Spectral analysis is used in various sensor technologies.
+- **Coarse** (형용사): 거친, 대략적인
+  - Example: A coarse estimation was made initially, followed by a finer adjustment.
+- **Sparsifying** (동사/형용사): 희소화하는
+  - Example: Sparsifying techniques are used to reduce data dimensionality.
+
+### 10. Modern Artificial Intelligence (현대 인공지능)
+
+- **Formalize** (동사): 공식화하다, 형식화하다
+  - Example: We need to formalize the problem statement before designing a solution.
+- **Density** (명사): 밀도
+  - Example: Probability density functions describe the likelihood of a continuous variable.
+- **PDF (Probability Density Function)** (명사): 확률 밀도 함수
+  - Example: The PDF of a normal distribution is bell-shaped.
+- **PMF (Probability Mass Function)** (명사): 확률 질량 함수
+  - Example: The PMF is used for discrete random variables.
+- **Accomplish** (동사): 성취하다, 달성하다
+  - Example: The AI model was able to accomplish the task with high accuracy.
+- **Observed** (형용사/동사 과거형): 관찰된
+  - Example: The observed data was used to train the model.
+- **Intractable** (형용사): 다루기 힘든, 처리하기 어려운
+  - Example: Some problems are computationally intractable.
+- **Coefficient** (명사): 계수
+  - Example: The coefficients of the linear regression model were estimated.
+- **Era** (명사): 시대
+  - Example: We are in the era of big data and artificial intelligence.
+- **Deluge** (명사): 폭주, 쇄도, 홍수
+  - Example: Researchers face a deluge of data from various sources.
+- **Apparently** (부사): 명백히, 보아하니
+  - Example: Apparently, the new algorithm outperforms the old one.
+- **Sufficient** (형용사): 충분한
+  - Example: Sufficient data is required to train a robust model.
+- **Altering** (동사/형용사): 변경하는
+  - Example: Altering the hyperparameters can significantly affect model performance.
+- **Ability to fix** (구문): ~을 고치는 능력
+  - Example: The system has the ability to fix minor errors automatically.
+- **Devising** (동사): 고안하다, 창안하다
+  - Example: Devising new algorithms is a key part of AI research.
+- **Empirical** (형용사): 경험적인, 실증적인
+  - Example: Empirical results show the effectiveness of the proposed method.
+- **Theorem** (명사): 정리 (수학, 논리학)
+  - Example: The Bayes' theorem is fundamental in probability theory.
+- **Criterion** (명사): 기준, 표준 (복수형: criteria)
+  - Example: Accuracy is a common criterion for evaluating classification models.
+- **Impose** (동사): 부과하다, 강요하다, 도입하다
+  - Example: We can impose constraints on the optimization problem.
+- **Regularization** (명사): 정규화 (기계 학습)
+  - Example: Regularization helps prevent overfitting in machine learning models.
+- **Implicitly** (부사): 암묵적으로, 함축적으로
+  - Example: The model implicitly learns features from the data.
+- **Explicitly** (부사): 명시적으로, 명백히
+  - Example: Some parameters need to be explicitly defined.
+- **Preferences** (명사): 선호도
+  - Example: The recommendation system learns user preferences over time.
+- **Validation** (명사): 검증, 확인
+  - Example: Cross-validation is used to assess model performance.
+- **Problematic** (형용사): 문제가 있는, 문제가 많은
+  - Example: Handling missing data can be problematic.
+- **Associate** (동사): 연관시키다, 관련짓다
+  - Example: The goal is to associate input features with output labels.
+- **Evaluations** (명사): 평가
+  - Example: Multiple evaluations were conducted to ensure robustness.
+- **Converge** (동사): 수렴하다, 한 점에 모이다
+  - Example: The optimization algorithm should converge to a good solution.
+- **Convex** (형용사): 볼록한 (수학)
+  - Example: Convex optimization problems are generally easier to solve.
 
 ## Writing Technical Papers (논문 작성)
 
