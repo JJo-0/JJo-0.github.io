@@ -15,9 +15,9 @@ Welcome to my place
 
 ## ☺️ About Me
 
-호기심과 관심사가 많은 ENFP입니다.   
-하고 싶은 것들이 많고, 좋아하는 것도 많으면서,   
-4mat 학습 영역
+호기심과 관심사가 많은 ENFJ입니다.
+현재 : 대학원에서 로봇 비전 관련 연구 하고 있습니다.  
+
 * 한국공학대학교 메카트로닉스과 전공 - Mechatronics engineering Major, Tech University of Korea
 * [한국공학대학교-AI Mechatronics Laboratory](http://aml.tukorea.ac.kr) (머신비전 & 매니퓰레이터)
 * 성균관대학교 전기전자공학부 전공 - Electrical Engineering Major, Sungkyunkwan University
