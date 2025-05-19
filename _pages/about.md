@@ -18,8 +18,10 @@ Welcome to my place
 호기심과 관심사가 많은 ENFP입니다.   
 하고 싶은 것들이 많고, 좋아하는 것도 많으면서,   
 4mat 학습 영역
-* 한국공학대학교 메카트로닉스과 전공 Turkorea Mechatronics major
-* 한국공학대학교 AI Mechatronics 연구실 (머신비전 & 매니퓰레이터)
+* 한국공학대학교 메카트로닉스과 전공 - Mechatronics engineering Major, Tech University of Korea
+* [한국공학대학교-AI Mechatronics Laboratory](http://aml.tukorea.ac.kr) (머신비전 & 매니퓰레이터)
+* 성균관대학교 전기전자공학부 전공 - Electrical Engineering Major, Sungkyunkwan University
+* [성균관대학교-Control and Robotics Laboratory](https://iconlab.skku.edu/cnrlab/index.do) (자율주행 & 로봇 비전)
 
 ## 📚 관심분야
 <details>
@@ -28,8 +30,8 @@ Welcome to my place
 
    |분야|세부관심|
    |--|--|
-   |어플|ios|
-   ||10|
-   
+   |로봇|머신비전|
+   |AI|컴퓨터비전, LLM, reinforcement learning|
+
 </div>
 </details>
