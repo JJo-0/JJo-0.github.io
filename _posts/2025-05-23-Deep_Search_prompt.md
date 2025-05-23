@@ -16,11 +16,11 @@ sidebar:
 
 {% include travel_navigation.html %}
 
-<main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+<main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
         
         <section id="introduction" class="content-section">
-            <h2 class="content-title">1. 여행 계획을 위한 고급 프롬프트 엔지니어링 소개</h2>
-            <p class="mb-4">본 섹션에서는 개인 맞춤형 여행 계획에서 생성형 AI의 역할과 복잡한 시나리오에서 전문가 수준 프롬프트 엔지니어링의 중요성을 탐구합니다. AI 기술의 발전은 여행 계획 방식을 혁신하고 있으며, 효과적인 프롬프트 작성은 이러한 시스템을 최대한 활용하는 데 핵심적입니다.</p>
+            <h2 class="content-title mb-6">1. 여행 계획을 위한 고급 프롬프트 엔지니어링 소개</h2>
+            <p class="mb-5 text-lg leading-relaxed">본 섹션에서는 개인 맞춤형 여행 계획에서 생성형 AI의 역할과 복잡한 시나리오에서 전문가 수준 프롬프트 엔지니어링의 중요성을 탐구합니다. AI 기술의 발전은 여행 계획 방식을 혁신하고 있으며, 효과적인 프롬프트 작성은 이러한 시스템을 최대한 활용하는 데 핵심적입니다.</p>
             
             <h3 class="content-subtitle">개인 맞춤형 여행 계획에서 생성형 AI의 진화하는 역할</h3>
             <p class="mb-2">생성형 AI, 특히 대규모 언어 모델(LLM)은 정적인 추천을 넘어 동적이고 개인화된 대화형 경험으로 여행 계획 방식을 혁신하고 있습니다. 방대한 데이터를 처리하고 맞춤형 결과물을 생성하는 능력은 전례 없는 잠재력을 제공합니다.</p>
@@ -58,28 +58,42 @@ sidebar:
 
             <div class="space-y-6">
                 <div>
-                    <button class="accordion-button" data-target="persona-content">페르소나, 역할 및 대상 정의</button>
+                    <button class="accordion-button" data-target="persona-content">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                            페르소나, 역할 및 대상 정의
+                        </span>
+                    </button>
                     <div id="persona-content" class="accordion-content hidden">
                         <p>LLM에 페르소나를 할당하면(예: "당신은 가족을 위한 지속 가능한 모험 여행 전문 여행사입니다") 어조, 스타일 및 제공하는 추천 유형이 결정됩니다. 대상 고객을 정의하면 언어와 추천이 적절하게 조정됩니다.</p>
                         <div class="interactive-area">
-                            <label for="persona-select" class="block text-sm font-medium text-slate-700 mb-1">페르소나 선택:</label>
-                            <select id="persona-select" class="block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500">
+                            <label for="persona-select" class="block text-sm font-medium text-slate-700 mb-2">페르소나 선택:</label>
+                            <select id="persona-select" class="block w-full p-3 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500">
                                 <option value="general">일반 여행자</option>
                                 <option value="budget_history">예산 중시 역사 애호가</option>
                                 <option value="luxury_relax">럭셔리 휴양 여행자</option>
                             </select>
-                            <p class="mt-2 text-sm text-slate-600">선택된 페르소나: <span id="selected-persona-output" class="font-semibold">일반 여행자</span></p>
-                            <p class="mt-1 text-xs text-slate-500">예시 프롬프트 변화: "파리 3일 여행 계획해줘."가 선택된 페르소나에 따라 어떻게 변형될 수 있는지 상상해보세요. (예: 역사 애호가에게는 박물관 중심, 럭셔리 여행자에게는 고급 호텔 및 레스토랑 추천)</p>
+                            <p class="mt-3 text-sm text-slate-700">선택된 페르소나: <span id="selected-persona-output" class="font-semibold">일반 여행자</span></p>
+                            <p class="mt-2 text-xs text-slate-500">예시 프롬프트 변화: "파리 3일 여행 계획해줘."가 선택된 페르소나에 따라 어떻게 변형될 수 있는지 상상해보세요. (예: 역사 애호가에게는 박물관 중심, 럭셔리 여행자에게는 고급 호텔 및 레스토랑 추천)</p>
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <button class="accordion-button" data-target="objectives-content">명확한 목표 및 제약 조건 명시</button>
+                    <button class="accordion-button" data-target="objectives-content">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                            명확한 목표 및 제약 조건 명시
+                        </span>
+                    </button>
                     <div id="objectives-content" class="accordion-content hidden">
-                        <p>프롬프트는 원하는 결과에 대해 구체적이고 모호하지 않아야 합니다. 예산, 기간, 관심사, 필수 방문지, 접근성 요구 등 모든 제약 조건을 명시적으로 나열해야 합니다.</p>
-                        <p class="mt-2"><strong>나쁜 예시:</strong> "이탈리아 여행 추천해줘."</p>
-                        <p class="mt-1"><strong>좋은 예시:</strong> "2025년 5월 여행을 위해 항공편 제외 총 예산 15,000달러로 몰디브로 떠나는 성인 2명을 위한 7일간의 고급 여행 일정을 생성해주세요. 개인 빌라, 스노클링, 고급 식사에 중점을 둡니다."</p>
+                        <p class="mb-3">프롬프트는 원하는 결과에 대해 구체적이고 모호하지 않아야 합니다. 예산, 기간, 관심사, 필수 방문지, 접근성 요구 등 모든 제약 조건을 명시적으로 나열해야 합니다.</p>
+                        <div class="p-3 bg-red-50 border-l-4 border-red-300 rounded mb-3">
+                            <p><strong class="text-red-700">나쁜 예시:</strong> "이탈리아 여행 추천해줘."</p>
+                        </div>
+                        <div class="p-3 bg-green-50 border-l-4 border-green-300 rounded">
+                            <p><strong class="text-green-700">좋은 예시:</strong> "2025년 5월 여행을 위해 항공편 제외 총 예산 15,000달러로 몰디브로 떠나는 성인 2명을 위한 7일간의 고급 여행 일정을 생성해주세요. 개인 빌라, 스노클링, 고급 식사에 중점을 둡니다."</p>
+                        </div>
                         <div class="interactive-area">
                             <p class="font-semibold">제약 조건의 영향 시각화 (개념적)</p>
                             <div class="chart-container mt-2">
@@ -91,10 +105,18 @@ sidebar:
                 </div>
                 
                 <div>
-                    <button class="accordion-button" data-target="output-format-content">출력 구조 및 형식 지정</button>
+                    <button class="accordion-button" data-target="output-format-content">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                            출력 구조 및 형식 지정
+                        </span>
+                    </button>
                     <div id="output-format-content" class="accordion-content hidden">
-                        <p>JSON, 마크다운 테이블 또는 일일 목록과 같은 특정 출력 형식을 요청하면 사람과 다운스트림 애플리케이션 모두의 사용성이 향상됩니다.</p>
-                        <p class="mt-2"><strong>예시:</strong> "일정, 도시, 활동(문자열 목록), 숙박(문자열), 식사 옵션(문자열 목록)을 키로 하는 JSON 객체로 여정을 제공해주세요."</p>
+                        <p class="mb-3">JSON, 마크다운 테이블 또는 일일 목록과 같은 특정 출력 형식을 요청하면 사람과 다운스트림 애플리케이션 모두의 사용성이 향상됩니다.</p>
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                            <p class="font-semibold text-slate-700">출력 형식 예시 요청:</p>
+                            <p class="mt-2 text-sm font-mono bg-slate-100 p-3 rounded border border-slate-300">"일정, 도시, 활동(문자열 목록), 숙박(문자열), 식사 옵션(문자열 목록)을 키로 하는 JSON 객체로 여정을 제공해주세요."</p>
+                        </div>
                         <div class="interactive-area">
                             <h4 class="font-semibold mb-2">출력 형식 예시</h4>
                             <div class="grid md:grid-cols-2 gap-4">
@@ -126,26 +148,52 @@ sidebar:
             <p class="mb-4">이 섹션에서는 기본 지침을 넘어서는 특정 고급 프롬프트 기법들을 탐구합니다. 소수샷 학습, 사고 연쇄(CoT), ReAct 프레임워크 등은 LLM의 성능을 크게 향상시킬 수 있습니다.</p>
             
             <div class="grid md:grid-cols-2 gap-6">
-                <div class="card">
-                    <h3 class="content-subtitle !mt-0">소수샷 학습 (Few-Shot Learning)</h3>
-                    <p class="text-sm mb-2">LLM의 응답 스타일, 형식 또는 내용을 안내하기 위해 프롬프트 내에 원하는 입력-출력 쌍의 예시를 1~5개 제공합니다.</p>
+                <div class="card hover:shadow-md transition-all">
+                    <h3 class="content-subtitle !mt-0 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        소수샷 학습 (Few-Shot Learning)
+                    </h3>
+                    <p class="text-sm mb-3">LLM의 응답 스타일, 형식 또는 내용을 안내하기 위해 프롬프트 내에 원하는 입력-출력 쌍의 예시를 1~5개 제공합니다.</p>
                     <div class="interactive-area">
-                        <p class="text-xs"><strong>예시 프롬프트 일부:</strong> "...제가 선호하는 하루 일정 구성 예시는 다음과 같습니다:<br>*예시 1 (밴프): 1일차: 아침 하이킹, 오후: 카누 타기...*<br>이제 퀸스타운 여정을 계획해주세요."</p>
-                        <p class="mt-2 text-xs text-slate-500">소수샷 예시는 LLM에게 모방할 명시적인 패턴을 제공하여, 지침만으로는 설명하기 어려운 미묘한 스타일이나 구조를 가진 결과물을 유도합니다.</p>
+                        <p class="text-sm"><strong class="text-sky-700">예시 프롬프트 일부:</strong></p> 
+                        <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                            <p class="text-sm font-mono">"...제가 선호하는 하루 일정 구성 예시는 다음과 같습니다:<br>
+                            <span class="text-green-600">*예시 1 (밴프): 1일차: 아침 하이킹, 오후: 카누 타기...*</span><br>
+                            이제 퀸스타운 여정을 계획해주세요."</p>
+                        </div>
+                        <p class="mt-3 text-xs text-slate-600">소수샷 예시는 LLM에게 모방할 명시적인 패턴을 제공하여, 지침만으로는 설명하기 어려운 미묘한 스타일이나 구조를 가진 결과물을 유도합니다.</p>
                     </div>
                 </div>
 
-                <div class="card">
-                    <h3 class="content-subtitle !mt-0">사고 연쇄 (Chain-of-Thought, CoT) 프롬프팅</h3>
-                    <p class="text-sm mb-2">LLM에게 최종 답변을 제공하기 전에 "단계별로 생각"하거나 추론 과정을 제공하도록 지시하여 복잡한 추론 작업의 성능을 향상시킵니다.</p>
+                <div class="card hover:shadow-md transition-all">
+                    <h3 class="content-subtitle !mt-0 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        사고 연쇄 (Chain-of-Thought, CoT) 프롬프팅
+                    </h3>
+                    <p class="text-sm mb-3">LLM에게 최종 답변을 제공하기 전에 "단계별로 생각"하거나 추론 과정을 제공하도록 지시하여 복잡한 추론 작업의 성능을 향상시킵니다.</p>
                     <div class="interactive-area">
-                        <p class="text-xs"><strong>예시 프롬프트 일부:</strong> "...교토 여행 계획을 위해, 먼저 주요 지역 파악. 둘째, 잠재 장소 나열. 셋째, 논리적 일정 그룹화... 단계별로 생각해 봅시다."</p>
-                        <button id="cot-reveal-button" class="mt-2 text-xs bg-sky-500 text-white px-2 py-1 rounded hover:bg-sky-600">CoT 단계 보기 (개념적)</button>
-                        <div id="cot-steps" class="hidden mt-2 text-xs space-y-1">
-                            <p>1. 관심사 관련 주요 지역 파악 (예: 교토의 기온 거리)</p>
-                            <p>2. 해당 지역 내 활동/장소 목록화 (예: 기요미즈데라, 찻집)</p>
-                            <p>3. 이동 시간/개장 시간 고려하여 일일 일정으로 그룹화</p>
-                            <p>4. 전체 여정 순서 제안</p>
+                        <p class="text-sm"><strong class="text-sky-700">예시 프롬프트 일부:</strong></p>
+                        <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                            <p class="text-sm font-mono">"...교토 여행 계획을 위해, 먼저 주요 지역 파악. 둘째, 잠재 장소 나열. 셋째, 논리적 일정 그룹화... 단계별로 생각해 봅시다."</p>
+                        </div>
+                        <button id="cot-reveal-button" class="mt-3 text-sm bg-sky-500 text-white px-3 py-1.5 rounded hover:bg-sky-600 transition-colors">CoT 단계 보기 (개념적)</button>
+                        <div id="cot-steps" class="hidden mt-3 text-sm space-y-2 p-3 bg-slate-50 rounded border border-slate-200">
+                            <div class="flex items-start">
+                                <span class="inline-block bg-sky-100 text-sky-800 rounded-full w-5 h-5 text-xs flex items-center justify-center mr-2 mt-0.5">1</span>
+                                <p>관심사 관련 주요 지역 파악 (예: 교토의 기온 거리)</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="inline-block bg-sky-100 text-sky-800 rounded-full w-5 h-5 text-xs flex items-center justify-center mr-2 mt-0.5">2</span>
+                                <p>해당 지역 내 활동/장소 목록화 (예: 기요미즈데라, 찻집)</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="inline-block bg-sky-100 text-sky-800 rounded-full w-5 h-5 text-xs flex items-center justify-center mr-2 mt-0.5">3</span>
+                                <p>이동 시간/개장 시간 고려하여 일일 일정으로 그룹화</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="inline-block bg-sky-100 text-sky-800 rounded-full w-5 h-5 text-xs flex items-center justify-center mr-2 mt-0.5">4</span>
+                                <p>전체 여정 순서 제안</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -372,8 +420,26 @@ sidebar:
         </section>
     </main>
 
-    <footer class="bg-slate-800 text-slate-300 text-center p-4 mt-12">
-        <p class="text-sm">&copy; 2024 AI 여행 계획 프롬프트 엔지니어링 가이드. 이 페이지는 제공된 보고서 내용을 기반으로 생성되었습니다.</p>
-    </footer>
+<style>
+/* 주요 콘텐츠 스페이싱 개선 */
+.container {
+    max-width: 1400px;
+}
+
+main.container {
+    margin-top: 2rem;
+}
+
+/* 모바일에서 여백 개선 */
+@media (max-width: 640px) {
+    main.container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    .content-section {
+        padding: 1.25rem !important;
+    }
+}
+</style>
 
 {% include custom_travel_scripts.html %}
