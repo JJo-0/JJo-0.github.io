@@ -1,0 +1,147 @@
+<script>
+    const navLinks = document.querySelectorAll('nav a.nav-link, #mobile-menu a.nav-link');
+    const sections = document.querySelectorAll('main section');
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    function updateActiveLink() {
+        let currentSectionId = 'introduction';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop - 100; // Adjust for sticky header
+            if (window.scrollY >= sectionTop) {
+                currentSectionId = section.id;
+            }
+        });
+
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + currentSectionId) {
+                link.classList.add('active');
+            }
+        });
+    }
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href').substring(1);
+            const targetSection = document.getElementById(targetId);
+            if (targetSection) {
+                window.scrollTo({
+                    top: targetSection.offsetTop - 80, // Adjust for sticky header
+                    behavior: 'smooth'
+                });
+            }
+            // For mobile menu, close after click
+            if (mobileMenu.classList.contains('block')) {
+                mobileMenu.classList.remove('block');
+                mobileMenu.classList.add('hidden');
+            }
+        });
+    });
+    
+    window.addEventListener('scroll', updateActiveLink);
+    window.addEventListener('load', updateActiveLink); // Initial active link
+
+    mobileMenuButton.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        mobileMenu.classList.toggle('block');
+    });
+
+    const accordionButtons = document.querySelectorAll('.accordion-button');
+    accordionButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetId = button.dataset.target;
+            const targetContent = document.getElementById(targetId);
+            targetContent.classList.toggle('hidden');
+            // Optional: Close other accordions
+            // accordionButtons.forEach(otherButton => {
+            //     if (otherButton !== button) {
+            //         document.getElementById(otherButton.dataset.target).classList.add('hidden');
+            //     }
+            // });
+        });
+    });
+
+    const personaSelect = document.getElementById('persona-select');
+    const personaOutput = document.getElementById('selected-persona-output');
+    if (personaSelect) {
+        personaSelect.addEventListener('change', (event) => {
+            personaOutput.textContent = event.target.options[event.target.selectedIndex].text;
+        });
+    }
+    
+    const cotRevealButton = document.getElementById('cot-reveal-button');
+    const cotSteps = document.getElementById('cot-steps');
+    if (cotRevealButton) {
+        cotRevealButton.addEventListener('click', () => {
+            cotSteps.classList.toggle('hidden');
+        });
+    }
+
+    // Chart.js examples (conceptual)
+    const constraintsImpactCtx = document.getElementById('constraintsImpactChart');
+    if (constraintsImpactCtx) {
+        new Chart(constraintsImpactCtx, {
+            type: 'bar',
+            data: {
+                labels: ['모호한 프롬프트', '상세 페르소나', '페르소나 + 제약조건'],
+                datasets: [{
+                    label: '계획 품질/관련성 (개념적)',
+                    data: [2, 3.5, 4.5],
+                    backgroundColor: ['rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(75, 192, 192, 0.5)'],
+                    borderColor: ['rgb(255, 99, 132)', 'rgb(54, 162, 235)', 'rgb(75, 192, 192)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true, max: 5 } },
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, title: { display: true, text: '프롬프트 상세도와 계획 품질 (개념도)'} }
+            }
+        });
+    }
+
+    const frameworksComparisonCtx = document.getElementById('frameworksComparisonChart');
+    if (frameworksComparisonCtx) {
+        new Chart(frameworksComparisonCtx, {
+            type: 'radar',
+            data: {
+                labels: ['제약 조건 처리', '실시간 정보 활용', '내러티브 생성', '사용자 피드백 반영', '자동화 수준'],
+                datasets: [
+                    {
+                        label: 'TRIP-PAL (개념적)',
+                        data: [4, 2, 1, 2, 5], // Mock data
+                        fill: true,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgb(255, 99, 132)',
+                        pointBackgroundColor: 'rgb(255, 99, 132)',
+                    },
+                    {
+                        label: 'NarrativeGuide (개념적)',
+                        data: [3, 1, 5, 3, 2], // Mock data
+                        fill: true,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgb(54, 162, 235)',
+                        pointBackgroundColor: 'rgb(54, 162, 235)',
+                    },
+                     {
+                        label: 'FLEX-TRAVELPLANNER (개념적)',
+                        data: [4, 3, 2, 4, 3], // Mock data
+                        fill: true,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgb(75, 192, 192)',
+                        pointBackgroundColor: 'rgb(75, 192, 192)',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { r: { beginAtZero: true, max: 5, pointLabels: { font: { size: 10 } } } },
+                plugins: { legend: { position: 'top' }, title: { display: true, text: '학술 프레임워크 비교 (개념도)'} }
+            }
+        });
+    }
+</script>
