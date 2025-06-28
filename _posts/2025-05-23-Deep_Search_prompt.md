@@ -15,15 +15,12 @@ sidebar:
 {% include travel_navigation.html %}
 
 <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
-        
         <section id="introduction" class="content-section">
             <h2 class="content-title mb-6">1. 여행 계획을 위한 고급 프롬프트 엔지니어링 소개</h2>
             <p class="mb-5 text-lg leading-relaxed">본 섹션에서는 개인 맞춤형 여행 계획에서 생성형 AI의 역할과 복잡한 시나리오에서 전문가 수준 프롬프트 엔지니어링의 중요성을 탐구합니다. AI 기술의 발전은 여행 계획 방식을 혁신하고 있으며, 효과적인 프롬프트 작성은 이러한 시스템을 최대한 활용하는 데 핵심적입니다.</p>
-            
             <h3 class="content-subtitle">개인 맞춤형 여행 계획에서 생성형 AI의 진화하는 역할</h3>
             <p class="mb-2">생성형 AI, 특히 대규모 언어 모델(LLM)은 정적인 추천을 넘어 동적이고 개인화된 대화형 경험으로 여행 계획 방식을 혁신하고 있습니다. 방대한 데이터를 처리하고 맞춤형 결과물을 생성하는 능력은 전례 없는 잠재력을 제공합니다.</p>
             <p>전통적인 수동 계획에서 AI 지원 방식, 그리고 현재의 생성형 AI 방법론으로의 발전은 고도로 자율적이고 적응력이 뛰어나며 데이터 중심적인 시스템으로의 패러다임 전환을 의미합니다. 이 변화는 효과적인 프롬프트를 통해 AI 시스템을 안내하는 데 새로운 복잡성을 야기합니다.</p>
-
             <div class="mt-6">
                 <h4 class="text-lg font-semibold text-slate-600 mb-2">여행 계획 방식의 변화</h4>
                 <div class="relative border-l-4 border-sky-500 pl-4 space-y-6">
@@ -44,16 +41,13 @@ sidebar:
                     </div>
                 </div>
             </div>
-
             <h3 class="content-subtitle">복잡한 여행 시나리오를 위한 전문가 수준 프롬프트 엔지니어링의 중요성</h3>
             <p class="mb-2">표준적인 프롬프팅은 다면적인 여행 요청에 대해 일반적이거나 신뢰할 수 없는 결과를 산출하는 경우가 많습니다. 구조화된 지침, 컨텍스트 제공 및 고급 기술을 포함하는 전문가 수준의 프롬프트 엔지니어링은 LLM을 효과적으로 안내하는 데 필수적입니다.</p>
             <p>LLM이 생성하는 여행 계획의 품질은 프롬프트에 명시된 입력 요구사항의 품질과 직접적으로 연관됩니다. 모호하거나 구조가 잘못된 프롬프트는 일반적인 결과로 이어지지만, 세심하게 정의된 프롬프트는 LLM을 고품질의 솔루션 공간으로 안내합니다.</p>
         </section>
-
         <section id="principles" class="content-section">
             <h2 class="content-title">2. 전문가 수준 여행 프롬프트 작성을 위한 기본 원칙</h2>
             <p class="mb-4">이 섹션에서는 간단한 질의를 전문가 수준의 프롬프트로 격상시키는 핵심 구성 요소를 자세히 설명합니다. 효과적인 프롬프트는 페르소나, 명확한 목표, 구조화된 출력 형식을 포함해야 합니다.</p>
-
             <div class="space-y-6">
                 <div>
                     <button class="accordion-button" data-target="persona-content">
@@ -76,7 +70,6 @@ sidebar:
                         </div>
                     </div>
                 </div>
-
                 <div>
                     <button class="accordion-button" data-target="objectives-content">
                         <span class="flex items-center">
@@ -101,7 +94,6 @@ sidebar:
                         </div>
                     </div>
                 </div>
-                
                 <div>
                     <button class="accordion-button" data-target="output-format-content">
                         <span class="flex items-center">
@@ -140,11 +132,9 @@ sidebar:
                 </div>
             </div>
         </section>
-
         <section id="techniques" class="content-section">
             <h2 class="content-title">3. 여행 계획에서의 고급 프롬프트 기법 및 방법론</h2>
             <p class="mb-4">이 섹션에서는 기본 지침을 넘어서는 특정 고급 프롬프트 기법들을 탐구합니다. 소수샷 학습, 사고 연쇄(CoT), ReAct 프레임워크 등은 LLM의 성능을 크게 향상시킬 수 있습니다.</p>
-            
             <div class="grid md:grid-cols-2 gap-6">
                 <div class="card hover:shadow-md transition-all">
                     <h3 class="content-subtitle !mt-0 flex items-center">
@@ -162,7 +152,6 @@ sidebar:
                         <p class="mt-3 text-xs text-slate-600">소수샷 예시는 LLM에게 모방할 명시적인 패턴을 제공하여, 지침만으로는 설명하기 어려운 미묘한 스타일이나 구조를 가진 결과물을 유도합니다.</p>
                     </div>
                 </div>
-
                 <div class="card hover:shadow-md transition-all">
                     <h3 class="content-subtitle !mt-0 flex items-center">
                         <svg class="w-5 h-5 mr-2 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
@@ -195,7 +184,6 @@ sidebar:
                         </div>
                     </div>
                 </div>
-
                 <div class="card">
                     <h3 class="content-subtitle !mt-0">ReAct (Reason and Act) 프레임워크</h3>
                     <p class="text-sm mb-2">LLM이 외부 도구/API와 상호 작용하기 위해 추론(사고)과 행동(행동) 단계를 번갈아 수행하고, 관찰(관찰)을 사용하여 다음 단계를 알립니다.</p>
@@ -212,7 +200,6 @@ sidebar:
                         <p class="mt-2 text-xs text-slate-500">ReAct는 실시간 정보 접근이 중요한 동적 여행 계획 에이전트 구축에 유용합니다.</p>
                     </div>
                 </div>
-                
                 <div class="card">
                     <h3 class="content-subtitle !mt-0">반복적 개선 및 다중 회전 대화</h3>
                     <p class="text-sm mb-2">사용자 피드백 및 변화하는 요구사항에 따라 여행 계획이 여러 차례에 걸쳐 구축되고 개선되는 대화형 AI 시스템을 위한 프롬프트 설계입니다.</p>
@@ -225,7 +212,6 @@ sidebar:
                     </div>
                 </div>
             </div>
-
             <h3 class="content-subtitle">표 1: 여행 계획을 위한 고급 프롬프트 기법 요약</h3>
             <div class="overflow-x-auto">
                 <table id="table1" class="min-w-full">
@@ -244,11 +230,9 @@ sidebar:
                 </table>
             </div>
         </section>
-
         <section id="frameworks" class="content-section">
             <h2 class="content-title">4. AI 기반 여행 일정 생성을 위한 학술 연구 및 프레임워크</h2>
             <p class="mb-4">이 섹션에서는 AI 여행 계획 분야의 주요 학술 연구와 프레임워크를 소개합니다. 이러한 연구들은 프롬프트 엔지니어링을 활용하거나 그 중요성을 강조하며, 더 정교한 AI 여행 솔루션 개발에 기여합니다.</p>
-            
             <div class="grid md:grid-cols-2 gap-6 mb-6">
                 <div class="card">
                     <h3 class="content-subtitle !mt-0">TRIP-PAL</h3>
@@ -267,7 +251,6 @@ sidebar:
                     <p class="text-sm">복잡한 LLM 작업을 위해 프롬프트에 명확하고 완전한 요구사항을 생성하는 데 중점을 두는 패러다임입니다. 요구사항 품질과 LLM 출력 품질 간의 상관관계를 강조합니다.</p>
                 </div>
             </div>
-            
             <div class="interactive-area">
                 <p class="font-semibold">학술 프레임워크 비교 (개념적)</p>
                 <div class="chart-container mt-2">
@@ -275,7 +258,6 @@ sidebar:
                 </div>
                 <p class="mt-1 text-xs text-slate-500">위 차트는 주요 학술 프레임워크들을 '제약 조건 처리', '실시간 정보 활용', '내러티브 생성 능력'과 같은 개념적 차원에서 비교하여 보여줍니다. (실제 데이터가 아닌 보고서 내용 기반의 해석입니다.)</p>
             </div>
-
             <h3 class="content-subtitle">표 2: AI 여행 계획의 학술 프레임워크 및 벤치마크 개요</h3>
             <div class="overflow-x-auto">
                 <table id="table2" class="min-w-full">
@@ -292,11 +274,9 @@ sidebar:
                 </table>
             </div>
         </section>
-
         <section id="examples" class="content-section">
             <h2 class="content-title">5. 전문가 수준 여행 프롬프트의 실제 사례</h2>
             <p class="mb-4">이 섹션에서는 보고서에서 제시된 원칙과 기법들을 종합하여 구체적인 전문가 수준의 프롬프트 예시를 보여줍니다. 복잡한 다중 목적지 여정, 특정 관심사 기반 여행, 동적 계획 수정 등 다양한 시나리오를 다룹니다.</p>
-
             <div>
                 <button class="accordion-button" data-target="example1-content">예시 1: 우선순위가 지정된 경쟁 제약 조건이 있는 복잡한 다중 목적지 여정</button>
                 <div id="example1-content" class="accordion-content hidden">
@@ -320,7 +300,6 @@ sidebar:
 모든 제약 조건과 선호도가 충족되도록 단계별로 생각해 봅시다.</code></pre>
                 </div>
             </div>
-
             <div class="mt-4">
                 <button class="accordion-button" data-target="example2-content">예시 2: 틈새 여행 - 커뮤니티 중심의 지속 가능한 생태 관광 여정</button>
                 <div id="example2-content" class="accordion-content hidden">
@@ -337,7 +316,6 @@ sidebar:
 "지속 가능한", "친환경 숙소", "커뮤니티 기반 관광" 키워드 중심으로 계획.</code></pre>
                 </div>
             </div>
-            
             <div class="mt-4">
                 <button class="accordion-button" data-target="example3-content">예시 3: ReAct를 사용한 동적 계획 수정 (개념적)</button>
                 <div id="example3-content" class="accordion-content hidden">
@@ -358,7 +336,6 @@ sidebar:
 행동: confirm_update(message="3일차 여정이 업데이트되었습니다.")</code></pre>
                 </div>
             </div>
-
             <h3 class="content-subtitle">표 3: 전문가 수준 여행 프롬프트 예시 및 구조 요약</h3>
             <div class="overflow-x-auto">
                 <table id="table3" class="min-w-full">
@@ -382,11 +359,9 @@ sidebar:
                 </table>
             </div>
         </section>
-
         <section id="conclusion" class="content-section">
             <h2 class="content-title">6. 결론: 모범 사례 및 향후 전망</h2>
             <p class="mb-4">본 보고서에서 논의된 내용을 바탕으로, 효과적인 AI 기반 여행 계획을 위한 프롬프트 엔지니어링의 모범 사례와 앞으로의 과제 및 연구 방향을 정리합니다.</p>
-
             <h3 class="content-subtitle">모범 사례 종합</h3>
             <ul class="list-disc list-inside space-y-1 text-sm mb-4">
                 <li><strong>명확성 및 구체성:</strong> 모호함을 피하고 원하는 바를 명확히 전달합니다.</li>
@@ -398,7 +373,6 @@ sidebar:
                 <li><strong>고급 기법 활용:</strong> CoT, ReAct, 소수샷 학습 등을 적절히 사용하여 성능을 극대화합니다.</li>
                 <li><strong>하이브리드 접근:</strong> LLM과 기호적 플래너 또는 외부 도구를 결합하여 신뢰성과 실시간 데이터 접근성을 높입니다.</li>
             </ul>
-
             <h3 class="content-subtitle">지속적인 과제</h3>
             <ul class="list-disc list-inside space-y-1 text-sm mb-4">
                 <li>모호성 및 암묵적인 사용자 요구 효과적 처리</li>
@@ -406,7 +380,6 @@ sidebar:
                 <li>복잡한 프롬프트 엔지니어링 및 에이전트 관리의 확장성</li>
                 <li>윤리적 고려 사항 (추천 편향, 데이터 개인 정보 보호)</li>
             </ul>
-
             <h3 class="content-subtitle">향후 연구 방향</h3>
             <ul class="list-disc list-inside space-y-1 text-sm">
                 <li>보다 정교한 다중 회전 대화 관리 및 컨텍스트 유지 기술 개발</li>
