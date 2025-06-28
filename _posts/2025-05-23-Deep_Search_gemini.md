@@ -12,7 +12,6 @@ sidebar:
 {% include tailwind_cdn.html %}
 {% include chartjs_cdn.html %}
 {% include google_fonts.html %}
-{% include custom_deep_search_content.html %}
 
 <!-- Visualization & Content Choices:
     - Report Info: Deep Research Process (Plan, Search, Reason, Report) -> Goal: Inform -> Viz/Presentation: HTML/CSS diagram -> Interaction: Static visual -> Justification: Clearly illustrate the core process.
