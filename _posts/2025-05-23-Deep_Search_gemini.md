@@ -197,12 +197,10 @@ sidebar:
             <a href="#conclusion" class="nav-link hover:bg-sky-600">VII. 결론</a>
         </div>
     </nav>
-
     <main class="flex-1 p-6 md:p-10 bg-stone-50 overflow-y-auto">
         <div id="intro" class="content-section space-y-8 animate-fade-in">
             <h2 class="text-3xl md:text-4xl font-bold text-sky-700 pb-2 border-b-2 border-sky-100">I. Gemini Deep Research 및 전문 프롬프트 소개</h2>
             <p class="text-lg md:text-xl text-stone-700 leading-relaxed">이 섹션에서는 Gemini Deep Research의 기본 개념, 주요 기능, 그리고 효과적인 사용을 위한 프롬프트 엔지니어링의 중요성에 대해 설명합니다. Deep Research는 복잡한 연구 작업을 자율적으로 수행하여 통찰력 있는 보고서를 생성하는 강력한 도구입니다.</p>
-
             <div class="p-8 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-4 flex items-center">
                     <svg class="w-6 h-6 mr-2 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
@@ -210,7 +208,6 @@ sidebar:
                 </h3>
                 <p class="leading-relaxed">Gemini Deep Research는 복잡한 연구 작업을 처리하도록 설계된 "에이전트 기능(agentic feature)"으로, 자율적으로 최대 수백 개의 웹사이트를 탐색하고, 결과를 검토하며, 통찰력 있는 다중 페이지 보고서를 생성합니다. 이는 마치 "매우 스마트한 비서"를 두는 것과 유사합니다.</p>
                 <p class="mt-3 leading-relaxed">Deep Research는 사용자의 프롬프트를 개인화된 다중 지점 연구 계획으로 변환한 후, 반복적으로 정보를 검색하고 추론하며, 최종적으로 발견한 내용을 보고합니다. 이러한 4단계 프로세스(계획, 검색, 추론, 보고)는 효과적인 프롬프트 작성 방법을 이해하는 데 근본적인 역할을 합니다. Deep Research는 Gemini 웹 앱 및 모바일 앱의 텍스트 상자 아래 또는 모델 선택기에서 "Deep Research"를 선택하여 액세스할 수 있습니다.</p>
-                
                 <div class="mt-4 p-4 bg-sky-50 border-l-4 border-sky-500 rounded">
                     <h4 class="font-semibold mb-2 text-sky-800">주요 사용 사례</h4>
                     <ul class="list-disc list-inside space-y-1 text-stone-700">
@@ -220,29 +217,24 @@ sidebar:
                     </ul>
                     <p class="mt-3 text-sm text-stone-600">예시: 20개 이상의 여름 캠프에 대한 세부 정보 비교 가능</p>
                 </div>
-                
                 <p class="mt-4 leading-relaxed">보고서는 일반적으로 생성하는 데 5-10분이 소요되며, 복잡한 주제의 경우 더 오래 걸릴 수 있으며, 준비되면 사용자에게 알림이 갑니다. 이러한 보고서는 오디오 개요로 변환될 수도 있습니다.</p>
                 <p class="mt-2">Deep Research는 특히 "많은 탐색과 여러 탭을 필요로 하는" 작업에 유용하며, 사용자가 "주제에 대해 전혀 모르는 상태에서 깊이 이해"하도록 돕는다. 빠르고 즉각적인 답변을 위한 기능은 아니다.</p>
                 <p class="mt-2">Deep Research의 "에이전트적(agentic)" 특성은 프롬프트가 단일 작업을 명령하는 것이 아니라 다단계의 자율적인 프로세스를 시작하고 안내한다는 점을 시사한다. 이는 프롬프트가 전체 연구 수명 주기를 알릴 만큼 포괄적이어야 함을 의미한다. Deep Research는 프롬프트로부터 연구 계획을 생성하고 사용자는 연구 시작 전에 "계획 편집(Edit plan)" 기능을 통해 계획을 수정할 수 있다. 이 기능은 AI가 프롬프트를 초기에 어떻게 해석했는지에 따라 연구 방향을 반복적으로 개선할 수 있는 강력한 제어 지점이다. 초기 프롬프트의 품질은 연구 계획의 *초안* 품질에 직접적인 영향을 미치며, "계획 편집" 기능은 중요한 *수정 메커니즘*으로 작용한다. 따라서 사용자는 명확한 초기 프롬프트를 작성하여 좋은 시작 계획을 얻되, "계획 편집" 기능을 활용하여 연구 방향을 미세 조정할 준비가 되어 있어야 하며, 이는 처음부터 상호작용적이고 반복적인 프로세스를 가능하게 한다.</p>
             </div>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">B. Deep Research 성공을 위한 프롬프트 엔지니어링의 중요성</h3>
                 <p>Deep Research는 강력한 기능이지만, 그 효과는 "제공하는 프롬프트의 품질에 크게 좌우된다". 명확하고 집중된 프롬프트는 더 정확하고 유용한 응답으로 이어진다. 시스템은 복잡한 사용자 쿼리를 상세한 연구 계획으로 분해하며, 프롬프트는 이러한 분해 과정의 주요 입력값이다. 사용자는 "계획을 제어"하고 수정할 수 있지만, 잘 만들어진 초기 프롬프트는 광범위한 계획 편집의 필요성을 최소화한다.</p>
                 <p class="mt-2">Deep Research를 위한 프롬프트 엔지니어링은 단순히 단일 응답을 유도하는 것이 아니라 복잡한 시스템을 관리하는 것이다. 프롬프트는 자율적인 에이전트의 경로를 설정한다. Deep Research는 자율적으로 검색, 추론 및 보고 작업을 수행하며, 프롬프트 품질이 출력 품질을 결정한다. 이는 마치 자율 주행 연구 차량의 초기 매개변수와 목표를 설정하는 것과 같다. 부실한 초기 프롬프트는 계획을 편집할 수 있더라도 "차량"을 관련 없는 경로로 이끌어 사용자와 AI의 시간을 낭비하게 할 수 있다. 따라서 사용자는 Deep Research가 수행할 *전체 연구 프로세스*를 전략적으로 고려하고 이러한 전략적 의도를 프롬프트에 인코딩해야 한다. 여기에는 필요한 정보 유형, 요구되는 추론, 최종 보고서의 원하는 구조를 예측하는 것이 포함된다.</p>
             </div>
         </div>
-
         <div id="principles" class="content-section space-y-6">
             <h2 class="text-3xl font-bold text-sky-700">II. Gemini를 위한 효과적인 프롬프트 작성의 핵심 원칙</h2>
             <p class="text-lg text-stone-600">이 섹션에서는 Gemini, 특히 Deep Research 기능의 기초가 되는 효과적인 프롬프트 작성의 핵심 원칙들을 다룹니다. 명확한 작업 지시, 풍부한 컨텍스트 제공, 적절한 페르소나 설정 등이 중요합니다.</p>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">A. 필수 프롬프트 구성 요소: 작업, 컨텍스트, 페르소나, 형식, 톤</h3>
                 <p>Google의 일반적인 Gemini 프롬프트 가이드는 페르소나, 작업, 컨텍스트, 형식이라는 네 가지 주요 구성 요소를 강조한다. 모든 프롬프트에 이 네 가지를 모두 사용할 필요는 없지만, 몇 가지를 사용하면 도움이 된다. "작업"(동사 또는 명령)은 가장 중요한 구성 요소이다. Cobry의 가이드 또한 작업, 컨텍스트, 예시, 페르소나, 형식, 톤을 더 나은 Gemini 프롬프트를 위한 핵심 요소로 강조한다. Vertex AI 문서는 목표, 지침, 톤, 컨텍스트, 소수샷 예시, 추론 단계 및 응답 형식을 구성 요소로 나열한다.</p>
                 <p class="mt-2">Deep Research의 경우 "컨텍스트"와 "작업"(또는 "목표")이 가장 중요해진다. Deep Research의 "페르소나"는 본질적으로 "심층 연구자"이지만, 사용자는 여전히 프롬프트의 페르소나 요소를 통해 출력 보고서의 *스타일*을 안내할 수 있다. "형식"은 최종 보고서에 매우 중요하다. Deep Research는 복잡하고 여러 출처를 기반으로 하는 조사를 수행하며, 핵심 프롬프트 구성 요소에는 작업과 컨텍스트가 포함된다. Deep Research의 "작업"은 항상 "심층 연구 수행"이다. *무엇을* 연구하고 *어떻게* 제시할지에 대한 구체적인 내용은 사용자의 상세한 컨텍스트와 형식 요구 사항에 따라 정의된다. 따라서 사용자의 프롬프트는 주제, 원하는 범위, 답변해야 할 특정 질문에 대한 풍부하고 구체적인 컨텍스트를 제공해야 한다. 또한 최종 보고서의 예상 구조와 세부 수준을 명확하게 정의해야 한다. 사용자는 "작업"을 극도로 구체적으로 상세화하고(예: "매개변수 P1, P2, P3에 걸쳐 A, B, C를 비교하여 X를 분석하라") 포괄적인 "컨텍스트"(예: "최근 시장 변화 M1, M2 및 경쟁사 조치 A1, A2를 고려하라")를 제공하는 데 중점을 두어야 한다.</p>
             </div>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">B. 모범 사례: 명확성, 구체성, 자연어 사용, 반복, 간결성, 문서 활용</h3>
                 <ul class="list-disc list-inside space-y-2 text-stone-700">
@@ -259,11 +251,9 @@ sidebar:
                 <p class="mt-3 text-sm text-stone-600">Deep Research를 위한 \"복잡한 작업 분해\" 원칙은 두 가지 방식으로 해석될 수 있다. 첫째, 사용자가 매우 큰 연구 목표를 여러 개의 개별적인 Deep Research 프롬프트로 분해하는 것이다. 둘째, 사용자가 단일의 포괄적인 Deep Research 프롬프트를 작성하여 AI에게 주요 연구 질문의 여러 하위 주제 또는 측면을 조사하도록 내부적으로 지시하고, Deep Research는 이를 계획에 통합하는 것이다. 일반적인 조언은 복잡한 작업을 분해하는 것이며, Deep Research 자체도 쿼리를 하위 작업으로 분해한다. 사용자는 연구를 선제적으로 분해하거나 Deep Research가 내부적으로 분해하는 방법을 안내할 수 있다. 매우 다면적인 연구의 경우, 사용자는 순차적인 Deep Research 작업을 실행하여 한 작업의 출력을 다음 프롬프트에 알릴 수 있다. 또는 잘 구조화된 단일 프롬프트가 Deep Research를 안내하여 다면적인 계획을 생성하도록 할 수 있다. 사용자는 자신의 연구가 하나의 큰 Deep Research 쿼리로 가장 잘 처리되는지, 아니면 여러 개의 작고 상호 연결된 쿼리로 가장 잘 처리되는지 결정해야 한다. 후자의 경우, 하나의 Deep Research 보고서 출력이 다음 프롬프트의 중요한 컨텍스트가 될 수 있다.</p>
             </div>
         </div>
-
         <div id="crafting" class="content-section space-y-6">
             <h2 class="text-3xl font-bold text-sky-700">III. Gemini Deep Research를 위한 강력한 프롬프트 작성</h2>
             <p class="text-lg text-stone-600">Deep Research의 잠재력을 최대한 발휘하기 위해서는 그 작동 방식에 맞춰 프롬프트를 설계해야 합니다. 이 섹션에서는 Deep Research의 4단계 프로세스(계획, 검색, 추론, 보고)에 프롬프트를 정렬하는 방법, 명확한 범위와 목표 설정, 풍부한 컨텍스트 제공 및 원하는 출력 형식 지정의 중요성을 강조합니다.</p>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">A. Deep Research 프로세스(계획, 검색, 추론, 보고)에 프롬프트 정렬하기</h3>
                 <p>Deep Research는 프롬프트를 "개인화된 다중 지점 연구 계획"으로 변환하고(계획), "자율적으로 웹을 검색하고 깊이 탐색"하며(검색), "반복적으로 수집된 정보에 대해 추론하면서 생각을 보여주고"(추론), "포괄적인 맞춤형 연구 보고서를 제공"한다(보고).</p>
@@ -278,19 +268,16 @@ sidebar:
                     </ol>
                 </div>
             </div>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">B. 심층 조사를 위한 범위 및 목표 정의</h3>
                 <p>Deep Research에게 무엇을 하기를 원하는지 구체적으로 명시해야 한다. "기후 변화에 대해 알려줘" 대신 "향후 50년 동안 해수면 상승이 해안 지역 사회에 미치는 영향을 경제적, 사회적 혼란에 초점을 맞춰 분석하라. 영향을 받는 지역의 구체적인 예를 포함하라"와 같이 시도하라. 지리적, 시간적, 주제적 경계를 정의하고, 주요 연구 질문이나 작업, 원하는 결과(예: 상세 분석, 비교, 권장 사항)를 명확하게 명시해야 한다.</p>
                 <p class="mt-2">범위의 명확성은 Deep Research의 "검색" 단계 효율성과 "추론" 단계의 관련성에 직접적인 영향을 미친다. 프롬프트는 범위(지리적, 시간적, 주제적)를 정의해야 하며, Deep Research는 자율적으로 검색하고 탐색한다. 잘 정의된 범위는 검색 프로세스의 필터 역할을 하여 에이전트가 관련 없는 길을 탐색하는 것을 방지한다. 범위가 너무 넓으면 Deep Research가 너무 많은 초점 없는 정보를 수집하여 추론 과정을 어렵게 만들고 보고서가 희석될 수 있다. 너무 좁으면 중요한 정보가 누락될 수 있다. 사용자는 연구 범위를 신중하게 고려하고 명확하게 표현해야 한다. 예를 들어, "향후 10년간(시간적) 미국 고용 시장(지리적)에 대한 AI의 영향을 분석하되, 의료 및 제조 부문(주제적)에 초점을 맞추시오."와 같이 작성할 수 있다.</p>
             </div>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">C. 풍부한 컨텍스트 제공 및 원하는 출력 형식 지정</h3>
                 <p>작업을 정확하게 완료하는 데 도움이 되는 추가 정보를 제공해야 한다. 여기에는 핵심 용어, 관련 배경 또는 특정 관점이 포함될 수 있다. 출력물의 원하는 형식(예: 보고서, 요약, 목록, APA 스타일 인용, 단어 수, 요약, 다양한 부문에 미치는 영향과 같은 특정 섹션)을 지정해야 한다.</p>
                 <p class="mt-2">프롬프트에서 출력 형식을 지정하는 것은 Deep Research의 "보고" 단계에 직접적인 영향을 미치며, 해당 구조를 채우는 데 필요한 정보 및 분석 유형을 암시함으로써 "추론" 단계를 안내할 수도 있다. 사용자는 출력 형식, 구조, 심지어 인용 스타일까지 지정할 수 있으며, Deep Research는 "포괄적인 맞춤형 연구 보고서"를 생성한다. 사용자가 "요약", "영향 분석", "권장 사항" 섹션을 요청하면 Deep Research의 추론 프로세스는 이러한 특정 섹션을 채울 수 있는 정보를 식별하는 데 맞춰진다. 원하는 출력 구조는 Deep Research가 채우려고 하는 템플릿 역할을 한다. 즉, 프롬프트의 형식 지정 지침은 단순히 외형적인 것이 아니라 연구 및 종합 프로세스를 적극적으로 형성한다. 사용자는 프롬프트를 작성하기 *전에* 이상적인 보고서 구조를 생각하고 해당 구조적 요소(제목, 부제목, 섹션별 특정 콘텐츠 유형)를 프롬프트 자체에 포함해야 한다. 이는 Deep Research에 대한 명확한 청사진을 제공한다.</p>
             </div>
-            
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">표 1: Deep Research를 위한 핵심 프롬프트 요소</h3>
                 <p class="text-stone-600 mb-4">Deep Research를 효과적으로 활용하기 위한 프롬프트에는 다음과 같은 핵심 요소들이 포함되어야 합니다. 각 요소는 AI가 연구 목표를 명확히 이해하고, 관련 정보를 효율적으로 탐색하며, 사용자가 원하는 형태로 결과를 도출하는 데 도움을 줍니다.</p>
@@ -348,18 +335,15 @@ sidebar:
                     </table>
                 </div>
             </div>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">D. 개선 및 심층 탐구를 위한 후속 프롬프트 활용</h3>
                 <p>보고서가 생성된 후 사용자는 채팅 창에서 후속 질문을 할 수 있다. Deep Research는 이미 수집된 정보를 기반으로 답변하거나 웹으로 돌아가 추가 정보를 찾는다. 사용자는 보고서 생성 후 Deep Research에 새로운 정보를 추가하도록 요청할 수 있으며, 실시간으로 보고서를 조정한다 (예: "캠프 비용 세부 정보를 내 보고서에 추가해 줘").</p>
                 <p class="mt-2">Deep Research 보고서는 반드시 최종 산출물이 아니며, 상호작용적이고 진화하는 문서가 될 수 있다. 후속 프롬프트는 컨텍스트 창과 RAG 기능을 활용한다. 사용자는 Deep Research 보고서에 후속 질문을 하고 추가 사항을 요청할 수 있으며, Gemini Advanced는 100만 토큰 컨텍스트 창과 RAG 설정을 갖추고 있다. 초기 Deep Research 보고서와 이를 생성하기 위해 수집된 정보는 풍부한 컨텍스트를 형성한다. 후속 프롬프트는 이 설정된 컨텍스트 내에서 작동한다. 이를 통해 연구를 개선하고 확장하는 대화형 접근 방식이 가능하다. AI는 각 후속 작업에서 처음부터 시작하는 것이 아니라 초기 Deep Research 실행으로 생성된 기존 지식 기반을 기반으로 구축한다. 사용자는 Deep Research를 조사 대화의 시작으로 보아야 한다. 초기 프롬프트는 기본 보고서를 생성하고, 후속 프롬프트는 특정 영역을 자세히 조사하거나, 설명을 요청하거나, 새로운 각도를 통합하는 데 사용되어 연구 프로세스를 매우 적응적으로 만들 수 있다.</p>
             </div>
         </div>
-
         <div id="templates" class="content-section space-y-6">
             <h2 class="text-3xl font-bold text-sky-700">IV. Gemini Deep Research를 위한 실용적인 프롬프트 템플릿</h2>
             <p class="text-lg text-stone-600">이 섹션에서는 앞서 설명한 원칙들을 바탕으로, 다양한 사용 사례에 바로 적용할 수 있는 구체적이고 상세한 프롬프트 템플릿 예시들을 제공합니다. 이 템플릿들은 사용자가 Deep Research를 시작하는 데 강력한 출발점을 제공할 것입니다.</p>
-            
             <div class="mb-6">
                 <label for="templateSelector" class="block text-lg font-medium text-stone-700 mb-2">사용 사례 선택:</label>
                 <select id="templateSelector" class="w-full p-3 border border-stone-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500">
@@ -371,10 +355,8 @@ sidebar:
                     <option value="synthesis">F. 사용 사례: 보고서 및 요약을 위한 정보 종합</option>
                 </select>
             </div>
-
             <div id="templateDisplay" class="space-y-6">
                 </div>
-
             <div class="p-6 bg-white rounded-lg shadow mt-8">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">표 2: Gemini Deep Research 프롬프트 템플릿 라이브러리</h3>
                 <p class="text-stone-600 mb-4">다양한 연구 목적에 맞춰 활용할 수 있는 프롬프트 템플릿들을 요약했습니다. 각 사용 사례별 핵심 구조와 사용자 정의 변수를 참고하여 자신만의 프롬프트를 구성해 보세요.</p>
@@ -430,11 +412,9 @@ sidebar:
                 </div>
             </div>
         </div>
-
         <div id="advanced" class="content-section space-y-6">
             <h2 class="text-3xl font-bold text-sky-700">V. Deep Research 출력 극대화를 위한 고급 프롬프트 기법</h2>
             <p class="text-lg text-stone-600">Deep Research의 결과물 품질과 깊이를 한층 더 향상시키기 위한 정교한 프롬프트 작성 방법을 소개합니다. 복잡한 쿼리 구조화, 연쇄적 사고(CoT) 활용, 반론 유도, 가설 생성 및 탐색 기법을 통해 에이전트 기반 연구 프로세스를 효과적으로 안내할 수 있습니다.</p>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">A. 복잡한 쿼리 구조화: 단일 Deep Research 프롬프트 내 작업 분해</h3>
                 <p>일반적인 프롬프트 작성 조언은 복잡한 작업을 별도의 프롬프트로 나누는 것이다. Deep Research의 경우, 이는 단일 프롬프트를 구조화하여 여러 측면에 대한 조사를 요청하는 것을 의미할 수도 있다. 프롬프트 내에서 제목이나 부제목을 사용하여 요청과 예상 결과물을 구성하고, 별개의 질문이나 문의 영역에는 글머리 기호나 번호 매기기 목록을 사용한다. LLM은 작업을 순차적 단계나 하위 작업으로 나누도록 지시받을 수 있다.</p>
@@ -470,7 +450,6 @@ sidebar:
                     <pre><code class="language-text">\"Deep Research를 시작하여 [기술/개념 X, 예: \'양자 센서 기술\']의 [도메인 Y, 예: \'초기 질병 탐지\'] 분야에서의 잠재적인 새로운 응용 분야를 탐색해주십시오.\n연구는 다음을 포함해야 합니다:\n1.  기술 X의 현재 기능과 한계에 대한 포괄적인 개요를 제공합니다.\n2.  탐지/진단과 관련된 도메인 Y의 주요 미충족 요구 사항과 과제를 요약합니다.\n3.  (1)과 (2)에서 종합된 정보를 바탕으로, 보고서의 한 섹션에서 기술 X가 도메인 Y의 특정 과제를 해결하는 데 어떻게 적용될 수 있는지에 대한 최소 세 가지 새롭고 그럴듯한 가설을 생성합니다. 각 가설에 대해, 추론 과정을 설명하고 이를 검증하기 위해 어떤 추가 연구가 필요한지 명시합니다.\"</code></pre>
                 </div>
             </div>
-
             <div class="p-6 bg-white rounded-lg shadow mt-8">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">표 3: Deep Research를 위한 고급 프롬프트 기법 적용</h3>
                 <p class="text-stone-600 mb-4">Deep Research의 결과물을 극대화하기 위한 고급 프롬프트 기법들을 소개합니다. 이러한 기법들은 AI의 연구 계획 수립, 추론 방식, 그리고 최종 보고서의 내용과 구조에 영향을 미쳐 더욱 깊이 있고 통찰력 있는 결과를 얻는 데 도움을 줄 수 있습니다.</p>
@@ -514,11 +493,9 @@ sidebar:
                 </div>
             </div>
         </div>
-
         <div id="optimization" class="content-section space-y-6">
             <h2 class="text-3xl font-bold text-sky-700">VI. Deep Research 최적화 및 안전장치</h2>
             <p class="text-lg text-stone-600">Deep Research를 최대한 효과적이고 안전하게 사용하기 위한 방법들을 알아봅니다. 반복적인 프롬프트 개선, 시스템의 한계와 잠재적 편향 이해, 정보의 사실 확인 및 검증 전략, 그리고 AI 기반 연구의 윤리적 고려 사항은 매우 중요합니다.</p>
-
             <div class="p-6 bg-white rounded-lg shadow">
                 <h3 class="text-2xl font-semibold text-sky-600 mb-3">A. 반복적인 프롬프트 개선 및 테스트</h3>
                 <p>프롬프트 작성은 반복적인 과정이며, 결과가 기대에 미치지 못하면 프롬프트를 미세 조정해야 한다. Deep Research의 "계획 편집" 기능은 이러한 반복적인 개선의 핵심 부분으로, 전체 실행 전에 조정을 허용한다. 개선 영역을 식별하기 위해 프롬프트를 체계적으로 테스트해야 하며, Gemini Advanced를 사용할 때 "이것을 파워 프롬프트로 만들어주세요: [원본 프롬프트 텍스트]" 기능을 활용하면 프롬프트 개선에 도움이 될 수 있다.</p>
@@ -540,7 +517,6 @@ sidebar:
                 <p class="mt-2">Deep Research의 자율적인 특성(수백 개의 사이트 탐색)은 특히 출처를 비판적으로 평가하지 않을 경우 개인 데이터의 우발적인 수집/종합 또는 허위 정보 전파 가능성과 관련하여 사용을 안내하는 강력한 윤리적 프레임워크를 필요로 한다. Deep Research는 광범위하게 탐색하며, 윤리적 AI는 개인 정보 보호, 공정성 및 책임을 요구한다. 자율적인 웹 탐색은 인간 연구자가 개인 정보 보호나 신뢰성을 위해 더 신중하게 필터링할 수 있는 방식으로 의도치 않게 데이터를 액세스하고 종합할 수 있다. Deep Research 사용자는 윤리적 위험을 최소화하는 방식으로 연구 작업을 정의하고 잠재적인 윤리적 문제(예: 보고서가 논의된 모든 그룹에 공정한가? 의심스러운 출처에 의존하는가?)에 대해 결과물을 비판적으로 평가할 책임이 있다. 프롬프트는 이러한 윤리적 차원을 인식하여 작성되어야 한다. 민감한 주제의 경우 프롬프트에는 "공개적으로 사용 가능하고 평판이 좋은 출처에 초점을 맞추고 개인적인 문제에 대한 추측을 피하십시오" 또는 "[민감한 사회 문제]에 관한 관점의 균형 잡힌 표현을 보장하십시오"와 같은 지침이 포함될 수 있다. 사용자는 궁극적으로 Deep Research를 통해 의뢰한 연구의 윤리적 영향에 대한 책임을 진다.</p>
             </div>
         </div>
-
         <div id="conclusion" class="content-section space-y-6">
             <h2 class="text-3xl font-bold text-sky-700">VII. 결론: 효과적인 Gemini Deep Research 프롬프팅을 위한 핵심 시사점</h2>
             <p class="text-lg text-stone-600">이 가이드의 마지막 섹션에서는 Gemini Deep Research를 효과적으로 활용하기 위한 핵심 사항들을 요약합니다. 명확하고 구체적인 프롬프트 작성, 반복적인 개선 과정의 중요성, 그리고 생성된 정보에 대한 비판적 검토는 Deep Research의 잠재력을 최대한 발휘하는 데 필수적입니다.</p>

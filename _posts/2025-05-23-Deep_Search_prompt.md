@@ -412,5 +412,3 @@ main.container {
     }
 }
 </style>
-
-{% include custom_travel_scripts.html %}
