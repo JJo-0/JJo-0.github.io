@@ -12,8 +12,6 @@ sidebar:
 {% include tailwind_cdn.html %}
 {% include chartjs_cdn.html %}
 {% include google_fonts.html %}
-{% include custom_travel_styles.html %}
-
 {% include travel_navigation.html %}
 
 <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
