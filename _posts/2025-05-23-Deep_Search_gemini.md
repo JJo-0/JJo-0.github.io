@@ -1,6 +1,6 @@
 ---
 layout: single
-title: "Gemini Deep Research 고급 프롬프트 엔지니어링 가이드"
+title: "Gemini Deep Research 프롬프트 엔지니어링 가이드"
 categories: [DeepSearch, Gemini, AI, Areal]
 tag: [DeepSearch, Gemini, AI]
 toc: true
@@ -34,6 +34,9 @@ sidebar:
     .content-section.active {
         display: block;
         opacity: 1;
+    }
+    .content-section.hidden {
+        display: none !important;
     }
     .table-responsive {
         overflow-x: auto;
@@ -87,6 +90,22 @@ sidebar:
         background-color: #bfdbfe;
         color: #1e3a8a;
         font-weight: bold;
+    }
+    .nav-link {
+        display: block;
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        margin-bottom: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+        text-align: left;
+    }
+    .nav-link:hover {
+        background-color: #0c4a6e !important;
     }
     .prompt-template-btn.active {
         background-color: #60a5fa;
@@ -188,13 +207,13 @@ sidebar:
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
         <div id="navMenu" class="hidden md:block space-y-1">
-            <a href="#intro" class="nav-link hover:bg-sky-600">I. 소개</a>
-            <a href="#principles" class="nav-link hover:bg-sky-600">II. 핵심 원칙</a>
-            <a href="#crafting" class="nav-link hover:bg-sky-600">III. Deep Research 프롬프트 작성</a>
-            <a href="#templates" class="nav-link hover:bg-sky-600">IV. 프롬프트 템플릿</a>
-            <a href="#advanced" class="nav-link hover:bg-sky-600">V. 고급 기법</a>
-            <a href="#optimization" class="nav-link hover:bg-sky-600">VI. 최적화 및 안전장치</a>
-            <a href="#conclusion" class="nav-link hover:bg-sky-600">VII. 결론</a>
+            <button data-section="intro" class="nav-link hover:bg-sky-600 w-full text-left bg-sky-600 text-white">I. 소개</button>
+            <button data-section="principles" class="nav-link hover:bg-sky-600 w-full text-left bg-stone-100 text-stone-600">II. 핵심 원칙</button>
+            <button data-section="crafting" class="nav-link hover:bg-sky-600 w-full text-left bg-stone-100 text-stone-600">III. Deep Research 프롬프트 작성</button>
+            <button data-section="templates" class="nav-link hover:bg-sky-600 w-full text-left bg-stone-100 text-stone-600">IV. 프롬프트 템플릿</button>
+            <button data-section="advanced" class="nav-link hover:bg-sky-600 w-full text-left bg-stone-100 text-stone-600">V. 고급 기법</button>
+            <button data-section="optimization" class="nav-link hover:bg-sky-600 w-full text-left bg-stone-100 text-stone-600">VI. 최적화 및 안전장치</button>
+            <button data-section="conclusion" class="nav-link hover:bg-sky-600 w-full text-left bg-stone-100 text-stone-600">VII. 결론</button>
         </div>
     </nav>
     <main class="flex-1 p-6 md:p-10 bg-stone-50 overflow-y-auto">
@@ -700,33 +719,96 @@ sidebar:
         }
     };
 
-    const templateSelector = document.getElementById('templateSelector');
-    const templateDisplay = document.getElementById('templateDisplay');
-
-    function displayTemplate(templateKey) {
-        const templateData = promptTemplates[templateKey];
-        if (!templateData) return;
-
-        let html = `<div class="p-6 bg-white rounded-lg shadow">`;
-        html += `<h3 class="text-2xl font-semibold text-sky-600 mb-2">${templateData.title}</h3>`;
-        html += `<p class="text-stone-600 mb-4">${templateData.description}</p>`;
+    // Add event listeners to navigation buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        const navButtons = document.querySelectorAll('[data-section]');
+        const templateSelector = document.getElementById('templateSelector');
+        const templateDisplay = document.getElementById('templateDisplay');
         
-        templateData.examples.forEach((example, index) => {
-            html += `<h4 class="text-xl font-medium text-stone-700 mt-6 mb-2">템플릿 예시 ${index + 1}:</h4>`;
-            html += `<div class="code-block">
-                        <button class="copy-button" onclick="copyToClipboard(this.nextElementSibling.innerText)">복사</button>
-                        <pre><code class="language-text">${example.text}</code></pre>
-                     </div>`;
+        // Navigation functionality
+        navButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const sectionId = this.getAttribute('data-section');
+                showSection(sectionId);
+            });
         });
-        html += `</div>`;
-        templateDisplay.innerHTML = html;
-    }
+        
+        function showSection(sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(section => {
+                section.classList.add('hidden');
+                section.style.display = 'none';
+            });
+            
+            // Show the selected section
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+                targetSection.style.display = 'block';
+                targetSection.classList.add('animate-fade-in');
+            }
+            
+            // Update navigation styling
+            navButtons.forEach(button => {
+                if (button.getAttribute('data-section') === sectionId) {
+                    button.classList.add('bg-sky-600', 'text-white');
+                    button.classList.remove('bg-stone-100', 'text-stone-600');
+                } else {
+                    button.classList.add('bg-stone-100', 'text-stone-600');
+                    button.classList.remove('bg-sky-600', 'text-white');
+                }
+            });
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                // Create a temporary notification
+                const notification = document.createElement('div');
+                notification.textContent = '복사됨!';
+                notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
+                document.body.appendChild(notification);
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 2000);
+            });
+        }
+        
+        // Template functionality
+        if (templateSelector && templateDisplay) {
+            function displayTemplate(templateKey) {
+                const templateData = promptTemplates[templateKey];
+                if (!templateData) return;
 
-    templateSelector.addEventListener('change', (event) => {
-        displayTemplate(event.target.value);
+                let html = `<div class="p-6 bg-white rounded-lg shadow">`;
+                html += `<h3 class="text-2xl font-semibold text-sky-600 mb-2">${templateData.title}</h3>`;
+                html += `<p class="text-stone-600 mb-4">${templateData.description}</p>`;
+                
+                templateData.examples.forEach((example, index) => {
+                    html += `<h4 class="text-xl font-medium text-stone-700 mt-6 mb-2">템플릿 예시 ${index + 1}:</h4>`;
+                    html += `<div class="relative">
+                                <button class="absolute top-2 right-2 bg-sky-500 text-white px-3 py-1 rounded text-sm hover:bg-sky-600" onclick="copyToClipboard(this.parentElement.querySelector('pre').innerText)">복사</button>
+                                <pre class="bg-stone-50 p-4 rounded border overflow-x-auto text-sm leading-relaxed"><code>${example.text}</code></pre>
+                             </div>`;
+                });
+                html += `</div>`;
+                templateDisplay.innerHTML = html;
+            }
+
+            templateSelector.addEventListener('change', (event) => {
+                displayTemplate(event.target.value);
+            });
+
+            // Display initial template
+            displayTemplate(templateSelector.value);
+        }
+        
+        // Show intro section by default
+        showSection('intro');
+        
+        // Make copyToClipboard globally available
+        window.copyToClipboard = copyToClipboard;
     });
-
-    displayTemplate(templateSelector.value); 
 
 </script>
 
