@@ -360,6 +360,95 @@ sidebar:
                 <p class="mt-2">Deep Research 보고서는 반드시 최종 산출물이 아니며, 상호작용적이고 진화하는 문서가 될 수 있다. 후속 프롬프트는 컨텍스트 창과 RAG 기능을 활용한다. 사용자는 Deep Research 보고서에 후속 질문을 하고 추가 사항을 요청할 수 있으며, Gemini Advanced는 100만 토큰 컨텍스트 창과 RAG 설정을 갖추고 있다. 초기 Deep Research 보고서와 이를 생성하기 위해 수집된 정보는 풍부한 컨텍스트를 형성한다. 후속 프롬프트는 이 설정된 컨텍스트 내에서 작동한다. 이를 통해 연구를 개선하고 확장하는 대화형 접근 방식이 가능하다. AI는 각 후속 작업에서 처음부터 시작하는 것이 아니라 초기 Deep Research 실행으로 생성된 기존 지식 기반을 기반으로 구축한다. 사용자는 Deep Research를 조사 대화의 시작으로 보아야 한다. 초기 프롬프트는 기본 보고서를 생성하고, 후속 프롬프트는 특정 영역을 자세히 조사하거나, 설명을 요청하거나, 새로운 각도를 통합하는 데 사용되어 연구 프로세스를 매우 적응적으로 만들 수 있다.</p>
             </div>
         </div>
+            <h2 class="text-3xl font-bold text-sky-700">III. Gemini Deep Research를 위한 강력한 프롬프트 작성</h2>
+            <p class="text-lg text-stone-600">Deep Research의 잠재력을 최대한 발휘하기 위해서는 그 작동 방식에 맞춰 프롬프트를 설계해야 합니다. 이 섹션에서는 Deep Research의 4단계 프로세스(계획, 검색, 추론, 보고)에 프롬프트를 정렬하는 방법, 명확한 범위와 목표 설정, 풍부한 컨텍스트 제공 및 원하는 출력 형식 지정의 중요성을 강조합니다.</p>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">A. Deep Research 프로세스(계획, 검색, 추론, 보고)에 프롬프트 정렬하기</h3>
+                <p>Deep Research는 프롬프트를 "개인화된 다중 지점 연구 계획"으로 변환하고(계획), "자율적으로 웹을 검색하고 깊이 탐색"하며(검색), "반복적으로 수집된 정보에 대해 추론하면서 생각을 보여주고"(추론), "포괄적인 맞춤형 연구 보고서를 제공"한다(보고).</p>
+                <p class="mt-2">프롬프트는 Deep Research의 각 내부 단계에 대한 명확한 입력을 제공하도록 구조화되어야 한다. Deep Research에는 계획, 검색, 추론, 보고라는 뚜렷한 내부 단계가 있으며, 초기 프롬프트는 "계획" 단계의 주요 동인이며, 이는 "검색" 및 "추론" 단계를 지시하고 궁극적으로 "보고" 단계를 형성한다. 성공적인 프롬프트는 이러한 단계를 예측한다. 전체 연구 목표(계획용), 찾아야 할 주요 영역 또는 정보 유형(검색용), 필요한 분석 또는 종합 유형(추론용), 최종 출력의 원하는 구조 또는 요소(보고용)를 명확하게 명시해야 한다. 예를 들어 사용자는 다음과 같은 프롬프트를 작성할 수 있다: "X에 대한 포괄적인 보고서를 생성하라 [보고 - 전체 출력]. 보고서는 A, B, C를 다루어야 한다 [계획 - 주요 영역]. 각 영역에 대해 P1, P2에 대한 정보를 찾고 [검색 - 정보 유형] 상호 의존성을 분석하라 [추론 - 분석 유형]."</p>
+                 <div class="mt-4 p-4 border-l-4 border-amber-400 bg-amber-50 rounded">
+                    <h4 class="font-semibold text-amber-700">Deep Research 4단계 프로세스</h4>
+                    <ol class="list-decimal list-inside space-y-1 text-stone-700 mt-2">
+                        <li><strong>계획 (Plan):</strong> 사용자의 프롬프트를 기반으로 개인화된 다중 지점 연구 계획을 수립합니다.</li>
+                        <li><strong>검색 (Search):</strong> 자율적으로 웹을 검색하고 깊이 탐색하여 관련 정보를 수집합니다.</li>
+                        <li><strong>추론 (Reason):</strong> 수집된 정보를 반복적으로 분석하고 종합하며, 이 과정에서 AI의 "생각"을 보여줍니다.</li>
+                        <li><strong>보고 (Report):</strong> 최종적으로 포괄적이고 맞춤화된 연구 보고서를 사용자에게 제공합니다.</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">B. 심층 조사를 위한 범위 및 목표 정의</h3>
+                <p>Deep Research에게 무엇을 하기를 원하는지 구체적으로 명시해야 한다. "기후 변화에 대해 알려줘" 대신 "향후 50년 동안 해수면 상승이 해안 지역 사회에 미치는 영향을 경제적, 사회적 혼란에 초점을 맞춰 분석하라. 영향을 받는 지역의 구체적인 예를 포함하라"와 같이 시도하라. 지리적, 시간적, 주제적 경계를 정의하고, 주요 연구 질문이나 작업, 원하는 결과(예: 상세 분석, 비교, 권장 사항)를 명확하게 명시해야 한다.</p>
+                <p class="mt-2">범위의 명확성은 Deep Research의 "검색" 단계 효율성과 "추론" 단계의 관련성에 직접적인 영향을 미친다. 프롬프트는 범위(지리적, 시간적, 주제적)를 정의해야 하며, Deep Research는 자율적으로 검색하고 탐색한다. 잘 정의된 범위는 검색 프로세스의 필터 역할을 하여 에이전트가 관련 없는 길을 탐색하는 것을 방지한다. 범위가 너무 넓으면 Deep Research가 너무 많은 초점 없는 정보를 수집하여 추론 과정을 어렵게 만들고 보고서가 희석될 수 있다. 너무 좁으면 중요한 정보가 누락될 수 있다. 사용자는 연구 범위를 신중하게 고려하고 명확하게 표현해야 한다. 예를 들어, "향후 10년간(시간적) 미국 고용 시장(지리적)에 대한 AI의 영향을 분석하되, 의료 및 제조 부문(주제적)에 초점을 맞추시오."와 같이 작성할 수 있다.</p>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">C. 풍부한 컨텍스트 제공 및 원하는 출력 형식 지정</h3>
+                <p>작업을 정확하게 완료하는 데 도움이 되는 추가 정보를 제공해야 한다. 여기에는 핵심 용어, 관련 배경 또는 특정 관점이 포함될 수 있다. 출력물의 원하는 형식(예: 보고서, 요약, 목록, APA 스타일 인용, 단어 수, 요약, 다양한 부문에 미치는 영향과 같은 특정 섹션)을 지정해야 한다.</p>
+                <p class="mt-2">프롬프트에서 출력 형식을 지정하는 것은 Deep Research의 "보고" 단계에 직접적인 영향을 미치며, 해당 구조를 채우는 데 필요한 정보 및 분석 유형을 암시함으로써 "추론" 단계를 안내할 수도 있다. 사용자는 출력 형식, 구조, 심지어 인용 스타일까지 지정할 수 있으며, Deep Research는 "포괄적인 맞춤형 연구 보고서"를 생성한다. 사용자가 "요약", "영향 분석", "권장 사항" 섹션을 요청하면 Deep Research의 추론 프로세스는 이러한 특정 섹션을 채울 수 있는 정보를 식별하는 데 맞춰진다. 원하는 출력 구조는 Deep Research가 채우려고 하는 템플릿 역할을 한다. 즉, 프롬프트의 형식 지정 지침은 단순히 외형적인 것이 아니라 연구 및 종합 프로세스를 적극적으로 형성한다. 사용자는 프롬프트를 작성하기 *전에* 이상적인 보고서 구조를 생각하고 해당 구조적 요소(제목, 부제목, 섹션별 특정 콘텐츠 유형)를 프롬프트 자체에 포함해야 한다. 이는 Deep Research에 대한 명확한 청사진을 제공한다.</p>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">표 1: Deep Research를 위한 핵심 프롬프트 요소</h3>
+                <p class="text-stone-600 mb-4">Deep Research를 효과적으로 활용하기 위한 프롬프트에는 다음과 같은 핵심 요소들이 포함되어야 합니다. 각 요소는 AI가 연구 목표를 명확히 이해하고, 관련 정보를 효율적으로 탐색하며, 사용자가 원하는 형태로 결과를 도출하는 데 도움을 줍니다.</p>
+                <div class="table-responsive">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-sky-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-sky-800 font-semibold">요소</th>
+                                <th class="py-3 px-4 text-left text-sky-800 font-semibold">설명</th>
+                                <th class="py-3 px-4 text-left text-sky-800 font-semibold">일반적인 예시 문구</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">명확한 연구 목표</td>
+                                <td class="py-3 px-4">연구를 통해 궁극적으로 달성하고자 하는 바를 명확히 정의한다.</td>
+                                <td class="py-3 px-4">"이 연구의 목표는 [X]를 이해하는 것입니다."</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">구체적인 연구 질문</td>
+                                <td class="py-3 px-4">연구가 답변해야 할 주요 질문들을 명시한다.</td>
+                                <td class="py-3 px-4">"[Y]는 [Z]에 어떤 영향을 미칩니까?"</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">주요 조사 영역/주제</td>
+                                <td class="py-3 px-4">연구에서 다루어야 할 핵심 영역이나 주제를 지정한다.</td>
+                                <td class="py-3 px-4">"보고서는 [주제 A], [주제 B], [주제 C]를 포함해야 합니다."</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">범위 정의 (시간적, 지리적, 주제적)</td>
+                                <td class="py-3 px-4">연구의 시간적, 지리적, 주제적 경계를 설정하여 조사의 초점을 명확히 한다.</td>
+                                <td class="py-3 px-4">"[지역]에서 [기간] 동안 [주제]에 초점을 맞춥니다."</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">필수 컨텍스트/배경 정보</td>
+                                <td class="py-3 px-4">AI가 연구를 이해하고 수행하는 데 필요한 배경 지식이나 특정 정보를 제공한다.</td>
+                                <td class="py-3 px-4">"[상황]을 고려할 때, [정보]가 중요합니다."</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">원하는 출력 형식 및 구조</td>
+                                <td class="py-3 px-4">최종 보고서의 형식(예: 보고서, 요약), 구조(예: 섹션 제목), 길이 등을 지정한다.</td>
+                                <td class="py-3 px-4">"결과는 [형식]으로, [구조]를 포함하여 [길이]로 제시되어야 합니다."</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">필요한 분석 깊이/관점</td>
+                                <td class="py-3 px-4">연구에서 요구되는 분석의 깊이나 특정 관점(예: 비판적, 비교적)을 명시한다.</td>
+                                <td class="py-3 px-4">"각 요소에 대한 [관점] 분석을 제공하십시오."</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4">우선순위 정보 출처/회피 정보 출처 (알고 있는 경우)</td>
+                                <td class="py-3 px-4">AI가 참고하거나 피해야 할 특정 정보 출처(예: 학술 논문, 특정 웹사이트)를 지정한다.</td>
+                                <td class="py-3 px-4">"주로 [출처 유형]의 정보를 사용하고, [회피 출처]는 피하십시오."</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">D. 개선 및 심층 탐구를 위한 후속 프롬프트 활용</h3>
+                <p>보고서가 생성된 후 사용자는 채팅 창에서 후속 질문을 할 수 있다. Deep Research는 이미 수집된 정보를 기반으로 답변하거나 웹으로 돌아가 추가 정보를 찾는다. 사용자는 보고서 생성 후 Deep Research에 새로운 정보를 추가하도록 요청할 수 있으며, 실시간으로 보고서를 조정한다 (예: "캠프 비용 세부 정보를 내 보고서에 추가해 줘").</p>
+                <p class="mt-2">Deep Research 보고서는 반드시 최종 산출물이 아니며, 상호작용적이고 진화하는 문서가 될 수 있다. 후속 프롬프트는 컨텍스트 창과 RAG 기능을 활용한다. 사용자는 Deep Research 보고서에 후속 질문을 하고 추가 사항을 요청할 수 있으며, Gemini Advanced는 100만 토큰 컨텍스트 창과 RAG 설정을 갖추고 있다. 초기 Deep Research 보고서와 이를 생성하기 위해 수집된 정보는 풍부한 컨텍스트를 형성한다. 후속 프롬프트는 이 설정된 컨텍스트 내에서 작동한다. 이를 통해 연구를 개선하고 확장하는 대화형 접근 방식이 가능하다. AI는 각 후속 작업에서 처음부터 시작하는 것이 아니라 초기 Deep Research 실행으로 생성된 기존 지식 기반을 기반으로 구축한다. 사용자는 Deep Research를 조사 대화의 시작으로 보아야 한다. 초기 프롬프트는 기본 보고서를 생성하고, 후속 프롬프트는 특정 영역을 자세히 조사하거나, 설명을 요청하거나, 새로운 각도를 통합하는 데 사용되어 연구 프로세스를 매우 적응적으로 만들 수 있다.</p>
+            </div>
+        </div>
         <div id="templates" class="content-section space-y-6">
             <h2 class="text-3xl font-bold text-sky-700">IV. Gemini Deep Research를 위한 실용적인 프롬프트 템플릿</h2>
             <p class="text-lg text-stone-600">이 섹션에서는 앞서 설명한 원칙들을 바탕으로, 다양한 사용 사례에 바로 적용할 수 있는 구체적이고 상세한 프롬프트 템플릿 예시들을 제공합니다. 이 템플릿들은 사용자가 Deep Research를 시작하는 데 강력한 출발점을 제공할 것입니다.</p>
@@ -498,6 +587,461 @@ sidebar:
                             <tr class="border-b">
                                 <td class="py-3 px-4">반론 유도</td>
                                 <td class="py-3 px-4">모델이 지배적인 견해에 대한 비판, 한계 또는 대안적 관점을 적극적으로 찾도록 지시합니다.</td>
+                                <td class="py-3 px-4">Deep Research가 지지 정보뿐만 아니라 반대 의견, 비판 및 한계에 대한 증거도 적극적으로 찾도록 안내합니다.</td>
+                                <td class="py-3 px-4">`주요 주장 외에도, X와 관련된 일반적인 비판, 한계 및 미해결 질문에 대한 섹션을 적극적으로 검색하고 포함시키시오.`</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">가설 생성</td>
+                                <td class="py-3 px-4">모델이 기존 정보를 바탕으로 새로운 가설이나 아이디어를 창출하도록 요청합니다.</td>
+                                <td class="py-3 px-4">Deep Research가 다양한 정보를 수집한 후, 잠재적인 연결고리나 새로운 응용 분야에 대한 가설을 생성하도록 지시합니다.</td>
+                                <td class="py-3 px-4">`수집된 정보를 바탕으로 X와 Y 사이에 잠재적으로 탐색되지 않은 연결고리는 무엇인가? 3-5가지 새로운 가설을 제안하시오.`</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">멀티스텝 추론 (Multi-step Reasoning)</td>
+                                <td class="py-3 px-4">복잡한 문제를 여러 단계로 나누어 체계적으로 분석하도록 안내합니다.</td>
+                                <td class="py-3 px-4">Deep Research의 추론 단계에서 복잡한 분석을 단계별로 수행하고, 각 단계의 논리를 보고서에 명시하도록 지시합니다.</td>
+                                <td class="py-3 px-4">`Y에 대한 X의 영향을 분석할 때, 단계별 논리를 사용하여 결론을 도출하고 보고서에 명시하십시오.`</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">출처 다양성 요구</td>
+                                <td class="py-3 px-4">다양한 관점과 출처 유형을 포함하도록 명시적으로 요청합니다.</td>
+                                <td class="py-3 px-4">Deep Research가 학술 논문, 업계 보고서, 뉴스 기사, 정부 문서 등 다양한 출처에서 정보를 수집하도록 안내합니다.</td>
+                                <td class="py-3 px-4">`학술 논문, 업계 분석, 정부 보고서, 그리고 실무자 관점을 모두 포함하여 균형 잡힌 분석을 제공하십시오.`</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4">시나리오 분석</td>
+                                <td class="py-3 px-4">여러 가능한 시나리오나 결과를 탐색하고 각각의 가능성을 평가하도록 요청합니다.</td>
+                                <td class="py-3 px-4">Deep Research가 다양한 미래 시나리오를 고려하고 각각의 가능성과 영향을 분석하도록 지시합니다.</td>
+                                <td class="py-3 px-4">`X의 발전에 대한 3가지 시나리오(낙관적, 현실적, 비관적)를 제시하고 각각의 가능성과 영향을 분석하십시오.`</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="advanced" class="content-section space-y-6">
+            <h2 class="text-3xl font-bold text-sky-700">V. Gemini Deep Research를 위한 고급 프롬프트 기법</h2>
+            <p class="text-lg text-stone-600">이 섹션에서는 Deep Research의 잠재력을 극대화하기 위한 고급 프롬프트 기법들을 다룹니다. 구조화된 쿼리 작성법, 유도된 연쇄적 사고(Chain-of-Thought), 반론 유도, 가설 생성 등을 통해 더욱 깊이 있고 통찰력 있는 연구 결과를 얻을 수 있습니다.</p>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">A. 구조화된 쿼리 및 멀티스텝 추론을 위한 프롬프트</h3>
+                <p>프롬프트를 구조화하면 Deep Research가 더 체계적으로 조사를 수행할 수 있다. 복잡한 연구 질문을 하위 구성 요소로 분해하고, 각 부분에 대한 구체적인 지침을 제공함으로써 최종 보고서의 품질과 포괄성을 크게 향상시킬 수 있다. 멀티스텝 추론은 AI가 단계별로 논리를 전개하도록 안내하여 더욱 신뢰할 수 있고 투명한 분석을 가능하게 한다.</p>
+                <p class="mt-2">구조화된 접근 방식은 Deep Research의 네 단계(계획, 검색, 추론, 보고) 각각에 명확한 방향성을 제공한다. 사용자는 연구를 논리적 단위로 분할하고, 각 단위에 대한 구체적인 목표와 방법론을 명시할 수 있다. 이러한 접근법은 특히 복잡하고 다면적인 주제를 다룰 때 매우 효과적이다.</p>
+                <div class="code-block mt-4">
+                    <button class="copy-button" onclick="copyToClipboard(this.nextElementSibling.innerText)">복사</button>
+                    <pre><code class="language-text">"[인공지능이 의료 진단에 미치는 영향]에 대한 Deep Research를 수행해주십시오. 다음 구조화된 접근 방식을 따라주십시오:
+
+1단계: 현황 분석
+- AI 진단 기술의 현재 발전 수준과 주요 응용 분야를 조사하십시오.
+- 현재 임상에서 사용되고 있는 AI 진단 도구들의 구체적인 사례를 제시하십시오.
+
+2단계: 효과성 평가
+- AI 진단의 정확도, 속도, 비용 효율성을 기존 방법과 비교 분석하십시오.
+- 임상 시험 결과와 실제 병원에서의 성과 데이터를 포함하십시오.
+
+3단계: 도전과제 및 한계 분석
+- 현재 AI 진단 기술의 주요 제약사항과 해결해야 할 과제들을 식별하십시오.
+- 윤리적, 법적, 기술적 문제점들을 구체적으로 다루십시오.
+
+4단계: 미래 전망 및 권장사항
+- 향후 5-10년간의 발전 방향을 예측하고, 이를 위한 구체적인 권장사항을 제시하십시오.
+
+각 단계에서 도출된 결론이 다음 단계의 분석에 어떻게 연결되는지 명시해주십시오."</code></pre>
+                </div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">B. 유도된 연쇄적 사고(Chain-of-Thought) 기법 적용</h3>
+                <p>연쇄적 사고(Chain-of-Thought) 기법은 AI가 결론에 도달하는 과정을 단계별로 명시하도록 하는 강력한 프롬프트 전략이다. Deep Research에서 이 기법을 활용하면, 복잡한 분석과 추론 과정을 투명하게 만들고, 각 단계의 논리적 근거를 명확히 제시할 수 있다.</p>
+                <p class="mt-2">이 기법은 특히 인과관계 분석, 비교 연구, 예측 분석 등에서 매우 유용하다. Deep Research가 단순히 정보를 수집하고 나열하는 것을 넘어서, 수집된 정보들 간의 논리적 연결고리를 명확히 설명하도록 안내할 수 있다.</p>
+                <div class="code-block mt-4">
+                    <button class="copy-button" onclick="copyToClipboard(this.nextElementSibling.innerText)">복사</button>
+                    <pre><code class="language-text">"Deep Research 작업: [신기술, 예: '상용 트럭용 수소 연료 전지']의 실행 가능성을 평가해주십시오. 경제적 실행 가능성 분석 시, 단계별 추론 접근 방식을 채택해주십시오:
+
+1. 이 기술의 현재 주요 비용 동인을 식별합니다.
+2. 향후 10년간 예상되는 비용 절감을 조사하고, 이러한 예측의 출처를 인용합니다.
+3. 이러한 비용을 현재 및 예상되는 기존 기술(예: 디젤, 배터리 전기)의 비용과 비교합니다.
+4. 인프라 요구 사항 및 관련 비용을 분석합니다.
+5. 최종 보고서에서 각 단계가 결론에 어떻게 기여하는지 명확하게 설명하면서 경제적 실행 가능성에 대한 전반적인 평가로 마무리합니다."</code></pre>
+                </div>
+            </div>
+             <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">C. 반론 유도 및 연구 격차/맹점 파악을 위한 프롬프트 사용</h3>
+                <p>프롬프트는 LLM에게 반론을 제공하고, 추론을 테스트하며, 대안적인 관점을 제시하고, 숨겨진 가정을 식별하도록 요청할 수 있다. 프롬프트는 AI에게 확증 편향이나 확인되지 않은 가정을 "직접 지적하라"고 지시할 수 있다. "시스템 2 주의(S2A)" 프롬프트 방식은 모델이 관련 없는 컨텍스트를 제외하도록 프롬프트를 재생성하여 관련 정보에 집중하도록 돕는데, 이는 초기 프레이밍이 노이즈로 인해 맹점을 가졌는지 간접적으로 식별하는 데 도움이 될 수 있다. LLM은 자신의 불일치나 지식 격차에 대한 자각이 부족한 "알려지지 않은 미지수"를 보일 수 있으며, 프롬프트는 이러한 영역을 탐색하도록 설계될 수 있다.</p>
+                <p class="mt-2">Deep Research는 단순히 지지 정보를 찾는 것뿐만 아니라, 특정 주제와 관련된 반대 의견, 비판 또는 한계의 증거를 적극적으로 찾아내도록 명시적으로 지시받을 수 있다. 이를 통해 연구 결과물이 더욱 균형 잡히고 견고해진다. 프롬프트는 반론을 유도하고 가정을 식별할 수 있으며, LLM에는 "알려지지 않은 미지수"가 있다. Deep Research는 별도의 지침이 없다면 초기 가설이나 일반적인 견해를 확인하는 정보를 주로 찾아 웹에 존재하는 편향을 반영할 수 있다. Deep Research에게 반론, 한계 및 식별된 연구 격차를 구체적으로 검색하고 포함하도록 지시함으로써 사용자는 보다 비판적이고 포괄적인 조사를 보장할 수 있다. 프롬프트에는 다음과 같은 문구를 포함해야 한다: "X에 대한 주요 주장 외에도, X와 관련된 일반적인 비판, 한계 및 미해결 질문에 대한 섹션을 적극적으로 검색하고 포함시키시오. 문헌에서 언급된 중요한 연구 격차를 식별하시오."</p>
+                 <div class="code-block mt-4">
+                    <button class="copy-button" onclick="copyToClipboard(this.nextElementSibling.innerText)">복사</button>
+                    <pre><code class="language-text">"[UBI (기본소득)는 빈곤을 해결하는 효과적인 방법이다]라는 명제에 대한 Deep Research를 수행해주십시오. 보고서는 지지 주장과 증거를 철저히 조사해야 합니다. 결정적으로, 다음 사항에 대한 중요한 섹션도 할애해야 합니다:
+
+6.  UBI에 대한 주요 반론과 비판을 식별하고 상세히 기술하며, 이러한 우려를 제기하는 경제학자나 연구를 인용합니다.
+7.  UBI 시행의 잠재적인 의도하지 않은 부정적 결과 또는 실제적인 어려움을 분석합니다.
+8.  UBI의 잠재적 영향에 대한 현재 이해에서 인정된 맹점, 미해결 질문 또는 중요한 연구 격차를 강조합니다.
+
+목표는 여러 관점에서 명제를 비판적으로 평가하는 균형 잡힌 보고서입니다."</code></pre>
+                </div>
+             <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">D. Deep Research 내 가설 생성 및 탐색을 위한 프롬프트</h3>
+                <p>LLM은 주어진 컨텍스트를 기반으로 가설을 생성하도록 프롬프트될 수 있다. "지식 기반 아이디어 체인(KG-CoI)" 및 "개념 혼합(MoC)"과 같은 기술은 지식을 통합하고 아이디어를 다양화하여 가설 생성을 개선하는 것을 목표로 한다. 이러한 특정 프레임워크의 기본 원리는 Deep Research 프롬프트에 정보를 제공할 수 있다. 직접 프롬프트는 LLM에게 잠재적인 설명이나 예측을 제안하도록 요청할 수 있으며, 적대적 프롬프트는 모델을 비전통적인 관점에 노출시켜 다양한 가설을 생성하도록 할 수 있다.</p>
+                <p class="mt-2">Deep Research는 기존 정보를 찾는 것뿐만 아니라, *새로운* 가설을 생성하거나 새로운 연결고리를 식별하는 데 도움이 되는 방식으로 정보를 종합하는 데 사용될 수 있다. 프롬프트는 Deep Research가 다양한 정보 집합을 수집하도록 안내한 다음, 잠재적인 연결고리나 명시되지 않은 함의에 대해 추측하도록 요청할 수 있다. LLM은 가설을 생성할 수 있으며, Deep Research는 여러 출처의 정보를 종합한다. Deep Research에게 서로 다르지만 잠재적으로 관련된 분야의 정보를 수집하거나 이상 징후 및 특이점을 찾도록 지시함으로써, 결과 보고서는 사용자(또는 후속 프롬프트의 LLM)가 새로운 가설을 세우는 기초 역할을 할 수 있다. Deep Research 보고서 자체가 새로운 통찰력을 얻을 수 있는 선별된 데이터 세트가 된다. 프롬프트는 "수집된 정보를 바탕으로 X와 Y 사이에 잠재적으로 탐색되지 않은 연결고리는 무엇인가?"라고 질문함으로써 이를 준비할 수 있다. 사용자는 가설 생성을 명시적으로 지원하도록 Deep Research 프롬프트를 설계할 수 있다. 예를 들어, "Deep Research를 수행하여 [주제 A, 예: \'생분해성 폴리머의 발전\'] 및 [주제 B, 예: \'만성 상처 치료\']에 대해 조사하시오. 결과를 종합하고, 보고서의 별도 섹션에서 주제 A가 주제 B의 과제를 해결할 수 있는 3-5가지 새로운 가설을 제안하시오. 각 가설에 대해, 발견된 지지 정보를 간략하게 설명하시오."}</p>
+                <div class="code-block mt-4">
+                    <button class="copy-button" onclick="copyToClipboard(this.nextElementSibling.innerText)">복사</button>
+                    <pre><code class="language-text">"Deep Research를 시작하여 [기술/개념 X, 예: '양자 센서 기술']의 [도메인 Y, 예: '초기 질병 탐지'] 분야에서의 잠재적인 새로운 응용 분야를 탐색해주십시오.
+
+연구는 다음을 포함해야 합니다:
+1.  기술 X의 현재 기능과 한계에 대한 포괄적인 개요를 제공합니다.
+2.  탐지/진단과 관련된 도메인 Y의 주요 미충족 요구 사항과 과제를 요약합니다.
+3.  (1)과 (2)에서 종합된 정보를 바탕으로, 보고서의 한 섹션에서 기술 X가 도메인 Y의 특정 과제를 해결하는 데 어떻게 적용될 수 있는지에 대한 최소 세 가지 새롭고 그럴듯한 가설을 생성합니다. 각 가설에 대해, 추론 과정을 설명하고 이를 검증하기 위해 어떤 추가 연구가 필요한지 명시합니다."</code></pre>
+                </div>
+            </div>
+        </div>
+        <div id="optimization" class="content-section space-y-6">
+            <h2 class="text-3xl font-bold text-sky-700">VI. 최적화 및 안전장치</h2>
+            <p class="text-lg text-stone-600">Deep Research를 효과적으로 활용하기 위해서는 프롬프트의 품질을 지속적으로 개선하고, 잠재적인 편향이나 한계를 인식하여 대응하는 것이 중요합니다. 이 섹션에서는 반복적 개선 방법, 품질 검증 기법, 그리고 AI 연구의 한계를 이해하고 보완하는 방법을 다룹니다.</p>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">A. 프롬프트 품질 평가 및 반복적 개선</h3>
+                <p>효과적인 Deep Research를 위해서는 프롬프트의 품질을 객관적으로 평가하고 지속적으로 개선해야 합니다. 명확성, 구체성, 포괄성, 실행 가능성 등의 기준을 바탕으로 프롬프트를 검토하고, 생성된 보고서의 품질을 통해 프롬프트의 효과를 측정할 수 있습니다.</p>
+                <ul class="list-disc list-inside mt-4 space-y-2 text-stone-700">
+                    <li><strong>명확성 검증:</strong> 프롬프트의 각 요소가 명확하고 모호하지 않은지 확인</li>
+                    <li><strong>범위 적절성:</strong> 너무 광범위하거나 제한적이지 않은 적절한 연구 범위 설정</li>
+                    <li><strong>구조화 정도:</strong> 연구 목표와 방법론이 체계적으로 구성되었는지 평가</li>
+                    <li><strong>결과 검토:</strong> 생성된 보고서가 기대한 깊이와 품질을 만족하는지 분석</li>
+                    <li><strong>반복적 개선:</strong> 미흡한 부분을 식별하고 프롬프트를 단계적으로 개선</li>
+                </ul>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">B. 편향 인식 및 다양한 관점 확보</h3>
+                <p>AI 연구는 훈련 데이터의 편향, 검색 알고리즘의 한계, 그리고 웹상 정보의 불균형을 반영할 수 있습니다. 이러한 한계를 인식하고 보완하기 위한 전략적 접근이 필요합니다.</p>
+                <div class="mt-4 p-4 bg-amber-50 border-l-4 border-amber-400 rounded">
+                    <h4 class="font-semibold mb-2 text-amber-800">편향 최소화 전략</h4>
+                    <ul class="list-disc list-inside space-y-1 text-stone-700">
+                        <li>다양한 출처 유형 명시적 요청 (학술, 산업, 정부, 언론 등)</li>
+                        <li>반대 의견과 비판적 관점 적극적 탐색</li>
+                        <li>지역적, 문화적 다양성을 고려한 정보 수집</li>
+                        <li>최신 정보와 역사적 맥락의 균형적 포함</li>
+                        <li>정량적 데이터와 정성적 분석의 결합</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">C. 신뢰성 검증 및 사실 확인 방법</h3>
+                <p>Deep Research 결과의 신뢰성을 확보하기 위해서는 체계적인 검증 과정이 필요합니다. 출처의 권위성, 정보의 최신성, 데이터의 일관성 등을 다각도로 검토해야 합니다.</p>
+                <div class="grid md:grid-cols-2 gap-4 mt-4">
+                    <div class="p-4 bg-sky-50 rounded-lg">
+                        <h4 class="font-semibold text-sky-800 mb-2">출처 검증</h4>
+                        <ul class="text-sm text-stone-700 space-y-1">
+                            <li>• 학술적 권위성 확인</li>
+                            <li>• 출판 일자 및 최신성 검토</li>
+                            <li>• 저자의 전문성 및 소속 확인</li>
+                            <li>• 동료 검토(peer review) 여부</li>
+                        </ul>
+                    </div>
+                    <div class="p-4 bg-green-50 rounded-lg">
+                        <h4 class="font-semibold text-green-800 mb-2">교차 검증</h4>
+                        <ul class="text-sm text-stone-700 space-y-1">
+                            <li>• 다중 출처를 통한 사실 확인</li>
+                            <li>• 상충하는 정보의 원인 분석</li>
+                            <li>• 통계 데이터의 출처 및 방법론 검토</li>
+                            <li>• 전문가 의견의 다양성 확보</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="conclusion" class="content-section space-y-6">
+            <h2 class="text-3xl font-bold text-sky-700">VII. 결론 및 향후 전망</h2>
+            <p class="text-lg text-stone-600">Gemini Deep Research는 복잡한 연구 작업을 자동화하고 심화시킬 수 있는 강력한 도구입니다. 효과적인 프롬프트 엔지니어링을 통해 이 기술의 잠재력을 최대한 활용할 수 있으며, 연구의 품질과 효율성을 크게 향상시킬 수 있습니다.</p>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">A. 핵심 원칙 요약</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold text-stone-800 mb-3">프롬프트 설계 핵심 요소</h4>
+                        <ul class="list-disc list-inside space-y-2 text-stone-700">
+                            <li>명확하고 구체적인 연구 목표 설정</li>
+                            <li>적절한 범위와 경계 정의</li>
+                            <li>풍부한 컨텍스트 정보 제공</li>
+                            <li>원하는 출력 형식과 구조 명시</li>
+                            <li>다양한 관점과 비판적 분석 요청</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-stone-800 mb-3">고급 기법 활용</h4>
+                        <ul class="list-disc list-inside space-y-2 text-stone-700">
+                            <li>구조화된 쿼리와 멀티스텝 추론</li>
+                            <li>연쇄적 사고(Chain-of-Thought) 기법</li>
+                            <li>반론 유도와 편향 최소화</li>
+                            <li>가설 생성과 혁신적 연결고리 탐색</li>
+                            <li>시나리오 분석과 미래 전망</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">B. 실무 적용을 위한 권장사항</h3>
+                <div class="space-y-4">
+                    <div class="p-4 border-l-4 border-blue-400 bg-blue-50 rounded">
+                        <h4 class="font-semibold text-blue-800">시작 단계</h4>
+                        <p class="text-blue-700 mt-1">간단한 연구 주제부터 시작하여 프롬프트 작성법에 익숙해진 후, 점진적으로 복잡한 프로젝트로 확장하세요.</p>
+                    </div>
+                    <div class="p-4 border-l-4 border-green-400 bg-green-50 rounded">
+                        <h4 class="font-semibold text-green-800">지속적 개선</h4>
+                        <p class="text-green-700 mt-1">각 연구 결과를 검토하고 프롬프트의 효과성을 평가하여 다음 프로젝트에 반영하세요.</p>
+                    </div>
+                    <div class="p-4 border-l-4 border-purple-400 bg-purple-50 rounded">
+                        <h4 class="font-semibold text-purple-800">협업적 활용</h4>
+                        <p class="text-purple-700 mt-1">팀원들과 프롬프트 템플릿을 공유하고, 각자의 경험을 바탕으로 베스트 프랙티스를 발전시키세요.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow">
+                <h3 class="text-2xl font-semibold text-sky-600 mb-3">C. 미래 전망과 기술 발전 방향</h3>
+                <p class="leading-relaxed">AI 기반 연구 도구들은 지속적으로 발전하고 있으며, 향후 더욱 정교하고 특화된 기능들이 추가될 것으로 예상됩니다. 멀티모달 입력 지원, 실시간 협업 기능, 더욱 정밀한 출처 검증 시스템 등이 도입될 가능성이 높습니다.</p>
+                <p class="mt-3 leading-relaxed">이러한 기술 발전과 함께 프롬프트 엔지니어링 기법도 계속 진화할 것이며, 연구자들은 새로운 도구와 방법론에 적응하면서 더욱 효과적인 연구 수행 방법을 개발해야 할 것입니다.</p>
+                <div class="mt-6 p-4 bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg border border-sky-200">
+                    <p class="text-center text-sky-800 font-medium">
+                        🚀 효과적인 프롬프트 엔지니어링을 통해 Deep Research의 무한한 가능성을 탐험해보세요!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const navButtons = document.querySelectorAll('[data-section]');
+        const contentSections = document.querySelectorAll('.content-section');
+        const menuToggle = document.getElementById('menuToggle');
+        const navMenu = document.getElementById('navMenu');
+        const templateSelector = document.getElementById('templateSelector');
+        const templateDisplay = document.getElementById('templateDisplay');
+
+        // Navigation functionality
+        navButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const sectionId = this.getAttribute('data-section');
+                showSection(sectionId);
+                updateActiveNav(sectionId);
+                
+                // Hide mobile menu after selection
+                if (window.innerWidth < 768) {
+                    navMenu.classList.add('hidden');
+                    navMenu.classList.remove('block');
+                }
+            });
+        });
+
+        function showSection(sectionId) {
+            // Hide all sections
+            contentSections.forEach(section => {
+                section.classList.remove('active');
+                section.style.display = 'none';
+            });
+            
+            // Show the selected section
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.style.display = 'block';
+                targetSection.classList.add('active', 'animate-fade-in');
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function updateActiveNav(sectionId) {
+            navButtons.forEach(button => {
+                const buttonSectionId = button.getAttribute('data-section');
+                if (buttonSectionId === sectionId) {
+                    button.classList.remove('bg-stone-100', 'text-stone-600');
+                    button.classList.add('bg-sky-600', 'text-white');
+                } else {
+                    button.classList.remove('bg-sky-600', 'text-white');
+                    button.classList.add('bg-stone-100', 'text-stone-600');
+                }
+            });
+        }
+
+        // Mobile menu toggle
+        if (menuToggle && navMenu) {
+            menuToggle.addEventListener('click', () => {
+                navMenu.classList.toggle('hidden');
+                navMenu.classList.toggle('block');
+            });
+        }
+
+        // Copy to clipboard function
+        window.copyToClipboard = function(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showNotification('복사 완료!', 'success');
+                }).catch(function(err) {
+                    console.error('클립보드 복사 실패:', err);
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text);
+            }
+        };
+
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showNotification('복사 완료!', 'success');
+            } catch (err) {
+                console.error('클립보드 복사 실패:', err);
+                showNotification('복사 실패', 'error');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.className = `fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 transition-opacity duration-300 ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 2000);
+        }
+
+        // Template functionality
+        const promptTemplates = {
+            general: {
+                title: "A. 일반 목적 Deep Research 시작 프롬프트",
+                description: "프롬프트는 간단하게 시작하고 사용자는 언제든지 계획을 조정할 수 있다. \"최종 목표를 간단히 표현하면... Deep Research가 알아서 처리할 수 있다\". 일반적인 프롬프트는 다음과 같다: \"제가 [XXX]를 빠르고, 포괄적이며, 심도 있게 이해할 수 있도록 심층 연구를 수행하는 데 도움을 주십시오\".",
+                examples: [
+                    {
+                        id: "general_ex1",
+                        text: `"주제 [광범위한 주제]에 대한 Deep Research 보고서 작성을 시작합니다. 주요 측면, 최근 개발 동향 및 향후 전망을 포괄하는 종합적인 개요가 필요합니다. 보고서는 서론, [측면 1], [측면 2], [측면 3]을 논의하는 본론 섹션, 그리고 결론으로 구성되어야 합니다. 지난 [기간, 예: 3년] 동안의 정보에 초점을 맞춰주십시오."`
+                    },
+                    {
+                        id: "general_ex2",
+                        text: `"[특정 질문 또는 문제]에 대한 Deep Research 조사를 수행합니다. 저의 목표는 [주요 목표, 예: 주요 동인, 다양한 해결책, 역사적 맥락]을 이해하는 것입니다. [하위 질문 1], [하위 질문 2]를 다루는 연구 계획을 생성한 후 상세한 보고서를 작성해주십시오."`
+                    }
+                ]
+            },
+            understanding: {
+                title: "B. 사용 사례: 포괄적인 주제 이해 및 설명",
+                description: "Deep Research는 \"주요 개념을 비교 대조하고, 아이디어 간의 관계를 파악하며, 기본 원리를 설명함으로써 주제를 깊이 탐구\"할 수 있다. 예를 들어, \"[복잡한 주제]를 10살 아이에게 설명하듯이 설명해 줘\"와 같은 프롬프트는 일반 Gemini용이지만 Deep Research의 깊이에 맞게 조정할 수 있다.",
+                examples: [
+                    {
+                        id: "understanding_ex1",
+                        text: `"다각적인 개념인 [복잡한 주제, 예: '비물리학자를 위한 양자 얽힘']을 설명하는 심층 보고서를 생성해주십시오. 보고서는 다음을 포함해야 합니다: 1. 접근 가능한 용어로 개념을 정의합니다. 2. 역사적 발전 과정과 주요 실험/발견을 설명합니다. 3. [관련 분야, 예: 양자 컴퓨팅, 보안 통신]에서의 현재 응용 프로그램과 중요성을 상세히 설명합니다. 4. 일반적인 오해를 논의하고 복잡한 수학적 기초를 개념적으로 단순화합니다. 5. 향후 연구 방향과 잠재적인 혁신을 간략하게 설명합니다. 교육받은 일반인이 이해할 수 있도록 명확한 언어를 사용해주십시오."`
+                    },
+                    {
+                        id: "understanding_ex2",
+                        text: `"Deep Research 요청: [특정 주제, 예: '창조 산업에서 생성형 AI의 사회경제적 영향']에 대한 포괄적인 이해를 제공해주십시오. 이 연구는 [주요 개념 1, 예: 새로운 예술 형식의 기회]과 [주요 개념 2, 예: 지적 재산권에 대한 도전]을 비교하고 대조해야 합니다. [아이디어 A, 예: AI 기반 콘텐츠 제작]와 [아이디어 B, 예: 전통적 창작 과정] 간의 관계를 파악해주십시오. [핵심 메커니즘, 예: 생성 모델이 예술적 스타일을 학습하는 방식]의 기본 원리를 설명해주십시오. 최종 보고서는 정책 입안자와 업계 이해 관계자에게 적합해야 합니다."`
+                    }
+                ]
+            },
+            analysis: {
+                title: "C. 사용 사례: 심층 경쟁 분석",
+                description: "Deep Research는 \"신제품에 대한 경쟁사 환경, 즉 제품, 가격, 마케팅 및 고객 피드백을 포함하여 이해\"할 수 있다.",
+                examples: [
+                    {
+                        id: "analysis_ex1",
+                        text: `"[우리 회사/제품]을 위한 [산업/틈새 시장, 예: '지속 가능한 포장 솔루션'] 시장에서의 Deep Research 경쟁 분석을 수행해주십시오. 지난 [기간, 예: 2년] 동안 [지리적 지역, 예: '유럽 연합']에 초점을 맞춰주십시오. 상위 3-5개 주요 경쟁사인 [경쟁사 A], [경쟁사 B], [경쟁사 C]를 식별하고 분석해주십시오. 보고서에는 다음 내용이 상세히 포함되어야 합니다: 1. 각 경쟁사의 제품/서비스 제공 내용, 주요 기능 및 가격 책정 전략. 2. 마케팅 접근 방식, 대상 고객 및 고객 피드백(공개 출처를 통해 확인 가능한 경우). 3. 강점, 약점, 시장 점유율(추정 가능한 경우) 및 최근 전략적 움직임에 대한 평가. 4. 이 분석을 기반으로 한 [우리 회사/제품]의 시장 기회 및 위협 식별. 5. [우리 회사/제품]의 경쟁 포지셔닝을 강화하기 위한 전략적 권장 사항."`
+                    }
+                ]
+            },
+            due_diligence: {
+                title: "D. 사용 사례: 실사 및 회사/법인 프로파일링",
+                description: "Deep Research는 \"잠재적인 영업 리드 조사, 회사 제품, 자금 조달 내역, 팀 및 경쟁 환경 분석\"을 수행할 수 있다.",
+                examples: [
+                    {
+                        id: "due_diligence_ex1",
+                        text: `"[회사 이름]에 대한 Deep Research 실사 조사를 수행해주십시오. 연구는 다음에 초점을 맞춰야 합니다: 1. 회사 개요: 연혁, 사명, 리더십 팀 및 주요 인력(공개적으로 확인 가능한 경우). 2. 제품/서비스: 상세 제공 내용, 대상 시장 및 알려진 기술 인프라. 3. 재무 건전성(공개 데이터/보고서 기준): 자금 조달 내역, 투자자, 보고된 수익 또는 성장 지표 및 모든 M&A 활동. 4. 시장 지위: 인지된 강점과 약점, 주요 경쟁사 및 업계 평판(뉴스 기사, 리뷰, 업계 분석에서 수집). 5. 최근 뉴스 및 개발 동향: 지난 [기간, 예: 18개월] 동안의 중요한 발표, 파트너십 또는 과제. 보고서는 이러한 결과를 잠재적인 파트너십 평가에 적합한 포괄적인 프로필로 종합해야 합니다."`
+                    }
+                ]
+            },
+            comparison: {
+                title: "E. 사용 사례: 상세 제품/서비스 비교",
+                description: "Deep Research는 \"기능, 성능, 가격 및 고객 리뷰를 기반으로 다양한 가전제품 모델을 평가\"할 수 있다.",
+                examples: [
+                    {
+                        id: "comparison_ex1",
+                        text: `"다음 세 가지 [제품 카테고리, 예: '프로젝트 관리 소프트웨어']: [제품 A], [제품 B], [제품 C]를 비교하는 Deep Research 보고서를 생성해주십시오. 비교는 다음 기준을 기반으로 해야 합니다: 1. 핵심 기능 및 기능성(작업 추적, 협업 도구, 보고와 같은 특정 기능 상세 설명). 2. 가격 등급 및 가성비(소규모, 중규모 및 대규모 팀 대상). 3. 사용자 인터페이스 및 사용 편의성(사용 가능한 리뷰 및 튜토리얼 기준). 4. 통합 기능(기타 일반적인 비즈니스 도구와의 통합). 5. 고객 지원 및 커뮤니티 피드백. 6. 확장성 및 다양한 비즈니스 규모에 대한 적합성. 결과를 구조화된 형식으로 제시하되, 이상적으로는 요약 비교표와 함께 각 기준에 대한 상세 분석을 제시해주십시오."`
+                    }
+                ]
+            },
+            synthesis: {
+                title: "F. 사용 사례: 보고서 및 요약을 위한 정보 종합",
+                description: "Deep Research는 \"더 자세한 내용과 통찰력을 담은 포괄적인 맞춤형 연구 보고서\"를 제공한다.",
+                examples: [
+                    {
+                        id: "synthesis_ex1",
+                        text: `"Deep Research를 수행하여 [복잡한 주제, 예: '해양 생태계에 대한 미세 플라스틱 오염의 전 세계적 영향']에 대한 보고서를 위한 정보를 종합해주십시오. 연구는 지난 [기간, 예: 5년] 이내에 발표된 과학 저널, 평판이 좋은 환경 단체 및 정부 보고서에서 데이터를 수집해야 합니다. 종합된 보고서에는 다음 내용이 포함되어야 합니다: 1. 미세 플라스틱 오염의 주요 원인 및 유형. 2. 다양한 해양 생물 및 먹이 사슬에 대한 문서화된 영향. 3. 현재 및 제안된 완화 전략과 그 효과. 4. 주요 연구 격차 및 향후 연구 우선 순위. 최종 결과물은 명확한 섹션과 인용된 출처(가능하면 APA 스타일)를 포함하는 약 [단어 수, 예: 1500단어]의 잘 구조화된 요약 보고서여야 합니다."`
+                    }
+                ]
+            }
+        };
+
+        if (templateSelector && templateDisplay) {
+            function displayTemplate(templateKey) {
+                const templateData = promptTemplates[templateKey];
+                if (!templateData) return;
+
+                let html = `<div class="p-6 bg-white rounded-lg shadow">`;
+                html += `<h3 class="text-2xl font-semibold text-sky-600 mb-2">${templateData.title}</h3>`;
+                html += `<p class="text-stone-600 mb-4">${templateData.description}</p>`;
+                
+                templateData.examples.forEach((example, index) => {
+                    html += `<h4 class="text-xl font-medium text-stone-700 mt-6 mb-2">템플릿 예시 ${index + 1}:</h4>`;
+                    html += `<div class="relative">
+                                <button class="absolute top-2 right-2 bg-sky-500 text-white px-3 py-1 rounded text-sm hover:bg-sky-600 transition-colors" onclick="copyToClipboard(this.parentElement.querySelector('pre').innerText)">복사</button>
+                                <pre class="bg-stone-50 p-4 rounded border overflow-x-auto text-sm leading-relaxed"><code>${example.text}</code></pre>
+                             </div>`;
+                });
+                html += `</div>`;
+                templateDisplay.innerHTML = html;
+            }
+
+            templateSelector.addEventListener('change', (event) => {
+                displayTemplate(event.target.value);
+            });
+
+            // Display initial template
+            displayTemplate(templateSelector.value);
+        }
+
+        // Show intro section by default
+        showSection('intro');
+        updateActiveNav('intro');
+
+        // Handle hash changes for direct linking
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.substring(1);
+            if (hash && document.getElementById(hash)) {
+                showSection(hash);
+                updateActiveNav(hash);
+            }
+        });
+
+        // Handle initial hash if present
+        const initialHash = window.location.hash.substring(1);
+        if (initialHash && document.getElementById(initialHash)) {
+            showSection(initialHash);
+            updateActiveNav(initialHash);
+        }
+    });
+</script>
                                 <td class="py-3 px-4">Deep Research가 단순히 지지 정보뿐만 아니라 반대 의견, 비판, 연구 격차를 찾아 균형 잡힌 결과물을 생성하도록 합니다.</td>
                                 <td class="py-3 px-4">`주요 주장 외에도, [주제]에 대한 일반적인 비판, 한계 및 미해결 질문을 포함시키십시오.`</td>
                             </tr>
