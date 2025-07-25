@@ -1,16 +1,20 @@
 ---
-title: "Essential Vocabulary"
+author_profile: true
 categories:
-  - Dev
-  - English Study
-  - Computer Science
-tags:
-  - computer vision
-  - vocabulary
-  - technical terms
-  - AI
-  - machine learning
+- Resources
+- Study-Notes
+excerpt: <div id="study-section">...
 last_modified_at: 2024-03-17
+layout: single
+tag:
+- study-notes
+- vocabulary
+- technical-terms
+- computer-vision
+- artificial-intelligence
+title: Essential Vocabulary
+toc: true
+toc_label: 목차
 ---
 
 <div id="study-section">

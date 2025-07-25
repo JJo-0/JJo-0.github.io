@@ -1,12 +1,17 @@
 ---
-layout: single
-title: "Gemini Deep Research 여행 프롬프트 엔지니어링 가이드"
-categories: [DeepSearch, Gemini, AI, Areal]
-tag: [DeepSearch, Gemini, AI]
-toc: true
 author_profile: false
+categories:
+- Projects
+- Computer-Vision
+excerpt: '{% include tailwind_cdn.html %}...'
+layout: single
 sidebar:
-    nav: "docs"
+  nav: docs
+tag:
+- artificial-intelligence
+title: Gemini Deep Research 여행 프롬프트 엔지니어링 가이드
+toc: true
+toc_label: 목차
 ---
 
 {% include tailwind_cdn.html %}

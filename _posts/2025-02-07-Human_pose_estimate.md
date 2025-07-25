@@ -1,16 +1,25 @@
 ---
-title: "[Paper research] Human pose estimate"
-date: 2025-02-07 16:19:00
+author_profile: true
 categories:
-  - 정리
-  - 논문
-  - Project
+- Projects
+- Computer-Vision
+date: 2025-02-07 16:19:00
+excerpt: '---...'
+layout: single
+tag:
+- artificial-intelligence
+- estimation
+- paper
+- ros
+- deep-learning
+- game
 tags:
-  - paper
-  - estimation
+- paper
+- estimation
+title: '[Paper research] Human pose estimate'
 toc: true
+toc_label: 페이지 주요 목차
 toc_sticky: true
-toc_label: "페이지 주요 목차"
 ---
 
 ---

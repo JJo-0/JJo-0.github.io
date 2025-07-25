@@ -1,17 +1,20 @@
 ---
-title: "Raspberry pi 5 설정"
-date: 2024-04-05 02:06:00
+author_profile: true
 categories:
-  - Dev
-  - 정리
-  - 하드웨어
-  - AMR
-tags:
-  - ubuntu
-  - raspberry pi
+- Areas
+- System-Setup
+date: 2024-04-05 02:06:00
+excerpt: <details>...
+layout: single
+tag:
+- system-setup
+- raspberry-pi
+- linux
+- ubuntu
+title: Raspberry pi 5 설정
 toc: true
+toc_label: Raspberry pi 5 설정
 toc_sticky: true
-toc_label: "Raspberry pi 5 설정"
 ---
 
 # 🍽️ Raspberry pi 5 설정   

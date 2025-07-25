@@ -1,16 +1,22 @@
 ---
-title: "[Paper Research] Human height estimation "
-date: 2024-12-26 16:58:00
+author_profile: true
 categories:
-  - 정리
-  - 논문
-  - Project
+- Projects
+- Computer-Vision
+date: 2024-12-26 16:58:00
+excerpt: '---...'
+layout: single
+tag:
+- artificial-intelligence
+- estimation
+- paper
 tags:
-  - paper
-  - estimation
+- paper
+- estimation
+title: '[Paper Research] Human height estimation '
 toc: true
+toc_label: 페이지 주요 목차
 toc_sticky: true
-toc_label: "페이지 주요 목차"
 ---
 
 # Paper Research

@@ -1,19 +1,27 @@
 ---
-title: "WHAM Model"
-classes: wide
-toc: true
-toc_sticky: true
-toc_label: "-"
-date: 2025-02-27 16:30:00
+author_profile: true
 categories:
-  - 정리
-  - Dev
-  - AI Model
+- Projects
+- Computer-Vision
+classes: wide
+date: 2025-02-27 16:30:00
+excerpt: '| 목차 | 설명 | 링크 |...'
+layout: single
+tag:
+- linux
+- wsl
+- artificial-intelligence
+- setting
+- python
 tags:
-  - setting
-  - python
-  - linux
-  - wsl
+- setting
+- python
+- linux
+- wsl
+title: WHAM Model
+toc: true
+toc_label: '-'
+toc_sticky: true
 ---
 
 ## 주제

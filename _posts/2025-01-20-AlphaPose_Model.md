@@ -1,19 +1,24 @@
 ---
-title: "AlphaPose Model"
-classes: wide
-toc: true
-toc_sticky: true
-toc_label: "-"
-date: 2025-01-20 11:15:00
+author_profile: true
 categories:
-  - 정리
-  - Project
-  - AI Model
-tags:
-  - setting
-  - python
-  - linux
-  - wsl
+- Projects
+- Computer-Vision
+classes: wide
+date: 2025-01-20 11:15:00
+excerpt: WSL 환경에서 AlphaPose 모델을 사용한 2D-3D 인간 자세 추정 프로젝트
+last_modified_at: 2025-01-20 11:15:00
+layout: single
+sidebar:
+  nav: docs
+tag:
+- opencv
+- ros
+- python
+title: AlphaPose Model
+toc: true
+toc_icon: cog
+toc_label: 목차
+toc_sticky: true
 ---
 
 ## 주제

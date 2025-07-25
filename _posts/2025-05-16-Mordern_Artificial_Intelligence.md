@@ -1,12 +1,19 @@
 ---
-layout: single
-title: "현대 인공지능"
-categories: [Study, Area]
-tag: [AI, ML, DL]
-toc: true
 author_profile: false
+categories:
+- Resources
+- Code-Analysis
+layout: single
 sidebar:
-    nav: "docs"
+  nav: docs
+tag:
+- artificial-intelligence
+- machine-learning
+- data-science
+- fundamentals
+title: 현대 인공지능
+toc: true
+toc_label: 목차
 ---
 
 ## Machine Learning의 Fundamentals
