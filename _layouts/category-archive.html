@@ -1,0 +1,137 @@
+---
+layout: single
+---
+
+<style>
+    /* PARA Category Colors from previous step */
+    :root {
+        --project-color: #3B82F6;
+        --area-color: #10B981;
+        --resource-color: #8B5CF6;
+        --archive-color: #6B7280;
+        --card-bg: #ffffff;
+        --card-border: #e5e7eb;
+        --text-main: #1f2937;
+        --text-secondary: #4b5563;
+        --tag-bg: #f3f4f6;
+        --tag-text: #374151;
+    }
+
+    .archive__subtitle {
+        font-size: 1.2rem;
+        color: var(--text-secondary);
+        margin-top: -1rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .post-card-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .post-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 1.5rem 2rem;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        border-left-width: 5px;
+    }
+
+    .post-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+
+    /* PARA Category Border Colors */
+    .post-card.projects-border { border-left-color: var(--project-color); }
+    .post-card.areas-border { border-left-color: var(--area-color); }
+    .post-card.resources-border { border-left-color: var(--resource-color); }
+    .post-card.archive-border { border-left-color: var(--archive-color); }
+
+    .post-card__title {
+        margin: 0 0 0.5rem 0;
+    }
+
+    .post-card__title a {
+        text-decoration: none;
+        color: var(--text-main);
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    .post-card__title a:hover {
+        color: var(--project-color);
+    }
+
+    .post-card__meta {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    .post-card__excerpt {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+    }
+
+    .post-card__tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .tag-pill {
+        background-color: var(--tag-bg);
+        color: var(--tag-text);
+        padding: 0.3rem 0.8rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .tag-pill:hover {
+        background-color: var(--project-color);
+        color: white;
+    }
+</style>
+
+<div class="archive">
+  <h1 id="page-title" class="page__title">{{ page.title }}</h1>
+  <p class="archive__subtitle">총 {{ page.posts | size }}개의 글이 있습니다.</p>
+  
+  <div class="post-card-list">
+    {% for post in page.posts %}
+      {% comment %}
+        `organize_categories.py` 스크립트에 의해 각 포스트의 `categories`는
+        ['PARA 상위 카테고리', '하위 카테고리'] 형태로 저장됩니다.
+        예: ['Projects', 'Computer-Vision']
+      {% endcomment %}
+      {% assign para_parent = post.categories[0] | downcase %}
+      
+      <article class="post-card {{ para_parent }}-border">
+        <h2 class="post-card__title">
+          <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+        </h2>
+        <p class="post-card__meta">
+          <span class="page__meta-date">
+            <i class="far fa-calendar-alt" aria-hidden="true"></i> {{ post.date | date: "%Y년 %m월 %d일" }}
+          </span>
+        </p>
+        {% if post.excerpt %}
+          <p class="post-card__excerpt">{{ post.excerpt | strip_html | truncatewords: 40 }}</p>
+        {% endif %}
+        <div class="post-card__tags">
+          {% for tag in post.tag %}
+            <a href="{{ site.tag_archive.path | relative_url | default: '/tags/' }}{{ tag | slugify }}/" class="tag-pill">{{ tag }}</a>
+          {% endfor %}
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</div>
