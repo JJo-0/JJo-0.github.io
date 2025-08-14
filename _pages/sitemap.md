@@ -41,6 +41,28 @@ author_profile: true
       </div>
     </div>
   </div>
+
+  <div class="posts-list">
+    <h3>📚 모든 게시물 (시간순)</h3>
+    <div class="posts-grid">
+      <!-- Jekyll liquid로 동적 생성 -->
+      {% assign posts_by_year = site.posts | group_by_exp: "post", "post.date | date: '%Y'" | sort: "name" | reverse %}
+      {% for year_group in posts_by_year %}
+      <div class="year-section">
+        <h4>{{ year_group.name }}</h4>
+        <ul class="post-list">
+          {% assign sorted_posts = year_group.items | sort: "date" | reverse %}
+          {% for post in sorted_posts %}
+          <li>
+            <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+            <span class="post-date">{{ post.date | date: "%Y-%m-%d" }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 </div>
 
 <style>
@@ -118,27 +140,231 @@ author_profile: true
 .legend-items {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #555;
 }
 
 .node-sample {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  border: 2px solid white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  border: 2px solid #333;
 }
 
-.root-node { background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); }
-.category-node { background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%); }
-.post-node { background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%); }
-.page-node { background: linear-gradient(45deg, #43e97b 0%, #38f9d7 100%); }
+.root-node {
+  background: #ff6b6b;
+  border-color: #e55a5a;
+}
+
+.category-node {
+  background: #4ecdc4;
+  border-color: #3cb3aa;
+}
+
+.post-node {
+  background: #45b7d1;
+  border-color: #3a9bc1;
+}
+
+.page-node {
+  background: #96ceb4;
+  border-color: #7fb69e;
+}
+
+/* 게시물 목록 스타일 */
+.posts-list {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  margin-top: 2rem;
+  display: block !important;
+  visibility: visible !important;
+}
+
+.posts-list h3 {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 1.5rem;
+  text-align: center;
+  border-bottom: 2px solid #007acc;
+  padding-bottom: 0.5rem;
+}
+
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.year-section {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 10px;
+  border-left: 4px solid #007acc;
+}
+
+.year-section h4 {
+  margin: 0 0 1rem 0;
+  color: #007acc;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.post-list li {
+  margin-bottom: 0.8rem;
+  padding: 0.8rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.post-list li:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  background: #f0f9ff;
+}
+
+.post-list a {
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  flex: 1;
+}
+
+.post-list a:hover {
+  color: #007acc;
+}
+
+.post-date {
+  color: #666;
+  font-size: 0.85rem;
+  background: #e9ecef;
+  padding: 0.2rem 0.6rem;
+  border-radius: 15px;
+  margin-left: 1rem;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .posts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .sitemap-container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .sitemap-container h1 {
+    font-size: 2rem;
+  }
+  
+  .controls {
+    gap: 0.5rem;
+  }
+  
+  .view-btn, .control-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  #sitemap-visualization {
+    height: 500px;
+  }
+  
+  .post-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .post-date {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+}
+
+/* 툴팁 스타일 */
+.tooltip {
+  position: absolute;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* 그래프 컨트롤 버튼 */
+.graph-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 100;
+}
+
+.zoom-btn {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #007acc;
+  border-radius: 50%;
+  background: white;
+  color: #007acc;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.zoom-btn:hover {
+  background: #007acc;
+  color: white;
+  transform: scale(1.1);
+}
+
+/* 노드 스타일 */
+.node {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  /* hover 시 크기 변화 제거하여 시뮬레이션 충돌 방지 */
+}
+
+.node:hover {
+  /* transform: scale(1.1); 제거 - 시뮬레이션과 충돌 */
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: 0.6;
+  stroke-width: 2px;
+}
 
 .tooltip {
   position: absolute;
@@ -287,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const height = 700;
   
   let currentView = 'tree';
-  let svg, simulation, nodes, links, zoom;
+  let svg, simulation, nodes, links, zoom, isDragging = false;
 
   // 카테고리별 색상 매핑 (PARA 구조)
   const categoryColors = {
@@ -509,13 +735,11 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .style('paint-order', 'stroke fill')
       .text(d => {
-        const maxLength = d.data.type === 'post' ? 25 : 30;
-        return d.data.name.length > maxLength ? 
-               d.data.name.substring(0, maxLength) + '...' : 
+        const maxLength = d.data.type === 'post' ? 20 : 25;
+        return d.data.name.length > maxLength ?
+               d.data.name.substring(0, maxLength) + '...' :
                d.data.name;
-      });
-
-    addInteractions(node);
+      });    addInteractions(node);
   }
 
   function drawGraph() {
@@ -618,7 +842,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (d.type === 'root') return 20;
         if (d.type === 'category') return 15;
         return 10;
-      }));
+      }))
+      .alphaDecay(0.05) // 더 빠른 안정화
+      .velocityDecay(0.9) // 더 빠른 속도 감소
+      .alphaMin(0.001); // 더 낮은 최소 알파값으로 빠른 정지
 
     const g = svg.append('g').attr('class', 'main-group');
 
@@ -677,13 +904,11 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .style('paint-order', 'stroke fill')
       .text(d => {
-        const maxLength = d.type === 'post' ? 15 : 20;
-        return d.name.length > maxLength ? 
-               d.name.substring(0, maxLength) + '...' : 
+        const maxLength = d.type === 'post' ? 12 : 15;
+        return d.name.length > maxLength ?
+               d.name.substring(0, maxLength) + '...' :
                d.name;
-      });
-
-    // 드래그 기능
+      });    // 드래그 기능 (클릭과 분리)
     node.call(d3.drag()
       .on('start', dragstarted)
       .on('drag', dragged)
@@ -700,12 +925,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function dragstarted(event, d) {
+      isDragging = false;
       if (!event.active) simulation.alphaTarget(0.3).restart();
       d.fx = d.x;
       d.fy = d.y;
     }
 
     function dragged(event, d) {
+      isDragging = true;
       d.fx = event.x;
       d.fy = event.y;
     }
@@ -716,6 +943,8 @@ document.addEventListener('DOMContentLoaded', function() {
         d.fx = null;
         d.fy = null;
       }
+      // 짧은 지연 후 isDragging 리셋
+      setTimeout(() => { isDragging = false; }, 100);
     }
 
     addInteractions(node);
@@ -728,6 +957,16 @@ document.addEventListener('DOMContentLoaded', function() {
       .style('opacity', 0);
 
     node.on('mouseover', (event, d) => {
+      // 그래프 뷰에서 시뮬레이션 완전 중지
+      if (currentView === 'graph' && simulation) {
+        simulation.stop();
+        // 모든 노드의 속도를 0으로 설정하여 완전히 멈춤
+        simulation.nodes().forEach(node => {
+          node.vx = 0;
+          node.vy = 0;
+        });
+      }
+      
       tooltip.transition().duration(200).style('opacity', .9);
       
       let tooltipContent = `<strong>${d.data?.name || d.name}</strong>`;
@@ -735,27 +974,32 @@ document.addEventListener('DOMContentLoaded', function() {
         tooltipContent += `<br>📅 ${d.data?.date || d.date}`;
       }
       if (d.data?.category || d.category) {
-        const categories = Array.isArray(d.data?.category || d.category) ? 
-                          (d.data?.category || d.category).join(', ') : 
+        const categories = Array.isArray(d.data?.category || d.category) ?
+                          (d.data?.category || d.category).join(', ') :
                           (d.data?.category || d.category);
         tooltipContent += `<br>🏷️ ${categories}`;
       }
-      if (d.data?.url || d.url) {
-        tooltipContent += '<br>🔗 클릭하여 이동';
-      }
+      // 클릭 안내 메시지 제거
       
       tooltip.html(tooltipContent)
         .style('left', (event.pageX + 10) + 'px')
         .style('top', (event.pageY - 28) + 'px');
     })
     .on('mouseout', () => {
+      // 마우스가 벗어나도 시뮬레이션을 다시 시작하지 않음
       tooltip.transition().duration(500).style('opacity', 0);
     })
     .on('click', (event, d) => {
-      const url = d.data?.url || d.url;
-      if (url) {
-        window.open(url, '_blank');
-      }
+      // 클릭 이동 기능 제거 - 시각적 피드백만 제공
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // 간단한 시각적 피드백 (선택적)
+      const node = event.currentTarget;
+      node.style.transform = 'scale(1.1)';
+      setTimeout(() => {
+        node.style.transform = 'scale(1)';
+      }, 200);
     });
   }
 

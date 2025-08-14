@@ -99,6 +99,66 @@ classes: wide
         font-weight: 500;
         border-bottom: 1px solid var(--card-border);
         transition: background-color 0.2s ease, color 0.2s ease;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .post-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .post-title {
+        flex: 1;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-right: 1rem;
+        /* 제목 길이 제한 */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 300px;
+    }
+    
+    .post-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+    }
+    
+    .post-tag {
+        background-color: #f3f4f6;
+        color: #6b7280;
+        padding: 0.125rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .subcategory-list li a:hover .post-tag {
+        background-color: rgba(59, 130, 246, 0.1);
+        color: var(--project-color);
+    }
+    
+    #areas .subcategory-list li a:hover .post-tag {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: var(--area-color);
+    }
+    
+    #resources .subcategory-list li a:hover .post-tag {
+        background-color: rgba(139, 92, 246, 0.1);
+        color: var(--resource-color);
+    }
+    
+    #archive .subcategory-list li a:hover .post-tag {
+        background-color: rgba(107, 114, 128, 0.1);
+        color: var(--archive-color);
     }
 
     .subcategory-list li:last-child a {
@@ -120,14 +180,36 @@ classes: wide
         transition: all 0.2s ease;
     }
 
-    .subcategory-list li a:hover .post-count {
+    .post-date {
+        background-color: #e5e7eb;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.25rem 0.6rem;
+        border-radius: 9999px;
+        transition: all 0.2s ease;
+    }
+
+    .subcategory-list li a:hover .post-count,
+    .subcategory-list li a:hover .post-date {
         background-color: var(--project-color);
         color: white;
     }
 
-    #areas .subcategory-list li a:hover .post-count { background-color: var(--area-color); }
-    #resources .subcategory-list li a:hover .post-count { background-color: var(--resource-color); }
-    #archive .subcategory-list li a:hover .post-count { background-color: var(--archive-color); }
+    #areas .subcategory-list li a:hover .post-count,
+    #areas .subcategory-list li a:hover .post-date { 
+        background-color: var(--area-color); 
+    }
+    
+    #resources .subcategory-list li a:hover .post-count,
+    #resources .subcategory-list li a:hover .post-date { 
+        background-color: var(--resource-color); 
+    }
+    
+    #archive .subcategory-list li a:hover .post-count,
+    #archive .subcategory-list li a:hover .post-date { 
+        background-color: var(--archive-color); 
+    }
 
 </style>
 
@@ -153,19 +235,40 @@ classes: wide
             </div>
             <div class="card-content">
                 <ul class="subcategory-list">
-                    {% for cat in site.categories %}
-                        {% assign cat_name = cat[0] %}
-                        {% assign cat_posts = cat[1] %}
-                        {% assign parent_category = site.data.para_mapping[cat_name][0] | default: "None" %}
-
-                        {% if parent_category == para_category %}
-                            <li>
-                                <a href="{{ site.category_archive.path | relative_url }}{{ cat_name | slugify }}/">
-                                    <span>{{ cat_name }}</span>
-                                    <span class="post-count">{{ cat_posts | size }}</span>
-                                </a>
-                            </li>
+                    {% assign category_posts = "" | split: "" %}
+                    {% for post in site.posts %}
+                        {% if post.categories contains para_category %}
+                            {% assign category_posts = category_posts | push: post %}
                         {% endif %}
+                    {% endfor %}
+                    
+                    {% assign sorted_posts = category_posts | sort: "date" | reverse %}
+                    {% for post in sorted_posts %}
+                        <li>
+                            <a href="{{ post.url | relative_url }}">
+                                <div class="post-info">
+                                    <span class="post-title" title="{{ post.title }}">
+                                        {% assign title_length = post.title | size %}
+                                        {% if title_length > 50 %}
+                                            {{ post.title | truncate: 50 }}
+                                        {% else %}
+                                            {{ post.title }}
+                                        {% endif %}
+                                    </span>
+                                    <span class="post-date">{{ post.date | date: "%Y-%m-%d" }}</span>
+                                </div>
+                                {% if post.tags and post.tags.size > 0 %}
+                                    <div class="post-tags">
+                                        {% for tag in post.tags limit: 3 %}
+                                            <span class="post-tag">#{{ tag }}</span>
+                                        {% endfor %}
+                                        {% if post.tags.size > 3 %}
+                                            <span class="post-tag">+{{ post.tags.size | minus: 3 }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </a>
+                        </li>
                     {% endfor %}
                 </ul>
             </div>
