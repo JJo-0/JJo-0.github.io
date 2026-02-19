@@ -6,14 +6,15 @@ categories:
 layout: single
 sidebar:
   nav: docs
-tag:
+title: 현대 인공지능
+toc: true
+toc_label: 목차
+
+tags:
 - artificial-intelligence
 - machine-learning
 - data-science
 - fundamentals
-title: 현대 인공지능
-toc: true
-toc_label: 목차
 ---
 
 ## Machine Learning의 Fundamentals

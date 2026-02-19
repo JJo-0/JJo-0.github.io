@@ -493,7 +493,7 @@ document.addEventListener('DOMContentLoaded', function() {
         date: "{{ post.date | date: '%Y-%m-%d' }}",
         year: "{{ post.date | date: '%Y' }}",
         categories: [{% for cat in post.categories %}"{{ cat }}"{% unless forloop.last %},{% endunless %}{% endfor %}],
-        tags: [{% for tag in post.tag %}"{{ tag }}"{% unless forloop.last %},{% endunless %}{% endfor %}]
+        tags: [{% assign post_tags = post.tags | default: post.tag %}{% for tag in post_tags %}"{{ tag }}"{% unless forloop.last %},{% endunless %}{% endfor %}]
       }{% unless forloop.last %},{% endunless %}
       {% endfor %}
     ],
@@ -1038,5 +1038,4 @@ document.addEventListener('DOMContentLoaded', function() {
   drawTree();
 });
 </script>
-
 

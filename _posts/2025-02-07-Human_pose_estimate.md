@@ -6,20 +6,17 @@ categories:
 date: 2025-02-07 16:19:00
 excerpt: '---...'
 layout: single
-tag:
-- artificial-intelligence
-- estimation
-- paper
-- ros
-- deep-learning
-- game
-tags:
-- paper
-- estimation
 title: '[Paper research] Human pose estimate'
 toc: true
 toc_label: 페이지 주요 목차
 toc_sticky: true
+
+tags:
+- artificial-intelligence
+- deep-learning
+- computer-vision
+- pose-estimation
+- research-paper
 ---
 
 ---

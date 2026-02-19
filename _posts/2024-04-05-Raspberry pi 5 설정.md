@@ -6,15 +6,16 @@ categories:
 date: 2024-04-05 02:06:00
 excerpt: <details>...
 layout: single
-tag:
-- system-setup
-- raspberry-pi
-- linux
-- ubuntu
 title: Raspberry pi 5 설정
 toc: true
 toc_label: Raspberry pi 5 설정
 toc_sticky: true
+
+tags:
+- system-setup
+- raspberry-pi
+- linux
+- ubuntu
 ---
 
 # 🍽️ Raspberry pi 5 설정   

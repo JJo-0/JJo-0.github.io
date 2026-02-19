@@ -7,11 +7,15 @@ excerpt: '{% include tailwind_cdn.html %}...'
 layout: single
 sidebar:
   nav: docs
-tag:
-- artificial-intelligence
 title: Gemini Deep Research 여행 프롬프트 엔지니어링 가이드
 toc: true
 toc_label: 목차
+
+tags:
+- artificial-intelligence
+- prompt-engineering
+- tools-guides
+- travel
 ---
 
 <script src="https://cdn.tailwindcss.com"></script>

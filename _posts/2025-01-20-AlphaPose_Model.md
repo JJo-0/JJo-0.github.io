@@ -10,15 +10,18 @@ last_modified_at: 2025-01-20 11:15:00
 layout: single
 sidebar:
   nav: docs
-tag:
-- opencv
-- ros
-- python
 title: AlphaPose Model
 toc: true
 toc_icon: cog
 toc_label: 목차
 toc_sticky: true
+
+tags:
+- computer-vision
+- pose-estimation
+- ros
+- python
+- opencv
 ---
 
 ## 주제

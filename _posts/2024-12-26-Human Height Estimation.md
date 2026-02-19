@@ -6,17 +6,16 @@ categories:
 date: 2024-12-26 16:58:00
 excerpt: '---...'
 layout: single
-tag:
-- artificial-intelligence
-- estimation
-- paper
-tags:
-- paper
-- estimation
 title: '[Paper Research] Human height estimation '
 toc: true
 toc_label: 페이지 주요 목차
 toc_sticky: true
+
+tags:
+- artificial-intelligence
+- computer-vision
+- pose-estimation
+- research-paper
 ---
 
 # Paper Research

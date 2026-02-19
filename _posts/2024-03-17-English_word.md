@@ -6,15 +6,16 @@ categories:
 excerpt: <div id="study-section">...
 last_modified_at: 2024-03-17
 layout: single
-tag:
+title: Essential Vocabulary
+toc: true
+toc_label: 목차
+
+tags:
 - study-notes
 - vocabulary
 - technical-terms
 - computer-vision
 - artificial-intelligence
-title: Essential Vocabulary
-toc: true
-toc_label: 목차
 ---
 
 <div id="study-section">
