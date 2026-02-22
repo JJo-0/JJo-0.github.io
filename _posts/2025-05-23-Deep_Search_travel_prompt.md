@@ -3,7 +3,7 @@ author_profile: false
 categories:
 - Projects
 - Computer-Vision
-excerpt: '{% include tailwind_cdn.html %}...'
+excerpt: Gemini Deep Research 기반 여행 프롬프트 엔지니어링 실전 가이드
 layout: single
 sidebar:
   nav: docs
