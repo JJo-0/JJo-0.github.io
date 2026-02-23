@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import re
+import unicodedata
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -141,6 +142,26 @@ FILE_TAGS: Dict[str, List[str]] = {
         "robotics",
     ],
 }
+
+
+def normalize_filename(name: str) -> str:
+    """Normalize filename for cross-platform Unicode consistency."""
+    return unicodedata.normalize("NFC", name)
+
+
+def build_normalized_file_tags(file_tags: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    normalized: Dict[str, List[str]] = {}
+    for raw_name, tags in file_tags.items():
+        key = normalize_filename(raw_name)
+        if key in normalized and normalized[key] != tags:
+            raise ValueError(
+                f"Conflicting FILE_TAGS mappings after NFC normalization: {raw_name!r}"
+            )
+        normalized[key] = tags
+    return normalized
+
+
+FILE_TAGS_NFC: Dict[str, List[str]] = build_normalized_file_tags(FILE_TAGS)
 
 
 def parse_frontmatter_sections(text: str) -> Tuple[str, List[str], str] | None:
@@ -278,10 +299,11 @@ def normalize_file(path: Path, dry_run: bool) -> Tuple[bool, List[str], List[str
     prefix, fm_lines, body = parsed
     before_tags = extract_tag_values(fm_lines)
 
-    if path.name not in FILE_TAGS:
+    key = normalize_filename(path.name)
+    if key not in FILE_TAGS_NFC:
         raise ValueError(f"{path.name}: no canonical tags mapping")
 
-    final_tags = FILE_TAGS[path.name]
+    final_tags = FILE_TAGS_NFC[key]
     validate_tags(final_tags, path.name)
 
     cleaned_fm = remove_tag_blocks(fm_lines)
@@ -319,8 +341,10 @@ def main() -> None:
         raise SystemExit("--check requires --dry-run")
 
     posts = sorted(POSTS_DIR.glob("*.md"))
-    missing_mapping = sorted({p.name for p in posts} - set(FILE_TAGS.keys()))
-    extra_mapping = sorted(set(FILE_TAGS.keys()) - {p.name for p in posts})
+    post_names = {normalize_filename(p.name) for p in posts}
+    mapping_names = set(FILE_TAGS_NFC.keys())
+    missing_mapping = sorted(post_names - mapping_names)
+    extra_mapping = sorted(mapping_names - post_names)
 
     if missing_mapping:
         raise SystemExit(f"Missing FILE_TAGS mappings for: {missing_mapping}")
