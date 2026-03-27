@@ -14,6 +14,7 @@ export interface SiteConfig {
   adsense?: {
     enabled: boolean;
     clientId: string;
+    adSlot?: string; // AdSense 광고 단위 슬롯 ID (없으면 Auto Ads만 동작)
   };
   homeHeroDescription: string;
   blogDescription: string;
@@ -69,14 +70,22 @@ export const SITE: SiteConfig = {
     github: 'https://github.com/JJo-0',
     instagram: 'https://www.instagram.com/park6______13/',
     website: 'https://blog.naver.com/jjo_09_',
+    // x: 'https://x.com/username',                // Twitter/X
+    // telegram: 'https://t.me/username',          // Telegram
+    // facebook: 'https://facebook.com/username',  // Facebook
+    // youtube: 'https://youtube.com/@username',   // YouTube
+    // email: 'mailto:your@email.com',             // Email
   },
   googleAnalyticsId: 'G-JL4J2492X6',
+  // Site verification: env var 우선, 없으면 직접 코드 입력 가능
+  // 예) googleSiteVerification: import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION || 'abc123xyz',
   googleSiteVerification: import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION || '',
   naverSiteVerification: import.meta.env.PUBLIC_NAVER_SITE_VERIFICATION || '',
   bingSiteVerification: import.meta.env.PUBLIC_BING_SITE_VERIFICATION || '',
   adsense: {
     enabled: true,
     clientId: 'ca-pub-7495843758830919',
+    adSlot: '', // AdSense 대시보드 → 광고 단위 → 슬롯 ID 입력 (비우면 Auto Ads만 동작)
   },
   homeHeroDescription:
     '개발과 연구, 그리고 공부 기록을 쌓아가는 개인 기술 블로그입니다.',
