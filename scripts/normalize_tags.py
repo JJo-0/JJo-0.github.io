@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
-POSTS_DIR = ROOT / "_posts"
+POSTS_DIR = ROOT / "spaceship-ui" / "site" / "content" / "posts"
 REPORTS_DIR = ROOT / "reports"
 
 FILE_TAGS: Dict[str, List[str]] = {
