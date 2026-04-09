@@ -68,7 +68,7 @@ export const SITE: SiteConfig = {
   website: 'https://jjo-0.github.io',
   social: {
     github: 'https://github.com/JJo-0',
-    instagram: 'https://www.instagram.com/park6______13/',
+    instagram: 'https://www.instagram.com/jo___09/',
     website: 'https://blog.naver.com/jjo_09_',
     // x: 'https://x.com/username',                // Twitter/X
     // telegram: 'https://t.me/username',          // Telegram

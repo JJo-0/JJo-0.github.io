@@ -1,14 +1,5 @@
-# 💼 Hire me if you like this post
+# 💬 이 글이 도움이 되셨나요?
 
-I'm available for **freelance projects** and **full-time opportunities**.
+AI 코딩, 주식 자동화, 로보틱스 관련해서 궁금한 점이나 협업 제안이 있으시면 편하게 연락주세요.
 
-Whether you need:
-
-- A modern, performant website
-- Technical consultation
-- Code review and optimization
-- Or just want to chat about web development
-
-Let's build something amazing together!
-
-[Get in touch](mailto:astronaut@example.com)
+[이메일 보내기](mailto:qkrwlgh613@gmail.com)
