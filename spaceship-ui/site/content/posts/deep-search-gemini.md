@@ -750,7 +750,7 @@ h4 { font-size: 1.25rem; }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('astro:page-load', function() {
 const navLinks = document.querySelectorAll('.tab-btn');
 const contentSections = document.querySelectorAll('.content-section');
 const templateSelector = document.getElementById('templateSelector');
