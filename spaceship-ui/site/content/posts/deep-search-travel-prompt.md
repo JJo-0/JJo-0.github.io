@@ -644,13 +644,12 @@ function updateActiveNav(activeTab) {
 }
 
 navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
+    link.onclick = (e) => {
         e.preventDefault();
         const targetId = link.dataset.tab;
-        // window.location.hash = targetId; // 주석 처리하여 URL 변경 방지
         showSection(targetId);
         updateActiveNav(targetId);
-    });
+    };
 });
 
 function handleLocationChange() {
@@ -659,13 +658,13 @@ function handleLocationChange() {
     updateActiveNav(hash);
 }
 
-window.addEventListener('popstate', handleLocationChange);
+window.onpopstate = handleLocationChange;
 handleLocationChange(); // Initial load
 
 // Accordion logic
 const accordions = document.querySelectorAll('.accordion-button');
 accordions.forEach(accordion => {
-    accordion.addEventListener('click', () => {
+    accordion.onclick = () => {
         const target = document.getElementById(accordion.dataset.target);
         const isHidden = target.classList.contains('hidden');
         if (isHidden) {
@@ -681,13 +680,16 @@ accordions.forEach(accordion => {
 // Chart.js initializations
 const personaSelect = document.getElementById('persona-select');
 if (personaSelect) {
-    personaSelect.addEventListener('change', (e) => {
+    personaSelect.onchange = (e) => {
         document.getElementById('selected-persona-output').textContent = e.target.options[e.target.selectedIndex].text;
-    });
+    };
 }
 
-if (document.getElementById('constraintsImpactChart')) {
-    new Chart(document.getElementById('constraintsImpactChart'), {
+const constraintsCanvas = document.getElementById('constraintsImpactChart');
+if (constraintsCanvas) {
+    const existingConstraints = Chart.getChart(constraintsCanvas);
+    if (existingConstraints) existingConstraints.destroy();
+    new Chart(constraintsCanvas, {
         type: 'line',
         data: {
             labels: ['매우 낮음', '낮음', '중간', '높음', '매우 높음'],
@@ -714,8 +716,11 @@ if (document.getElementById('constraintsImpactChart')) {
     });
 }
 
-if (document.getElementById('frameworksComparisonChart')) {
-    new Chart(document.getElementById('frameworksComparisonChart'), {
+const frameworksCanvas = document.getElementById('frameworksComparisonChart');
+if (frameworksCanvas) {
+    const existingFrameworks = Chart.getChart(frameworksCanvas);
+    if (existingFrameworks) existingFrameworks.destroy();
+    new Chart(frameworksCanvas, {
         type: 'radar',
         data: {
             labels: ['제약 조건 처리', '실시간 정보 활용', '내러티브 생성', '유연성', '자동화 수준'],
