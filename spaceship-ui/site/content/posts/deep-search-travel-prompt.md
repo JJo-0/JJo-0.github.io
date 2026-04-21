@@ -674,7 +674,7 @@ accordions.forEach(accordion => {
             target.classList.add('hidden');
             accordion.classList.remove('active');
         }
-    });
+    };
 });
 
 // Chart.js initializations
