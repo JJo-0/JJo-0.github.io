@@ -67,7 +67,7 @@
         <a
           href={`#${heading.slug}`}
           onclick={(e) => handleClick(e, heading.slug)}
-          class="group relative text-xs sm:text-sm transition-all duration-300 hover:text-primary py-1"
+          class="group relative text-xs transition-all duration-300 hover:text-primary py-1"
           style="padding-left: {Math.max(0, heading.depth - 2) * 0.75 + 1.25}rem"
         >
           <!-- Active Line Indicator -->
