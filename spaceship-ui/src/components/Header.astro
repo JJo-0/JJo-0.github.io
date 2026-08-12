@@ -2,16 +2,22 @@
 import { SITE } from '@/config';
 import ThemeToggle from '@/components/ThemeToggle.svelte';
 import Search from '@/components/Search.svelte';
+import { getCollection } from 'astro:content';
 
 interface NavLink {
   name: string;
   href: string;
 }
 
+const [projects, appearances] = await Promise.all([
+  getCollection('projects'),
+  getCollection('appearances'),
+]);
+
 const navLinks: NavLink[] = [
   { name: 'Posts', href: '/posts' },
-  { name: 'Projects', href: '/projects' },
-  { name: 'Appearances', href: '/appearances' },
+  ...(projects.length > 0 ? [{ name: 'Projects', href: '/projects' }] : []),
+  ...(appearances.length > 0 ? [{ name: 'Appearances', href: '/appearances' }] : []),
   { name: 'About', href: '/about' },
 ];
 ---
