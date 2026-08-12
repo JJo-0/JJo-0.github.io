@@ -65,7 +65,7 @@ export const GET: APIRoute = async () => {
 
   const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render();
 
-  return new Response(png.asPng() as BodyInit, {
+  return new Response(png.asPng() as any, {
     headers: {
       'Content-Type': 'image/png',
       'Cache-Control': 'public, max-age=31536000, immutable',
