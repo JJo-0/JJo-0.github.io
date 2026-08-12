@@ -10,14 +10,18 @@ interface NavLink {
 }
 
 const [projects, appearances] = await Promise.all([
-  getCollection('projects'),
-  getCollection('appearances'),
+  SITE.publicSections.projects ? getCollection('projects') : Promise.resolve([]),
+  SITE.publicSections.appearances ? getCollection('appearances') : Promise.resolve([]),
 ]);
 
 const navLinks: NavLink[] = [
   { name: 'Posts', href: '/posts' },
-  ...(projects.length > 0 ? [{ name: 'Projects', href: '/projects' }] : []),
-  ...(appearances.length > 0 ? [{ name: 'Appearances', href: '/appearances' }] : []),
+  ...(SITE.publicSections.projects && projects.length > 0
+    ? [{ name: 'Projects', href: '/projects' }]
+    : []),
+  ...(SITE.publicSections.appearances && appearances.length > 0
+    ? [{ name: 'Appearances', href: '/appearances' }]
+    : []),
   { name: 'About', href: '/about' },
 ];
 ---
@@ -28,6 +32,7 @@ const navLinks: NavLink[] = [
   <div class="flex items-center justify-between w-full lg:w-auto">
     <a
       href="/"
+      aria-label={`${SITE.author} home`}
       class="text-xl sm:text-2xl font-black tracking-normal text-foreground transition-all no-underline hover:text-primary whitespace-nowrap"
     >
       {SITE.title}
@@ -38,7 +43,7 @@ const navLinks: NavLink[] = [
     </div>
   </div>
 
-  <nav class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full lg:w-auto">
+  <nav aria-label="Primary navigation" class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full lg:w-auto">
     <div class="flex items-center justify-center flex-wrap gap-x-2 gap-y-2 sm:gap-4">
       {
         navLinks.map((link) => (
