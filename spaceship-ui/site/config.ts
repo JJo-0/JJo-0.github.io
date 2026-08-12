@@ -58,7 +58,7 @@ export const SITE: SiteConfig = {
   desc: 'AI·로보틱스·컴퓨터 비전·개발 연구와 학습 기록을 정리하는 Park JiHo의 기술 블로그입니다.',
   title: "Don't Worry, Be Happy 😛",
   seoTitle: 'Park JiHo | AI & Robotics Research Notes',
-  ogImage: 'og.png',
+  ogImage: '/og/site.png',
   lang: 'ko-KR',
   base: '/',
   website: 'https://jjo-0.github.io',
