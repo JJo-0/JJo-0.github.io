@@ -17,18 +17,26 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  ogType?: 'website' | 'article';
   lang?: string;
   schema?: Record<string, unknown> | Record<string, unknown>[];
+  noindex?: boolean;
 }
 
-const { title, description, ogImage, lang, schema } = Astro.props;
+const { title, description, ogImage, ogType = 'website', lang, schema, noindex = false } = Astro.props;
 const pageLang = lang || SITE.lang;
-const pageTitle = title ? `${title} | ${SITE.title}` : SITE.title;
+const pageTitle = title ? `${title} | ${SITE.author}` : SITE.seoTitle;
 const pageDescription = description || SITE.desc;
 const pageOgImage = new URL(ogImage || SITE.ogImage, Astro.site);
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+
+const sectionIsPrivate =
+  (!SITE.publicSections.projects && Astro.url.pathname.startsWith('/projects')) ||
+  (!SITE.publicSections.appearances && Astro.url.pathname.startsWith('/appearances'));
+const shouldNoIndex = noindex || sectionIsPrivate;
 
 const defaultSchemas = [
-  getWebSiteSchema(new URL(Astro.url.pathname, Astro.site).toString()),
+  getWebSiteSchema(canonicalUrl.toString()),
   getOrganizationSchema(),
   getPersonSchema(),
 ];
@@ -68,6 +76,7 @@ const gaScript = `
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
+    <meta name="color-scheme" content="light dark" />
     <link rel="preload" href={outfitFont400} as="font" type="font/woff2" crossorigin="anonymous" />
     <link rel="preload" href={outfitFont700} as="font" type="font/woff2" crossorigin="anonymous" />
     <link rel="preload" href={interFontVar} as="font" type="font/woff2" crossorigin="anonymous" />
@@ -90,15 +99,15 @@ const gaScript = `
       <meta name="msvalidate.01" content={SITE.bingSiteVerification} />
     )}
 
-    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
-    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta name="robots" content={shouldNoIndex ? 'noindex, nofollow' : 'index, follow'} />
     <meta name="author" content={SITE.author} />
     <meta name="theme-color" content="#0a0a0c" />
 
     <link
       rel="alternate"
       type="application/rss+xml"
-      title={`${SITE.title} RSS Feed`}
+      title={`${SITE.seoTitle} RSS Feed`}
       href="/rss.xml"
     />
 
@@ -138,8 +147,10 @@ const gaScript = `
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={pageDescription} />
     <meta property="og:image" content={pageOgImage} />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content={new URL(Astro.url.pathname, Astro.site)} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content={SITE.seoTitle} />
+    <meta property="og:locale" content={pageLang.replace('-', '_')} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
@@ -182,6 +193,12 @@ const gaScript = `
     <base href={SITE.base} />
   </head>
   <body class="bg-background text-foreground min-h-screen">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:shadow-lg"
+    >
+      본문으로 건너뛰기
+    </a>
     {
       isGTM && (
         <noscript>
@@ -196,7 +213,7 @@ const gaScript = `
     }
     <div class="max-w-5xl 3xl:max-w-7xl mx-auto container-padding">
       <Header />
-      <main class="py-12 sm:py-16 lg:py-24">
+      <main id="main-content" class="py-12 sm:py-16 lg:py-24" tabindex="-1">
         <slot />
       </main>
       <AdSense />
