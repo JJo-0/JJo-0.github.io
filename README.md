@@ -1,13 +1,31 @@
-# 🪝 About My Place 🪝
+# JJo-0.github.io
 
----
+개발, AI, 로보틱스, 연구 과정에서 얻은 내용을 기록하는 개인 기술 블로그입니다.
 
-**👋 welcome to visit my place 👋**  
+- Live site: `https://jjo-0.github.io`
+- Blog engine: Astro + Svelte + Tailwind CSS
+- Main application: `spaceship-ui/`
+- Content: `spaceship-ui/site/content/`
 
-이 블로그는 공부하는 것을 정리하기 위한 블로그입니다.
-잘 모르고 미숙합니다. 모르는 것들 투성이라서 오류가 있을 수 있습니다.
-그래도 봐주시면 감사하겠습니다.
+## Development
 
-## 저작권
+```bash
+cd spaceship-ui
+pnpm install
+pnpm dev
+```
 
-논문, 책, 인터넷 등을 참고하여 작성 하였으며, 참고한 자료의 저작권은 원저작자에게 있음을 밝힙니다.
+검증은 다음 순서로 실행합니다.
+
+```bash
+pnpm check
+pnpm lint
+pnpm seo:check
+pnpm build
+```
+
+GitHub Pages 배포와 품질 검사는 저장소 루트의 `.github/workflows/blog-ci.yml` 및 `.github/workflows/blog-pages-deploy.yml`에서 관리합니다.
+
+## Attribution
+
+현재 UI 엔진은 MIT 라이선스의 Spaceship 템플릿을 기반으로 커스터마이즈했습니다. 이전 Jekyll 버전은 Minimal Mistakes를 사용했습니다. 자세한 출처와 저작권 고지는 `THIRD_PARTY_NOTICES.md` 및 `spaceship-ui/LICENSE`를 참고하세요.
