@@ -21,6 +21,7 @@ import { SITE } from './site/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** @param {string} page */
 function includeInSitemap(page) {
   const pathname = new URL(page).pathname;
 
