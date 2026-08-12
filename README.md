@@ -24,7 +24,7 @@ pnpm seo:check
 pnpm build
 ```
 
-GitHub Pages 배포와 품질 검사는 저장소 루트의 `.github/workflows/`에서 관리합니다.
+GitHub Pages 배포와 품질 검사는 저장소 루트의 `.github/workflows/blog-ci.yml` 및 `.github/workflows/blog-pages-deploy.yml`에서 관리합니다.
 
 ## Attribution
 
