@@ -2,6 +2,7 @@ export interface SiteConfig {
   author: string;
   desc: string;
   title: string;
+  seoTitle: string;
   ogImage: string;
   lang: string;
   base: string;
@@ -21,6 +22,10 @@ export interface SiteConfig {
   projectsDescription: string;
   featuredPostsCount: number;
   latestPostsCount: number;
+  publicSections: {
+    projects: boolean;
+    appearances: boolean;
+  };
   homeProjects: {
     enabled: boolean;
     count: number;
@@ -50,9 +55,10 @@ export interface SiteConfig {
 
 export const SITE: SiteConfig = {
   author: 'Park JiHo',
-  desc: 'My study note',
+  desc: 'AI·로보틱스·컴퓨터 비전·개발 연구와 학습 기록을 정리하는 Park JiHo의 기술 블로그입니다.',
   title: "Don't Worry, Be Happy 😛",
-  ogImage: 'about_photo.jpg',
+  seoTitle: 'Park JiHo | AI & Robotics Research Notes',
+  ogImage: '/og/site.png',
   lang: 'ko-KR',
   base: '/',
   website: 'https://jjo-0.github.io',
@@ -61,7 +67,7 @@ export const SITE: SiteConfig = {
     instagram: 'https://www.instagram.com/jo___09/',
     website: 'https://blog.naver.com/jjo_09_',
   },
-  googleAnalyticsId: 'G-JL4J2492X6',
+  googleAnalyticsId: import.meta.env.PUBLIC_GOOGLE_ANALYTICS_ID || 'G-JL4J2492X6',
   googleSiteVerification: import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION || '',
   naverSiteVerification: import.meta.env.PUBLIC_NAVER_SITE_VERIFICATION || '',
   bingSiteVerification: import.meta.env.PUBLIC_BING_SITE_VERIFICATION || '',
@@ -71,12 +77,16 @@ export const SITE: SiteConfig = {
     adSlot: '',
   },
   homeHeroDescription: '개발과 연구, 그리고 공부 기록을 쌓아가는 개인 기술 블로그입니다.',
-  blogDescription: '개발, AI, 로보틱스, 헬스케어 관련 글을 정리합니다.',
-  projectsDescription: '진행했던 프로젝트와 실험 기록입니다.',
+  blogDescription: 'AI, 로보틱스, 컴퓨터 비전, 개발 및 연구 노트를 정리합니다.',
+  projectsDescription: '공개 가능한 프로젝트와 실험 기록입니다.',
   featuredPostsCount: 3,
   latestPostsCount: 3,
+  publicSections: {
+    projects: false,
+    appearances: false,
+  },
   homeProjects: {
-    enabled: true,
+    enabled: false,
     count: 4,
   },
   cta: {

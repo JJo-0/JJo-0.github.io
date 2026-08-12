@@ -21,6 +21,16 @@ import { SITE } from './site/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** @param {string} page */
+function includeInSitemap(page) {
+  const pathname = new URL(page).pathname;
+
+  if (!SITE.publicSections.projects && pathname.startsWith('/projects')) return false;
+  if (!SITE.publicSections.appearances && pathname.startsWith('/appearances')) return false;
+
+  return true;
+}
+
 // https://astro.build/config
 export default defineConfig({
   site: SITE.website,
@@ -28,7 +38,7 @@ export default defineConfig({
   integrations: [
     svelte(),
     mdx(),
-    sitemap(),
+    sitemap({ filter: includeInSitemap }),
     partytown({
       config: {
         forward: ['dataLayer.push'],
