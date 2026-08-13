@@ -5,6 +5,7 @@ const root = process.cwd();
 const dist = path.join(root, 'dist');
 const posts = path.join(root, 'site', 'content', 'posts');
 const issues = [];
+const HTML_BLOCK_START = /^(?:<!--[\s\S]*?-->\s*)*<(?:article|aside|blockquote|canvas|div|figure|footer|form|h[1-6]|header|ins|main|nav|ol|p|script|section|style|table|ul)\b/i;
 
 function filesUnder(dir, predicate = () => true) {
   if (!fs.existsSync(dir)) return [];
@@ -63,12 +64,7 @@ for (const file of filesUnder(dist, (p) => p.endsWith('.html'))) {
   // regressions in this site; short intentional snippets are ignored.
   for (const match of html.matchAll(/<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi)) {
     const decoded = decodeHtml(match[1]).trim();
-    if (
-      decoded.length >= 500 &&
-      /^(?:<!--[\s\S]*?-->\s*)*<(?:article|aside|canvas|div|footer|header|ins|main|nav|script|section|style|table)\b/i.test(
-        decoded
-      )
-    ) {
+    if (decoded.length >= 500 && HTML_BLOCK_START.test(decoded)) {
       issues.push(`${relative}: suspicious legacy HTML rendered as code (${decoded.length} chars)`);
     }
   }
