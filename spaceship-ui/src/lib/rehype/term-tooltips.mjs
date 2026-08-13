@@ -37,6 +37,8 @@ function splitText(value) {
         'data-term': english.trim(),
         tabIndex: 0,
         'aria-label': `${trimmedLabel}: ${english.trim()}`,
+        style:
+          'text-decoration-line:underline;text-decoration-style:dotted;text-decoration-thickness:1px;text-underline-offset:0.2em;cursor:help;text-decoration-color:color-mix(in srgb,currentColor 45%,transparent);',
       },
       children: [{ type: 'text', value: trimmedLabel }],
     });
