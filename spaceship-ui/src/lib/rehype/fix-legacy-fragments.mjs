@@ -48,7 +48,7 @@ export default function fixLegacyFragments() {
       if (node.type === 'raw' && typeof node.value === 'string') {
         for (const [from, to] of replacements) {
           node.value = node.value
-            .replaceAll(`href=\"${from}\"`, `href=\"${to}\"`)
+            .replaceAll(`href="${from}"`, `href="${to}"`)
             .replaceAll(`href='${from}'`, `href='${to}'`);
         }
       }
