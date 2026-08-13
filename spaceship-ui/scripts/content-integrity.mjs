@@ -26,8 +26,16 @@ function decodeHtml(value) {
     .replaceAll('&amp;', '&');
 }
 
+function decodeUri(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 function routeExists(urlPath) {
-  const clean = decodeURIComponent(urlPath.split(/[?#]/, 1)[0]);
+  const clean = decodeUri(urlPath.split(/[?#]/, 1)[0]);
   if (!clean.startsWith('/')) return true;
   if (clean === '/') return fs.existsSync(path.join(dist, 'index.html'));
 
@@ -66,11 +74,11 @@ for (const file of filesUnder(dist, (p) => p.endsWith('.html'))) {
   }
 
   const ids = new Set(
-    [...html.matchAll(/\bid=(['"])(.*?)\1/gi)].map((match) => decodeHtml(match[2]))
+    [...html.matchAll(/\bid=(['"])(.*?)\1/gi)].map((match) => decodeUri(decodeHtml(match[2])))
   );
 
   for (const match of html.matchAll(/\bhref=(['"])#([^'"]+)\1/gi)) {
-    const fragment = decodeHtml(match[2]);
+    const fragment = decodeUri(decodeHtml(match[2]));
     if (!ids.has(fragment)) issues.push(`${relative}: missing same-page anchor #${fragment}`);
   }
 
