@@ -14,6 +14,7 @@ import remarkEmoji from 'remark-emoji';
 import remarkRepairLiteralStrong from './src/lib/remark-repair-literal-strong.mjs';
 import restoreLegacyHtml from './src/lib/remark/restore-legacy-html.mjs';
 import fixLegacyFragments from './src/lib/rehype/fix-legacy-fragments.mjs';
+import termTooltips from './src/lib/rehype/term-tooltips.mjs';
 import {
   transformerNotationDiff,
   transformerNotationHighlight,
@@ -68,6 +69,7 @@ export default defineConfig({
     },
     remarkPlugins: [restoreLegacyHtml, remarkEmoji, remarkRepairLiteralStrong],
     rehypePlugins: [
+      termTooltips,
       rehypeSlug,
       fixLegacyFragments,
       [
