@@ -7,7 +7,7 @@ const LEGACY_HTML_POSTS = new Set([
   'deep-search-travel-prompt.md',
 ]);
 
-const HTML_BLOCK_START = /^\s*(?:<!--[\s\S]*?-->\s*)*<(?:article|aside|canvas|div|footer|header|ins|main|nav|script|section|style|table)\b/i;
+const HTML_BLOCK_START = /^\s*(?:<!--[\s\S]*?-->\s*)*<(?:article|aside|blockquote|canvas|div|figure|footer|form|h[1-6]|header|ins|main|nav|ol|p|script|section|style|table|ul)\b/i;
 
 function walk(node, visitor) {
   if (!node || typeof node !== 'object') return;
