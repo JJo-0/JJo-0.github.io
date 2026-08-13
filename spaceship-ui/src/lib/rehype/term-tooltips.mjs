@@ -1,5 +1,6 @@
 const TARGET_POST = /ai-consciousness-deep-research-[123]\.md$/;
 const SKIP_TAGS = new Set(['a', 'code', 'pre', 'script', 'style', 'kbd', 'samp']);
+const SERIES_MARKER = /AI\s+Consciousness\s+Deep\s+Research\s+(?:I|II|III)\b/i;
 
 const TERM_PATTERN = /((?:[가-힣A-Za-z][가-힣A-Za-z0-9·/+.-]*)(?:\s+(?:[가-힣A-Za-z][가-힣A-Za-z0-9·/+.-]*)){0,3})\s*\(([A-Za-z][A-Za-z0-9/&+.,'’\-\s]{1,64})\)/g;
 
@@ -9,6 +10,13 @@ function isLikelyCitation(value) {
 
 function hasHangul(value) {
   return /[가-힣]/.test(value);
+}
+
+function treeText(node) {
+  if (!node || typeof node !== 'object') return '';
+  if (node.type === 'text') return node.value ?? '';
+  if (!Array.isArray(node.children)) return '';
+  return node.children.map(treeText).join(' ');
 }
 
 function splitText(value) {
@@ -75,7 +83,7 @@ function walk(node, parentTag = '') {
 export default function termTooltips() {
   return (tree, file) => {
     const filePath = String(file?.path ?? file?.history?.[0] ?? '');
-    if (!TARGET_POST.test(filePath)) return;
+    if (!TARGET_POST.test(filePath) && !SERIES_MARKER.test(treeText(tree))) return;
     walk(tree);
   };
 }
