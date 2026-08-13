@@ -12,6 +12,7 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeExternalLinks from 'rehype-external-links';
 import remarkEmoji from 'remark-emoji';
 import restoreLegacyHtml from './src/lib/remark/restore-legacy-html.mjs';
+import fixLegacyFragments from './src/lib/rehype/fix-legacy-fragments.mjs';
 import {
   transformerNotationDiff,
   transformerNotationHighlight,
@@ -67,6 +68,7 @@ export default defineConfig({
     remarkPlugins: [restoreLegacyHtml, remarkEmoji],
     rehypePlugins: [
       rehypeSlug,
+      fixLegacyFragments,
       [
         rehypeAutolinkHeadings,
         {
