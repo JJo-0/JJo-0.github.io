@@ -12,6 +12,8 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeExternalLinks from 'rehype-external-links';
 import remarkEmoji from 'remark-emoji';
 import remarkRepairLiteralStrong from './src/lib/remark-repair-literal-strong.mjs';
+import restoreLegacyHtml from './src/lib/remark/restore-legacy-html.mjs';
+import fixLegacyFragments from './src/lib/rehype/fix-legacy-fragments.mjs';
 import {
   transformerNotationDiff,
   transformerNotationHighlight,
@@ -64,9 +66,10 @@ export default defineConfig({
         transformerNotationDiff(),
       ],
     },
-    remarkPlugins: [remarkEmoji, remarkRepairLiteralStrong],
+    remarkPlugins: [restoreLegacyHtml, remarkEmoji, remarkRepairLiteralStrong],
     rehypePlugins: [
       rehypeSlug,
+      fixLegacyFragments,
       [
         rehypeAutolinkHeadings,
         {
