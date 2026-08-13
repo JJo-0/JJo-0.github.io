@@ -21,11 +21,11 @@ SLAM의 흐름은 크게 3가지로 나눌 수 있다.
 3. 지도를 만든다.
 
 ## 센서데이터
-전 게시물 확인 부탁드립니다 🤗 링크 : [SLAM(1)](/posts/slam1)
+전 게시물 확인 부탁드립니다 🤗 링크 : [SLAM(1)](/posts/2023-07-06-slam1/)
 
 ## 로봇의 위치 추정
 **받은 데이터를 기반으로 로봇의 위치를 추정한다.**
-원리 도움링크 : [MatlabSlam설명] : (https://www.youtube.com/watch?v=Fw8JQ5Q-ZwU)
+원리 도움링크 : [MatlabSlam설명](https://www.youtube.com/watch?v=Fw8JQ5Q-ZwU)
 원리에 대해서 쉽게 잘 설명 되어 있다.
 
 **센서데이터 처리**
