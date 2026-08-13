@@ -13,10 +13,11 @@ WSL에서 AlphaPose 모델 돌리기
 RGB에서 바로 3D 모델을 만드는 M3DHPE(Monocular 3D Human Pose Estimation) 모델은 주로 8GB가 넘었다.  
 그래서 찾은 것이 2D Pose를 먼저 추출하고, 그것을 3D로 변환하는 방법이다.  
 
-
 | 목차 | 설명 |
 |:---:|:---:|
-| [Window](#Window) | Window에서의 Multi-Cuda Setting |
+| [Window](#window) | Window에서의 Multi-Cuda Setting |
+
+### Window
 
 ### 환경 
 - Window 11
