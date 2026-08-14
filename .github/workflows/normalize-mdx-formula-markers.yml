@@ -1,0 +1,54 @@
+name: Normalize MDX formula markers
+
+on:
+  push:
+    branches: [agent/astro-native-content]
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/astro-native-content
+      - name: Convert formula comments to MDX comments
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx')
+          text = path.read_text(encoding='utf-8')
+          html_pattern = re.compile(r'<!-- formula:\s*([^>\s]+)\s*-->')
+          mdx_pattern = re.compile(r'\{/\*\s*formula:\s*([^*\s]+)\s*\*/\}')
+
+          html_ids = html_pattern.findall(text)
+          mdx_ids = mdx_pattern.findall(text)
+
+          if html_ids:
+              if len(html_ids) != 238 or len(set(html_ids)) != 238:
+                  raise SystemExit(f'expected 238 unique HTML formula markers, found {len(html_ids)}')
+              text = html_pattern.sub(lambda m: f'{{/* formula: {m.group(1)} */}}', text)
+              path.write_text(text, encoding='utf-8')
+              mdx_ids = mdx_pattern.findall(text)
+
+          if len(mdx_ids) != 238 or len(set(mdx_ids)) != 238:
+              raise SystemExit(f'expected 238 unique MDX formula markers, found {len(mdx_ids)}')
+          if '<!-- formula:' in text:
+              raise SystemExit('legacy HTML formula markers remain')
+
+      - name: Commit normalized markers
+        shell: bash
+        run: |
+          if [[ -z "$(git status --porcelain -- spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx)" ]]; then
+            echo "Markers already MDX-native"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx
+          git commit -m "fix: use MDX-native formula markers"
+          git push origin HEAD:agent/astro-native-content
