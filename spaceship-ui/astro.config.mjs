@@ -10,11 +10,16 @@ import { fileURLToPath } from 'node:url';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeExternalLinks from 'rehype-external-links';
+import rehypeKatex from 'rehype-katex';
 import remarkEmoji from 'remark-emoji';
+import remarkMath from 'remark-math';
 import remarkRepairLiteralStrong from './src/lib/remark-repair-literal-strong.mjs';
 import restoreLegacyHtml from './src/lib/remark/restore-legacy-html.mjs';
+import repairLegacyMathArtifacts from './src/lib/remark/repair-legacy-math.mjs';
 import fixLegacyFragments from './src/lib/rehype/fix-legacy-fragments.mjs';
+import replaceFragileMedia from './src/lib/rehype/replace-fragile-media.mjs';
 import termTooltips from './src/lib/rehype/term-tooltips.mjs';
+import { isLegacyPathname } from './src/lib/legacy-posts.mjs';
 import {
   transformerNotationDiff,
   transformerNotationHighlight,
@@ -29,6 +34,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function includeInSitemap(page) {
   const pathname = new URL(page).pathname;
 
+  if (isLegacyPathname(pathname)) return false;
   if (!SITE.publicSections.projects && pathname.startsWith('/projects')) return false;
   if (!SITE.publicSections.appearances && pathname.startsWith('/appearances')) return false;
 
@@ -67,11 +73,19 @@ export default defineConfig({
         transformerNotationDiff(),
       ],
     },
-    remarkPlugins: [restoreLegacyHtml, remarkEmoji, remarkRepairLiteralStrong],
+    remarkPlugins: [
+      restoreLegacyHtml,
+      remarkMath,
+      repairLegacyMathArtifacts,
+      remarkEmoji,
+      remarkRepairLiteralStrong,
+    ],
     rehypePlugins: [
       termTooltips,
       rehypeSlug,
       fixLegacyFragments,
+      replaceFragileMedia,
+      [rehypeKatex, { throwOnError: false, strict: 'warn' }],
       [
         rehypeAutolinkHeadings,
         {
