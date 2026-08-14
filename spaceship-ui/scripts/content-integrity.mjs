@@ -7,6 +7,7 @@ const posts = path.join(root, 'site', 'content', 'posts');
 const issues = [];
 const HTML_BLOCK_START = /^(?:<!--[\s\S]*?-->\s*)*<(?:article|aside|blockquote|canvas|div|figure|footer|form|h[1-6]|header|ins|main|nav|ol|p|script|section|style|table|ul)\b/i;
 const EXPECTED_LEGACY_REDIRECTS = 45;
+const EXPECTED_MODERN_AI_FORMULAS = 238;
 const FRAGILE_IMAGE_HOSTS = /(?:^|\.)(?:google\.com|googleusercontent\.com|bing\.com|duckduckgo\.com|daumcdn\.net|kakaocdn\.net)$/i;
 
 function filesUnder(dir, predicate = () => true) {
@@ -57,7 +58,7 @@ function localPathForReference(reference, pageUrl) {
   try { return new URL(target, `https://local.invalid${pageUrl}`).pathname; } catch { return null; }
 }
 
-function stripCodeForMathAudit(source) {
+function stripCode(source) {
   const lines = source.split(/\r?\n/);
   const kept = [];
   let fence = null;
@@ -84,12 +85,26 @@ if (!fs.existsSync(dist)) {
   process.exit(1);
 }
 
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+for (const dependency of ['remark-math', 'rehype-katex']) {
+  if (packageJson.dependencies?.[dependency] || packageJson.devDependencies?.[dependency]) {
+    issues.push(`obsolete global math parser dependency remains: ${dependency}`);
+  }
+}
+
+const astroConfig = fs.readFileSync(path.join(root, 'astro.config.mjs'), 'utf8');
+for (const token of ['remark-math', 'rehype-katex', 'repairLegacyMathArtifacts', 'replaceFragileMedia']) {
+  if (astroConfig.includes(token)) issues.push(`obsolete compatibility hook remains in astro.config.mjs: ${token}`);
+}
+
 const legacyRedirects = [];
 let visionMathVerified = false;
+let modernAiMathCount = -1;
 
 for (const file of filesUnder(dist, (p) => p.endsWith('.html'))) {
   const html = fs.readFileSync(file, 'utf8');
   const relative = path.relative(dist, file);
+  const normalizedRelative = relative.replaceAll(path.sep, '/');
   const pageUrl = pageUrlForHtml(file);
 
   for (const match of html.matchAll(/<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi)) {
@@ -122,23 +137,32 @@ for (const file of filesUnder(dist, (p) => p.endsWith('.html'))) {
     if (!/<meta\s+name=(['"])robots\1\s+content=(['"])noindex,follow\2/i.test(html)) issues.push(`${relative}: legacy redirect is missing noindex,follow`);
   }
 
-  if (relative.replaceAll(path.sep, '/') === 'posts/2025-02-18-vision/index.html') {
+  if (normalizedRelative === 'posts/2025-02-18-vision/index.html') {
     visionMathVerified = /class=(['"])[^'"]*katex/.test(html) && !html.includes('begin:math:text') && !html.includes('end:math:text');
+  }
+
+  if (normalizedRelative === 'posts/2025-05-16-mordern-artificial-intelligence/index.html') {
+    modernAiMathCount = [...html.matchAll(/class=(['"])[^'"]*math-display[^'"]*\1/g)].length;
   }
 }
 
 if (legacyRedirects.length !== EXPECTED_LEGACY_REDIRECTS) issues.push(`legacy redirects: expected ${EXPECTED_LEGACY_REDIRECTS}, generated ${legacyRedirects.length}`);
 const knownLegacy = legacyRedirects.find(({ source }) => source === '/projects/computer-vision/Human-Height-Estimation/');
 if (knownLegacy?.target !== '/posts/2024-12-26-human-height-estimation/') issues.push('legacy redirects: Human Height Estimation mapping is missing or points to the wrong target');
-if (!visionMathVerified) issues.push('Vision post: KaTeX output missing or legacy inline-math sentinels remain');
+if (!visionMathVerified) issues.push('Vision post: native KaTeX output missing or legacy inline-math sentinels remain');
+if (modernAiMathCount !== EXPECTED_MODERN_AI_FORMULAS) issues.push(`Modern AI post: expected ${EXPECTED_MODERN_AI_FORMULAS} rendered Math components, found ${modernAiMathCount}`);
 
 const sitemapText = filesUnder(dist, (p) => /sitemap.*\.xml$/.test(path.basename(p))).map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 for (const { source } of legacyRedirects) if (sitemapText.includes(source)) issues.push(`sitemap contains noindex legacy redirect: ${source}`);
 
 for (const file of filesUnder(posts, (p) => /\.mdx?$/.test(p) && !path.basename(p).startsWith('_'))) {
-  const mathSource = stripCodeForMathAudit(fs.readFileSync(file, 'utf8'));
-  const delimiters = mathSource.match(/(?<!\\)\$\$/g)?.length ?? 0;
-  if (delimiters % 2 !== 0) issues.push(`${path.relative(root, file)}: unmatched $$ math delimiter (${delimiters})`);
+  const source = stripCode(fs.readFileSync(file, 'utf8'));
+  if (/(?<!\\)\$\$/.test(source)) {
+    issues.push(`${path.relative(root, file)}: legacy $$ math syntax remains; use the native Math component`);
+  }
+  if (/\$begin:math:|\$end:math:/.test(source)) {
+    issues.push(`${path.relative(root, file)}: migrated legacy math sentinel remains`);
+  }
 }
 
 const uniqueIssues = [...new Set(issues)].sort();
@@ -147,4 +171,4 @@ if (uniqueIssues.length > 0) {
   for (const issue of uniqueIssues) console.error(`  - ${issue}`);
   process.exit(1);
 }
-console.log(`content-integrity: PASS (${legacyRedirects.length} legacy redirects, local links/assets, anchors, KaTeX, media)`);
+console.log(`content-integrity: PASS (${legacyRedirects.length} legacy redirects, explicit KaTeX, local links/assets, anchors, media)`);
