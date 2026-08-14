@@ -1,0 +1,42 @@
+name: Fix Vision gradient anchor
+
+on:
+  push:
+    branches: [agent/astro-native-content]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/astro-native-content
+      - name: Align manual link with generated heading slug
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('spaceship-ui/site/content/posts/vision.mdx')
+          text = path.read_text(encoding='utf-8')
+          old = '[Gradient_Vanishing_Problem](#gradient-vanishing-problem)'
+          new = '[Gradient_Vanishing_Problem](#gradient-vanishing-problem-기울기-소실-문제)'
+          if old in text:
+              text = text.replace(old, new, 1)
+              path.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('Expected Vision gradient anchor link not found')
+      - name: Commit fix
+        shell: bash
+        run: |
+          if git diff --quiet -- spaceship-ui/site/content/posts/vision.mdx; then
+            echo "Vision gradient anchor already aligned"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add spaceship-ui/site/content/posts/vision.mdx
+          git commit -m "fix: align Vision gradient anchor with MDX slug"
+          git push origin HEAD:agent/astro-native-content
