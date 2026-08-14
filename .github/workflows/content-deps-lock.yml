@@ -1,0 +1,40 @@
+name: Content dependency lock
+
+on:
+  push:
+    branches: [agent/content-compatibility]
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/content-compatibility
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve math dependencies
+        run: pnpm add remark-math@latest rehype-katex@latest katex@latest --save-prod --lockfile-only
+      - name: Commit resolved lockfile
+        working-directory: .
+        shell: bash
+        run: |
+          if git diff --quiet -- spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml; then
+            echo "No dependency changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml
+          git commit -m "chore: add build-time math dependencies"
+          git push origin HEAD:agent/content-compatibility
