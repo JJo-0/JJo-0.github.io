@@ -1,0 +1,170 @@
+name: Native math source migration
+
+on:
+  push:
+    branches: [agent/astro-native-content]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/astro-native-content
+
+      - name: Convert math posts and fragile media to native source
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+          import re
+
+          posts = Path('spaceship-ui/site/content/posts')
+
+          def add_math_import(source: str) -> str:
+              marker = "import Math from '@/components/Math.astro';"
+              if marker in source:
+                  return source
+              closing = source.find('\n---\n', 4)
+              if closing < 0:
+                  raise SystemExit('frontmatter closing marker not found')
+              insert_at = closing + len('\n---\n')
+              return source[:insert_at] + f'\n{marker}\n' + source[insert_at:]
+
+          def math_component(tex: str, display: bool) -> str:
+              value = json.dumps(tex.strip(), ensure_ascii=False)
+              return f'<Math{" display" if display else ""} tex={{{value}}} />'
+
+          # Vision: two display formulas + three audited migrated inline formulas.
+          vision_md = posts / 'vision.md'
+          vision_mdx = posts / 'vision.mdx'
+          if vision_md.exists():
+              source = vision_md.read_text(encoding='utf-8')
+              display_pattern = re.compile(r'\$\$\s*(.*?)\s*\$\$', re.S)
+              displays = display_pattern.findall(source)
+              if len(displays) != 2:
+                  raise SystemExit(f'vision.md: expected 2 display formulas, found {len(displays)}')
+              source = display_pattern.sub(lambda m: math_component(m.group(1), True), source)
+
+              inline_pattern = re.compile(r'\$begin:math:text\$(w_i|x_i|b)\$end:math:text\$')
+              source, inline_count = inline_pattern.subn(lambda m: math_component(m.group(1), False), source)
+              if inline_count != 3:
+                  raise SystemExit(f'vision.md: expected 3 legacy inline formulas, replaced {inline_count}')
+
+              source = re.sub(
+                  r'!\[Sigmoid_Derivative\]\([^\n]+\)',
+                  '![Sigmoid derivative](/image/sigmoid-derivative.svg)',
+                  source,
+                  count=1,
+              )
+              source = re.sub(
+                  r'!\[Tanh_Derivative\]\([^\n]+\)',
+                  '![tanh derivative](/image/tanh-derivative.svg)',
+                  source,
+                  count=1,
+              )
+              source, activation_count = re.subn(
+                  r'<div style="display: flex; justify-content: center; gap: 10px;">[\s\S]*?alt="sig_tan"[\s\S]*?</div>',
+                  '![Sigmoid와 tanh 활성화 함수](/image/activation-functions.svg)',
+                  source,
+                  count=1,
+              )
+              if activation_count != 1:
+                  raise SystemExit(f'vision.md: expected one activation image group, replaced {activation_count}')
+
+              source = add_math_import(source)
+              forbidden = (
+                  '$$', '$begin:math:text$', '$end:math:text$',
+                  'external-content.duckduckgo.com', 'daumcdn.net', 'kakaocdn.net',
+              )
+              leftovers = [token for token in forbidden if token in source]
+              if leftovers:
+                  raise SystemExit(f'vision.mdx: legacy tokens remain: {leftovers}')
+              vision_mdx.write_text(source, encoding='utf-8')
+              vision_md.unlink()
+          elif not vision_mdx.exists():
+              raise SystemExit('Neither vision.md nor vision.mdx exists')
+
+          # Modern AI Part I: preserve every formula marker and replace only its
+          # immediately-owned display block with an explicit Math component.
+          modern_md = posts / 'mordern-artificial-intelligence.md'
+          modern_mdx = posts / 'mordern-artificial-intelligence.mdx'
+          if modern_md.exists():
+              source = modern_md.read_text(encoding='utf-8')
+              marker_pattern = re.compile(r'<!-- formula:\s*([^>\s]+)\s*-->')
+              marker_ids = marker_pattern.findall(source)
+              if len(marker_ids) != 238 or len(set(marker_ids)) != 238:
+                  raise SystemExit(
+                      f'Modern AI: expected 238 unique formula markers, found {len(marker_ids)} / {len(set(marker_ids))} unique'
+                  )
+
+              owned_formula = re.compile(
+                  r'(<!-- formula:\s*([^>\s]+)\s*-->)\s*\$\$\s*(.*?)\s*\$\$',
+                  re.S,
+              )
+              matches = list(owned_formula.finditer(source))
+              if len(matches) != 238:
+                  raise SystemExit(f'Modern AI: expected 238 owned display blocks, found {len(matches)}')
+              owned_ids = [match.group(2) for match in matches]
+              if owned_ids != marker_ids:
+                  raise SystemExit('Modern AI: formula marker/block ordering mismatch')
+
+              def replace_owned(match):
+                  marker, formula_id, tex = match.group(1), match.group(2), match.group(3)
+                  tex = tex.strip()
+                  if not tex:
+                      raise SystemExit(f'Modern AI: {formula_id} has an empty formula')
+                  if '??' in tex or '\uFFFD' in tex:
+                      raise SystemExit(f'Modern AI: {formula_id} contains an unresolved/corrupt token')
+                  return f'{marker}\n{math_component(tex, True)}'
+
+              source = owned_formula.sub(replace_owned, source)
+              source = add_math_import(source)
+              if '$$' in source:
+                  raise SystemExit('Modern AI: display-math delimiters remain after conversion')
+              if source.count('<Math display tex={') != 238:
+                  raise SystemExit('Modern AI: explicit Math component count is not 238')
+              modern_mdx.write_text(source, encoding='utf-8')
+              modern_md.unlink()
+          elif not modern_mdx.exists():
+              raise SystemExit('Neither Modern AI .md nor .mdx exists')
+
+          # Fragile third-party images become explicit local source references.
+          replacements = {
+              posts / 'calibration.md': (
+                  r'!\[카메라 좌표계\]\([^\n]+\)',
+                  '![카메라 좌표계](/image/calibration-coordinate-system.svg)',
+              ),
+              posts / 'soem.md': (
+                  r'!\[Topology\]\([^\n]+\)',
+                  '![Topology](/image/network-topology.svg)',
+              ),
+          }
+          for path, (pattern, replacement) in replacements.items():
+              source = path.read_text(encoding='utf-8')
+              source, count = re.subn(pattern, replacement, source, count=1)
+              if count == 0 and replacement not in source:
+                  raise SystemExit(f'{path}: expected fragile media reference not found')
+              path.write_text(source, encoding='utf-8')
+
+          for path in (vision_mdx, posts / 'calibration.md', posts / 'soem.md'):
+              source = path.read_text(encoding='utf-8')
+              for host in ('external-content.duckduckgo.com', 'daumcdn.net', 'kakaocdn.net', 'www.google.com/url?'):
+                  if host in source:
+                      raise SystemExit(f'{path}: fragile image host remains: {host}')
+
+      - name: Commit normalized source
+        shell: bash
+        run: |
+          if [[ -z "$(git status --porcelain -- spaceship-ui/site/content/posts)" ]]; then
+            echo "Sources already native"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A spaceship-ui/site/content/posts
+          git commit -m "refactor: migrate math posts to explicit Astro MDX"
+          git push origin HEAD:agent/astro-native-content
