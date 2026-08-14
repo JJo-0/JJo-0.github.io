@@ -1,0 +1,58 @@
+---
+import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { LEGACY_SOURCE_POSTS, legacyPathForPost } from '@/lib/legacy-posts.mjs';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  const postsById = new Map(posts.map((post) => [post.id, post]));
+  const today = new Date().toISOString().slice(0, 10);
+  const paths = [];
+
+  for (const source of LEGACY_SOURCE_POSTS) {
+    // The old Jekyll site did not publish future-dated posts by default, and
+    // the current Astro production build also excludes them.
+    if (source.date && source.date > today) continue;
+
+    const post = postsById.get(source.id);
+    if (!post) {
+      throw new Error(
+        `Legacy redirect target is missing for ${source.filename} (expected current post id: ${source.id})`
+      );
+    }
+
+    const legacyPath = legacyPathForPost(source, post.data.tags ?? []);
+    const target = `/posts/${getPostSlug(post)}/`;
+
+    paths.push({
+      params: { legacy: legacyPath.replace(/^\//, '').replace(/\/$/, '') },
+      props: { legacyPath, target, title: post.data.title },
+    });
+  }
+
+  return paths;
+}
+
+const { legacyPath, target, title } = Astro.props;
+const canonical = new URL(target, Astro.site).toString();
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} — moved</title>
+    <meta name="robots" content="noindex,follow" />
+    <meta name="legacy-redirect-target" content={target} />
+    <meta name="legacy-redirect-source" content={legacyPath} />
+    <link rel="canonical" href={canonical} />
+    <meta http-equiv="refresh" content={`0; url=${target}`} />
+    <script is:inline>{`window.location.replace(${JSON.stringify(target)});`}</script>
+  </head>
+  <body>
+    <main>
+      <p>이 글의 주소가 변경되었습니다.</p>
+      <p><a href={target}>새 주소로 이동</a></p>
+    </main>
+  </body>
+</html>
