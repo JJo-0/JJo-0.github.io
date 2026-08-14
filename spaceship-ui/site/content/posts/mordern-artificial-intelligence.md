@@ -136,9 +136,9 @@ series:
 - [PyTorch `torch.compile`](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)
 - [Vision Transformer 원 논문](https://arxiv.org/abs/2010.11929)
 
-## 7. 다음 편
+### 7. 다음 절
 
-2편부터는 선형대수로 들어간다. 벡터와 행렬의 표기부터 시작해 **내적, 외적, 행렬-벡터 곱, 행렬-행렬 곱**을 수식 단위로 모두 복원한다.
+다음 절에서는 선형대수로 들어간다. 벡터와 행렬의 표기부터 시작해 **내적, 외적, 행렬-벡터 곱, 행렬-행렬 곱**을 수식 단위로 모두 복원한다.
 
 ---
 
@@ -1940,7 +1940,7 @@ $$
 $$
 ### 4. 기울기
 
-함수 `f:\mathbb{R}^N	o\mathbb{R}`의 기울기는 최대 증가 방향을 가리키고 등고선에 수직이다.
+함수 `f:\mathbb{R}^N\to\mathbb{R}`의 기울기는 최대 증가 방향을 가리키고 등고선에 수직이다.
 
 <!-- formula: MAI8-005 -->
 $$
