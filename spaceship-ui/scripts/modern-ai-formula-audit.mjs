@@ -17,7 +17,7 @@ function formulaRange(prefix, last) {
   );
 }
 
-const expectedIds = [
+const expectedIdSet = new Set([
   ...formulaRange('MAI2', 39),
   ...formulaRange('MAI3', 46),
   ...formulaRange('MAI4', 28),
@@ -28,10 +28,12 @@ const expectedIds = [
   'MAI7-018C',
   'MAI7-023C',
   ...formulaRange('MAI8', 13),
-];
+]);
 
 const text = await readFile(postPath, 'utf8');
 const hashManifest = JSON.parse(await readFile(hashPath, 'utf8'));
+const manifestIds = hashManifest.formulas.map(({ id }) => id);
+const manifestIdSet = new Set(manifestIds);
 const expectedHashById = new Map(
   hashManifest.formulas.map(({ id, sha256 }) => [id, sha256]),
 );
@@ -40,13 +42,26 @@ const componentPattern = /<Math\s+display\s+tex=\{("(?:\\.|[^"\\])*")\}\s*\/>/g;
 const markers = [...text.matchAll(markerPattern)];
 const components = [...text.matchAll(componentPattern)];
 const actualIds = markers.map((match) => match[1]);
+const actualIdSet = new Set(actualIds);
 const failures = [];
 
-if (hashManifest.count !== expectedIds.length || hashManifest.formulas.length !== expectedIds.length) {
+if (
+  hashManifest.count !== expectedIdSet.size ||
+  hashManifest.formulas.length !== expectedIdSet.size
+) {
   failures.push('Formula hash manifest count is inconsistent with the expected ledger.');
 }
-if (hashManifest.formulas.map(({ id }) => id).join('\n') !== expectedIds.join('\n')) {
-  failures.push('Formula hash manifest IDs/order differ from the audited ledger.');
+if (manifestIdSet.size !== manifestIds.length) {
+  failures.push('Formula hash manifest identifiers are not unique.');
+}
+
+const missingFromManifest = [...expectedIdSet].filter((id) => !manifestIdSet.has(id));
+const unexpectedInManifest = manifestIds.filter((id) => !expectedIdSet.has(id));
+if (missingFromManifest.length) {
+  failures.push(`Formula hash manifest is missing IDs: ${missingFromManifest.join(', ')}`);
+}
+if (unexpectedInManifest.length) {
+  failures.push(`Formula hash manifest has unexpected IDs: ${unexpectedInManifest.join(', ')}`);
 }
 
 if (!text.includes("series:\n  id: 'modern-artificial-intelligence'\n  order: 1")) {
@@ -74,19 +89,27 @@ if ([...text].some((character) => {
   failures.push('Unexpected control character or tab detected.');
 }
 
-if (actualIds.length !== expectedIds.length) {
-  failures.push(`Formula marker count changed: expected ${expectedIds.length}, found ${actualIds.length}.`);
+if (actualIds.length !== manifestIds.length) {
+  failures.push(`Formula marker count changed: expected ${manifestIds.length}, found ${actualIds.length}.`);
 }
-if (components.length !== expectedIds.length) {
-  failures.push(`Math component count changed: expected ${expectedIds.length}, found ${components.length}.`);
+if (components.length !== manifestIds.length) {
+  failures.push(`Math component count changed: expected ${manifestIds.length}, found ${components.length}.`);
+}
+if (actualIdSet.size !== actualIds.length) {
+  failures.push('Formula identifiers are not unique in the migrated MDX.');
 }
 
-const actualSet = new Set(actualIds);
-if (actualSet.size !== actualIds.length) failures.push('Formula identifiers are not unique.');
-const missing = expectedIds.filter((id) => !actualSet.has(id));
-const unexpected = actualIds.filter((id) => !expectedIds.includes(id));
-if (missing.length) failures.push(`Missing formula IDs: ${missing.join(', ')}`);
-if (unexpected.length) failures.push(`Unexpected formula IDs: ${unexpected.join(', ')}`);
+const missingFromSource = manifestIds.filter((id) => !actualIdSet.has(id));
+const unexpectedInSource = actualIds.filter((id) => !manifestIdSet.has(id));
+if (missingFromSource.length) {
+  failures.push(`Missing formula IDs: ${missingFromSource.join(', ')}`);
+}
+if (unexpectedInSource.length) {
+  failures.push(`Unexpected formula IDs: ${unexpectedInSource.join(', ')}`);
+}
+if (actualIds.join('\n') !== manifestIds.join('\n')) {
+  failures.push('Formula marker order differs from the pre-migration source manifest.');
+}
 
 for (let index = 0; index < markers.length; index += 1) {
   const marker = markers[index];
