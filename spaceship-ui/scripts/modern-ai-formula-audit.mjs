@@ -35,7 +35,7 @@ const hashManifest = JSON.parse(await readFile(hashPath, 'utf8'));
 const expectedHashById = new Map(
   hashManifest.formulas.map(({ id, sha256 }) => [id, sha256]),
 );
-const markerPattern = /<!-- formula:\s*([^>\s]+)\s*-->/g;
+const markerPattern = /\{\/\*\s*formula:\s*([^*\s]+)\s*\*\/\}/g;
 const componentPattern = /<Math\s+display\s+tex=\{("(?:\\.|[^"\\])*")\}\s*\/>/g;
 const markers = [...text.matchAll(markerPattern)];
 const components = [...text.matchAll(componentPattern)];
@@ -63,6 +63,9 @@ if (/[$]begin:math:|[$]end:math:/.test(text)) {
 }
 if (text.includes('$$')) {
   failures.push('Legacy $$ display-math delimiters remain; use explicit Math components.');
+}
+if (text.includes('<!-- formula:')) {
+  failures.push('Legacy HTML formula markers remain; use MDX comments.');
 }
 if ([...text].some((character) => {
   const code = character.codePointAt(0) ?? 0;
