@@ -78,9 +78,11 @@ function sourceBase(filename) {
 // Exact algorithm used by scripts/migrate_posts.py in bb4e4788: NFKD,
 // drop non-ASCII, lowercase, spaces/underscores -> hyphen, then clean.
 function migrationSlugify(value) {
-  return value
-    .normalize('NFKD')
-    .replace(/[^\x00-\x7F]/g, '')
+  const ascii = [...value.normalize('NFKD')]
+    .filter((character) => (character.codePointAt(0) ?? 128) <= 0x7f)
+    .join('');
+
+  return ascii
     .toLowerCase()
     .replace(/[\s_]+/g, '-')
     .replace(/[^a-z0-9_-]/g, '')
