@@ -1,0 +1,40 @@
+name: Native math dependency prune
+
+on:
+  push:
+    branches: [agent/astro-native-content]
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/astro-native-content
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Remove obsolete Markdown math parser packages
+        run: pnpm remove remark-math rehype-katex --save-prod --lockfile-only
+      - name: Commit dependency cleanup
+        working-directory: .
+        shell: bash
+        run: |
+          if git diff --quiet -- spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml; then
+            echo "Dependencies already native"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml
+          git commit -m "refactor: keep KaTeX core without Markdown math parsers"
+          git push origin HEAD:agent/astro-native-content
