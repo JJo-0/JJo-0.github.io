@@ -23,7 +23,7 @@ lang: 'ko'
 ### 카메라 좌표계
 
 카메라의 좌표계는 밑에 처럼, World Coordinate, Camera Coordinate, Pixel Coordinate(Image Coordinate) 이렇게 있다.  
-![카메라 좌표계](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Ft1.daumcdn.net%2Fcfile%2Ftistory%2F995410365E9F957133)
+![카메라 좌표계](/image/calibration-coordinate-system.svg)
 
 Calibration Parameters는 intrinsic parameters, extrinsic parameters로 나뉘다.  
   
