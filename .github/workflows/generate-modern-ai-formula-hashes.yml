@@ -1,0 +1,70 @@
+name: Generate Modern AI formula hashes
+
+on:
+  push:
+    branches: [agent/astro-native-content]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/astro-native-content
+          fetch-depth: 0
+      - name: Hash formulas from the pre-native main snapshot
+        shell: python
+        run: |
+          import hashlib
+          import json
+          import pathlib
+          import re
+          import subprocess
+
+          source_commit = '80e2b5a030728f3c77c62753b01b93a3a6b60d0b'
+          source_path = 'spaceship-ui/site/content/posts/mordern-artificial-intelligence.md'
+          source = subprocess.check_output(
+              ['git', 'show', f'{source_commit}:{source_path}'],
+              text=True,
+          )
+          pattern = re.compile(
+              r'(?:<!-- formula:\s*([^>\s]+)\s*-->)\s*\$\$\s*(.*?)\s*\$\$',
+              re.S,
+          )
+          matches = pattern.findall(source)
+          if len(matches) != 238:
+              raise SystemExit(f'expected 238 formulas in source snapshot, found {len(matches)}')
+          ids = [formula_id for formula_id, _ in matches]
+          if len(set(ids)) != 238:
+              raise SystemExit('formula IDs are not unique in source snapshot')
+
+          manifest = {
+              'sourceCommit': source_commit,
+              'sourcePath': source_path,
+              'algorithm': 'sha256(utf8(trimmed-latex))',
+              'count': len(matches),
+              'formulas': [
+                  {
+                      'id': formula_id,
+                      'sha256': hashlib.sha256(tex.strip().encode('utf-8')).hexdigest(),
+                  }
+                  for formula_id, tex in matches
+              ],
+          }
+          target = pathlib.Path('spaceship-ui/scripts/modern-ai-formula-hashes.json')
+          target.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+      - name: Commit formula hash ledger
+        shell: bash
+        run: |
+          if [[ -z "$(git status --porcelain -- spaceship-ui/scripts/modern-ai-formula-hashes.json)" ]]; then
+            echo "Formula hash ledger already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add spaceship-ui/scripts/modern-ai-formula-hashes.json
+          git commit -m "test: snapshot Modern AI formula hashes before MDX migration"
+          git push origin HEAD:agent/astro-native-content
