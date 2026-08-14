@@ -47,8 +47,6 @@ const LEGACY_SOURCE_FILENAMES = [
   '2027-01-15-AI 아키텍처.md',
 ];
 
-// This taxonomy is the final Jekyll category hierarchy from
-// _data/para_mapping.yml immediately before the Astro migration.
 export const LEGACY_CATEGORY_TAXONOMY = [
   ['projects', 'computer-vision'],
   ['projects', 'ai-research'],
@@ -67,6 +65,14 @@ export const LEGACY_CATEGORY_TAXONOMY = [
   ['archive', 'experiments'],
 ];
 
+// Historical frontmatter overrides are only used when migrated tags contain
+// multiple valid taxonomy pairs. These two values were verified directly from
+// the pre-migration Jekyll sources at commit 1a4dd4f5.
+const LEGACY_CATEGORY_OVERRIDES = new Map([
+  ['2023-07-06-SLAM(1).md', 'projects/computer-vision'],
+  ['2023-07-06-SLAM(2).md', 'projects/computer-vision'],
+]);
+
 function sourceDate(filename) {
   return filename.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null;
 }
@@ -75,8 +81,6 @@ function sourceBase(filename) {
   return filename.replace(/\.md$/i, '').replace(/^\d{4}-\d{2}-\d{2}-?/, '').trim();
 }
 
-// Exact algorithm used by scripts/migrate_posts.py in bb4e4788: NFKD,
-// drop non-ASCII, lowercase, spaces/underscores -> hyphen, then clean.
 function migrationSlugify(value) {
   const ascii = [...value.normalize('NFKD')]
     .filter((character) => (character.codePointAt(0) ?? 128) <= 0x7f)
@@ -90,9 +94,6 @@ function migrationSlugify(value) {
     .replace(/^-|-$/g, '');
 }
 
-// Jekyll's :title placeholder uses slugify(..., 'pretty') and preserves case.
-// Pretty mode preserves Unicode letters/numbers and URL-safe punctuation such
-// as underscores while replacing whitespace and other separators with '-'.
 export function jekyllPrettyTitle(filename) {
   return sourceBase(filename)
     .replace(/[^\p{L}\p{N}_\-.~!$&'()+,;=@]+/gu, '-')
@@ -112,12 +113,7 @@ export const LEGACY_SOURCE_POSTS = LEGACY_SOURCE_FILENAMES.map((filename) => {
   seenMigrationSlugs.set(id, count);
   if (count > 1) id = `${id}-${count}`;
 
-  return Object.freeze({
-    filename,
-    date,
-    id,
-    titlePath: jekyllPrettyTitle(filename),
-  });
+  return Object.freeze({ filename, date, id, titlePath: jekyllPrettyTitle(filename) });
 });
 
 export function inferLegacyCategoryPath(tags = []) {
@@ -136,7 +132,8 @@ export function inferLegacyCategoryPath(tags = []) {
 }
 
 export function legacyPathForPost(source, tags) {
-  return `/${inferLegacyCategoryPath(tags)}/${source.titlePath}/`;
+  const categoryPath = LEGACY_CATEGORY_OVERRIDES.get(source.filename) ?? inferLegacyCategoryPath(tags);
+  return `/${categoryPath}/${source.titlePath}/`;
 }
 
 export function isLegacyPathname(pathname) {
