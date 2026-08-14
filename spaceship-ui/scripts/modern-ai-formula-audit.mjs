@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -7,6 +8,7 @@ const postPath = path.join(
   root,
   'site/content/posts/mordern-artificial-intelligence.mdx',
 );
+const hashPath = path.join(root, 'scripts/modern-ai-formula-hashes.json');
 
 function formulaRange(prefix, last) {
   return Array.from(
@@ -29,6 +31,10 @@ const expectedIds = [
 ];
 
 const text = await readFile(postPath, 'utf8');
+const hashManifest = JSON.parse(await readFile(hashPath, 'utf8'));
+const expectedHashById = new Map(
+  hashManifest.formulas.map(({ id, sha256 }) => [id, sha256]),
+);
 const markerPattern = /<!-- formula:\s*([^>\s]+)\s*-->/g;
 const componentPattern = /<Math\s+display\s+tex=\{("(?:\\.|[^"\\])*")\}\s*\/>/g;
 const markers = [...text.matchAll(markerPattern)];
@@ -36,26 +42,28 @@ const components = [...text.matchAll(componentPattern)];
 const actualIds = markers.map((match) => match[1]);
 const failures = [];
 
+if (hashManifest.count !== expectedIds.length || hashManifest.formulas.length !== expectedIds.length) {
+  failures.push('Formula hash manifest count is inconsistent with the expected ledger.');
+}
+if (hashManifest.formulas.map(({ id }) => id).join('\n') !== expectedIds.join('\n')) {
+  failures.push('Formula hash manifest IDs/order differ from the audited ledger.');
+}
+
 if (!text.includes("series:\n  id: 'modern-artificial-intelligence'\n  order: 1")) {
   failures.push('Part I series metadata is missing or changed.');
 }
-
 if (!text.includes("import Math from '@/components/Math.astro';")) {
   failures.push('Native Math component import is missing.');
 }
-
 if (text.includes('## 7. 다음 편') || text.includes('2편부터는 선형대수로 들어간다')) {
   failures.push('A split-draft transition remains in the merged Part I post.');
 }
-
 if (/[$]begin:math:|[$]end:math:/.test(text)) {
   failures.push('A migrated legacy math artifact remains.');
 }
-
 if (text.includes('$$')) {
   failures.push('Legacy $$ display-math delimiters remain; use explicit Math components.');
 }
-
 if ([...text].some((character) => {
   const code = character.codePointAt(0) ?? 0;
   return code < 32 && character !== '\n' && character !== '\r';
@@ -64,19 +72,14 @@ if ([...text].some((character) => {
 }
 
 if (actualIds.length !== expectedIds.length) {
-  failures.push(
-    `Formula marker count changed: expected ${expectedIds.length}, found ${actualIds.length}.`,
-  );
+  failures.push(`Formula marker count changed: expected ${expectedIds.length}, found ${actualIds.length}.`);
 }
 if (components.length !== expectedIds.length) {
-  failures.push(
-    `Math component count changed: expected ${expectedIds.length}, found ${components.length}.`,
-  );
+  failures.push(`Math component count changed: expected ${expectedIds.length}, found ${components.length}.`);
 }
 
 const actualSet = new Set(actualIds);
 if (actualSet.size !== actualIds.length) failures.push('Formula identifiers are not unique.');
-
 const missing = expectedIds.filter((id) => !actualSet.has(id));
 const unexpected = actualIds.filter((id) => !expectedIds.includes(id));
 if (missing.length) failures.push(`Missing formula IDs: ${missing.join(', ')}`);
@@ -109,6 +112,11 @@ for (let index = 0; index < markers.length; index += 1) {
   if (!formula.trim()) failures.push(`${id} has an empty formula body.`);
   if (formula.includes('??')) failures.push(`${id} contains an unresolved placeholder.`);
   if (formula.includes('\uFFFD')) failures.push(`${id} contains a replacement character.`);
+
+  const actualHash = createHash('sha256').update(formula.trim(), 'utf8').digest('hex');
+  const expectedHash = expectedHashById.get(id);
+  if (!expectedHash) failures.push(`${id} is missing from the pre-migration formula hash ledger.`);
+  else if (actualHash !== expectedHash) failures.push(`${id} LaTeX content changed during/after MDX migration.`);
 }
 
 if (failures.length) {
@@ -118,5 +126,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Modern AI formula audit passed: ${actualIds.length} unique native Math components preserve the complete formula ledger.`,
+  `Modern AI formula audit passed: ${actualIds.length} native Math components match the pre-migration SHA-256 formula ledger.`,
 );
