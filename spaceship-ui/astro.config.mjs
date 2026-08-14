@@ -41,7 +41,6 @@ function includeInSitemap(page) {
   return true;
 }
 
-// https://astro.build/config
 export default defineConfig({
   site: SITE.website,
   publicDir: 'site/assets',
@@ -49,22 +48,12 @@ export default defineConfig({
     svelte(),
     mdx(),
     sitemap({ filter: includeInSitemap }),
-    partytown({
-      config: {
-        forward: ['dataLayer.push'],
-      },
-    }),
+    partytown({ config: { forward: ['dataLayer.push'] } }),
   ],
-  build: {
-    inlineStylesheets: 'always',
-  },
-
+  build: { inlineStylesheets: 'always' },
   markdown: {
     shikiConfig: {
-      themes: {
-        light: 'min-light',
-        dark: 'catppuccin-frappe',
-      },
+      themes: { light: 'min-light', dark: 'catppuccin-frappe' },
       defaultColor: false,
       wrap: true,
       transformers: [
@@ -75,7 +64,7 @@ export default defineConfig({
     },
     remarkPlugins: [
       restoreLegacyHtml,
-      remarkMath,
+      [remarkMath, { singleDollarTextMath: false }],
       repairLegacyMathArtifacts,
       remarkEmoji,
       remarkRepairLiteralStrong,
@@ -86,36 +75,15 @@ export default defineConfig({
       fixLegacyFragments,
       replaceFragileMedia,
       [rehypeKatex, { throwOnError: false, strict: 'warn' }],
-      [
-        rehypeAutolinkHeadings,
-        {
-          behavior: 'prepend',
-          properties: {
-            className: ['heading-link'],
-            ariaLabel: 'Link to section',
-          },
-          content: {
-            type: 'text',
-            value: '#',
-          },
-        },
-      ],
-      [
-        rehypeExternalLinks,
-        {
-          target: '_blank',
-          rel: ['noopener', 'noreferrer'],
-        },
-      ],
+      [rehypeAutolinkHeadings, {
+        behavior: 'prepend',
+        properties: { className: ['heading-link'], ariaLabel: 'Link to section' },
+        content: { type: 'text', value: '#' },
+      }],
+      [rehypeExternalLinks, { target: '_blank', rel: ['noopener', 'noreferrer'] }],
     ],
   },
-
-  image: {
-    service: {
-      entrypoint: 'astro/assets/services/sharp',
-    },
-  },
-
+  image: { service: { entrypoint: 'astro/assets/services/sharp' } },
   vite: {
     plugins: [tailwindcss()],
     resolve: {
