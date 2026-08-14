@@ -1,0 +1,54 @@
+name: Refine Modern AI Part 1
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-course-series
+    paths:
+      - .github/workflows/refine-modern-ai-part1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-course-series
+          fetch-depth: 0
+      - name: Remove split-draft residue and malformed tab
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          path = Path('spaceship-ui/site/content/posts/mordern-artificial-intelligence.md')
+          text = path.read_text(encoding='utf-8')
+          old_heading = '## 7. 다음 편\n\n2편부터는 선형대수로 들어간다.'
+          new_heading = '### 7. 다음 절\n\n다음 절에서는 선형대수로 들어간다.'
+          if text.count(old_heading) != 1:
+              raise SystemExit('expected split-draft heading exactly once')
+          text = text.replace(old_heading, new_heading)
+          malformed = 'f:\\mathbb{R}^N\to\\mathbb{R}'
+          corrected = 'f:\\mathbb{R}^N\\to\\mathbb{R}'
+          if text.count(malformed) != 1:
+              raise SystemExit('expected malformed tab sequence exactly once')
+          text = text.replace(malformed, corrected)
+          if '\t' in text:
+              raise SystemExit('unexpected tab remains in post')
+          expected = 'c26a9eaf6aa32a03314b3483e2332dbc5bf6267bc3271cee9d56a80997929899'
+          actual = hashlib.sha256(text.encode()).hexdigest()
+          if actual != expected:
+              raise SystemExit(f'content hash mismatch after refinement: {actual}')
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit refinement
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add spaceship-ui/site/content/posts/mordern-artificial-intelligence.md
+          git commit -m 'refine merged Modern AI part 1 structure'
+          git push origin HEAD:agent/modern-ai-course-series
