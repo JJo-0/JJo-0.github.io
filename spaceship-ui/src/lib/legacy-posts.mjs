@@ -1,3 +1,5 @@
+import { LEGACY_CATEGORY_BY_FILENAME } from './legacy-categories.generated.mjs';
+
 const LEGACY_SOURCE_FILENAMES = [
   '2022-09-20-블로그를 시작하면서.md',
   '2022-09-26-python_변수.md',
@@ -47,32 +49,6 @@ const LEGACY_SOURCE_FILENAMES = [
   '2027-01-15-AI 아키텍처.md',
 ];
 
-export const LEGACY_CATEGORY_TAXONOMY = [
-  ['projects', 'computer-vision'],
-  ['projects', 'ai-research'],
-  ['projects', 'web-development'],
-  ['projects', 'robotics'],
-  ['areas', 'health-wellness'],
-  ['areas', 'neuroscience'],
-  ['areas', 'programming'],
-  ['areas', 'system-setup'],
-  ['resources', 'study-notes'],
-  ['resources', 'tools-guides'],
-  ['resources', 'code-analysis'],
-  ['resources', 'research-papers'],
-  ['archive', 'blog-setup'],
-  ['archive', 'legacy-projects'],
-  ['archive', 'experiments'],
-];
-
-// Historical frontmatter overrides are only used when migrated tags contain
-// multiple valid taxonomy pairs. These two values were verified directly from
-// the pre-migration Jekyll sources at commit 1a4dd4f5.
-const LEGACY_CATEGORY_OVERRIDES = new Map([
-  ['2023-07-06-SLAM(1).md', 'projects/computer-vision'],
-  ['2023-07-06-SLAM(2).md', 'projects/computer-vision'],
-]);
-
 function sourceDate(filename) {
   return filename.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null;
 }
@@ -85,7 +61,6 @@ function migrationSlugify(value) {
   const ascii = [...value.normalize('NFKD')]
     .filter((character) => (character.codePointAt(0) ?? 128) <= 0x7f)
     .join('');
-
   return ascii
     .toLowerCase()
     .replace(/[\s_]+/g, '-')
@@ -108,34 +83,31 @@ export const LEGACY_SOURCE_POSTS = LEGACY_SOURCE_FILENAMES.map((filename) => {
   const base = sourceBase(filename);
   let id = migrationSlugify(base);
   if (id.length < 3) id = date || 'post';
-
   const count = (seenMigrationSlugs.get(id) ?? 0) + 1;
   seenMigrationSlugs.set(id, count);
   if (count > 1) id = `${id}-${count}`;
 
-  return Object.freeze({ filename, date, id, titlePath: jekyllPrettyTitle(filename) });
+  const categoryPath = LEGACY_CATEGORY_BY_FILENAME.get(filename);
+  if (!categoryPath) throw new Error(`Missing historical category mapping for ${filename}`);
+
+  return Object.freeze({
+    filename,
+    date,
+    id,
+    categoryPath,
+    titlePath: jekyllPrettyTitle(filename),
+  });
 });
 
-export function inferLegacyCategoryPath(tags = []) {
-  const normalized = new Set(tags.map((tag) => String(tag).toLowerCase()));
-  const matches = LEGACY_CATEGORY_TAXONOMY.filter(([parent, child]) =>
-    normalized.has(parent) && normalized.has(child)
-  );
-
-  if (matches.length !== 1) {
-    throw new Error(
-      `Expected exactly one legacy category hierarchy; found ${matches.length} for tags: ${[...normalized].join(', ')}`
-    );
-  }
-
-  return matches[0].join('/');
+export function legacyPathForPost(source) {
+  return `/${source.categoryPath}/${source.titlePath}/`;
 }
 
-export function legacyPathForPost(source, tags) {
-  const categoryPath = LEGACY_CATEGORY_OVERRIDES.get(source.filename) ?? inferLegacyCategoryPath(tags);
-  return `/${categoryPath}/${source.titlePath}/`;
-}
+const LEGACY_TOP_LEVELS = new Set(
+  [...LEGACY_CATEGORY_BY_FILENAME.values()].map((categoryPath) => categoryPath.split('/')[0])
+);
 
 export function isLegacyPathname(pathname) {
-  return /^\/(?:projects|areas|resources|archive)\//i.test(pathname);
+  const topLevel = pathname.split('/').filter(Boolean)[0]?.toLowerCase();
+  return topLevel ? LEGACY_TOP_LEVELS.has(topLevel) : false;
 }
