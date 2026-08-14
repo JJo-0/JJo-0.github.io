@@ -101,7 +101,7 @@ for (let index = 0; index < markers.length; index += 1) {
     continue;
   }
 
-  let formula = '';
+  let formula;
   try {
     formula = JSON.parse(owned[0][1]);
   } catch {
