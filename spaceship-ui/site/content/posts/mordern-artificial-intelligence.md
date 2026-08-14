@@ -1,10 +1,2086 @@
 ---
-title: '현대 인공지능'
-description: '우리는 빅 데이터 속에 있다. 데이터 홍수는 데이터 분석의 자동화 방법, ML이 줄 수 있는 것을 부른다. 우리는 ML을 "데이터 속 자동으로 패턴을 찾고, 미 발견 패턴을 예측하거나 불확실성에서 다른 종류의 의사 결정을 수행 하는 방법"으로 정의한다.'
+title: '현대 인공지능 I — AI·ML·DL에서 확률·최적화까지: 1장 전체'
+description: 'ECE5992 현대 인공지능 1장 통합 학습노트. AI·ML·DL, 영상처리, 선형대수, 퍼셉트론, 컨볼루션, 확률변수·가우시안·WSS, 손실함수와 경사하강법을 두 강의자료의 수식과 함께 빠짐없이 재구성한다.'
 pubDate: 2025-05-16
-tags: ['artificial-intelligence', 'machine-learning', 'data-science', 'fundamentals', 'resources', 'code-analysis']
+updatedDate: 2026-08-14
+tags: ['artificial-intelligence', 'machine-learning', 'deep-learning', 'linear-algebra', 'probability', 'optimization', 'modern-ai-course', 'study-notes']
+featured: true
 lang: 'ko'
+series:
+  id: 'modern-artificial-intelligence'
+  order: 1
 ---
 
-## Machine Learning의 Fundamentals
-우리는 빅 데이터 속에 있다. 데이터 홍수는 데이터 분석의 자동화 방법, ML이 줄 수 있는 것을 부른다. 우리는 ML을 "데이터 속 자동으로 패턴을 찾고, 미 발견 패턴을 예측하거나 불확실성에서 다른 종류의 의사 결정을 수행 하는 방법"으로 정의한다. 
+> **편집·저작권 원칙**  
+> 이 글은 ECE5992 「Modern Artificial Intelligence」의 2025년 3월 12일·19일 1장 자료를 학습 목적으로 한국어로 다시 구성한 글이다. 원문의 문장 배열, 페이지 구성, 삽화는 복제하지 않는다. 개념 설명은 재서술하고, 도식은 새로 만든다. 다만 수식은 의미가 바뀌면 안 되므로 원자료의 수학적 내용을 보존한다. 판본 간 식 번호 차이와 원자료의 의심스러운 표기는 별도 주석으로 남긴다.
+
+> **이번 통합에서 폐기한 내용은 없다.**  
+> 앞서 임시로 2–8편으로 나누어 작성했던 선형대수·퍼셉트론·확률·최적화 초안은 모두 이 1편 안으로 병합했다. 이 글은 두 개의 1장 PDF를 하나의 게시물로 합친 통합판이다.
+
+## 수식 완전성 원칙
+
+이 글은 표시 수식을 각각 고유한 `MAI` 식별자로 관리한다. 현재 통합된 수식 블록은 **238개**다. 단순히 같은 식을 여러 판본에서 반복한 경우에는 한 번만 설명하되, 두 판본에서 표기나 식 번호가 다르면 주석으로 남긴다. 수식을 이미지로 넣지 않고 KaTeX로 렌더링하므로 복사·검색·접근성이 유지된다.
+
+## 시리즈 지도
+
+현재 확보된 강의자료 기준으로 전체 시리즈는 **9편**이다. 6편의 원본 PDF는 아직 제공되지 않았으므로 빈자리를 유지한다.
+
+| 순서 | 게시물 | 원자료 |
+|---:|---|---|
+| 1 | 1장 통합: AI·ML·DL, 선형대수, 확률, WSS, 손실함수, 경사하강법 | `0_Ch1 Backgrounds for AI`, `1_Ch1 Preliminaries for AI` |
+| 2 | 머신러닝 기초 | `1_Ch2 Fundamentals of ML` |
+| 3 | 퍼셉트론·MLP·CNN·2D 컨볼루션 | `4_CH4-Backgrounds for AI` |
+| 4 | 범용 기울기 기반 최적화 | `5_Ch4-General-purpose gradient-based opt` |
+| 5 | 이미지 분류 | `5_Ch5-Image classification` |
+| 6 | 원자료 대기 | 아직 업로드되지 않음 |
+| 7 | 의미론적 영상 분할 | `7_Ch7-Semantic segmentation` |
+| 8 | 영상 잡음제거·VAE·확산모델 | `6_Ch8-Denoising and diffusion models` |
+| 9 | 대조 표현학습 | `8_Ch9 Contrastive Representation Learning` |
+
+## 원자료 표기 감사
+
+두 판본을 대조하면서 다음 항목은 원자료 표기와 수학적으로 통상적인 표기를 구분했다.
+
+1. 2변수 선형시스템 예제의 두 번째 식에는 `x_2`가 두 번 나타난다. 원문 식을 보존한 뒤 일반형을 별도로 제시했다.
+2. `A\in\mathbb{R}^{M\times N}`, `x\in\mathbb{R}^{N}`이면 `Ax\in\mathbb{R}^{M}`이다. 원자료 한 문장의 출력 차원 표기는 문맥상 오기로 보고 본문에 올바른 차원을 사용한다.
+3. 초평면과 원점의 **기하학적 거리**는 `|b|/\|w\|_2`이고, 부호 있는 거리는 `b/\|w\|_2`로 볼 수 있다. 원자료의 `b/\|w\|_2`는 부호 있는 표현으로 주석한다.
+4. M개의 독립 가우시안 벡터의 결합밀도에서 정규화 상수는 수학적으로 `|C|^{-M/2}`가 되어야 한다. 원자료 전개에는 `|C|^{-1/2}`로 보이는 부분이 있어 원문 보존식과 교정식을 함께 표시한다.
+5. 복소 확률벡터의 비상관 조건은 일반적으로 `E[\widetilde X_i\widetilde X_j^*]=0`이다. 원자료에 켤레표시가 빠진 판본이 있어 본문에서 차이를 밝힌다.
+
+---
+## Part 1.0 분야와 연구 생태계
+
+## 2. AI, ML, DL은 같은 말이 아니다
+
+가장 넓게 보면 **인공지능**은 지능적인 행동을 수행하는 시스템을 만드는 전체 문제다. **머신러닝**은 그중에서 데이터를 통해 규칙이나 표현을 학습하는 접근이고, **딥러닝**은 다층 신경망을 중심으로 하는 머신러닝의 한 계열이다.
+
+이를 한 줄로 압축하면 다음과 같다.
+
+**인공지능 ⊃ 머신러닝 ⊃ 딥러닝**
+
+이 포함 관계는 역사 전체를 완벽히 설명하는 법칙은 아니다. 규칙 기반 AI, 검색, 계획, 최적화처럼 머신러닝이 아닌 AI도 있고, 현대 시스템은 학습된 모델과 검색·도구·외부 메모리·계획기를 함께 사용한다. 따라서 이 그림은 **분야의 포함 관계**를 보여주는 출발점이지, 오늘날 시스템 아키텍처를 전부 설명하는 도식은 아니다.
+
+## 3. 무엇을 읽어야 하나
+
+강의자료가 제시한 연구 생태계는 지금도 매우 유효하다. 분야를 따라가려면 논문 한 편만 읽는 것이 아니라 **저널과 학회 프로시딩의 목차를 지속적으로 훑는 습관**이 중요하다.
+
+### 대표 저널
+
+- IEEE Transactions on Pattern Analysis and Machine Intelligence
+- Nature Machine Intelligence
+- IEEE Transactions on Image Processing
+- IEEE Transactions on Signal Processing
+- IEEE Transactions on Medical Imaging
+- IEEE Transactions on Computational Imaging
+- IEEE Transactions on Intelligent Transportation Systems
+- IEEE Transactions on Robotics
+- Pattern Recognition
+- Medical Image Analysis
+- IEEE Signal Processing Letters
+- IEEE Robotics and Automation Letters
+
+### 대표 학회
+
+- NeurIPS
+- ICML
+- ICLR
+- CVPR
+- ICCV
+- ECCV
+- MICCAI
+- ICIP
+- IROS
+- ICRA
+
+여기서 중요한 것은 목록 자체보다 **분야 간 연결**이다. 영상·신호처리·로보틱스·의료영상·머신러닝은 실제 연구 문제에서 서로 강하게 겹친다.
+
+## 4. 영상처리와 컴퓨터비전
+
+강의자료는 영상 분야를 다음과 같은 흐름으로 본다.
+
+> 물리 장면 → 영상 형성 → 원시 측정값 → 영상처리 → 개선된 영상 → 영상 분석 → 의미 있는 판단
+
+그리고 옆으로는 두 개의 가지가 붙는다.
+
+- 영상 표시: 사람이 볼 수 있도록 표현하는 문제
+- 영상 압축: 저장·전송 비용을 줄이는 문제
+
+전통적으로 영상처리는 **저수준 비전**, 영상 분석은 **고수준 비전**으로 구분되곤 했다. 하지만 딥러닝 이후 이 경계는 점점 약해졌다. 하나의 신경망이 복원, 특징추출, 검출, 분류를 함께 학습하는 경우가 흔하기 때문이다.
+
+### 저수준과 고수준의 차이
+
+| 관점 | 저수준 중심 | 고수준 중심 |
+|---|---|---|
+| 주된 질문 | 픽셀을 어떻게 복원·변환할까? | 장면에 무엇이 있고 무슨 뜻일까? |
+| 대표 과제 | 잡음제거, 초해상도, 복원, 보정 | 분류, 검출, 분할, 추적, 추론 |
+| 전통적 기반 | 신호처리, 최적화, 통계 | 패턴인식, 머신러닝 |
+| 현대적 특징 | 경계가 많이 겹침 | 경계가 많이 겹침 |
+
+## 5. 강의자료가 던지는 중요한 경고
+
+이 장의 아주 중요한 문장은 “현대 딥러닝의 근본적인 이해는 아직 미성숙하다”는 취지다.
+
+모델 성능이 좋아졌다는 것과 **왜 그런 모델이 일반화하는지, 어떤 표현을 학습하는지, 어떤 조건에서 실패하는지 완전히 이해했다는 것**은 다르다. 이 문제는 이후 선형대수, 확률, 최적화가 왜 필요한지 설명한다.
+
+## 6. 2026년 8월 업데이트
+
+2026년 현재에도 이 기초는 그대로 필요하다. 다만 실제 구현의 중심은 훨씬 넓어졌다.
+
+- PyTorch의 현재 안정 문서는 2.13 계열이며, 텐서 연산뿐 아니라 `torch.linalg`, `torch.func`, `torch.compile`, 분산학습, attention 커널까지 하나의 생태계에 포함한다.
+- 비전에서도 CNN만이 유일한 기본 구조는 아니다. Vision Transformer 이후 패치 기반 attention은 표준적인 선택지가 되었고, CNN·Transformer·하이브리드가 공존한다.
+- 따라서 “현대 AI = 단순한 다층 신경망”으로 이해하면 부족하다. **수학 기초 → 표현학습 → 대규모 최적화 → 효율적인 컴파일/분산 실행**까지 연결해서 보는 편이 좋다.
+
+#### 최신 참고
+
+- [PyTorch 2.13 문서](https://docs.pytorch.org/docs/stable/)
+- [PyTorch `torch.compile`](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)
+- [Vision Transformer 원 논문](https://arxiv.org/abs/2010.11929)
+
+## 7. 다음 편
+
+2편부터는 선형대수로 들어간다. 벡터와 행렬의 표기부터 시작해 **내적, 외적, 행렬-벡터 곱, 행렬-행렬 곱**을 수식 단위로 모두 복원한다.
+
+---
+
+## Part 1.1 선형대수 I — 벡터·행렬·곱
+
+### 1. 왜 선형대수부터 시작하나
+
+현대 신경망의 대부분은 결국 **벡터와 행렬에 대한 연산**으로 실행된다. 선형대수는 단순한 선수과목이 아니라 모델의 forward, convolution의 행렬화, attention, 최적화, covariance 계산을 모두 연결하는 언어다.
+
+#### 1.1 2변수 선형시스템
+
+강의자료에는 다음 두 식이 예제로 제시된다. 두 번째 식은 원자료에 `x_2`가 두 번 들어가 있는데, 이 글에서는 **원자료 표기를 보존**하고 바로 아래에 일반적인 2변수 시스템을 함께 적는다.
+
+<!-- formula: MAI2-001 -->
+$$
+\begin{aligned}
+A_{1,1}x_1 - A_{1,2}x_2 &= b_1,\\
+A_{2,1}x_2 - A_{2,2}x_2 &= b_2.
+\end{aligned}
+$$
+일반적인 두 변수 선형시스템은 보통 다음처럼 쓴다.
+
+<!-- formula: MAI2-002 -->
+$$
+\begin{aligned}
+A_{1,1}x_1 + A_{1,2}x_2 &= b_1,\\
+A_{2,1}x_1 + A_{2,2}x_2 &= b_2.
+\end{aligned}
+$$
+행렬 표기로는 훨씬 간결해진다.
+
+<!-- formula: MAI2-003 -->
+$$
+A\mathbf{x}=\mathbf{b},\qquad
+A=\begin{bmatrix}A_{1,1}&A_{1,2}\\A_{2,1}&A_{2,2}\end{bmatrix},\qquad
+\mathbf{b}=\begin{bmatrix}b_1\\b_2\end{bmatrix}.
+$$
+### 2. 기본 표기
+
+열벡터와 행렬의 차원을 항상 먼저 본다.
+
+<!-- formula: MAI2-004 -->
+$$
+\mathbf{x}\in\mathbb{R}^{M},\qquad \mathbf{x}^{T}\ \text{is a row vector}.
+$$
+<!-- formula: MAI2-005 -->
+$$
+A\in\mathbb{R}^{M\times N}.
+$$
+<!-- formula: MAI2-006 -->
+$$
+\mathbf{x}=
+\begin{bmatrix}
+x_1\\x_2\\\vdots\\x_M
+\end{bmatrix}.
+$$
+<!-- formula: MAI2-007 -->
+$$
+A=
+\begin{bmatrix}
+A_{1,1}&A_{1,2}&\cdots&A_{1,N}\\
+A_{2,1}&A_{2,2}&\cdots&A_{2,N}\\
+\vdots&\vdots&\ddots&\vdots\\
+A_{M,1}&A_{M,2}&\cdots&A_{M,N}
+\end{bmatrix}.
+$$
+열 단위 표기와 행 단위 표기도 자주 사용한다.
+
+<!-- formula: MAI2-008 -->
+$$
+A=\begin{bmatrix}\mathbf{a}_1&\mathbf{a}_2&\cdots&\mathbf{a}_N\end{bmatrix}.
+$$
+<!-- formula: MAI2-009 -->
+$$
+A=\begin{bmatrix}
+\mathbf{a}_1^T\\
+\mathbf{a}_2^T\\
+\vdots\\
+\mathbf{a}_M^T
+\end{bmatrix}.
+$$
+### 3. 영상의 벡터화
+
+다차원 영상을 하나의 긴 벡터로 펴면, convolution 같은 연산도 행렬-벡터 곱으로 표현할 수 있다.
+
+<!-- formula: MAI2-010 -->
+$$
+\begin{bmatrix}y_1&\cdots&y_N\end{bmatrix}
+\longrightarrow
+\begin{bmatrix}y_1\\\vdots\\y_N\end{bmatrix}.
+$$
+<!-- formula: MAI2-011 -->
+$$
+y[m,n]=(a*x)[m,n].
+$$
+<!-- formula: MAI2-012 -->
+$$
+\mathbf{y}=A\mathbf{x}.
+$$
+### 4. 벡터-벡터 곱
+
+#### 4.1 내적
+
+내적은 두 벡터를 하나의 스칼라로 줄인다.
+
+<!-- formula: MAI2-013 -->
+$$
+\mathbf{x}^T\mathbf{y}
+=
+\begin{bmatrix}x_1&x_2&\cdots&x_N\end{bmatrix}
+\begin{bmatrix}y_1\\y_2\\\vdots\\y_N\end{bmatrix}
+=
+\sum_{i=1}^{N}x_i y_i\in\mathbb{R}.
+$$
+<!-- formula: MAI2-014 -->
+$$
+\mathbf{x}^T\mathbf{y}=\mathbf{y}^T\mathbf{x}.
+$$
+#### 4.2 외적
+
+외적은 두 벡터로부터 행렬을 만든다.
+
+<!-- formula: MAI2-015 -->
+$$
+\mathbf{x}\mathbf{y}^T
+=
+\begin{bmatrix}
+x_1y_1&x_1y_2&\cdots&x_1y_N\\
+x_2y_1&x_2y_2&\cdots&x_2y_N\\
+\vdots&\vdots&\ddots&\vdots\\
+x_My_1&x_My_2&\cdots&x_My_N
+\end{bmatrix}
+\in\mathbb{R}^{M\times N}.
+$$
+### 5. 행렬-벡터 곱을 두 가지로 보기
+
+행 기준으로 보면 각 출력 성분은 한 행과 입력 벡터의 내적이다.
+
+<!-- formula: MAI2-016 -->
+$$
+\mathbf{y}=A\mathbf{x}
+=
+\begin{bmatrix}
+\mathbf{a}_1^T\mathbf{x}\\
+\mathbf{a}_2^T\mathbf{x}\\
+\vdots\\
+\mathbf{a}_M^T\mathbf{x}
+\end{bmatrix}.
+$$
+<!-- formula: MAI2-017 -->
+$$
+y_i=\mathbf{a}_i^T\mathbf{x}.
+$$
+열 기준으로 보면 출력은 A의 열벡터들의 선형결합이다.
+
+<!-- formula: MAI2-018 -->
+$$
+\mathbf{y}=A\mathbf{x}
+=
+\begin{bmatrix}\mathbf{a}_1&\mathbf{a}_2&\cdots&\mathbf{a}_N\end{bmatrix}
+\begin{bmatrix}x_1\\x_2\\\vdots\\x_N\end{bmatrix}
+=
+\mathbf{a}_1x_1+\mathbf{a}_2x_2+\cdots+\mathbf{a}_Nx_N.
+$$
+행벡터를 왼쪽에서 곱할 수도 있다.
+
+<!-- formula: MAI2-019 -->
+$$
+\mathbf{y}^T=\mathbf{x}^T A
+=
+\begin{bmatrix}
+\mathbf{x}^T\mathbf{a}_1&
+\mathbf{x}^T\mathbf{a}_2&
+\cdots&
+\mathbf{x}^T\mathbf{a}_N
+\end{bmatrix}.
+$$
+<!-- formula: MAI2-020 -->
+$$
+\mathbf{y}^T=\mathbf{x}^T A
+=
+x_1\mathbf{a}_1^T+x_2\mathbf{a}_2^T+\cdots+x_M\mathbf{a}_M^T.
+$$
+### 6. 행렬-행렬 곱
+
+<!-- formula: MAI2-021 -->
+$$
+A\in\mathbb{R}^{M\times N},\quad
+B\in\mathbb{R}^{N\times P},\quad
+C=AB\in\mathbb{R}^{M\times P}.
+$$
+<!-- formula: MAI2-022 -->
+$$
+C_{i,j}=\sum_{k=1}^{N}A_{i,k}B_{k,j}.
+$$
+행과 열의 내적을 한 번에 모으면 다음과 같다.
+
+<!-- formula: MAI2-023 -->
+$$
+C=AB=
+\begin{bmatrix}
+\mathbf{a}_1^T\mathbf{b}_1&\mathbf{a}_1^T\mathbf{b}_2&\cdots&\mathbf{a}_1^T\mathbf{b}_P\\
+\mathbf{a}_2^T\mathbf{b}_1&\mathbf{a}_2^T\mathbf{b}_2&\cdots&\mathbf{a}_2^T\mathbf{b}_P\\
+\vdots&\vdots&\ddots&\vdots\\
+\mathbf{a}_M^T\mathbf{b}_1&\mathbf{a}_M^T\mathbf{b}_2&\cdots&\mathbf{a}_M^T\mathbf{b}_P
+\end{bmatrix}.
+$$
+열-행 관점에서는 외적의 합이다.
+
+<!-- formula: MAI2-024 -->
+$$
+C=AB=\sum_{i=1}^{N}\mathbf{a}_i\mathbf{b}_i^T.
+$$
+B를 열벡터로 보면 C의 각 열은 A와 B의 한 열의 행렬-벡터 곱이다.
+
+<!-- formula: MAI2-025 -->
+$$
+C=A\begin{bmatrix}\mathbf{b}_1&\mathbf{b}_2&\cdots&\mathbf{b}_P\end{bmatrix}
+=
+\begin{bmatrix}A\mathbf{b}_1&A\mathbf{b}_2&\cdots&A\mathbf{b}_P\end{bmatrix}.
+$$
+<!-- formula: MAI2-026 -->
+$$
+\mathbf{c}_i=A\mathbf{b}_i.
+$$
+A를 행벡터로 보면 C의 각 행은 다음처럼 얻는다.
+
+<!-- formula: MAI2-027 -->
+$$
+C=
+\begin{bmatrix}
+\mathbf{a}_1^TB\\
+\mathbf{a}_2^TB\\
+\vdots\\
+\mathbf{a}_M^TB
+\end{bmatrix}.
+$$
+<!-- formula: MAI2-028 -->
+$$
+\mathbf{c}_i^T=\mathbf{a}_i^TB.
+$$
+#### 6.1 곱셈의 기본 성질
+
+<!-- formula: MAI2-029 -->
+$$
+(AB)C=A(BC).
+$$
+<!-- formula: MAI2-030 -->
+$$
+A(B+C)=AB+AC.
+$$
+<!-- formula: MAI2-031 -->
+$$
+AB\neq BA\quad\text{in general}.
+$$
+### 7. 항등행렬과 대각행렬
+
+<!-- formula: MAI2-032 -->
+$$
+I_{i,j}=
+\begin{cases}
+1,&i=j,\\
+0,&i\neq j.
+\end{cases}
+$$
+<!-- formula: MAI2-033 -->
+$$
+AI=A=IA.
+$$
+<!-- formula: MAI2-034 -->
+$$
+D=\operatorname{diag}(d_1,\ldots,d_N),\qquad
+D_{i,j}=
+\begin{cases}
+d_i,&i=j,\\
+0,&i\neq j.
+\end{cases}
+$$
+<!-- formula: MAI2-035 -->
+$$
+I=\operatorname{diag}(1,\ldots,1).
+$$
+### 8. 전치
+
+<!-- formula: MAI2-036 -->
+$$
+(A^T)_{i,j}=A_{j,i}.
+$$
+<!-- formula: MAI2-037 -->
+$$
+(A^T)^T=A.
+$$
+<!-- formula: MAI2-038 -->
+$$
+(AB)^T=B^TA^T.
+$$
+<!-- formula: MAI2-039 -->
+$$
+(A+B)^T=A^T+B^T.
+$$
+### 9. 2026년 구현 관점
+
+2026년 8월 현재 PyTorch 2.13의 `torch.linalg`은 노름, 행렬식, rank, solve, QR, Cholesky 등 이 장의 거의 모든 연산을 직접 제공한다.
+
+특히 실무에서는 `A^{-1}b`를 직접 만드는 것보다 **선형시스템 `Ax=b`를 `torch.linalg.solve`로 푸는 편이 수치적으로나 계산적으로 더 적절한 경우가 많다.**
+
+- [PyTorch `torch.linalg`](https://docs.pytorch.org/docs/stable/linalg)
+- [PyTorch `torch.linalg.solve`](https://docs.pytorch.org/docs/stable/generated/torch.linalg.solve.html)
+
+### 10. 기억할 관점
+
+행렬곱을 단순 공식으로 외우기보다 네 관점을 모두 익히는 것이 좋다.
+
+1. 행 × 열의 내적
+2. 외적들의 합
+3. B의 각 열에 A를 적용
+4. A의 각 행에 B를 적용
+
+이 네 관점은 이후 fully-connected layer, convolution의 im2col 표현, attention의 projection을 이해할 때 계속 다시 등장한다.
+
+---
+
+## Part 1.2 선형대수 II — 대칭·트레이스·노름·랭크·행렬식
+
+### 1. 대칭행렬과 반대칭행렬
+
+<!-- formula: MAI3-001 -->
+$$
+A=A^T.
+$$
+<!-- formula: MAI3-002 -->
+$$
+A=-A^T.
+$$
+어떤 정사각행렬도 대칭 성분과 반대칭 성분의 합으로 분해할 수 있다.
+
+<!-- formula: MAI3-003 -->
+$$
+A=
+\frac12(A+A^T)+\frac12(A-A^T).
+$$
+### 2. 트레이스
+
+트레이스는 대각 원소의 합이다.
+
+<!-- formula: MAI3-004 -->
+$$
+\operatorname{tr}(A)=\sum_{i=1}^{N}A_{i,i}.
+$$
+<!-- formula: MAI3-005 -->
+$$
+\operatorname{tr}(A)=\operatorname{tr}(A^T).
+$$
+<!-- formula: MAI3-006 -->
+$$
+\operatorname{tr}(A+B)=\operatorname{tr}(A)+\operatorname{tr}(B).
+$$
+<!-- formula: MAI3-007 -->
+$$
+\operatorname{tr}(tA)=t\,\operatorname{tr}(A).
+$$
+<!-- formula: MAI3-008 -->
+$$
+\operatorname{tr}(AB)=\operatorname{tr}(BA).
+$$
+<!-- formula: MAI3-009 -->
+$$
+\operatorname{tr}(ABC)=\operatorname{tr}(BCA)=\operatorname{tr}(CAB).
+$$
+### 3. 노름
+
+#### 3.1 유클리드 노름
+
+<!-- formula: MAI3-010 -->
+$$
+\|\mathbf{x}\|_2=\sqrt{\sum_{i=1}^{N}x_i^2}.
+$$
+<!-- formula: MAI3-011 -->
+$$
+\|\mathbf{x}\|_2^2=\mathbf{x}^T\mathbf{x}.
+$$
+노름은 길이의 일반화이며 네 성질을 만족한다.
+
+<!-- formula: MAI3-012 -->
+$$
+f(\mathbf{x})\ge 0.
+$$
+<!-- formula: MAI3-013 -->
+$$
+f(\mathbf{x})=0\iff \mathbf{x}=0.
+$$
+<!-- formula: MAI3-014 -->
+$$
+f(t\mathbf{x})=|t|f(\mathbf{x}).
+$$
+<!-- formula: MAI3-015 -->
+$$
+f(\mathbf{x}+\mathbf{y})\le f(\mathbf{x})+f(\mathbf{y}).
+$$
+다른 대표 노름도 함께 둔다.
+
+<!-- formula: MAI3-016 -->
+$$
+\|\mathbf{x}\|_1=\sum_{i=1}^{N}|x_i|.
+$$
+<!-- formula: MAI3-017 -->
+$$
+\|\mathbf{x}\|_\infty=\max_i |x_i|.
+$$
+<!-- formula: MAI3-018 -->
+$$
+\|\mathbf{x}\|_p=
+\left(\sum_{i=1}^{N}|x_i|^p\right)^{1/p},\qquad p\ge1.
+$$
+행렬에 대해서는 Frobenius 노름이 자주 등장한다.
+
+<!-- formula: MAI3-019 -->
+$$
+\|A\|_F=
+\sqrt{\sum_{i=1}^{M}\sum_{j=1}^{N}A_{i,j}^2}
+=
+\sqrt{\operatorname{tr}(A^TA)}.
+$$
+### 4. 선형독립과 랭크
+
+한 벡터가 나머지 벡터의 선형결합으로 표현되면 그 집합은 선형종속이다.
+
+<!-- formula: MAI3-020 -->
+$$
+\mathbf{x}_N=\sum_{i=1}^{N-1}\alpha_i\mathbf{x}_i.
+$$
+강의자료의 예시는 다음 세 벡터다.
+
+<!-- formula: MAI3-021 -->
+$$
+\mathbf{x}_1=
+\begin{bmatrix}1\\2\\3\end{bmatrix},\quad
+\mathbf{x}_2=
+\begin{bmatrix}4\\1\\5\end{bmatrix},\quad
+\mathbf{x}_3=
+\begin{bmatrix}2\\-3\\-1\end{bmatrix}.
+$$
+<!-- formula: MAI3-022 -->
+$$
+\mathbf{x}_3=-2\mathbf{x}_1+\mathbf{x}_2.
+$$
+랭크의 기본 성질은 다음과 같다.
+
+<!-- formula: MAI3-023 -->
+$$
+\operatorname{rank}(A)\le\min(M,N),\qquad A\in\mathbb{R}^{M\times N}.
+$$
+<!-- formula: MAI3-024 -->
+$$
+\operatorname{rank}(A)=\operatorname{rank}(A^T).
+$$
+<!-- formula: MAI3-025 -->
+$$
+\operatorname{rank}(AB)\le\min(\operatorname{rank}(A),\operatorname{rank}(B)).
+$$
+<!-- formula: MAI3-026 -->
+$$
+\operatorname{rank}(A+B)\le\operatorname{rank}(A)+\operatorname{rank}(B).
+$$
+### 5. 역행렬
+
+<!-- formula: MAI3-027 -->
+$$
+A^{-1}A=I=AA^{-1}.
+$$
+정사각행렬이더라도 singular이면 역행렬이 없다. 비특이 행렬에 대한 성질은 다음과 같다.
+
+<!-- formula: MAI3-028 -->
+$$
+(A^{-1})^{-1}=A.
+$$
+<!-- formula: MAI3-029 -->
+$$
+(AB)^{-1}=B^{-1}A^{-1}.
+$$
+<!-- formula: MAI3-030 -->
+$$
+(A^{-1})^T=(A^T)^{-1}\equiv A^{-T}.
+$$
+### 6. 직교성과 직교행렬
+
+<!-- formula: MAI3-031 -->
+$$
+\mathbf{x}^T\mathbf{y}=0.
+$$
+<!-- formula: MAI3-032 -->
+$$
+\|\mathbf{x}\|_2=1.
+$$
+정사각 직교행렬 U는 열들이 orthonormal이고 다음을 만족한다.
+
+<!-- formula: MAI3-033 -->
+$$
+U^TU=I=UU^T.
+$$
+직사각행렬의 열만 orthonormal일 때는 한쪽만 항등행렬이 된다.
+
+<!-- formula: MAI3-034 -->
+$$
+U^TU=I,\qquad UU^T\neq I\quad (U\in\mathbb{R}^{M\times N},\,N<M).
+$$
+직교변환은 유클리드 길이를 보존한다.
+
+<!-- formula: MAI3-035 -->
+$$
+\|U\mathbf{x}\|_2=\|\mathbf{x}\|_2.
+$$
+### 7. 행렬식
+
+행렬식의 절댓값은 행벡터가 만드는 평행다포체의 부피로 해석할 수 있다.
+
+<!-- formula: MAI3-036 -->
+$$
+S=
+\left\{
+\mathbf{v}\in\mathbb{R}^N:
+\mathbf{v}=\sum_{i=1}^{N}\alpha_i\mathbf{a}_i,\quad
+0\le\alpha_i\le1
+\right\}.
+$$
+강의자료의 2×2 예시는 다음과 같다.
+
+<!-- formula: MAI3-037 -->
+$$
+A=
+\begin{bmatrix}
+1&3\\
+3&2
+\end{bmatrix}.
+$$
+<!-- formula: MAI3-038 -->
+$$
+\mathbf{a}_1=
+\begin{bmatrix}1\\3\end{bmatrix},\qquad
+\mathbf{a}_2=
+\begin{bmatrix}3\\2\end{bmatrix}.
+$$
+<!-- formula: MAI3-039 -->
+$$
+\det(A)=|A|=-7,\qquad |\det(A)|=7.
+$$
+행렬식의 핵심 성질을 모두 적는다.
+
+<!-- formula: MAI3-040 -->
+$$
+|I|=1.
+$$
+<!-- formula: MAI3-041 -->
+$$
+\det
+\begin{bmatrix}
+t\mathbf{a}_1^T\\
+\mathbf{a}_2^T\\
+\vdots\\
+\mathbf{a}_N^T
+\end{bmatrix}
+=t|A|.
+$$
+<!-- formula: MAI3-042 -->
+$$
+\det
+\begin{bmatrix}
+\mathbf{a}_2^T\\
+\mathbf{a}_1^T\\
+\vdots\\
+\mathbf{a}_N^T
+\end{bmatrix}
+=-|A|.
+$$
+<!-- formula: MAI3-043 -->
+$$
+|A|=|A^T|.
+$$
+<!-- formula: MAI3-044 -->
+$$
+|AB|=|A||B|.
+$$
+<!-- formula: MAI3-045 -->
+$$
+|A|=0\iff A\ \text{is singular}.
+$$
+<!-- formula: MAI3-046 -->
+$$
+|A^{-1}|=\frac{1}{|A|}.
+$$
+### 8. 2026년 수치계산 관점
+
+이 장에서 중요한 현대적 보정은 **수학적 정의와 수치계산 코드를 구분하는 것**이다.
+
+- 역행렬은 정의상 중요하지만 실제 계산에서 매번 `inv(A) @ b`를 만드는 것은 좋은 기본 습관이 아니다. 선형시스템이면 `solve`가 더 직접적이다.
+- 작은 행렬식은 underflow, 큰 행렬식은 overflow가 날 수 있으므로 로그 행렬식 `slogdet`가 유용하다.
+- rank는 정확한 기호적 rank가 아니라 부동소수점 tolerance에 의존하는 **수치 rank**로 취급해야 한다.
+
+최신 PyTorch의 `torch.linalg`에는 `solve`, `slogdet`, `matrix_rank`, `qr`, `svd`, `eigh`가 모두 포함된다.
+
+- [PyTorch `torch.linalg`](https://docs.pytorch.org/docs/stable/linalg)
+- [PyTorch `torch.linalg.solve`](https://docs.pytorch.org/docs/stable/generated/torch.linalg.solve.html)
+
+---
+
+## Part 1.3 선형대수 III — 이차형식·고유값·미분
+
+### 1. 이차형식
+
+<!-- formula: MAI4-001 -->
+$$
+\mathbf{x}^TA\mathbf{x}
+=
+\sum_{i=1}^{N}x_i(A\mathbf{x})_i
+=
+\sum_{i=1}^{N}\sum_{j=1}^{N}A_{i,j}x_i x_j.
+$$
+이차형식에는 A의 대칭 성분만 기여한다.
+
+<!-- formula: MAI4-002 -->
+$$
+\mathbf{x}^TA\mathbf{x}
+=
+(\mathbf{x}^TA\mathbf{x})^T
+=
+\mathbf{x}^TA^T\mathbf{x}
+=
+\mathbf{x}^T\left(\frac12A+\frac12A^T\right)\mathbf{x}.
+$$
+### 2. 정부호와 준정부호
+
+<!-- formula: MAI4-003 -->
+$$
+A\succ0
+\iff
+\mathbf{x}^TA\mathbf{x}>0
+\quad\text{for all }\mathbf{x}\neq0.
+$$
+<!-- formula: MAI4-004 -->
+$$
+A\succeq0
+\iff
+\mathbf{x}^TA\mathbf{x}\ge0
+\quad\text{for all }\mathbf{x}.
+$$
+<!-- formula: MAI4-005 -->
+$$
+A\prec0
+\iff
+\mathbf{x}^TA\mathbf{x}<0
+\quad\text{for all }\mathbf{x}\neq0.
+$$
+<!-- formula: MAI4-006 -->
+$$
+A\preceq0
+\iff
+\mathbf{x}^TA\mathbf{x}\le0
+\quad\text{for all }\mathbf{x}.
+$$
+indefinite는 어떤 방향에서는 양수, 다른 방향에서는 음수가 되는 경우다.
+
+<!-- formula: MAI4-007 -->
+$$
+\exists\mathbf{x}_1,\mathbf{x}_2:
+\quad
+\mathbf{x}_1^TA\mathbf{x}_1>0,\qquad
+\mathbf{x}_2^TA\mathbf{x}_2<0.
+$$
+### 3. 고유값과 고유벡터
+
+<!-- formula: MAI4-008 -->
+$$
+A\mathbf{x}=\lambda\mathbf{x},\qquad \mathbf{x}\neq0.
+$$
+고유값은 trace, determinant, rank와 직접 연결된다.
+
+<!-- formula: MAI4-009 -->
+$$
+\operatorname{tr}(A)=\sum_{i=1}^{N}\lambda_i.
+$$
+<!-- formula: MAI4-010 -->
+$$
+|A|=\prod_{i=1}^{N}\lambda_i.
+$$
+<!-- formula: MAI4-011 -->
+$$
+\operatorname{rank}(A)=\#\{i:\lambda_i\neq0\}.
+$$
+<!-- formula: MAI4-012 -->
+$$
+A^{-1}\mathbf{x}_i=\frac{1}{\lambda_i}\mathbf{x}_i.
+$$
+<!-- formula: MAI4-013 -->
+$$
+D=\operatorname{diag}(d_1,\ldots,d_N)
+\quad\Longrightarrow\quad
+\lambda_i=d_i.
+$$
+모든 고유벡터 방정식을 한 번에 쓰면 다음과 같다.
+
+<!-- formula: MAI4-014 -->
+$$
+AX=X\Lambda.
+$$
+<!-- formula: MAI4-015 -->
+$$
+X=
+\begin{bmatrix}\mathbf{x}_1&\mathbf{x}_2&\cdots&\mathbf{x}_N\end{bmatrix},
+\qquad
+\Lambda=\operatorname{diag}(\lambda_1,\ldots,\lambda_N).
+$$
+X가 invertible이면 A는 diagonalizable이다.
+
+<!-- formula: MAI4-016 -->
+$$
+A=X\Lambda X^{-1}.
+$$
+### 4. 대칭행렬의 고유분해
+
+대칭행렬의 고유값은 실수이고 고유벡터를 orthonormal하게 잡을 수 있다.
+
+<!-- formula: MAI4-017 -->
+$$
+A=U\Lambda U^T.
+$$
+이 구조 덕분에 definiteness는 고유값의 부호로 판정할 수 있다.
+
+<!-- formula: MAI4-018 -->
+$$
+\mathbf{x}^TA\mathbf{x}
+=
+\mathbf{x}^TU\Lambda U^T\mathbf{x}
+=
+\mathbf{y}^T\Lambda\mathbf{y}
+=
+\sum_{i=1}^{N}\lambda_i y_i^2.
+$$
+<!-- formula: MAI4-019 -->
+$$
+\mathbf{y}=U^T\mathbf{x}.
+$$
+### 5. 행렬에 대한 기울기
+
+스칼라값을 출력하는 함수가 행렬을 입력받는 경우 기울기는 입력 행렬과 같은 크기의 편미분 행렬이다.
+
+<!-- formula: MAI4-020 -->
+$$
+\nabla_A f(A)\in\mathbb{R}^{M\times N},\qquad
+\left(\nabla_A f(A)\right)_{i,j}
+=
+\frac{\partial f(A)}{\partial A_{i,j}}.
+$$
+벡터 입력의 경우는 익숙한 gradient가 된다.
+
+<!-- formula: MAI4-021 -->
+$$
+\nabla_{\mathbf{x}}f(\mathbf{x})
+=
+\begin{bmatrix}
+\frac{\partial f}{\partial x_1}\\
+\frac{\partial f}{\partial x_2}\\
+\vdots\\
+\frac{\partial f}{\partial x_N}
+\end{bmatrix}.
+$$
+선형성도 그대로 유지된다.
+
+<!-- formula: MAI4-022 -->
+$$
+\nabla_{\mathbf{x}}\big(f(\mathbf{x})+g(\mathbf{x})\big)
+=
+\nabla_{\mathbf{x}}f(\mathbf{x})+\nabla_{\mathbf{x}}g(\mathbf{x}).
+$$
+<!-- formula: MAI4-023 -->
+$$
+\nabla_{\mathbf{x}}\big(tf(\mathbf{x})\big)
+=
+t\nabla_{\mathbf{x}}f(\mathbf{x}).
+$$
+### 6. 헤시안
+
+<!-- formula: MAI4-024 -->
+$$
+\nabla_{\mathbf{x}}^2 f(\mathbf{x})\in\mathbb{R}^{N\times N},\qquad
+\left(\nabla_{\mathbf{x}}^2 f(\mathbf{x})\right)_{i,j}
+=
+\frac{\partial^2 f(\mathbf{x})}{\partial x_i\partial x_j}.
+$$
+충분히 매끄러운 함수라면 혼합편미분이 같아 Hessian은 대칭이다.
+
+<!-- formula: MAI4-025 -->
+$$
+\frac{\partial^2f(\mathbf{x})}{\partial x_i\partial x_j}
+=
+\frac{\partial^2f(\mathbf{x})}{\partial x_j\partial x_i}.
+$$
+### 7. 선형·이차함수의 미분 공식
+
+<!-- formula: MAI4-026 -->
+$$
+\nabla_{\mathbf{x}}\mathbf{b}^T\mathbf{x}=\mathbf{b}.
+$$
+<!-- formula: MAI4-027 -->
+$$
+\nabla_{\mathbf{x}}\mathbf{x}^TA\mathbf{x}=2A\mathbf{x}
+\qquad(A=A^T).
+$$
+<!-- formula: MAI4-028 -->
+$$
+\nabla_{\mathbf{x}}^2\mathbf{x}^TA\mathbf{x}=2A
+\qquad(A=A^T).
+$$
+### 8. 2026년 자동미분 관점
+
+현재 PyTorch에서는 이 장의 gradient, Jacobian, Hessian을 손으로 전개하지 않고도 계산할 수 있다. 하지만 자동미분이 수학을 없애는 것은 아니다. **shape, symmetry, positive definiteness, conditioning**을 모르면 결과를 잘못 해석하기 쉽다.
+
+2026년 8월 현재 PyTorch 2.13의 `torch.func`는 다음을 직접 제공한다.
+
+- `grad`
+- `vjp`, `jvp`
+- `jacrev`, `jacfwd`
+- `hessian`
+- `vmap`
+
+특히 Hessian은 2차 미분이므로 메모리와 계산량이 급격히 커질 수 있다. 실제 대규모 모델에서는 Hessian 전체보다 Hessian-vector product 같은 구조를 쓰는 경우가 많다.
+
+- [PyTorch `torch.func`](https://docs.pytorch.org/docs/stable/func.api)
+- [PyTorch autograd mechanics](https://docs.pytorch.org/docs/stable/notes/autograd)
+
+---
+
+## Part 1.4 퍼셉트론·컨볼루션·DNN
+
+### 1. 생물학적 뉴런에서 퍼셉트론으로
+
+퍼셉트론은 생물학적 뉴런을 그대로 복제하는 모델이 아니라, **입력값 → 가중합 → 비선형/임계 함수 → 출력**이라는 계산 구조로 추상화한 모델이다.
+
+다층 신경망의 한 뉴런은 강의자료의 그림 속 수식으로 다음처럼 쓸 수 있다.
+
+<!-- formula: MAI5-001 -->
+$$
+z_i^{(\ell)}
+=
+\sum_{j=1}^{n_{\ell-1}}
+w_{i,j}^{(\ell)}a_j^{(\ell-1)}
++b_i^{(\ell)}.
+$$
+<!-- formula: MAI5-002 -->
+$$
+a_i^{(\ell)}=h\!\left(z_i^{(\ell)}\right).
+$$
+### 2. 2차원 직선에서 N차원 초평면으로
+
+2차원 직선은 다음처럼 쓸 수 있다.
+
+<!-- formula: MAI5-003 -->
+$$
+y=ax+c.
+$$
+일반적인 선형 경계 형태로 바꾸면 다음과 같다.
+
+<!-- formula: MAI5-004 -->
+$$
+w_1x_1+w_2x_2+b=0.
+$$
+N차원에서는 초평면이 된다.
+
+<!-- formula: MAI5-005 -->
+$$
+\sum_{n=1}^{N}w_nx_n+b=0.
+$$
+<!-- formula: MAI5-006 -->
+$$
+\mathbf{w}^T\mathbf{x}+b=0.
+$$
+### 3. 퍼셉트론의 판별 함수
+
+<!-- formula: MAI5-007 -->
+$$
+d(\mathbf{x})=\operatorname{sign}(g(\mathbf{x})),
+\qquad
+g(\mathbf{x})=\mathbf{w}^T\mathbf{x}+b.
+$$
+<!-- formula: MAI5-008 -->
+$$
+\operatorname{sign}(a)=
+\begin{cases}
+-1,&a<0,\\
+0,&a=0,\\
+1,&a>0.
+\end{cases}
+$$
+#### 3.1 결정경계의 기하학
+
+- 경계면은 weight vector `\mathbf{w}`에 수직이다.
+- bias는 경계면의 위치를 이동시킨다.
+- 원자료의 `b/\|w\|_2`는 부호 있는 거리로 읽을 수 있다. 비음수인 기하학적 거리는 `|b|/\|w\|_2`다.
+
+<!-- formula: MAI5-009 -->
+$$
+\operatorname{dist}(0,\text{boundary})=\frac{b}{\|\mathbf{w}\|_2}.
+$$
+부호까지 포함한 점 x의 경계면 상대 위치는 다음 값으로 읽을 수 있다.
+
+<!-- formula: MAI5-010 -->
+$$
+\operatorname{signed\ distance}(\mathbf{x})
+=
+\frac{g(\mathbf{x})}{\|\mathbf{w}\|_2}.
+$$
+<!-- formula: MAI5-011 -->
+$$
+\begin{aligned}
+g(\mathbf{x})&=0 &&\text{on the plane},\\
+g(\mathbf{x})&>0 &&\text{on the positive side},\\
+g(\mathbf{x})&<0 &&\text{on the negative side}.
+\end{aligned}
+$$
+### 4. 선형분리 가능한 학습집합과 제로 오차
+
+<!-- formula: MAI5-012 -->
+$$
+\mathcal{D}=
+\{(\mathbf{x}_1,y_1),\ldots,(\mathbf{x}_M,y_M)\}.
+$$
+<!-- formula: MAI5-013 -->
+$$
+\big(y_m=1\land g(\mathbf{x}_m)>0\big)
+\ \lor\
+\big(y_m=-1\land g(\mathbf{x}_m)<0\big),
+\qquad\forall m.
+$$
+한 줄로는 다음과 같다.
+
+<!-- formula: MAI5-014 -->
+$$
+y_m\,g(\mathbf{x}_m)>0,\qquad\forall m.
+$$
+### 5. 비선형 판별기와 컨볼루션
+
+DNN의 핵심 구성 중 하나인 convolution을 연속형부터 적는다.
+
+<!-- formula: MAI5-015 -->
+$$
+(f*g)(t)
+=
+\int_{-\infty}^{\infty}
+f(\tau)g(t-\tau)\,d\tau.
+$$
+이산형은 다음 두 표현이 동치다.
+
+<!-- formula: MAI5-016 -->
+$$
+(f*g)[n]
+=
+\sum_{m=-\infty}^{\infty}
+f[m]\,g[n-m].
+$$
+<!-- formula: MAI5-017 -->
+$$
+(f*g)[n]
+=
+\sum_{m=-\infty}^{\infty}
+f[n-m]\,g[m].
+$$
+### 6. DNN에서 자주 쓰는 모듈
+
+강의자료의 PyTorch 목록을 한국어 기능 중심으로 재구성하면 다음과 같다.
+
+| 모듈 | 역할 |
+|---|---|
+| `nn.Linear` | 전결합 선형변환 |
+| `nn.Conv2d` | 2차원 컨볼루션 |
+| `nn.ConvTranspose2d` | 전치 컨볼루션 기반 업샘플링 |
+| `nn.ReLU` | 비선형 활성화 |
+| `nn.MaxPool2d` | 최대 풀링 |
+| `nn.AvgPool2d` | 평균 풀링 |
+| `nn.Upsample` | 보간 기반 업샘플링 |
+| `nn.Dropout` | 학습 중 임의 비활성화를 통한 정규화 |
+
+### 7. 2026년 업데이트: CNN 다음에 무엇이 왔나
+
+CNN의 수학이 낡은 것은 아니다. 다만 현대 비전 모델의 선택지는 훨씬 넓다.
+
+- Vision Transformer는 이미지를 patch sequence로 보고 attention만으로도 강한 이미지 인식 성능을 만들 수 있음을 보였다.
+- PyTorch 2.13은 `scaled_dot_product_attention`을 제공하고, FlashAttention-2 계열을 포함한 여러 backend로 dispatch할 수 있다.
+- `torch.compile`은 모델 코드를 graph로 포착해 최적화하는 현재 PyTorch의 핵심 실행 경로다.
+- CNN은 여전히 저수준 특징추출, 임베디드 비전, 복원, 의료영상, hybrid architecture에서 광범위하게 쓰인다.
+
+즉, 이 강의의 **퍼셉트론 → 컨볼루션 → DNN** 흐름은 역사적 기초이고, 그 위에 attention과 foundation model이 추가되었다고 보는 것이 정확하다.
+
+- [Vision Transformer 원 논문](https://arxiv.org/abs/2010.11929)
+- [PyTorch scaled dot-product attention](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention)
+- [PyTorch `torch.compile`](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)
+
+---
+
+## Part 1.5 확률변수·조건부확률·조건부기대값
+
+### 1. 실수 확률변수의 CDF와 PDF
+
+<!-- formula: MAI6-001 -->
+$$
+F_X(x)=P\{X\le x\},\qquad \forall x\in\mathbb{R}.
+$$
+<!-- formula: MAI6-002 -->
+$$
+\lim_{t\to\infty}F_X(t)=1,\qquad
+\lim_{t\to-\infty}F_X(t)=0.
+$$
+<!-- formula: MAI6-003 -->
+$$
+p_X(x)=\frac{dF_X(x)}{dx}.
+$$
+### 2. 이산·연속 분포
+
+강의에서 대표 이산 확률변수로 Bernoulli, Binomial, Poisson을 들고, 연속 확률변수로 Uniform, Gaussian, Laplace를 든다.
+
+포아송 PMF는 다음과 같다.
+
+<!-- formula: MAI6-004 -->
+$$
+P\{X=k\}=e^{-\lambda}\frac{\lambda^k}{k!},
+\qquad k=0,1,2,\ldots,\quad \lambda>0.
+$$
+평균 μ, 분산 σ²의 단변량 Gaussian PDF는 다음과 같다.
+
+<!-- formula: MAI6-005 -->
+$$
+p_X(x)
+=
+\frac{1}{\sqrt{2\pi\sigma^2}}
+\exp\!\left(
+-\frac12\frac{(x-\mu)^2}{\sigma^2}
+\right).
+$$
+### 3. 독립성
+
+<!-- formula: MAI6-006 -->
+$$
+p_{X,Y}(x,y)=p_X(x)p_Y(y).
+$$
+### 4. 평균·기대값·분산·상관
+
+<!-- formula: MAI6-007 -->
+$$
+\mu_X=E[X]=\int x\,p_X(x)\,dx.
+$$
+<!-- formula: MAI6-008 -->
+$$
+E[g(X)]=\int g(x)p_X(x)\,dx.
+$$
+<!-- formula: MAI6-009 -->
+$$
+\operatorname{Var}(X)
+=
+E\!\left[|X-E[X]|^2\right]
+=
+E[|X|^2]-|E[X]|^2.
+$$
+<!-- formula: MAI6-010 -->
+$$
+E[XY^*]
+=
+\iint xy^*p_{X,Y}(x,y)\,dx\,dy.
+$$
+복소 확률변수의 실수부·허수부까지 펼치면 상관의 적분은 4차원이 된다.
+
+<!-- formula: MAI6-011 -->
+$$
+E[XY^*]
+=
+\iiiint
+(a+ib)(c-id)\,
+p_{X_r,X_i,Y_r,Y_i}(a,b,c,d)\,
+da\,db\,dc\,dd.
+$$
+### 5. 공분산
+
+<!-- formula: MAI6-012 -->
+$$
+\operatorname{Cov}(X,Y)
+=
+E[(X-E[X])(Y-E[Y])^*]
+=
+E[XY^*]-E[X]E[Y^*].
+$$
+ensemble mean과 유한 샘플의 sample mean은 구분해야 한다.
+
+<!-- formula: MAI6-013 -->
+$$
+\bar{x}=\frac1N\sum_{n=1}^{N}x_n.
+$$
+공분산 성질을 모두 적는다.
+
+<!-- formula: MAI6-014 -->
+$$
+\operatorname{Cov}(X,Y)
+=
+E[XY^*]-\mu_X\mu_Y^*.
+$$
+<!-- formula: MAI6-015 -->
+$$
+\operatorname{Cov}(X,Y)
+=
+\operatorname{Cov}^*(Y,X).
+$$
+<!-- formula: MAI6-016 -->
+$$
+\operatorname{Cov}(X,X)=\operatorname{Var}(X).
+$$
+<!-- formula: MAI6-017 -->
+$$
+\operatorname{Cov}(aX+b,cY+d)
+=
+ac^*\operatorname{Cov}(X,Y).
+$$
+<!-- formula: MAI6-018 -->
+$$
+|\operatorname{Cov}(X,Y)|\le\sigma_X\sigma_Y,
+\qquad
+\sigma_X^2=\operatorname{Var}(X),\ 
+\sigma_Y^2=\operatorname{Var}(Y).
+$$
+<!-- formula: MAI6-019 -->
+$$
+|E[XY^*]|
+\le
+\sqrt{E[|X|^2]E[|Y|^2]}.
+$$
+<!-- formula: MAI6-020 -->
+$$
+X\perp Y
+\quad\Longrightarrow\quad
+E[XY]=\mu_X\mu_Y
+\quad\Longrightarrow\quad
+\operatorname{Cov}(X,Y)=0.
+$$
+역은 일반적으로 성립하지 않는다. 다만 jointly Gaussian에서는 uncorrelated가 independence로 이어지는 특별한 성질이 있다.
+
+<!-- formula: MAI6-021 -->
+$$
+\operatorname{Cov}\!\left(\sum_n X_n,\sum_mY_m\right)
+=
+\sum_i\sum_j\operatorname{Cov}(X_i,Y_j).
+$$
+### 6. Cauchy–Schwarz의 벡터 증명
+
+강의자료의 각주에 있는 전개도 빠뜨리지 않는다.
+
+<!-- formula: MAI6-022 -->
+$$
+\begin{aligned}
+\sum_{n=1}^{N}\sum_{n'=1}^{N}
+(x_ny_{n'}-x_{n'}y_n)^2
+&=
+\sum_n x_n^2\sum_{n'}y_{n'}^2
++
+\sum_n y_n^2\sum_{n'}x_{n'}^2\\
+&\quad-
+2\sum_n x_ny_n\sum_{n'}x_{n'}y_{n'}\\
+&=
+2\left(\sum_nx_n^2\right)
+\left(\sum_ny_n^2\right)
+-
+2\left(\sum_nx_ny_n\right)^2.
+\end{aligned}
+$$
+<!-- formula: MAI6-023 -->
+$$
+\left(\sum_{n=1}^{N}x_n^2\right)
+\left(\sum_{n=1}^{N}y_n^2\right)
+\ge
+\left(\sum_{n=1}^{N}x_ny_n\right)^2.
+$$
+### 7. 조건부확률
+
+<!-- formula: MAI6-024 -->
+$$
+P(A\mid B).
+$$
+<!-- formula: MAI6-025 -->
+$$
+F_Y(y)=\lim_{x\to\infty}F_{X,Y}(x,y).
+$$
+<!-- formula: MAI6-026 -->
+$$
+F_{X,Y}(x,y)
+=
+\int_{-\infty}^{y}
+F_{X\mid Y}(x\mid t)\,dF_Y(t).
+$$
+<!-- formula: MAI6-027 -->
+$$
+F_{X\mid Y}(x\mid y)
+=
+\frac{dF_{X,Y}(x,y)}{dy}
+\left(
+\frac{dF_{X,Y}(\infty,y)}{dy}
+\right)^{-1}.
+$$
+밀도함수 형태로 바꾸면 더 익숙해진다.
+
+<!-- formula: MAI6-028 -->
+$$
+p_{X,Y}(x,y)
+=
+\frac{d^2F_{X,Y}(x,y)}{dx\,dy}.
+$$
+<!-- formula: MAI6-029 -->
+$$
+p_Y(y)=\frac{dF(\infty,y)}{dy}.
+$$
+<!-- formula: MAI6-030 -->
+$$
+p_{X\mid Y}(x\mid y)
+=
+\frac{p_{X,Y}(x,y)}{p_Y(y)}.
+$$
+독립이면 조건을 걸어도 X의 분포가 바뀌지 않는다.
+
+<!-- formula: MAI6-031 -->
+$$
+p_{X\mid Y}(x\mid y)=p_X(x),
+\qquad
+\forall x,y\ \text{with }p_Y(y)>0.
+$$
+### 8. 조건부기대값
+
+<!-- formula: MAI6-032 -->
+$$
+E[X\mid Y]
+=
+\int_{-\infty}^{\infty}
+x\,dF_{X\mid Y}(x\mid Y).
+$$
+<!-- formula: MAI6-033 -->
+$$
+E[X\mid Y]
+=
+\int_{-\infty}^{\infty}
+x\,p_{X\mid Y}(x\mid Y)\,dx.
+$$
+조건부기대값은 Y의 함수이므로 그 자체가 확률변수다.
+
+<!-- formula: MAI6-034 -->
+$$
+I_A(X)=
+\begin{cases}
+1,&X\in A,\\
+0,&\text{otherwise}.
+\end{cases}
+$$
+<!-- formula: MAI6-035 -->
+$$
+P\{X\in A\mid Y\}=E[I_A(X)\mid Y].
+$$
+#### 8.1 Filtration property
+
+<!-- formula: MAI6-036 -->
+$$
+E[E[X\mid Y,Z]\mid Y]=E[X\mid Y].
+$$
+
+강의자료 각주에 제시된 filtration 성질의 적분 전개도 남긴다.
+
+<!-- formula: MAI6-036A -->
+$$
+\begin{aligned}
+E[X\mid Y=y]
+&=\int x\,p_{X\mid Y}(x\mid y)\,dx\\
+&=\int x\,\frac{p_{X,Y}(x,y)}{p_Y(y)}\,dx\\
+&=\int x\,\frac{\int p_{X,Y,Z}(x,y,z)\,dz}{p_Y(y)}\,dx\\
+&=\int \frac{p_{Y,Z}(y,z)}{p_Y(y)}
+\left\{\int x\,p_{X\mid Y,Z}(x\mid y,z)\,dx\right\}dz\\
+&=\int p_{Z\mid Y}(z\mid y)\,E[X\mid Y=y,Z=z]\,dz\\
+&=E[E[X\mid Y,Z]\mid Y=y].
+\end{aligned}
+$$
+<!-- formula: MAI6-037 -->
+$$
+E[X]=E[E[X\mid Y]].
+$$
+#### 8.2 이미 알려진 양을 조건으로 둘 때
+
+<!-- formula: MAI6-038 -->
+$$
+E[f(X)Z\mid X,Y]
+=
+f(X)E[Z\mid X,Y].
+$$
+<!-- formula: MAI6-039 -->
+$$
+E[X\mid X,Y]=X.
+$$
+<!-- formula: MAI6-040 -->
+$$
+E[E[X\mid Y,Z]\mid Y]
+=
+E[X\mid Y]
+=
+E[E[X\mid Y]\mid Y,Z].
+$$
+### 9. deterministic인가 random인가
+
+강의의 체크 질문도 식으로 남긴다.
+
+<!-- formula: MAI6-041 -->
+$$
+Y=f(X).
+$$
+<!-- formula: MAI6-042 -->
+$$
+\mu=E[X].
+$$
+<!-- formula: MAI6-043 -->
+$$
+\widehat{X}=E[X\mid Z].
+$$
+<!-- formula: MAI6-044 -->
+$$
+\widehat{X}=E[X\mid Z=z_0].
+$$
+해석은 다음과 같다.
+
+- `Y=f(X)`: 일반적으로 확률변수
+- `\mu=E[X]`: 분포가 고정되면 deterministic scalar
+- `E[X\mid Z]`: Z의 함수이므로 확률변수
+- `E[X\mid Z=z_0]`: 특정 z₀에 조건을 고정하면 deterministic quantity
+
+### 10. 2026년 구현 관점
+
+2026년 8월 현재 PyTorch 2.13의 `torch.distributions`는 Bernoulli, Normal, Poisson 같은 분포를 단순 샘플링 도구로만 다루지 않는다. `log_prob`, `entropy`, reparameterized sampling 등을 통해 **확률모형을 계산 그래프와 연결**한다.
+
+따라서 이 장의 조건부확률과 기대값은 고전 통계의 언어이면서 동시에 VAE, 확률적 정책, Bayesian layer, uncertainty estimation을 구현하는 기본 언어다.
+
+- [PyTorch `torch.distributions`](https://docs.pytorch.org/docs/stable/distributions.html)
+
+---
+
+## Part 1.6 확률벡터·결합 가우시안·WSS·전력스펙트럼
+
+### 1. 확률벡터
+
+<!-- formula: MAI7-001 -->
+$$
+\mathbf{X}=(X_1,\ldots,X_N)\in\mathcal{X},
+\qquad
+\mathcal{X}=\mathbb{R}^N\ \text{or}\ \mathbb{C}^N.
+$$
+<!-- formula: MAI7-002 -->
+$$
+F_{\mathbf{X}}(x_1,\ldots,x_N)
+=
+P\{X_1\le x_1,\ldots,X_N\le x_N\}.
+$$
+<!-- formula: MAI7-003 -->
+$$
+\lim_{t_n\to\infty}
+F_{\mathbf{X}}(t_1,\ldots,t_N)=1,\qquad
+\lim_{t_n\to-\infty}
+F_{\mathbf{X}}(t_1,\ldots,t_N)=0.
+$$
+<!-- formula: MAI7-004 -->
+$$
+p_{\mathbf{X}}(\mathbf{x})
+=
+\frac{\partial^N F_{\mathbf{X}}(x_1,\ldots,x_N)}
+{\partial x_1\cdots\partial x_N}.
+$$
+### 2. 다변량 가우시안
+
+<!-- formula: MAI7-005 -->
+$$
+\mathbf{X}\sim\mathcal{N}(\boldsymbol{\mu},C).
+$$
+<!-- formula: MAI7-006 -->
+$$
+p_{\mathbf{X}}(\mathbf{x})
+=
+\frac{1}{\sqrt{\det(2\pi C)}}
+\exp\!\left(
+-\frac12
+(\mathbf{x}-\boldsymbol{\mu})^H
+C^{-1}
+(\mathbf{x}-\boldsymbol{\mu})
+\right).
+$$
+<!-- formula: MAI7-007 -->
+$$
+\det(\alpha C)=\alpha^N\det(C),
+\qquad C\in\mathbb{C}^{N\times N}.
+$$
+### 3. 확률벡터의 기대값·상관·공분산
+
+<!-- formula: MAI7-008 -->
+$$
+E[\mathbf{X}]
+=
+\int_{\mathcal{X}}\mathbf{x}\,p_{\mathbf{X}}(\mathbf{x})\,d\mathbf{x}.
+$$
+<!-- formula: MAI7-009 -->
+$$
+E[g(\mathbf{X})]
+=
+\int_{\mathcal{X}}g(\mathbf{x})p_{\mathbf{X}}(\mathbf{x})\,d\mathbf{x}.
+$$
+<!-- formula: MAI7-010 -->
+$$
+R_{\mathbf{X}}
+=
+E[\mathbf{X}\mathbf{X}^H],
+\qquad
+[R_{\mathbf{X}}]_{i,j}
+=
+E[X_iX_j^*]
+=
+\int_{\mathcal{X}}
+x_i x_j^* p_{\mathbf{X}}(\mathbf{x})\,d\mathbf{x}.
+$$
+<!-- formula: MAI7-011 -->
+$$
+C_{\mathbf{X},\mathbf{Y}}
+=
+E[(\mathbf{X}-E[\mathbf{X}])
+(\mathbf{Y}-E[\mathbf{Y}])^H],
+\qquad
+[C_{\mathbf{X},\mathbf{Y}}]_{i,j}
+=
+\operatorname{Cov}(X_i,Y_j).
+$$
+<!-- formula: MAI7-012 -->
+$$
+C_{\mathbf{X},\mathbf{X}}
+=
+R_{\mathbf{X}}
+-
+E[\mathbf{X}]E[\mathbf{X}]^H.
+$$
+성분이 독립이면 공분산행렬은 대각행렬이 된다.
+
+<!-- formula: MAI7-013 -->
+$$
+C_{\mathbf{X},\mathbf{X}}
+=
+\operatorname{diag}(\sigma_1^2,\ldots,\sigma_N^2).
+$$
+양의 정부호 행렬의 quadratic form도 다시 등장한다.
+
+<!-- formula: MAI7-014 -->
+$$
+\|\mathbf{x}\|_A^2
+=
+\mathbf{x}^HA\mathbf{x}>0,
+\qquad
+\forall\mathbf{x}\in\mathbb{C}^N,\ \mathbf{x}\neq0.
+$$
+### 4. 공분산의 직교대각화와 decorrelation
+
+<!-- formula: MAI7-015 -->
+$$
+C=E\Lambda E^H.
+$$
+<!-- formula: MAI7-016 -->
+$$
+\widetilde{\mathbf{X}}=E^H\mathbf{X}.
+$$
+<!-- formula: MAI7-017 -->
+$$
+E[\widetilde{\mathbf{X}}\widetilde{\mathbf{X}}^H]=\Lambda.
+$$
+<!-- formula: MAI7-018 -->
+$$
+E[\widetilde{X}_i\widetilde{X}_j]=0,
+\qquad i\neq j.
+$$
+
+복소값 벡터에서는 통상 다음과 같이 켤레를 포함한다.
+
+<!-- formula: MAI7-018C -->
+$$
+E[\widetilde{X}_i\widetilde{X}_j^*]=0,
+\qquad i\neq j.
+$$
+jointly Gaussian이면 uncorrelated components가 jointly independent로 이어진다.
+
+### 5. 결합 가우시안의 조건부기대값
+
+<!-- formula: MAI7-019 -->
+$$
+E[\mathbf{X}\mid\mathbf{Y}]
+=
+A\mathbf{Y}+\mathbf{b}.
+$$
+<!-- formula: MAI7-020 -->
+$$
+E\!\left[
+(\mathbf{X}-E[\mathbf{X}\mid\mathbf{Y}])
+(\mathbf{X}-E[\mathbf{X}\mid\mathbf{Y}])^H
+\mid\mathbf{Y}
+\right]
+=
+C.
+$$
+### 6. M개의 i.i.d. Gaussian vector 예제
+
+<!-- formula: MAI7-021 -->
+$$
+\mathbf{X}=
+\begin{bmatrix}
+\mathbf{X}_1&\cdots&\mathbf{X}_M
+\end{bmatrix}.
+$$
+<!-- formula: MAI7-022 -->
+$$
+p_{\mathbf{X}}(\mathbf{x})
+=
+\prod_{m=1}^{M}
+\frac{1}{(2\pi)^{N/2}}|C|^{-1/2}
+\exp\!\left\{
+-\frac12
+(\mathbf{x}_m-\boldsymbol{\mu})^T
+C^{-1}
+(\mathbf{x}_m-\boldsymbol{\mu})
+\right\}.
+$$
+<!-- formula: MAI7-023 -->
+$$
+p_{\mathbf{X}}(\mathbf{x})
+=
+\frac{1}{(2\pi)^{MN/2}}|C|^{-1/2}
+\exp\!\left\{
+-\frac12
+\sum_{m=1}^{M}
+(\mathbf{x}_m-\boldsymbol{\mu})^T
+C^{-1}
+(\mathbf{x}_m-\boldsymbol{\mu})
+\right\}.
+$$
+
+위 식은 원자료에 보이는 표기를 그대로 남긴 것이다. 각 밀도에 `|C|^{-1/2}`가 하나씩 있으므로 독립인 M개 벡터의 결합밀도 정규화 상수는 다음처럼 교정된다.
+
+<!-- formula: MAI7-023C -->
+$$
+p_{\mathbf{X}}(\mathbf{x})
+=
+\frac{1}{(2\pi)^{MN/2}}|C|^{-M/2}
+\exp\!\left\{
+-\frac12
+\sum_{m=1}^{M}
+(\mathbf{x}_m-\boldsymbol{\mu})^T
+C^{-1}
+(\mathbf{x}_m-\boldsymbol{\mu})
+\right\}.
+$$
+강의자료는 두 sample statistic을 다음처럼 **합(sum)** 으로 정의한다. 첫 번째 식은 일반적인 sample mean의 `1/M`이 없는 점에 주의한다. 이 예제에서는 충분통계 전개를 위한 합으로 읽는 것이 안전하다.
+
+<!-- formula: MAI7-024 -->
+$$
+\widehat{\boldsymbol{\mu}}
+=
+\sum_{m=1}^{M}\mathbf{X}_m.
+$$
+<!-- formula: MAI7-025 -->
+$$
+\widehat{C}
+=
+\sum_{m=1}^{M}\mathbf{X}_m\mathbf{X}_m^T
+=
+\mathbf{X}\mathbf{X}^T.
+$$
+<!-- formula: MAI7-026 -->
+$$
+p_{\mathbf{X}}(\mathbf{x})
+=
+\frac{1}{(2\pi)^{MN/2}}|C|^{-1/2}
+\exp\!\left\{
+-\frac12\operatorname{tr}(\widehat{C}C^{-1})
++
+\widehat{\boldsymbol{\mu}}^TC^{-1}\boldsymbol{\mu}
+-
+\frac{M}{2}\boldsymbol{\mu}^TC^{-1}\boldsymbol{\mu}
+\right\}.
+$$
+<!-- formula: MAI7-027 -->
+$$
+\operatorname{tr}(AB)=\operatorname{tr}(BA).
+$$
+<!-- formula: MAI7-028 -->
+$$
+\operatorname{tr}(A)=\sum_i A_{i,i}.
+$$
+### 7. 2D 이산 랜덤과정
+
+<!-- formula: MAI7-029 -->
+$$
+X_{\mathbf{s}},
+\qquad
+\mathbf{s}=(s_1,s_2)\in\mathbb{Z}^2,
+\qquad
+\mathcal{S}\subseteq\mathbb{Z}^2.
+$$
+<!-- formula: MAI7-030 -->
+$$
+\mu_{\mathbf{s}}=E[X_{\mathbf{s}}].
+$$
+<!-- formula: MAI7-031 -->
+$$
+R_{\mathbf{s},\mathbf{r}}
+=
+E[X_{\mathbf{s}}X_{\mathbf{r}}^*].
+$$
+<!-- formula: MAI7-032 -->
+$$
+C_{\mathbf{s},\mathbf{r}}
+=
+E[(X_{\mathbf{s}}-\mu_{\mathbf{s}})
+(X_{\mathbf{r}}-\mu_{\mathbf{r}})^*]
+=
+R_{\mathbf{s},\mathbf{r}}
+-
+\mu_{\mathbf{s}}\mu_{\mathbf{r}}^*.
+$$
+### 8. WSS
+
+2차 정상 랜덤과정 중 평균과 공분산이 이동에 대해 불변이면 wide-sense stationary로 둔다.
+
+<!-- formula: MAI7-033 -->
+$$
+\mu_{\mathbf{s}}=\mu_{(0,0)}.
+$$
+<!-- formula: MAI7-034 -->
+$$
+C_{\mathbf{r},\mathbf{r}+\mathbf{s}}
+=
+C_{(0,0),\mathbf{s}}.
+$$
+WSS 성질을 모두 적는다.
+
+<!-- formula: MAI7-035 -->
+$$
+R_{\mathbf{s},(0,0)}
+=
+E[X_{\mathbf{s}}X_{(0,0)}^*]
+=
+E[X_{\mathbf{s}+\mathbf{r}}X_{\mathbf{r}}^*],
+\qquad\forall\mathbf{r}\in\mathbb{Z}^2.
+$$
+<!-- formula: MAI7-036 -->
+$$
+Y_{\mathbf{s}}=X_{\mathbf{s}+\mathbf{s}_0}.
+$$
+<!-- formula: MAI7-037 -->
+$$
+\mu_Y=\mu_X,\qquad R_Y=R_X.
+$$
+<!-- formula: MAI7-038 -->
+$$
+C_{\mathbf{s},(0,0)}
+=
+\operatorname{Var}(X_{\mathbf{s}}).
+$$
+<!-- formula: MAI7-039 -->
+$$
+R_{\mathbf{s},(0,0)}
+=
+\operatorname{Var}(X_{\mathbf{s}})
++
+|\mu_{\mathbf{s}}|^2.
+$$
+<!-- formula: MAI7-040 -->
+$$
+R_{-\mathbf{s},(0,0)}
+=
+R_{\mathbf{s},(0,0)}^*.
+$$
+<!-- formula: MAI7-041 -->
+$$
+R_{-\mathbf{s},(0,0)}
+=
+R_{(0,0)-\mathbf{s},(0,0)}
+=
+R_{(0,0),\mathbf{s}}
+=
+R_{\mathbf{s},(0,0)}^*.
+$$
+<!-- formula: MAI7-042 -->
+$$
+|R_{\mathbf{s}}|\le R_{\mathbf{s},(0,0)}.
+$$
+### 9. 2D 전력 스펙트럼 밀도
+
+WSS 과정 자체의 DSFT를 직접 정의하는 것이 아니라 **autocorrelation의 DSFT**를 power spectrum으로 사용한다.
+
+<!-- formula: MAI7-043 -->
+$$
+S_X(e^{i\mu},e^{i\nu})
+=
+\sum_{m=-\infty}^{\infty}
+\sum_{n=-\infty}^{\infty}
+R_{(m,n),(0,0)}
+e^{-i(m\mu+n\nu)}.
+$$
+이 관계가 Wiener–Khinchin 정리의 핵심이다.
+
+#### 9.1 평균 0인 WSS white process
+
+<!-- formula: MAI7-044 -->
+$$
+R_{(m,n),(0,0)}
+=
+C_{(m,n),(0,0)}
+=
+\sigma^2\delta[m,n].
+$$
+<!-- formula: MAI7-045 -->
+$$
+S_X(e^{i\mu},e^{i\nu})=\sigma^2.
+$$
+#### 9.2 평균이 0이 아닐 때
+
+<!-- formula: MAI7-046 -->
+$$
+C_{(m,n),(0,0)}=\sigma^2\delta[m,n].
+$$
+<!-- formula: MAI7-047 -->
+$$
+R_{(m,n),(0,0)}
+=
+\sigma^2\delta[m,n]
++
+|\mu_{(0,0)}|^2.
+$$
+<!-- formula: MAI7-048 -->
+$$
+S_X(e^{i\mu},e^{i\nu})
+=
+\sigma^2
++
+|\mu_{(0,0)}|^2(2\pi)^2
+\sum_{k,l=-\infty}^{\infty}
+\delta(\mu-2k\pi,\nu-2l\pi).
+$$
+### 10. 2026년 구현 관점
+
+2D 이미지의 주파수 해석은 여전히 직접적인 도구다. 2026년 8월 현재 PyTorch 2.13의 `torch.fft.fft2`는 2D DFT를 제공하며, 실수 신호의 Fourier representation이 Hermitian symmetry를 갖는다는 점도 API 문서에 명시되어 있다.
+
+WSS는 현실의 유한 이미지를 “완전히 stationary한 유한 객체”라고 주장하는 가정이 아니다. 강의자료가 지적하듯, 유한 이미지를 **무한 WSS 과정의 관측 일부**로 보는 모델링 관점에 가깝다.
+
+- [PyTorch `torch.fft.fft2`](https://docs.pytorch.org/docs/stable/generated/torch.fft.fft2.html)
+
+---
+
+## Part 1.7 손실함수·경사하강법·미니배치·일반화
+
+### 1. 기대손실을 최소화한다
+
+통계적 머신러닝 관점에서 모델 D는 입력 x를 받아 예측 D(x)를 만들고, 정답 y와의 차이를 손실함수로 측정한다.
+
+강의자료 판본에 따라 이 식의 번호가 `(4)` 또는 `(5)`로 달라진다. 이 시리즈에서는 **식 자체를 기준으로 추적**한다.
+
+<!-- formula: MAI8-001 -->
+$$
+\underset{D}{\operatorname{argmin}}\;
+E_{\mathbf{x},\mathbf{y}}
+\mathcal{L}(D(\mathbf{x}),\mathbf{y}).
+$$
+### 2. 기대값을 유한 샘플 평균으로 근사한다
+
+실전에서는 데이터의 정확한 joint distribution을 알기 어렵다. 학습 샘플 `(\mathbf{x}_l,\mathbf{y}_l)`을 이용해 기대손실을 경험평균으로 근사한다.
+
+<!-- formula: MAI8-002 -->
+$$
+E_{\mathbf{x},\mathbf{y}}
+\mathcal{L}(D(\mathbf{x}),\mathbf{y})
+\approx
+\frac1L\sum_{l=1}^{L}
+\mathcal{L}(D(\mathbf{x}_l),\mathbf{y}_l).
+$$
+2025-03-19 판본에는 이 우변이 학생이 채우는 `??` 형태로 제시된다. 위 식은 앞선 판본과 문맥을 결합해 완성한 것이다.
+
+### 3. MSE 예제
+
+<!-- formula: MAI8-003 -->
+$$
+\underset{D}{\operatorname{argmin}}\;
+E_{\mathbf{x},\mathbf{y}}
+\mathcal{L}(D(\mathbf{x}),\mathbf{y}),
+\qquad
+\mathcal{L}(D(\mathbf{x}),\mathbf{y})
+=
+\|D(\mathbf{x})-\mathbf{y}\|_2^2.
+$$
+<!-- formula: MAI8-004 -->
+$$
+\|\mathbf{x}\|_2^2
+=
+\sum_n |x_n|^2.
+$$
+### 4. 기울기
+
+함수 `f:\mathbb{R}^N	o\mathbb{R}`의 기울기는 최대 증가 방향을 가리키고 등고선에 수직이다.
+
+<!-- formula: MAI8-005 -->
+$$
+\nabla f(\mathbf{z})
+=
+\begin{bmatrix}
+\frac{\partial f}{\partial x_1}(\mathbf{z})&
+\cdots&
+\frac{\partial f}{\partial x_N}(\mathbf{z})
+\end{bmatrix}^{T}.
+$$
+### 5. 국소 최소점의 조건
+
+<!-- formula: MAI8-006 -->
+$$
+\nabla f(\mathbf{x}^*)=0.
+$$
+<!-- formula: MAI8-007 -->
+$$
+\mathbf{y}^T\nabla^2f(\mathbf{x}^*)\mathbf{y}>0,
+\qquad
+\forall\mathbf{y}\neq0,\ 
+\mathbf{y}\in\mathbb{R}^{N}.
+$$
+<!-- formula: MAI8-008 -->
+$$
+\left[\nabla^2f(\mathbf{x})\right]_{m,n}
+=
+\frac{\partial^2f}{\partial x_m\partial x_n}(\mathbf{x}).
+$$
+### 6. 경사하강법
+
+<!-- formula: MAI8-009 -->
+$$
+\mathbf{x}^{(i+1)}
+=
+\mathbf{x}^{(i)}
+-
+\alpha\nabla f(\mathbf{x}^{(i)}).
+$$
+학습률 `\alpha`가 너무 작으면 수렴이 느리고, 너무 크면 발산할 수 있다.
+
+전체 데이터로 매번 gradient를 계산하면 L이 클 때 비용이 매우 커진다. MSE 예에서는 모든 샘플에 대해 다음 gradient가 필요하다.
+
+<!-- formula: MAI8-010 -->
+$$
+\nabla_D
+\left\|
+D(\mathbf{x}_l)-\mathbf{y}_l
+\right\|_2^2,
+\qquad
+l=1,\ldots,L.
+$$
+### 7. 확률적 미니배치 경사하강법
+
+먼저 샘플 인덱스 집합을 무작위로 섞고, 크기 B의 batch로 나눈다.
+
+<!-- formula: MAI8-011 -->
+$$
+\{1,\ldots,L\}
+=
+\mathcal{L}^{(1)}
+\cup\cdots\cup
+\mathcal{L}^{(L/B)},
+\qquad
+|\mathcal{L}^{(i)}|=B.
+$$
+각 batch에 대해 다음처럼 갱신한다.
+
+<!-- formula: MAI8-012 -->
+$$
+\mathbf{x}^{(i+1)}
+\leftarrow
+\mathbf{x}^{(i)}
+-
+\alpha
+\sum_{l\in\mathcal{L}^{(i+1)}}
+\nabla f_l(\mathbf{x}^{(i)}).
+$$
+강의자료에서 전체 경험손실은 다음 합으로 둔다.
+
+<!-- formula: MAI8-013 -->
+$$
+\sum_{l=1}^{L}f_l(\mathbf{x}).
+$$
+### 8. 배치 크기 논쟁
+
+강의자료는 Keskar 등의 2017 ICLR 결과를 소개한다. 큰 batch가 sharp minimizer로 향하고 일반화가 나빠질 수 있다는 경험적 관찰이다.
+
+그러나 **“sharp minima = 무조건 나쁜 일반화”를 정리처럼 외우면 안 된다.** 2017년에도 재매개변수화로 sharpness를 바꾸면서 함수는 그대로 유지할 수 있다는 반론이 있었고, 2025년 연구에서도 잘 일반화하는 sharp minima가 존재할 수 있다는 결과가 나왔다.
+
+따라서 2026년 관점에서는 다음처럼 읽는 편이 안전하다.
+
+- batch size는 gradient noise, throughput, 메모리, learning-rate schedule과 함께 봐야 한다.
+- sharpness는 유용한 진단 중 하나지만 parameterization에 의존할 수 있다.
+- 대규모 학습에서는 “작은 batch가 항상 더 좋다”가 아니라 hardware utilization과 optimization stability를 함께 최적화한다.
+
+### 9. MIDAS 연구주제와 강의의 연결
+
+강의 마지막은 MIDAS Lab의 연구축을 예로 든다.
+
+- 자기지도·비지도 학습
+- 반복형 AI와 iterative neural network
+- 멀티모달 분석
+- 비볼록 최적화
+- 압축센싱
+- X-ray CT, MRI, PET, SPECT
+- 카메라 이미징, 3D 재구성, 초해상도
+- 비전 기반 자율시스템
+- 디지털 헬스케어
+
+첫 판본은 저선량 CT의 self-supervised regression learning 예에서 RMSE가 개선되는 사례와 Neural View Synthesis, NeRF 계열을 함께 보여준다. 이 부분은 **기초 수학이 실제 연구로 연결되는 예시**로 읽으면 된다.
+
+### 10. 2026년 업데이트: 실제 대규모 학습은 어디까지 왔나
+
+강의의 SGD 수식은 여전히 출발점이지만, 현재 대규모 모델 학습은 그 위에 많은 시스템 기법을 쌓는다.
+
+#### 10.1 Optimizer
+
+AdamW는 weight decay를 gradient update와 분리한 방식으로 널리 쓰이고 있다. PyTorch 2.13에는 AdamW뿐 아니라 **Muon**도 공식 optimizer API에 포함돼 있다.
+
+- [AdamW 원 논문](https://arxiv.org/abs/1711.05101)
+- [PyTorch optimizer 목록](https://docs.pytorch.org/docs/stable/optim.html)
+- [PyTorch Muon](https://docs.pytorch.org/docs/stable/generated/torch.optim.Muon.html)
+
+#### 10.2 Mixed precision
+
+NVIDIA Transformer Engine 2.16은 Hopper/Ada/Blackwell에서 FP8을 지원하고, Blackwell에서는 MXFP8과 NVFP4까지 문서화하고 있다. 즉 현대 학습은 **수학적 gradient descent + 낮은 정밀도의 수치표현 + scale 관리**를 함께 다룬다.
+
+- [NVIDIA Transformer Engine](https://docs.nvidia.com/deeplearning/transformer-engine/)
+
+#### 10.3 Compile과 분산학습
+
+PyTorch 2.13은 `torch.compile`, FSDP/FSDP2, tensor parallelism, distributed checkpoint를 같은 생태계에서 제공한다.
+
+- [PyTorch `torch.compile`](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)
+- [PyTorch FSDP](https://docs.pytorch.org/docs/stable/fsdp.html)
+
+### 11. 1장 전체를 한 줄로 다시 연결하면
+
+**데이터를 벡터·행렬로 표현한다 → 확률적으로 모델링한다 → 신경망으로 함수를 구성한다 → 손실을 정의한다 → 미분해 gradient를 얻는다 → mini-batch로 반복 최적화한다 → 일반화 성능을 검증한다.**
+
+이 흐름이 1장 전체의 핵심이다.
