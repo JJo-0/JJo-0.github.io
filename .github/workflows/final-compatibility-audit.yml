@@ -29,8 +29,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== NONCANONICAL CODE FENCES (tracked source) ==='
-          git grep -nE '^```(C|pseudocode)[[:space:]]*$' -- '*.md' '*.mdx' || true
+          echo '=== NONCANONICAL SHIKI FENCES (tracked source) ==='
+          git grep -nE '^```(C|pseudocode|C\+\+|c\+\+)[[:space:]]*$' -- '*.md' '*.mdx' || true
 
           echo '=== REMOVED SHIM NAMES ==='
           git grep -niE 'restoreLegacyHtml|fixLegacyFragments|remarkRepairLiteralStrong|restore-legacy-html|fix-legacy-fragments|remark-repair-literal-strong' -- . ':(exclude).github/workflows/final-compatibility-audit.yml' || true
@@ -66,26 +66,42 @@ jobs:
               print(f'{lang}\t{n}\t{examples[lang]}')
           PY
 
-      - name: Prove Shiki aliases are unnecessary
+      - name: Prove alias removal with canonical source fences
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf dist .astro /tmp/dist-with-alias
-          pnpm exec astro build >/tmp/build-with-alias.log 2>&1
-          cp -a dist /tmp/dist-with-alias
+          rm -rf dist .astro /tmp/dist-baseline
+          pnpm exec astro build >/tmp/build-baseline.log 2>&1
+          cp -a dist /tmp/dist-baseline
 
           python - <<'PY'
           from pathlib import Path
-          p=Path('astro.config.mjs')
-          s=p.read_text(encoding='utf-8')
+          import re
+
+          config=Path('astro.config.mjs')
+          s=config.read_text(encoding='utf-8')
           old="""      // Compatibility aliases keep old content renderable; post:check requires canonical IDs in new posts.\n      langAlias: {\n        C: 'c',\n        pseudocode: 'text',\n      },\n"""
           if old not in s:
               raise SystemExit('expected Shiki compatibility alias block not found')
-          p.write_text(s.replace(old,''), encoding='utf-8')
+          config.write_text(s.replace(old,''), encoding='utf-8')
+
+          changed=[]
+          for p in Path('site/content/posts').glob('*'):
+              if p.suffix not in {'.md','.mdx'} or p.name.startswith('_'):
+                  continue
+              source=p.read_text(encoding='utf-8')
+              normalized=re.sub(r'^```(?:C\+\+|c\+\+)[ \t]*$', '```cpp', source, flags=re.M)
+              if normalized != source:
+                  p.write_text(normalized, encoding='utf-8')
+                  changed.append(str(p))
+          print('CANONICALIZED_CPP_FILES=', changed)
           PY
 
+          echo '=== NONCANONICAL SHIKI FENCES AFTER SOURCE NORMALIZATION ==='
+          ! grep -RInE '^```(C|pseudocode|C\+\+|c\+\+)[[:space:]]*$' site/content/posts --include='*.md' --include='*.mdx'
+
           rm -rf dist .astro
-          pnpm exec astro build >/tmp/build-without-alias.log 2>&1
+          pnpm exec astro build >/tmp/build-normalized.log 2>&1
           node scripts/rendered-markdown-audit.mjs
           node scripts/post-content-contract.mjs
           node scripts/content-integrity.mjs
@@ -94,7 +110,9 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import hashlib
-          before=Path('/tmp/dist-with-alias')
+          import difflib
+
+          before=Path('/tmp/dist-baseline')
           after=Path('dist')
           def files(root):
               return {p.relative_to(root).as_posix():p for p in root.rglob('*') if p.is_file()}
@@ -103,12 +121,17 @@ jobs:
               raise SystemExit(f'dist file set changed: before-only={sorted(set(b)-set(a))[:20]} after-only={sorted(set(a)-set(b))[:20]}')
           changed=[]
           for rel in sorted(b):
-              hb=hashlib.sha256(b[rel].read_bytes()).digest()
-              ha=hashlib.sha256(a[rel].read_bytes()).digest()
-              if hb!=ha:
+              if hashlib.sha256(b[rel].read_bytes()).digest()!=hashlib.sha256(a[rel].read_bytes()).digest():
                   changed.append(rel)
           print('DIST_CHANGED_FILES=', changed)
           if changed:
-              raise SystemExit(f'alias removal changed built output: {changed[:30]}')
-          print('SHIKI_ALIAS_REMOVAL_BYTE_EQUIVALENCE=PASS')
+              for rel in changed[:5]:
+                  if rel.endswith('.html'):
+                      x=b[rel].read_text(encoding='utf-8').splitlines()
+                      y=a[rel].read_text(encoding='utf-8').splitlines()
+                      print(f'--- DIFF {rel} ---')
+                      for line in list(difflib.unified_diff(x,y,fromfile='baseline',tofile='normalized',n=2))[:120]:
+                          print(line)
+              raise SystemExit(f'canonical source + alias removal changed built output: {changed[:30]}')
+          print('SHIKI_ALIAS_REMOVAL_WITH_CANONICAL_CPP_BYTE_EQUIVALENCE=PASS')
           PY
