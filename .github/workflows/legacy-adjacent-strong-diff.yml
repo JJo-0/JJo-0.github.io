@@ -1,0 +1,92 @@
+name: Adjacent strong render diff
+
+on:
+  push:
+    branches: [agent/legacy-content-finalize]
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/legacy-content-finalize
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Compare AI part 2 adjacent strong markup
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist .astro /tmp/dist-baseline
+          pnpm exec astro build >/dev/null 2>&1
+          cp -a dist /tmp/dist-baseline
+          node scripts/_legacy-finalize-migration-v5.mjs >/dev/null
+          rm -rf dist .astro
+          pnpm exec astro build >/dev/null 2>&1
+          python <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import re
+
+          route = 'ai-consciousness-deep-research-2/index.html'
+          before = (Path('/tmp/dist-baseline/posts') / route).read_text(encoding='utf-8')
+          after = (Path('dist/posts') / route).read_text(encoding='utf-8')
+          needle = '기억의 지속성(memory persistence)'
+
+          def around(text, needle, radius=700):
+              i = text.find(needle)
+              if i < 0:
+                  return 'NOT FOUND'
+              return text[max(0, i-radius):i+len(needle)+radius]
+
+          print('=== BASELINE HTML SNIPPET ===')
+          print(around(before, needle))
+          print('=== SOURCE-NATIVE HTML SNIPPET ===')
+          print(around(after, needle))
+
+          article_re = re.compile(r'<article\b[^>]*>.*?</article>', re.S | re.I)
+          def article(text):
+              m = article_re.search(text)
+              return m.group(0) if m else text
+
+          class Events(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.events=[]
+                  self.stack=[]
+              def handle_starttag(self, tag, attrs):
+                  self.events.append(('s', tag, tuple(sorted((k, v or '') for k,v in attrs))))
+                  self.stack.append(tag)
+              def handle_endtag(self, tag):
+                  self.events.append(('e', tag))
+                  if self.stack: self.stack.pop()
+              def handle_data(self, data):
+                  value = re.sub(r'\s+', ' ', data).strip()
+                  if value: self.events.append(('d', self.stack[-1] if self.stack else '', value))
+
+          def events(text):
+              p=Events(); p.feed(article(text)); return p.events
+          b=events(before); a=events(after)
+          print('event_counts', len(b), len(a))
+          for i in range(min(len(b), len(a))):
+              if b[i] != a[i]:
+                  print('FIRST_DIFF_INDEX', i)
+                  print('BASELINE_EVENTS')
+                  for e in b[max(0,i-8):i+14]: print(repr(e))
+                  print('NATIVE_EVENTS')
+                  for e in a[max(0,i-8):i+14]: print(repr(e))
+                  break
+          else:
+              print('SEMANTIC_EVENTS_EQUAL', b == a)
+          PY
