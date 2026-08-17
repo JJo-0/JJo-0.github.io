@@ -1,0 +1,144 @@
+name: Phase 3 result capture
+
+on:
+  push:
+    branches: [agent/asset-dependency-quality]
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/asset-dependency-quality
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Capture evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f .audit-results/phase3.txt ]; then
+            echo 'Result file already exists; no recapture needed.'
+            exit 0
+          fi
+
+          mkdir -p .audit-results
+          result="$GITHUB_WORKSPACE/.audit-results/phase3.txt"
+          : > "$result"
+          echo "BASE_SHA=$(git rev-parse HEAD)" >> "$result"
+
+          python -m pip install --disable-pip-version-check --quiet pillow
+          cd spaceship-ui
+          python - <<'PY' >> "$result"
+          from pathlib import Path
+          from PIL import Image
+          import hashlib, io, re
+
+          assets = Path('site/assets')
+          text = Path('site/content/posts/2025-11-08.md').read_text(encoding='utf-8')
+          refs=[]
+          for m in re.finditer(r'/assets/slides/[^\s)"\'<>]+\.png', text, re.I):
+              if m.group(0) not in refs:
+                  refs.append(m.group(0))
+          print(f'PNG_REF_COUNT={len(refs)}')
+          if len(refs) != 30:
+              raise SystemExit(f'expected 30 slide PNGs, got {len(refs)}')
+
+          before_total=after_total=improved=0
+          pixel_unchanged=True
+          for ref in refs:
+              src=assets/ref.lstrip('/')
+              before=src.stat().st_size
+              with Image.open(src) as im:
+                  dims=im.size
+                  rgba=im.convert('RGBA')
+                  before_hash=hashlib.sha256(rgba.tobytes()).hexdigest()
+                  out=io.BytesIO()
+                  im.save(out, format='PNG', optimize=True, compress_level=9)
+                  candidate=out.getvalue()
+              with Image.open(io.BytesIO(candidate)) as verify:
+                  after_hash=hashlib.sha256(verify.convert('RGBA').tobytes()).hexdigest()
+                  same=verify.size == dims and after_hash == before_hash
+              if not same:
+                  pixel_unchanged=False
+              after=len(candidate)
+              before_total += before
+              after_total += after
+              improved += int(after < before)
+          saved=before_total-after_total
+          pct=(saved/before_total*100) if before_total else 0
+          print(f'PNG_BEFORE_BYTES={before_total}')
+          print(f'PNG_AFTER_BYTES={after_total}')
+          print(f'PNG_SAVED_BYTES={saved}')
+          print(f'PNG_SAVED_PCT={pct:.4f}')
+          print(f'PNG_IMPROVED_COUNT={improved}')
+          print(f'PNG_PIXEL_IDENTITY={"PASS" if pixel_unchanged else "FAIL"}')
+          if not pixel_unchanged:
+              raise SystemExit('pixel identity failed')
+          PY
+
+          cd "$GITHUB_WORKSPACE"
+          test_dep() {
+            dep="$1"
+            safe="$(echo "$dep" | tr '/@' '__')"
+            dir="/tmp/trial-$safe"
+            rm -rf "$dir"
+            cp -a spaceship-ui "$dir"
+            rm -rf "$dir/node_modules" "$dir/dist"
+            cd "$dir"
+            python - "$dep" <<'PY'
+          from pathlib import Path
+          import json, sys
+          dep=sys.argv[1]
+          p=Path('package.json')
+          data=json.loads(p.read_text())
+          found=False
+          for section in ('dependencies','devDependencies'):
+              if dep in data.get(section,{}):
+                  data[section].pop(dep)
+                  found=True
+          if not found:
+              raise SystemExit(f'{dep}: not a direct dependency')
+          p.write_text(json.dumps(data, ensure_ascii=False, indent=2)+'\n')
+          PY
+            set +e
+            pnpm install --lockfile-only --ignore-scripts >/tmp/${safe}-lock.log 2>&1 && \
+            pnpm install --frozen-lockfile --ignore-scripts >/tmp/${safe}-install.log 2>&1 && \
+            pnpm lint >/tmp/${safe}-lint.log 2>&1 && \
+            pnpm check >/tmp/${safe}-check.log 2>&1 && \
+            pnpm build >/tmp/${safe}-build.log 2>&1 && \
+            pnpm content:check >/tmp/${safe}-content.log 2>&1
+            rc=$?
+            set -e
+            cd "$GITHUB_WORKSPACE"
+            if [ "$rc" -eq 0 ]; then
+              echo "DEP_TRIAL $dep=PASS" >> "$result"
+            else
+              echo "DEP_TRIAL $dep=FAIL rc=$rc" >> "$result"
+            fi
+          }
+
+          test_dep '@rollup/rollup-darwin-arm64'
+          test_dep '@sveltejs/vite-plugin-svelte'
+          test_dep '@typescript-eslint/eslint-plugin'
+
+          cd spaceship-ui
+          echo '=== PNPM WHY ===' >> "$result"
+          for dep in '@rollup/rollup-darwin-arm64' '@sveltejs/vite-plugin-svelte' '@typescript-eslint/eslint-plugin'; do
+            echo "WHY $dep" >> "$result"
+            pnpm why "$dep" --depth 3 >> "$result" 2>&1 || true
+          done
+          cd "$GITHUB_WORKSPACE"
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .audit-results/phase3.txt
+          git commit -m 'chore: record phase3 audit evidence'
+          git push origin HEAD:agent/asset-dependency-quality
