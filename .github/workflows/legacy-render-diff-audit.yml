@@ -1,0 +1,92 @@
+name: Legacy render diff audit
+
+on:
+  push:
+    branches: [agent/legacy-content-finalize]
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/legacy-content-finalize
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Compare baseline and source-normalized renders
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist .astro /tmp/dist-baseline
+          pnpm exec astro build >/tmp/base-build.log 2>&1
+          cp -a dist /tmp/dist-baseline
+          python scripts/_legacy-finalize-migration.py
+          rm -rf dist .astro
+          pnpm exec astro build >/tmp/new-build.log 2>&1
+
+          python <<'PY'
+          from pathlib import Path
+          import difflib
+          import hashlib
+          import re
+
+          routes = [
+              '2025-03-06-2025-03-07/index.html',
+              '2025-05-20-2025-05-20/index.html',
+              '2025-05-23-deep-search-gemini/index.html',
+              '2025-05-23-deep-search-travel-prompt/index.html',
+              '2025-06-27-2025-06-27/index.html',
+              '2025-07-23-2025-07-23-2/index.html',
+              '2025-07-25-2025-07-25/index.html',
+          ]
+
+          article_re = re.compile(r'<article\b[^>]*>.*?</article>', re.S | re.I)
+
+          def article(text):
+              m = article_re.search(text)
+              return m.group(0) if m else text
+
+          def sha(text):
+              return hashlib.sha256(text.encode()).hexdigest()
+
+          def norm_intertag(text):
+              return re.sub(r'>\s+<', '><', text)
+
+          def norm_html_ws(text):
+              # Conservative normalization: only leading/trailing whitespace on lines
+              # and whitespace strictly between tags. Text-node/internal script bytes remain.
+              text = '\n'.join(line.strip() for line in text.splitlines())
+              return re.sub(r'>\s+<', '><', text)
+
+          for route in routes:
+              before = article((Path('/tmp/dist-baseline/posts') / route).read_text(encoding='utf-8'))
+              after = article((Path('dist/posts') / route).read_text(encoding='utf-8'))
+              print(f'=== ROUTE {route} ===')
+              print('raw_equal=', before == after)
+              print('intertag_equal=', norm_intertag(before) == norm_intertag(after))
+              print('line_trim_intertag_equal=', norm_html_ws(before) == norm_html_ws(after))
+              print('before_len=', len(before), 'after_len=', len(after))
+              print('before_sha=', sha(before), 'after_sha=', sha(after))
+
+              a = re.sub(r'><', '>\n<', before).splitlines()
+              b = re.sub(r'><', '>\n<', after).splitlines()
+              diff = list(difflib.unified_diff(a, b, fromfile='baseline', tofile='normalized', n=2))
+              print('diff_lines=', len(diff))
+              for line in diff[:180]:
+                  print(line)
+              if len(diff) > 180:
+                  print(f'... {len(diff)-180} more diff lines omitted ...')
+          PY
