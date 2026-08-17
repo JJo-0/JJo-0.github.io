@@ -1,0 +1,59 @@
+name: Dependency normalize
+
+on:
+  push:
+    branches: [agent/asset-dependency-quality]
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    if: ${{ !contains(github.event.head_commit.message, 'remove redundant direct dependencies') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/asset-dependency-quality
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Remove proven redundant direct dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd spaceship-ui
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          remove = [
+              '@rollup/rollup-darwin-arm64',
+              '@sveltejs/vite-plugin-svelte',
+              '@typescript-eslint/eslint-plugin',
+          ]
+          p=Path('package.json')
+          data=json.loads(p.read_text(encoding='utf-8'))
+          for dep in remove:
+              value=data.get('devDependencies',{}).pop(dep, None)
+              if value is None:
+                  raise SystemExit(f'missing expected direct dependency: {dep}')
+              print(f'removed {dep} {value}')
+          p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+          pnpm install --lockfile-only --ignore-scripts
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm lint
+          pnpm check
+          pnpm build
+          pnpm content:check
+          cd ..
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml
+          git commit -m 'chore: remove redundant direct dependencies'
+          git push origin HEAD:agent/asset-dependency-quality
