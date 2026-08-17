@@ -1,0 +1,171 @@
+name: Refined legacy normalization audit
+
+on:
+  push:
+    branches: [agent/legacy-content-finalize]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/legacy-content-finalize
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Build baseline and refined tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist .astro /tmp/dist-baseline
+          pnpm exec astro build >/tmp/base.log 2>&1
+          cp -a dist /tmp/dist-baseline
+
+          python scripts/_legacy-finalize-migration-v3.py
+          rm -rf dist .astro
+          pnpm exec astro build >/tmp/new.log 2>&1
+
+          failed=0
+          for check in \
+            'node scripts/rendered-markdown-audit.mjs' \
+            'node scripts/content-integrity.mjs' \
+            'node scripts/modern-ai-formula-audit.mjs'; do
+            echo "=== $check ==="
+            set +e
+            bash -lc "$check"
+            status=$?
+            set -e
+            echo "status=$status"
+            if [[ $status -ne 0 ]]; then failed=1; fi
+          done
+
+          echo '=== LEGACY SURFACE ==='
+          if [[ -d site/assets/image ]]; then
+            echo 'site/assets/image still exists'
+            failed=1
+          fi
+          if grep -RIl --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist '/image/' site/content src | grep .; then
+            echo 'live /image references remain'
+            failed=1
+          fi
+          if grep -RIl '/image/' dist | grep .; then
+            echo 'built /image references remain'
+            failed=1
+          fi
+
+          echo '=== RENDER COMPARISON ==='
+          python <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import hashlib
+          import re
+          import textwrap
+
+          base = Path('/tmp/dist-baseline/posts')
+          new = Path('dist/posts')
+          raw_allowed = {
+              '2024-06-04-2024-06-04-2/index.html',
+              '2025-02-07-human-pose-estimate/index.html',
+              '2025-05-20-2025-05-20/index.html',
+              '2025-05-23-deep-search-gemini/index.html',
+              '2025-05-23-deep-search-travel-prompt/index.html',
+              '2025-06-27-2025-06-27/index.html',
+              '2025-07-23-2025-07-23-2/index.html',
+              '2025-07-25-2025-07-25/index.html',
+          }
+
+          def sha(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          before = {p.relative_to(base).as_posix(): p for p in base.rglob('index.html')}
+          after = {p.relative_to(new).as_posix(): p for p in new.rglob('index.html')}
+          changed = {
+              rel for rel in set(before) | set(after)
+              if rel not in before or rel not in after or sha(before[rel]) != sha(after[rel])
+          }
+          print('raw_changed=', sorted(changed))
+          unexpected = changed - raw_allowed
+          if unexpected:
+              raise SystemExit(f'unexpected raw post changes: {sorted(unexpected)}')
+
+          article_re = re.compile(r'<article\b[^>]*>.*?</article>', re.S | re.I)
+          def article(text):
+              m = article_re.search(text)
+              return m.group(0) if m else text
+
+          class Canonical(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.events = []
+                  self.stack = []
+              def handle_starttag(self, tag, attrs):
+                  self.events.append(('s', tag, tuple(sorted((k, v or '') for k, v in attrs))))
+                  self.stack.append(tag)
+              def handle_startendtag(self, tag, attrs):
+                  self.events.append(('v', tag, tuple(sorted((k, v or '') for k, v in attrs))))
+              def handle_endtag(self, tag):
+                  self.events.append(('e', tag))
+                  if self.stack:
+                      self.stack.pop()
+              def handle_data(self, data):
+                  parent = self.stack[-1] if self.stack else ''
+                  if parent in {'script', 'style'}:
+                      value = '\n'.join(line.rstrip() for line in textwrap.dedent(data).strip().splitlines())
+                  else:
+                      value = re.sub(r'\s+', ' ', data).strip()
+                  if value:
+                      self.events.append(('d', parent, value))
+              def handle_comment(self, data):
+                  # Comments do not affect visible/browser content for these reports.
+                  pass
+
+          def canonical(path):
+              parser = Canonical()
+              parser.feed(article(path.read_text(encoding='utf-8')))
+              return parser.events
+
+          semantic_routes = raw_allowed - {
+              '2024-06-04-2024-06-04-2/index.html',
+              '2025-02-07-human-pose-estimate/index.html',
+          }
+          for rel in sorted(semantic_routes):
+              b = canonical(before[rel])
+              a = canonical(after[rel])
+              equal = b == a
+              print(f'semantic_equal {rel}={equal} events_before={len(b)} events_after={len(a)}')
+              if not equal:
+                  for i, (x, y) in enumerate(zip(b, a)):
+                      if x != y:
+                          print(' first_diff_event', i, 'before=', repr(x)[:800], 'after=', repr(y)[:800])
+                          break
+                  else:
+                      print(' event length differs')
+                  raise SystemExit(f'semantic DOM event mismatch: {rel}')
+
+          # Guard specifically against the old failure mode: escaped page HTML inside Shiki plaintext blocks.
+          swallowed = []
+          pattern = re.compile(r'<pre\b[^>]*data-language="plaintext"[^>]*>.*?&#x3C;(?:div|section|table|script|style)\b', re.S | re.I)
+          for path in new.rglob('index.html'):
+              if pattern.search(path.read_text(encoding='utf-8')):
+                  swallowed.append(path.relative_to(new).as_posix())
+          print('swallowed_html_routes=', swallowed)
+          if swallowed:
+              raise SystemExit(f'HTML remains swallowed as plaintext code: {swallowed}')
+          PY
+
+          if [[ $failed -ne 0 ]]; then
+            exit 1
+          fi
