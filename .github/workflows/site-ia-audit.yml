@@ -30,9 +30,18 @@ jobs:
           set -euo pipefail
           pnpm build >/tmp/build.log 2>&1
           pnpm content:check
+
+          echo '=== EXACT DEPENDENCY / ASSET GREP ==='
+          echo '-- Chart runtime references outside Layout declaration --'
+          grep -RniE 'new[[:space:]]+Chart|Chart\(|chart\.js|chart\.umd' src site --exclude='Layout.astro' || true
+          echo '-- PDF references --'
+          grep -Rni 'DRL-Robot_251110' src site --exclude='DRL-Robot_251110.pdf' || true
+          echo '-- Inter runtime/source references --'
+          grep -RniE 'Inter Variable|inter-latin|fontsource-variable/inter' src site package.json astro.config.mjs || true
+
           python - <<'PY'
           from pathlib import Path
-          import os, re, json
+          import re
 
           root = Path('.')
           text_ext = {'.astro','.svelte','.ts','.js','.mjs','.md','.mdx','.css','.json','.yml','.yaml'}
@@ -56,7 +65,6 @@ jobs:
 
           print('\n=== PUBLIC ASSET INVENTORY >= 300 KiB ===')
           assets=Path('site/assets')
-          large_assets=[]
           for p in sorted([x for x in assets.rglob('*') if x.is_file()], key=lambda x:x.stat().st_size, reverse=True):
               if p.stat().st_size < 300*1024: break
               public='/' + p.relative_to(assets).as_posix()
@@ -65,7 +73,6 @@ jobs:
                   if f==p: continue
                   if public in s or p.name in s:
                       refs.append(str(f))
-              large_assets.append((p.stat().st_size, public, refs))
               print(f'{p.stat().st_size:>10}  {public} refs={len(refs)} {refs[:6]}')
 
           print('\n=== COMPONENT REFERENCE AUDIT ===')
