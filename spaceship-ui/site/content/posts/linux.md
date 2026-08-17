@@ -37,7 +37,7 @@ Multi-Cuda Setting을 해야하는 상황이 왔다. 실제로 내가 했던 방
 
 | 목차 | 설명 |
 |:---:|:---:|
-| [Window](#Window) | Window에서의 Multi-Cuda Setting |
+| [Window](#window) | Window에서의 Multi-Cuda Setting |
 
 #### Window
 

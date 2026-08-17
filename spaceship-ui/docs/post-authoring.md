@@ -67,6 +67,13 @@ site/assets/assets/posts/vision/activation-functions.svg
 
 `<namespace>`는 보통 post source filename stem을 사용합니다. 여러 글이 하나의 시리즈 asset을 공유한다면 `ai-consciousness-2026`처럼 명시적인 shared-series namespace를 사용할 수 있습니다.
 
+글이 아니라 site UI가 소유하는 asset은 별도 namespace를 사용합니다.
+
+```text
+site/assets/assets/site/...
+→ /assets/site/...
+```
+
 ### Naming
 
 `/assets/posts/` 아래 directory와 filename은 lowercase kebab-case를 사용합니다.
@@ -84,14 +91,17 @@ assets/posts/ai-consciousness-2026/part-1-cover.svg
 assets/posts/Vision/Sigmoid Derivative.svg
 ```
 
-## 4. `/image`는 frozen legacy storage
+## 4. `/image`는 retired path
 
-`site/assets/image/`는 과거 글을 깨뜨리지 않기 위해 남긴 legacy directory입니다.
+과거의 `site/assets/image/` directory는 최종 legacy-media migration에서 완전히 제거했습니다.
 
-- 새 asset을 추가하지 않습니다.
-- 새 글에서 `/image/...`를 사용하지 않습니다.
-- 기존 파일은 owning post를 손볼 때 `/assets/posts/<namespace>/...`로 점진적으로 이동합니다.
-- `scripts/post-content-contract.mjs`의 allowlist는 legacy 부채의 상한선입니다. 새 항목을 추가하는 방식으로 문제를 해결하지 않습니다.
+- `site/assets/image/`를 다시 만들지 않습니다.
+- source에서 `/image/...`를 참조하지 않습니다.
+- 글이 소유한 media는 `/assets/posts/<namespace>/...`를 사용합니다.
+- site UI가 소유한 media는 `/assets/site/...`처럼 명시적인 site namespace를 사용합니다.
+- `scripts/post-content-contract.mjs`는 `/image` directory 또는 `/image/` source reference가 다시 등장하면 fail-closed합니다.
+
+과거 asset이 다시 필요하면 Git history에서 복구한 뒤 현재 namespace로 가져옵니다. `/image`를 compatibility storage로 되살리지 않습니다.
 
 ## 5. Code fence language
 
@@ -134,12 +144,12 @@ pnpm content:check
 - MDX의 post namespace 밖 component import
 - MDX의 직접 `<script>` / `<style>`
 - `/assets/posts/...`의 missing asset
-- `/image` legacy directory 신규 추가/신규 참조
+- retired `/image` directory 또는 `/image/` source reference의 재도입
 - post asset naming convention
 - 비표준 `C` / `pseudocode` code fence
 - canonical `src/components/post/Math.astro` 존재 여부
 
-## 8. 원칙
+## 8. Content compatibility 원칙
 
 호환성 문제가 생겼을 때 우선순위는 다음과 같습니다.
 
@@ -147,7 +157,15 @@ pnpm content:check
 source를 현재 형식으로 정규화
 → 작은 명시적 component 사용
 → CI로 contract 고정
-→ runtime compatibility parser/shim은 만들지 않음
+→ runtime/build-time content compatibility parser나 shim은 만들지 않음
 ```
 
-기존 공개 URL 보존을 위한 static redirect는 별도 compatibility boundary이며, post content runtime parser와 혼동하지 않습니다.
+최종 legacy-content migration에서는 과거 source 문제를 source 자체에 materialize한 뒤 다음 global shim을 제거했습니다.
+
+- `restoreLegacyHtml`
+- `fixLegacyFragments`
+- `remarkRepairLiteralStrong`
+
+따라서 새 content 문제를 해결하기 위해 이와 같은 전역 후처리 plugin을 다시 추가하지 않습니다. 필요한 수정은 owning source나 명시적 post component에 둡니다.
+
+기존 공개 URL 보존을 위한 static redirect는 별도 compatibility boundary이며, post content parser와 혼동하지 않습니다.

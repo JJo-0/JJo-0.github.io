@@ -16,7 +16,7 @@ lang: 'ko'
 [관련 링크](https://www.raspberrypi.com/products/raspberry-pi-5/)  
 
 <details>
-  <summary>**스펙 간략하게**</summary>
+  <summary><strong>스펙 간략하게</strong></summary>
   Broadcom BCM2712 2.4GHz quad-core 64-bit Arm Cortex-A76 CPU, with cryptography extensions, 512KB per-core L2 caches and a 2MB shared L3 cache  
   VideoCore VII GPU, supporting OpenGL ES 3.1, Vulkan 1.2  
   Dual 4Kp60 HDMI® display output with HDR support  

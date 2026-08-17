@@ -197,21 +197,21 @@ h4 { font-size: 1.25rem; }
             </p>
         </div>
 
-        <div class="flex flex-wrap justify-center gap-4 mt-8">
-            <div class="bg-blue-50 rounded-lg p-4 shadow-sm border border-blue-200">
-                <div class="text-2xl mb-2">🗺️</div>
-                <div class="text-sm font-semibold text-blue-700">맞춤 일정</div>
-            </div>
-            <div class="bg-green-50 rounded-lg p-4 shadow-sm border border-green-200">
-                <div class="text-2xl mb-2">💡</div>
-                <div class="text-sm font-semibold text-green-700">고급 기법</div>
-            </div>
-            <div class="bg-purple-50 rounded-lg p-4 shadow-sm border border-purple-200">
-                <div class="text-2xl mb-2">✨</div>
-                <div class="text-sm font-semibold text-purple-700">동적 계획</div>
-            </div>
-        </div>
+<div class="flex flex-wrap justify-center gap-4 mt-8">
+    <div class="bg-blue-50 rounded-lg p-4 shadow-sm border border-blue-200">
+        <div class="text-2xl mb-2">🗺️</div>
+        <div class="text-sm font-semibold text-blue-700">맞춤 일정</div>
     </div>
+    <div class="bg-green-50 rounded-lg p-4 shadow-sm border border-green-200">
+        <div class="text-2xl mb-2">💡</div>
+        <div class="text-sm font-semibold text-green-700">고급 기법</div>
+    </div>
+    <div class="bg-purple-50 rounded-lg p-4 shadow-sm border border-purple-200">
+        <div class="text-2xl mb-2">✨</div>
+        <div class="text-sm font-semibold text-purple-700">동적 계획</div>
+    </div>
+</div>
+</div>
 </header>
 
 <nav id="tab-nav" class="flex flex-wrap justify-center gap-2 md:gap-3 mb-10 px-4">

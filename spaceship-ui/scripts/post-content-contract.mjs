@@ -5,25 +5,10 @@ import process from 'node:process';
 const root = process.cwd();
 const postsDir = path.join(root, 'site', 'content', 'posts');
 const publicDir = path.join(root, 'site', 'assets');
-const legacyImageDir = path.join(publicDir, 'image');
+const retiredImageDir = path.join(publicDir, 'image');
 const postAssetsDir = path.join(publicDir, 'assets', 'posts');
 const postComponentsDir = path.join(root, 'src', 'components', 'post');
 const issues = [];
-
-// Existing pre-contract files may remain until their owning posts are migrated.
-// This is a freeze list, not a target directory: additions under /image are forbidden.
-const LEGACY_IMAGE_ALLOWLIST = new Set([
-  'AMR_.png',
-  'AMR_Sample_V1.mp4',
-  'AMR_Sample_V2.mp4',
-  'HPE_general_pipline.png',
-  'circle_face.JPG',
-  'graph_example_1.png',
-  'mouse_surprised.gif',
-  'raspberrypi_info.jpeg',
-  'raspberrypi_setting.jpeg',
-  '증명사진.jpeg',
-]);
 
 function filesUnder(dir, predicate = () => true) {
   if (!fs.existsSync(dir)) return [];
@@ -105,10 +90,14 @@ for (const file of postFiles) {
 
   if (isMdx) {
     if (/<script\b/i.test(source)) {
-      issues.push(`${relative}: direct <script> is not allowed in post MDX; encapsulate behavior in a post component`);
+      issues.push(
+        `${relative}: direct <script> is not allowed in post MDX; encapsulate behavior in a post component`,
+      );
     }
     if (/<style\b/i.test(source)) {
-      issues.push(`${relative}: direct <style> is not allowed in post MDX; component styles belong in the component`);
+      issues.push(
+        `${relative}: direct <style> is not allowed in post MDX; component styles belong in the component`,
+      );
     }
 
     for (const match of source.matchAll(/from\s+['"](@\/components\/[^'"]+)['"]/g)) {
@@ -129,33 +118,43 @@ for (const file of postFiles) {
     }
   }
 
-  for (const match of source.matchAll(/\/(?:assets\/posts|image)\/[^\s)"'<>{]+/g)) {
+  for (const match of source.matchAll(/\/assets\/posts\/[^\s)"'<>{]+/g)) {
     const reference = match[0].replace(/[.,;:]$/, '');
-    if (reference.startsWith('/assets/posts/')) {
-      assertPublicAssetExists(reference, relative);
-      continue;
-    }
+    assertPublicAssetExists(reference, relative);
+  }
 
-    const legacyName = normalizePublicReference(reference).slice('/image/'.length);
-    if (!LEGACY_IMAGE_ALLOWLIST.has(legacyName)) {
-      issues.push(`${relative}: /image is frozen legacy storage; move new assets to /assets/posts/<namespace>/: ${reference}`);
-    }
+  if (/\/image\//.test(source)) {
+    issues.push(
+      `${relative}: /image is retired; move repository-owned media to /assets/posts/<namespace>/`,
+    );
   }
 
   if (/^```C\s*$/m.test(raw)) {
     issues.push(`${relative}: use canonical Shiki language id \`c\`, not \`C\``);
   }
   if (/^```pseudocode\s*$/m.test(raw)) {
-    issues.push(`${relative}: use \`text\` for pseudocode unless a registered Shiki language is added`);
+    issues.push(
+      `${relative}: use \`text\` for pseudocode unless a registered Shiki language is added`,
+    );
   }
 }
 
-const actualLegacyImages = filesUnder(legacyImageDir).map((file) =>
-  path.relative(legacyImageDir, file).replaceAll(path.sep, '/'),
-);
-for (const legacyName of actualLegacyImages) {
-  if (!LEGACY_IMAGE_ALLOWLIST.has(legacyName)) {
-    issues.push(`site/assets/image/${legacyName}: new files are forbidden in the frozen legacy image directory`);
+// /image was fully retired after the final legacy-media migration. Reintroducing the
+// directory is a regression rather than a new allowlist entry.
+if (fs.existsSync(retiredImageDir)) {
+  issues.push('site/assets/image: retired legacy directory must not be reintroduced');
+}
+
+// Catch /image references outside post Markdown too (for example homepage components).
+for (const sourceRoot of [path.join(root, 'site', 'content'), path.join(root, 'src')]) {
+  for (const file of filesUnder(sourceRoot, (candidate) =>
+    /\.(?:md|mdx|astro|svelte|ts|js|mjs|css|json)$/.test(candidate),
+  )) {
+    const relative = path.relative(root, file).replaceAll(path.sep, '/');
+    const source = stripFencedCode(fs.readFileSync(file, 'utf8'));
+    if (/\/image\//.test(source)) {
+      issues.push(`${relative}: /image is retired and must not be referenced`);
+    }
   }
 }
 
@@ -173,11 +172,15 @@ if (fs.existsSync(postAssetsDir)) {
     const fileName = segments.pop();
     for (const segment of segments) {
       if (!/^[a-z0-9][a-z0-9-]*$/.test(segment)) {
-        issues.push(`site/assets/assets/posts/${relative}: post asset directories must use lowercase kebab-case`);
+        issues.push(
+          `site/assets/assets/posts/${relative}: post asset directories must use lowercase kebab-case`,
+        );
       }
     }
     if (!/^[a-z0-9][a-z0-9.-]*$/.test(fileName ?? '')) {
-      issues.push(`site/assets/assets/posts/${relative}: post asset filenames must use lowercase kebab-case/dots`);
+      issues.push(
+        `site/assets/assets/posts/${relative}: post asset filenames must use lowercase kebab-case/dots`,
+      );
     }
   }
 }
@@ -190,5 +193,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `post-content-contract: PASS (${postFiles.length} posts, ${actualLegacyImages.length} grandfathered /image assets, canonical post components/assets)`,
+  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets, /image retired)`,
 );
