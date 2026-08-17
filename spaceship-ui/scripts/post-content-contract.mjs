@@ -16,6 +16,7 @@ const NONCANONICAL_FENCE_IDS = new Map([
   ['c++', 'cpp'],
   ['pseudocode', 'text'],
 ]);
+const CHART_RUNTIME_PATTERN = /\b(?:new\s+Chart\s*\(|Chart\.getChart\s*\()/;
 
 function filesUnder(dir, predicate = () => true) {
   if (!fs.existsSync(dir)) return [];
@@ -56,6 +57,10 @@ function stripFencedCode(source) {
   return kept.join('\n');
 }
 
+function getFrontmatter(source) {
+  return source.match(/^---\s*\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1] ?? '';
+}
+
 function normalizePublicReference(reference) {
   const withoutQuery = reference.split(/[?#]/, 1)[0];
   try {
@@ -89,6 +94,7 @@ for (const file of postFiles) {
   const relative = path.relative(root, file).replaceAll(path.sep, '/');
   const raw = fs.readFileSync(file, 'utf8');
   const source = stripFencedCode(raw);
+  const frontmatter = getFrontmatter(raw);
   const isMdx = file.endsWith('.mdx');
 
   if (!isMdx && /^\s*import\s.+\sfrom\s+['"][^'"]+['"];?\s*$/m.test(source)) {
@@ -133,6 +139,20 @@ for (const file of postFiles) {
   if (/\/image\//.test(source)) {
     issues.push(
       `${relative}: /image is retired; move repository-owned media to /assets/posts/<namespace>/`,
+    );
+  }
+
+  const hasChartRuntime = CHART_RUNTIME_PATTERN.test(source);
+  const chartOptIn = /^usesChart:\s*true\s*$/m.test(frontmatter);
+  if (hasChartRuntime && !chartOptIn) {
+    issues.push(`${relative}: Chart runtime detected; declare \`usesChart: true\` in frontmatter`);
+  }
+  if (!hasChartRuntime && chartOptIn) {
+    issues.push(`${relative}: \`usesChart: true\` is stale; no Chart runtime call was detected`);
+  }
+  if (hasChartRuntime && chartOptIn && !source.includes('astro:page-load')) {
+    issues.push(
+      `${relative}: chart-enabled post must initialize through \`astro:page-load\` for ClientRouter navigation`,
     );
   }
 
@@ -202,5 +222,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets/fence ids, /image retired)`,
+  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets/fence ids/chart opt-ins/lifecycle, /image retired)`,
 );

@@ -4,6 +4,7 @@ description: 'Gemini Deep Research 기반 여행 프롬프트 엔지니어링 �
 pubDate: 2025-05-23
 tags: ['artificial-intelligence', 'prompt-engineering', 'tools-guides', 'travel', 'projects', 'computer-vision']
 lang: 'ko'
+usesChart: true
 ---
 
 ## 핵심 요약

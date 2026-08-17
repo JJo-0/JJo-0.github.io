@@ -1,16 +1,11 @@
 <script lang="ts">
   interface Props {
     title: string;
-    urlPath: string;
+    url: string;
   }
 
-  let { title, urlPath }: Props = $props();
+  let { title, url }: Props = $props();
   let copied = $state(false);
-
-  const getFullUrl = () => {
-    if (typeof window === 'undefined') return '';
-    return `${window.location.origin}${urlPath}`;
-  };
 
   const platforms = [
     {
@@ -34,7 +29,6 @@
   ];
 
   const copyToClipboard = async () => {
-    const url = getFullUrl();
     try {
       await navigator.clipboard.writeText(url);
       copied = true;
@@ -53,7 +47,7 @@
   <div class="flex items-center gap-2">
     {#each platforms as platform (platform.name)}
       <a
-        href={platform.getShareUrl(title, getFullUrl())}
+        href={platform.getShareUrl(title, url)}
         target="_blank"
         rel="noopener noreferrer"
         class="p-2.5 rounded-xl border border-border hover:bg-accent text-muted-foreground hover:text-primary transition-all duration-300"
