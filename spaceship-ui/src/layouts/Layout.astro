@@ -11,7 +11,6 @@ import { getWebSiteSchema, getOrganizationSchema, getPersonSchema } from '@/lib/
 
 import outfitFont400 from '@fontsource/outfit/files/outfit-latin-400-normal.woff2?url';
 import outfitFont700 from '@fontsource/outfit/files/outfit-latin-700-normal.woff2?url';
-import interFontVar from '@fontsource-variable/inter/files/inter-latin-standard-normal.woff2?url';
 
 interface Props {
   title?: string;
@@ -21,9 +20,19 @@ interface Props {
   lang?: string;
   schema?: Record<string, unknown> | Record<string, unknown>[];
   noindex?: boolean;
+  usesChart?: boolean;
 }
 
-const { title, description, ogImage, ogType = 'website', lang, schema, noindex = false } = Astro.props;
+const {
+  title,
+  description,
+  ogImage,
+  ogType = 'website',
+  lang,
+  schema,
+  noindex = false,
+  usesChart = false,
+} = Astro.props;
 const pageLang = lang || SITE.lang;
 const pageTitle = title ? `${title} | ${SITE.author}` : SITE.seoTitle;
 const pageDescription = description || SITE.desc;
@@ -79,12 +88,12 @@ const gaScript = `
     <meta name="color-scheme" content="light dark" />
     <link rel="preload" href={outfitFont400} as="font" type="font/woff2" crossorigin="anonymous" />
     <link rel="preload" href={outfitFont700} as="font" type="font/woff2" crossorigin="anonymous" />
-    <link rel="preload" href={interFontVar} as="font" type="font/woff2" crossorigin="anonymous" />
 
     {analyticsId && <link rel="preconnect" href="https://www.googletagmanager.com" />}
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     {adsenseClientId && <link rel="preconnect" href="https://pagead2.googlesyndication.com" />}
     {adsenseClientId && <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />}
+    {usesChart && <link rel="preconnect" href="https://cdn.jsdelivr.net" />}
 
     <title>{pageTitle}</title>
     <meta name="description" content={pageDescription} />
@@ -142,7 +151,11 @@ const gaScript = `
       })();
     </script>
 
-    <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    {
+      usesChart && (
+        <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+      )
+    }
 
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={pageDescription} />
