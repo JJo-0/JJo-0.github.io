@@ -33,7 +33,6 @@ jobs:
               if new not in text:
                   raise SystemExit(f'{label}: neither old nor normalized pattern found')
 
-          # Astro explicitly recommends is:inline for unprocessed external scripts.
           layout = root / 'src/layouts/Layout.astro'
           replace_once(
               layout,
@@ -48,7 +47,6 @@ jobs:
               'Layout AdSense script',
           )
 
-          # Keep post-importable components in one explicit namespace.
           old_math = root / 'src/components/Math.astro'
           new_math = root / 'src/components/post/Math.astro'
           if old_math.exists():
@@ -76,7 +74,6 @@ jobs:
               'Modern AI audit Math import',
           )
 
-          # Move the PR #15 native assets out of the grandfathered flat image directory.
           moves = {
               'image/activation-functions.svg': 'assets/posts/vision/activation-functions.svg',
               'image/sigmoid-derivative.svg': 'assets/posts/vision/sigmoid-derivative.svg',
@@ -118,7 +115,6 @@ jobs:
                       raise SystemExit(f'{path}: expected asset reference not found: {old}')
               path.write_text(text, encoding='utf-8')
 
-          # Disabled private sections use an empty inline loader instead of scanning an empty public directory.
           config = root / 'src/content.config.ts'
           text = config.read_text(encoding='utf-8')
           import_line = "import { SITE } from '../site/config';"
@@ -129,7 +125,11 @@ jobs:
               text = text.replace(anchor, anchor + import_line + '\n', 1)
           loader_line = 'const emptyCollectionLoader = async () => [];'
           if loader_line not in text:
-              text = text.replace('\nconst posts = defineCollection({', f'\n{loader_line}\n\nconst posts = defineCollection({', 1)
+              old_anchor = '\nconst posts = defineCollection({'
+              new_anchor = '\n' + loader_line + '\n\nconst posts = defineCollection({'
+              if old_anchor not in text:
+                  raise SystemExit('content.config.ts posts anchor missing')
+              text = text.replace(old_anchor, new_anchor, 1)
 
           project_old = "  loader: glob({\n    pattern: ['**/*.{md,mdx}', '!**/_*'],\n    base: './site/content/projects',\n  }),"
           project_new = "  loader: SITE.publicSections.projects\n    ? glob({\n        pattern: ['**/*.{md,mdx}', '!**/_*'],\n        base: './site/content/projects',\n      })\n    : emptyCollectionLoader,"
@@ -186,7 +186,6 @@ jobs:
               raise SystemExit('project detail public gate missing')
           project_detail.write_text(detail_text, encoding='utf-8')
 
-          # Shiki should receive canonical language IDs, not ad-hoc aliases.
           fence_counts = {'C': 0, 'pseudocode': 0}
           for path in (root / 'site/content').rglob('*'):
               if path.suffix not in ('.md', '.mdx') or path.name.startswith('_'):
@@ -200,7 +199,6 @@ jobs:
                   path.write_text(source, encoding='utf-8')
           print(f'normalized Shiki fences: {fence_counts}')
 
-          # This transition currently produces an unused-import bundle warning; the menu remains functional without it.
           theme_toggle = root / 'src/components/ThemeToggle.svelte'
           theme_text = theme_toggle.read_text(encoding='utf-8')
           theme_text = theme_text.replace("  import { slide } from 'svelte/transition';\n", '')
