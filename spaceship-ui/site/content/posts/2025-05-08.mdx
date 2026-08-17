@@ -1,0 +1,84 @@
+---
+title: '선형 대수'
+description: '벡터와 행렬의 노름을 중심으로 선형대수의 기본 정의와 머신러닝 활용을 정리합니다.'
+pubDate: 2025-05-08
+tags: ['artificial-intelligence', 'machine-learning', 'deep-learning', 'linear-algebra', 'projects', 'computer-vision']
+lang: 'ko'
+---
+
+import Math from '@/components/post/Math.astro';
+
+벡터와 행렬의 <strong>크기(magnitude)</strong>를 수치로 표현하는 노름(norm)을 중심으로 핵심 정의와 성질을 정리한다. 노름은 선형대수의 기본 개념이면서 머신러닝의 손실 함수, 정규화, 최적화 제약을 이해하는 데도 자주 등장한다.
+
+## 1. 노름(Norm)이란?
+
+노름은 벡터 또는 행렬의 크기를 나타내는 함수다. 가장 익숙한 예는 유클리드 노름(Euclidean norm), 즉 ℓ₂ 노름이다.
+
+<Math display label="L2 norm" tex={"\\|\\mathbf{x}\\|_2 = \\sqrt{\\sum_{i=1}^{N} x_i^2}"} />
+
+제곱 형태로는 내적과 연결된다.
+
+<Math display label="Squared L2 norm" tex={"\\|\\mathbf{x}\\|_2^2 = \\mathbf{x}^{\\top}\\mathbf{x}"} />
+
+## 2. 노름이 만족해야 하는 성질
+
+함수 <Math tex={"f : \\mathbb{R}^N \\to \\mathbb{R}"} />가 노름이 되려면 다음 네 조건을 만족해야 한다.
+
+1. **비음수성(Non-negativity)**
+
+<Math display tex={"\\forall \\mathbf{x} \\in \\mathbb{R}^N,\\quad f(\\mathbf{x}) \\ge 0"} />
+
+2. **양의 정부호성(Definiteness)**
+
+<Math display tex={"f(\\mathbf{x}) = 0 \\iff \\mathbf{x} = \\mathbf{0}"} />
+
+3. **동차성(Homogeneity)**
+
+<Math display tex={"\\forall t \\in \\mathbb{R},\\quad f(t\\mathbf{x}) = |t|f(\\mathbf{x})"} />
+
+4. **삼각 부등식(Triangle inequality)**
+
+<Math display tex={"f(\\mathbf{x}+\\mathbf{y}) \\le f(\\mathbf{x}) + f(\\mathbf{y})"} />
+
+## 3. 주요 벡터 노름
+
+### ℓ₁ 노름 (Manhattan norm)
+
+<Math display label="L1 norm" tex={"\\|\\mathbf{x}\\|_1 = \\sum_{i=1}^{N} |x_i|"} />
+
+각 성분의 절댓값을 합한다. ℓ₁ 정규화는 일부 계수를 정확히 0으로 만드는 경향이 있어 sparsity를 유도할 때 자주 사용된다.
+
+### ℓ∞ 노름 (Maximum norm)
+
+<Math display label="L infinity norm" tex={"\\|\\mathbf{x}\\|_{\\infty} = \\max_i |x_i|"} />
+
+성분 가운데 절댓값이 가장 큰 값을 벡터의 크기로 사용한다.
+
+### 일반적인 ℓₚ 노름
+
+<Math display label="Lp norm" tex={"\\|\\mathbf{x}\\|_p = \\left(\\sum_{i=1}^{N} |x_i|^p\\right)^{1/p},\\qquad p \\ge 1"} />
+
+- p = 1이면 ℓ₁ 노름이다.
+- p = 2이면 ℓ₂ 노름이다.
+- p가 무한대로 갈 때 ℓ∞ 노름으로 수렴한다.
+- p < 1인 식은 삼각 부등식을 만족하지 않으므로 일반적인 의미의 노름이 아니다.
+
+## 4. 행렬의 노름: Frobenius Norm
+
+행렬에도 노름을 정의할 수 있다. 대표적인 예가 Frobenius 노름이다.
+
+<Math display label="Frobenius norm" tex={"\\|\\mathbf{A}\\|_F = \\sqrt{\\sum_{i=1}^{M}\\sum_{j=1}^{N} A_{i,j}^2} = \\sqrt{\\operatorname{tr}(\\mathbf{A}^{\\top}\\mathbf{A})}"} />
+
+행렬의 모든 원소를 하나의 긴 벡터로 본 뒤 ℓ₂ 노름을 계산한 것과 같은 값이다. 행렬 차이의 크기, 저랭크 근사, 신경망 가중치 분석 등에서 자주 사용한다.
+
+## 5. 머신러닝에서의 활용
+
+- **ℓ₁ regularization**: 희소한 파라미터를 유도하는 데 사용한다.
+- **ℓ₂ regularization / weight decay**: 큰 가중치에 패널티를 부여해 과적합을 줄이는 데 사용한다.
+- **MSE와 거리 기반 손실**: ℓ₂ 거리와 밀접하게 연결된다.
+- **MAE**: ℓ₁ 거리와 연결된다.
+- **최적화 제약**: 파라미터나 perturbation의 크기를 특정 노름 이하로 제한하는 형태가 자주 등장한다.
+
+## 정리
+
+노름은 벡터와 행렬의 크기를 일관된 방식으로 정의한다. ℓ₁, ℓ₂, ℓ∞는 서로 다른 특성을 갖고 있으며, 어떤 노름을 선택하느냐에 따라 최적화 문제와 모델의 성질도 달라진다. 머신러닝에서는 거리 측정, 정규화, 손실 함수, 강건성 분석을 이해할 때 반복적으로 등장하는 기본 도구다.
