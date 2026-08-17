@@ -61,12 +61,16 @@ const finalSchema = schema
 const analyticsId = SITE.googleAnalyticsId;
 const isGTM = analyticsId?.startsWith('GTM-');
 const adsenseConfig = SITE.adsense;
+const adsenseAccountId =
+  adsenseConfig && /^ca-pub-\d{16}$/.test(adsenseConfig.clientId)
+    ? adsenseConfig.clientId
+    : '';
 const adsenseEnabled =
   showAds &&
   adsenseConfig?.mode === 'manual' &&
-  /^ca-pub-\d{16}$/.test(adsenseConfig.clientId) &&
+  Boolean(adsenseAccountId) &&
   /^\d+$/.test(adsenseConfig.adSlot);
-const adsenseClientId = adsenseEnabled && adsenseConfig ? adsenseConfig.clientId : '';
+const adsenseClientId = adsenseEnabled ? adsenseAccountId : '';
 const adsenseSlot = adsenseEnabled && adsenseConfig ? adsenseConfig.adSlot : '';
 
 const gtmScript = `
@@ -197,17 +201,16 @@ const gaScript = `
       )
     }
 
+    {adsenseAccountId && <meta name="google-adsense-account" content={adsenseAccountId} />}
+
     {
       adsenseClientId && (
-        <>
-          <meta name="google-adsense-account" content={adsenseClientId} />
-          <script
-            is:inline
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
-            crossorigin="anonymous"
-          />
-        </>
+        <script
+          is:inline
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
+          crossorigin="anonymous"
+        />
       )
     }
 
