@@ -5,6 +5,7 @@ import { html } from 'satori-html';
 import { Resvg } from '@resvg/resvg-js';
 import { SITE } from '@/config';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getOgBoldFont } from '@/lib/og-font';
 
 export async function getStaticPaths() {
   const posts = await getPublishedPosts();
@@ -16,11 +17,7 @@ export async function getStaticPaths() {
 
 export const GET: APIRoute = async ({ props }) => {
   const { post } = props;
-
-  // Minimal buffer fetch for a font (Inter Bold)
-  const fontData = await fetch(
-    'https://cdn.jsdelivr.net/fontsource/fonts/inter@5.0.19/latin-700-normal.woff'
-  ).then((res) => res.arrayBuffer());
+  const fontData = await getOgBoldFont();
 
   const markup = html`
     <div
@@ -33,7 +30,7 @@ export const GET: APIRoute = async ({ props }) => {
       justify-content: center;
       background-color: #0d1117;
       color: #fff;
-      font-family: 'Inter';
+      font-family: 'Outfit';
       padding: 40px;
       text-align: center;
     "
@@ -79,7 +76,7 @@ export const GET: APIRoute = async ({ props }) => {
     height: 630,
     fonts: [
       {
-        name: 'Inter',
+        name: 'Outfit',
         data: fontData,
         weight: 700,
         style: 'normal',
