@@ -25,7 +25,14 @@ jobs:
           cache-dependency-path: spaceship-ui/pnpm-lock.yaml
 
       - name: Apply requested content repairs
-        run: python scripts/one-time-content-repair.py
+        shell: bash
+        run: |
+          if [[ -f spaceship-ui/site/content/posts/2025-05-08.mdx && ! -f spaceship-ui/site/content/posts/2025-05-08.md ]]; then
+            echo "Repairs already materialized; validating current branch"
+          else
+            sed -i 's/벡터와 행렬의 \*\*크기(magnitude)\*\*를/벡터와 행렬의 <strong>크기(magnitude)<\/strong>를/' scripts/one-time-content-repair.py
+            python scripts/one-time-content-repair.py
+          fi
 
       - name: Install dependencies
         working-directory: spaceship-ui
