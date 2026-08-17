@@ -1,0 +1,31 @@
+name: Chart lifecycle audit
+
+on:
+  push:
+    branches: [agent/runtime-performance]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect chart initialization lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            spaceship-ui/site/content/posts/2025-06-27.md
+            spaceship-ui/site/content/posts/deep-search-travel-prompt.md
+            spaceship-ui/site/content/posts/2025-07-23-2.md
+            spaceship-ui/site/content/posts/2025-08-06.md
+            spaceship-ui/site/content/posts/2025-05-20.md
+            spaceship-ui/site/content/posts/2025-07-25.md
+            spaceship-ui/site/content/posts/2025-07-23.md
+          )
+          for file in "${files[@]}"; do
+            echo "===== $file ====="
+            grep -nE "astro:page-load|DOMContentLoaded|new[[:space:]]+Chart|Chart\.getChart|<script" "$file" || true
+          done
