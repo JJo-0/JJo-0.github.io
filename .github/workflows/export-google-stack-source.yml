@@ -1,0 +1,29 @@
+name: Export Google stack source snapshot
+
+on:
+  push:
+    branches:
+      - agent/google-search-analytics-adsense
+    paths:
+      - .github/workflows/export-google-stack-source.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/google-search-analytics-adsense
+      - name: Package repository source
+        shell: bash
+        run: |
+          tar --exclude=.git --exclude='spaceship-ui/node_modules' --exclude='spaceship-ui/dist' -czf "$RUNNER_TEMP/google-stack-repository.tar.gz" .
+          cp "$RUNNER_TEMP/google-stack-repository.tar.gz" ./google-stack-repository.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: google-stack-repository
+          path: google-stack-repository.tar.gz
+          retention-days: 1
