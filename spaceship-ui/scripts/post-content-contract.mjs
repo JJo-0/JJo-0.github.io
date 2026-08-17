@@ -10,6 +10,13 @@ const postAssetsDir = path.join(publicDir, 'assets', 'posts');
 const postComponentsDir = path.join(root, 'src', 'components', 'post');
 const issues = [];
 
+const NONCANONICAL_FENCE_IDS = new Map([
+  ['C', 'c'],
+  ['C++', 'cpp'],
+  ['c++', 'cpp'],
+  ['pseudocode', 'text'],
+]);
+
 function filesUnder(dir, predicate = () => true) {
   if (!fs.existsSync(dir)) return [];
   const out = [];
@@ -129,13 +136,15 @@ for (const file of postFiles) {
     );
   }
 
-  if (/^```C\s*$/m.test(raw)) {
-    issues.push(`${relative}: use canonical Shiki language id \`c\`, not \`C\``);
-  }
-  if (/^```pseudocode\s*$/m.test(raw)) {
-    issues.push(
-      `${relative}: use \`text\` for pseudocode unless a registered Shiki language is added`,
-    );
+  for (const line of raw.split(/\r?\n/)) {
+    const match = line.match(/^```([^\s`]*)\s*$/);
+    if (!match) continue;
+    const replacement = NONCANONICAL_FENCE_IDS.get(match[1]);
+    if (replacement) {
+      issues.push(
+        `${relative}: use canonical Shiki language id \`${replacement}\`, not \`${match[1]}\``,
+      );
+    }
   }
 }
 
@@ -193,5 +202,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets, /image retired)`,
+  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets/fence ids, /image retired)`,
 );

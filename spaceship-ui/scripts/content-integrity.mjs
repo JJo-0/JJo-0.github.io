@@ -93,7 +93,16 @@ for (const dependency of ['remark-math', 'rehype-katex']) {
 }
 
 const astroConfig = fs.readFileSync(path.join(root, 'astro.config.mjs'), 'utf8');
-for (const token of ['remark-math', 'rehype-katex', 'repairLegacyMathArtifacts', 'replaceFragileMedia']) {
+for (const token of [
+  'remark-math',
+  'rehype-katex',
+  'repairLegacyMathArtifacts',
+  'replaceFragileMedia',
+  'restoreLegacyHtml',
+  'fixLegacyFragments',
+  'remarkRepairLiteralStrong',
+  'langAlias:',
+]) {
   if (astroConfig.includes(token)) issues.push(`obsolete compatibility hook remains in astro.config.mjs: ${token}`);
 }
 
