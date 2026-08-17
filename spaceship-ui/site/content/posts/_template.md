@@ -4,6 +4,7 @@ description: Brief description of the post.
 pubDate: 2026-08-17
 tags: [tech]
 featured: false
+showAds: false
 lang: ko
 ---
 

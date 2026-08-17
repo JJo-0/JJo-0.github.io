@@ -21,6 +21,7 @@ interface Props {
   schema?: Record<string, unknown> | Record<string, unknown>[];
   noindex?: boolean;
   usesChart?: boolean;
+  showAds?: boolean;
 }
 
 const {
@@ -32,6 +33,7 @@ const {
   schema,
   noindex = false,
   usesChart = false,
+  showAds = false,
 } = Astro.props;
 const pageLang = lang || SITE.lang;
 const pageTitle = title ? `${title} | ${SITE.author}` : SITE.seoTitle;
@@ -58,7 +60,14 @@ const finalSchema = schema
 
 const analyticsId = SITE.googleAnalyticsId;
 const isGTM = analyticsId?.startsWith('GTM-');
-const adsenseClientId = SITE.adsense?.enabled ? SITE.adsense.clientId : '';
+const adsenseConfig = SITE.adsense;
+const adsenseEnabled =
+  showAds &&
+  adsenseConfig?.mode === 'manual' &&
+  /^ca-pub-\d{16}$/.test(adsenseConfig.clientId) &&
+  /^\d+$/.test(adsenseConfig.adSlot);
+const adsenseClientId = adsenseEnabled && adsenseConfig ? adsenseConfig.clientId : '';
+const adsenseSlot = adsenseEnabled && adsenseConfig ? adsenseConfig.adSlot : '';
 
 const gtmScript = `
   (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -231,7 +240,7 @@ const gaScript = `
       <main id="main-content" class="py-12 sm:py-16 lg:py-24" tabindex="-1">
         <slot />
       </main>
-      <AdSense />
+      {adsenseEnabled && <AdSense clientId={adsenseClientId} adSlot={adsenseSlot} />}
       <Footer />
       <SearchModal client:idle />
     </div>

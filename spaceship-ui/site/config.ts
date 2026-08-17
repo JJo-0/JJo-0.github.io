@@ -13,9 +13,9 @@ export interface SiteConfig {
   naverSiteVerification?: string;
   bingSiteVerification?: string;
   adsense?: {
-    enabled: boolean;
+    mode: 'off' | 'manual';
     clientId: string;
-    adSlot?: string;
+    adSlot: string;
   };
   homeHeroDescription: string;
   blogDescription: string;
@@ -53,6 +53,9 @@ export interface SiteConfig {
   };
 }
 
+const adsenseMode: 'off' | 'manual' =
+  import.meta.env.PUBLIC_GOOGLE_ADSENSE_MODE === 'manual' ? 'manual' : 'off';
+
 export const SITE: SiteConfig = {
   author: 'Park JiHo',
   desc: 'AI·로보틱스·컴퓨터 비전·개발 연구와 학습 기록을 정리하는 Park JiHo의 기술 블로그입니다.',
@@ -72,9 +75,10 @@ export const SITE: SiteConfig = {
   naverSiteVerification: import.meta.env.PUBLIC_NAVER_SITE_VERIFICATION || '',
   bingSiteVerification: import.meta.env.PUBLIC_BING_SITE_VERIFICATION || '',
   adsense: {
-    enabled: true,
-    clientId: 'ca-pub-7495843758830919',
-    adSlot: '',
+    mode: adsenseMode,
+    clientId:
+      import.meta.env.PUBLIC_GOOGLE_ADSENSE_CLIENT || 'ca-pub-7495843758830919',
+    adSlot: import.meta.env.PUBLIC_GOOGLE_ADSENSE_SLOT || '',
   },
   homeHeroDescription: '개발과 연구, 그리고 공부 기록을 쌓아가는 개인 기술 블로그입니다.',
   blogDescription: 'AI, 로보틱스, 컴퓨터 비전, 개발 및 연구 노트를 정리합니다.',

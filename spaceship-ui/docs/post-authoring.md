@@ -127,7 +127,17 @@ Shiki가 실제로 아는 canonical language ID를 source에 직접 사용합니
 
 단, 공식 문서/논문/외부 페이지로 이동하는 일반 hyperlink는 이 규칙의 대상이 아닙니다.
 
-## 7. Verification
+## 7. 광고 opt-in
+
+광고는 글 단위 명시적 opt-in만 허용합니다. 기본값은 `false`입니다.
+
+```yaml
+showAds: false
+```
+
+운영 데이터 검토 후 광고를 허용할 글에만 `showAds: true`를 추가합니다. `PUBLIC_GOOGLE_ADSENSE_MODE=manual`과 유효한 client/slot ID가 모두 있어야 실제 광고가 렌더링됩니다. Auto Ads를 전역으로 다시 켜지 않습니다.
+
+## 8. Verification
 
 로컬에서 다음 순서로 확인합니다.
 
@@ -151,7 +161,7 @@ pnpm content:check
 - 비표준 `C` / `C++` / `c++` / `pseudocode` code fence
 - canonical `src/components/post/Math.astro` 존재 여부
 
-## 8. Content compatibility 원칙
+## 9. Content compatibility 원칙
 
 호환성 문제가 생겼을 때 우선순위는 다음과 같습니다.
 
