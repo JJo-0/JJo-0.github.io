@@ -10,16 +10,16 @@ title: "안녕하세요, 박지호입니다."
 
 ## 🎓 학력
 
-**성균관대학교 전자전기컴퓨터공학과 석사** — Control and Robotics Lab  
+**[성균관대학교 전자전기컴퓨터공학과](https://ice.skku.edu/ice/grad_ece_intro.do) 석사** — [Control and Robotics Lab](https://iconlab.skku.edu/cnrlab/index.do)  
 2025.03 ~
 
-**한국생산기술연구원 연구원**  
+**[한국생산기술연구원](https://www.kitech.re.kr/) 연구원**  
 2024.12 ~
 
 **한국공학대학교 메카트로닉스공학과** (졸업)  
 2018.03 ~ 2025.02
 
-**AI-Mechatronics 연구실 학부연구생**  
+**[AI-Mechatronics 연구실](http://aml.tukorea.ac.kr/) 학부연구생**  
 2021.12 ~ 2024.12
 
 ## 🪪 자격증

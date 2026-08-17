@@ -83,11 +83,24 @@ if (!/<TableOfContents\s+client:idle/.test(postPageSource)) {
 if (!/<SocialShare\s+client:visible/.test(postPageSource)) {
   issues.push('post detail: SocialShare must remain client:visible');
 }
+if (!/<SocialShare\s+client:visible\s+url=\{canonicalPostUrl\}/.test(postPageSource)) {
+  issues.push('post detail: SocialShare must receive the canonical post URL for Copy Link');
+}
 if (!/<Comments\s+client:visible/.test(postPageSource)) {
   issues.push('post detail: Comments must remain client:visible');
 }
 if (/<LanguageSelector\s+client:/.test(postPageSource)) {
   issues.push('post detail: LanguageSelector is static links and must not be hydrated');
+}
+
+const socialSource = fs.readFileSync(path.join(root, 'src/components/SocialShare.svelte'), 'utf8');
+if (!socialSource.includes('navigator.clipboard.writeText(url)')) {
+  issues.push('SocialShare: Copy Link must continue copying the canonical URL prop');
+}
+for (const retiredTarget of ['x.com/intent', 't.me/share', 'facebook.com/sharer']) {
+  if (socialSource.includes(retiredTarget)) {
+    issues.push(`SocialShare: retired share target returned (${retiredTarget})`);
+  }
 }
 
 const expected = expectedChartRoutes();
@@ -112,15 +125,6 @@ for (const relative of ['index.html', 'research/index.html', 'posts/index.html',
   }
 }
 
-const samplePost = filesUnder(path.join(dist, 'posts'), (p) => /posts[/\\][^/\\]+[/\\]index\.html$/.test(p))
-  .find((file) => !file.includes(`${path.sep}tag${path.sep}`));
-if (samplePost) {
-  const html = fs.readFileSync(samplePost, 'utf8');
-  if (!html.includes('https%3A%2F%2Fjjo-0.github.io%2Fposts%2F')) {
-    issues.push(`${path.relative(dist, samplePost)}: server-rendered social share URL is not canonical`);
-  }
-}
-
 const uniqueIssues = [...new Set(issues)].sort();
 if (uniqueIssues.length) {
   console.error(`runtime-contract: found ${uniqueIssues.length} issue(s):`);
@@ -129,5 +133,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `runtime-contract: PASS (${actual.size} chart-enabled post routes; no global Chart.js, dead Inter Variable, or eager post islands)`,
+  `runtime-contract: PASS (${actual.size} chart-enabled post routes; profile links + canonical Copy Link; no global Chart.js, dead Inter Variable, or eager post islands)`,
 );
