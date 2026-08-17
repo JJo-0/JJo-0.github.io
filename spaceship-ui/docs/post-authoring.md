@@ -105,19 +105,21 @@ assets/posts/Vision/Sigmoid Derivative.svg
 
 ## 5. Code fence language
 
-Shiki가 실제로 아는 canonical language ID를 사용합니다.
+Shiki가 실제로 아는 canonical language ID를 source에 직접 사용합니다. `astro.config.mjs`에는 content source를 보정하기 위한 `langAlias`를 두지 않습니다.
 
 ```text
 ```c
+```cpp
 ```python
 ```bash
 ```text
 ```
 
 - `C` 대신 `c`
+- `C++` 또는 `c++` 대신 `cpp`
 - 등록되지 않은 `pseudocode` 대신 `text`
 
-새 alias가 정말 필요한 경우에만 `astro.config.mjs`의 Shiki 설정에 의도적으로 등록합니다.
+새 언어 지원이 필요하면 Shiki가 지원하는 canonical ID를 먼저 사용합니다. 정말로 custom language 등록이 필요한 경우에만 별도의 명시적 language registration을 추가하며, 기존 source의 비표준 ID를 살리기 위한 compatibility alias는 추가하지 않습니다.
 
 ## 6. External media
 
@@ -146,7 +148,7 @@ pnpm content:check
 - `/assets/posts/...`의 missing asset
 - retired `/image` directory 또는 `/image/` source reference의 재도입
 - post asset naming convention
-- 비표준 `C` / `pseudocode` code fence
+- 비표준 `C` / `C++` / `c++` / `pseudocode` code fence
 - canonical `src/components/post/Math.astro` 존재 여부
 
 ## 8. Content compatibility 원칙
@@ -166,6 +168,8 @@ source를 현재 형식으로 정규화
 - `fixLegacyFragments`
 - `remarkRepairLiteralStrong`
 
-따라서 새 content 문제를 해결하기 위해 이와 같은 전역 후처리 plugin을 다시 추가하지 않습니다. 필요한 수정은 owning source나 명시적 post component에 둡니다.
+후속 source audit에서는 비표준 Shiki fence도 canonical language ID로 정규화하고 `langAlias` compatibility block을 제거했습니다.
+
+따라서 새 content 문제를 해결하기 위해 전역 후처리 plugin이나 source compatibility alias를 다시 추가하지 않습니다. 필요한 수정은 owning source나 명시적 post component에 둡니다.
 
 기존 공개 URL 보존을 위한 static redirect는 별도 compatibility boundary이며, post content parser와 혼동하지 않습니다.
