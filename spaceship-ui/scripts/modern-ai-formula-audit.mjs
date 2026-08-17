@@ -67,7 +67,7 @@ if (unexpectedInManifest.length) {
 if (!text.includes("series:\n  id: 'modern-artificial-intelligence'\n  order: 1")) {
   failures.push('Part I series metadata is missing or changed.');
 }
-if (!text.includes("import Math from '@/components/Math.astro';")) {
+if (!text.includes("import Math from '@/components/post/Math.astro';")) {
   failures.push('Native Math component import is missing.');
 }
 if (text.includes('## 7. 다음 편') || text.includes('2편부터는 선형대수로 들어간다')) {
