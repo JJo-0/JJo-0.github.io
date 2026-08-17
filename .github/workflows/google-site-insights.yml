@@ -1,0 +1,70 @@
+name: Google Site Insights
+
+on:
+  workflow_dispatch:
+    inputs:
+      submit_sitemap:
+        description: Submit sitemap-index.xml to Search Console before reporting
+        required: false
+        type: boolean
+        default: false
+      inspect_urls:
+        description: Inspect sitemap URLs through the Search Console URL Inspection API
+        required: false
+        type: boolean
+        default: true
+      inspect_limit:
+        description: Maximum number of sitemap URLs to inspect
+        required: false
+        type: string
+        default: '100'
+  schedule:
+    - cron: '15 1 1 * *'
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    if: github.event_name == 'workflow_dispatch' || vars.GOOGLE_SITE_INSIGHTS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GOOGLE_REPORTING_CREDENTIALS: ${{ secrets.GOOGLE_REPORTING_CREDENTIALS }}
+      GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID || '486835586' }}
+      SEARCH_CONSOLE_SITE_URL: ${{ vars.SEARCH_CONSOLE_SITE_URL || 'https://jjo-0.github.io/' }}
+      SEARCH_CONSOLE_SITEMAP_URL: ${{ vars.SEARCH_CONSOLE_SITEMAP_URL || 'https://jjo-0.github.io/sitemap-index.xml' }}
+      SUBMIT_SITEMAP: ${{ github.event_name == 'workflow_dispatch' && inputs.submit_sitemap || false }}
+      INSPECT_URLS: ${{ github.event_name != 'workflow_dispatch' || inputs.inspect_urls }}
+      INSPECT_LIMIT: ${{ inputs.inspect_limit || '100' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate reporting credentials
+        shell: bash
+        run: |
+          if [[ -z "${GOOGLE_REPORTING_CREDENTIALS}" ]]; then
+            echo "Missing repository secret: GOOGLE_REPORTING_CREDENTIALS" >&2
+            echo "Read spaceship-ui/docs/google-site-insights.md before running this workflow." >&2
+            exit 1
+          fi
+
+      - name: Query GA4 and Search Console
+        working-directory: spaceship-ui
+        run: node scripts/google-site-insights.mjs
+
+      - name: Upload aggregate report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-site-insights-${{ github.run_number }}
+          path: spaceship-ui/reports/google-site-insights/
+          if-no-files-found: warn
+          retention-days: 7
