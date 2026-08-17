@@ -947,7 +947,7 @@ Motion Capture 시스템의 설계 및 평가 필수 요소들
 떨림, 물리 법칙 위반, 인간 얼굴 손 세부 사항 부족을 해결하고자 하는 것.  
 후처리 기법, Physical Constraints(물리적 제약) 통합, 자세 추정 방법 위한 Whole-body models 개발 등. 
 
-![general pipeline for developing an application-oriented Monocular 3D human Pose Estimation method](/image/HPE_general_pipline.png)
+![general pipeline for developing an application-oriented Monocular 3D human Pose Estimation method](/assets/posts/human-pose-estimate/hpe-general-pipeline.png)
 일반적인 파이프라인  
 
 

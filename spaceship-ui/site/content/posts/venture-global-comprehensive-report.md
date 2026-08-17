@@ -802,7 +802,7 @@ Revenue = sold TBtu × realized GAAP revenue ($/MMBtu)
 
 이번 보정에서는:
 
-1. 단가축을 **GAAP 기준(2025 actual anchor)**으로 재정의
+1. 단가축을 <strong>GAAP 기준(2025 actual anchor)</strong>으로 재정의
 2. 물량축을 **export → sold 단계로 일관화**
 3. EBITDA/fee는 **검증용**으로만 사용
 

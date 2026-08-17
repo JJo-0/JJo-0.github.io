@@ -11,9 +11,6 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeExternalLinks from 'rehype-external-links';
 import remarkEmoji from 'remark-emoji';
-import remarkRepairLiteralStrong from './src/lib/remark-repair-literal-strong.mjs';
-import restoreLegacyHtml from './src/lib/remark/restore-legacy-html.mjs';
-import fixLegacyFragments from './src/lib/rehype/fix-legacy-fragments.mjs';
 import termTooltips from './src/lib/rehype/term-tooltips.mjs';
 import { isLegacyPathname } from './src/lib/legacy-posts.mjs';
 import {
@@ -63,11 +60,10 @@ export default defineConfig({
         transformerNotationDiff(),
       ],
     },
-    remarkPlugins: [restoreLegacyHtml, remarkEmoji, remarkRepairLiteralStrong],
+    remarkPlugins: [remarkEmoji],
     rehypePlugins: [
       termTooltips,
       rehypeSlug,
-      fixLegacyFragments,
       [
         rehypeAutolinkHeadings,
         {

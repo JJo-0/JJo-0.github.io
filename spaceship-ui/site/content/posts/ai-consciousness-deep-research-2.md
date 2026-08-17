@@ -12,7 +12,7 @@ series:
 ---
 
 > **「AI가 의식이 있는가?」 3부작 중 2편**  
-> 1편이 “의식이라는 말을 무엇으로 정의할 것인가?”라는 이론 지도를 만들었다면, 2편은 그 지도를 실제 AI 시스템에 대입하는 **기술 실사(Technical Audit)**다. 아래 내용은 제공된 「AI 의식 심층 기술 실사 II」 원문의 구조와 세부 판정을 가능한 한 그대로 보존한 것이다. 연구 기준일은 **2026년 7월 26일(KST)**이다.
+> 1편이 “의식이라는 말을 무엇으로 정의할 것인가?”라는 이론 지도를 만들었다면, 2편은 그 지도를 실제 AI 시스템에 대입하는 <strong>기술 실사(Technical Audit)</strong>다. 아래 내용은 제공된 「AI 의식 심층 기술 실사 II」 원문의 구조와 세부 판정을 가능한 한 그대로 보존한 것이다. 연구 기준일은 <strong>2026년 7월 26일(KST)</strong>이다.
 
 ![AI가 의식이 있는가? II — Technical Audit](/assets/posts/ai-consciousness-2026/part-2-cover.svg)
 
@@ -252,7 +252,7 @@ VLM 또는 robot agent가 camera, force, joint state를 입력으로 받는다�
 
 많은 model instance는 inference가 끝나면 인과적 계산도 종료된다. idle 상태에서 인간의 default-mode network처럼 지속되는 background cognition이나 sleep-like consolidation이 없다.
 
-Memory agent는 데이터베이스를 통해 과거 정보를 복원할 수 있지만 **기억의 지속성(memory persistence)**과 **계산 주체의 지속성(causal continuity)**은 같은 것이 아니다.
+Memory agent는 데이터베이스를 통해 과거 정보를 복원할 수 있지만 <strong>기억의 지속성(memory persistence)</strong>과 <strong>계산 주체의 지속성(causal continuity)</strong>은 같은 것이 아니다.
 
 ## 4.10 Unity and Binding — 통합과 결합
 
@@ -345,7 +345,7 @@ Theory support profile: `GWT 4 / HOT 2 / RPT 8 / IIT 6 / PP 5 / Embodied 4`
 - 선택적 attention 및 후속 computation을 조절하는 기능
 - 단순 probe correlation이 아니라 Jacobian 기반으로 causal sensitivity를 추적할 수 있다는 점
 
-이 때문에 원문은 J-space를 **GWT의 기능적 상동체(functional analogue)**로 평가한다.
+이 때문에 원문은 J-space를 <strong>GWT의 기능적 상동체(functional analogue)</strong>로 평가한다.
 
 ## 7.2 가장 중요한 반론
 
@@ -472,7 +472,7 @@ representation이 특정 문맥과 통계적으로 연결되어 있고 행동을
 - self-report가 내성적 경험의 직접 readout이다.
 - feature binding이 Phenomenal unity를 만든다.
 
-따라서 원 기술 실사는 **“현상적 의식의 확정적 증거는 미흡하지만, Access consciousness와 기능적 자기조절을 구성하는 여러 구조는 더 이상 단순한 표면적 언어 모방만으로 치부하기 어려워지고 있다”**는 형태의 결론에 도달한다.
+따라서 원 기술 실사는 <strong>“현상적 의식의 확정적 증거는 미흡하지만, Access consciousness와 기능적 자기조절을 구성하는 여러 구조는 더 이상 단순한 표면적 언어 모방만으로 치부하기 어려워지고 있다”</strong>는 형태의 결론에 도달한다.
 
 # 12. 3편으로 넘길 질문
 
