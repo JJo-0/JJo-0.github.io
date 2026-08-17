@@ -1,0 +1,97 @@
+name: Verified legacy content migration
+
+on:
+  push:
+    branches: [agent/legacy-content-finalize]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/legacy-content-finalize
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Migrate and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -d site/assets/image && ! -f src/lib/remark/restore-legacy-html.mjs && ! -f src/lib/rehype/fix-legacy-fragments.mjs && ! -f src/lib/remark-repair-literal-strong.mjs ]]; then
+            echo 'Migration already applied.'
+            exit 0
+          fi
+
+          rm -rf dist .astro /tmp/dist-baseline
+          pnpm exec astro build
+          node scripts/rendered-markdown-audit.mjs
+          node scripts/post-content-contract.mjs
+          node scripts/content-integrity.mjs
+          node scripts/modern-ai-formula-audit.mjs
+          cp -a dist /tmp/dist-baseline
+
+          python scripts/_legacy-finalize-migration.py
+
+          rm -rf dist .astro
+          pnpm exec astro build
+          node scripts/rendered-markdown-audit.mjs
+          node scripts/post-content-contract.mjs
+          node scripts/content-integrity.mjs
+          node scripts/modern-ai-formula-audit.mjs
+
+          test ! -d site/assets/image
+          if grep -RIl --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist '/image/' site/content src | grep .; then
+            echo 'Unexpected live /image reference remains.'
+            exit 1
+          fi
+          if grep -RIl '/image/' dist | grep .; then
+            echo 'Built site still contains /image references.'
+            exit 1
+          fi
+
+          python <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          base = Path('/tmp/dist-baseline/posts')
+          new = Path('dist/posts')
+          allowed = {
+              '2024-06-04-2024-06-04-2/index.html',
+              '2025-02-07-human-pose-estimate/index.html',
+          }
+
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          before = {p.relative_to(base).as_posix(): p for p in base.rglob('index.html')}
+          after = {p.relative_to(new).as_posix(): p for p in new.rglob('index.html')}
+          changed = {
+              rel for rel in set(before) | set(after)
+              if rel not in before or rel not in after or digest(before[rel]) != digest(after[rel])
+          }
+          print('changed post HTML:', sorted(changed))
+          if changed != allowed:
+              raise SystemExit(f'post HTML equivalence gate failed: expected {sorted(allowed)}, got {sorted(changed)}')
+          PY
+
+          rm scripts/_legacy-finalize-migration.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git status --short
+          git commit -m 'refactor: eliminate legacy media and content shims'
+          git push origin HEAD:agent/legacy-content-finalize
