@@ -237,7 +237,7 @@ const knownStrongInner = new Set([
   '“현상적 의식의 확정적 증거는 미흡하지만, Access consciousness와 기능적 자기조절을 구성하는 여러 구조는 더 이상 단순한 표면적 언어 모방만으로 치부하기 어려워지고 있다”',
   '“윤리 프레임워크별 8대 파생 질문”',
   '기술 실사(Technical Audit)',
-  'GWT의 기능적 상동체',
+  'GWT의 기능적 상동체(functional analogue)',
 ]);
 const strongPattern = /\*\*([^*\n]+?)\*\*/g;
 
