@@ -5,7 +5,9 @@ import process from 'node:process';
 const root = process.cwd();
 const postsDir = path.join(root, 'site', 'content', 'posts');
 const publicDir = path.join(root, 'site', 'assets');
-const retiredImageDir = path.join(publicDir, 'image');
+const homepageImageDir = path.join(publicDir, 'image');
+const HOMEPAGE_IMAGE_REFERENCE = '/image/mouse_surprised.gif';
+const HOMEPAGE_IMAGE_SOURCE = 'src/pages/index.astro';
 const postAssetsDir = path.join(publicDir, 'assets', 'posts');
 const postComponentsDir = path.join(root, 'src', 'components', 'post');
 const issues = [];
@@ -168,21 +170,32 @@ for (const file of postFiles) {
   }
 }
 
-// /image was fully retired after the final legacy-media migration. Reintroducing the
-// directory is a regression rather than a new allowlist entry.
-if (fs.existsSync(retiredImageDir)) {
-  issues.push('site/assets/image: retired legacy directory must not be reintroduced');
+// The old /image tree remains retired. One exact homepage animation is intentionally
+// grandfathered because it is site identity, not post-owned media.
+const homepageImage = path.join(homepageImageDir, 'mouse_surprised.gif');
+if (!fs.existsSync(homepageImage) || !fs.statSync(homepageImage).isFile()) {
+  issues.push('site/assets/image/mouse_surprised.gif: required homepage animation is missing');
+}
+if (fs.existsSync(homepageImageDir)) {
+  const unexpected = fs
+    .readdirSync(homepageImageDir, { withFileTypes: true })
+    .filter((entry) => entry.name !== 'mouse_surprised.gif' || !entry.isFile())
+    .map((entry) => entry.name);
+  if (unexpected.length) {
+    issues.push(`site/assets/image: only mouse_surprised.gif is allowed; found ${unexpected.join(', ')}`);
+  }
 }
 
-// Catch /image references outside post Markdown too (for example homepage components).
 for (const sourceRoot of [path.join(root, 'site', 'content'), path.join(root, 'src')]) {
   for (const file of filesUnder(sourceRoot, (candidate) =>
     /\.(?:md|mdx|astro|svelte|ts|js|mjs|css|json)$/.test(candidate),
   )) {
     const relative = path.relative(root, file).replaceAll(path.sep, '/');
     const source = stripFencedCode(fs.readFileSync(file, 'utf8'));
-    if (/\/image\//.test(source)) {
-      issues.push(`${relative}: /image is retired and must not be referenced`);
+    for (const match of source.matchAll(/\/image\/[^\s)"'<>{]+/g)) {
+      const reference = match[0].replace(/[.,;:]$/, '');
+      if (relative === HOMEPAGE_IMAGE_SOURCE && reference === HOMEPAGE_IMAGE_REFERENCE) continue;
+      issues.push(`${relative}: /image is retired for content; only the homepage mouse GIF is allowed`);
     }
   }
 }
@@ -222,5 +235,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets/fence ids/chart opt-ins/lifecycle, /image retired)`,
+  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets/fence ids/chart opt-ins/lifecycle, homepage GIF exception)`,
 );
