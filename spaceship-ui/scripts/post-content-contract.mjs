@@ -150,6 +150,11 @@ for (const file of postFiles) {
   if (!hasChartRuntime && chartOptIn) {
     issues.push(`${relative}: \`usesChart: true\` is stale; no Chart runtime call was detected`);
   }
+  if (hasChartRuntime && chartOptIn && !source.includes('astro:page-load')) {
+    issues.push(
+      `${relative}: chart-enabled post must initialize through \`astro:page-load\` for ClientRouter navigation`,
+    );
+  }
 
   for (const line of raw.split(/\r?\n/)) {
     const match = line.match(/^```([^\s`]*)\s*$/);
@@ -217,5 +222,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets/fence ids/chart opt-ins, /image retired)`,
+  `post-content-contract: PASS (${postFiles.length} posts, canonical post components/assets/fence ids/chart opt-ins/lifecycle, /image retired)`,
 );
