@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
-let interBoldPromise: Promise<ArrayBuffer> | undefined;
+let ogBoldFontPromise: Promise<ArrayBuffer> | undefined;
 
 async function readLocalOutfitBold(): Promise<ArrayBuffer> {
   // Resolve from the installed package instead of reaching the network during prerender.
@@ -26,6 +26,6 @@ async function readLocalOutfitBold(): Promise<ArrayBuffer> {
 }
 
 export function getOgBoldFont(): Promise<ArrayBuffer> {
-  interBoldPromise ??= readLocalOutfitBold();
-  return interBoldPromise;
+  ogBoldFontPromise ??= readLocalOutfitBold();
+  return ogBoldFontPromise;
 }
