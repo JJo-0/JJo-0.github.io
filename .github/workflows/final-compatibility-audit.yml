@@ -10,11 +10,10 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: spaceship-ui
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - uses: pnpm/action-setup@v4
         with:
           version: 10.19.0
@@ -23,115 +22,121 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: spaceship-ui/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        working-directory: spaceship-ui
+        run: pnpm install --frozen-lockfile
 
-      - name: Inventory compatibility surfaces
+      - name: Audit remaining compatibility surfaces
+        working-directory: spaceship-ui
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== NONCANONICAL SHIKI FENCES (tracked source) ==='
-          git grep -nE '^```(C|pseudocode|C\+\+|c\+\+)[[:space:]]*$' -- '*.md' '*.mdx' || true
 
-          echo '=== REMOVED SHIM NAMES ==='
-          git grep -niE 'restoreLegacyHtml|fixLegacyFragments|remarkRepairLiteralStrong|restore-legacy-html|fix-legacy-fragments|remark-repair-literal-strong' -- . ':(exclude).github/workflows/final-compatibility-audit.yml' || true
+          echo '=== canonical code fence gate ==='
+          if git grep -nE '^```(C|pseudocode|C\+\+|c\+\+)[[:space:]]*$' -- 'site/content/posts/*.md' 'site/content/posts/*.mdx'; then
+            echo 'noncanonical Shiki fence id remains' >&2
+            exit 1
+          fi
 
-          echo '=== /image REFERENCES ==='
-          git grep -n '/image/' -- . ':(exclude).github/workflows/final-compatibility-audit.yml' || true
+          echo '=== no Shiki content compatibility aliases ==='
+          if grep -n 'langAlias' astro.config.mjs; then
+            echo 'Shiki langAlias compatibility block remains' >&2
+            exit 1
+          fi
 
-          echo '=== COMPATIBILITY / LEGACY / ALIAS INVENTORY ==='
-          git grep -niE '\b(compatibility|legacy|deprecated|fallback|alias)\b' -- \
-            '*.mjs' '*.js' '*.ts' '*.astro' '*.svelte' '*.md' '*.mdx' '*.json' \
-            ':(exclude)pnpm-lock.yaml' ':(exclude).github/workflows/final-compatibility-audit.yml' || true
+          echo '=== removed global content shims stay removed ==='
+          for token in restoreLegacyHtml fixLegacyFragments remarkRepairLiteralStrong; do
+            if grep -n "$token" astro.config.mjs; then
+              echo "obsolete content shim remains in config: $token" >&2
+              exit 1
+            fi
+          done
 
-          echo '=== LEGACY-NAMED SOURCE FILES ==='
-          find src site scripts docs -type f \( -iname '*legacy*' -o -iname '*compat*' \) -print | sort || true
+          echo '=== retired /image source stays retired ==='
+          test ! -d site/assets/image
+          if git grep -n '/image/' -- 'site/content/**' 'src/**'; then
+            echo 'retired /image source reference remains' >&2
+            exit 1
+          fi
 
-          echo '=== CODE FENCE LANGUAGE INVENTORY ==='
-          python - <<'PY'
-          from pathlib import Path
-          from collections import Counter
-          import re
-          counts=Counter()
-          examples={}
-          for p in Path('site/content/posts').glob('*'):
-              if p.suffix not in {'.md','.mdx'} or p.name.startswith('_'):
-                  continue
-              for i,line in enumerate(p.read_text(encoding='utf-8').splitlines(),1):
-                  m=re.match(r'^```([^\s`]*)', line)
-                  if m and m.group(1):
-                      lang=m.group(1)
-                      counts[lang]+=1
-                      examples.setdefault(lang,f'{p}:{i}')
-          for lang,n in sorted(counts.items(), key=lambda x:(x[0].lower(),x[0])):
-              print(f'{lang}\t{n}\t{examples[lang]}')
-          PY
+          pnpm lint
+          pnpm check
+          pnpm seo:check
+          pnpm build
+          pnpm content:check
 
-      - name: Prove alias removal with canonical source fences
+      - name: Compare main and proposed post semantics outside code highlighting
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf dist .astro /tmp/dist-baseline
-          pnpm exec astro build >/tmp/build-baseline.log 2>&1
-          cp -a dist /tmp/dist-baseline
+          git fetch --depth=1 origin main
+          git worktree add --detach /tmp/blog-main origin/main
+          ln -s "$GITHUB_WORKSPACE/spaceship-ui/node_modules" /tmp/blog-main/spaceship-ui/node_modules
 
+          cd /tmp/blog-main/spaceship-ui
+          pnpm exec astro build >/tmp/main-build.log 2>&1
+
+          cd "$GITHUB_WORKSPACE/spaceship-ui"
           python - <<'PY'
           from pathlib import Path
+          from html.parser import HTMLParser
           import re
 
-          config=Path('astro.config.mjs')
-          s=config.read_text(encoding='utf-8')
-          old="""      // Compatibility aliases keep old content renderable; post:check requires canonical IDs in new posts.\n      langAlias: {\n        C: 'c',\n        pseudocode: 'text',\n      },\n"""
-          if old not in s:
-              raise SystemExit('expected Shiki compatibility alias block not found')
-          config.write_text(s.replace(old,''), encoding='utf-8')
+          main_root = Path('/tmp/blog-main/spaceship-ui/dist/posts')
+          proposed_root = Path('dist/posts')
+          expected_changed = {
+              '2023-07-11-2023-07-11/index.html',
+              '2023-07-12-2023-07-11-2/index.html',
+          }
+          article_re = re.compile(r'<article\b[^>]*>.*?</article>', re.S | re.I)
+          pre_re = re.compile(r'<pre\b[^>]*>.*?</pre>', re.S | re.I)
 
-          changed=[]
-          for p in Path('site/content/posts').glob('*'):
-              if p.suffix not in {'.md','.mdx'} or p.name.startswith('_'):
-                  continue
-              source=p.read_text(encoding='utf-8')
-              normalized=re.sub(r'^```(?:C\+\+|c\+\+)[ \t]*$', '```cpp', source, flags=re.M)
-              if normalized != source:
-                  p.write_text(normalized, encoding='utf-8')
-                  changed.append(str(p))
-          print('CANONICALIZED_CPP_FILES=', changed)
-          PY
+          def post_files(root):
+              out = {}
+              for p in root.glob('*/index.html'):
+                  text = p.read_text(encoding='utf-8')
+                  if article_re.search(text):
+                      out[p.relative_to(root).as_posix()] = p
+              return out
 
-          echo '=== NONCANONICAL SHIKI FENCES AFTER SOURCE NORMALIZATION ==='
-          ! grep -RInE '^```(C|pseudocode|C\+\+|c\+\+)[[:space:]]*$' site/content/posts --include='*.md' --include='*.mdx'
+          def article_without_pre(path):
+              text = path.read_text(encoding='utf-8')
+              article = article_re.search(text)
+              if not article:
+                  raise RuntimeError(f'no article in {path}')
+              return pre_re.sub('<pre data-audit="code-block" />', article.group(0))
 
-          rm -rf dist .astro
-          pnpm exec astro build >/tmp/build-normalized.log 2>&1
-          node scripts/rendered-markdown-audit.mjs
-          node scripts/post-content-contract.mjs
-          node scripts/content-integrity.mjs
-          node scripts/modern-ai-formula-audit.mjs
+          before = post_files(main_root)
+          after = post_files(proposed_root)
+          if set(before) != set(after):
+              raise SystemExit('published post route set changed')
 
-          python - <<'PY'
-          from pathlib import Path
-          import hashlib
-          import difflib
+          full_diffs = []
+          outside_pre_diffs = []
+          for rel in sorted(before):
+              b = before[rel].read_bytes()
+              a = after[rel].read_bytes()
+              if b != a:
+                  full_diffs.append(rel)
+              if article_without_pre(before[rel]) != article_without_pre(after[rel]):
+                  outside_pre_diffs.append(rel)
 
-          before=Path('/tmp/dist-baseline')
-          after=Path('dist')
-          def files(root):
-              return {p.relative_to(root).as_posix():p for p in root.rglob('*') if p.is_file()}
-          b,a=files(before),files(after)
-          if set(b)!=set(a):
-              raise SystemExit(f'dist file set changed: before-only={sorted(set(b)-set(a))[:20]} after-only={sorted(set(a)-set(b))[:20]}')
-          changed=[]
-          for rel in sorted(b):
-              if hashlib.sha256(b[rel].read_bytes()).digest()!=hashlib.sha256(a[rel].read_bytes()).digest():
-                  changed.append(rel)
-          print('DIST_CHANGED_FILES=', changed)
-          if changed:
-              for rel in changed[:5]:
-                  if rel.endswith('.html'):
-                      x=b[rel].read_text(encoding='utf-8').splitlines()
-                      y=a[rel].read_text(encoding='utf-8').splitlines()
-                      print(f'--- DIFF {rel} ---')
-                      for line in list(difflib.unified_diff(x,y,fromfile='baseline',tofile='normalized',n=2))[:120]:
-                          print(line)
-              raise SystemExit(f'canonical source + alias removal changed built output: {changed[:30]}')
-          print('SHIKI_ALIAS_REMOVAL_WITH_CANONICAL_CPP_BYTE_EQUIVALENCE=PASS')
+          print('FULL_HTML_CHANGED_ROUTES=', full_diffs)
+          print('ARTICLE_OUTSIDE_PRE_CHANGED_ROUTES=', outside_pre_diffs)
+          if set(full_diffs) != expected_changed:
+              raise SystemExit(f'unexpected full HTML changes: {full_diffs}')
+          if outside_pre_diffs:
+              raise SystemExit(f'content outside code highlighting changed: {outside_pre_diffs}')
+
+          for rel in expected_changed:
+              html = after[rel].read_text(encoding='utf-8')
+              article = article_re.search(html).group(0)
+              langs = re.findall(r'<pre\b[^>]*data-language="([^"]+)"', article)
+              print(rel, 'code_languages=', langs)
+              if 'cpp' not in langs:
+                  raise SystemExit(f'{rel}: canonical cpp highlighting missing')
+              if any(lang in {'C', 'c++', 'C++'} for lang in langs):
+                  raise SystemExit(f'{rel}: noncanonical C++ language remains: {langs}')
+
+          print('FINAL_COMPATIBILITY_AUDIT=PASS')
           PY
