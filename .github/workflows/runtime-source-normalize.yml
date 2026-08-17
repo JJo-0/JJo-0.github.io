@@ -1,0 +1,73 @@
+name: Runtime source normalize
+
+on:
+  push:
+    branches: [agent/runtime-performance]
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/runtime-performance
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Normalize chart frontmatter and lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              'spaceship-ui/site/content/posts/2025-06-27.md',
+              'spaceship-ui/site/content/posts/deep-search-travel-prompt.md',
+              'spaceship-ui/site/content/posts/2025-07-23-2.md',
+              'spaceship-ui/site/content/posts/2025-08-06.md',
+              'spaceship-ui/site/content/posts/2025-05-20.md',
+              'spaceship-ui/site/content/posts/2025-07-25.md',
+              'spaceship-ui/site/content/posts/2025-07-23.md',
+          ]
+
+          for name in paths:
+              path = Path(name)
+              text = path.read_text(encoding='utf-8')
+              if not text.startswith('---\n'):
+                  raise SystemExit(f'{name}: missing opening frontmatter delimiter')
+              end = text.find('\n---\n', 4)
+              if end < 0:
+                  raise SystemExit(f'{name}: missing closing frontmatter delimiter')
+              frontmatter = text[4:end]
+              if 'usesChart: true' in frontmatter:
+                  continue
+              lines = frontmatter.splitlines()
+              insert_at = next((i + 1 for i, line in enumerate(lines) if line.startswith('lang:')), len(lines))
+              lines.insert(insert_at, 'usesChart: true')
+              new_frontmatter = '\n'.join(lines)
+              path.write_text('---\n' + new_frontmatter + text[end:], encoding='utf-8')
+          PY
+
+          cd spaceship-ui
+          pnpm install --lockfile-only --ignore-scripts
+          cd ..
+
+          if git diff --quiet; then
+            echo 'No normalization changes remain.'
+            exit 0
+          fi
+
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add spaceship-ui/site/content/posts spaceship-ui/pnpm-lock.yaml
+          git commit -m 'chore: normalize chart post runtime metadata'
+          git push origin HEAD:agent/runtime-performance
