@@ -1,30 +1,40 @@
 <script lang="ts">
+  import { SITE } from '@/config';
+
   interface Props {
-    title: string;
     url: string;
   }
 
-  let { title, url }: Props = $props();
+  let { url }: Props = $props();
   let copied = $state(false);
 
   const platforms = [
     {
-      name: 'X',
-      icon: 'M4 4l11.733 16h4.267l-11.733-16zM4 20l6.768-6.768m2.46-2.46l6.772-6.772',
-      getShareUrl: (t: string, u: string) =>
-        `https://x.com/intent/post?text=${encodeURIComponent(t)}&url=${encodeURIComponent(u)}`,
+      name: 'Instagram',
+      href: SITE.social.instagram,
+      iconPaths: [
+        'M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5z',
+        'M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z',
+        'M17.5 6.5h.01',
+      ],
     },
     {
-      name: 'Telegram',
-      icon: 'M22 2L11 13M22 2l-7 20-4-9L2 9l20-7z',
-      getShareUrl: (t: string, u: string) =>
-        `https://t.me/share/url?url=${encodeURIComponent(u)}&text=${encodeURIComponent(t)}`,
+      name: 'Website',
+      href: SITE.social.website,
+      iconPaths: [
+        'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
+        'M2 12h20',
+        'M12 2a15.3 15.3 0 0 1 0 20',
+        'M12 2a15.3 15.3 0 0 0 0 20',
+      ],
     },
     {
-      name: 'Facebook',
-      icon: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z',
-      getShareUrl: (_t: string, u: string) =>
-        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}`,
+      name: 'GitHub',
+      href: SITE.social.github,
+      iconPaths: [
+        'M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4',
+        'M9 18c-4.51 2-5-2-7-2',
+      ],
     },
   ];
 
@@ -41,17 +51,18 @@
 
 <div class="flex flex-col gap-4 py-8 border-t border-border/50">
   <h3 class="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-    Share this post
+    Connect
   </h3>
 
   <div class="flex items-center gap-2">
     {#each platforms as platform (platform.name)}
       <a
-        href={platform.getShareUrl(title, url)}
+        href={platform.href}
         target="_blank"
         rel="noopener noreferrer"
         class="p-2.5 rounded-xl border border-border hover:bg-accent text-muted-foreground hover:text-primary transition-all duration-300"
-        aria-label={`Share on ${platform.name}`}
+        aria-label={`Open ${platform.name}`}
+        title={platform.name}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -64,7 +75,9 @@
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          <path d={platform.icon} />
+          {#each platform.iconPaths as iconPath}
+            <path d={iconPath} />
+          {/each}
         </svg>
       </a>
     {/each}
