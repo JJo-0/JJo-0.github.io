@@ -23,6 +23,7 @@ const posts = defineCollection({
     canonicalURL: z.url().optional(),
     showCTA: z.boolean().default(true),
     showComments: z.boolean().default(true),
+    usesChart: z.boolean().default(false),
     lang: z.string().default('en'),
     series: z
       .object({
