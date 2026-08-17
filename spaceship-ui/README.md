@@ -8,6 +8,7 @@
 - Svelte 5
 - Tailwind CSS 4
 - Markdown / MDX
+- KaTeX core via explicit post component
 - GitHub Pages
 
 ## Commands
@@ -15,39 +16,62 @@
 ```bash
 pnpm install
 pnpm dev
+pnpm post:check
 pnpm check
 pnpm lint
 pnpm seo:check
 pnpm build
+pnpm content:check
 ```
 
 ## Structure
 
 ```text
 spaceship-ui/
+├── docs/
+│   └── post-authoring.md     # post asset/component contract
 ├── site/
-│   ├── assets/              # favicon, profile/media, static files
+│   ├── assets/
+│   │   ├── assets/posts/     # canonical post-owned assets → /assets/posts/...
+│   │   └── image/            # frozen legacy assets; no new files
 │   ├── content/
-│   │   ├── posts/           # blog posts
-│   │   ├── projects/        # real project entries only
-│   │   ├── appearances/     # real talks/articles only
-│   │   └── about/           # profile
-│   ├── config.ts            # site-wide configuration
+│   │   ├── posts/            # blog posts + _template.md / _template.mdx
+│   │   ├── projects/         # public project entries only when enabled
+│   │   ├── appearances/      # public talks/articles only when enabled
+│   │   └── about/            # profile
+│   ├── config.ts             # site-wide configuration
 │   ├── hero.md
 │   └── cta.md
 ├── src/
 │   ├── components/
+│   │   └── post/             # components allowed to be imported by post MDX
 │   ├── layouts/
 │   ├── lib/
 │   └── pages/
+├── scripts/
+│   └── post-content-contract.mjs
 └── package.json
 ```
 
 Files beginning with `_` in content directories are authoring templates and are excluded from Astro content collections.
 
+## Post authoring
+
+새 글을 작성하거나 asset/component를 추가할 때는 [`docs/post-authoring.md`](docs/post-authoring.md)를 기준으로 합니다.
+
+핵심 규칙은 다음과 같습니다.
+
+- 일반 글은 `.md`, component가 필요한 글만 `.mdx`
+- MDX가 import하는 site component는 `@/components/post/...`
+- 새 post-owned asset은 `site/assets/assets/posts/<namespace>/...`
+- 공개 URL은 `/assets/posts/<namespace>/...`
+- `site/assets/image/`와 `/image/...`는 frozen legacy boundary
+- 수식은 `src/components/post/Math.astro`를 통해 KaTeX core로 build-time 렌더링
+- `pnpm content:check`가 이 contract를 fail-closed로 검증
+
 ## Deployment
 
-The repository-level workflow `.github/workflows/spaceship-pages-deploy.yml` builds this directory and publishes `spaceship-ui/dist` to GitHub Pages.
+The repository-level workflow `.github/workflows/blog-pages-deploy.yml` builds this directory and publishes `spaceship-ui/dist` to GitHub Pages.
 
 ## Upstream attribution
 
