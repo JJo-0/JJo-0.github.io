@@ -1,0 +1,135 @@
+name: Runtime performance audit
+
+on:
+  push:
+    branches: [agent/runtime-performance]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+
+      - name: Install
+        working-directory: spaceship-ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Proposed quality gates
+        working-directory: spaceship-ui
+        run: |
+          pnpm lint
+          pnpm check
+          pnpm seo:check
+          pnpm build
+          pnpm content:check
+
+      - name: Compare runtime output against main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin main
+          git worktree add --detach /tmp/blog-main origin/main
+          cd /tmp/blog-main/spaceship-ui
+          pnpm install --frozen-lockfile >/tmp/main-install.log 2>&1
+          pnpm exec astro build >/tmp/main-build.log 2>&1
+
+          cd "$GITHUB_WORKSPACE/spaceship-ui"
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          before_root = Path('/tmp/blog-main/spaceship-ui')
+          after_root = Path('.')
+          before_dist = before_root / 'dist'
+          after_dist = after_root / 'dist'
+          chart_cdn = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js'
+          article_re = re.compile(r'<article\b[^>]*>.*?</article>', re.S | re.I)
+
+          def files(root, suffix=None):
+              result=[]
+              for p in root.rglob('*'):
+                  if p.is_file() and (suffix is None or p.suffix == suffix): result.append(p)
+              return result
+
+          def post_articles(root):
+              out={}
+              for p in (root/'posts').glob('*/index.html'):
+                  html=p.read_text(encoding='utf-8')
+                  match=article_re.search(html)
+                  if match: out[p.relative_to(root).as_posix()] = match.group(0)
+              return out
+
+          before_articles=post_articles(before_dist)
+          after_articles=post_articles(after_dist)
+          if set(before_articles) != set(after_articles):
+              raise SystemExit('published post route set changed')
+          changed=[rel for rel in sorted(before_articles) if before_articles[rel] != after_articles[rel]]
+          print('POST_ARTICLE_CHANGED_ROUTES=', changed)
+          if changed:
+              raise SystemExit('post article content changed during runtime-only refactor')
+
+          chart_pages=[]
+          for p in (after_dist/'posts').glob('*/index.html'):
+              html=p.read_text(encoding='utf-8')
+              if chart_cdn in html:
+                  chart_pages.append(p.relative_to(after_dist).as_posix())
+                  first_runtime=min([i for i in (html.find('new Chart'), html.find('Chart.getChart')) if i >= 0], default=-1)
+                  if first_runtime >= 0 and html.find(chart_cdn) > first_runtime:
+                      raise SystemExit(f'{p}: Chart runtime loads after chart initialization code')
+          print('CHART_PAGES=', sorted(chart_pages))
+          if len(chart_pages) != 7:
+              raise SystemExit(f'expected 7 chart-enabled post pages, got {len(chart_pages)}')
+
+          core=['index.html','research/index.html','posts/index.html','about/index.html']
+          for rel in core:
+              if chart_cdn in (after_dist/rel).read_text(encoding='utf-8'):
+                  raise SystemExit(f'{rel}: global Chart.js still present')
+
+          main_css=(before_root/'src/styles/global.css').read_text(encoding='utf-8')
+          proposed_css=(after_root/'src/styles/global.css').read_text(encoding='utf-8')
+          inter_block=re.compile(
+              r"@font-face \{\n  font-family: 'Inter Variable';\n  font-style: normal;\n  font-display: swap;\n  font-weight: 100 900;\n  src: url\('@fontsource-variable/inter/files/inter-latin-standard-normal\.woff2'\) format\('woff2'\);\n\}\n",
+              re.M,
+          )
+          expected_css=inter_block.sub('', main_css, count=1)
+          if proposed_css != expected_css:
+              raise SystemExit('global.css changed beyond removal of the dead Inter Variable font-face block')
+          print('CSS_SCOPE=PASS')
+
+          post_page=(after_root/'src/pages/posts/[...slug]/index.astro').read_text(encoding='utf-8')
+          print('POST_CLIENT_LOAD_COUNT=', post_page.count('client:load'))
+          print('POST_CLIENT_IDLE_COUNT=', post_page.count('client:idle'))
+          print('POST_CLIENT_VISIBLE_COUNT=', post_page.count('client:visible'))
+          if post_page.count('client:load') != 0 or post_page.count('client:idle') != 1 or post_page.count('client:visible') != 2:
+              raise SystemExit('unexpected post hydration directive mix')
+
+          def total_bytes(root): return sum(p.stat().st_size for p in root.rglob('*') if p.is_file())
+          def suffix_bytes(root, suffix): return sum(p.stat().st_size for p in files(root, suffix))
+          print(f'DIST_BYTES main={total_bytes(before_dist)} proposed={total_bytes(after_dist)} delta={total_bytes(after_dist)-total_bytes(before_dist)}')
+          print(f'JS_BYTES main={suffix_bytes(before_dist,".js")} proposed={suffix_bytes(after_dist,".js")} delta={suffix_bytes(after_dist,".js")-suffix_bytes(before_dist,".js")}')
+          print(f'CSS_BYTES main={suffix_bytes(before_dist,".css")} proposed={suffix_bytes(after_dist,".css")} delta={suffix_bytes(after_dist,".css")-suffix_bytes(before_dist,".css")}')
+          print(f'WOFF2_BYTES main={suffix_bytes(before_dist,".woff2")} proposed={suffix_bytes(after_dist,".woff2")} delta={suffix_bytes(after_dist,".woff2")-suffix_bytes(before_dist,".woff2")}')
+
+          main_inter=[p.relative_to(before_dist).as_posix() for p in files(before_dist,'.woff2') if 'inter' in p.name.lower()]
+          new_inter=[p.relative_to(after_dist).as_posix() for p in files(after_dist,'.woff2') if 'inter' in p.name.lower()]
+          print('MAIN_INTER_ASSETS=', main_inter)
+          print('PROPOSED_INTER_ASSETS=', new_inter)
+          if new_inter:
+              raise SystemExit('Inter font asset still emitted')
+
+          print(f'POST_ARTICLE_SEMANTICS=PASS routes={len(after_articles)}')
+          print('RUNTIME_PERFORMANCE_AUDIT=PASS')
+          PY
