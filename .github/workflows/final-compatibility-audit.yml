@@ -1,0 +1,114 @@
+name: Final compatibility audit
+
+on:
+  push:
+    branches: [agent/final-compatibility-audit]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+
+      - name: Inventory compatibility surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== NONCANONICAL CODE FENCES (tracked source) ==='
+          git grep -nE '^```(C|pseudocode)[[:space:]]*$' -- '*.md' '*.mdx' || true
+
+          echo '=== REMOVED SHIM NAMES ==='
+          git grep -niE 'restoreLegacyHtml|fixLegacyFragments|remarkRepairLiteralStrong|restore-legacy-html|fix-legacy-fragments|remark-repair-literal-strong' -- . ':(exclude).github/workflows/final-compatibility-audit.yml' || true
+
+          echo '=== /image REFERENCES ==='
+          git grep -n '/image/' -- . ':(exclude).github/workflows/final-compatibility-audit.yml' || true
+
+          echo '=== COMPATIBILITY / LEGACY / ALIAS INVENTORY ==='
+          git grep -niE '\b(compatibility|legacy|deprecated|fallback|alias)\b' -- \
+            '*.mjs' '*.js' '*.ts' '*.astro' '*.svelte' '*.md' '*.mdx' '*.json' \
+            ':(exclude)pnpm-lock.yaml' ':(exclude).github/workflows/final-compatibility-audit.yml' || true
+
+          echo '=== LEGACY-NAMED SOURCE FILES ==='
+          find src site scripts docs -type f \( -iname '*legacy*' -o -iname '*compat*' \) -print | sort || true
+
+          echo '=== CODE FENCE LANGUAGE INVENTORY ==='
+          python - <<'PY'
+          from pathlib import Path
+          from collections import Counter
+          import re
+          counts=Counter()
+          examples={}
+          for p in Path('site/content/posts').glob('*'):
+              if p.suffix not in {'.md','.mdx'} or p.name.startswith('_'):
+                  continue
+              for i,line in enumerate(p.read_text(encoding='utf-8').splitlines(),1):
+                  m=re.match(r'^```([^\s`]*)', line)
+                  if m and m.group(1):
+                      lang=m.group(1)
+                      counts[lang]+=1
+                      examples.setdefault(lang,f'{p}:{i}')
+          for lang,n in sorted(counts.items(), key=lambda x:(x[0].lower(),x[0])):
+              print(f'{lang}\t{n}\t{examples[lang]}')
+          PY
+
+      - name: Prove Shiki aliases are unnecessary
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist .astro /tmp/dist-with-alias
+          pnpm exec astro build >/tmp/build-with-alias.log 2>&1
+          cp -a dist /tmp/dist-with-alias
+
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('astro.config.mjs')
+          s=p.read_text(encoding='utf-8')
+          old="""      // Compatibility aliases keep old content renderable; post:check requires canonical IDs in new posts.\n      langAlias: {\n        C: 'c',\n        pseudocode: 'text',\n      },\n"""
+          if old not in s:
+              raise SystemExit('expected Shiki compatibility alias block not found')
+          p.write_text(s.replace(old,''), encoding='utf-8')
+          PY
+
+          rm -rf dist .astro
+          pnpm exec astro build >/tmp/build-without-alias.log 2>&1
+          node scripts/rendered-markdown-audit.mjs
+          node scripts/post-content-contract.mjs
+          node scripts/content-integrity.mjs
+          node scripts/modern-ai-formula-audit.mjs
+
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          before=Path('/tmp/dist-with-alias')
+          after=Path('dist')
+          def files(root):
+              return {p.relative_to(root).as_posix():p for p in root.rglob('*') if p.is_file()}
+          b,a=files(before),files(after)
+          if set(b)!=set(a):
+              raise SystemExit(f'dist file set changed: before-only={sorted(set(b)-set(a))[:20]} after-only={sorted(set(a)-set(b))[:20]}')
+          changed=[]
+          for rel in sorted(b):
+              hb=hashlib.sha256(b[rel].read_bytes()).digest()
+              ha=hashlib.sha256(a[rel].read_bytes()).digest()
+              if hb!=ha:
+                  changed.append(rel)
+          print('DIST_CHANGED_FILES=', changed)
+          if changed:
+              raise SystemExit(f'alias removal changed built output: {changed[:30]}')
+          print('SHIKI_ALIAS_REMOVAL_BYTE_EQUIVALENCE=PASS')
+          PY
