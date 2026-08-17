@@ -29,23 +29,17 @@ jobs:
           base64 --decode "$RUNNER_TEMP/google-stack-changes.b64" > "$RUNNER_TEMP/google-stack-changes.tar.gz"
           echo 'f5b3652949899e24c81943f27dbf05350229a223bf7c275b7e938fac21adbaa0  '"$RUNNER_TEMP/google-stack-changes.tar.gz" | sha256sum --check --strict
           tar -xzf "$RUNNER_TEMP/google-stack-changes.tar.gz" -C .
-
-      - name: Remove one-time transport files
-        shell: bash
-        run: |
-          rm -f spaceship-ui/scripts/.google-stack-changes.part-*
-          rm -f .github/workflows/materialize-google-stack.yml
-          rm -f .github/workflows/export-google-stack-source.yml
+          git restore --source=HEAD -- .github/workflows
 
       - name: Run dependency-free reporting self-test
         working-directory: spaceship-ui
         run: node scripts/google-site-insights.mjs --self-test
 
-      - name: Commit materialized changes
+      - name: Commit application and documentation changes
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add spaceship-ui
           git commit -m 'feat: prepare Search Console GA4 and selective AdSense operations'
           git push origin HEAD:agent/google-search-analytics-adsense
