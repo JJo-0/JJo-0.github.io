@@ -32,8 +32,9 @@ spaceship-ui/
 │   └── post-authoring.md     # post asset/component contract
 ├── site/
 │   ├── assets/
-│   │   ├── assets/posts/     # canonical post-owned assets → /assets/posts/...
-│   │   └── image/            # frozen legacy assets; no new files
+│   │   └── assets/
+│   │       ├── posts/        # canonical post-owned assets → /assets/posts/...
+│   │       └── site/         # site UI-owned assets → /assets/site/...
 │   ├── content/
 │   │   ├── posts/            # blog posts + _template.md / _template.mdx
 │   │   ├── projects/         # public project entries only when enabled
@@ -65,7 +66,9 @@ Files beginning with `_` in content directories are authoring templates and are 
 - MDX가 import하는 site component는 `@/components/post/...`
 - 새 post-owned asset은 `site/assets/assets/posts/<namespace>/...`
 - 공개 URL은 `/assets/posts/<namespace>/...`
-- `site/assets/image/`와 `/image/...`는 frozen legacy boundary
+- site UI-owned asset은 `site/assets/assets/site/...` → `/assets/site/...`
+- 과거 `site/assets/image/`와 `/image/...` 경로는 retired 상태이며 재도입 금지
+- code fence는 `c`, `cpp`, `python`, `bash`, `text` 같은 canonical Shiki language ID 사용
 - 수식은 `src/components/post/Math.astro`를 통해 KaTeX core로 build-time 렌더링
 - `pnpm content:check`가 이 contract를 fail-closed로 검증
 
