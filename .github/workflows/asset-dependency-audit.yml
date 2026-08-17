@@ -52,23 +52,23 @@ jobs:
               sources[p] = p.read_text(encoding='utf-8')
 
           print('=== LARGE ASSET INVENTORY >=100KiB ===')
-          large=[]
           for p in sorted([x for x in assets.rglob('*') if x.is_file()], key=lambda x:x.stat().st_size, reverse=True):
               if p.stat().st_size < 100*1024:
                   break
               public='/' + p.relative_to(assets).as_posix()
               refs=[str(src) for src,text in sources.items() if public in text or p.name in text]
-              large.append((p.stat().st_size, public, refs))
               print(f'{p.stat().st_size:>10} {public} refs={len(refs)} {refs[:4]}')
 
           target = posts / '2025-11-08.md'
           text = target.read_text(encoding='utf-8')
           refs=[]
-          for match in re.finditer(r'/assets/posts/[^\s)"\'<>]+\.png', text, re.I):
+          for match in re.finditer(r'/assets/slides/[^\s)"\'<>]+\.png', text, re.I):
               ref=match.group(0)
               if ref not in refs:
                   refs.append(ref)
           print(f'=== DRL_REFERENCED_PNGS count={len(refs)} ===')
+          if len(refs) != 30:
+              raise SystemExit(f'expected 30 DRL slide PNG references, found {len(refs)}')
 
           before_total=0
           after_total=0
@@ -97,7 +97,6 @@ jobs:
                   improved += 1
               print(f'{ref} before={before} after={after} delta={after-before} mode={mode} dims={dims} pixels={pixel_hash[:12]}')
 
-          delta=after_total-before_total
           pct=(100.0*(before_total-after_total)/before_total) if before_total else 0
           print(f'PNG_TRIAL before={before_total} after={after_total} saved={before_total-after_total} pct={pct:.2f} improved={improved}/{len(refs)}')
           print('PNG_PIXEL_IDENTITY=PASS')
@@ -110,7 +109,7 @@ jobs:
           cd spaceship-ui
           python - <<'PY'
           from pathlib import Path
-          import json, re
+          import json
 
           pkg=json.loads(Path('package.json').read_text())
           scan=[]
@@ -151,7 +150,7 @@ jobs:
           print('REMOVED_DIRECT_ROLLUP_PIN=', removed)
           PY
           pnpm install --lockfile-only --ignore-scripts
-          pnpm install --frozen-lockfile
+          pnpm install --frozen-lockfile --ignore-scripts
           pnpm lint
           pnpm check
           pnpm build
