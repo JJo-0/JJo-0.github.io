@@ -1,0 +1,33 @@
+name: One-time Vision math escape fix
+
+on:
+  push:
+    branches: [agent/repair-math-drafts-home-gif]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/repair-math-drafts-home-gif
+      - name: Fix operatorname escape and commit
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+          p = Path('spaceship-ui/site/content/posts/vision.mdx')
+          text = p.read_text(encoding='utf-8')
+          before = 'tex={"\\operatorname{softmax}(x_i) = \\\\frac{e^{x_i}}{\\\\sum_{j=1}^{n} e^{x_j}}"}'
+          after = 'tex={"\\\\operatorname{softmax}(x_i) = \\\\frac{e^{x_i}}{\\\\sum_{j=1}^{n} e^{x_j}}"}'
+          if text.count(before) != 1:
+              raise SystemExit(f'operatorname target count={text.count(before)}')
+          p.write_text(text.replace(before, after, 1), encoding='utf-8')
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'add', str(p)], check=True)
+          subprocess.run(['git', 'commit', '-m', 'fix: preserve Softmax KaTeX operator command'], check=True)
+          subprocess.run(['git', 'push', 'origin', 'HEAD:agent/repair-math-drafts-home-gif'], check=True)
