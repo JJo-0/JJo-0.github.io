@@ -1,0 +1,37 @@
+name: Legacy strong edge audit
+
+on:
+  push:
+    branches: [agent/legacy-content-finalize]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/legacy-content-finalize
+      - name: Normalize in checkout and print residual marker contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/_legacy-finalize-migration-v3.py >/tmp/migrate.log
+          cat /tmp/migrate.log
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          for name in ['ai-consciousness-deep-research-1.md', 'ai-consciousness-deep-research-2.md']:
+              path = Path('site/content/posts') / name
+              print(f'=== {name} residual ** contexts ===')
+              lines = path.read_text(encoding='utf-8').splitlines()
+              for i, line in enumerate(lines, 1):
+                  if '**' in line:
+                      print(f'{i}: {line}')
+          PY
