@@ -1,0 +1,114 @@
+name: Site IA quality audit
+
+on:
+  push:
+    branches: [agent/site-ia-quality-audit]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Install
+        working-directory: spaceship-ui
+        run: pnpm install --frozen-lockfile
+      - name: Build and audit
+        working-directory: spaceship-ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm build >/tmp/build.log 2>&1
+          pnpm content:check
+          python - <<'PY'
+          from pathlib import Path
+          import os, re, json
+
+          root = Path('.')
+          text_ext = {'.astro','.svelte','.ts','.js','.mjs','.md','.mdx','.css','.json','.yml','.yaml'}
+          text_files = [p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in text_ext and 'node_modules' not in p.parts and 'dist' not in p.parts]
+          text = {}
+          for p in text_files:
+              try: text[p] = p.read_text(encoding='utf-8')
+              except UnicodeDecodeError: pass
+
+          print('\n=== SOURCE SCALE ===')
+          for d in ['src/components','src/pages','src/lib','site/content/posts','site/assets']:
+              p=Path(d)
+              files=[x for x in p.rglob('*') if x.is_file()]
+              total=sum(x.stat().st_size for x in files)
+              print(f'{d}: files={len(files)} bytes={total}')
+
+          print('\n=== LARGE SOURCE FILES >= 100 KiB ===')
+          for p in sorted([x for x in root.rglob('*') if x.is_file() and 'node_modules' not in x.parts and 'dist' not in x.parts], key=lambda x:x.stat().st_size, reverse=True):
+              if p.stat().st_size < 100*1024: break
+              print(f'{p.stat().st_size:>10}  {p}')
+
+          print('\n=== PUBLIC ASSET INVENTORY >= 300 KiB ===')
+          assets=Path('site/assets')
+          large_assets=[]
+          for p in sorted([x for x in assets.rglob('*') if x.is_file()], key=lambda x:x.stat().st_size, reverse=True):
+              if p.stat().st_size < 300*1024: break
+              public='/' + p.relative_to(assets).as_posix()
+              refs=[]
+              for f,s in text.items():
+                  if f==p: continue
+                  if public in s or p.name in s:
+                      refs.append(str(f))
+              large_assets.append((p.stat().st_size, public, refs))
+              print(f'{p.stat().st_size:>10}  {public} refs={len(refs)} {refs[:6]}')
+
+          print('\n=== COMPONENT REFERENCE AUDIT ===')
+          comps=Path('src/components')
+          component_files=[p for p in comps.rglob('*') if p.suffix in {'.astro','.svelte'}]
+          for p in sorted(component_files):
+              rel=p.relative_to(Path('src')).with_suffix('').as_posix()
+              candidates={f'@/{rel}', f'@/{rel}.astro', f'@/{rel}.svelte', p.name, p.stem}
+              refs=[]
+              for f,s in text.items():
+                  if f==p: continue
+                  if any(c in s for c in candidates): refs.append(str(f))
+              print(f'{p}: refs={len(refs)} {refs[:8]}')
+
+          print('\n=== CLIENT ISLANDS ===')
+          islands=[]
+          for f,s in text.items():
+              if f.suffix not in {'.astro','.mdx'}: continue
+              for m in re.finditer(r'client:(load|idle|visible|media|only)',s): islands.append((str(f),m.group(0)))
+          print('count=',len(islands))
+          for x in islands: print(*x)
+
+          print('\n=== GENERATED OUTPUT ===')
+          dist=Path('dist')
+          htmls=sorted(dist.rglob('*.html'), key=lambda p:p.stat().st_size, reverse=True)
+          print('dist_bytes=',sum(p.stat().st_size for p in dist.rglob('*') if p.is_file()))
+          print('html_count=',len(htmls))
+          for p in htmls[:15]: print(f'HTML {p.stat().st_size:>10} {p}')
+          js=sorted([p for p in dist.rglob('*') if p.suffix in {'.js','.css'}], key=lambda p:p.stat().st_size, reverse=True)
+          for p in js[:15]: print(f'BUNDLE {p.stat().st_size:>10} {p}')
+
+          print('\n=== PUBLIC SECTION / ROUTE SAFETY ===')
+          cfg=Path('site/config.ts').read_text()
+          print('projects_public_false=', 'projects: false' in cfg)
+          print('appearances_public_false=', 'appearances: false' in cfg)
+          project_detail=Path('src/pages/projects/[slug]/index.astro').read_text()
+          print('project_static_paths_gated=', 'SITE.publicSections.projects ? await getCollection' in project_detail)
+
+          print('\n=== IA SIGNALS ===')
+          home=Path('src/pages/index.astro').read_text()
+          header=Path('src/components/Header.astro').read_text()
+          for token in ['Research','Current','Selected Work','Featured','Latest Writing']:
+              print(token, 'home=', token in home, 'header=', token in header)
+
+          print('\nSITE_IA_AUDIT=PASS')
+          PY
