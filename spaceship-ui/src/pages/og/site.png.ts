@@ -3,11 +3,10 @@ import satori from 'satori';
 import { html } from 'satori-html';
 import { Resvg } from '@resvg/resvg-js';
 import { SITE } from '@/config';
+import { getOgBoldFont } from '@/lib/og-font';
 
 export const GET: APIRoute = async () => {
-  const fontData = await fetch(
-    'https://cdn.jsdelivr.net/fontsource/fonts/inter@5.0.19/latin-700-normal.woff'
-  ).then((res) => res.arrayBuffer());
+  const fontData = await getOgBoldFont();
 
   const markup = html`
     <div
@@ -19,7 +18,7 @@ export const GET: APIRoute = async () => {
         justify-content: space-between;
         background: #09090b;
         color: #fafafa;
-        font-family: Inter;
+        font-family: Outfit;
         padding: 72px 80px;
       "
     >
@@ -55,7 +54,7 @@ export const GET: APIRoute = async () => {
     height: 630,
     fonts: [
       {
-        name: 'Inter',
+        name: 'Outfit',
         data: fontData,
         weight: 700,
         style: 'normal',
