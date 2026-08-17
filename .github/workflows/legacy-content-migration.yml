@@ -1,0 +1,342 @@
+name: Legacy content source migration
+
+on:
+  push:
+    branches: [agent/legacy-content-finalize]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/legacy-content-finalize
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate sources and prove rendered equivalence
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -d site/assets/image && ! -f src/lib/remark/restore-legacy-html.mjs && ! -f src/lib/rehype/fix-legacy-fragments.mjs && ! -f src/lib/remark-repair-literal-strong.mjs ]]; then
+            echo 'Migration already applied; nothing to do.'
+            exit 0
+          fi
+
+          echo '=== BUILD BASELINE ==='
+          rm -rf dist .astro /tmp/dist-baseline
+          pnpm exec astro build
+          node scripts/rendered-markdown-audit.mjs
+          node scripts/post-content-contract.mjs
+          node scripts/content-integrity.mjs
+          node scripts/modern-ai-formula-audit.mjs
+          cp -a dist /tmp/dist-baseline
+
+          python <<'PY'
+          from pathlib import Path
+          import re
+          import shutil
+
+          root = Path('.')
+          posts = root / 'site/content/posts'
+          assets = root / 'site/assets'
+
+          def replace_exact(path, old, new, label, expected=1):
+              text = path.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'{label}: expected {expected} occurrence(s), found {count}')
+              path.write_text(text.replace(old, new), encoding='utf-8')
+
+          # 1) Migrate the only live post-owned legacy assets to canonical namespaces.
+          moves = {
+              assets / 'image/HPE_general_pipline.png': assets / 'assets/posts/human-pose-estimate/hpe-general-pipeline.png',
+              assets / 'image/graph_example_1.png': assets / 'assets/posts/2024-06-04-2/graph-example-1.png',
+              assets / 'image/mouse_surprised.gif': assets / 'assets/site/mouse-surprised.gif',
+          }
+          for old, new in moves.items():
+              if not old.exists():
+                  raise SystemExit(f'asset migration source missing: {old}')
+              if new.exists():
+                  raise SystemExit(f'asset migration destination already exists: {new}')
+              new.parent.mkdir(parents=True, exist_ok=True)
+              old.rename(new)
+
+          replace_exact(
+              posts / 'human-pose-estimate.md',
+              '/image/HPE_general_pipline.png',
+              '/assets/posts/human-pose-estimate/hpe-general-pipeline.png',
+              'HPE asset reference',
+          )
+          replace_exact(
+              posts / '2024-06-04-2.md',
+              '/image/graph_example_1.png',
+              '/assets/posts/2024-06-04-2/graph-example-1.png',
+              'data-structure asset reference',
+          )
+          replace_exact(
+              root / 'src/pages/index.astro',
+              '/image/mouse_surprised.gif',
+              '/assets/site/mouse-surprised.gif',
+              'homepage mouse asset reference',
+          )
+
+          # Proven current-orphan / obsolete / duplicate assets. Git history remains the archive.
+          orphan_names = [
+              'AMR_.png',
+              'AMR_Sample_V1.mp4',
+              'AMR_Sample_V2.mp4',
+              'circle_face.JPG',
+              'raspberrypi_info.jpeg',
+              'raspberrypi_setting.jpeg',
+              '증명사진.jpeg',
+          ]
+          for name in orphan_names:
+              path = assets / 'image' / name
+              if not path.exists():
+                  raise SystemExit(f'expected orphan asset missing before prune: {path}')
+              path.unlink()
+
+          legacy_dir = assets / 'image'
+          if any(legacy_dir.iterdir()):
+              raise SystemExit(f'legacy image directory is not empty: {[p.name for p in legacy_dir.iterdir()]}')
+          legacy_dir.rmdir()
+
+          # 2) Normalize the two still-live bad fragment links at the source.
+          replace_exact(
+              posts / 'linux.md',
+              '#Window',
+              '#window',
+              'linux fragment',
+          )
+          replace_exact(
+              posts / 'ros2.md',
+              '#유명한-라이브러리',
+              '#유명한-라이브러리-따로-공부해서-포스팅할-예정',
+              'ros2 fragment',
+          )
+
+          # 3) Dedent only the six audited CommonMark indented-code blocks that are actually page HTML.
+          html_posts = [
+              '2025-05-20.md',
+              '2025-06-27.md',
+              '2025-07-23-2.md',
+              '2025-07-25.md',
+              'deep-search-gemini.md',
+              'deep-search-travel-prompt.md',
+          ]
+          html_start = re.compile(
+              r'^\s*(?:<!--[\s\S]*?-->\s*)*<(?:article|aside|blockquote|canvas|div|figure|footer|form|h[1-6]|header|ins|main|nav|ol|p|script|section|style|table|ul)\b',
+              re.I,
+          )
+
+          def dedent_legacy_html(path):
+              lines = path.read_text(encoding='utf-8').splitlines(keepends=True)
+              out = []
+              i = 0
+              changed_blocks = 0
+              while i < len(lines):
+                  if not lines[i].startswith('    '):
+                      out.append(lines[i])
+                      i += 1
+                      continue
+
+                  start = i
+                  block = []
+                  while i < len(lines):
+                      line = lines[i]
+                      if line.startswith('    ') or line.strip() == '':
+                          block.append(line)
+                          i += 1
+                          continue
+                      break
+
+                  first_nonblank = next((x for x in block if x.strip()), '')
+                  stripped_first = first_nonblank[4:] if first_nonblank.startswith('    ') else first_nonblank
+                  if html_start.match(stripped_first):
+                      for line in block:
+                          if line.startswith('    '):
+                              out.append(line[4:])
+                          else:
+                              out.append(line)
+                      changed_blocks += 1
+                  else:
+                      out.extend(block)
+
+              if changed_blocks == 0:
+                  raise SystemExit(f'{path}: no audited indented HTML blocks found')
+              path.write_text(''.join(out), encoding='utf-8')
+              return changed_blocks
+
+          for name in html_posts:
+              count = dedent_legacy_html(posts / name)
+              print(f'dedented {name}: {count} HTML block(s)')
+
+          # 4) Normalize only strong markers known to survive CommonMark parsing.
+          strong_posts = [
+              'raspberry-pi-5.md',
+              'human-forecasting.md',
+              '2025-03-07.md',
+              '2025-04-25.md',
+              '2025-05-08.md',
+              '2025-06-27.md',
+              '2025-07-23.md',
+              'venture-global-comprehensive-report.md',
+              'ai-consciousness-deep-research-1.md',
+              'ai-consciousness-deep-research-2.md',
+              'ai-consciousness-deep-research-3.md',
+          ]
+          known_inner = {
+              '스펙 간략하게',
+              '3D 포즈 추정(HPE, Human Pose Forecasting)',
+              'Trajectory Prediction(사람의 이동 경로 예측)',
+              '인간 자세 예측(Human Pose Forecasting/Prediction)',
+              '기준선(baseline)',
+              '40배 빠른 속도 향상(173 FPS)',
+              '“양산계의 No.1 브랜드”',
+              '“가격 대비 최고의 만족도”',
+              '워터프론트(Waterfront)',
+              '가격:',
+              '마이브렐라(Mybrella)',
+              '“양산 쓰니 한여름에도 걸을 만하다”',
+              '혼동 행렬(Confusion Matrix)',
+              '평균 정밀도(Average Precision, AP)',
+              '크기(magnitude)',
+              '행렬(matrix)',
+              '저녁 식사 후 또는 잠들기 1~2시간 전',
+              '마그네슘 비스글리시네이트(Magnesium Bisglycinate)',
+              '일반의약품(General Pharmaceutical)',
+              '건강기능식품(Health Functional Food)',
+              '활성형(L-Methylfolate, Methylcobalamin 등)',
+              'DSM(네덜란드)이나 BASF(독일)',
+              'GAAP 기준(2025 actual anchor)',
+              '2026년 7월 26일(KST)',
+              '“현상적 의식의 확정적 증거는 미흡하지만, Access consciousness와 기능적 자기조절을 구성하는 여러 구조는 더 이상 단순한 표면적 언어 모방만으로 치부하기 어려워지고 있다”',
+              '“윤리 프레임워크별 8대 파생 질문”',
+              '기술 실사(Technical Audit)',
+          }
+          strong_re = re.compile(r'\*\*([^*\n]+?)\*\*')
+          hangul = re.compile(r'[가-힣]')
+
+          for name in strong_posts:
+              path = posts / name
+              text = path.read_text(encoding='utf-8')
+              replacements = 0
+
+              def repl(match):
+                  nonlocal replacements
+                  inner = match.group(1)
+                  after = text[match.end():match.end()+1]
+                  if inner in known_inner or (after and hangul.fullmatch(after)):
+                      replacements += 1
+                      return f'<strong>{inner}</strong>'
+                  return match.group(0)
+
+              new_text = strong_re.sub(repl, text)
+              if replacements:
+                  print(f'normalized literal strong {name}: {replacements}')
+                  path.write_text(new_text, encoding='utf-8')
+
+          # 5) Remove all three compatibility shims from the Astro pipeline and source tree.
+          config = root / 'astro.config.mjs'
+          cfg = config.read_text(encoding='utf-8')
+          edits = [
+              ("import remarkRepairLiteralStrong from './src/lib/remark-repair-literal-strong.mjs';\n", ''),
+              ("import restoreLegacyHtml from './src/lib/remark/restore-legacy-html.mjs';\n", ''),
+              ("import fixLegacyFragments from './src/lib/rehype/fix-legacy-fragments.mjs';\n", ''),
+              ('remarkPlugins: [restoreLegacyHtml, remarkEmoji, remarkRepairLiteralStrong],', 'remarkPlugins: [remarkEmoji],'),
+              ('      fixLegacyFragments,\n', ''),
+          ]
+          for old, new in edits:
+              if old not in cfg:
+                  raise SystemExit(f'astro.config.mjs expected shim pattern missing: {old!r}')
+              cfg = cfg.replace(old, new, 1)
+          config.write_text(cfg, encoding='utf-8')
+
+          for path in [
+              root / 'src/lib/remark-repair-literal-strong.mjs',
+              root / 'src/lib/remark/restore-legacy-html.mjs',
+              root / 'src/lib/rehype/fix-legacy-fragments.mjs',
+          ]:
+              if not path.exists():
+                  raise SystemExit(f'shim file missing before deletion: {path}')
+              path.unlink()
+          PY
+
+          echo '=== BUILD MIGRATED TREE ==='
+          rm -rf dist .astro
+          pnpm exec astro build
+          node scripts/rendered-markdown-audit.mjs
+          node scripts/post-content-contract.mjs
+          node scripts/content-integrity.mjs
+          node scripts/modern-ai-formula-audit.mjs
+
+          echo '=== VERIFY NO LEGACY IMAGE SURFACE ==='
+          test ! -d site/assets/image
+          if grep -RIl --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist '/image/' site/content src scripts | grep -v 'scripts/post-content-contract.mjs'; then
+            echo 'Unexpected live /image reference remains.'
+            exit 1
+          fi
+          if grep -RIl '/image/' dist; then
+            echo 'Built site still contains /image references.'
+            exit 1
+          fi
+
+          echo '=== VERIFY POST HTML EQUIVALENCE ==='
+          python <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          base = Path('/tmp/dist-baseline/posts')
+          new = Path('dist/posts')
+          allowed_changed = {
+              '2024-06-04-2024-06-04-2/index.html',
+              '2025-02-07-human-pose-estimate/index.html',
+          }
+
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          base_files = {p.relative_to(base).as_posix(): p for p in base.rglob('index.html')}
+          new_files = {p.relative_to(new).as_posix(): p for p in new.rglob('index.html')}
+          changed = {
+              rel for rel in set(base_files) | set(new_files)
+              if rel not in base_files or rel not in new_files or digest(base_files[rel]) != digest(new_files[rel])
+          }
+          print('changed post HTML:', sorted(changed))
+          unexpected = changed - allowed_changed
+          missing_expected = allowed_changed - changed
+          if unexpected:
+              raise SystemExit(f'unexpected post HTML changes after shim source-normalization: {sorted(unexpected)}')
+          if missing_expected:
+              raise SystemExit(f'expected asset-owner post HTML did not change: {sorted(missing_expected)}')
+          PY
+
+          echo '=== COMMIT MIGRATION ==='
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git status --short
+          git commit -m 'refactor: eliminate legacy media and content shims'
+          git push origin HEAD:agent/legacy-content-finalize
