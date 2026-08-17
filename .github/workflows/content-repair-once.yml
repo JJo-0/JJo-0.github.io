@@ -31,6 +31,16 @@ jobs:
             echo "Repairs already materialized; validating current branch"
           else
             sed -i 's/벡터와 행렬의 \*\*크기(magnitude)\*\*를/벡터와 행렬의 <strong>크기(magnitude)<\/strong>를/' scripts/one-time-content-repair.py
+            python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/one-time-content-repair.py')
+          text = p.read_text(encoding='utf-8')
+          needle = "    .replace(/<style\\\\b[\\\\s\\\\S]*?<\\\\/style>/gi, ' ')\n"
+          replacement = needle + "    .replace(/<annotation\\\\b[\\\\s\\\\S]*?<\\\\/annotation>/gi, ' ')\n"
+          if text.count(needle) != 1:
+              raise SystemExit('rendered audit insertion target mismatch')
+          p.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
+          PY
             python scripts/one-time-content-repair.py
           fi
 
