@@ -52,6 +52,11 @@ export default defineConfig({
       themes: { light: 'min-light', dark: 'catppuccin-frappe' },
       defaultColor: false,
       wrap: true,
+      // Compatibility aliases keep old content renderable; post:check requires canonical IDs in new posts.
+      langAlias: {
+        C: 'c',
+        pseudocode: 'text',
+      },
       transformers: [
         transformerNotationHighlight(),
         transformerNotationWordHighlight(),

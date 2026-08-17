@@ -1,6 +1,9 @@
 import { defineCollection } from 'astro:content';
 import { z } from 'zod';
 import { glob } from 'astro/loaders';
+import { SITE } from '../site/config';
+
+const emptyCollectionLoader = async () => [];
 
 const posts = defineCollection({
   loader: glob({
@@ -32,10 +35,12 @@ const posts = defineCollection({
 });
 
 const projects = defineCollection({
-  loader: glob({
-    pattern: ['**/*.{md,mdx}', '!**/_*'],
-    base: './site/content/projects',
-  }),
+  loader: SITE.publicSections.projects
+    ? glob({
+        pattern: ['**/*.{md,mdx}', '!**/_*'],
+        base: './site/content/projects',
+      })
+    : emptyCollectionLoader,
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -50,10 +55,12 @@ const projects = defineCollection({
 });
 
 const appearances = defineCollection({
-  loader: glob({
-    pattern: ['**/*.{md,mdx}', '!**/_*'],
-    base: './site/content/appearances',
-  }),
+  loader: SITE.publicSections.appearances
+    ? glob({
+        pattern: ['**/*.{md,mdx}', '!**/_*'],
+        base: './site/content/appearances',
+      })
+    : emptyCollectionLoader,
   schema: z.object({
     title: z.string(),
     event: z.string(),

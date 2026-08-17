@@ -22,7 +22,7 @@ EtherCAT은 Ethernet for Control Automation Technology의 약자로, Beckhoff사
 ## EtherCAT의 특징
 * 표준 이더넷 프레임(IEEE 802.3)을 지원하며 Cat5 이상의 FTP, STP 케이블을 사용 하여 연결 할 수 있다. [FTP_STP_케이블설명](https://blog.naver.com/zeratuss/221961962993)
 * Ring, Star, [Daisy Chain](https://ko.wikipedia.org/wiki/데이지_체인) 등 다양한 토폴로지를 지원한다. 
-![Topology](/image/network-topology.svg)   
+![Topology](/assets/posts/soem/network-topology.svg)   
 * Ethernet Frame 처리속도가 빨라서 고속의 데이터 통신을 보장한다. 
       
      
