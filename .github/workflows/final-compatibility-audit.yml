@@ -71,15 +71,17 @@ jobs:
           set -euo pipefail
           git fetch --depth=1 origin main
           git worktree add --detach /tmp/blog-main origin/main
-          ln -s "$GITHUB_WORKSPACE/spaceship-ui/node_modules" /tmp/blog-main/spaceship-ui/node_modules
 
           cd /tmp/blog-main/spaceship-ui
-          pnpm exec astro build >/tmp/main-build.log 2>&1
+          pnpm install --frozen-lockfile
+          if ! pnpm exec astro build >/tmp/main-build.log 2>&1; then
+            cat /tmp/main-build.log
+            exit 1
+          fi
 
           cd "$GITHUB_WORKSPACE/spaceship-ui"
           python - <<'PY'
           from pathlib import Path
-          from html.parser import HTMLParser
           import re
 
           main_root = Path('/tmp/blog-main/spaceship-ui/dist/posts')
@@ -114,9 +116,7 @@ jobs:
           full_diffs = []
           outside_pre_diffs = []
           for rel in sorted(before):
-              b = before[rel].read_bytes()
-              a = after[rel].read_bytes()
-              if b != a:
+              if before[rel].read_bytes() != after[rel].read_bytes():
                   full_diffs.append(rel)
               if article_without_pre(before[rel]) != article_without_pre(after[rel]):
                   outside_pre_diffs.append(rel)
