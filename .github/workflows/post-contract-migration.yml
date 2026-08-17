@@ -1,0 +1,223 @@
+name: Post content contract migration
+
+on:
+  push:
+    branches: [agent/post-content-contract]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/post-content-contract
+
+      - name: Normalize warnings, post components, and post assets
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          root = Path('spaceship-ui')
+
+          def replace_once(path, old, new, label):
+              text = path.read_text(encoding='utf-8')
+              if old in text:
+                  if text.count(old) != 1:
+                      raise SystemExit(f'{label}: expected exactly one old pattern, found {text.count(old)}')
+                  path.write_text(text.replace(old, new, 1), encoding='utf-8')
+                  return
+              if new not in text:
+                  raise SystemExit(f'{label}: neither old nor normalized pattern found')
+
+          # Astro explicitly recommends is:inline for unprocessed external scripts.
+          layout = root / 'src/layouts/Layout.astro'
+          replace_once(
+              layout,
+              '<script\n            async\n            type="text/partytown"',
+              '<script\n            is:inline\n            async\n            type="text/partytown"',
+              'Layout GA script',
+          )
+          replace_once(
+              layout,
+              '<script\n            async\n            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}',
+              '<script\n            is:inline\n            async\n            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}',
+              'Layout AdSense script',
+          )
+
+          # Keep post-importable components in one explicit namespace.
+          old_math = root / 'src/components/Math.astro'
+          new_math = root / 'src/components/post/Math.astro'
+          if old_math.exists():
+              new_math.parent.mkdir(parents=True, exist_ok=True)
+              if new_math.exists():
+                  raise SystemExit('Both old and new Math component paths exist')
+              old_math.rename(new_math)
+          elif not new_math.exists():
+              raise SystemExit('Math component missing from both old and new paths')
+
+          for post_name in ('vision.mdx', 'mordern-artificial-intelligence.mdx'):
+              path = root / 'site/content/posts' / post_name
+              replace_once(
+                  path,
+                  "import Math from '@/components/Math.astro';",
+                  "import Math from '@/components/post/Math.astro';",
+                  f'{post_name} Math import',
+              )
+
+          audit = root / 'scripts/modern-ai-formula-audit.mjs'
+          replace_once(
+              audit,
+              "if (!text.includes(\"import Math from '@/components/Math.astro';\")) {",
+              "if (!text.includes(\"import Math from '@/components/post/Math.astro';\")) {",
+              'Modern AI audit Math import',
+          )
+
+          # Move the PR #15 native assets out of the grandfathered flat image directory.
+          moves = {
+              'image/activation-functions.svg': 'assets/posts/vision/activation-functions.svg',
+              'image/sigmoid-derivative.svg': 'assets/posts/vision/sigmoid-derivative.svg',
+              'image/tanh-derivative.svg': 'assets/posts/vision/tanh-derivative.svg',
+              'image/calibration-coordinate-system.svg': 'assets/posts/calibration/calibration-coordinate-system.svg',
+              'image/network-topology.svg': 'assets/posts/soem/network-topology.svg',
+          }
+          public_dir = root / 'site/assets'
+          for old_rel, new_rel in moves.items():
+              old_path = public_dir / old_rel
+              new_path = public_dir / new_rel
+              if old_path.exists():
+                  new_path.parent.mkdir(parents=True, exist_ok=True)
+                  if new_path.exists():
+                      raise SystemExit(f'asset move collision: {new_path}')
+                  old_path.rename(new_path)
+              elif not new_path.exists():
+                  raise SystemExit(f'asset missing from both old/new paths: {old_rel}')
+
+          asset_refs = {
+              root / 'site/content/posts/vision.mdx': {
+                  '/image/activation-functions.svg': '/assets/posts/vision/activation-functions.svg',
+                  '/image/sigmoid-derivative.svg': '/assets/posts/vision/sigmoid-derivative.svg',
+                  '/image/tanh-derivative.svg': '/assets/posts/vision/tanh-derivative.svg',
+              },
+              root / 'site/content/posts/calibration.md': {
+                  '/image/calibration-coordinate-system.svg': '/assets/posts/calibration/calibration-coordinate-system.svg',
+              },
+              root / 'site/content/posts/soem.md': {
+                  '/image/network-topology.svg': '/assets/posts/soem/network-topology.svg',
+              },
+          }
+          for path, replacements in asset_refs.items():
+              text = path.read_text(encoding='utf-8')
+              for old, new in replacements.items():
+                  if old in text:
+                      text = text.replace(old, new)
+                  elif new not in text:
+                      raise SystemExit(f'{path}: expected asset reference not found: {old}')
+              path.write_text(text, encoding='utf-8')
+
+          # Disabled private sections use an empty inline loader instead of scanning an empty public directory.
+          config = root / 'src/content.config.ts'
+          text = config.read_text(encoding='utf-8')
+          import_line = "import { SITE } from '../site/config';"
+          if import_line not in text:
+              anchor = "import { glob } from 'astro/loaders';\n"
+              if anchor not in text:
+                  raise SystemExit('content.config.ts import anchor missing')
+              text = text.replace(anchor, anchor + import_line + '\n', 1)
+          loader_line = 'const emptyCollectionLoader = async () => [];'
+          if loader_line not in text:
+              text = text.replace('\nconst posts = defineCollection({', f'\n{loader_line}\n\nconst posts = defineCollection({', 1)
+
+          project_old = "  loader: glob({\n    pattern: ['**/*.{md,mdx}', '!**/_*'],\n    base: './site/content/projects',\n  }),"
+          project_new = "  loader: SITE.publicSections.projects\n    ? glob({\n        pattern: ['**/*.{md,mdx}', '!**/_*'],\n        base: './site/content/projects',\n      })\n    : emptyCollectionLoader,"
+          if project_old in text:
+              text = text.replace(project_old, project_new, 1)
+          elif project_new not in text:
+              raise SystemExit('projects loader pattern missing')
+
+          appearance_old = "  loader: glob({\n    pattern: ['**/*.{md,mdx}', '!**/_*'],\n    base: './site/content/appearances',\n  }),"
+          appearance_new = "  loader: SITE.publicSections.appearances\n    ? glob({\n        pattern: ['**/*.{md,mdx}', '!**/_*'],\n        base: './site/content/appearances',\n      })\n    : emptyCollectionLoader,"
+          if appearance_old in text:
+              text = text.replace(appearance_old, appearance_new, 1)
+          elif appearance_new not in text:
+              raise SystemExit('appearances loader pattern missing')
+          config.write_text(text, encoding='utf-8')
+
+          projects_page = root / 'src/pages/projects.astro'
+          replace_once(
+              projects_page,
+              "const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);",
+              "const projects = SITE.publicSections.projects\n  ? (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order)\n  : [];",
+              'projects page public gate',
+          )
+
+          appearances_page = root / 'src/pages/appearances.astro'
+          appearance_text = appearances_page.read_text(encoding='utf-8')
+          site_import = "import { SITE } from '@/config';"
+          if site_import not in appearance_text:
+              anchor = "import Breadcrumbs from '@/components/Breadcrumbs.svelte';\n"
+              if anchor not in appearance_text:
+                  raise SystemExit('appearances import anchor missing')
+              appearance_text = appearance_text.replace(anchor, anchor + site_import + '\n', 1)
+          old = "const appearances = await getCollection('appearances');"
+          new = "const appearances = SITE.publicSections.appearances\n  ? await getCollection('appearances')\n  : [];"
+          if old in appearance_text:
+              appearance_text = appearance_text.replace(old, new, 1)
+          elif new not in appearance_text:
+              raise SystemExit('appearances public gate missing')
+          appearances_page.write_text(appearance_text, encoding='utf-8')
+
+          project_detail = root / 'src/pages/projects/[slug]/index.astro'
+          detail_text = project_detail.read_text(encoding='utf-8')
+          site_import = "import { SITE } from '@/config';"
+          if site_import not in detail_text:
+              anchor = "import { getBreadcrumbSchema } from '@/lib/schemas';\n"
+              if anchor not in detail_text:
+                  raise SystemExit('project detail import anchor missing')
+              detail_text = detail_text.replace(anchor, anchor + site_import + '\n', 1)
+          old = "  const projects = await getCollection('projects');"
+          new = "  const projects = SITE.publicSections.projects ? await getCollection('projects') : [];"
+          if old in detail_text:
+              detail_text = detail_text.replace(old, new, 1)
+          elif new not in detail_text:
+              raise SystemExit('project detail public gate missing')
+          project_detail.write_text(detail_text, encoding='utf-8')
+
+          # Shiki should receive canonical language IDs, not ad-hoc aliases.
+          fence_counts = {'C': 0, 'pseudocode': 0}
+          for path in (root / 'site/content').rglob('*'):
+              if path.suffix not in ('.md', '.mdx') or path.name.startswith('_'):
+                  continue
+              source = path.read_text(encoding='utf-8')
+              source, count_c = re.subn(r'(?m)^```C\s*$', '```c', source)
+              source, count_pseudo = re.subn(r'(?m)^```pseudocode\s*$', '```text', source)
+              fence_counts['C'] += count_c
+              fence_counts['pseudocode'] += count_pseudo
+              if count_c or count_pseudo:
+                  path.write_text(source, encoding='utf-8')
+          print(f'normalized Shiki fences: {fence_counts}')
+
+          # This transition currently produces an unused-import bundle warning; the menu remains functional without it.
+          theme_toggle = root / 'src/components/ThemeToggle.svelte'
+          theme_text = theme_toggle.read_text(encoding='utf-8')
+          theme_text = theme_text.replace("  import { slide } from 'svelte/transition';\n", '')
+          theme_text = theme_text.replace('      transition:slide={{ duration: 200 }}\n', '')
+          if "svelte/transition" in theme_text or 'transition:slide' in theme_text:
+              raise SystemExit('ThemeToggle slide transition cleanup incomplete')
+          theme_toggle.write_text(theme_text, encoding='utf-8')
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "Migration already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor: normalize post authoring paths and first-party warnings"
+          git push origin HEAD:agent/post-content-contract
