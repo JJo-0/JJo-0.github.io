@@ -75,7 +75,7 @@
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          {#each platform.iconPaths as iconPath}
+          {#each platform.iconPaths as iconPath (iconPath)}
             <path d={iconPath} />
           {/each}
         </svg>
