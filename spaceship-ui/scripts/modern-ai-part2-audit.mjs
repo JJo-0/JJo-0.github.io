@@ -42,7 +42,7 @@ if (formulaLedger) {
     if (digest !== formula.sha256) issues.push(`${formula.formulaId}: formula hash mismatch`);
     if (!statuses.has(formula.status)) issues.push(`${formula.formulaId}: invalid status ${formula.status}`);
     if (formula.pdfPage < 1 || formula.pdfPage > 13) issues.push(`${formula.formulaId}: invalid PDF page`);
-    const count = (article.match(new RegExp(`part2Formula\\(['\"]${formula.formulaId}['\"]\\)`, 'g')) ?? []).length;
+    const count = (article.match(new RegExp(`part2Formula\\(['"]${formula.formulaId}['"]\\)`, 'g')) ?? []).length;
     if (count !== 1) issues.push(`${formula.formulaId}: expected exactly one article occurrence, found ${count}`);
   }
 }
