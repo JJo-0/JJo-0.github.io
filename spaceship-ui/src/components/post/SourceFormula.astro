@@ -202,7 +202,13 @@ const aria = `${readerTitle}, PDF page ${formula.pdfPage}, ${statusLabel}`;
 }
 
 <script>
-  // @ts-nocheck
+  const trackFormulaEvent = (eventName, params) => {
+    const gtag = Reflect.get(window, 'gtag');
+    if (typeof gtag === 'function') {
+      Reflect.apply(gtag, window, ['event', eventName, params]);
+    }
+  };
+
   document.addEventListener('click', async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
@@ -215,11 +221,9 @@ const aria = `${readerTitle}, PDF page ${formula.pdfPage}, ${statusLabel}`;
       await navigator.clipboard.writeText(tex);
       button.textContent = '복사됨';
       window.setTimeout(() => (button.textContent = original), 1400);
-      if (typeof window.gtag === 'function') {
-        window.gtag('event', 'formula_copy', {
-          formula_id: button.closest('[data-formula-id]')?.getAttribute('data-formula-id') || '',
-        });
-      }
+      trackFormulaEvent('formula_copy', {
+        formula_id: button.closest('[data-formula-id]')?.getAttribute('data-formula-id') || '',
+      });
     } catch {
       button.textContent = '복사 실패';
       window.setTimeout(() => (button.textContent = original), 1400);
@@ -230,8 +234,8 @@ const aria = `${readerTitle}, PDF page ${formula.pdfPage}, ${statusLabel}`;
     const details = event.target;
     if (!(details instanceof HTMLDetailsElement) || !details.open) return;
     const card = details.closest('[data-formula-id]');
-    if (card && typeof window.gtag === 'function') {
-      window.gtag('event', 'formula_explanation_open', {
+    if (card) {
+      trackFormulaEvent('formula_explanation_open', {
         formula_id: card.getAttribute('data-formula-id') || '',
       });
     }
