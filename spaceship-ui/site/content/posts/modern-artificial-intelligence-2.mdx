@@ -1,0 +1,999 @@
+---
+title: '현대 인공지능 II — 머신러닝의 기본 과제와 일반화'
+description: 'ECE5992 머신러닝 기초 13쪽을 기준으로 분류·회귀·밀도추정, 선형회귀, 일반화, 정규화, 검증, SVM, 최소거리·베이즈 분류, 차원의 저주를 모든 수식과 함께 재구성하고 2026년 연구까지 연결한다.'
+pubDate: 2026-08-18
+updatedDate: 2026-08-18
+tags: ['artificial-intelligence', 'machine-learning', 'generalization', 'linear-regression', 'support-vector-machine', 'bayes-classifier', 'uncertainty', 'modern-ai-course', 'study-notes']
+featured: true
+lang: 'ko'
+series:
+  id: 'modern-artificial-intelligence'
+  order: 2
+---
+
+import Math from '@/components/post/Math.astro';
+import ExplainedMath from '@/components/post/ExplainedMath.astro';
+import Part2LearningLab from '@/components/modern-ai/Part2LearningLab.svelte';
+
+> **강의자료 출처와 저작권**  
+> 이 글은 성균관대학교 ECE5992 「Modern Artificial Intelligence」의 2025년 3월 19일 강의자료, Il Yong Chun 교수의 「2 Fundamentals of machine learning」을 학습 목적으로 한국어로 다시 구성한 글이다. 원문 문장 배열, 페이지 레이아웃, 삽화는 복제하지 않고 설명과 도식은 새로 만들었다. 수학적 의미는 바뀌지 않도록 보존했으며, 원자료의 빈칸이나 표기상 주의점은 해당 수식 아래에서만 구분해 설명한다.
+
+이 장의 중심 질문은 단순하다.
+
+> **훈련 데이터에 잘 맞는 모델이, 왜 처음 보는 데이터에서도 잘 작동해야 하는가?**
+
+분류·회귀·밀도추정부터 시작해 선형회귀의 닫힌형식 해, 일반화와 정규화, 교차검증, SVM과 커널, 최소거리 분류기, 베이즈 분류기, 가우시안 판별함수, 나이브 베이즈, 차원의 저주까지 순서대로 연결한다. 강의자료의 다섯 개 그림은 복사하지 않고 이 글의 인터랙티브 학습 도구와 자체 설명으로 다시 구성했다.
+
+## 1. 빅데이터 시대에도 희귀한 경우는 여전히 부족하다
+
+머신러닝(Machine Learning)은 데이터에서 규칙을 자동으로 찾고, 그 규칙으로 미래 데이터를 예측하거나 불확실한 상황에서 결정을 내리는 방법들의 집합이다. 데이터 양이 커졌다는 사실만으로 모든 문제가 해결되지는 않는다. 현실 데이터는 흔히 **긴 꼬리(long tail)** 구조를 가진다.
+
+- 몇몇 사례는 매우 자주 관측된다.
+- 대부분의 사례는 드물게 나타난다.
+- 전체 데이터셋은 커도, 관심 있는 희귀 상황의 유효 표본 수는 작을 수 있다.
+
+이 문제는 뒤에서 다룰 일반화, 클래스 불균형, 검증 불확실성, 분포 이동(distribution shift)과 직접 연결된다.
+
+## 2. 머신러닝의 세 가지 기본 과제
+
+### 2.1 분류: 어떤 범주에 속하는가
+
+분류(classification)는 입력 <Math tex={"\\mathbf{x}"} />를 클래스 출력 <Math tex={"y"} />로 보내는 함수를 학습한다. 클래스가 둘이면 이진 분류(binary classification), 셋 이상이면 다중 클래스 분류(multiclass classification)다. 한 샘플이 여러 라벨을 동시에 가질 수 있으면 다중 라벨 분류(multi-label classification)이며, 여러 관련 이진 출력을 함께 예측하는 다중 출력 모델로 볼 수 있다.
+
+
+{/* formula: MAI-P2-001 */}
+<ExplainedMath
+  id="MAI-P2-001"
+  tex={"\\begin{aligned}\ny&\\in\\{1,\\ldots,C\\},\\\\\nC=2&:\\ y\\in\\{0,1\\},\\\\\nC>2&:\\ \\text{multiclass classification}.\n\\end{aligned}"}
+  title={"분류 문제의 출력 범위"}
+  summary={"분류는 입력을 여러 범주 가운데 하나 또는 여러 개에 배정하는 문제다. C는 가능한 클래스의 수다."}
+  steps={["먼저 가능한 클래스 수 C를 정한다.", "출력 y가 그 클래스 집합 안의 값인지 본다.", "C=2면 이진 분류, C>2면 다중 클래스 분류다."]}
+  symbols={[{"symbol": "y", "meaning": "모델이 예측할 클래스"}, {"symbol": "C", "meaning": "전체 클래스 수"}]}
+  sourcePage={1}
+  status="source-exact"
+/>
+
+
+강의자료는 별도 언급이 없을 때 **서로 배타적인 여러 클래스 중 하나를 고르는 단일 출력 다중 클래스 분류**를 기본 의미로 사용한다.
+
+분류를 함수 근사(function approximation)로 보면, 알려지지 않은 참 함수 <Math tex={"f"} />를 유한한 라벨 데이터로 추정하는 문제다.
+
+
+{/* formula: MAI-P2-002 */}
+<ExplainedMath
+  id="MAI-P2-002"
+  tex={"\\begin{aligned}\ny&=f(\\mathbf{x}),\\\\\n\\mathcal{D}_{\\mathrm{train}}&=\\{(\\mathbf{x}_\\ell,y_\\ell):\\ell=1,\\ldots,L\\},\\\\\n\\widehat{y}&=\\widehat{f}(\\mathbf{x}).\n\\end{aligned}"}
+  title={"분류를 함수 근사로 보기"}
+  summary={"정답을 만드는 미지의 함수 f가 있다고 보고, L개의 정답 포함 예시로 그 함수를 흉내 내는 함수 f̂를 학습한다."}
+  steps={["입력 x와 정답 y의 관계를 f로 나타낸다.", "훈련 데이터로 f의 근사판 f̂를 만든다.", "새 입력에는 f̂를 적용해 예측 ŷ를 얻는다."]}
+  symbols={[{"symbol": "L", "meaning": "훈련 샘플 수"}, {"symbol": "\\widehat{f}", "meaning": "데이터로 추정한 함수"}]}
+  sourcePage={1}
+  status="source-exact"
+/>
+
+
+여기서 가장 중요한 목표는 훈련 세트를 다시 맞히는 것이 아니라, **학습할 때 보지 못한 새 입력에서 맞히는 것**, 즉 일반화(generalization)다.
+
+### 2.2 회귀: 연속적인 숫자를 예측한다
+
+회귀(regression)는 범주가 아니라 실수값을 출력한다. 집값, 온도, 소요시간, 센서 오차처럼 연속적인 값을 예측하는 문제가 대표적이다.
+
+
+{/* formula: MAI-P2-003 */}
+<ExplainedMath
+  id="MAI-P2-003"
+  tex={"f:\\mathbb{R}^{N}\\to\\mathbb{R},\\qquad x_\\ell\\in\\mathbb{R},\\quad y_\\ell\\in\\mathbb{R}."}
+  title={"회귀 문제의 입출력"}
+  summary={"회귀는 여러 숫자로 이루어진 입력을 받아 하나의 연속적인 숫자를 예측한다."}
+  steps={["입력은 N개의 숫자로 구성된다.", "출력은 범주가 아니라 실수 하나다."]}
+  symbols={[{"symbol": "N", "meaning": "입력 특징의 수"}, {"symbol": "\\mathbb{R}", "meaning": "실수 전체의 집합"}]}
+  sourcePage={1}
+  status="source-exact"
+/>
+
+
+강의자료의 첫 그림은 같은 점들에 직선과 2차 다항식을 각각 맞춘다. 그림만 보고 어느 모델이 더 좋다고 단정할 수는 없다. 훈련점에 더 가까운 곡선이 새 데이터에서도 더 낫다는 보장은 없기 때문이다. 이 질문은 뒤의 과소적합·과적합과 검증 세트로 이어진다.
+
+### 2.3 밀도추정: 데이터가 어디에 모이는가
+
+밀도추정(density estimation)은 샘플이 나타나는 공간의 확률밀도함수(PDF) 또는 확률질량함수(PMF)를 학습한다.
+
+
+{/* formula: MAI-P2-004 */}
+<ExplainedMath
+  id="MAI-P2-004"
+  tex={"p_{\mathrm{model}}:\mathbb{R}^{N}\to\mathbb{R}"}
+  title={"밀도추정 모델"}
+  summary={"밀도추정은 어떤 데이터가 자주 나타나는 영역과 거의 나타나지 않는 영역을 하나의 함수로 표현한다."}
+  steps={["입력 위치 x를 넣는다.", "그 위치의 확률밀도 또는 확률질량에 해당하는 값을 출력한다."]}
+  symbols={[{"symbol": "p_{\mathrm{model}}", "meaning": "데이터 분포를 근사하는 함수"}]}
+  sourcePage={2}
+  status="source-exact"
+/>
+
+
+좋은 밀도모델은 데이터가 빽빽하게 모이는 영역과 거의 나타나지 않는 영역을 구분해야 한다. 그러나 <Math tex={"p(\\mathbf{x})"} />를 학습했다고 해서 그 분포와 관련된 모든 계산이 쉬워지는 것은 아니다. 고차원 적분, 주변화(marginalization), 조건부 추론이 계산적으로 불가능하거나 매우 비쌀 수 있다.
+
+## 3. 선형회귀를 끝까지 풀어 보기
+
+### 3.1 예측식과 가중치
+
+입력 벡터의 각 특성(feature)에 가중치를 곱한 뒤 더해 하나의 숫자를 예측한다.
+
+
+{/* formula: MAI-P2-005 */}
+<ExplainedMath
+  id="MAI-P2-005"
+  tex={"\\widehat{y}=\\mathbf{w}^{\\mathsf T}\\mathbf{x},\\qquad \\mathbf{w}\\in\\mathbb{R}^{N}."}
+  title={"선형회귀의 예측식"}
+  summary={"각 특징에 가중치를 곱해 모두 더한 값이 예측값이다."}
+  steps={["각 입력 x_i에 대응하는 가중치 w_i를 곱한다.", "모든 곱을 더해 ŷ를 만든다."]}
+  symbols={[{"symbol": "\\mathbf{x}", "meaning": "입력 특징 벡터"}, {"symbol": "\\mathbf{w}", "meaning": "학습할 가중치 벡터"}]}
+  sourcePage={2}
+  status="source-exact"
+/>
+
+
+각 <Math tex={"w_i"} />는 특성 <Math tex={"x_i"} />가 예측에 얼마나 영향을 주는지를 정한다. 여러 훈련 샘플을 행렬 <Math tex={"\\mathbf X^{(\\mathrm{train})}"} />의 행으로 쌓으면 모든 예측을 한 번에 계산할 수 있다.
+
+### 3.2 훈련 평균제곱오차
+
+예측과 정답의 차이를 제곱하고 평균낸 값이 평균제곱오차(MSE)다.
+
+
+{/* formula: MAI-P2-006 */}
+<ExplainedMath
+  id="MAI-P2-006"
+  tex={"\\operatorname{MSE}_{\\mathrm{train}}=\\frac{1}{L}\\left\\|\\mathbf{X}^{(\\mathrm{train})}\\mathbf{w}-\\mathbf{y}^{(\\mathrm{train})}\\right\\|_2^2."}
+  title={"훈련 평균제곱오차"}
+  summary={"모든 훈련 샘플의 예측 오차를 제곱해 더한 뒤 샘플 수로 나눈 값이다."}
+  steps={["행렬 X와 가중치 w를 곱해 모든 예측을 만든다.", "정답 벡터 y를 빼 오차를 만든다.", "오차를 제곱해 평균한다."]}
+  symbols={[{"symbol": "L", "meaning": "훈련 샘플 수"}, {"symbol": "\\|\\cdot\\|_2^2", "meaning": "각 성분을 제곱해 더한 값"}]}
+  sourcePage={2}
+  status="source-exact"
+/>
+
+
+제곱을 쓰면 양수와 음수 오차가 서로 상쇄되지 않고, 큰 오차에 더 큰 벌점을 준다. 선형회귀에서는 이 목적함수의 기울기를 0으로 두어 최적점을 직접 구할 수 있다.
+
+### 3.3 기울기 0에서 정규방정식까지
+
+원자료는 벡터식에서 이차식을 펼치고 미분하는 전 과정을 제시한다.
+
+
+{/* formula: MAI-P2-007 */}
+<ExplainedMath
+  id="MAI-P2-007"
+  tex={"\\begin{aligned}\n\\nabla_{\\mathbf w}\\operatorname{MSE}_{\\mathrm{train}}&=\\mathbf 0,\\\\\n\\nabla_{\\mathbf w}\\!\\left(\\frac1L\\|\\mathbf X\\mathbf w-\\mathbf y\\|_2^2\\right)&=\\mathbf 0,\\\\\n\\nabla_{\\mathbf w}\\!\\left((\\mathbf X\\mathbf w-\\mathbf y)^{\\mathsf T}(\\mathbf X\\mathbf w-\\mathbf y)\\right)&=\\mathbf 0,\\\\\n\\nabla_{\\mathbf w}\\!\\left(\\mathbf w^{\\mathsf T}\\mathbf X^{\\mathsf T}\\mathbf X\\mathbf w-2\\mathbf w^{\\mathsf T}\\mathbf X^{\\mathsf T}\\mathbf y+\\mathbf y^{\\mathsf T}\\mathbf y\\right)&=\\mathbf 0,\\\\\n2\\mathbf X^{\\mathsf T}\\mathbf X\\mathbf w-2\\mathbf X^{\\mathsf T}\\mathbf y&=\\mathbf 0.\n\\end{aligned}"}
+  title={"최소제곱 해를 찾는 미분 전개"}
+  summary={"평균제곱오차가 가장 작은 지점에서는 가중치를 조금 움직여도 오차가 1차적으로 줄어들지 않으므로 기울기가 0이 된다."}
+  steps={["MSE의 기울기를 0으로 둔다.", "제곱노름을 내적으로 펼친다.", "w와 무관한 항은 미분하면 사라진다.", "남은 선형방정식을 정리한다."]}
+  symbols={[{"symbol": "\\nabla_{\\mathbf w}", "meaning": "가중치 w 방향의 기울기"}, {"symbol": "\\mathbf X^{\\mathsf T}\\mathbf X", "meaning": "특징들의 상관 구조를 담은 행렬"}]}
+  sourcePage={2}
+  status="source-exact"
+/>
+
+
+마지막 줄을 정리하면 정규방정식(normal equation)이 된다.
+
+
+{/* formula: MAI-P2-008 */}
+<ExplainedMath
+  id="MAI-P2-008"
+  tex={"\\begin{aligned}\n(\\mathbf X^{\\mathsf T}\\mathbf X)\\mathbf w&=\\mathbf X^{\\mathsf T}\\mathbf y,\\\\\n\\mathbf w^\\star&=(\\mathbf X^{\\mathsf T}\\mathbf X)^{-1}\\mathbf X^{\\mathsf T}\\mathbf y.\n\\end{aligned}"}
+  title={"정규방정식과 최소제곱 해"}
+  summary={"기울기 0 조건을 선형방정식으로 정리하면 최적 가중치를 직접 계산할 수 있다."}
+  steps={["양변을 2로 나눈다.", "XᵀX가 역행렬을 가질 때 그 역행렬을 왼쪽에 곱한다.", "w의 닫힌형식 해를 얻는다."]}
+  symbols={[{"symbol": "\\mathbf w^\\star", "meaning": "훈련 MSE를 최소화하는 가중치"}, {"symbol": "(\\mathbf X^{\\mathsf T}\\mathbf X)^{-1}", "meaning": "XᵀX의 역행렬"}]}
+  note={"원자료 식 (1)은 XᵀX가 가역이라고 가정한다. 실제로 특성이 선형종속이면 역행렬 대신 유사역행렬이나 정규화를 사용한다."}
+  sourcePage={2}
+  sourceEquation={"(1)"}
+  status="source-exact"
+/>
+
+
+이 닫힌형식(closed-form) 해는 강력하지만 조건이 있다. <Math tex={"\\mathbf X^{\\mathsf T}\\mathbf X"} />가 역행렬을 가져야 한다. 특성들이 선형종속이거나 표본보다 특성이 지나치게 많으면 역행렬이 존재하지 않을 수 있으며, 그때는 유사역행렬(pseudoinverse), 릿지 정규화(ridge regularization), 수치적 선형해법을 사용한다.
+
+강의자료 여백에는 1차원 제곱오차의 미분과 정규방정식이 손으로 다시 적혀 있다. 그 메모가 강조하는 핵심은 스칼라식 <Math tex={"(ax-b)^2"} />의 미분 원리가 행렬식에도 같은 구조로 확장된다는 점이다. 원자료가 인용한 가중 이차식의 행렬 미분은 다음과 같다.
+
+
+{/* formula: MAI-P2-009 */}
+<ExplainedMath
+  id="MAI-P2-009"
+  tex={"\\frac{\\partial}{\\partial\\mathbf x}(\\mathbf y-\\mathbf A\\mathbf x)^{\\mathsf T}\\mathbf W(\\mathbf y-\\mathbf A\\mathbf x)=-2\\mathbf A^{\\mathsf T}\\mathbf W(\\mathbf y-\\mathbf A\\mathbf x)."}
+  title={"가중 제곱오차의 행렬 미분"}
+  summary={"오차 벡터에 가중행렬 W를 적용한 이차식을 x로 미분한 공식이다."}
+  steps={["잔차 y-Ax를 만든다.", "W로 오차 방향별 중요도를 반영한다.", "x로 미분하면 Aᵀ와 잔차가 남는다."]}
+  symbols={[{"symbol": "\\mathbf W", "meaning": "오차 방향별 가중행렬"}, {"symbol": "\\mathbf A^{\\mathsf T}", "meaning": "A의 전치행렬"}]}
+  sourcePage={2}
+  status="source-exact"
+/>
+
+
+## 4. 최적화와 머신러닝을 가르는 기준: 일반화
+
+훈련 오차를 줄이는 일만 보면 선형회귀는 최적화 문제다. 머신러닝의 핵심은 훈련이 끝난 모델이 **새로운 데이터**에서도 낮은 오차를 내는지에 있다. 선형회귀의 테스트 오차는 다음처럼 계산한다.
+
+
+{/* formula: MAI-P2-010 */}
+<ExplainedMath
+  id="MAI-P2-010"
+  tex={"\\operatorname{MSE}_{\\mathrm{test}}=\\frac1M\\left\\|\\mathbf X^{(\\mathrm{test})}\\mathbf w^\\star-\\mathbf y^{(\\mathrm{test})}\\right\\|_2^2."}
+  title={"테스트 평균제곱오차"}
+  summary={"훈련에 사용하지 않은 M개의 데이터로 학습된 모델의 일반화 성능을 평가한다."}
+  steps={["훈련으로 얻은 w★를 고정한다.", "테스트 입력에 적용한다.", "테스트 정답과의 평균 제곱오차를 계산한다."]}
+  symbols={[{"symbol": "M", "meaning": "테스트 샘플 수"}, {"symbol": "\\mathbf w^\\star", "meaning": "훈련이 끝난 고정 모델"}]}
+  sourcePage={3}
+  status="source-exact"
+/>
+
+
+원자료는 훈련 데이터와 테스트 데이터가 하나의 데이터 생성 분포(data-generating distribution)에서 나온다고 보고, 표준적인 i.i.d. 가정을 둔다.
+
+- **독립(independent):** 한 샘플이 다른 샘플을 직접 결정하지 않는다.
+- **동일분포(identically distributed):** 훈련과 테스트가 같은 확률분포에서 추출된다.
+
+이 절차에서는 훈련 세트를 뽑아 모델을 최적화한 뒤 테스트 세트를 새로 뽑는다. 모델은 훈련 세트에 맞추어졌기 때문에, 기대값 관점에서 테스트 오차는 기대 훈련 오차보다 작지 않다. 따라서 좋은 학습 알고리즘에는 두 능력이 동시에 필요하다.
+
+1. 훈련 오차를 충분히 작게 만든다.
+2. 훈련 오차와 테스트 오차의 간격을 작게 유지한다.
+
+### 4.1 과소적합, 과적합, 적절한 용량
+
+- **과소적합(underfitting):** 모델이 단순하거나 학습이 부족해 훈련 오차부터 충분히 낮추지 못한다.
+- **과적합(overfitting):** 훈련 오차는 낮지만 테스트 오차와의 간격이 너무 크다.
+- **용량(capacity):** 모델이 표현할 수 있는 함수의 다양성이다.
+
+낮은 용량은 훈련 패턴을 놓칠 수 있고, 높은 용량은 훈련 세트의 우연한 특징을 외워 버릴 수 있다. PDF의 Figure 2는 직선형 과소적합, 지나치게 구불거리는 과적합, 적절한 곡선을 나란히 비교한다. Figure 3은 실제 함수가 2차식인데 9차 다항식을 사용하고, 가중치 감쇠의 세기를 조절해 과적합이 어떻게 바뀌는지 보여준다. 아래 인터랙티브 도구의 **모델 용량** 탭은 이 두 그림을 자체 SVG로 다시 설명한다.
+
+### 4.2 공짜 점심은 없다
+
+강의자료는 George Box의 “모든 모델은 틀리지만 일부는 유용하다”는 취지의 문장으로 출발한다. 어떤 한 모델과 학습 알고리즘도 모든 문제에서 항상 최적일 수 없다. 한 도메인에서 유리한 가정은 다른 도메인에서 불리할 수 있다.
+
+따라서 실제 연구에서는 다음 선택을 경험적으로 검증한다.
+
+- 모델 계열
+- 학습 알고리즘
+- 속도–정확도–복잡도 절충
+- 정규화 방식
+- 검증 절차
+
+## 5. 정규화: 해답에 선호를 넣는다
+
+정규화(regularization)는 학습 알고리즘에 특정한 선호를 넣어 일반화 오차를 줄이려는 수정이다. 강의자료의 대표 예는 선형회귀 목적함수에 가중치 감쇠(weight decay)를 더하는 것이다.
+
+
+{/* formula: MAI-P2-011 */}
+<ExplainedMath
+  id="MAI-P2-011"
+  tex={"\\operatorname{MSE}_{\\mathrm{train}}+\\lambda\\|\\mathbf w\\|_2^2"}
+  title={"가중치 감쇠 정규화"}
+  summary={"훈련 오차뿐 아니라 가중치가 지나치게 커지는 것도 벌점으로 주어 모델의 복잡도를 제어한다."}
+  steps={["첫 항은 데이터에 맞지 않는 정도다.", "둘째 항은 가중치 크기에 대한 벌점이다.", "λ가 두 목표 사이의 균형을 정한다."]}
+  symbols={[{"symbol": "\\lambda", "meaning": "정규화 강도"}, {"symbol": "\\|\\mathbf w\\|_2^2", "meaning": "가중치 제곱합"}]}
+  note={"원자료에서는 λ=0이면 선호가 없고, λ가 커질수록 작은 가중치를 더 강하게 선호한다고 설명한다."}
+  sourcePage={4}
+  status="source-exact"
+/>
+
+
+<Math tex={"\\lambda=0"} />이면 작은 가중치를 특별히 선호하지 않는다. <Math tex={"\\lambda"} />가 커질수록 큰 가중치에 더 강한 벌점을 주므로 모델의 유효 용량이 줄어든다. 원자료의 핵심 정의는 다음과 같이 재서술할 수 있다.
+
+> 정규화는 훈련 오차 자체를 낮추려는 조작이 아니라, **일반화 오차를 줄이기 위해 학습 절차를 수정하는 것**이다.
+
+정규화에는 목적함수에 명시적으로 항을 더하는 방식뿐 아니라, 조기 종료(early stopping), 데이터 증강, 드롭아웃처럼 학습과정에 암묵적 선호를 넣는 방식도 있다. 공짜 점심이 없으므로 모든 문제에 최적인 정규화는 없지만, 딥러닝은 비교적 범용적인 정규화 조합으로 다양한 과제를 처리하려는 철학을 발전시켜 왔다.
+
+## 6. 하이퍼파라미터와 검증 세트
+
+하이퍼파라미터(hyperparameter)는 학습 알고리즘이 훈련 중 직접 추정하지 않고 사람이 정하거나 별도 탐색으로 선택하는 설정이다.
+
+- 다항식 차수
+- 가중치 감쇠 강도 <Math tex={"\\lambda"} />
+- 학습률
+- 층 수와 폭
+- 배치 크기
+- 학습 반복 횟수
+
+용량을 통제하는 하이퍼파라미터를 훈련 세트에서만 고르면 가능한 한 복잡한 모델이 선택되기 쉽다. 이 때문에 훈련 알고리즘이 보지 않는 검증 세트(validation set)가 필요하다.
+
+### 6.1 훈련·검증·테스트의 역할
+
+| 데이터 | 역할 | 사용하면 안 되는 방식 |
+|---|---|---|
+| 훈련 세트 | 모델 파라미터 학습 | 최종 성능 보고 |
+| 검증 세트 | 하이퍼파라미터와 모델 선택 | 반복 선택 후에도 완전히 새 데이터라고 주장 |
+| 테스트 세트 | 모든 선택이 끝난 동결 모델의 최종 평가 | 하이퍼파라미터 조정에 반복 사용 |
+
+원자료의 다이어그램은 훈련 세트로 모델을 학습하고, 검증 세트로 파라미터 설정을 선택한 뒤 모델을 동결하고, 마지막에 테스트 세트로 평가하는 흐름을 보여준다.
+
+### 6.2 K-fold 교차검증
+
+데이터가 작으면 한 번의 고정 분할에서 테스트 또는 검증 세트가 너무 작아져 평균 오차의 통계적 불확실성이 커진다. K-fold 교차검증은 데이터를 겹치지 않는 <Math tex={"K"} />개 조각으로 나누고, 각 조각을 한 번씩 검증용으로 사용한다. 나머지 <Math tex={"K-1"} />개 조각으로 모델을 학습하고, <Math tex={"K"} />번의 검증 오차를 평균낸다.
+
+원자료 Figure 4의 핵심은 “모든 데이터가 한 번씩 검증 역할을 맡는다”는 점이다. 아래 학습 도구의 **K-fold** 탭에서 현재 검증 조각을 바꾸어 볼 수 있다.
+
+## 7. SVM과 커널 트릭
+
+Support Vector Machine(SVM)은 지도학습의 대표적인 선형 분류기다. 로지스틱 회귀와 마찬가지로 선형 점수 <Math tex={"\\mathbf w^{\\mathsf T}\\mathbf x+b"} />를 사용하지만, 기본 SVM은 확률보다 클래스 정체성을 출력한다.
+
+
+{/* formula: MAI-P2-012 */}
+<ExplainedMath
+  id="MAI-P2-012"
+  tex={"\\begin{aligned}\n\\mathbf w^{\\mathsf T}\\mathbf x+b&>0 &&\\Rightarrow\\ \\text{positive class},\\\\\n\\mathbf w^{\\mathsf T}\\mathbf x+b&<0 &&\\Rightarrow\\ \\text{negative class}.\n\\end{aligned}"}
+  title={"Support Vector Machine의 선형 결정 규칙"}
+  summary={"초평면의 어느 쪽에 입력이 놓이는지를 부호로 판단해 두 클래스를 나눈다."}
+  steps={["선형 점수 wᵀx+b를 계산한다.", "점수가 양수인지 음수인지 확인한다.", "부호에 따라 클래스를 선택한다."]}
+  symbols={[{"symbol": "b", "meaning": "결정경계를 평행이동시키는 절편"}, {"symbol": "\\mathbf w", "meaning": "결정경계에 수직인 방향"}]}
+  sourcePage={6}
+  status="source-exact"
+/>
+
+
+원자료의 각주에서는 로지스틱 회귀가 같은 선형 점수를 시그모이드(sigmoid)에 넣어 0과 1 사이의 값으로 바꾸고, 이를 양성 클래스 확률로 해석한다고 설명한다.
+
+
+{/* formula: MAI-P2-013 */}
+<ExplainedMath
+  id="MAI-P2-013"
+  tex={"\\sigma(\\mathbf w^{\\mathsf T}\\mathbf x+b),\\qquad \\sigma(t)=\\frac{1}{1+e^{-t}}\\in(0,1)."}
+  title={"로지스틱 회귀의 시그모이드"}
+  summary={"선형 점수를 0과 1 사이의 값으로 눌러 양성 클래스일 확률처럼 해석한다."}
+  steps={["선형 점수 t를 만든다.", "시그모이드에 넣어 0~1 사이로 바꾼다."]}
+  symbols={[{"symbol": "\\sigma", "meaning": "시그모이드 함수"}, {"symbol": "e", "meaning": "자연로그의 밑"}]}
+  sourcePage={6}
+  status="source-exact"
+/>
+
+
+### 7.1 내적만 남기면 비선형 모델을 만들 수 있다
+
+SVM의 선형 점수는 훈련 예시와 현재 입력 사이의 내적 합으로 다시 쓸 수 있다.
+
+
+{/* formula: MAI-P2-014 */}
+<ExplainedMath
+  id="MAI-P2-014"
+  tex={"\\mathbf w^{\\mathsf T}\\mathbf x+b=b+\\sum_{\\ell=1}^{L}\\alpha_\\ell\\,\\mathbf x^{\\mathsf T}\\mathbf x_\\ell."}
+  title={"SVM 점수를 훈련 예시의 내적으로 표현"}
+  summary={"학습된 결정함수는 훈련 예시들과 새 입력의 유사도인 내적을 더한 형태로 다시 쓸 수 있다."}
+  steps={["새 입력 x와 각 훈련 예시 xℓ의 내적을 구한다.", "학습된 계수 αℓ를 곱한다.", "모두 더하고 절편 b를 더한다."]}
+  symbols={[{"symbol": "\\alpha_\\ell", "meaning": "각 훈련 예시의 영향력"}, {"symbol": "\\mathbf x_\\ell", "meaning": "ℓ번째 훈련 예시"}]}
+  sourcePage={7}
+  status="source-exact"
+/>
+
+
+입력 자체 대신 고차원 특징변환 <Math tex={"\\phi(\\mathbf x)"} />를 사용하더라도, 알고리즘이 두 변환 벡터의 내적만 요구한다면 그 내적을 커널 함수로 대체할 수 있다.
+
+
+{/* formula: MAI-P2-015 */}
+<ExplainedMath
+  id="MAI-P2-015"
+  tex={"\\kappa(\\mathbf x,\\mathbf x_\\ell)=\\phi(\\mathbf x)^{\\mathsf T}\\phi(\\mathbf x_\\ell)."}
+  title={"커널 함수"}
+  summary={"고차원 특징 φ(x)를 직접 만들지 않고도 그 공간에서의 내적을 커널 값 하나로 계산한다."}
+  steps={["두 입력을 특징공간으로 보낸다고 생각한다.", "특징벡터의 내적을 계산한다.", "실제 구현에서는 κ를 바로 계산할 수 있다."]}
+  symbols={[{"symbol": "\\phi", "meaning": "입력을 새 특징공간으로 보내는 변환"}, {"symbol": "\\kappa", "meaning": "변환된 공간의 내적을 대신 계산하는 커널"}]}
+  sourcePage={7}
+  status="source-exact"
+/>
+
+{/* formula: MAI-P2-016 */}
+<ExplainedMath
+  id="MAI-P2-016"
+  tex={"f(\\mathbf x)=b+\\sum_{\\ell=1}^{L}\\alpha_\\ell\\kappa(\\mathbf x,\\mathbf x_\\ell)."}
+  title={"커널 SVM의 결정함수"}
+  summary={"새 입력과 훈련 예시 사이의 커널 유사도를 가중합해 비선형 결정경계를 만든다."}
+  steps={["각 훈련 예시와 커널 값을 구한다.", "αℓ로 가중한다.", "합과 b의 부호로 분류한다."]}
+  symbols={[{"symbol": "f(\\mathbf x)", "meaning": "분류에 사용하는 결정 점수"}]}
+  sourcePage={7}
+  status="source-exact"
+/>
+
+
+이 함수는 원래 입력 <Math tex={"\\mathbf x"} />에 대해서는 비선형일 수 있지만, 변환된 특징공간에서는 선형이다. 커널 트릭의 두 장점은 다음과 같다.
+
+1. 고정된 특징공간에서 계수 <Math tex={"\\boldsymbol\\alpha"} />만 최적화하여 비선형 결정경계를 만들 수 있다.
+2. <Math tex={"\\phi(\\mathbf x)"} />를 명시적으로 생성하지 않고 내적값을 직접 계산해 비용을 줄일 수 있다.
+
+원자료가 제시한 가우시안 커널은 정규밀도 표기로 쓰여 있다.
+
+
+{/* formula: MAI-P2-017 */}
+<ExplainedMath
+  id="MAI-P2-017"
+  tex={"\\kappa(\\mathbf u,\\mathbf v)=\\mathcal N(\\mathbf u-\\mathbf v;\\mathbf0,\\sigma^2\\mathbf I)."}
+  title={"가우시안 커널의 원자료 표기"}
+  summary={"두 벡터의 차이가 0에 가까울수록 큰 값을 주는 가우시안 모양의 유사도다."}
+  steps={["u-v로 두 입력 사이의 차이를 만든다.", "그 차이가 평균 0인 가우시안에서 얼마나 그럴듯한지 계산한다."]}
+  symbols={[{"symbol": "\\sigma", "meaning": "유사도가 줄어드는 거리 척도"}, {"symbol": "\\mathbf I", "meaning": "항등 공분산 구조"}]}
+  note={"상수배를 생략한 RBF 커널 exp(-||u-v||²/(2σ²))도 같은 분류 목적에 널리 쓰인다."}
+  sourcePage={7}
+  status="source-exact"
+/>
+
+
+## 8. 최소거리 분류기: 가장 가까운 클래스 중심을 고른다
+
+결정론적 최소거리 분류기(minimum-distance classifier)는 각 클래스의 대표 벡터, 보통 클래스 평균을 프로토타입으로 사용한다.
+
+
+{/* formula: MAI-P2-018 */}
+<ExplainedMath
+  id="MAI-P2-018"
+  tex={"\\mathbf m_c=\\frac{1}{M_c}\\sum_{\\mathbf x\\in S_c}\\mathbf x,\\qquad c=1,\\ldots,C."}
+  title={"클래스 프로토타입 평균"}
+  summary={"각 클래스의 대표점은 그 클래스 훈련 벡터들의 좌표별 평균으로 정한다."}
+  steps={["클래스 c에 속한 벡터를 모은다.", "벡터를 모두 더한다.", "개수 M_c로 나눈다."]}
+  symbols={[{"symbol": "S_c", "meaning": "c번째 클래스의 샘플 집합"}, {"symbol": "\\mathbf m_c", "meaning": "c번째 클래스의 평균 대표점"}]}
+  sourcePage={7}
+  status="source-exact"
+/>
+
+
+입력과 각 클래스 평균 사이의 유클리드 제곱거리를 계산한다.
+
+
+{/* formula: MAI-P2-019 */}
+<ExplainedMath
+  id="MAI-P2-019"
+  tex={"D_c(\\mathbf x)=\\|\\mathbf x-\\mathbf m_c\\|_2^2,\\qquad c=1,\\ldots,C."}
+  title={"클래스 평균까지의 제곱거리"}
+  summary={"입력과 각 클래스 대표점 사이의 유클리드 거리를 계산한다."}
+  steps={["입력에서 클래스 평균을 뺀다.", "각 좌표 차이를 제곱해 더한다."]}
+  symbols={[{"symbol": "D_c", "meaning": "c번째 클래스까지의 거리 점수"}]}
+  sourcePage={8}
+  status="source-exact"
+/>
+
+{/* formula: MAI-P2-020 */}
+<ExplainedMath
+  id="MAI-P2-020"
+  tex={"\\begin{aligned}\nD_c(\\mathbf x)&<D_{c'}(\\mathbf x) &&(c'\\ne c),\\\\\nD_c(\\mathbf x)&=D_{c'}(\\mathbf x) &&\\text{이면 동률}.\n\\end{aligned}"}
+  title={"최소거리 분류 규칙"}
+  summary={"가장 가까운 클래스 평균을 선택하고, 거리가 완전히 같으면 별도의 동률 규칙이 필요하다."}
+  steps={["모든 D_c를 계산한다.", "가장 작은 값을 가진 클래스를 선택한다."]}
+  symbols={[{"symbol": "c'", "meaning": "비교 대상인 다른 클래스"}]}
+  sourcePage={8}
+  status="source-exact"
+/>
+
+
+두 거리의 제곱을 전개하면 <Math tex={"\\mathbf x^{\\mathsf T}\\mathbf x"} /> 항은 모든 클래스에서 같아 사라진다. 따라서 가장 작은 거리를 고르는 일은 다음 판별함수(discriminant function)를 가장 크게 만드는 일과 같다.
+
+
+{/* formula: MAI-P2-021 */}
+<ExplainedMath
+  id="MAI-P2-021"
+  tex={"d_c(\\mathbf x)=\\mathbf m_c^{\\mathsf T}\\mathbf x-\\frac12\\mathbf m_c^{\\mathsf T}\\mathbf m_c,\\qquad c=1,\\ldots,C."}
+  title={"최소거리와 동치인 판별함수"}
+  summary={"거리의 공통항을 없애면 가장 가까운 평균을 찾는 문제가 가장 큰 판별점수를 찾는 문제로 바뀐다."}
+  steps={["입력과 평균의 내적을 계산한다.", "평균 자체의 크기 절반을 뺀다.", "점수가 가장 큰 클래스를 선택한다."]}
+  symbols={[{"symbol": "d_c", "meaning": "c번째 클래스의 판별 점수"}]}
+  sourcePage={8}
+  sourceEquation={"(2)"}
+  status="source-exact"
+/>
+
+{/* formula: MAI-P2-022 */}
+<ExplainedMath
+  id="MAI-P2-022"
+  tex={"d_c(\\mathbf x)>d_{c'}(\\mathbf x),\\qquad c'\\ne c."}
+  title={"판별점수 기반 분류"}
+  summary={"모든 다른 클래스보다 점수가 큰 c를 선택한다."}
+  steps={["각 클래스 점수를 비교한다.", "최댓값을 가진 클래스를 출력한다."]}
+  sourcePage={8}
+  status="source-exact"
+/>
+
+
+두 클래스의 점수가 같은 점들이 결정경계가 된다.
+
+
+{/* formula: MAI-P2-023 */}
+<ExplainedMath
+  id="MAI-P2-023"
+  tex={"\\begin{aligned}\nd_c(\\mathbf x)&=d_{c'}(\\mathbf x),\\\\\nd_{c,c'}(\\mathbf x)\n&=(\\mathbf m_c-\\mathbf m_{c'})^{\\mathsf T}\\mathbf x\n-\\frac12(\\mathbf m_c-\\mathbf m_{c'})^{\\mathsf T}(\\mathbf m_c+\\mathbf m_{c'})=0.\n\\end{aligned}"}
+  title={"두 클래스 사이의 결정경계"}
+  summary={"두 클래스 점수가 같은 점들의 집합이 경계이며, 두 평균을 잇는 선분의 수직이등분 초평면이 된다."}
+  steps={["두 판별점수를 같게 둔다.", "공통항을 정리한다.", "입력 x에 대한 선형 방정식을 얻는다."]}
+  symbols={[{"symbol": "d_{c,c'}", "meaning": "두 클래스 점수의 차이"}]}
+  sourcePage={8}
+  sourceEquation={"(3)"}
+  status="source-exact"
+/>
+
+
+이 경계는 두 평균을 잇는 선분의 수직이등분면이다. 특징이 2차원이면 직선, 3차원이면 평면, 더 높은 차원이면 초평면(hyperplane)이다.
+
+## 9. 베이즈 분류기: 확률과 손실을 함께 최소화한다
+
+최소거리 분류기는 거리를 기준으로 선택한다. 베이즈 분류기(Bayes classifier)는 데이터가 확률적으로 생성된다고 보고, 잘못된 결정을 내렸을 때의 손실까지 포함해 **평균 위험(average risk)**을 최소화한다.
+
+### 9.1 0-1 손실과 조건부 위험
+
+정답이면 손실 0, 오답이면 손실 1인 0-1 손실을 사용한다.
+
+
+{/* formula: MAI-P2-024 */}
+<ExplainedMath
+  id="MAI-P2-024"
+  tex={"L(a_c\\mid S_{c'})=\\begin{cases}0,&c=c',\\\\1,&c\\ne c',\\end{cases}\\qquad c,c'=1,\\ldots,C."}
+  title={"0-1 손실"}
+  summary={"정답을 맞히면 손실 0, 틀리면 모두 같은 손실 1을 주는 가장 단순한 분류 손실이다."}
+  steps={["실제 클래스 c′와 선택한 행동 c를 비교한다.", "같으면 0, 다르면 1을 부여한다."]}
+  symbols={[{"symbol": "a_c", "meaning": "c번째 클래스를 선택하는 행동"}]}
+  sourcePage={8}
+  sourceEquation={"(4)"}
+  status="source-exact"
+/>
+
+
+관측값 <Math tex={"\\mathbf x"} />가 주어졌을 때 특정 행동을 선택할 평균 손실은 실제 클래스별 손실에 사후확률을 곱해 더한 값이다.
+
+
+{/* formula: MAI-P2-025 */}
+<ExplainedMath
+  id="MAI-P2-025"
+  tex={"R_{c'}(\\mathbf x)=\\sum_{c=1}^{C}L(a_c\\mid S_{c'})P(S_c\\mid\\mathbf x),\\qquad c'=1,\\ldots,C."}
+  title={"조건부 평균 위험"}
+  summary={"현재 관측 x가 주어졌을 때 특정 클래스를 선택하면 생길 수 있는 손실을 가능한 실제 클래스 확률로 평균낸다."}
+  steps={["각 실제 클래스일 사후확률을 구한다.", "그 경우의 손실을 곱한다.", "모든 실제 클래스에 대해 더한다."]}
+  symbols={[{"symbol": "R_{c'}", "meaning": "c′를 선택했을 때의 평균 위험"}, {"symbol": "P(S_c\\mid\\mathbf x)", "meaning": "x를 본 뒤 c일 확률"}]}
+  note={"원자료는 손실의 두 첨자 역할을 L(a_c|S_{c'})로 적는다. 본문에서는 같은 표기를 보존하되, 읽을 때는 ‘선택한 행동과 실제 클래스의 조합에 따른 손실’로 이해한다."}
+  sourcePage={8}
+  sourceEquation={"(5)"}
+  status="source-exact"
+/>
+
+
+### 9.2 사전확률·가능도·사후확률
+
+베이즈 규칙은 관측 전 믿음인 사전확률(prior), 클래스가 정해졌을 때 관측이 나올 가능도(likelihood), 관측 후 갱신된 사후확률(posterior)을 연결한다.
+
+
+{/* formula: MAI-P2-026 */}
+<ExplainedMath
+  id="MAI-P2-026"
+  tex={"P(X\\mid Y)=\\frac{P(Y\\mid X)P(X)}{P(Y)}."}
+  title={"베이즈 규칙"}
+  summary={"관측 전 믿음인 사전확률에 관측 가능성인 우도를 곱하고, 전체 관측확률로 나누어 관측 후 확률을 구한다."}
+  steps={["사전확률 P(X)를 둔다.", "우도 P(Y|X)를 곱한다.", "증거 P(Y)로 정규화한다."]}
+  symbols={[{"symbol": "P(X\\mid Y)", "meaning": "Y를 본 뒤 X일 확률"}]}
+  sourcePage={9}
+  status="source-exact"
+/>
+
+
+원자료 식 (6)은 사후확률의 우변을 빈칸으로 둔다. 아래 두 번째 줄은 첫 번째 등식에서 직접 정리한 완성식이며, 원자료 식과 구분해 표시한다.
+
+
+{/* formula: MAI-P2-027 */}
+<ExplainedMath
+  id="MAI-P2-027"
+  tex={"\\begin{aligned}\nP(S_c,\\mathbf x)&=P(S_c\\mid\\mathbf x)p(\\mathbf x)=p(\\mathbf x\\mid S_c)P(S_c),\\\\\nP(S_c\\mid\\mathbf x)&=\\frac{p(\\mathbf x\\mid S_c)P(S_c)}{p(\\mathbf x)}.\n\\end{aligned}"}
+  title={"클래스 사후확률"}
+  summary={"클래스 우도와 사전확률을 곱한 뒤 관측 x의 전체 확률로 나누면 사후확률이 된다."}
+  steps={["결합확률을 두 방식으로 쓴다.", "두 표현을 같게 둔다.", "P(S_c|x)를 남기도록 정리한다."]}
+  symbols={[{"symbol": "p(\\mathbf x\\mid S_c)", "meaning": "c 클래스가 x를 만들 우도"}, {"symbol": "P(S_c)", "meaning": "관측 전 클래스 확률"}]}
+  note={"원자료 식 (6)의 우변은 빈칸이다. 두 번째 줄은 첫 번째 줄에서 직접 정리한 편집자 완성식이다."}
+  sourcePage={9}
+  sourceEquation={"(6)"}
+  status="source-completed"
+/>
+
+
+### 9.3 최소 위험 규칙
+
+사후확률을 조건부 위험에 대입한다.
+
+
+{/* formula: MAI-P2-028 */}
+<ExplainedMath
+  id="MAI-P2-028"
+  tex={"R_{c'}(\\mathbf x)=\\frac{1}{p(\\mathbf x)}\\sum_{c=1}^{C}L(a_c\\mid S_{c'})p(\\mathbf x\\mid S_c)P(S_c)."}
+  title={"베이즈 규칙을 넣은 위험"}
+  summary={"사후확률을 우도×사전확률 형태로 바꿔 쓴 조건부 위험이다."}
+  steps={["식 (5)의 P(S_c|x)를 베이즈 식으로 교체한다.", "모든 클래스에 공통인 1/p(x)를 밖으로 뺀다."]}
+  symbols={[{"symbol": "p(\\mathbf x)", "meaning": "모든 클래스를 합친 관측 x의 확률밀도"}]}
+  sourcePage={9}
+  status="source-exact"
+/>
+
+
+<Math tex={"1/p(\\mathbf x)"} />는 모든 후보 행동에 공통인 양수이므로 어느 위험이 더 작은지 비교할 때 제거할 수 있다.
+
+
+{/* formula: MAI-P2-029 */}
+<ExplainedMath
+  id="MAI-P2-029"
+  tex={"R_{c'}(\\mathbf x)=\\sum_{c=1}^{C}L(a_c\\mid S_{c'})p(\\mathbf x\\mid S_c)P(S_c)."}
+  title={"공통 양의 항을 제거한 위험"}
+  summary={"모든 선택에 똑같이 곱해지는 양의 값 1/p(x)는 어느 위험이 더 작은지 바꾸지 않으므로 생략한다."}
+  steps={["모든 R에 공통인 양의 배율을 확인한다.", "최솟값의 순서는 변하지 않으므로 제거한다."]}
+  sourcePage={9}
+  sourceEquation={"(7)"}
+  status="source-exact"
+/>
+
+
+베이즈 분류기는 위험이 가장 작은 클래스를 선택한다.
+
+
+{/* formula: MAI-P2-030 */}
+<ExplainedMath
+  id="MAI-P2-030"
+  tex={"R_c(\\mathbf x)<R_{c'}(\\mathbf x),\\qquad c'\\ne c."}
+  title={"베이즈 분류기의 선택 규칙"}
+  summary={"평균 손실이 가장 작은 클래스를 선택하면 전체 평균 위험이 최소가 된다."}
+  steps={["각 행동의 위험을 계산한다.", "가장 작은 위험을 선택한다."]}
+  sourcePage={9}
+  status="source-exact"
+/>
+
+
+0-1 손실은 크로네커 델타(Kronecker delta)로도 쓸 수 있다.
+
+
+{/* formula: MAI-P2-031 */}
+<ExplainedMath
+  id="MAI-P2-031"
+  tex={"L(a_c\\mid S_{c'})=1-\\delta_{c,c'},\\qquad\n\\delta_{c,c'}=\\begin{cases}1,&c=c',\\\\0,&c\\ne c'.\\end{cases}"}
+  title={"0-1 손실의 크로네커 델타 표현"}
+  summary={"같은 클래스일 때만 1인 델타를 1에서 빼면 0-1 손실을 간단히 표현할 수 있다."}
+  steps={["c와 c′가 같으면 δ=1이라 손실은 0이다.", "다르면 δ=0이라 손실은 1이다."]}
+  symbols={[{"symbol": "\\delta_{c,c'}", "meaning": "두 인덱스가 같은지 나타내는 크로네커 델타"}]}
+  sourcePage={9}
+  status="source-exact"
+/>
+
+
+원자료는 다음 위험 전개의 마지막 줄도 빈칸으로 둔다. 전확률법칙 <Math tex={"p(\\mathbf x)=\\sum_c p(\\mathbf x\\mid S_c)P(S_c)"} />을 사용하면 완성할 수 있다.
+
+
+{/* formula: MAI-P2-032 */}
+<ExplainedMath
+  id="MAI-P2-032"
+  tex={"\\begin{aligned}\nR_{c'}(\\mathbf x)\n&=\\sum_{c=1}^{C}(1-\\delta_{c,c'})p(\\mathbf x\\mid S_c)P(S_c)\\\\\n&=p(\\mathbf x)-p(\\mathbf x\\mid S_{c'})P(S_{c'}).\n\\end{aligned}"}
+  title={"0-1 손실에서의 위험"}
+  summary={"전체 관측확률에서 선택한 클래스의 우도×사전확률을 뺀 값이 오분류 위험이 된다."}
+  steps={["합을 전체 항과 정답 클래스 항으로 나눈다.", "전체 합은 전확률법칙으로 p(x)가 된다.", "선택한 클래스 항을 뺀다."]}
+  note={"원자료의 두 번째 줄은 빈칸이다. 전확률법칙으로 완성한 식을 별도로 표시했다."}
+  sourcePage={9}
+  status="source-completed"
+/>
+
+
+공통인 <Math tex={"p(\\mathbf x)"} />를 빼고 비교하면 위험을 최소화하는 것은 가능도와 사전확률의 곱을 최대화하는 것과 같다.
+
+
+{/* formula: MAI-P2-033 */}
+<ExplainedMath
+  id="MAI-P2-033"
+  tex={"\\begin{aligned}\np(\\mathbf x)-p(\\mathbf x\\mid S_c)P(S_c)\n&<p(\\mathbf x)-p(\\mathbf x\\mid S_{c'})P(S_{c'}),\\\\\np(\\mathbf x\\mid S_c)P(S_c)\n&>p(\\mathbf x\\mid S_{c'})P(S_{c'}).\n\\end{aligned}"}
+  title={"위험 최소화와 점수 최대화의 동치"}
+  summary={"공통인 p(x)를 지우고 부호를 바꾸면, 가장 작은 위험을 고르는 것이 가장 큰 우도×사전확률을 고르는 것과 같다."}
+  steps={["양변에서 p(x)를 제거한다.", "음수를 곱하면서 부등호 방향을 바꾼다."]}
+  sourcePage={9}
+  status="source-exact"
+/>
+
+{/* formula: MAI-P2-034 */}
+<ExplainedMath
+  id="MAI-P2-034"
+  tex={"d_c(\\mathbf x)=p(\\mathbf x\\mid S_c)P(S_c),\\qquad c=1,\\ldots,C."}
+  title={"0-1 손실의 베이즈 판별함수"}
+  summary={"각 클래스가 x를 만들 가능성과 그 클래스가 원래 나타날 가능성을 곱한 점수다."}
+  steps={["우도를 구한다.", "사전확률을 곱한다.", "가장 큰 점수의 클래스를 고른다."]}
+  sourcePage={10}
+  sourceEquation={"(8)"}
+  status="source-exact"
+/>
+
+
+이 분류기는 평균 오분류 위험을 최소화한다는 의미에서 최적이다. 단, 실제 적용에는 각 클래스의 사전확률과 클래스 조건부 밀도를 알아야 한다. 사전확률은 문제지식이나 빈도로 추정할 수 있지만, 고차원 밀도 <Math tex={"p(\\mathbf x\\mid S_c)"} />를 표본만으로 안정적으로 추정하는 일은 훨씬 어렵다.
+
+## 10. 가우시안 클래스: QDA에서 LDA와 최소거리까지
+
+클래스 조건부 밀도를 다변량 가우시안으로 가정하면 전체 함수를 비모수적으로 추정하는 대신 평균과 공분산만 추정하면 된다.
+
+
+{/* formula: MAI-P2-035 */}
+<ExplainedMath
+  id="MAI-P2-035"
+  tex={"p(\\mathbf x\\mid S_c)=\\frac{\\exp\\!\\left[-\\frac12(\\mathbf x-\\mathbf m_c)^{\\mathsf T}\\mathbf V_c^{-1}(\\mathbf x-\\mathbf m_c)\\right]}{(2\\pi)^{N/2}|\\mathbf V_c|^{1/2}}."}
+  title={"N차원 가우시안 클래스 밀도"}
+  summary={"평균에서 공분산을 고려한 거리가 멀수록 지수적으로 확률밀도가 작아진다."}
+  steps={["x에서 클래스 평균을 뺀다.", "V_c^{-1}로 방향별 퍼짐을 보정한 거리를 계산한다.", "지수항으로 거리가 큰 점의 밀도를 줄인다.", "앞의 계수로 전체 적분이 1이 되게 맞춘다."]}
+  symbols={[{"symbol": "\\mathbf V_c", "meaning": "c 클래스의 공분산행렬"}, {"symbol": "|\\mathbf V_c|", "meaning": "분포가 퍼진 부피와 관련된 행렬식"}]}
+  sourcePage={10}
+  sourceEquation={"(9)"}
+  status="source-exact"
+/>
+
+
+평균은 클래스 중심이고, 공분산은 각 방향의 퍼짐과 변수 사이의 함께 변하는 정도를 나타낸다.
+
+
+{/* formula: MAI-P2-036 */}
+<ExplainedMath
+  id="MAI-P2-036"
+  tex={"\\begin{aligned}\n\\mathbf m_c&=E[\\mathbf x\\mid S_c],\\\\\n\\mathbf V_c&=E[(\\mathbf x-\\mathbf m_c)(\\mathbf x-\\mathbf m_c)^{\\mathsf T}\\mid S_c].\n\\end{aligned}"}
+  title={"가우시안 클래스의 평균과 공분산"}
+  summary={"평균은 클래스 중심이고, 공분산은 각 방향으로 얼마나 퍼지는지와 좌표들이 함께 변하는 방식을 담는다."}
+  steps={["클래스 c 안에서 x의 평균을 구한다.", "평균을 뺀 벡터의 외적을 평균해 공분산을 구한다."]}
+  sourcePage={10}
+  status="source-exact"
+/>
+
+
+기댓값은 훈련 표본의 평균으로 근사한다.
+
+
+{/* formula: MAI-P2-037 */}
+<ExplainedMath
+  id="MAI-P2-037"
+  tex={"\\begin{aligned}\n\\widehat{\\mathbf m}_c&=\\frac1{M_c}\\sum_{\\mathbf x\\in S_c}\\mathbf x,\\\\\n\\widehat{\\mathbf V}_c&=\\frac1{M_c}\\sum_{\\mathbf x\\in S_c}\\mathbf x\\mathbf x^{\\mathsf T}-\\widehat{\\mathbf m}_c\\widehat{\\mathbf m}_c^{\\mathsf T}.\n\\end{aligned}"}
+  title={"표본으로 평균과 공분산 추정"}
+  summary={"기대값을 직접 모를 때 훈련 샘플의 평균으로 대신 계산한다."}
+  steps={["클래스 표본을 평균해 m̂_c를 만든다.", "xxᵀ의 평균에서 평균벡터 외적을 뺀다."]}
+  symbols={[{"symbol": "M_c", "meaning": "c 클래스의 훈련 표본 수"}]}
+  sourcePage={10}
+  status="source-exact"
+/>
+
+
+원자료의 공분산 추정식은 <Math tex={"1/M_c"} />를 사용한 최대가능도형 표본식이다. 불편추정량이 필요한 통계 문맥에서는 중심화된 합에 <Math tex={"1/(M_c-1)"} />을 사용하는 변형도 있다.
+
+### 10.1 1차원 두 클래스
+
+평균 <Math tex={"m_1,m_2"} />, 표준편차 <Math tex={"\\sigma_1,\\sigma_2"} />인 두 가우시안 클래스의 점수는 다음과 같다.
+
+
+{/* formula: MAI-P2-038 */}
+<ExplainedMath
+  id="MAI-P2-038"
+  tex={"d_c(x)=\\frac{1}{\\sqrt{2\\pi}\\sigma_c}\\exp\\!\\left[-\\frac{(x-m_c)^2}{2\\sigma_c^2}\\right]P(S_c),\\qquad c=1,2."}
+  title={"1차원 두 가우시안 클래스의 점수"}
+  summary={"1차원 가우시안 밀도에 사전확률을 곱해 두 클래스의 베이즈 점수를 비교한다."}
+  steps={["평균과 표준편차로 각 클래스의 종 모양 곡선을 만든다.", "사전확률로 곡선 높이를 조정한다.", "두 점수가 같은 곳이 경계다."]}
+  symbols={[{"symbol": "\\sigma_c", "meaning": "c 클래스의 표준편차"}]}
+  sourcePage={10}
+  status="source-exact"
+/>
+
+
+원자료는 두 확률밀도 곡선을 직접 그려 보라고 묻는다. 두 점수가 같은 지점이 결정경계다. 사전확률이 같다면 두 PDF의 교점과 같다.
+
+
+{/* formula: MAI-P2-039 */}
+<ExplainedMath
+  id="MAI-P2-039"
+  tex={"\\begin{aligned}\nd_1(x_0)&=d_2(x_0),\\\\\nP(S_1)&=P(S_2)=\\frac12,\\\\\np(x_0\\mid S_1)&=p(x_0\\mid S_2).\n\\end{aligned}"}
+  title={"두 가우시안 클래스의 결정경계"}
+  summary={"사전확률이 같다면 두 밀도곡선이 만나는 x₀가 결정경계가 된다."}
+  steps={["두 베이즈 점수를 같게 둔다.", "같은 사전확률을 양변에서 지운다.", "두 클래스 밀도가 같은 교점을 찾는다."]}
+  sourcePage={11}
+  status="source-exact"
+/>
+
+
+아래 학습 도구의 **베이즈 경계** 탭에서 두 클래스의 사전확률과 표준편차를 바꾸면, 평균의 중점과 베이즈 경계가 언제 달라지는지 볼 수 있다.
+
+### 10.2 로그를 취해도 순위는 바뀌지 않는다
+
+로그는 단조증가함수이므로 양의 점수에 로그를 취해도 어떤 클래스가 가장 큰지는 바뀌지 않는다.
+
+
+{/* formula: MAI-P2-040 */}
+<ExplainedMath
+  id="MAI-P2-040"
+  tex={"d_c(\\mathbf x)=\\ln\\!\\big(p(\\mathbf x\\mid S_c)P(S_c)\\big)=\\ln p(\\mathbf x\\mid S_c)+\\ln P(S_c)."}
+  title={"로그 베이즈 판별함수"}
+  summary={"로그는 순서를 보존하므로 곱셈 점수를 덧셈으로 바꿔도 같은 클래스를 선택한다."}
+  steps={["우도와 사전확률의 곱에 로그를 취한다.", "로그의 곱셈 법칙으로 두 항의 합으로 바꾼다."]}
+  sourcePage={11}
+  sourceEquation={"(10)"}
+  status="source-exact"
+/>
+
+
+가우시안 밀도를 대입하면 다음 네 항으로 나뉜다.
+
+
+{/* formula: MAI-P2-041 */}
+<ExplainedMath
+  id="MAI-P2-041"
+  tex={"d_c(\\mathbf x)=\\ln P(S_c)-\\frac N2\\ln(2\\pi)-\\frac12\\ln|\\mathbf V_c|-\\frac12(\\mathbf x-\\mathbf m_c)^{\\mathsf T}\\mathbf V_c^{-1}(\\mathbf x-\\mathbf m_c)."}
+  title={"가우시안 로그 판별식의 전체 전개"}
+  summary={"사전확률, 분포의 부피, 평균으로부터의 공분산 보정 거리 네 요소가 점수를 결정한다."}
+  steps={["가우시안 밀도의 계수와 지수항에 로그를 취한다.", "모든 클래스에 같은 -N/2 ln(2π)는 비교할 때 생략할 수 있다."]}
+  sourcePage={11}
+  status="source-exact"
+/>
+
+
+모든 클래스에 같은 <Math tex={"-(N/2)\\ln(2\\pi)"} />는 비교에서 제거할 수 있다. 공분산이 클래스마다 다르면 이차항이 남아 경계가 이차곡면이 된다. 이것이 가우시안 베이즈의 이차 판별분석(QDA) 형태다.
+
+
+{/* formula: MAI-P2-042 */}
+<ExplainedMath
+  id="MAI-P2-042"
+  tex={"d_c(\\mathbf x)=\\ln P(S_c)-\\frac12\\ln|\\mathbf V_c|-\\frac12(\\mathbf x-\\mathbf m_c)^{\\mathsf T}\\mathbf V_c^{-1}(\\mathbf x-\\mathbf m_c),\\quad c=1,\\ldots,C."}
+  title={"가우시안 베이즈의 이차 판별함수"}
+  summary={"클래스마다 공분산이 다르면 x에 대한 이차항이 남아 결정경계가 곡선 또는 이차 초곡면이 된다."}
+  steps={["클래스 공통 상수를 제거한다.", "클래스별 공분산과 평균을 이용해 점수를 계산한다."]}
+  sourcePage={11}
+  sourceEquation={"(11)"}
+  status="source-exact"
+/>
+
+
+모든 클래스가 같은 공분산을 쓰면 <Math tex={"\\mathbf x^{\\mathsf T}\\mathbf V^{-1}\\mathbf x"} />처럼 클래스와 무관한 이차항이 상쇄되어 선형 판별분석(LDA) 형태가 된다.
+
+
+{/* formula: MAI-P2-043 */}
+<ExplainedMath
+  id="MAI-P2-043"
+  tex={"\\begin{aligned}\n\\mathbf V_c&=\\mathbf V\\qquad(c=1,\\ldots,C),\\\\\nd_c(\\mathbf x)&=\\ln P(S_c)+\\mathbf x^{\\mathsf T}\\mathbf V^{-1}\\mathbf m_c-\\frac12\\mathbf m_c^{\\mathsf T}\\mathbf V^{-1}\\mathbf m_c.\n\\end{aligned}"}
+  title={"공분산이 같을 때의 선형 판별함수"}
+  summary={"모든 클래스가 같은 모양으로 퍼져 있으면 x의 이차항이 서로 상쇄되어 선형 경계만 남는다."}
+  steps={["모든 V_c를 같은 V로 둔다.", "x에만 의존하지만 클래스와 무관한 항을 제거한다.", "x에 대한 선형식으로 정리한다."]}
+  sourcePage={11}
+  sourceEquation={"(12)"}
+  status="source-exact"
+/>
+
+
+공분산이 항등행렬이고 모든 클래스가 같은 사전확률을 가지면 판별함수는 최소거리 분류기와 정확히 같아진다.
+
+
+{/* formula: MAI-P2-044 */}
+<ExplainedMath
+  id="MAI-P2-044"
+  tex={"\\mathbf V=\\mathbf I,\\quad P(S_c)=\\frac1C\n\\quad\\Longrightarrow\\quad\nd_c(\\mathbf x)=\\mathbf x^{\\mathsf T}\\mathbf m_c-\\frac12\\mathbf m_c^{\\mathsf T}\\mathbf m_c."}
+  title={"베이즈 분류기와 최소거리 분류기의 일치 조건"}
+  summary={"각 클래스가 같은 구형 분포이고 모두 같은 빈도로 나타난다면 베이즈 분류식이 최소거리 판별식과 정확히 같아진다."}
+  steps={["공분산을 항등행렬로 둔다.", "사전확률을 모두 같게 둔다.", "공통항을 제거하면 식 (2)가 남는다."]}
+  sourcePage={11}
+  status="source-exact"
+/>
+
+
+이 조건의 클래스들은 N차원에서 모양과 크기가 같은 구형 구름(hypersphere)으로 해석할 수 있다. 각 두 구름 중심 사이의 수직이등분 초평면이 결정경계가 된다.
+
+## 11. 나이브 베이즈와 강화학습
+
+### 11.1 나이브 베이즈
+
+나이브 베이즈는 클래스가 주어졌을 때 각 특성이 조건부 독립이라고 가정해 고차원 결합밀도를 일변량 밀도의 곱으로 바꾼다.
+
+
+{/* formula: MAI-P2-045 */}
+<ExplainedMath
+  id="MAI-P2-045"
+  tex={"p(S_c\\mid\\mathbf x)\\propto\\prod_{n=1}^{N}p(x_n\\mid S_c)."}
+  title={"나이브 베이즈의 조건부 독립 가정"}
+  summary={"클래스가 주어지면 각 특징이 서로 독립이라고 가정해 고차원 결합확률을 1차원 확률들의 곱으로 단순화한다."}
+  steps={["각 특징 x_n의 클래스 조건부 확률을 구한다.", "N개 값을 모두 곱한다.", "사후확률에 비례하는 점수로 사용한다."]}
+  symbols={[{"symbol": "\\propto", "meaning": "정규화 상수를 제외하면 비례함"}]}
+  note={"일반적인 나이브 베이즈 사후확률에는 사전확률 P(S_c)도 곱해진다. 원자료는 비례식에서 이를 생략해 적었으므로, 본문에서 원자료 식과 일반형을 구분한다."}
+  sourcePage={12}
+  status="source-exact"
+/>
+
+
+일반형에는 사전확률 <Math tex={"P(S_c)"} />도 곱한다. 원자료는 비례식에서 이를 생략해 적었다. 이 가정은 현실에서 정확히 성립하지 않는 경우가 많지만 두 실용적 장점이 있다.
+
+- 고차원 결합밀도를 직접 추정하는 부담을 피한다.
+- 독립 가정이 어긋나도 놀라울 만큼 좋은 정확도를 보이는 경우가 있다.
+
+### 11.2 강화학습
+
+이 장은 고정된 데이터셋을 학습하는 문제에 집중한다. 강화학습(reinforcement learning)은 에이전트가 환경과 상호작용하고, 그 행동이 이후 경험을 바꾸는 피드백 루프를 가진다. 원자료는 이 과제를 강의 범위 밖으로 두고 Sutton–Barto의 교재와 DQN 논문을 입문 자료로 제시한다.
+
+## 12. 차원의 저주와 차원축소
+
+차원이 높아지면 같은 공간 해상도를 유지하는 데 필요한 표본 수와 계산량이 급격히 늘어난다. 원자료 Figure 5는 각 축에 다섯 점을 유지할 때 1차원 5개, 2차원 25개, 3차원 125개가 필요함을 보여준다.
+
+
+{/* formula: MAI-P2-046 */}
+<ExplainedMath
+  id="MAI-P2-046"
+  tex={"N_{\\mathrm{points}}(d)=5^d,\\qquad 5,\\ 25,\\ 125,\\ldots"}
+  title={"차원이 늘 때 필요한 격자점 수"}
+  summary={"강의자료의 1차원 5개, 2차원 25개, 3차원 125개 그림을 일반화하면 축마다 5점을 유지하는 데 5^d개가 필요하다."}
+  steps={["각 축에 5개 위치를 둔다.", "d개 축의 조합 수를 곱한다.", "차원이 하나 늘 때마다 필요한 점이 5배가 된다."]}
+  sourcePage={12}
+  status="editorial-derived"
+/>
+
+
+**고차원 데이터**는 흔히 특성 수가 관측 수보다 많은 경우를 가리키지만, 차원의 저주는 그보다 넓다. 핵심은 표본 수가 데이터의 내재차원(intrinsic dimension)에 비해 작을 때 공간이 희박해지고 거리·밀도 추정이 어려워진다는 점이다.
+
+### 12.1 대표적인 차원축소 방법
+
+- **PCA(Principal Component Analysis):** 분산을 많이 보존하는 직교방향을 찾는다.
+- **LDA(Linear Discriminant Analysis):** 클래스 사이 분리는 키우고 클래스 내부 퍼짐은 줄이는 투영을 찾는다.
+- **t-SNE:** 국소 이웃관계를 보존해 고차원 데이터를 2D 또는 3D로 시각화한다.
+
+차원축소는 중요한 정보는 남기고 중복되거나 덜 중요한 변수를 줄여 학습과 시각화를 돕는다.
+
+### 12.2 딥러닝은 차원의 저주를 없앴는가
+
+강의자료는 CNN과 Transformer가 수천 차원의 영상 입력을 잘 처리한다는 경험적 사실을 소개하면서도, 그 이유가 완전히 해결된 이론은 아니라고 강조한다. 제시된 세 가지 가설은 다음과 같다.
+
+1. **다양체 가설과 자동 특징추출:** 실제 데이터는 전체 고차원 공간이 아니라 훨씬 낮은 차원의 구조 근처에 놓인다.
+2. **국소성과 대칭성:** CNN의 지역 연결과 이동 대칭 같은 구조가 탐색해야 할 함수공간을 줄인다.
+3. **정규화:** 가중치 감쇠, 드롭아웃, 데이터 증강, 조기 종료가 유효한 해를 선호하게 한다.
+
+딥러닝도 고차원성에 면역은 아니다. 데이터 품질, 모델 구조, 하이퍼파라미터, 계산자원에 따라 성능이 크게 달라지고, 일부 문제에서는 여전히 특징공학이나 추가적인 차원축소가 필요하다.
+
+## 13. 직접 움직여 보는 네 가지 핵심 그림
+
+아래 도구는 PDF의 Figure 1–5가 전달하는 핵심을 독립적인 SVG와 상호작용으로 다시 만든 것이다. 표시되는 수치는 개념 설명용이며 원자료의 실험값을 복제하지 않는다.
+
+<Part2LearningLab client:visible />
+
+## 14. 2026년 8월 업데이트: 강의의 기초가 어디까지 확장됐나
+
+이 절은 2025년 강의자료의 내용을 수정한 것이 아니라, **2026년 8월 18일까지 공개된 1차 연구자료를 별도로 연결한 업데이트**다.
+
+### 14.1 i.i.d. 가정에서 분포 이동으로
+
+훈련과 테스트가 같은 분포라는 i.i.d. 가정은 이론의 출발점이지만 실제 배포에서는 깨지기 쉽다. 2025년 ICML의 Compositional Risk Minimization은 훈련에 없던 속성 조합이 테스트에 등장하는 compositional shift를 명시적으로 다룬다. 2026년 연구는 covariate shift와 선택적으로 관측된 라벨이 동시에 존재할 때 배포 전 목표위험을 추정하는 문제까지 확장한다.
+
+- [Compositional Risk Minimization, ICML 2025](https://proceedings.mlr.press/v267/mahajan25a.html)
+- [Beyond the Training Distribution, 2026 preprint](https://arxiv.org/abs/2606.14506)
+
+### 14.2 정확도만으로는 부족하다: 보정과 예측집합
+
+분류 확률이 0.9라면 비슷한 예측 100개 중 약 90개가 맞아야 잘 보정(calibrated)된 것이다. 2025년 ICML의 generalized Venn/Venn-Abers 연구는 일반 손실함수와 하위집단까지 확장된 유한표본 보정을 제시했다. 2026년 KMM-CP는 공변량 이동에서 커널 평균 정합으로 conformal prediction의 coverage gap을 줄이는 방법을 제안한다.
+
+- [Generalized Venn and Venn-Abers Calibration, ICML 2025](https://proceedings.mlr.press/v267/van-der-laan25a.html)
+- [KMM-CP, 2026 preprint and code](https://arxiv.org/abs/2603.26415)
+
+### 14.3 긴 꼬리는 여전히 별도 문제다
+
+전체 정확도가 높아도 희귀 클래스 성능은 낮을 수 있다. 2025년 ICML의 Focal-SAM은 클래스별 sharpness에 다른 벌점을 주어 긴 꼬리 분류에서 꼬리 클래스 일반화를 개선하면서 추가 역전파 비용을 피하려고 한다.
+
+- [Focal-SAM, ICML 2025](https://proceedings.mlr.press/v267/li25dk.html)
+
+### 14.4 검증 세트를 너무 많이 보면 검증에도 과적합한다
+
+하이퍼파라미터 탐색을 반복할수록 검증 오차의 우연한 낮은 값을 쫓는 overtuning이 생길 수 있다. 2025년 AutoML 연구는 약 10%의 분석 사례에서 지나친 탐색이 기본값 또는 첫 설정보다 나쁜 일반화를 선택했다고 보고했다. 같은 해 adaptive learn-then-test는 유한표본 위험 보장을 유지하면서 검사 횟수를 줄이는 절차를 제안했다.
+
+- [Overtuning in Hyperparameter Optimization, AutoML 2025](https://proceedings.mlr.press/v293/schneider25a.html)
+- [Adaptive Learn-then-Test, ICML 2025](https://proceedings.mlr.press/v267/zecchin25a.html)
+
+### 14.5 일반화 이론은 최적화 경로까지 본다
+
+“평평한 최소점이 일반화에 유리하다”는 직관만으로 모든 현상을 설명할 수는 없지만, 2025년 연구들은 PAC-Bayes 관점에서 경사하강법의 초기분포, Hessian, 최적화 경로를 포함하는 계산 가능한 일반화 경계를 제시했다. 다른 연구는 OOD에서 표준 앙상블의 예측 다양성이 부족할 수 있음을 지적하고 가중치 분포의 엔트로피를 높여 epistemic uncertainty를 개선한다.
+
+- [Generalisation under gradient descent via deterministic PAC-Bayes, ALT 2025](https://proceedings.mlr.press/v272/clerico25a.html)
+- [Deep OOD Uncertainty via Weight Entropy Maximization, JMLR 2025](https://www.jmlr.org/papers/v26/23-1359.html)
+
+## 15. 원자료 질문과 빈칸의 처리
+
+| 원자료 위치 | 질문 또는 빈칸 | 이 글의 처리 |
+|---|---|---|
+| PDF 1쪽 | 직선과 2차식 중 어느 모델이 더 좋은가 | 훈련 그림만으로 결정 불가. 검증·테스트 성능이 필요하다고 설명 |
+| PDF 9쪽 식 (6) | 사후확률 우변 | 베이즈 규칙으로 완성하되 `원자료 빈칸을 별도 표기로 완성` 상태로 표시 |
+| PDF 9쪽 | 0-1 손실 위험의 두 번째 줄 | 전확률법칙으로 완성하고 원자료식과 분리 |
+| PDF 10–11쪽 | 두 가우시안 PDF를 그리기 | 자체 인터랙티브 베이즈 경계 그래프로 재구성 |
+| PDF 2–5쪽 여백 | 미분·정규방정식·훈련/테스트·정규화 메모 | 읽을 수 있는 핵심만 해당 절에 반영하고 판독 불확실한 글자는 추정하지 않음 |
+
+## 16. 원자료 참고문헌
+
+1. Ian Goodfellow, Yoshua Bengio, Aaron Courville, *Deep Learning*, MIT Press, 2016.
+2. Richard S. Sutton, Andrew G. Barto, *Reinforcement Learning: An Introduction*, 2nd ed., MIT Press, 2018.
+3. Volodymyr Mnih et al., “Human-level control through deep reinforcement learning,” *Nature*, 2015.
+
+## 마무리
+
+이 장의 흐름은 하나로 이어진다.
+
+**과제 정의 → 훈련 오차 최소화 → 새 데이터 일반화 → 정규화·검증 → 결정론적 분류 → 확률적 위험 최소화 → 고차원 문제**
+
+다음 편에서는 하나의 선형 경계가 어떤 한계를 갖는지부터 시작해, 퍼셉트론 학습, XOR, 다층 퍼셉트론, 드롭아웃·드롭커넥트, 1D·2D 컨볼루션과 경계조건을 수식 단위로 이어간다.

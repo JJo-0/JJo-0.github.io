@@ -1,0 +1,195 @@
+---
+import Math from '@/components/post/Math.astro';
+
+interface SymbolItem {
+  symbol: string;
+  meaning: string;
+}
+
+interface Props {
+  id: string;
+  tex: string;
+  title: string;
+  summary: string;
+  steps?: string[];
+  symbols?: SymbolItem[];
+  note?: string;
+  sourcePage?: number;
+  sourceEquation?: string;
+  status?: 'source-exact' | 'source-completed' | 'editorial-derived';
+}
+
+const {
+  id,
+  tex,
+  title,
+  summary,
+  steps = [],
+  symbols = [],
+  note,
+  sourcePage,
+  sourceEquation,
+  status = 'source-exact',
+} = Astro.props;
+
+const statusText = {
+  'source-exact': '원자료 수식',
+  'source-completed': '원자료 빈칸을 별도 표기로 완성',
+  'editorial-derived': '이해를 돕기 위한 편집자 유도식',
+}[status];
+---
+
+<section
+  class="formula-card my-8 overflow-hidden rounded-2xl border border-border/80 bg-card/70 shadow-sm"
+  data-formula-id={id}
+  data-formula-status={status}
+>
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/30 px-4 py-3 sm:px-5">
+    <div class="min-w-0">
+      <p class="text-[0.68rem] font-black uppercase tracking-[0.15em] text-primary/80">
+        {statusText}
+      </p>
+      <h4 class="mt-1 text-base font-black leading-6 text-foreground">{title}</h4>
+    </div>
+    <button
+      type="button"
+      class="formula-copy shrink-0 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+      data-copy-tex={tex}
+      aria-label={`${title} LaTeX 복사`}
+    >
+      수식 복사
+    </button>
+  </div>
+
+  <div class="overflow-x-auto overflow-y-hidden px-3 py-4 sm:px-5">
+    <Math display {tex} label={title} />
+  </div>
+
+  <details class="group border-t border-border/70">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-foreground sm:px-5">
+      <span>쉽게 설명</span>
+      <span class="text-lg leading-none text-primary transition-transform group-open:rotate-45" aria-hidden="true">＋</span>
+    </summary>
+
+    <div class="space-y-5 border-t border-border/60 bg-muted/15 px-4 py-5 text-sm leading-7 text-muted-foreground sm:px-5">
+      <p class="m-0 text-base font-medium leading-7 text-foreground">{summary}</p>
+
+      {
+        steps.length > 0 && (
+          <div>
+            <h5 class="mb-2 mt-0 text-sm font-black text-foreground">읽는 순서</h5>
+            <ol class="m-0 space-y-1.5 pl-5">
+              {steps.map((step) => <li>{step}</li>)}
+            </ol>
+          </div>
+        )
+      }
+
+      {
+        symbols.length > 0 && (
+          <div>
+            <h5 class="mb-2 mt-0 text-sm font-black text-foreground">기호 뜻</h5>
+            <div class="overflow-x-auto">
+              <table class="m-0 min-w-full text-sm">
+                <thead>
+                  <tr>
+                    <th class="whitespace-nowrap">기호</th>
+                    <th>쉬운 의미</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {symbols.map((item) => (
+                    <tr>
+                      <td class="whitespace-nowrap"><Math tex={item.symbol} /></td>
+                      <td>{item.meaning}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        note && (
+          <aside class="m-0 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-950 dark:text-amber-100">
+            <strong>주의해서 읽기:</strong> {note}
+          </aside>
+        )
+      }
+
+      {
+        (sourcePage || sourceEquation) && (
+          <p class="m-0 text-xs text-muted-foreground/80">
+            원자료 위치: {sourcePage ? `PDF ${sourcePage}쪽` : ''}
+            {sourcePage && sourceEquation ? ', ' : ''}
+            {sourceEquation ? `식 ${sourceEquation}` : ''}
+          </p>
+        )
+      }
+    </div>
+  </details>
+</section>
+
+<script>
+  type AnalyticsWindow = Window & {
+    gtag?: (...args: unknown[]) => void;
+  };
+
+  const root = document.documentElement;
+  if (root.dataset.explainedMathHandlers !== 'ready') {
+    root.dataset.explainedMathHandlers = 'ready';
+
+    const sendAnalytics = (eventName: string, formulaId: string) => {
+      const analytics = (window as AnalyticsWindow).gtag;
+      if (typeof analytics === 'function') {
+        analytics('event', eventName, { formula_id: formulaId });
+      }
+    };
+
+    document.addEventListener('click', async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const button = target.closest('.formula-copy');
+      if (!(button instanceof HTMLButtonElement)) return;
+
+      const tex = button.dataset.copyTex;
+      if (!tex) return;
+
+      const original = button.textContent;
+      try {
+        await navigator.clipboard.writeText(tex);
+        button.textContent = '복사됨';
+        window.setTimeout(() => {
+          button.textContent = original;
+        }, 1400);
+
+        sendAnalytics(
+          'formula_copy',
+          button.closest('[data-formula-id]')?.getAttribute('data-formula-id') ?? '',
+        );
+      } catch {
+        button.textContent = '복사 실패';
+        window.setTimeout(() => {
+          button.textContent = original;
+        }, 1400);
+      }
+    });
+
+    document.addEventListener(
+      'toggle',
+      (event) => {
+        const details = event.target;
+        if (!(details instanceof HTMLDetailsElement) || !details.open) return;
+        const card = details.closest('[data-formula-id]');
+        if (!card) return;
+        sendAnalytics(
+          'formula_explanation_open',
+          card.getAttribute('data-formula-id') ?? '',
+        );
+      },
+      true,
+    );
+  }
+</script>

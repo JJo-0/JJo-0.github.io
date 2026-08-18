@@ -187,9 +187,20 @@ if (!fs.existsSync(distPartOne)) {
     }
   }
 
+  const expectedPublishedLinks = Math.max(0, seenOrders.size - 1);
+  const expectedFollowUps = Math.max(0, 8 - seenOrders.size);
+  const publishedCount = (html.match(/게시됨/g) ?? []).length;
   const followUpCount = (html.match(/후속 편/g) ?? []).length;
-  if (followUpCount !== 7) {
-    issues.push(`rendered Part I: expected 7 non-placeholder follow-up cards, found ${followUpCount}`);
+
+  if (publishedCount !== expectedPublishedLinks) {
+    issues.push(
+      `rendered Part I: expected ${expectedPublishedLinks} published sibling card(s), found ${publishedCount}`,
+    );
+  }
+  if (followUpCount !== expectedFollowUps) {
+    issues.push(
+      `rendered Part I: expected ${expectedFollowUps} future card(s), found ${followUpCount}`,
+    );
   }
 
   if (!html.includes('aria-label="현대 인공지능 8편 구성"')) {
