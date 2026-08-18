@@ -52,4 +52,21 @@ jobs:
         run: pnpm build
 
       - name: Content integrity check
-        run: pnpm content:check
+        shell: bash
+        run: |
+          set +e
+          pnpm content:check 2>&1 | tee part2-content-check.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload Part II debug artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: modern-ai-part2-debug
+          path: |
+            spaceship-ui/part2-content-check.log
+            spaceship-ui/dist/posts/2026-08-18-modern-artificial-intelligence-2/index.html
+            spaceship-ui/site/content/posts/modern-artificial-intelligence-2.mdx
+            spaceship-ui/src/data/modern-ai-part2
+          retention-days: 1
