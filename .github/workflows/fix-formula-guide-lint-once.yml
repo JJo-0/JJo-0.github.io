@@ -1,0 +1,44 @@
+name: Fix formula guide lint once
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-formula-walkthroughs
+    paths:
+      - .github/workflows/fix-formula-guide-lint-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-formula-walkthroughs
+          fetch-depth: 0
+      - name: Remove the unnecessary JavaScript escape
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('spaceship-ui/src/lib/modern-ai-formula-guide.mjs')
+          text = path.read_text(encoding='utf-8')
+          old = r"'\\lambda\|'"
+          new = r"'\\lambda|'"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one lint target, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit fix and remove workflow
+        shell: bash
+        run: |
+          rm .github/workflows/fix-formula-guide-lint-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: remove unnecessary formula guide escape'
+          git push origin HEAD:agent/modern-ai-formula-walkthroughs
