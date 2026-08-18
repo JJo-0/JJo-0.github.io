@@ -35,7 +35,7 @@ function getFrontmatter(source) {
 }
 
 function frontmatterValue(frontmatter, key) {
-  return frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'))?.[1]?.trim();
+  return frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'))?.[1]?.trim();
 }
 
 function renderedPath(relativeSource, frontmatter) {
