@@ -1,0 +1,243 @@
+---
+import Math from './Math.astro';
+
+interface FormulaRecord {
+  formulaId: string;
+  pdfPage: number;
+  sourceEquationNumber?: string | null;
+  sourceLatex: string;
+  articleSection: string;
+  status: 'source-exact' | 'source-suspect' | 'editorially-completed' | 'corrected-variant';
+  display: 'inline' | 'display';
+  note?: string | null;
+  corrects?: string | null;
+  sha256: string;
+}
+
+interface Props {
+  formula: FormulaRecord;
+  display?: boolean;
+}
+
+const { formula, display = formula.display === 'display' } = Astro.props;
+
+const sectionLabels: Array<[RegExp, string]> = [
+  [/classification/i, '분류의 출력과 학습 데이터'],
+  [/regression|least squares|linear model/i, '회귀와 평균제곱오차'],
+  [/density/i, '확률분포와 밀도추정'],
+  [/generalization|underfitting|overfitting/i, '일반화와 과대적합'],
+  [/regularization/i, '정규화'],
+  [/hyperparameter|validation|cross-validation/i, '검증과 하이퍼파라미터'],
+  [/support vector|SVM/i, '서포트 벡터 머신'],
+  [/kernel/i, '커널 방법'],
+  [/minimum-distance|prototype/i, '최소거리 분류'],
+  [/Bayes|conditional risk|zero-one/i, '베이즈 분류와 위험'],
+  [/Gaussian|QDA|LDA/i, '가우시안 판별분석'],
+  [/naive/i, '나이브 베이즈'],
+  [/dimension/i, '차원의 저주'],
+  [/reinforcement/i, '강화학습'],
+];
+
+const readerTitle = sectionLabels.find(([pattern]) => pattern.test(formula.articleSection))?.[1] ?? '핵심 수식';
+const tex = formula.sourceLatex;
+
+function plainSummary() {
+  if (/MSE|\\lVert|\\|.*\\|/.test(tex)) {
+    return '예측과 정답의 차이를 제곱해 모은 식이다. 제곱하므로 큰 오차에 더 큰 벌점을 주며, 값이 작을수록 데이터에 더 잘 맞는다.';
+  }
+  if (/\\nabla|\\partial/.test(tex)) {
+    return '파라미터를 조금 바꿀 때 목표값이 어느 방향으로 얼마나 변하는지 계산한다. 최솟값 후보에서는 이 변화율을 0으로 두고 해를 찾는다.';
+  }
+  if (/P\(|p\(|\\mathcal\{N\}|\\ln/.test(tex)) {
+    return '관측 전 확률, 관측이 만들어질 가능성, 관측 후 확률을 연결하는 식이다. 분류에서는 이 값이나 그 로그가 가장 큰 클래스를 선택한다.';
+  }
+  if (/\\kappa|\\phi/.test(tex)) {
+    return '두 입력이 얼마나 비슷한지를 계산해 비선형 분류를 가능하게 한다. 고차원 특징을 직접 만들지 않고도 그 공간의 내적을 얻는 것이 핵심이다.';
+  }
+  if (/d_c|D_c|R_/.test(tex)) {
+    return '각 클래스에 점수나 위험을 하나씩 부여한 뒤 비교하는 식이다. 판별점수는 클수록, 거리나 위험은 작을수록 해당 클래스를 선택하기 유리하다.';
+  }
+  if (/\\sum|\\prod/.test(tex)) {
+    return '여러 샘플이나 특징에서 계산한 값을 차례로 더하거나 곱해 하나의 결과로 합치는 식이다.';
+  }
+  if (/\\sigma|e\^/.test(tex)) {
+    return '입력 점수를 확률처럼 읽기 쉬운 범위로 바꾸거나, 평균에서 멀어질수록 값을 빠르게 줄이는 지수함수 형태다.';
+  }
+  return '왼쪽은 구하려는 값이고 오른쪽은 그 값을 만들기 위해 입력·가중치·거리·확률을 어떤 순서로 결합하는지 보여 준다.';
+}
+
+function readingSteps() {
+  if (/P\(|p\(|\\mathcal\{N\}|\\ln/.test(tex)) {
+    return [
+      '어떤 사건이나 클래스의 확률을 구하는지 왼쪽을 먼저 본다.',
+      '오른쪽에서 우도와 사전확률, 거리 또는 정규화 항을 차례로 계산한다.',
+      '여러 클래스의 값을 비교해 가장 가능성이 큰 쪽을 선택한다.',
+    ];
+  }
+  if (/MSE|\\nabla|\\partial/.test(tex)) {
+    return [
+      '모델의 예측을 만든다.',
+      '정답과의 차이 또는 그 변화율을 계산한다.',
+      '오차가 작아지는 파라미터를 찾는 데 사용한다.',
+    ];
+  }
+  return [
+    '등호 왼쪽에서 최종적으로 구하려는 값을 확인한다.',
+    '오른쪽의 괄호 안 계산부터 합·곱·나눗셈 순서로 읽는다.',
+    '바로 앞뒤 문단의 분류·회귀 규칙에 결과를 대입한다.',
+  ];
+}
+
+const commonSymbols = [
+  { token: '\\mathbf{x}', tex: '\\mathbf{x}', meaning: '모델에 넣는 입력 또는 특징 벡터' },
+  { token: '\\mathbf{y}', tex: '\\mathbf{y}', meaning: '여러 정답을 모은 벡터' },
+  { token: '\\mathbf{w}', tex: '\\mathbf{w}', meaning: '데이터로 학습하는 가중치 벡터' },
+  { token: '\\mathbf{X}', tex: '\\mathbf{X}', meaning: '여러 입력을 행 또는 열로 모은 데이터 행렬' },
+  { token: '\\lambda', tex: '\\lambda', meaning: '정규화 강도를 조절하는 값' },
+  { token: '\\kappa', tex: '\\kappa', meaning: '두 입력의 유사도를 계산하는 커널' },
+  { token: '\\phi', tex: '\\phi', meaning: '입력을 새로운 특징공간으로 보내는 변환' },
+  { token: '\\sigma', tex: '\\sigma', meaning: '분포의 폭 또는 시그모이드 함수를 나타내는 기호' },
+  { token: '\\mathbf{m}', tex: '\\mathbf{m}_c', meaning: 'c번째 클래스의 평균 또는 대표점' },
+  { token: '\\mathbf{V}', tex: '\\mathbf{V}_c', meaning: 'c번째 클래스의 공분산행렬' },
+  { token: 'P(', tex: 'P(\\cdot)', meaning: '사건의 확률' },
+  { token: 'p(', tex: 'p(\\cdot)', meaning: '확률밀도 또는 조건부 확률밀도' },
+  { token: '\\sum', tex: '\\sum', meaning: '여러 항을 모두 더하라는 뜻' },
+  { token: '\\prod', tex: '\\prod', meaning: '여러 항을 모두 곱하라는 뜻' },
+  { token: '\\nabla', tex: '\\nabla', meaning: '가장 빠르게 증가하는 방향을 나타내는 기울기' },
+  { token: '\\delta', tex: '\\delta', meaning: '두 인덱스가 같은지 나타내는 크로네커 델타' },
+  { token: '\\mathbb{R}', tex: '\\mathbb{R}', meaning: '실수 전체의 집합' },
+  { token: 'L', tex: 'L', meaning: '문맥에 따라 훈련 샘플 수 또는 손실함수' },
+  { token: 'C', tex: 'C', meaning: '전체 클래스 수' },
+];
+
+const symbols = commonSymbols.filter((symbol) => tex.includes(symbol.token)).slice(0, 8);
+const statusLabel = {
+  'source-exact': '원자료 수식',
+  'source-suspect': '원자료 표기 확인 필요',
+  'editorially-completed': '원자료 빈칸의 완성식',
+  'corrected-variant': '수학적 교정식',
+}[formula.status];
+const aria = `${readerTitle}, PDF page ${formula.pdfPage}, ${statusLabel}`;
+---
+
+{
+  display ? (
+    <figure
+      class:list={[
+        'source-formula my-8 overflow-hidden rounded-2xl border bg-card/55 shadow-sm',
+        formula.status === 'source-suspect' && 'border-amber-500/40',
+        formula.status === 'editorially-completed' && 'border-sky-500/40',
+        formula.status === 'corrected-variant' && 'border-emerald-500/40',
+        formula.status === 'source-exact' && 'border-border/80',
+      ]}
+      data-formula-id={formula.formulaId}
+      data-source-page={formula.pdfPage}
+      data-formula-status={formula.status}
+      data-formula-hash={formula.sha256}
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/25 px-4 py-3 sm:px-5">
+        <div>
+          <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">{statusLabel}</p>
+          <figcaption class="mt-1 text-base font-black leading-6 text-foreground">{readerTitle}</figcaption>
+        </div>
+        <button
+          type="button"
+          class="formula-copy rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+          data-copy-tex={formula.sourceLatex}
+          aria-label={`${readerTitle} LaTeX 복사`}
+        >수식 복사</button>
+      </div>
+
+      <div class="overflow-x-auto overflow-y-hidden px-3 py-2 sm:px-5">
+        <Math tex={formula.sourceLatex} display label={aria} />
+      </div>
+
+      <details class="formula-explanation group border-t border-border/70">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-foreground sm:px-5">
+          <span>쉽게 설명</span>
+          <span class="text-lg leading-none text-primary transition-transform group-open:rotate-45" aria-hidden="true">＋</span>
+        </summary>
+        <div class="space-y-5 border-t border-border/60 bg-muted/10 px-4 py-5 text-sm leading-7 text-muted-foreground sm:px-5">
+          <p class="m-0 text-base font-medium leading-7 text-foreground">{plainSummary()}</p>
+          <div>
+            <h5 class="mb-2 mt-0 text-sm font-black text-foreground">읽는 순서</h5>
+            <ol class="m-0 space-y-1.5 pl-5">
+              {readingSteps().map((step) => <li>{step}</li>)}
+            </ol>
+          </div>
+          {symbols.length > 0 && (
+            <div>
+              <h5 class="mb-2 mt-0 text-sm font-black text-foreground">기호 뜻</h5>
+              <div class="overflow-x-auto">
+                <table class="m-0 min-w-full text-sm">
+                  <thead><tr><th class="whitespace-nowrap">기호</th><th>쉬운 의미</th></tr></thead>
+                  <tbody>{symbols.map((symbol) => <tr><td class="whitespace-nowrap"><Math tex={symbol.tex} /></td><td>{symbol.meaning}</td></tr>)}</tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {(formula.note || formula.status !== 'source-exact') && (
+            <aside class="m-0 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-950 dark:text-amber-100">
+              <strong>주의해서 읽기:</strong> {formula.note || '원자료의 빈칸·표기 문제를 숨기지 않고 별도 상태로 관리한 수식이다.'}
+            </aside>
+          )}
+          <p class="m-0 text-xs text-muted-foreground/80">
+            원자료 위치: PDF {formula.pdfPage}쪽{formula.sourceEquationNumber ? `, 식 ${formula.sourceEquationNumber}` : ''}
+          </p>
+        </div>
+      </details>
+    </figure>
+  ) : (
+    <span
+      class="source-formula-inline"
+      data-formula-id={formula.formulaId}
+      data-source-page={formula.pdfPage}
+      data-formula-status={formula.status}
+      data-formula-hash={formula.sha256}
+      title={`PDF ${formula.pdfPage}쪽 · ${statusLabel}`}
+    >
+      <Math tex={formula.sourceLatex} label={aria} />
+    </span>
+  )
+}
+
+<script>
+  const trackFormulaEvent = (eventName: string, params: Record<string, string>) => {
+    const gtag = Reflect.get(window, 'gtag');
+    if (typeof gtag === 'function') {
+      Reflect.apply(gtag, window, ['event', eventName, params]);
+    }
+  };
+
+  document.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const button = target.closest('.formula-copy');
+    if (!(button instanceof HTMLButtonElement)) return;
+    const tex = button.dataset.copyTex;
+    if (!tex) return;
+    const original = button.textContent;
+    try {
+      await navigator.clipboard.writeText(tex);
+      button.textContent = '복사됨';
+      window.setTimeout(() => (button.textContent = original), 1400);
+      trackFormulaEvent('formula_copy', {
+        formula_id: button.closest('[data-formula-id]')?.getAttribute('data-formula-id') || '',
+      });
+    } catch {
+      button.textContent = '복사 실패';
+      window.setTimeout(() => (button.textContent = original), 1400);
+    }
+  });
+
+  document.addEventListener('toggle', (event) => {
+    const details = event.target;
+    if (!(details instanceof HTMLDetailsElement) || !details.open) return;
+    const card = details.closest('[data-formula-id]');
+    if (card) {
+      trackFormulaEvent('formula_explanation_open', {
+        formula_id: card.getAttribute('data-formula-id') || '',
+      });
+    }
+  }, true);
+</script>

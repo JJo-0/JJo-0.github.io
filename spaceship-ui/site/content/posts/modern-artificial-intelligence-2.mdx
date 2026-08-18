@@ -1,0 +1,1216 @@
+---
+title: '현대 인공지능 II — 머신러닝의 기본 과제와 일반화'
+description: 'ECE5992 머신러닝 기초 13쪽을 페이지·문단·도표·수식 원장으로 완전 추적하며, 분류·회귀·밀도추정, 일반화, 정규화, 교차검증, SVM, 최소거리·베이즈 분류기, 차원의 저주를 2026년 연구까지 연결한다.'
+pubDate: 2026-08-18
+updatedDate: 2026-08-18
+tags: ['artificial-intelligence', 'machine-learning', 'generalization', 'bayes-classifier', 'support-vector-machine', 'uncertainty', 'modern-ai-course', 'study-notes']
+featured: true
+lang: 'ko'
+series:
+  id: 'modern-artificial-intelligence'
+  order: 2
+---
+
+import SourceFormula from '@/components/post/SourceFormula.astro';
+import { part2Formula } from '@/lib/modern-ai-part2';
+
+> **완전성 계약(Completeness contract)**  
+> 이 글은 `1_Ch2 Fundamentals of ML.pdf` 13쪽을 기준으로 작성했다. 번호식뿐 아니라 번호 없는 표시식, 의미 있는 인라인 수학 표현, 그림 속 식, 질문의 `??`, 캡션·각주·참고문헌, 판독 가능한 손글씨를 각각 원장에 연결했다. 원문에 빈칸이나 오류 의심 표기가 있으면 원문을 먼저 보존하고, 완성식·교정식은 별도 상태로 제시한다.
+
+> **세 층을 섞지 않는다.**  
+> ① **2025 PDF 원자료 재구성**, ② **편집·수학 검증**, ③ **2026-08-18 최신 연구 업데이트**를 분리한다. 최신 연구가 강의자료의 문장을 소급해 바꾸지 않는다.
+
+## 원장 현황
+
+- PDF: **13 / 13쪽** 매핑
+- PDF 원자료 수식: **103개** (`MAI-P2-001`–`MAI-P2-103`)
+- 수식 상태: `source-exact`, `source-suspect`, `editorially-completed`, `corrected-variant`
+- 원자료 PDF SHA-256: `c6ac9d80c5ae2bc96f0aa8aec70c126f559e6dd5c36d51a46eb1bdb6775e836c`
+- 그림은 원본 이미지를 복제하지 않고, 축·범례·수치·구조를 보존한 새 도식 또는 정밀 설명으로 재구성했다.
+
+---
+
+# PDF 원자료 재구성
+
+
+{/* source-content:P2-C001 */}
+## 2. 머신러닝의 기초(Fundamentals of machine learning)
+
+
+{/* source-content:P2-C002 */}
+머신러닝(ML)은 대량의 데이터에서 패턴을 자동으로 찾아내고, 그 패턴으로 미래 데이터를 예측하거나 불확실성 아래에서 의사결정을 수행하는 방법들의 집합으로 소개된다. 강의자료는 이를 ‘빅데이터 시대’의 자동 분석 요구에 대한 답으로 놓는다.
+
+
+{/* source-content:P2-C003 */}
+데이터셋이 겉보기에는 매우 커도 관심 있는 희귀 사례의 실효 표본 수는 작을 수 있다. 자료는 이를 **롱테일(long tail)** 성질로 설명한다. 소수 사건은 매우 흔하지만, 대부분의 사건은 드물게 나타난다.
+
+
+{/* source-content:P2-C004 */}
+## 2.1 과제(Tasks)
+
+
+{/* source-content:P2-C005 */}
+### 2.1.1 분류(Classification)
+
+
+{/* source-content:P2-C006 */}
+분류의 목표는 입력에서 출력으로 가는 사상을 학습하는 것이다. 출력 공간은 <SourceFormula formula={part2Formula('MAI-P2-001')} display={false} />이며, <SourceFormula formula={part2Formula('MAI-P2-002')} display={false} />이면 이진 분류(binary classification)로 부르고 보통 <SourceFormula formula={part2Formula('MAI-P2-003')} display={false} />를 사용한다. <SourceFormula formula={part2Formula('MAI-P2-004')} display={false} />이면 다중 클래스 분류(multiclass classification)다.
+
+
+{/* source-content:P2-C007 */}
+- 클래스가 서로 배타적이지 않으면 다중 레이블 분류(multi-label classification)이며, 관련된 여러 이진 레이블을 동시에 예측하는 다중 출력 모델로 볼 수 있다.
+
+
+{/* source-content:P2-C008 */}
+이 자료에서 별도 언급 없이 ‘분류’라고 하면 단일 출력 다중 클래스 분류를 뜻한다.
+
+
+{/* source-content:P2-C009 */}
+분류를 함수 근사(function approximation)로 쓰면, 알 수 없는 관계 <SourceFormula formula={part2Formula('MAI-P2-005')} display={false} />를 가정하고 레이블이 있는 학습 집합을 이용해 그 함수를 추정한다.
+
+
+{/* source-content:P2-C010 */}
+<SourceFormula formula={part2Formula('MAI-P2-006')} display={true} />
+
+
+{/* source-content:P2-C011 */}
+학습 뒤에는 <SourceFormula formula={part2Formula('MAI-P2-007')} display={false} />로 새 입력을 예측한다. 이전에 관측하지 않은 입력에서도 잘 작동하는 능력이 일반화(generalization)다.
+
+
+{/* source-content:P2-C012 */}
+### 2.1.2 회귀(Regression)
+
+
+{/* source-content:P2-C013 */}
+회귀는 입력으로부터 수치 값을 예측한다. 학습 알고리즘이 내놓아야 하는 함수의 형식은 <SourceFormula formula={part2Formula('MAI-P2-008')} display={false} />이다. 분류와 핵심 구조는 비슷하지만 출력 형식이 실수라는 점이 다르다.
+
+
+{/* source-content:P2-C014 */}
+강의자료의 예시는 하나의 실수 입력 <SourceFormula formula={part2Formula('MAI-P2-009')} display={false} />와 실수 응답 <SourceFormula formula={part2Formula('MAI-P2-010')} display={false} />를 사용해 직선 모델과 2차 다항식 모델을 비교한다. 페이지 끝의 질문은 ‘어느 적합 모델이 더 좋아 보이는가?’이며, 정답을 제시하지 않고 `??`로 남겨 둔다.
+
+
+{/* source-annotation:P2-ANN-01 */}
+> **강의 주석 — PDF p.1**  
+> 회귀 예시 주변에 ‘path’로 읽히는 메모와 λ 기호가 있다. 의미를 확정할 문맥이 부족하므로 원장에는 **판독 불확실**로 남긴다.
+
+
+{/* source-figure:P2-FIG-01 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 760 260" role="img" aria-label="선형 모델과 2차 다항 모델 비교를 새로 그린 도식" class="w-full">
+    <g transform="translate(35 25)">
+      <text x="125" y="0" text-anchor="middle" font-size="18" font-weight="700">Simple linear model</text>
+      <line x1="20" y1="190" x2="300" y2="190" stroke="currentColor"/><line x1="20" y1="190" x2="20" y2="20" stroke="currentColor"/>
+      <g fill="currentColor" opacity=".65"><circle cx="45" cy="170" r="5"/><circle cx="78" cy="145" r="5"/><circle cx="105" cy="153" r="5"/><circle cx="138" cy="110" r="5"/><circle cx="172" cy="125" r="5"/><circle cx="205" cy="70" r="5"/><circle cx="238" cy="92" r="5"/></g>
+      <line x1="38" y1="168" x2="255" y2="55" stroke="currentColor" stroke-width="3"/>
+      <text x="155" y="218" text-anchor="middle">MAI-P2-011: y=b₀+b₁x</text>
+    </g>
+    <g transform="translate(405 25)">
+      <text x="125" y="0" text-anchor="middle" font-size="18" font-weight="700">Polynomial model</text>
+      <line x1="20" y1="190" x2="300" y2="190" stroke="currentColor"/><line x1="20" y1="190" x2="20" y2="20" stroke="currentColor"/>
+      <g fill="currentColor" opacity=".65"><circle cx="45" cy="170" r="5"/><circle cx="78" cy="145" r="5"/><circle cx="105" cy="153" r="5"/><circle cx="138" cy="110" r="5"/><circle cx="172" cy="125" r="5"/><circle cx="205" cy="70" r="5"/><circle cx="238" cy="92" r="5"/></g>
+      <path d="M38 174 C95 165, 145 145, 180 115 S230 48,255 35" fill="none" stroke="currentColor" stroke-width="3"/>
+      <text x="155" y="218" text-anchor="middle">MAI-P2-012: y=b₀+b₁x+b₂x²</text>
+    </g>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 1 재구성.</strong> 같은 산점도에 직선과 2차 곡선을 적합한다. 그림만으로 모델을 고르면 안 되며, 뒤의 일반화·검증 논의가 필요한 이유를 예고한다.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C015 */}
+<SourceFormula formula={part2Formula('MAI-P2-011')} display={false} />
+
+
+{/* source-content:P2-C016 */}
+<SourceFormula formula={part2Formula('MAI-P2-012')} display={false} />
+
+
+{/* source-content:P2-C017 */}
+### 2.1.3 밀도 추정(Density estimation)
+
+
+{/* source-content:P2-C018 */}
+밀도 추정에서는 알고리즘이 <SourceFormula formula={part2Formula('MAI-P2-013')} display={false} />을 학습하며, <SourceFormula formula={part2Formula('MAI-P2-014')} display={false} />는 표본이 나온 공간의 확률밀도함수(PDF) 또는 확률질량함수(PMF)로 해석한다.
+
+
+{/* source-content:P2-C019 */}
+좋은 밀도 모델은 관측 데이터가 어디에 빽빽하게 모이는지, 어디에서는 거의 나타나지 않는지를 포함해 데이터 구조를 익혀야 한다. 다만 실제로는 밀도 자체를 알더라도 필요한 연산이 계산적으로 다루기 어려운 경우가 많아 관련 과제가 자동으로 해결되지는 않는다.
+
+
+{/* source-content:P2-C020 */}
+## 2.2 예제: 선형 회귀(Linear regression)
+
+
+{/* source-content:P2-C021 */}
+입력은 <SourceFormula formula={part2Formula('MAI-P2-015')} display={false} />, 출력은 스칼라 <SourceFormula formula={part2Formula('MAI-P2-016')} display={false} />이다. 모델의 예측값은 다음과 같이 정의된다.
+
+
+{/* source-content:P2-C022 */}
+<SourceFormula formula={part2Formula('MAI-P2-017')} display={true} />
+
+
+{/* source-content:P2-C023 */}
+여기서 <SourceFormula formula={part2Formula('MAI-P2-018')} display={false} />는 파라미터 벡터다. 각 성분은 해당 특성에 곱해지는 계수이며, 전체 벡터는 각 특성이 예측에 미치는 영향을 정한다.
+
+
+{/* source-content:P2-C024 */}
+학습 알고리즘은 학습 자료 <SourceFormula formula={part2Formula('MAI-P2-019')} display={false} />를 보고 가중치를 조정한다. 직관적인 기준은 학습 평균제곱오차(MSE)를 최소화하는 것이다.
+
+
+{/* source-content:P2-C025 */}
+<SourceFormula formula={part2Formula('MAI-P2-020')} display={true} />
+
+
+{/* source-content:P2-C026 */}
+강의자료는 기울기를 0으로 두어 정규방정식(normal equation)을 얻는 전개를 한 줄도 건너뛰지 않고 보여 준다.
+
+
+{/* source-content:P2-C027 */}
+<SourceFormula formula={part2Formula('MAI-P2-021')} display={true} />
+
+
+{/* source-content:P2-C028 */}
+<SourceFormula formula={part2Formula('MAI-P2-022')} display={true} />
+
+
+{/* source-content:P2-C029 */}
+<SourceFormula formula={part2Formula('MAI-P2-023')} display={true} />
+
+
+{/* source-content:P2-C030 */}
+<SourceFormula formula={part2Formula('MAI-P2-024')} display={true} />
+
+
+{/* source-content:P2-C031 */}
+<SourceFormula formula={part2Formula('MAI-P2-025')} display={true} />
+
+
+{/* source-content:P2-C032 */}
+<SourceFormula formula={part2Formula('MAI-P2-026')} display={true} />
+
+
+{/* source-content:P2-C033 */}
+<SourceFormula formula={part2Formula('MAI-P2-027')} display={true} />
+
+
+{/* source-content:P2-C034 */}
+마지막 식은 원자료의 식 (1)이다. 이 역행렬 표현은 그램 행렬이 가역이라는 조건을 암묵적으로 사용한다.
+
+
+{/* source-content:P2-C035 */}
+<SourceFormula formula={part2Formula('MAI-P2-028')} display={true} />
+
+
+{/* source-content:P2-C036 */}
+원자료는 이 미분 공식을 *The Matrix Cookbook*의 항등식으로 덧붙인다.
+
+
+{/* source-annotation:P2-ANN-02 */}
+> **강의 주석 — PDF p.2, 학습표본 표기**  
+> `(x_l,y_l)`을 하나의 training sample로 읽고, 행별 특성 벡터를 적층해 `X^(train)`을 만드는 구조를 메모했다.
+
+
+{/* source-content:P2-C037 */}
+<SourceFormula formula={part2Formula('MAI-P2-032')} display={true} />
+
+
+{/* source-content:P2-C038 */}
+<SourceFormula formula={part2Formula('MAI-P2-033')} display={true} />
+
+
+{/* source-content:P2-C039 */}
+<SourceFormula formula={part2Formula('MAI-P2-029')} display={true} />
+
+
+{/* source-content:P2-C040 */}
+<SourceFormula formula={part2Formula('MAI-P2-030')} display={true} />
+
+
+{/* source-content:P2-C041 */}
+<SourceFormula formula={part2Formula('MAI-P2-031')} display={true} />
+
+
+{/* source-annotation:P2-ANN-03 */}
+> **판독 불확실 — PDF p.2 하단 오른쪽**  
+> `L ≫ N`으로 보이는 차원 비교와 수치 예시가 있으나 필기선이 겹친다. 추측해 복원하지 않고 위치만 보존한다.
+
+
+{/* source-content:P2-C042 */}
+## 2.3 과소적합과 과대적합(Underfitting and overfitting)
+
+
+{/* source-content:P2-C043 */}
+머신러닝의 중심 과제는 학습에 사용하지 않은 새 입력에서도 성능을 유지하는 것이다. 이 능력이 일반화다.
+
+
+{/* source-content:P2-C044 */}
+보통 학습 집합에서 오차를 계산하고 파라미터를 최적화해 학습 오차를 줄인다. 여기까지만 보면 최적화 문제다. 머신러닝이 단순 최적화와 달라지는 지점은 일반화 오차 또는 테스트 오차도 낮아야 한다는 요구다. 일반화 오차는 새 입력에서의 오차 기댓값으로 정의된다.
+
+
+{/* source-content:P2-C045 */}
+선형 회귀 예제에서는 식 (1)로 얻은 모델을 테스트 집합에서 평가한다.
+
+
+{/* source-content:P2-C046 */}
+<SourceFormula formula={part2Formula('MAI-P2-034')} display={true} />
+
+
+{/* source-content:P2-C047 */}
+여기서 M은 테스트 표본 수다.
+
+
+{/* source-content:P2-C048 */}
+학습·테스트 자료는 데이터 생성 과정(data-generating process)이라는 확률분포에서 만들어진다고 본다. 전형적인 가정은 각 표본이 서로 독립이고, 학습 집합과 테스트 집합이 같은 분포에서 나온다는 i.i.d. 가정이다. 이 공유 분포가 데이터 생성 분포다.
+
+
+{/* source-content:P2-C049 */}
+자료는 학습 집합을 먼저 뽑아 파라미터를 최적화한 뒤 테스트 집합을 뽑는 절차를 전제로 하면, 기대 테스트 오차가 기대 학습 오차보다 작지 않다고 설명한다.
+
+
+{/* source-content:P2-C050 */}
+<SourceFormula formula={part2Formula('MAI-P2-035')} display={true} />
+
+
+{/* source-content:P2-C051 */}
+- 좋은 학습 알고리즘은 학습 오차 자체를 작게 만들어야 한다.
+
+
+{/* source-content:P2-C052 */}
+- 동시에 학습 오차와 테스트 오차 사이의 간격을 작게 만들어야 한다.
+
+
+{/* source-content:P2-C053 */}
+<strong>과소적합(underfitting)</strong>은 모델이 학습 집합에서도 충분히 낮은 오차를 얻지 못하는 경우다.
+
+
+{/* source-content:P2-C054 */}
+<strong>과대적합(overfitting)</strong>은 학습 오차와 테스트 오차의 간격이 지나치게 큰 경우다.
+
+
+{/* source-content:P2-C055 */}
+모델의 용량(capacity)을 바꾸면 과소적합·과대적합 가능성을 조절할 수 있다. 낮은 용량은 학습 집합을 표현하지 못할 수 있고, 높은 용량은 테스트에 도움이 되지 않는 학습 집합의 속성을 암기할 수 있다.
+
+
+{/* source-content:P2-C056 */}
+### 2.3.1 공짜 점심 없음 정리(No free lunch theorem)
+
+
+{/* source-content:P2-C057 */}
+> “모든 모델은 틀리지만, 그중 일부는 유용하다.” — George Box
+
+
+{/* source-content:P2-C058 */}
+머신러닝은 다양한 모델과 그 모델을 적합하는 알고리즘을 설계한다. 교차검증으로 특정 문제에서 더 나은 방법을 경험적으로 고를 수 있지만, 모든 문제에서 항상 최적인 단일 모델은 없다. 한 영역에 맞는 가정이 다른 영역에서는 나쁠 수 있기 때문이다.
+
+
+{/* source-annotation:P2-ANN-04 */}
+> **판독 불확실 — PDF p.3 하단**  
+> ‘예시)’ 뒤의 필기는 해상도와 획 중첩 때문에 내용 확정이 불가능하다.
+
+
+{/* source-figure:P2-FIG-02 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-3">
+    <div class="rounded-xl border border-border p-4"><h4 class="font-bold">Underfitting</h4><p class="text-sm text-muted-foreground">표본의 곡률을 따라가지 못하는 단순 직선. 학습 오차부터 높다.</p></div>
+    <div class="rounded-xl border border-border p-4"><h4 class="font-bold">Overfitting</h4><p class="text-sm text-muted-foreground">각 표본 주변을 요동하며 통과하는 지나치게 복잡한 곡선. 학습–테스트 간격이 커진다.</p></div>
+    <div class="rounded-xl border border-border p-4"><h4 class="font-bold">Appropriate capacity</h4><p class="text-sm text-muted-foreground">전체 추세를 따르되 국소 잡음은 추종하지 않는 곡선.</p></div>
+  </div>
+  <figcaption class="mt-4 text-sm text-muted-foreground"><strong>Figure 2 재구성.</strong> 모델 용량이 너무 작을 때, 너무 클 때, 적절할 때의 적합을 한 화면에서 비교한다.</figcaption>
+</figure>
+
+
+{/* source-figure:P2-FIG-03 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-3">
+    <div class="rounded-xl bg-muted/30 p-4"><strong>Underfitting — Excessive λ</strong><p class="text-sm">9차 모델이 거의 평평해져 과소적합.</p></div>
+    <div class="rounded-xl bg-muted/30 p-4"><strong>Appropriate weight decay — Medium λ</strong><p class="text-sm">고차 모델의 진동을 억제해 참 2차 함수에 가까운 적합.</p></div>
+    <div class="rounded-xl bg-muted/30 p-4"><strong>Overfitting — λ→0</strong><p class="text-sm">경계에서 크게 발산하는 과대적합 곡선.</p></div>
+  </div>
+  <figcaption class="mt-4 text-sm text-muted-foreground"><strong>Figure 3 재구성.</strong> 참 함수는 2차이지만 모델은 모두 9차이며, λ만 바꾸어 정규화 효과를 보여 준다.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C059 */}
+공짜 점심 없음 정리의 결과로 현실의 다양한 데이터 구조를 덮기 위해 여러 종류의 모델이 필요하다. 같은 모델도 훈련 알고리즘에 따라 속도·정확도·복잡도 절충이 달라진다.
+
+
+{/* source-content:P2-C060 */}
+### 2.3.2 정규화(Regularization)
+
+
+{/* source-content:P2-C061 */}
+특정 과제에서 잘 작동하도록 학습 알고리즘에 선호(preference)를 넣을 수 있다. 그 선호가 실제 문제 구조와 맞으면 성능이 좋아진다.
+
+
+{/* source-content:P2-C062 */}
+선형 회귀의 예는 작은 가중치를 선호하도록 학습 기준에 가중치 감쇠(weight decay)를 더한다.
+
+
+{/* source-content:P2-C063 */}
+<SourceFormula formula={part2Formula('MAI-P2-036')} display={true} />
+
+
+{/* source-content:P2-C064 */}
+λ는 미리 선택하는 값이다. <SourceFormula formula={part2Formula('MAI-P2-037')} display={false} />이면 작은 가중치에 대한 선호가 없고, λ가 클수록 가중치를 더 강하게 줄인다.
+
+
+{/* source-content:P2-C065 */}
+<SourceFormula formula={part2Formula('MAI-P2-038')} display={false} />
+
+
+{/* source-content:P2-C066 */}
+Figure 3은 λ가 지나치게 크면 과소적합, 중간이면 적정 적합, 0에 가까우면 과대적합하는 모습을 비교한다.
+
+
+{/* source-content:P2-C067 */}
+해를 선호하는 방식은 명시적일 수도 암묵적일 수도 있다. 이 예에서는 최소화 기준에 추가 항을 넣어 작은 가중치의 선형 함수를 명시적으로 선호한다.
+
+
+{/* source-annotation:P2-ANN-05 */}
+> **강의 주석 — PDF p.4 Figure 2 오른쪽**  
+> 반복 횟수에 따른 오차 곡선을 덧그렸고, 학습·테스트·과소적합으로 읽히는 세 경향을 구분했다.
+
+
+{/* source-annotation:P2-ANN-06 */}
+> **판독 불확실 — PDF p.4 하단 오른쪽**  
+> 일부만 읽히는 짧은 필기를 의미 추정으로 채우지 않는다.
+
+
+{/* source-content:P2-C068 */}
+이러한 서로 다른 선호 부여 방식을 통틀어 정규화라고 부른다.
+
+
+{/* source-content:P2-C069 */}
+**정규화는 학습 오차가 아니라 일반화 오차를 줄이려는 의도로 학습 알고리즘을 수정하는 모든 방법**이다.
+
+
+{/* source-content:P2-C070 */}
+모든 문제에 가장 좋은 알고리즘이 없듯, 가장 좋은 정규화도 하나로 정해지지 않는다. 해결하려는 과제에 맞는 정규화를 골라야 한다.
+
+
+{/* source-content:P2-C071 */}
+강의자료는 딥러닝의 철학을 ‘매우 일반적인 형태의 정규화로 폭넓은 과제를 효과적으로 해결하려는 것’으로 요약한다.
+
+
+{/* source-content:P2-C072 */}
+## 2.4 하이퍼파라미터와 검증 집합(Hyperparameters and validation sets)
+
+
+{/* source-content:P2-C073 */}
+대부분의 머신러닝 알고리즘에는 동작을 조절하는 하이퍼파라미터가 있다. 이 값들은 학습 알고리즘이 자체적으로 적응시키는 모델 파라미터가 아니다.
+
+
+{/* source-content:P2-C074 */}
+Figure 1의 다항식 차수는 용량 하이퍼파라미터이고, 가중치 감쇠의 λ도 하이퍼파라미터다.
+
+
+{/* source-content:P2-C075 */}
+어떤 설정은 최적화가 어려워 하이퍼파라미터로 남는다. 더 흔한 이유는 학습 집합에서 그 값을 학습하는 것이 부적절하기 때문이다. 용량을 조절하는 값을 학습 집합에서 고르면 가능한 최대 용량을 선택해 과대적합할 수 있다.
+
+
+{/* source-content:P2-C076 */}
+이를 해결하려면 학습 알고리즘이 보지 않는 검증 집합(validation set)이 필요하다.
+
+
+{/* source-content:P2-C077 */}
+### 2.4.1 학습·검증·테스트 집합
+
+
+{/* source-content:P2-C078 */}
+- **학습 집합(training set)**: 모델 파라미터를 학습한다.
+
+
+{/* source-content:P2-C079 */}
+- **검증 집합(validation set)**: 보지 않은 데이터에서의 일반화를 추정하며, 하이퍼파라미터와 모델 구성을 고른다.
+
+
+{/* source-content:P2-C080 */}
+- **테스트 집합(test set)**: 최종 고정 모델을 진짜 미관측 자료에서 평가해 일반화 성능의 편향되지 않은 추정치를 얻는다.
+
+
+{/* source-figure:P2-FIG-04 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-3 md:grid-cols-3"><div class="rounded-xl border p-4 text-center font-bold">Train</div><div class="rounded-xl border p-4 text-center font-bold">Validation</div><div class="rounded-xl border p-4 text-center font-bold">Test</div></div>
+  <div class="mt-4 grid gap-4 md:grid-cols-[1fr_auto_1fr]"><div class="rounded-xl bg-muted/30 p-4"><strong>하이퍼파라미터 후보</strong><p class="text-sm">iterations, depth, width, optimizer, learning rate, batch size, epochs, …</p></div><div class="self-center text-2xl">→</div><div class="space-y-3"><div class="rounded-xl border p-4 text-center">Model — parameter tuning</div><div class="rounded-xl border p-4 text-center">Frozen model — one final test</div></div></div>
+  <figcaption class="mt-4 text-sm text-muted-foreground">원자료의 비번호 도식: Train은 모델 학습, Validation은 구성 선택, Test는 고정 모델의 마지막 평가로 연결된다.</figcaption>
+</figure>
+
+
+{/* source-annotation:P2-ANN-07 */}
+> **강의 주석 — PDF p.5**  
+> 하이퍼파라미터 제목 옆에 ‘hyper’, 정규화 문맥에 ‘dropout’으로 읽히는 메모가 있다.
+
+
+{/* source-figure:P2-FIG-05 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="space-y-2 font-mono text-xs sm:text-sm">
+    <div><strong>Iteration 1</strong> [TEST][TRAIN][TRAIN][TRAIN][TRAIN]</div>
+    <div><strong>Iteration 2</strong> [TRAIN][TEST][TRAIN][TRAIN][TRAIN]</div>
+    <div><strong>Iteration 3</strong> [TRAIN][TRAIN][TEST][TRAIN][TRAIN]</div>
+    <div class="text-muted-foreground">⋮</div>
+    <div><strong>Iteration k</strong> [TRAIN][TRAIN][TRAIN][TRAIN][TEST]</div>
+  </div>
+  <figcaption class="mt-4 text-sm text-muted-foreground"><strong>Figure 4 재구성.</strong> K개의 겹치지 않는 부분집합을 번갈아 평가용으로 쓰고 나머지를 학습에 사용한다.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C081 */}
+### 2.4.2 교차검증(Cross-validation)
+
+
+{/* source-content:P2-C082 */}
+고정 학습·테스트 분할에서 테스트 집합이 작으면 평균 테스트 오차 추정의 통계적 불확실성이 커져 알고리즘 A와 B의 우열을 주장하기 어렵다.
+
+
+{/* source-content:P2-C083 */}
+수십만 개 이상의 표본이 있으면 문제가 덜하지만, 작은 데이터셋에서는 계산량을 더 쓰는 대신 여러 무작위 분할에서 학습과 평가를 반복해 모든 표본을 평균 테스트 오차 추정에 활용할 수 있다.
+
+
+{/* source-content:P2-C084 */}
+가장 흔한 K-fold 절차는 데이터셋을 K개의 겹치지 않는 부분집합으로 나누고 K번 실험한다. k번째 실험에서는 k번째 부분집합을 테스트에, 나머지를 학습에 쓰며 K개의 테스트 오차를 평균한다.
+
+
+{/* source-content:P2-C085 */}
+## 2.5 지도학습 예제: 서포트 벡터 머신(SVM)
+
+
+{/* source-content:P2-C086 */}
+SVM은 로지스틱 회귀처럼 선형 함수 <SourceFormula formula={part2Formula('MAI-P2-039')} display={false} />를 중심으로 하지만, 확률이 아니라 클래스 정체성을 출력한다. <SourceFormula formula={part2Formula('MAI-P2-040')} display={false} />이면 양성, <SourceFormula formula={part2Formula('MAI-P2-041')} display={false} />이면 음성 클래스로 예측한다.
+
+
+{/* source-content:P2-C087 */}
+핵심 혁신은 커널 트릭(kernel trick)이다. 여러 학습 알고리즘을 표본 간 내적만으로 쓸 수 있다는 점을 이용해, 명시적으로 고차원 특성 벡터를 만들지 않고도 변환된 공간에서 선형 모델을 학습한다.
+
+
+{/* source-content:P2-C088 */}
+각주에서는 로지스틱 회귀를 이진 분류용 일반화 선형 회귀로 소개한다. 표적은 <SourceFormula formula={part2Formula('MAI-P2-042')} display={false} />이고, 선형 출력을 <SourceFormula formula={part2Formula('MAI-P2-043')} display={false} />로 눌러 확률로 해석한다.
+
+
+{/* source-content:P2-C089 */}
+<SourceFormula formula={part2Formula('MAI-P2-044')} display={true} />
+
+
+{/* source-content:P2-C090 */}
+SVM의 선형 함수는 학습표본과의 내적 합으로 다시 쓸 수 있다.
+
+
+{/* source-content:P2-C091 */}
+<SourceFormula formula={part2Formula('MAI-P2-045')} display={true} />
+
+
+{/* source-content:P2-C092 */}
+여기서 x_l은 학습표본이고 α는 계수 벡터다. 입력을 특성 함수 φ(x)로 바꾸고 내적을 커널로 치환한다.
+
+
+{/* source-content:P2-C093 */}
+<SourceFormula formula={part2Formula('MAI-P2-046')} display={true} />
+
+
+{/* source-content:P2-C094 */}
+<SourceFormula formula={part2Formula('MAI-P2-047')} display={true} />
+
+
+{/* source-content:P2-C095 */}
+x에 대해서는 비선형일 수 있지만 φ(x)와 f(x)의 관계, α와 f(x)의 관계는 선형이다. 이는 모든 입력에 φ를 적용한 뒤 새 공간에서 선형 모델을 학습하는 것과 정확히 대응한다.
+
+
+{/* source-content:P2-C096 */}
+- 고정된 φ를 두고 α만 최적화하면, 원래 입력에 대해서 비선형인 모델을 볼록 최적화로 학습할 수 있다.
+
+
+{/* source-content:P2-C097 */}
+- κ는 두 고차원 특성 벡터를 직접 만들고 내적하는 것보다 훨씬 효율적으로 계산될 수 있다.
+
+
+{/* source-content:P2-C098 */}
+원자료가 대표 커널로 드는 것은 가우시안 커널이다.
+
+
+{/* source-content:P2-C099 */}
+<SourceFormula formula={part2Formula('MAI-P2-048')} display={true} />
+
+
+{/* source-content:P2-C100 */}
+<SourceFormula formula={part2Formula('MAI-P2-049')} display={false} />은 평균 μ와 공분산 Σ를 갖는 정규밀도 표기다.
+
+
+{/* source-figure:P2-FIG-06 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 600 250" role="img" aria-label="x가 -6에서 6일 때 0에서 1로 증가하는 시그모이드 곡선" class="w-full"><line x1="50" y1="210" x2="560" y2="210" stroke="currentColor"/><line x1="305" y1="20" x2="305" y2="225" stroke="currentColor" opacity=".4"/><path d="M55 205 C180 204 250 185 300 120 C350 55 420 30 555 28" fill="none" stroke="currentColor" stroke-width="4"/><text x="565" y="215">x</text><text x="310" y="28">1</text><text x="310" y="125">0.5</text></svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">PDF p.6의 각주가 p.7 상단의 비번호 그래프로 이어진다. 출력 범위는 (0,1)이며 x=0에서 0.5다.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C101 */}
+## 2.6 최소거리 분류기: 결정론적 분류
+
+
+{/* source-content:P2-C102 */}
+최소거리 분류기는 패턴 벡터와 각 클래스 프로토타입 사이의 거리를 계산하고 가장 가까운 프로토타입의 클래스를 배정한다.
+
+
+{/* source-content:P2-C103 */}
+보통 프로토타입은 클래스별 평균 벡터다.
+
+
+{/* source-content:P2-C104 */}
+<SourceFormula formula={part2Formula('MAI-P2-050')} display={true} />
+
+
+{/* source-content:P2-C105 */}
+M_c는 c번째 평균을 계산하는 패턴 수, S_c는 c번째 패턴 클래스, C는 클래스 수다.
+
+
+{/* source-content:P2-C106 */}
+유클리드 거리로 유사도를 정의하면 다음 거리를 계산한다.
+
+
+{/* source-content:P2-C107 */}
+<SourceFormula formula={part2Formula('MAI-P2-051')} display={true} />
+
+
+{/* source-content:P2-C108 */}
+패턴 x는 다른 모든 클래스보다 거리가 작은 클래스에 배정된다.
+
+
+{/* source-content:P2-C109 */}
+<SourceFormula formula={part2Formula('MAI-P2-052')} display={true} />
+
+
+{/* source-content:P2-C110 */}
+<SourceFormula formula={part2Formula('MAI-P2-053')} display={false} />인 동률은 임의로 해소한다.
+
+
+{/* source-content:P2-C111 */}
+최소 거리를 고르는 것은 다음 판별함수를 최대화하는 것과 동치다.
+
+
+{/* source-content:P2-C112 */}
+<SourceFormula formula={part2Formula('MAI-P2-054')} display={true} />
+
+
+{/* source-content:P2-C113 */}
+<SourceFormula formula={part2Formula('MAI-P2-055')} display={true} />
+
+
+{/* source-content:P2-C114 */}
+인식 문제에서는 이런 형태를 결정함수 또는 판별함수(discriminant function)라고 부른다.
+
+
+{/* source-content:P2-C115 */}
+두 클래스의 결정경계는 두 판별함수가 같은 x의 집합이다.
+
+
+{/* source-content:P2-C116 */}
+<SourceFormula formula={part2Formula('MAI-P2-056')} display={true} />
+
+
+{/* source-content:P2-C117 */}
+<SourceFormula formula={part2Formula('MAI-P2-057')} display={true} />
+
+
+{/* source-content:P2-C118 */}
+이 경계는 m_c와 m_c′를 잇는 선분의 수직이등분면이다. <SourceFormula formula={part2Formula('MAI-P2-058')} display={false} />이면 직선, <SourceFormula formula={part2Formula('MAI-P2-059')} display={false} />이면 평면, 더 높은 차원에서는 초평면이다.
+
+
+{/* source-content:P2-C119 */}
+## 2.7 베이즈 분류기: 통계적 분류
+
+
+{/* source-content:P2-C120 */}
+패턴 클래스가 무작위 과정에서 생성되므로 확률을 고려한다. 이 절의 목표는 평균적으로 분류 오류의 확률을 가장 낮추는 분류 규칙을 유도하는 것이다.
+
+
+{/* source-content:P2-C121 */}
+### 2.7.1 임의 패턴 클래스의 베이즈 분류기
+
+
+{/* source-content:P2-C122 */}
+<SourceFormula formula={part2Formula('MAI-P2-060')} display={false} />는 x가 클래스 S_c에서 왔을 사후확률이고, <SourceFormula formula={part2Formula('MAI-P2-061')} display={false} />는 실제 클래스가 S_c′일 때 행동 a_c를 취한 손실이다.
+
+
+{/* source-content:P2-C123 */}
+가장 흔한 0–1 손실은 올바른 결정에 0, 잘못된 결정에 동일한 단위 손실 1을 준다.
+
+
+{/* source-content:P2-C124 */}
+<SourceFormula formula={part2Formula('MAI-P2-062')} display={true} />
+
+
+{/* source-content:P2-C125 */}
+조건부 평균 위험은 x를 특정 클래스에 배정했을 때 손실을 사후확률로 평균한 값이다.
+
+
+{/* source-content:P2-C126 */}
+<SourceFormula formula={part2Formula('MAI-P2-063')} display={true} />
+
+
+{/* source-content:P2-C127 */}
+#### 베이즈 규칙, 사전분포, 클래스 조건부 밀도
+
+
+{/* source-content:P2-C128 */}
+<SourceFormula formula={part2Formula('MAI-P2-064')} display={true} />
+
+
+{/* source-content:P2-C129 */}
+말로 쓰면 posterior = likelihood × prior / observation이다. P(S_c)는 관측 전 클래스 가능성인 사전확률, P(S_c|x)는 관측 뒤의 사후확률, p(x|S_c)는 클래스 조건부 밀도다.
+
+
+{/* source-content:P2-C130 */}
+<SourceFormula formula={part2Formula('MAI-P2-065')} display={true} />
+
+
+{/* source-content:P2-C131 */}
+원자료는 사후확률을 직접 완성하도록 식 (6)을 빈칸으로 남긴다.
+
+
+{/* source-content:P2-C132 */}
+<SourceFormula formula={part2Formula('MAI-P2-066')} display={true} />
+
+
+{/* source-content:P2-C133 */}
+#### 베이즈 분류기
+
+
+{/* source-content:P2-C134 */}
+식 (6)을 위험 식에 대입하면 공통 양의 항 1/p(x)가 생긴다.
+
+
+{/* source-content:P2-C135 */}
+<SourceFormula formula={part2Formula('MAI-P2-068')} display={true} />
+
+
+{/* source-content:P2-C136 */}
+모든 후보 위험에 공통이고 양수이므로 1/p(x)를 버려도 최소 위험 클래스는 바뀌지 않는다.
+
+
+{/* source-content:P2-C137 */}
+<SourceFormula formula={part2Formula('MAI-P2-069')} display={true} />
+
+
+{/* source-content:P2-C138 */}
+각 x에서 모든 위험을 계산하고 가장 작은 위험의 클래스를 선택하면 전체 평균 위험이 최소가 된다.
+
+
+{/* source-content:P2-C139 */}
+<SourceFormula formula={part2Formula('MAI-P2-070')} display={true} />
+
+
+{/* source-content:P2-C140 */}
+#### 0–1 손실을 쓴 베이즈 분류기
+
+
+{/* source-content:P2-C141 */}
+<SourceFormula formula={part2Formula('MAI-P2-071')} display={true} />
+
+
+{/* source-content:P2-C142 */}
+<SourceFormula formula={part2Formula('MAI-P2-072')} display={false} />
+
+
+{/* source-content:P2-C143 */}
+<SourceFormula formula={part2Formula('MAI-P2-073')} display={false} />
+
+
+{/* source-content:P2-C144 */}
+이를 식 (7)에 넣으면 다음 합이 된다.
+
+
+{/* source-content:P2-C145 */}
+<SourceFormula formula={part2Formula('MAI-P2-074')} display={true} />
+
+
+{/* source-content:P2-C146 */}
+원자료는 전체확률법칙을 이용한 단순화 결과를 다시 `??`로 남긴다.
+
+
+{/* source-content:P2-C147 */}
+<SourceFormula formula={part2Formula('MAI-P2-075')} display={true} />
+
+
+{/* source-content:P2-C148 */}
+이 위험을 비교하면 공통 p(x)가 상쇄된다.
+
+
+{/* source-content:P2-C149 */}
+<SourceFormula formula={part2Formula('MAI-P2-077')} display={true} />
+
+
+{/* source-content:P2-C150 */}
+따라서 클래스 조건부 가능도와 사전확률의 곱이 가장 큰 클래스를 고르는 규칙과 동치다.
+
+
+{/* source-content:P2-C151 */}
+<SourceFormula formula={part2Formula('MAI-P2-078')} display={true} />
+
+
+{/* source-content:P2-C152 */}
+0–1 손실 아래의 판별함수는 다음과 같다.
+
+
+{/* source-content:P2-C153 */}
+<SourceFormula formula={part2Formula('MAI-P2-079')} display={true} />
+
+
+{/* source-content:P2-C154 */}
+이 판별함수를 최대화하는 규칙은 평균 오분류 위험을 최소화한다. 단, 최적성을 주장하려면 p(x|S_c)와 P(S_c)를 알아야 한다.
+
+
+{/* source-content:P2-C155 */}
+- 클래스가 같은 빈도로 나온다면 <SourceFormula formula={part2Formula('MAI-P2-080')} display={false} />로 둘 수 있다. 그렇지 않아도 문제 지식이나 표본 빈도로 사전확률을 추정할 수 있다.
+
+
+{/* source-content:P2-C156 */}
+- 어려운 부분은 N차원 클래스 조건부 밀도 p(x|S_c)의 추정이다. 클래스별 표본이 적거나 밀도가 잘 behaved하지 않으면 다변량 밀도 추정이 매우 어렵다. 그래서 실제 베이즈 분류기는 흔히 밀도의 해석적 형태를 가정한다.
+
+
+{/* source-content:P2-C157 */}
+### 2.7.2 가우시안 패턴 클래스
+
+
+{/* source-content:P2-C158 */}
+클래스 조건부 밀도의 분포족을 가정하면 밀도 전체 대신 필요한 파라미터를 학습표본에서 추정하면 된다. 가장 널리 쓰이는 가정은 다변량 가우시안이다.
+
+
+{/* source-content:P2-C159 */}
+<SourceFormula formula={part2Formula('MAI-P2-081')} display={true} />
+
+
+{/* source-content:P2-C160 */}
+각 밀도는 평균 벡터와 공분산 행렬로 완전히 정해진다.
+
+
+{/* source-content:P2-C161 */}
+<SourceFormula formula={part2Formula('MAI-P2-082')} display={true} />
+
+
+{/* source-content:P2-C162 */}
+<SourceFormula formula={part2Formula('MAI-P2-083')} display={true} />
+
+
+{/* source-content:P2-C163 */}
+기댓값을 표본평균으로 근사하면 다음 추정식을 얻는다.
+
+
+{/* source-content:P2-C164 */}
+<SourceFormula formula={part2Formula('MAI-P2-084')} display={true} />
+
+
+{/* source-content:P2-C165 */}
+<SourceFormula formula={part2Formula('MAI-P2-085')} display={true} />
+
+
+{/* source-content:P2-C166 */}
+원자료의 공분산 식은 1/M_c를 쓰는 최대우도형 표본 모멘트이며, 불편추정량의 1/(M_c-1)과 구분해야 한다.
+
+
+{/* source-content:P2-C167 */}
+예제는 <SourceFormula formula={part2Formula('MAI-P2-086')} display={false} />이고, 두 클래스의 평균은 m₁,m₂, 표준편차는 σ₁,σ₂다.
+
+
+{/* source-content:P2-C168 */}
+원자료 하단의 1차원 가우시안 판별식은 다음과 같이 인쇄되어 있다.
+
+
+{/* source-content:P2-C169 */}
+<SourceFormula formula={part2Formula('MAI-P2-087')} display={true} />
+
+
+{/* source-content:P2-C170 */}
+**원자료 연습문제 `??`**: 두 클래스의 1차원 확률밀도함수를 스케치한다.
+
+
+{/* source-content:P2-C171 */}
+두 클래스의 경계는 판별값이 같은 한 점 x₀다.
+
+
+{/* source-content:P2-C172 */}
+<SourceFormula formula={part2Formula('MAI-P2-089')} display={true} />
+
+
+{/* source-content:P2-C173 */}
+두 클래스가 같은 빈도로 나온다면 다음과 같다.
+
+
+{/* source-content:P2-C174 */}
+<SourceFormula formula={part2Formula('MAI-P2-090')} display={true} />
+
+
+{/* source-content:P2-C175 */}
+결정경계는 두 밀도 곡선의 교점이다.
+
+
+{/* source-content:P2-C176 */}
+<SourceFormula formula={part2Formula('MAI-P2-091')} display={true} />
+
+
+{/* source-content:P2-C177 */}
+가우시안의 지수형을 다루기 쉽게 하려고 단조 증가 함수인 로그를 취한다.
+
+
+{/* source-content:P2-C178 */}
+<SourceFormula formula={part2Formula('MAI-P2-092')} display={true} />
+
+
+{/* source-content:P2-C179 */}
+<SourceFormula formula={part2Formula('MAI-P2-093')} display={true} />
+
+
+{/* source-content:P2-C180 */}
+모든 클래스에 공통인 −N/2 ln(2π)를 버리면 0–1 손실 아래의 가우시안 판별함수는 다음과 같다.
+
+
+{/* source-content:P2-C181 */}
+<SourceFormula formula={part2Formula('MAI-P2-094')} display={true} />
+
+
+{/* source-content:P2-C182 */}
+이 함수는 N차원 공간의 2차 함수(hyperquadric)다. 가우시안 패턴에서 클래스 쌍마다 2차 결정경계를 두는 것이 베이즈 분류기가 달성할 수 있는 최소 평균 위험 경계다.
+
+
+{/* source-content:P2-C183 */}
+공분산이 모두 같아 <SourceFormula formula={part2Formula('MAI-P2-095')} display={false} />이면 클래스에 의존하지 않는 항을 버릴 수 있다.
+
+
+{/* source-content:P2-C184 */}
+<SourceFormula formula={part2Formula('MAI-P2-096')} display={true} />
+
+
+{/* source-content:P2-C185 */}
+이때 판별함수와 클래스 간 경계는 선형, 즉 초평면이다.
+
+
+{/* source-content:P2-C186 */}
+더 나아가 <SourceFormula formula={part2Formula('MAI-P2-097')} display={false} />이고 모든 클래스가 동일 사전확률 <SourceFormula formula={part2Formula('MAI-P2-098')} display={false} />을 가지면 공통 사전항도 제거된다.
+
+
+{/* source-content:P2-C187 */}
+<SourceFormula formula={part2Formula('MAI-P2-099')} display={true} />
+
+
+{/* source-content:P2-C188 */}
+이는 식 (2)의 최소거리 판별함수와 동일하다. 따라서 클래스가 가우시안이고, 공분산이 모두 단위행렬이며, 사전확률이 같을 때 최소거리 분류기는 베이즈 의미에서 최적이다.
+
+
+{/* source-content:P2-C189 */}
+이 조건의 클래스는 N차원에서 같은 모양의 구형 구름(hypersphere)이며, 최소거리 분류기는 각 중심을 잇는 선분의 수직이등분 초평면을 둔다.
+
+
+{/* source-figure:P2-FIG-07 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-3"><div class="rounded-xl border p-4 text-center"><strong>(a) 1D</strong><p class="mt-2 font-mono">● ● ● ● ●</p><p class="text-sm">5 points</p></div><div class="rounded-xl border p-4 text-center"><strong>(b) 2D</strong><p class="mt-2 font-mono leading-5">●●●●●<br/>●●●●●<br/>●●●●●<br/>●●●●●<br/>●●●●●</p><p class="text-sm">25 points</p></div><div class="rounded-xl border p-4 text-center"><strong>(c) 3D</strong><p class="mt-2">5×5×5 격자</p><p class="text-sm">125 points</p></div></div>
+  <figcaption class="mt-4 text-sm text-muted-foreground"><strong>Figure 5 재구성.</strong> 축마다 동일한 해상도 5를 유지해도 1D 5개, 2D 25개, 3D 125개로 표본 요구량이 빠르게 증가한다.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C190 */}
+### 2.7.3 나이브 베이즈 분류기
+
+
+{/* source-content:P2-C191 */}
+개별 특성 <SourceFormula formula={part2Formula('MAI-P2-101')} display={false} />이 클래스 S_c가 주어졌을 때 조건부 독립이라고 가정한다.
+
+
+{/* source-content:P2-C192 */}
+원자료는 이 가정 아래의 사후확률 관계를 다음과 같이 쓴다.
+
+
+{/* source-content:P2-C193 */}
+<SourceFormula formula={part2Formula('MAI-P2-102')} display={true} />
+
+
+{/* source-content:P2-C194 */}
+- 다변량 p(x|S_c)를 직접 추정하는 차원 문제를 피하고, 각 단변량 조건부 밀도를 추정할 수 있다.
+
+
+{/* source-content:P2-C195 */}
+- 실제 특성 독립 가정이 깨져도 놀랄 만큼 높은 정확도를 보이는 경우가 있다.
+
+
+{/* source-content:P2-C196 */}
+## 2.8 강화학습(Reinforcement learning)
+
+
+{/* source-content:P2-C197 */}
+일부 알고리즘은 고정 데이터셋만 경험하지 않는다. 강화학습에서는 학습 시스템이 환경과 상호작용하므로 경험과 정책 사이에 피드백 루프가 생긴다. 강의자료는 이를 본 과목 범위 밖으로 두고 Sutton–Barto와 DQN 논문을 안내한다.
+
+
+{/* source-content:P2-C198 */}
+## 2.9 차원의 저주(Curse of dimensionality)
+
+
+{/* source-content:P2-C199 */}
+데이터 차원이 높아지면 많은 머신러닝 문제가 극도로 어려워진다. 이 현상을 차원의 저주라고 한다.
+
+
+{/* source-content:P2-C200 */}
+강의자료는 고차원 데이터를 특성 수가 관측 수보다 많은 데이터로 설명하고, 본질적으로는 데이터 수가 데이터의 내재 차원(intrinsic dimension)에 비해 작을 때 생기는 문제를 강조한다.
+
+
+{/* source-content:P2-C201 */}
+<SourceFormula formula={part2Formula('MAI-P2-100')} display={true} />
+
+
+{/* source-content:P2-C202 */}
+특성 차원이 커지면 분석에 필요한 계산량과 유용한 모델을 만들기 위한 학습데이터 요구량이 함께 증가한다.
+
+
+{/* source-content:P2-C203 */}
+### 2.9.1 차원 축소: 차원의 저주에 대한 주요 해법
+
+
+{/* source-content:P2-C204 */}
+차원 축소는 고려할 확률변수 수를 줄여 주요 변수 집합을 얻는 과정이다. 중요한 정보를 남기고 중복되거나 덜 중요한 특성을 버리는 것이 목적이다.
+
+
+{/* source-content:P2-C205 */}
+- 주성분분석(PCA)
+
+
+{/* source-content:P2-C206 */}
+- 선형판별분석(LDA)
+
+
+{/* source-content:P2-C207 */}
+- t-분포 확률적 이웃 임베딩(t-SNE)
+
+
+{/* source-content:P2-C208 */}
+### 2.9.2 딥러닝은 차원의 저주를 깨는가?
+
+
+{/* source-content:P2-C209 */}
+강의자료는 이미지 분류에서 7,500차원에 이르는 입력도 심층신경망이 처리하는 실무 경험을 든다. CNN과 Transformer가 고차원 입력에서 전통적 머신러닝보다 훨씬 잘 작동하는 경우가 많다는 관찰이다.
+
+
+{/* source-content:P2-C210 */}
+왜 딥러닝이 자주 차원의 저주를 덜 받는지는 정확히 알려지지 않은 열린 문제라고 명시한다.
+
+
+{/* source-content:P2-C211 */}
+- **가설 1 — 다양체 가설(manifold hypothesis)과 자동 특성 추출**: 관측 차원은 높아도 유효 구조는 낮은 차원에 놓일 수 있다.
+
+
+{/* source-content:P2-C212 */}
+- **가설 2 — 국소성(locality)과 대칭성(symmetry)**: 구조적 귀납편향이 탐색해야 할 함수 공간을 줄인다.
+
+
+{/* source-content:P2-C213 */}
+- **가설 3 — 정규화 기법**: weight decay, dropout, 데이터 증강, 조기 종료가 일반화를 돕는다.
+
+
+{/* source-content:P2-C214 */}
+딥러닝이 여러 문제에서 차원의 저주를 효과적으로 완화했다는 것이 강의자료의 결론이지만, 고차원성의 모든 한계에서 면역인 것은 아니다.
+
+
+{/* source-content:P2-C215 */}
+데이터 품질, 모델 구조, 하이퍼파라미터 조정, 계산 자원에 따라 성능이 여전히 영향을 받으며, 어떤 고차원 문제에서는 특성공학이나 추가 튜닝이 필요하다.
+
+
+{/* source-content:P2-C216 */}
+## 원자료 참고문헌
+
+
+{/* source-content:P2-C217 */}
+1. I. Goodfellow, Y. Bengio, A. Courville, *Deep Learning*, MIT Press, 2016 — `http://www.deeplearningbook.org`.
+
+
+{/* source-content:P2-C218 */}
+2. R. S. Sutton, A. G. Barto, *Reinforcement Learning: An Introduction*, 2nd ed., MIT Press, 2018.
+
+
+{/* source-content:P2-C219 */}
+3. V. Mnih et al., “Human-level control through deep reinforcement learning,” *Nature*, no. 7540, pp. 529–533, Feb. 2015.
+
+
+
+---
+
+# 편집·수학 검증(Editorial audit)
+
+
+{/* source-content:P2-C220 */}
+## 1. 식 (6)의 `??` 완성
+
+
+{/* source-content:P2-C221 */}
+<SourceFormula formula={part2Formula('MAI-P2-067')} display={true} />
+
+
+{/* source-content:P2-C222 */}
+이는 결합확률의 두 분해를 p(x)로 나눈 결과다. 원자료의 빈칸은 보존했고, 이 식은 `editorially-completed`로 별도 등록했다.
+
+
+{/* source-content:P2-C223 */}
+## 2. 0–1 위험의 `??` 완성
+
+
+{/* source-content:P2-C224 */}
+<SourceFormula formula={part2Formula('MAI-P2-076')} display={true} />
+
+
+{/* source-content:P2-C225 */}
+합의 전체는 p(x)이고, c=c′ 항 하나만 0–1 손실에서 빠지므로 위 식이 된다.
+
+
+{/* source-content:P2-C226 */}
+## 3. 1차원 가우시안 지수의 제곱 누락
+
+
+{/* source-content:P2-C227 */}
+<SourceFormula formula={part2Formula('MAI-P2-088')} display={true} />
+
+
+{/* source-content:P2-C228 */}
+PDF p.10의 인쇄식에는 지수 분자의 `(x-m_c)^2`에서 제곱이 보이지 않는다. 다변량 식 (9)과 표준 1차원 정규밀도에 따라 교정식을 병기한다.
+
+
+{/* source-content:P2-C229 */}
+## 4. 나이브 베이즈 식의 사전확률
+
+
+{/* source-content:P2-C230 */}
+<SourceFormula formula={part2Formula('MAI-P2-103')} display={true} />
+
+
+{/* source-content:P2-C231 */}
+원자료 식은 사전확률이 같거나 P(S_c)를 비례상수에 흡수하는 문맥에서만 그대로 성립한다. 일반적인 MAP 분류에는 사전확률이 남는다.
+
+
+{/* source-content:P2-C232 */}
+## 5. 선형 회귀 폐형식 해의 조건
+
+
+{/* source-content:P2-C233 */}
+식 (1)은 XᵀX가 가역일 때의 표현이다. 특성 선형종속이나 N>L인 과매개변수 상황에서는 Moore–Penrose 의사역행렬, 최소노름 해, 또는 ridge 정규화가 필요하다. 원문 식 자체는 바꾸지 않았다.
+
+
+{/* source-content:P2-C234 */}
+## 6. 조건부 위험의 인덱스 표기
+
+
+{/* source-content:P2-C235 */}
+PDF는 `R_{c′}(x)`를 ‘x를 `S_{c′}`에 배정한 위험’으로 설명하면서 합 안의 손실을 `L(a_c|S_{c′})`로 적는다. 많은 교재는 행동 인덱스와 실제 클래스 인덱스를 반대로 배열해 `L(a_{c′}|S_c)`로 쓴다. 여기서는 원자료 표기를 그대로 보존하고 의미만 명시했다.
+
+
+{/* source-content:P2-C236 */}
+## 7. 공분산 분모
+
+
+{/* source-content:P2-C237 */}
+PDF의 1/M_c 식은 클래스 가우시안의 최대우도 추정 또는 2차 모멘트형 추정에 해당한다. 통계학에서 자주 쓰는 불편 표본공분산은 중심화 합에 1/(M_c-1)을 쓴다. 목적이 다르므로 원문을 오탈자로 처리하지 않는다.
+
+
+{/* source-content:P2-C238 */}
+## 8. 정규화 정의의 범위
+
+
+{/* source-content:P2-C239 */}
+강의자료는 정규화를 ‘학습 오차가 아니라 일반화 오차를 줄이려는 수정’으로 정의한다. 현대 딥러닝에서는 데이터 증강, 조기 종료, 최적화의 암묵적 편향까지 포함해 넓게 쓰지만, 어떤 기법이 실제로 일반화 오차를 줄인다는 보장은 데이터·모델·학습 절차에 의존한다.
+
+
+{/* source-content:P2-C240 */}
+## 9. 그림의 ‘this link’ 목적지
+
+
+{/* source-content:P2-C241 */}
+PDF에는 여러 그림 캡션에 ‘this link’ 또는 ‘wiki’가 보이지만, 이 파일에는 활성 링크 annotation이 남아 있지 않아 URI를 신뢰성 있게 복구할 수 없었다. 보이는 출처 표시는 원장에 보존하되 목적지를 추측해 넣지 않는다.
+
+
+
+---
+
+# 2026-08-18 최신 연구 업데이트
+
+> 아래 내용은 PDF 원자료가 아니다. 2025–2026년의 peer-reviewed 논문과 공식 프로시딩을 기준으로 강의의 핵심 질문이 어떻게 확장되었는지 정리한다.
+
+
+## 1. 일반화는 더 이상 ‘같은 분포의 새 표본’만 뜻하지 않는다
+
+강의자료의 i.i.d. 틀은 일반화 이론의 기준점이다. 그러나 실제 배포에서는 센서, 지역, 사용자군, 시간, 클래스 비율, 배경 상관이 바뀐다. 그래서 현재 평가는 **in-distribution(ID) 성능**, **distribution shift**, **out-of-distribution(OOD) generalization**, **OOD detection**을 구분해야 한다.
+
+- **ICML 2025, peer-reviewed** — Qiang et al.은 자기지도학습(SSL)도 학습 중 허위 상관(spurious correlation)을 습득해 OOD 일반화가 떨어질 수 있음을 분석하고, 인과적 post-intervention distribution을 만족시키는 배치 구성법을 제안했다. [PMLR 원문](https://proceedings.mlr.press/v267/qiang25a.html)
+- **ICML 2025, peer-reviewed** — Harun et al.은 neural collapse가 강할수록 OOD detection에는 유리하지만 OOD generalization에는 불리할 수 있다는 층별 절충을 보고했다. ‘OOD를 잘 거절하는 표현’과 ‘OOD에서 잘 예측하는 표현’이 동일 목표가 아님을 보여 준다. [PMLR 원문](https://proceedings.mlr.press/v267/harun25a.html)
+- **UAI 2025, peer-reviewed** — Cai et al.은 단순한 out-of-sample robustness와 훈련·시험 환경 자체가 다른 OOD robustness를 구분하고, covariate/label shift 같은 구조 가정이 비자명한 해를 얻는 데 필요할 수 있음을 보였다. [PMLR 원문](https://proceedings.mlr.press/v286/cai25c.html)
+
+따라서 현대적 테스트 집합은 하나의 무작위 holdout만이 아니라, 예상되는 변화축을 명시한 **환경별·시간별·그룹별·난이도별 분할**을 포함해야 한다.
+
+## 2. 과매개변수 모델은 ‘학습오차 0 = 과대적합’이라는 단순 도식을 깨뜨린다
+
+고전적 그림에서는 용량이 커져 학습자료를 완전히 맞추면 테스트 오차가 나빠질 것으로 예상한다. 현대 과매개변수 모델에서는 보간(interpolation) 이후에도 테스트 위험이 다시 낮아지는 **double descent**, 잡음까지 맞추면서 일반화하는 **benign overfitting**, 최적화가 특정 해를 고르는 **implicit regularization**이 핵심 연구 주제가 됐다.
+
+- **ICML 2025, peer-reviewed** — Xu & Chen은 클래스별 이질적 잡음을 포함한 2층 신경망 모델에서, 장꼬리 데이터의 일부 ‘잡음’이 암묵적 특성 학습에 기여할 수 있음을 분석했다. benign/harmful overfitting의 경계는 단순한 파라미터 수가 아니라 데이터 구조와 학습 동역학에 달린다. [PMLR 원문](https://proceedings.mlr.press/v267/xu25d.html)
+- **ICML 2025, peer-reviewed** — Sakamoto & Sato는 레이블 잡음을 완전히 맞추면서도 attention의 token selection이 일반화하는 조건을 신호대잡음비로 분석했다. [PMLR 원문](https://proceedings.mlr.press/v267/sakamoto25a.html)
+- **COLT 2026, peer-reviewed extended abstract** — Wu et al.은 선형 회귀에서 조기 종료된 GD, ridge, online SGD의 유한표본 위험을 instance-wise로 비교했다. GD가 ridge를 상수배 내에서 지배하는 범위가 있지만, benign-overfitting형 문제에서는 최적 조기종료 GD보다 SGD가 다항식 수준으로 나을 수도 있어 ‘한 정규화가 항상 우월하다’는 결론은 성립하지 않는다. [PMLR 원문](https://proceedings.mlr.press/v336/wu26a.html)
+
+강의자료의 capacity 그림은 여전히 입문적으로 유효하지만, 현대적으로는 **함수공간**, **데이터 스펙트럼**, **마진**, **최적화 경로**, **학습 중단 시점**까지 함께 봐야 한다.
+
+## 3. 검증 집합도 반복 사용하면 학습 집합이 된다
+
+Train/Validation/Test의 구분은 이름이 아니라 **정보 흐름**으로 정의해야 한다. 논문·리더보드·개발 반복에서 같은 validation/test 결과를 계속 보고 의사결정하면, 모델이 직접 gradient를 받지 않아도 연구 과정 전체가 그 집합에 적합된다.
+
+- **NeurIPS 2025 Datasets & Benchmarks, peer-reviewed** — TabArena는 정적 벤치마크의 결함과 버전 노후화를 다루는 living benchmark를 제안했다. 큰 시간 예산·앙상블·검증 방식이 순위에 큰 영향을 주며, 일부 모델의 교차모델 앙상블 과대표현이 validation overfitting과 관련됨을 보고했다. [공식 프로시딩](https://proceedings.neurips.cc/paper_files/paper/2025/hash/1697e3fb412da11dc9488249f9e7bbc9-Abstract-Datasets_and_Benchmarks_Track.html)
+- **NeurIPS 2025 Datasets & Benchmarks, peer-reviewed** — Scientific ML Common Task Framework는 약한 baseline, reporting bias, 비일관 평가를 줄이기 위해 표준 과제·현실적 잡음·제한 데이터·진짜 숨김 테스트 집합을 제안한다. [공식 프로시딩](https://proceedings.neurips.cc/paper_files/paper/2025/hash/f908bc294862a555413fbe43ff08933f-Abstract-Datasets_and_Benchmarks_Track.html)
+- **COLT 2026, peer-reviewed** — Nachum et al.은 k-fold CV를 데이터 재사용형 위험 추정기로 분석해, fold 수가 표본 수와 함께 증가할 때 피할 수 없는 minimax MSE 하한을 제시했다. 교차검증도 무한히 정확한 평가기가 아니다. [PMLR 원문](https://proceedings.mlr.press/v336/nachum26a.html)
+
+실무 프로토콜은 **그룹/환자/개체 단위 분할**, **시간 순 분할**, **전처리·특성선택·정규화의 fold 내부 적합**, **nested CV**, **최종 test 1회 사용**, **seed와 fold 공개**를 기본으로 삼아야 한다.
+
+## 4. 정확도만으로는 위험을 말할 수 없다: calibration과 conformal prediction
+
+분류 확률 0.9가 실제로 약 90% 맞는지 묻는 것이 calibration이다. 그러나 평균 calibration이 좋아도 하위집단·OOD·시간 변화에서 무너질 수 있다. Conformal prediction은 교환가능성(exchangeability) 또는 i.i.d. 조건에서 유한표본 coverage를 제공하지만, 분포 변화가 있으면 그 가정을 다시 점검해야 한다.
+
+- **ICML 2025, peer-reviewed** — Van der Laan & Alaa는 Venn/Venn-Abers를 일반 손실로 확장하고, 유한표본 set-valued calibration과 subpopulation multicalibration을 제안했다. [PMLR 원문](https://proceedings.mlr.press/v267/van-der-laan25a.html)
+- **ICML 2025, peer-reviewed** — Bashari, Sesia, Romano는 conformal outlier detection의 reference set이 일부 오염된 경우를 분석해, 비적대적 조건에서는 type-I error가 보수적으로 통제되지만 검출력이 감소함을 보였다. [PMLR 원문](https://proceedings.mlr.press/v267/bashari25a.html)
+- **ALT 2026, peer-reviewed** — Vovk는 i.i.d. randomness 가정 아래 conformal predictor의 효율성 보편성(universality)을 정량화했다. 이는 conformal이 강력하다는 뜻이지, shift 아래 무조건 유효하다는 뜻은 아니다. [PMLR 원문](https://proceedings.mlr.press/v313/vovk26a.html)
+
+보고서에는 accuracy/F1뿐 아니라 **reliability diagram, ECE의 bin 의존성, NLL/Brier score, prediction-set coverage와 size, 그룹별 coverage, shift별 성능**을 함께 기록하는 편이 안전하다.
+
+## 5. 차원의 저주는 관측 차원보다 ‘유효 차원’과 귀납편향의 문제로 이동했다
+
+딥러닝이 고차원 입력을 처리한다고 해서 차원의 저주가 사라진 것은 아니다. 핵심 질문은 모델이 어떤 저차원 구조를 실제로 활용하는지, 그리고 그 구조가 시험 환경에서도 유지되는지다.
+
+- **ICML 2025, peer-reviewed** — Dong et al.은 weak-to-strong fine-tuning을 ridgeless regression으로 분석하며, 미세조정이 낮은 intrinsic-dimensional subspace에서 일어난다는 관점으로 분산 감소를 설명했다. [PMLR 원문](https://proceedings.mlr.press/v267/dong25g.html)
+- **ICML 2025, peer-reviewed** — Chen et al.은 low-dimension-to-high-dimension generalization이 적절한 귀납편향 없이는 불가능함을 보였고, 아키텍처와 (S)GD가 선택하는 보간자의 편향이 목표 함수와 맞아야 확장 일반화가 가능하다고 분석했다. [PMLR 원문](https://proceedings.mlr.press/v267/chen25cb.html)
+- **COLT 2026, peer-reviewed open problem** — Feldman, Kamath, Srebro는 딥러닝이 선형 모델보다 강한 이유가 본질적으로 분포 의존적인지라는 문제를 공식적으로 제기했다. 2026년에도 ‘왜 딥러닝이 차원의 저주를 이기는가’는 닫힌 문제가 아니다. [PMLR 원문](https://proceedings.mlr.press/v336/feldman26a.html)
+
+따라서 ‘입력 픽셀 수가 많지만 DNN은 괜찮다’가 아니라, **intrinsic/effective dimension, architecture-induced symmetry, locality, data spectrum, sample-to-dimension ratio**를 측정하는 방향으로 질문을 바꿔야 한다.
+
+## 6. 고전 분류기는 사라진 것이 아니라 강한 기준선이 되었다
+
+SVM, 최소거리, LDA/QDA, 나이브 베이즈는 대규모 foundation model과 경쟁하는 만능 해법은 아니지만, 작은 데이터·설명가능성·확률 가정 검증·calibration·저비용 배포에서 여전히 중요한 기준선이다. 특히 다음 연결은 계속 유효하다.
+
+- nearest class mean은 공유 단위 공분산과 동일 사전확률을 둔 Gaussian Bayes의 특수형이다.
+- LDA는 클래스별 공분산이 같을 때, QDA는 클래스별 공분산이 다를 때의 Gaussian Bayes 경계다.
+- SVM 커널은 고정 특성공간의 볼록 최적화라는 장점이 있지만, 표본 수가 매우 커지면 kernel matrix의 시간·메모리 비용이 병목이 된다.
+- 나이브 베이즈의 독립 가정은 틀릴 수 있어도, 적은 데이터에서 낮은 분산과 빠른 학습이라는 유용한 편향을 제공한다.
+
+---
+
+## 키워드 요약
+
+| 키워드 | 의미 |
+|---|---|
+| **Generalization** | 학습하지 않은 입력에서 낮은 위험을 유지하는 능력. 2026년에는 i.i.d.뿐 아니라 shift/OOD 축을 명시해야 한다. |
+| **Capacity & interpolation** | 파라미터 수만이 아니라 데이터 스펙트럼, 마진, 최적화 경로, 암묵적 정규화가 일반화를 결정한다. |
+| **Validation leakage** | validation/test 결과가 개발 의사결정에 반복 유입되면 평가 집합도 사실상 학습된다. |
+| **Calibration** | 예측 확률과 실제 빈도의 일치. 평균뿐 아니라 그룹·OOD·시간별로 확인해야 한다. |
+| **Conformal prediction** | 교환가능성 아래 유한표본 coverage를 주는 set-valued prediction. shift에서는 가정과 가중화를 다시 검토한다. |
+| **Intrinsic dimension** | 관측 차원보다 모델이 실제로 사용하는 유효 자유도. 딥러닝의 고차원 일반화를 설명하는 핵심 후보다. |
+
+## 연구 질문 / 다음 실험
+
+1. **로봇 비전 데이터에서 분할 단위가 일반화 추정에 미치는 영향**: frame-random split, sequence split, subject/site split을 비교하면 성능과 calibration이 얼마나 달라지는가?
+2. **보간 이후 일반화의 원인 분해**: ridge, early-stopped GD, SGD를 동일 선형·커널·신경 특성에서 비교할 때 데이터 공분산 스펙트럼과 위험 곡선의 관계는 무엇인가?
+3. **shift-aware uncertainty**: ID calibration, OOD detection, conformal coverage를 동시에 만족시키려 할 때 어떤 층·표현·정규화가 Pareto frontier를 만드는가?
+
+## 최신 연구 참고문헌
+
+- Qiang et al., *On the Out-of-Distribution Generalization of Self-Supervised Learning*, ICML 2025.
+- Harun et al., *Controlling Neural Collapse Enhances Out-of-Distribution Detection and Transfer Learning*, ICML 2025.
+- Xu & Chen, *Rethinking Benign Overfitting in Two-Layer Neural Networks*, ICML 2025.
+- Wu et al., *Risk Comparisons in Linear Regression: Implicit Regularization Dominates Explicit Regularization*, COLT 2026.
+- Nachum et al., *Minimax Limits of k-Fold Cross-Validation via Majority*, COLT 2026.
+- Van der Laan & Alaa, *Generalized Venn and Venn-Abers Calibration with Applications in Conformal Prediction*, ICML 2025.
+- Vovk, *Universality of Conformal Prediction under the Assumption of Randomness*, ALT 2026.
+- Dong et al., *Discrepancies are Virtue: Weak-to-Strong Generalization through Lens of Intrinsic Dimension*, ICML 2025.
+- Feldman, Kamath, Srebro, *Is the Power of Deep Learning over Linear Models Inherently Distribution Dependent?*, COLT 2026.
