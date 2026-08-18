@@ -15,4 +15,6 @@ Authoritative source: `1_Ch2 Fundamentals of ML.pdf`
 - `content-ledger.json`: paragraph, bullet, definition, exercise, caption, reference, and annotation inventory
 - `formula-ledger.json`: exact TeX, source page/equation number, editorial status, and SHA-256
 
-`pnpm modern-ai-part2:check` fails closed when a formula disappears, changes hash, is duplicated, or is absent from rendered output.
+Every display formula is rendered as a responsive card with a reader-facing `쉽게 설명` disclosure, reading order, symbol guide, source-location note, and an explicit warning when the source is incomplete or mathematically suspect. Internal ledger IDs remain machine-readable attributes rather than visible headings.
+
+`pnpm modern-ai:part2-check` fails closed when a formula disappears, changes hash, is duplicated, loses its explanation card, or is absent from rendered output.
