@@ -1,18 +1,16 @@
 name: One-time Modern AI series map patch
 
-# Second push intentionally triggers this workflow after the workflow file exists on the branch.
 on:
-  push:
-    branches:
-      - agent/modern-ai-eight-part-map
-    paths:
-      - .github/workflows/modern-ai-series-map-once.yml
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.head_ref == 'agent/modern-ai-eight-part-map' || github.ref_name == 'agent/modern-ai-eight-part-map'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -33,9 +31,11 @@ jobs:
 
           old_title = "title: '현대 인공지능 I — AI·ML·DL에서 확률·최적화까지: 1장 전체'"
           new_title = "title: '현대 인공지능 I — AI·ML·DL에서 확률·최적화까지'"
-          if old_title not in text:
-              raise SystemExit('expected Part I title was not found')
-          text = text.replace(old_title, new_title, 1)
+          if old_title in text:
+              text = text.replace(old_title, new_title, 1)
+          elif new_title not in text:
+              raise SystemExit('neither the old nor the corrected Part I title was found')
+
           text = re.sub(r'^updatedDate:\s*[^\n]+$', 'updatedDate: 2026-08-18', text, count=1, flags=re.M)
 
           replacement = """## 시리즈 구성
@@ -52,8 +52,8 @@ jobs:
 
           pattern = r'## 시리즈 지도\n[\s\S]*?(?=## 원자료 표기 감사)'
           text, count = re.subn(pattern, replacement, text, count=1)
-          if count != 1:
-              raise SystemExit(f'expected one obsolete series-map block, replaced {count}')
+          if count == 0 and '## 시리즈 구성' not in text:
+              raise SystemExit('neither the obsolete nor the corrected series section was found')
 
           forbidden = ['전체 시리즈는 **9편**', '| 6 | 원자료 대기', '아직 업로드되지 않음']
           for token in forbidden:
@@ -63,9 +63,13 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
 
-      - name: Commit content correction
+      - name: Commit content correction when needed
         shell: bash
         run: |
+          if git diff --quiet -- spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx; then
+            echo 'Part I already matches the eight-part series.'
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx
