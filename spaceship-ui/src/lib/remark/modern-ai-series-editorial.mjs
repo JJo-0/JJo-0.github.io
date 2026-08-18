@@ -65,7 +65,7 @@ export default function modernAiSeriesEditorial() {
         strong('실제로 확보한 ECE5992 강의자료'),
         text('를 기준으로 구성한다. 1장 통합판인 현재 글과 후속 PDF 7개를 합쳐 '),
         strong('총 8편'),
-        text('이며, 번호를 맞추기 위한 빈 글이나 별도의 ‘원자료 대기’ 게시물은 만들지 않는다.'),
+        text('이며, 번호를 맞추기 위한 빈 글이나 자리 채우기용 게시물은 만들지 않는다.'),
       ]),
       paragraph([
         text('상단의 '),
