@@ -11,6 +11,8 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeExternalLinks from 'rehype-external-links';
 import remarkEmoji from 'remark-emoji';
+import modernAiPartOneReaderCleanup from './src/lib/remark/modern-ai-part1-reader-cleanup.mjs';
+import modernAiPartTwoReaderCleanup from './src/lib/remark/modern-ai-part2-reader-cleanup.mjs';
 import termTooltips from './src/lib/rehype/term-tooltips.mjs';
 import { isLegacyPathname } from './src/lib/legacy-posts.mjs';
 import {
@@ -55,7 +57,7 @@ export default defineConfig({
         transformerNotationDiff(),
       ],
     },
-    remarkPlugins: [remarkEmoji],
+    remarkPlugins: [remarkEmoji, modernAiPartOneReaderCleanup, modernAiPartTwoReaderCleanup],
     rehypePlugins: [
       termTooltips,
       rehypeSlug,
