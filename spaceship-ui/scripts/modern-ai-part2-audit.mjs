@@ -1,0 +1,119 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+
+const root = process.cwd();
+const dataDir = path.join(root, 'src', 'data', 'modern-ai-part2');
+const articlePath = path.join(root, 'site', 'content', 'posts', 'modern-artificial-intelligence-2.mdx');
+const distPath = path.join(root, 'dist', 'posts', '2026-08-18-modern-artificial-intelligence-2', 'index.html');
+const issues = [];
+
+function readJson(name) {
+  const file = path.join(dataDir, name);
+  if (!fs.existsSync(file)) {
+    issues.push(`${name}: missing`);
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+const formulaLedger = readJson('formula-ledger.json');
+const contentLedger = readJson('content-ledger.json');
+const pageLedger = readJson('page-ledger.json');
+const article = fs.existsSync(articlePath) ? fs.readFileSync(articlePath, 'utf8') : '';
+if (!article) issues.push('Part II article is missing');
+
+for (const ledger of [formulaLedger, contentLedger, pageLedger].filter(Boolean)) {
+  if (ledger.source?.title !== '1_Ch2 Fundamentals of ML.pdf') issues.push('ledger source title mismatch');
+  if (ledger.source?.pages !== 13) issues.push('ledger source page count must be 13');
+  if (ledger.source?.sha256 !== 'c6ac9d80c5ae2bc96f0aa8aec70c126f559e6dd5c36d51a46eb1bdb6775e836c') issues.push('ledger source SHA-256 mismatch');
+}
+
+if (formulaLedger) {
+  if (formulaLedger.formulaCount !== formulaLedger.formulas.length) issues.push('formulaCount does not match formula array length');
+  if (formulaLedger.formulas.length !== 103) issues.push(`expected 103 source-tracked formulas, found ${formulaLedger.formulas.length}`);
+  const expected = formulaLedger.formulas.map((_, index) => `MAI-P2-${String(index + 1).padStart(3, '0')}`);
+  const actual = formulaLedger.formulas.map((formula) => formula.formulaId);
+  if (JSON.stringify(expected) !== JSON.stringify(actual)) issues.push('formula IDs are not contiguous MAI-P2-001..103');
+  const statuses = new Set(['source-exact', 'source-suspect', 'editorially-completed', 'corrected-variant']);
+  for (const formula of formulaLedger.formulas) {
+    const digest = crypto.createHash('sha256').update(formula.sourceLatex, 'utf8').digest('hex');
+    if (digest !== formula.sha256) issues.push(`${formula.formulaId}: formula hash mismatch`);
+    if (!statuses.has(formula.status)) issues.push(`${formula.formulaId}: invalid status ${formula.status}`);
+    if (formula.pdfPage < 1 || formula.pdfPage > 13) issues.push(`${formula.formulaId}: invalid PDF page`);
+    const count = (article.match(new RegExp(`part2Formula\\(['\"]${formula.formulaId}['\"]\\)`, 'g')) ?? []).length;
+    if (count !== 1) issues.push(`${formula.formulaId}: expected exactly one article occurrence, found ${count}`);
+  }
+}
+
+if (contentLedger) {
+  if (contentLedger.contentCount !== contentLedger.content.length) issues.push('contentCount mismatch');
+  if (contentLedger.figureCount !== contentLedger.figures.length) issues.push('figureCount mismatch');
+  if (contentLedger.annotationCount !== contentLedger.annotations.length) issues.push('annotationCount mismatch');
+  for (const entry of contentLedger.content) {
+    const count = (article.match(new RegExp(`source-content:${entry.contentId}`, 'g')) ?? []).length;
+    if (count !== 1) issues.push(`${entry.contentId}: expected one article marker, found ${count}`);
+  }
+  for (const entry of contentLedger.figures) {
+    const count = (article.match(new RegExp(`source-figure:${entry.figureId}`, 'g')) ?? []).length;
+    if (count !== 1) issues.push(`${entry.figureId}: expected one article marker, found ${count}`);
+  }
+  for (const entry of contentLedger.annotations) {
+    const count = (article.match(new RegExp(`source-annotation:${entry.annotationId}`, 'g')) ?? []).length;
+    if (count !== 1) issues.push(`${entry.annotationId}: expected one article marker, found ${count}`);
+  }
+}
+
+if (pageLedger && formulaLedger && contentLedger) {
+  const pages = pageLedger.pages.map((entry) => entry.pdfPage);
+  if (JSON.stringify(pages) !== JSON.stringify([1,2,3,4,5,6,7,8,9,10,11,12,13])) issues.push(`page ledger must enumerate pages 1–13 exactly, found ${pages.join(',')}`);
+  const formulaIds = new Set(formulaLedger.formulas.map((item) => item.formulaId));
+  const contentIds = new Set(contentLedger.content.map((item) => item.contentId));
+  const figureIds = new Set(contentLedger.figures.map((item) => item.figureId));
+  const annotationIds = new Set(contentLedger.annotations.map((item) => item.annotationId));
+  for (const page of pageLedger.pages) {
+    if (page.status !== 'complete') issues.push(`page ${page.pdfPage}: status must be complete`);
+    if (!page.contentIds.length) issues.push(`page ${page.pdfPage}: no content mapped`);
+    for (const id of page.formulaIds) if (!formulaIds.has(id)) issues.push(`page ${page.pdfPage}: unknown formula ${id}`);
+    for (const id of page.contentIds) if (!contentIds.has(id)) issues.push(`page ${page.pdfPage}: unknown content ${id}`);
+    for (const id of page.figureIds) if (!figureIds.has(id)) issues.push(`page ${page.pdfPage}: unknown figure ${id}`);
+    for (const id of page.annotationIds) if (!annotationIds.has(id)) issues.push(`page ${page.pdfPage}: unknown annotation ${id}`);
+  }
+  for (const formula of formulaLedger.formulas) {
+    const mapped = pageLedger.pages.find((page) => page.pdfPage === formula.pdfPage)?.formulaIds.includes(formula.formulaId);
+    if (!mapped) issues.push(`${formula.formulaId}: absent from its page ledger`);
+  }
+}
+
+for (const required of [
+  "title: '현대 인공지능 II — 머신러닝의 기본 과제와 일반화'",
+  "id: 'modern-artificial-intelligence'",
+  'order: 2',
+  '# PDF 원자료 재구성',
+  '# 편집·수학 검증(Editorial audit)',
+  '# 2026-08-18 최신 연구 업데이트',
+]) if (!article.includes(required)) issues.push(`article missing required contract: ${required}`);
+
+if (!fs.existsSync(distPath)) {
+  issues.push('rendered Part II output missing; run pnpm build before audit');
+} else {
+  const html = fs.readFileSync(distPath, 'utf8');
+  const renderedFormulaIds = [...html.matchAll(/data-formula-id="(MAI-P2-\d{3})"/g)].map((match) => match[1]);
+  if (renderedFormulaIds.length !== 103) issues.push(`rendered formula count: expected 103, found ${renderedFormulaIds.length}`);
+  if (new Set(renderedFormulaIds).size !== 103) issues.push('rendered formula IDs contain duplicates');
+  for (const required of ['PDF 원자료 재구성', '편집·수학 검증', '2026-08-18 최신 연구 업데이트', 'Figure 1 재구성', 'Figure 5 재구성']) {
+    if (!html.includes(required)) issues.push(`rendered Part II missing: ${required}`);
+  }
+  for (const forbidden of ['P(S_c\\mid x)=\\boxed', 'source-content:P2-C', 'source-figure:P2-FIG']) {
+    if (html.includes(forbidden)) issues.push(`rendered Part II leaked source/audit marker: ${forbidden}`);
+  }
+}
+
+const unique = [...new Set(issues)].sort();
+if (unique.length) {
+  console.error(`modern-ai-part2-audit: found ${unique.length} issue(s):`);
+  for (const issue of unique) console.error(`  - ${issue}`);
+  process.exit(1);
+}
+console.log(`modern-ai-part2-audit: PASS (13 pages; ${formulaLedger.formulas.length} formulas; ${contentLedger.content.length} content blocks; ${contentLedger.figures.length} figures; ${contentLedger.annotations.length} annotations)`);
