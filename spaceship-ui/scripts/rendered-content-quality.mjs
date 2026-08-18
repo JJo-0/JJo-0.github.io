@@ -20,6 +20,11 @@ function filesUnder(dir, predicate = () => true) {
 function visibleArticleText(html) {
   const article = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] ?? '';
   return article
+    // Formula cards intentionally keep exact TeX in a button data attribute for
+    // clipboard use. It is machine-readable metadata, not reader-visible prose.
+    // Strip it before the intentionally simple tag remover encounters inequality
+    // symbols such as `>` inside a quoted TeX payload.
+    .replace(/\sdata-copy-tex="[^"]*"/gi, '')
     .replace(/<pre\b[\s\S]*?<\/pre>/gi, ' ')
     .replace(/<code\b[\s\S]*?<\/code>/gi, ' ')
     .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
