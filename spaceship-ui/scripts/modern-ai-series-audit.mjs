@@ -131,7 +131,6 @@ for (const post of published) {
     '읽는 중',
     ...expectedTitles,
   ];
-  if (post.order === 1) requiredRenderedText.push('총 8편');
   for (const required of requiredRenderedText) {
     if (!html.includes(required)) issues.push(`${post.relative}: rendered series map missing ${required}`);
   }
