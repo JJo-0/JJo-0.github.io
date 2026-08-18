@@ -20,13 +20,152 @@ jobs:
         with:
           ref: agent/export-current-blog-source
           fetch-depth: 1
+
       - name: Package source
         shell: bash
         run: tar --exclude=.git -czf "$RUNNER_TEMP/current-blog-source.tar.gz" .
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+
+      - name: Build current main-equivalent source
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Audit Part I at a 390x844 mobile viewport
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/mobile-runtime-audit.js" <<'JS'
+          (async () => {
+            const twoFrames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            if (document.fonts?.ready) await document.fonts.ready;
+            await twoFrames();
+
+            const cards = [...document.querySelectorAll('[data-formula-id]')];
+            const details = cards.map((card) => card.querySelector('details.formula-guide')).filter(Boolean);
+            const summaries = details.map((item) => item.querySelector('summary')).filter(Boolean);
+            const copyButtons = [...document.querySelectorAll('.formula-copy')];
+            const scrollRows = cards.map((card) => {
+              const math = card.querySelector(':scope > div .math-display');
+              const scroller = math?.closest('.overflow-x-auto');
+              return scroller ? {
+                formulaId: card.getAttribute('data-formula-id'),
+                clientWidth: scroller.clientWidth,
+                scrollWidth: scroller.scrollWidth,
+                overflowPx: Math.max(0, scroller.scrollWidth - scroller.clientWidth),
+              } : null;
+            }).filter(Boolean);
+            const overflowing = scrollRows.filter((row) => row.overflowPx > 1).sort((a, b) => b.overflowPx - a.overflowPx);
+            const summaryHeights = summaries.map((item) => item.getBoundingClientRect().height);
+            const copyRects = copyButtons.map((item) => item.getBoundingClientRect());
+            const sampleIndices = [...new Set([0, Math.floor(details.length / 2), details.length - 1])].filter((index) => index >= 0);
+            const expansionSamples = [];
+            for (const index of sampleIndices) {
+              const item = details[index];
+              const card = item.closest('[data-formula-id]');
+              const start = performance.now();
+              item.open = true;
+              await twoFrames();
+              expansionSamples.push({
+                formulaId: card?.getAttribute('data-formula-id') || '',
+                openLatencyMs: Number((performance.now() - start).toFixed(2)),
+                expandedHeightPx: Number(card?.getBoundingClientRect().height.toFixed(2) || 0),
+              });
+              item.open = false;
+              await twoFrames();
+            }
+
+            const article = document.querySelector('article');
+            const root = document.documentElement;
+            const result = {
+              viewport: { width: innerWidth, height: innerHeight, devicePixelRatio },
+              formulaCards: cards.length,
+              formulaGuides: details.length,
+              initialDomNodes: document.querySelectorAll('*').length,
+              pageHeightPx: root.scrollHeight,
+              pageViewportLengths: Number((root.scrollHeight / innerHeight).toFixed(2)),
+              bodyHorizontalOverflowPx: Math.max(0, root.scrollWidth - root.clientWidth),
+              articleHorizontalOverflowPx: article ? Math.max(0, article.scrollWidth - article.clientWidth) : null,
+              mainFormulaOverflowCount: overflowing.length,
+              mainFormulaOverflowRate: cards.length ? Number((overflowing.length / cards.length).toFixed(4)) : 0,
+              longestFormulaOverflow: overflowing.slice(0, 10),
+              summaryTouchTargetMinHeightPx: summaryHeights.length ? Number(Math.min(...summaryHeights).toFixed(2)) : null,
+              copyTouchTargetMinWidthPx: copyRects.length ? Number(Math.min(...copyRects.map((rect) => rect.width)).toFixed(2)) : null,
+              copyTouchTargetMinHeightPx: copyRects.length ? Number(Math.min(...copyRects.map((rect) => rect.height)).toFixed(2)) : null,
+              deepLinkableFormulaCards: cards.filter((card) => Boolean(card.id)).length,
+              formulaSearchControls: document.querySelectorAll('[data-formula-search], [aria-label*="수식 검색"]').length,
+              formulaNavigatorControls: document.querySelectorAll('[data-formula-navigator]').length,
+              expansionSamples,
+            };
+            const pre = document.createElement('pre');
+            pre.id = 'mobile-audit-result';
+            pre.textContent = JSON.stringify(result);
+            document.body.append(pre);
+          })();
+          JS
+
+          python3 - <<'PY'
+          from pathlib import Path
+          page = Path('spaceship-ui/dist/posts/2025-05-16-mordern-artificial-intelligence/index.html')
+          text = page.read_text(encoding='utf-8')
+          script = Path(__import__('os').environ['RUNNER_TEMP']) / 'mobile-runtime-audit.js'
+          injected = text.replace('</body>', '<script>' + script.read_text(encoding='utf-8') + '</script></body>', 1)
+          if injected == text:
+              raise SystemExit('failed to inject runtime audit')
+          page.write_text(injected, encoding='utf-8')
+          PY
+
+          python3 -m http.server 4173 --directory spaceship-ui/dist > "$RUNNER_TEMP/http.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          sleep 2
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$chrome"
+          "$chrome" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=390,844 --force-device-scale-factor=1 --virtual-time-budget=10000 --dump-dom \
+            http://127.0.0.1:4173/posts/2025-05-16-mordern-artificial-intelligence/ > "$RUNNER_TEMP/mobile-dom.html"
+
+          python3 - <<'PY'
+          import gzip, html, json, os, re
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          page = Path('spaceship-ui/dist/posts/2025-05-16-mordern-artificial-intelligence/index.html')
+          raw = page.read_bytes()
+          dump = (temp / 'mobile-dom.html').read_text(encoding='utf-8')
+          match = re.search(r'<pre id="mobile-audit-result">(.*?)</pre>', dump, re.S)
+          if not match:
+              raise SystemExit('runtime audit result missing from Chrome dump')
+          result = json.loads(html.unescape(match.group(1)))
+          result['htmlBytesRaw'] = len(raw)
+          result['htmlBytesGzipLevel9'] = len(gzip.compress(raw, compresslevel=9))
+          result['htmlMiBRaw'] = round(len(raw) / 1024 / 1024, 3)
+          result['htmlMiBGzipLevel9'] = round(len(gzip.compress(raw, compresslevel=9)) / 1024 / 1024, 3)
+          (temp / 'baseline-mobile-audit.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          PY
+
       - name: Upload source artifact
         uses: actions/upload-artifact@v4
         with:
           name: current-blog-source
           path: ${{ runner.temp }}/current-blog-source.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload baseline mobile audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: modern-ai-part1-mobile-baseline
+          path: ${{ runner.temp }}/baseline-mobile-audit.json
           retention-days: 1
           if-no-files-found: error
