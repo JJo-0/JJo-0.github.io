@@ -43,15 +43,15 @@
     return `M ${samples.join(' L ')}`;
   }
 
-  function bayesBoundary() {
-    const p1 = Math.max(0.01, prior / 100);
+  function bayesBoundary(priorValue: number, sigmaOne: number, sigmaTwo: number) {
+    const p1 = Math.max(0.01, priorValue / 100);
     const p2 = Math.max(0.01, 1 - p1);
     let bestX = 0;
     let bestGap = Number.POSITIVE_INFINITY;
 
     for (let index = 0; index <= 1600; index += 1) {
       const x = -4 + index * 0.005;
-      const gap = Math.abs(p1 * gaussian(x, -1.25, sigma1) - p2 * gaussian(x, 1.15, sigma2));
+      const gap = Math.abs(p1 * gaussian(x, -1.25, sigmaOne) - p2 * gaussian(x, 1.15, sigmaTwo));
       if (gap < bestGap && x > -0.5 && x < 0.8) {
         bestGap = gap;
         bestX = x;
@@ -63,9 +63,9 @@
   $: trainError = Math.max(4, 69 - capacity * 8);
   $: testError = Math.round(15 + ((capacity - 4) ** 2) * 3.7);
   $: curve = capacityCurve(capacity);
-  $: boundary = bayesBoundary();
+  $: boundary = bayesBoundary(prior, sigma1, sigma2);
   $: boundaryX = 28 + ((boundary + 4) / 8) * 310;
-  $: midpointX = 28 + ((-0.05 + 4) / 8) * 310;
+  const midpointX = 28 + ((-0.05 + 4) / 8) * 310;
   $: requiredPoints = 5 ** dimension;
 </script>
 
@@ -88,7 +88,7 @@
         <line x1="20" y1="200" x2="342" y2="200" class="axis" />
         <line x1="20" y1="20" x2="20" y2="200" class="axis" />
         <path d={curve} class="model-line" />
-        {#each points as point}
+        {#each points as point (point[0])}
           <circle cx={point[0]} cy={point[1]} r="4.3" class="sample" />
         {/each}
       </svg>
@@ -110,7 +110,7 @@
       </div>
 
       <div class="folds" aria-label="5-fold 교차검증">
-        {#each foldItems as item}
+        {#each foldItems as item (item)}
           <div class:test={item === fold}>
             <strong>Fold {item}</strong>
             <span>{item === fold ? '검증에 사용' : '학습에 사용'}</span>
