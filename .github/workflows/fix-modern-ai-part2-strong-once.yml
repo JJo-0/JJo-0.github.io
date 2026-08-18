@@ -1,0 +1,56 @@
+name: Fix Modern AI Part II rendered emphasis once
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-part-2-source-complete
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: modern-ai-part2-strong
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    if: github.ref_name == 'agent/modern-ai-part-2-source-complete'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-part-2-source-complete
+          fetch-depth: 0
+
+      - name: Replace the two literal Markdown emphasis markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('spaceship-ui/site/content/posts/modern-artificial-intelligence-2.mdx')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              '**과소적합(underfitting)**은': '<strong>과소적합(underfitting)</strong>은',
+              '**과대적합(overfitting)**은': '<strong>과대적합(overfitting)</strong>은',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected exactly one occurrence of {old!r}, found {text.count(old)}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+          rm -f .github/workflows/fix-modern-ai-part2-strong-once.yml
+
+      - name: Commit rendered emphasis correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: render Part II fitting terms as strong text'
+          git push origin HEAD:agent/modern-ai-part-2-source-complete
