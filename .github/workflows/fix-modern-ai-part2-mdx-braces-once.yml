@@ -1,0 +1,53 @@
+name: Fix Modern AI Part II prose braces once
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-part-2-source-complete
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: modern-ai-part2-mdx-braces
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    if: github.ref_name == 'agent/modern-ai-part-2-source-complete'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-part-2-source-complete
+          fetch-depth: 0
+
+      - name: Protect source notation from MDX expression parsing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('spaceship-ui/site/content/posts/modern-artificial-intelligence-2.mdx')
+          text = path.read_text(encoding='utf-8')
+          old = "PDF는 R_{c′}(x)를 ‘x를 S_{c′}에 배정한 위험’으로 설명하면서 합 안의 손실을 L(a_c|S_{c′})로 적는다. 많은 교재는 행동 인덱스와 실제 클래스 인덱스를 반대로 배열해 L(a_{c′}|S_c)로 쓴다. 여기서는 원자료 표기를 그대로 보존하고 의미만 명시했다."
+          new = "PDF는 `R_{c′}(x)`를 ‘x를 `S_{c′}`에 배정한 위험’으로 설명하면서 합 안의 손실을 `L(a_c|S_{c′})`로 적는다. 많은 교재는 행동 인덱스와 실제 클래스 인덱스를 반대로 배열해 `L(a_{c′}|S_c)`로 쓴다. 여기서는 원자료 표기를 그대로 보존하고 의미만 명시했다."
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one target sentence, found {text.count(old)}')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+          rm -f .github/workflows/fix-modern-ai-part2-mdx-braces-once.yml
+
+      - name: Commit MDX prose correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: protect Part II source notation in MDX prose'
+          git push origin HEAD:agent/modern-ai-part-2-source-complete
