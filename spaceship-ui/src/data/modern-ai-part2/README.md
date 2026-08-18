@@ -28,7 +28,7 @@ Every display formula is rendered as a responsive card with a reader-facing `쉽
 6. symbols that occur in the formula; and
 7. curated follow-up references.
 
-The guide is supplemental: it does not alter `sourceLatex`, formula hashes, source page mappings, source equation numbers, or editorial status. Internal ledger IDs remain machine-readable attributes rather than reader-facing headings.
+The guide is supplemental: it does not alter `sourceLatex`, formula hashes, source page mappings, source equation numbers, or editorial status. Internal ledger IDs remain machine-readable attributes rather than reader-facing headings. The Astro renderer and every worked-example step are statically type-checked before the production build.
 
 The formula status vocabulary distinguishes `source-exact`, `source-suspect`, `editorially-completed`, and `corrected-variant` expressions so that source preservation and mathematical correction are never silently conflated.
 
