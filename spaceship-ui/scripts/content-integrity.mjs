@@ -7,7 +7,7 @@ const posts = path.join(root, 'site', 'content', 'posts');
 const issues = [];
 const HTML_BLOCK_START = /^(?:<!--[\s\S]*?-->\s*)*<(?:article|aside|blockquote|canvas|div|figure|footer|form|h[1-6]|header|ins|main|nav|ol|p|script|section|style|table|ul)\b/i;
 const EXPECTED_LEGACY_REDIRECTS = 45;
-const EXPECTED_MODERN_AI_FORMULAS = 238;
+const EXPECTED_MODERN_AI_FORMULA_CARDS = 238;
 const FRAGILE_IMAGE_HOSTS = /(?:^|\.)(?:google\.com|googleusercontent\.com|bing\.com|duckduckgo\.com|daumcdn\.net|kakaocdn\.net)$/i;
 
 function filesUnder(dir, predicate = () => true) {
@@ -108,7 +108,7 @@ for (const token of [
 
 const legacyRedirects = [];
 let visionMathVerified = false;
-let modernAiMathCount = -1;
+let modernAiFormulaCardCount = -1;
 
 for (const file of filesUnder(dist, (p) => p.endsWith('.html'))) {
   const html = fs.readFileSync(file, 'utf8');
@@ -151,7 +151,7 @@ for (const file of filesUnder(dist, (p) => p.endsWith('.html'))) {
   }
 
   if (normalizedRelative === 'posts/2025-05-16-mordern-artificial-intelligence/index.html') {
-    modernAiMathCount = [...html.matchAll(/class=(['"])[^'"]*math-display[^'"]*\1/g)].length;
+    modernAiFormulaCardCount = [...html.matchAll(/data-formula-part=(['"])1\1/g)].length;
   }
 }
 
@@ -159,7 +159,7 @@ if (legacyRedirects.length !== EXPECTED_LEGACY_REDIRECTS) issues.push(`legacy re
 const knownLegacy = legacyRedirects.find(({ source }) => source === '/projects/computer-vision/Human-Height-Estimation/');
 if (knownLegacy?.target !== '/posts/2024-12-26-human-height-estimation/') issues.push('legacy redirects: Human Height Estimation mapping is missing or points to the wrong target');
 if (!visionMathVerified) issues.push('Vision post: native KaTeX output missing or legacy inline-math sentinels remain');
-if (modernAiMathCount !== EXPECTED_MODERN_AI_FORMULAS) issues.push(`Modern AI post: expected ${EXPECTED_MODERN_AI_FORMULAS} rendered Math components, found ${modernAiMathCount}`);
+if (modernAiFormulaCardCount !== EXPECTED_MODERN_AI_FORMULA_CARDS) issues.push(`Modern AI post: expected ${EXPECTED_MODERN_AI_FORMULA_CARDS} root formula cards, found ${modernAiFormulaCardCount}`);
 
 const sitemapText = filesUnder(dist, (p) => /sitemap.*\.xml$/.test(path.basename(p))).map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 for (const { source } of legacyRedirects) if (sitemapText.includes(source)) issues.push(`sitemap contains noindex legacy redirect: ${source}`);
