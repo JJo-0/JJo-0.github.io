@@ -1,0 +1,112 @@
+name: Verify Modern AI Part II live once
+
+on:
+  push:
+    branches:
+      - agent/verify-modern-ai-part2-live
+    paths:
+      - .github/workflows/verify-modern-ai-part2-live-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/verify-modern-ai-part2-live
+          fetch-depth: 0
+
+      - name: Poll and audit the deployed page
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import datetime as dt
+          import json
+          import re
+          import time
+          import urllib.error
+          import urllib.request
+
+          url = 'https://jjo-0.github.io/posts/2026-08-18-modern-artificial-intelligence-2/'
+          part_one_url = 'https://jjo-0.github.io/posts/2025-05-16-mordern-artificial-intelligence/'
+          expected_commit = '113499913e57258b4865c023866ceb53a33e0ce4'
+          html = None
+          status = None
+          last_error = None
+
+          for attempt in range(40):
+              try:
+                  request = urllib.request.Request(url, headers={'User-Agent': 'JJo-0-live-verifier/1.0'})
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      status = response.status
+                      candidate = response.read().decode('utf-8', errors='replace')
+                  if status == 200 and '현대 인공지능 II — 머신러닝의 기본 과제와 일반화' in candidate:
+                      html = candidate
+                      break
+                  last_error = f'HTTP {status}; expected title not present'
+              except Exception as exc:
+                  last_error = repr(exc)
+              print(f'attempt {attempt + 1}/40: {last_error}')
+              time.sleep(15)
+
+          if html is None:
+              raise SystemExit(f'live Part II did not become ready: {last_error}')
+
+          formula_ids = re.findall(r'data-formula-id="(MAI-P2-\d{3})"', html)
+          explanation_count = len(re.findall(r'class="formula-explanation', html))
+          checks = {
+              'http_200': status == 200,
+              'title': '현대 인공지능 II — 머신러닝의 기본 과제와 일반화' in html,
+              'series_map': '현대 인공지능 · 8편 학습 지도' in html,
+              'source_notice': '강의자료 출처' in html and 'Il Yong Chun' in html,
+              'source_reconstruction': 'PDF 원자료 재구성' in html,
+              'research_update': '2026-08-18 최신 연구 업데이트' in html,
+              'formula_ids_103': len(formula_ids) == 103 and len(set(formula_ids)) == 103,
+              'explanation_cards_65': explanation_count == 65,
+              'copy_control': '수식 복사' in html,
+              'no_katex_error': 'katex-error' not in html,
+              'no_hidden_audit_heading': '편집·수학 검증(Editorial audit)' not in html,
+              'no_internal_content_markers': 'source-content:P2-C' not in html and 'source-figure:P2-FIG' not in html,
+          }
+
+          request = urllib.request.Request(part_one_url, headers={'User-Agent': 'JJo-0-live-verifier/1.0'})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              part_one_status = response.status
+              part_one_html = response.read().decode('utf-8', errors='replace')
+          checks['part_one_non_regression'] = part_one_status == 200 and '현대 인공지능 I — AI·ML·DL에서 확률·최적화까지' in part_one_html
+
+          failures = [name for name, passed in checks.items() if not passed]
+          report = {
+              'verified_at_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
+              'expected_main_commit': expected_commit,
+              'url': url,
+              'http_status': status,
+              'formula_occurrences': len(formula_ids),
+              'unique_formula_ids': len(set(formula_ids)),
+              'explanation_cards': explanation_count,
+              'part_one_http_status': part_one_status,
+              'checks': checks,
+              'failures': failures,
+          }
+          out = Path('.github/live-verification/modern-ai-part2.json')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          if failures:
+              raise SystemExit(f'live verification failed: {failures}')
+          PY
+
+      - name: Commit report and remove verifier
+        shell: bash
+        run: |
+          rm .github/workflows/verify-modern-ai-part2-live-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'test: record Modern AI Part II live deployment verification'
+          git push origin HEAD:agent/verify-modern-ai-part2-live
