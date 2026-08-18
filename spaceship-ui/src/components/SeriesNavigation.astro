@@ -1,9 +1,18 @@
 ---
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import modernAiSeries from '@/data/modern-ai-series.json';
 
 interface Props {
   seriesId: string;
   currentPostId: string;
+}
+
+interface ModernAiEntry {
+  order: number;
+  stage: string;
+  title: string;
+  description: string;
+  source: string;
 }
 
 const { seriesId, currentPostId } = Astro.props;
@@ -13,57 +22,172 @@ const seriesPosts = allPosts
   .filter((post) => post.data.series?.id === seriesId)
   .sort((a, b) => (a.data.series?.order ?? 0) - (b.data.series?.order ?? 0));
 
-if (seriesPosts.length <= 1) {
+const currentPost = seriesPosts.find((post) => post.id === currentPostId);
+const currentOrder = currentPost?.data.series?.order;
+const isModernAiSeries = seriesId === modernAiSeries.id;
+const modernAiEntries = (modernAiSeries.entries as ModernAiEntry[]).map((entry) => ({
+  ...entry,
+  post: seriesPosts.find((post) => post.data.series?.order === entry.order),
+}));
+
+if (!isModernAiSeries && seriesPosts.length <= 1) {
   return null;
 }
 ---
 
-<div class="rounded-lg border bg-card/50 px-6 py-5 mt-8 mb-12">
-  <div
-    class="flex items-center gap-2 mb-4 text-sm font-bold text-muted-foreground uppercase tracking-widest"
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
-    </svg>
-    Series
+<section
+  class="series-map mt-8 mb-12 overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-sm"
+  aria-labelledby={`series-map-${seriesId}`}
+>
+  <div class="border-b border-border/70 bg-muted/35 px-5 py-5 sm:px-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="min-w-0">
+        <div
+          class="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+          </svg>
+          Series map
+        </div>
+        <h2 id={`series-map-${seriesId}`} class="text-xl font-black tracking-tight text-foreground sm:text-2xl">
+          {isModernAiSeries ? `${modernAiSeries.title} · ${modernAiSeries.total}편 학습 지도` : '시리즈'}
+        </h2>
+        {
+          isModernAiSeries && (
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {modernAiSeries.subtitle}. 빈 번호나 자리 채우기용 글 없이, 실제 확보된 강의자료를 여덟 단계로 연결한다.
+            </p>
+          )
+        }
+      </div>
+
+      {
+        isModernAiSeries && currentOrder && (
+          <div class="flex shrink-0 items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
+            <span aria-hidden="true">현재</span>
+            <span>{currentOrder} / {modernAiSeries.total}</span>
+          </div>
+        )
+      }
+    </div>
   </div>
 
-  <ul class="space-y-3">
-    {
-      seriesPosts.map((post) => {
-        const isCurrent = post.id === currentPostId;
-        return (
-          <li>
-            {isCurrent ? (
-              <div class="flex items-start gap-3">
-                <span class="flex items-center justify-center w-6 h-6 mt-0.5 text-xs font-bold rounded-full bg-primary text-primary-foreground flex-shrink-0">
-                  {post.data.series?.order}
+  {
+    isModernAiSeries ? (
+      <ol class="grid gap-3 p-4 sm:grid-cols-2 sm:p-5" aria-label="현대 인공지능 8편 구성">
+        {modernAiEntries.map((entry) => {
+          const isCurrent = entry.order === currentOrder;
+          const isPublished = Boolean(entry.post);
+          const itemClass = isCurrent
+            ? 'border-primary/50 bg-primary/10 ring-1 ring-primary/20'
+            : isPublished
+              ? 'border-border bg-background/80 hover:border-primary/35 hover:bg-primary/5'
+              : 'border-border/70 bg-muted/20';
+          const numberClass = isCurrent
+            ? 'bg-primary text-primary-foreground'
+            : isPublished
+              ? 'bg-foreground text-background'
+              : 'bg-muted text-muted-foreground ring-1 ring-border';
+
+          const content = (
+            <>
+              <span
+                class={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black ${numberClass}`}
+                aria-hidden="true"
+              >
+                {entry.order}
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span class="text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">
+                    {entry.stage}
+                  </span>
+                  <span class="text-[0.68rem] font-bold text-muted-foreground">
+                    {isCurrent ? '읽는 중' : isPublished ? '게시됨' : '후속 편'}
+                  </span>
                 </span>
-                <span class="text-foreground font-medium">{post.data.title}</span>
-              </div>
-            ) : (
-              <a href={`/posts/${getPostSlug(post)}`} class="flex items-start gap-3 group">
-                <span class="flex items-center justify-center w-6 h-6 mt-0.5 text-xs font-bold rounded-full bg-muted text-muted-foreground ring-1 ring-border group-hover:ring-primary/50 group-hover:text-primary transition-all flex-shrink-0">
-                  {post.data.series?.order}
+                <span class="mt-1 block text-sm font-bold leading-5 text-foreground">
+                  {entry.title}
                 </span>
-                <span class="text-muted-foreground group-hover:text-primary transition-colors">
-                  {post.data.title}
+                <span class="mt-1.5 block text-xs leading-5 text-muted-foreground">
+                  {entry.description}
                 </span>
-              </a>
-            )}
-          </li>
-        );
-      })
-    }
-  </ul>
-</div>
+              </span>
+            </>
+          );
+
+          return (
+            <li>
+              {isCurrent ? (
+                <div
+                  class={`flex h-full items-start gap-3 rounded-xl border p-4 ${itemClass}`}
+                  aria-current="page"
+                >
+                  {content}
+                </div>
+              ) : entry.post ? (
+                <a
+                  href={`/posts/${getPostSlug(entry.post)}`}
+                  class={`flex h-full items-start gap-3 rounded-xl border p-4 transition-colors ${itemClass}`}
+                >
+                  {content}
+                </a>
+              ) : (
+                <div class={`flex h-full items-start gap-3 rounded-xl border p-4 ${itemClass}`}>
+                  {content}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    ) : (
+      <ul class="space-y-3 p-5 sm:p-6">
+        {seriesPosts.map((post) => {
+          const isCurrent = post.id === currentPostId;
+          return (
+            <li>
+              {isCurrent ? (
+                <div class="flex items-start gap-3" aria-current="page">
+                  <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {post.data.series?.order}
+                  </span>
+                  <span class="font-medium text-foreground">{post.data.title}</span>
+                </div>
+              ) : (
+                <a href={`/posts/${getPostSlug(post)}`} class="group flex items-start gap-3">
+                  <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-border transition-all group-hover:text-primary group-hover:ring-primary/50">
+                    {post.data.series?.order}
+                  </span>
+                  <span class="text-muted-foreground transition-colors group-hover:text-primary">
+                    {post.data.title}
+                  </span>
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    )
+  }
+
+  {
+    isModernAiSeries && (
+      <div class="border-t border-border/70 px-5 py-3 text-xs leading-5 text-muted-foreground sm:px-6">
+        게시된 편만 링크로 연결된다. 후속 PDF의 내용을 담은 글이 공개되면 같은 위치가 자동으로 활성화되며, 빈 게시물은 만들지 않는다.
+      </div>
+    )
+  }
+</section>

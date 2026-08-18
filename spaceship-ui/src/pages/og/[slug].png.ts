@@ -5,6 +5,7 @@ import { html } from 'satori-html';
 import { Resvg } from '@resvg/resvg-js';
 import { SITE } from '@/config';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { resolveSeriesPostTitle } from '@/lib/modern-ai-series';
 import { getOgBoldFont } from '@/lib/og-font';
 
 export async function getStaticPaths() {
@@ -18,6 +19,7 @@ export async function getStaticPaths() {
 export const GET: APIRoute = async ({ props }) => {
   const { post } = props;
   const fontData = await getOgBoldFont();
+  const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
 
   const markup = html`
     <div
@@ -46,7 +48,7 @@ export const GET: APIRoute = async ({ props }) => {
         line-height: 1.1;
       "
       >
-        ${post.data.title}
+        ${displayTitle}
       </div>
 
       <div style="font-size: 32px; color: #9ca3af;">
