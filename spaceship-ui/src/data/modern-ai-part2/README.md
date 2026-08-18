@@ -17,4 +17,6 @@ Authoritative source: `1_Ch2 Fundamentals of ML.pdf`
 
 Every display formula is rendered as a responsive card with a reader-facing `쉽게 설명` disclosure, reading order, symbol guide, source-location note, and an explicit warning when the source is incomplete or mathematically suspect. Internal ledger IDs remain machine-readable attributes rather than visible headings.
 
+The rendered-output audit verifies all 103 formula IDs, the exact source hashes, and the one-to-one explanation-card contract before publication.
+
 `pnpm modern-ai:part2-check` fails closed when a formula disappears, changes hash, is duplicated, loses its explanation card, or is absent from rendered output.
