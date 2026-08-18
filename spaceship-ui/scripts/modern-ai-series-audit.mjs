@@ -5,6 +5,7 @@ import process from 'node:process';
 const root = process.cwd();
 const catalogPath = path.join(root, 'src', 'data', 'modern-ai-series.json');
 const postsDir = path.join(root, 'site', 'content', 'posts');
+const partOneSourcePath = path.join(postsDir, 'mordern-artificial-intelligence.mdx');
 const distPartOne = path.join(
   root,
   'dist',
@@ -101,6 +102,34 @@ if (seenOrders.get(1) !== 'site/content/posts/mordern-artificial-intelligence.md
   issues.push('Modern AI Part I must remain the canonical mordern-artificial-intelligence.mdx post');
 }
 
+if (!fs.existsSync(partOneSourcePath)) {
+  issues.push('Modern AI Part I source is missing');
+} else {
+  const source = fs.readFileSync(partOneSourcePath, 'utf8');
+  for (const required of [
+    "title: '현대 인공지능 I — AI·ML·DL에서 확률·최적화까지'",
+    'updatedDate: 2026-08-18',
+    '## 시리즈 구성',
+    '**총 8편**',
+    '**기초 수학·확률 → 머신러닝 일반화 → 퍼셉트론·CNN → 기울기 최적화 → 이미지 분류 → 의미론적 분할 → VAE·확산모델 → 대조 표현학습**',
+  ]) {
+    if (!source.includes(required)) {
+      issues.push(`Part I source: missing source-native eight-part text: ${required}`);
+    }
+  }
+  for (const forbidden of [
+    ': 1장 전체',
+    '## 시리즈 지도',
+    '전체 시리즈는 **9편**',
+    '| 6 | 원자료 대기',
+    '아직 업로드되지 않음',
+  ]) {
+    if (source.includes(forbidden)) {
+      issues.push(`Part I source: obsolete nine-part/placeholder text remains: ${forbidden}`);
+    }
+  }
+}
+
 const componentPath = path.join(root, 'src', 'components', 'SeriesNavigation.astro');
 const componentSource = fs.existsSync(componentPath)
   ? fs.readFileSync(componentPath, 'utf8')
@@ -115,11 +144,20 @@ for (const required of [
     issues.push(`SeriesNavigation.astro: missing required eight-part map contract: ${required}`);
   }
 }
+if (componentSource.includes('원자료 대기')) {
+  issues.push('SeriesNavigation.astro: obsolete placeholder wording must not return');
+}
 
 const configPath = path.join(root, 'astro.config.mjs');
 const configSource = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '';
-if (!configSource.includes('modernAiSeriesEditorial')) {
-  issues.push('astro.config.mjs: exact-file Modern AI editorial transform is not registered');
+if (configSource.includes('modernAiSeriesEditorial')) {
+  issues.push('astro.config.mjs: the completed one-time source migration must not become a runtime/build shim');
+}
+if (fs.existsSync(path.join(root, 'src', 'lib', 'remark', 'modern-ai-series-editorial.mjs'))) {
+  issues.push('source-native contract: obsolete Modern AI editorial transform file still exists');
+}
+if (fs.existsSync(path.join(root, 'scripts', 'patch-modern-ai-source-once.mjs'))) {
+  issues.push('source-native contract: one-time source migration helper still exists');
 }
 
 if (!fs.existsSync(distPartOne)) {
@@ -168,5 +206,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `modern-ai-series-audit: PASS (8 approved entries; ${seenOrders.size} published part(s); no placeholder route/text; rendered Part I map verified)`,
+  `modern-ai-series-audit: PASS (8 approved entries; ${seenOrders.size} published part(s); source-native Part I; no placeholder route/text; rendered map verified)`,
 );
