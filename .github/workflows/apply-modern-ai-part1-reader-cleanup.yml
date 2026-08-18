@@ -1,0 +1,92 @@
+name: Apply Modern AI Part I reader cleanup
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-part1-clean-reader-intro
+
+permissions:
+  contents: write
+
+jobs:
+  apply-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out cleanup branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-part1-clean-reader-intro
+          fetch-depth: 0
+
+      - name: Remove reader-facing audit preamble and update its contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          post_path = Path('spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx')
+          source = post_path.read_text(encoding='utf-8')
+
+          start_marker = '> **편집·저작권 원칙**'
+          next_section = '---\n## Part 1.0 분야와 연구 생태계'
+          start = source.index(start_marker)
+          end = source.index(next_section, start)
+          cleaned = source[:start].rstrip() + '\n\n' + source[end:].lstrip()
+
+          removed_tokens = [
+              '> **편집·저작권 원칙**',
+              '> **이번 통합에서 폐기한 내용은 없다.**',
+              '## 수식 완전성 원칙',
+              '## 시리즈 구성',
+              '## 원자료 표기 감사',
+          ]
+          for token in removed_tokens:
+              if token in cleaned:
+                  raise SystemExit(f'Part I cleanup failed; token remains: {token}')
+          if '---\n## Part 1.0 분야와 연구 생태계' not in cleaned:
+              raise SystemExit('Part I first substantive section was damaged')
+          post_path.write_text(cleaned, encoding='utf-8')
+
+          audit_path = Path('spaceship-ui/scripts/modern-ai-series-audit.mjs')
+          audit = audit_path.read_text(encoding='utf-8')
+          required_block = """    '## 시리즈 구성',
+    '**총 8편**',
+    '**기초 수학·확률 → 머신러닝 일반화 → 퍼셉트론·CNN → 기울기 최적화 → 이미지 분류 → 의미론적 분할 → VAE·확산모델 → 대조 표현학습**',
+"""
+          if required_block not in audit:
+              raise SystemExit('Expected reader-facing series-source requirements were not found')
+          audit = audit.replace(required_block, '', 1)
+
+          old_forbidden = """    ': 1장 전체',
+    '## 시리즈 지도',
+    '전체 시리즈는 **9편**',
+    '| 6 | 원자료 대기',
+    '아직 업로드되지 않음',
+"""
+          new_forbidden = """    ': 1장 전체',
+    '## 시리즈 지도',
+    '전체 시리즈는 **9편**',
+    '| 6 | 원자료 대기',
+    '아직 업로드되지 않음',
+    '> **편집·저작권 원칙**',
+    '> **이번 통합에서 폐기한 내용은 없다.**',
+    '## 수식 완전성 원칙',
+    '## 시리즈 구성',
+    '## 원자료 표기 감사',
+"""
+          if old_forbidden not in audit:
+              raise SystemExit('Expected Part I forbidden-source block was not found')
+          audit = audit.replace(old_forbidden, new_forbidden, 1)
+          audit_path.write_text(audit, encoding='utf-8')
+          PY
+
+      - name: Remove one-time workflow
+        run: rm .github/workflows/apply-modern-ai-part1-reader-cleanup.yml
+
+      - name: Commit cleanup
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx spaceship-ui/scripts/modern-ai-series-audit.mjs .github/workflows/apply-modern-ai-part1-reader-cleanup.yml
+          git diff --cached --check
+          git commit -m "style: remove audit preamble from Modern AI I"
+          git push origin HEAD:agent/modern-ai-part1-clean-reader-intro
