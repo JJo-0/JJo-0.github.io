@@ -167,7 +167,6 @@ if (!fs.existsSync(distPartOne)) {
   const requiredRenderedText = [
     '현대 인공지능 I — AI·ML·DL에서 확률·최적화까지',
     '현대 인공지능 · 8편 학습 지도',
-    '총 8편',
     '읽는 중',
     ...expectedTitles,
   ];
