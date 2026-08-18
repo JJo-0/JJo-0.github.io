@@ -1,0 +1,87 @@
+name: Materialize staged Modern AI Part II
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-part-2-source-complete
+    paths:
+      - .github/workflows/materialize-modern-ai-part2.yml
+      - .github/part2-payload/chunk-00
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-part-2-source-complete
+          fetch-depth: 0
+      - name: Decode staged payload
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, gzip, io, json, tarfile, zipfile
+
+          source = Path('.github/part2-payload/chunk-00')
+          encoded = ''.join(source.read_text(encoding='utf-8').split())
+          data = gzip.decompress(base64.b64decode(encoded))
+          print('decoded bytes:', len(data), 'prefix:', data[:32])
+
+          extracted = []
+          bio = io.BytesIO(data)
+          try:
+              with tarfile.open(fileobj=bio, mode='r:*') as archive:
+                  for member in archive.getmembers():
+                      target = Path(member.name)
+                      if target.is_absolute() or '..' in target.parts:
+                          raise SystemExit(f'unsafe tar path: {member.name}')
+                  archive.extractall('.')
+                  extracted = [m.name for m in archive.getmembers() if m.isfile()]
+          except tarfile.ReadError:
+              bio.seek(0)
+              if zipfile.is_zipfile(bio):
+                  with zipfile.ZipFile(bio) as archive:
+                      for name in archive.namelist():
+                          target = Path(name)
+                          if target.is_absolute() or '..' in target.parts:
+                              raise SystemExit(f'unsafe zip path: {name}')
+                      archive.extractall('.')
+                      extracted = [n for n in archive.namelist() if not n.endswith('/')]
+              else:
+                  try:
+                      payload = json.loads(data.decode('utf-8'))
+                  except Exception as exc:
+                      Path('/tmp/modern-ai-part2-decoded.bin').write_bytes(data)
+                      raise SystemExit(f'unknown payload format: {exc}')
+                  files = payload.get('files', payload)
+                  if not isinstance(files, dict):
+                      raise SystemExit('JSON payload must be a path-to-content mapping')
+                  for name, content in files.items():
+                      target = Path(name)
+                      if target.is_absolute() or '..' in target.parts:
+                          raise SystemExit(f'unsafe JSON path: {name}')
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      target.write_text(content, encoding='utf-8')
+                      extracted.append(name)
+
+          print('extracted files:')
+          for name in extracted:
+              print('-', name)
+          if not extracted:
+              raise SystemExit('payload extracted no files')
+          PY
+      - name: Commit materialized source
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: materialize Modern AI Part II source-complete draft'
+          git push origin HEAD:agent/modern-ai-part-2-source-complete
