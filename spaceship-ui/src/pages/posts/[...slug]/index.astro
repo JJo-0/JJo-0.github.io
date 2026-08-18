@@ -4,6 +4,7 @@ import { render, type CollectionEntry } from 'astro:content';
 import { formatDate } from '@/lib/utils/date';
 import TableOfContents from '@/components/TableOfContents.svelte';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import modernAiSeries from '@/data/modern-ai-series.json';
 
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
 import SocialShare from '@/components/SocialShare.svelte';
@@ -28,10 +29,18 @@ const { Content, headings } = await render(post);
 
 const effectiveSlug = getPostSlug(post);
 const canonicalPostUrl = new URL(Astro.url.pathname, Astro.site).toString();
+const romanNumerals = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+const modernAiEntry =
+  post.data.series?.id === modernAiSeries.id
+    ? modernAiSeries.entries.find((entry) => entry.order === post.data.series?.order)
+    : undefined;
+const displayTitle = modernAiEntry
+  ? `${modernAiSeries.title} ${romanNumerals[modernAiEntry.order]} — ${modernAiEntry.title}`
+  : post.data.title;
 
 const schemas = [
   getBlogPostingSchema({
-    title: post.data.title,
+    title: displayTitle,
     description: post.data.description,
     pubDate: post.data.pubDate,
     url: canonicalPostUrl,
@@ -41,13 +50,13 @@ const schemas = [
   }),
   getBreadcrumbSchema([
     { name: 'Writing', url: new URL('/posts', Astro.site).toString() },
-    { name: post.data.title, url: canonicalPostUrl },
+    { name: displayTitle, url: canonicalPostUrl },
   ]),
 ];
 ---
 
 <Layout
-  title={post.data.title}
+  title={displayTitle}
   description={post.data.description}
   lang={post.data.lang}
   ogImage={`/og/${effectiveSlug}.png`}
@@ -58,7 +67,7 @@ const schemas = [
   <Breadcrumbs
     items={[
       { name: 'Writing', href: '/posts' },
-      { name: post.data.title, href: '#' },
+      { name: displayTitle, href: '#' },
     ]}
   />
 
@@ -109,7 +118,7 @@ const schemas = [
           </div>
 
           <h1 class="text-3xl font-black tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            {post.data.title}
+            {displayTitle}
           </h1>
 
           <p class="text-lg text-muted-foreground italic border-l-2 border-primary/20 pl-4 py-1">
