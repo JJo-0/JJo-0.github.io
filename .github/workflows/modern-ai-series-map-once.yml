@@ -1,0 +1,72 @@
+name: One-time Modern AI series map patch
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-eight-part-map
+    paths:
+      - .github/workflows/modern-ai-series-map-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-eight-part-map
+          fetch-depth: 0
+
+      - name: Replace the obsolete nine-part table
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx')
+          text = path.read_text(encoding='utf-8')
+
+          old_title = "title: '현대 인공지능 I — AI·ML·DL에서 확률·최적화까지: 1장 전체'"
+          new_title = "title: '현대 인공지능 I — AI·ML·DL에서 확률·최적화까지'"
+          if old_title not in text:
+              raise SystemExit('expected Part I title was not found')
+          text = text.replace(old_title, new_title, 1)
+          text = re.sub(r'^updatedDate:\s*[^\n]+$', 'updatedDate: 2026-08-18', text, count=1, flags=re.M)
+
+          replacement = """## 시리즈 구성
+
+이 시리즈는 **실제로 확보한 ECE5992 강의자료**를 기준으로 구성한다. 1장 통합판인 현재 글과 후속 PDF 7개를 합쳐 **총 8편**이며, 번호를 맞추기 위한 빈 글이나 별도의 ‘원자료 대기’ 게시물은 만들지 않는다.
+
+상단의 **8편 학습 지도**는 다음 흐름을 한 화면에서 보여준다.
+
+**기초 수학·확률 → 머신러닝 일반화 → 퍼셉트론·CNN → 기울기 최적화 → 이미지 분류 → 의미론적 분할 → VAE·확산모델 → 대조 표현학습**
+
+후속 글이 공개되면 구성도의 해당 항목이 자동으로 링크로 바뀐다. 따라서 이 글 안에 PDF 파일명 중심의 중복 표를 다시 두지 않는다.
+
+"""
+
+          pattern = r'## 시리즈 지도\n[\s\S]*?(?=## 원자료 표기 감사)'
+          text, count = re.subn(pattern, replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'expected one obsolete series-map block, replaced {count}')
+
+          forbidden = ['전체 시리즈는 **9편**', '| 6 | 원자료 대기', '아직 업로드되지 않음']
+          for token in forbidden:
+              if token in text:
+                  raise SystemExit(f'obsolete series token remains: {token}')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit content correction
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx
+          git commit -m 'fix: align Modern AI Part I with the eight-part series'
+          git push origin HEAD:agent/modern-ai-eight-part-map
