@@ -1,0 +1,83 @@
+name: Upgrade Modern AI Part I formula guides once
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-formula-walkthroughs
+    paths:
+      - .github/workflows/upgrade-modern-ai-part1-formulas-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-formula-walkthroughs
+          fetch-depth: 0
+
+      - name: Attach a calculation guide to all 238 Part I formulas
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx')
+          text = path.read_text(encoding='utf-8')
+
+          old_import = "import Math from '@/components/post/Math.astro';"
+          new_import = "import Math from '@/components/post/ExplainedMath.astro';"
+          if text.count(old_import) != 1:
+              raise SystemExit(f'expected one old Math import, found {text.count(old_import)}')
+          text = text.replace(old_import, new_import, 1)
+
+          pattern = re.compile(
+              r'(\{/\*\s*formula:\s*([^*\s]+)\s*\*/\}\s*)'
+              r'<Math\s+display\s+tex=\{("(?:\\.|[^"\\])*")\}\s*/>'
+          )
+          matches = list(pattern.finditer(text))
+          if len(matches) != 238:
+              raise SystemExit(f'expected 238 formula calls, found {len(matches)}')
+
+          ids = [match.group(2) for match in matches]
+          if len(ids) != len(set(ids)):
+              raise SystemExit('formula identifiers are not unique')
+
+          def replace(match):
+              marker, formula_id, serialized_tex = match.groups()
+              return f'{marker}<Math formulaId="{formula_id}" display tex={{{serialized_tex}}} />'
+
+          text = pattern.sub(replace, text)
+
+          reader_heading = '## Part 1.0 분야와 연구 생태계\n'
+          reader_note = (
+              '\n> **수식 읽기 모드** — 아래의 모든 표시 수식은 `쉽게 설명 + 계산 과정`을 연다. '
+              '각 카드에서 **무엇을 구하는지 → 중간 계산 → 숫자 예제 → 검산 포인트 → 외부 레퍼런스** 순서로 확인할 수 있다.\n'
+          )
+          if reader_note.strip() not in text:
+              if text.count(reader_heading) != 1:
+                  raise SystemExit('Part I reader heading insertion point is missing')
+              text = text.replace(reader_heading, reader_heading + reader_note, 1)
+
+          if '<Math display tex=' in text:
+              raise SystemExit('legacy unexplained Math display call remains')
+          if text.count('formulaId="MAI') != 238:
+              raise SystemExit(f'expected 238 explained formula calls, found {text.count("formulaId=\"MAI")}')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit migration and remove this one-time workflow
+        shell: bash
+        run: |
+          rm .github/workflows/upgrade-modern-ai-part1-formulas-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: add worked calculations to all Part I formulas'
+          git push origin HEAD:agent/modern-ai-formula-walkthroughs
