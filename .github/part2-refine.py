@@ -1,0 +1,126 @@
+from pathlib import Path
+import json
+
+root = Path('spaceship-ui')
+data = root / 'src/data/modern-ai-part2'
+article_path = root / 'site/content/posts/modern-artificial-intelligence-2.mdx'
+audit_path = root / 'scripts/modern-ai-part2-audit.mjs'
+readme_path = data / 'README.md'
+
+formula_path = data / 'formula-ledger.json'
+formula = json.loads(formula_path.read_text(encoding='utf-8'))
+by_id = {item['formulaId']: item for item in formula['formulas']}
+for formula_id in ('MAI-P2-035', 'MAI-P2-100'):
+    if formula_id not in by_id:
+        raise SystemExit(f'missing formula entry {formula_id}')
+    by_id[formula_id]['status'] = 'source-prose-formalized'
+formula_path.write_text(json.dumps(formula, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+article = article_path.read_text(encoding='utf-8')
+old_ledger = "- PDF 원자료 수식: **103개** (`MAI-P2-001`–`MAI-P2-103`)\n- 수식 상태: `source-exact`, `source-suspect`, `editorially-completed`, `corrected-variant`"
+new_ledger = "- 수식·수학 표현 추적 항목: **103개** (`MAI-P2-001`–`MAI-P2-103`)\n- 구성: PDF의 식·그림·필기에서 직접 추적한 표현 **97개**, PDF 문장을 수학식으로 명시한 항목 **2개**, 편집 완성·교정식 **4개**\n- 수식 상태: `source-exact`, `source-suspect`, `source-prose-formalized`, `editorially-completed`, `corrected-variant`\n- 동일 문단의 반복 단일기호는 content ledger에 보존하고, 별개의 수식처럼 중복 ID를 만들지 않는다."
+if old_ledger in article:
+    article = article.replace(old_ledger, new_ledger, 1)
+elif new_ledger not in article:
+    raise SystemExit('article ledger summary target missing')
+
+old_c074 = "Figure 1의 다항식 차수는 용량 하이퍼파라미터이고, 가중치 감쇠의 λ도 하이퍼파라미터다."
+new_c074 = "원자료는 Figure 1의 두 번째 다항식 예에서 차수를 용량 하이퍼파라미터로 들고, ‘Figure 2의 λ 파라미터’가 가중치 감쇠 강도를 조절하는 또 다른 하이퍼파라미터라고 쓴다. 실제 weight-decay 도표는 Figure 3이므로 이 교차참조 불일치는 편집 감사에서 별도로 보존한다."
+if old_c074 in article:
+    article = article.replace(old_c074, new_c074, 1)
+elif new_c074 not in article:
+    raise SystemExit('P2-C074 target missing')
+
+anchor = "\n\n\n---\n\n# 2026-08-18 최신 연구 업데이트"
+addition = """
+
+
+{/* source-content:P2-C242 */}
+## 10. 하이퍼파라미터 절의 Figure 2/3 교차참조
+
+
+{/* source-content:P2-C243 */}
+PDF p.5는 다항식 차수를 ‘Figure 1(second example)’에 연결하고, 가중치 감쇠의 λ를 ‘Figure 2’에 연결한다. 그러나 실제 Figure 2는 underfitting·overfitting·appropriate capacity 비교이고, λ를 바꾸는 9차 다항식 weight-decay 도표는 Figure 3이다. 원자료의 교차참조를 숨기지 않고 오프바이원 가능성이 있는 표기로 기록한다.
+
+
+{/* source-content:P2-C244 */}
+## 11. p.10 클래스 조건부 밀도 문장의 인쇄 상태
+
+
+{/* source-content:P2-C245 */}
+PDF p.10은 절 도입에서 `p(x|S_{c′})`를 사용한 뒤 본식에서는 `p(x|S_c)`를 사용한다. 이어지는 문장 ‘If the form of p(x|S_c), estimating it ...’는 조건절 일부가 빠진 형태이고, ‘if the PDFs are now well behaved’는 문맥상 ‘not well behaved’로 읽혀야 한다. 본문은 의도된 의미로 설명하되, 이 세 인쇄 상태를 원자료에서 사라지게 만들지 않는다.
+"""
+if 'source-content:P2-C242' not in article:
+    if article.count(anchor) != 1:
+        raise SystemExit('latest-research anchor missing')
+    article = article.replace(anchor, addition + anchor, 1)
+article_path.write_text(article, encoding='utf-8')
+
+content_path = data / 'content-ledger.json'
+content = json.loads(content_path.read_text(encoding='utf-8'))
+existing = {item['contentId'] for item in content['content']}
+additions = [
+    {'contentId':'P2-C242','pdfPage':5,'kind':'editorial-heading','section':'Editorial audit','summary':'## 10. 하이퍼파라미터 절의 Figure 2/3 교차참조'},
+    {'contentId':'P2-C243','pdfPage':5,'kind':'editorial-note','section':'Editorial audit','summary':'PDF p.5의 Figure 2/3 교차참조 불일치를 원문 그대로 기록한다.'},
+    {'contentId':'P2-C244','pdfPage':10,'kind':'editorial-heading','section':'Editorial audit','summary':'## 11. p.10 클래스 조건부 밀도 문장의 인쇄 상태'},
+    {'contentId':'P2-C245','pdfPage':10,'kind':'editorial-note','section':'Editorial audit','summary':'p(x|S_c′)/p(x|S_c) 혼용, 불완전 조건절, now/not well behaved 인쇄 상태를 기록한다.'},
+]
+for item in additions:
+    if item['contentId'] not in existing:
+        content['content'].append(item)
+content['content'].sort(key=lambda item: int(item['contentId'].split('C')[1]))
+content['contentCount'] = len(content['content'])
+content_path.write_text(json.dumps(content, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+page_path = data / 'page-ledger.json'
+pages = json.loads(page_path.read_text(encoding='utf-8'))
+by_page = {item['pdfPage']: item for item in pages['pages']}
+for page_number, ids in ((5,['P2-C242','P2-C243']),(10,['P2-C244','P2-C245'])):
+    page = by_page[page_number]
+    for content_id in ids:
+        if content_id not in page['contentIds']:
+            page['contentIds'].append(content_id)
+    page['contentIds'].sort(key=lambda value: int(value.split('C')[1]))
+page_path.write_text(json.dumps(pages, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+readme = readme_path.read_text(encoding='utf-8')
+old_counts = '- Formula records: 103\n- Content records: 241'
+new_counts = '- Tracked mathematical-expression records: 103\n  - 95 `source-exact`\n  - 2 `source-suspect`\n  - 2 `source-prose-formalized`\n  - 2 `editorially-completed`\n  - 2 `corrected-variant`\n- Content records: 245'
+if old_counts in readme:
+    readme = readme.replace(old_counts, new_counts, 1)
+elif new_counts not in readme:
+    raise SystemExit('README count target missing')
+old_desc = '- `formula-ledger.json`: exact TeX, source page/equation number, editorial status, and SHA-256'
+new_desc = '- `formula-ledger.json`: exact TeX, source page/equation number, source/editorial status, and SHA-256\n\nThe formula ledger tracks displayed equations, derivation lines, meaningful inline expressions, figure mathematics, and legible handwritten mathematics. Repeated single-symbol references inside an already inventoried paragraph remain in the content ledger rather than receiving artificial duplicate formula IDs.'
+if old_desc in readme:
+    readme = readme.replace(old_desc, new_desc, 1)
+elif new_desc not in readme:
+    raise SystemExit('README description target missing')
+readme_path.write_text(readme, encoding='utf-8')
+
+audit = audit_path.read_text(encoding='utf-8')
+old_status = "const statuses = new Set(['source-exact', 'source-suspect', 'editorially-completed', 'corrected-variant']);"
+new_status = "const statuses = new Set(['source-exact', 'source-suspect', 'source-prose-formalized', 'editorially-completed', 'corrected-variant']);"
+if old_status in audit:
+    audit = audit.replace(old_status, new_status, 1)
+elif new_status not in audit:
+    raise SystemExit('audit status target missing')
+needle = "  for (const formula of formulaLedger.formulas) {\n"
+status_check = """  const expectedStatusCounts = {
+    'source-exact': 95,
+    'source-suspect': 2,
+    'source-prose-formalized': 2,
+    'editorially-completed': 2,
+    'corrected-variant': 2,
+  };
+  const actualStatusCounts = Object.fromEntries([...statuses].map((status) => [status, 0]));
+  for (const formula of formulaLedger.formulas) actualStatusCounts[formula.status] = (actualStatusCounts[formula.status] ?? 0) + 1;
+  for (const [status, expectedCount] of Object.entries(expectedStatusCounts)) {
+    if (actualStatusCounts[status] !== expectedCount) issues.push(`formula status ${status}: expected ${expectedCount}, found ${actualStatusCounts[status] ?? 0}`);
+  }
+"""
+if 'const expectedStatusCounts = {' not in audit:
+    if audit.count(needle) != 1:
+        raise SystemExit('audit loop anchor missing')
+    audit = audit.replace(needle, status_check + needle, 1)
+audit_path.write_text(audit, encoding='utf-8')
