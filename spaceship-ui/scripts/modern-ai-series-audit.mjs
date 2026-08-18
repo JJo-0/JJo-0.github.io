@@ -124,7 +124,15 @@ for (const post of published) {
   }
   const html = fs.readFileSync(post.rendered, 'utf8');
   const expectedCurrentTitle = `현대 인공지능 ${['','I','II','III','IV','V','VI','VII','VIII'][post.order]} — ${expectedTitles[post.order - 1]}`;
-  for (const required of [expectedCurrentTitle, '현대 인공지능 · 8편 학습 지도', '총 8편', '읽는 중', ...expectedTitles]) {
+  const requiredRenderedText = [
+    expectedCurrentTitle,
+    '현대 인공지능 · 8편 학습 지도',
+    `${post.order} / 8`,
+    '읽는 중',
+    ...expectedTitles,
+  ];
+  if (post.order === 1) requiredRenderedText.push('총 8편');
+  for (const required of requiredRenderedText) {
     if (!html.includes(required)) issues.push(`${post.relative}: rendered series map missing ${required}`);
   }
   for (const forbidden of ['전체 시리즈는 <strong>9편</strong>','전체 시리즈는 **9편**','원자료 대기','아직 업로드되지 않음']) if (html.includes(forbidden)) issues.push(`${post.relative}: obsolete nine-part/placeholder text remains: ${forbidden}`);
