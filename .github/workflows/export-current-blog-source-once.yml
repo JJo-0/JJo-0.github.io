@@ -1,0 +1,29 @@
+name: Export current blog source once
+
+on:
+  push:
+    branches:
+      - agent/export-current-blog-source
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/export-current-blog-source
+          fetch-depth: 1
+      - name: Package source
+        shell: bash
+        run: tar --exclude=.git -czf current-blog-source.tar.gz .
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-blog-source
+          path: current-blog-source.tar.gz
+          retention-days: 1
+          if-no-files-found: error
