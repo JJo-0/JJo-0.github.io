@@ -135,7 +135,7 @@ function inferFamily({ tex, section = '', formulaId = '' }) {
   if (containsAny(t, ['\\operatorname{MSE}', 'MSE', '\\lVert', '\\|']) && containsAny(t, ['y', 'hat', 'X', 'w'])) {
     return 'mse';
   }
-  if (containsAny(t, ['\\lambda\\lVert', '\\lambda \\lVert', '\\lambda\|', '+\\lambda', '+ \\lambda']) || context.includes('regularization')) {
+  if (containsAny(t, ['\\lambda\\lVert', '\\lambda \\lVert', '\\lambda|', '+\\lambda', '+ \\lambda']) || context.includes('regularization')) {
     return 'regularization';
   }
   if (containsAny(t, ['P(S_', 'P(\\mathcal', 'P(S', 'P(C', 'P(Y', 'P(X']) && containsAny(t, ['p(x|', '\\mid', '|x', 'P('])) {
