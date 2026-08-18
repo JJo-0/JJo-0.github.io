@@ -18,6 +18,10 @@ function readJson(name) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+function count(html, pattern) {
+  return (html.match(pattern) ?? []).length;
+}
+
 const formulaLedger = readJson('formula-ledger.json');
 const contentLedger = readJson('content-ledger.json');
 const pageLedger = readJson('page-ledger.json');
@@ -46,8 +50,8 @@ if (formulaLedger) {
     if (digest !== formula.sha256) issues.push(`${formula.formulaId}: formula hash mismatch`);
     if (!statuses.has(formula.status)) issues.push(`${formula.formulaId}: invalid status ${formula.status}`);
     if (formula.pdfPage < 1 || formula.pdfPage > 13) issues.push(`${formula.formulaId}: invalid PDF page`);
-    const count = (article.match(new RegExp(`part2Formula\\(['"]${formula.formulaId}['"]\\)`, 'g')) ?? []).length;
-    if (count !== 1) issues.push(`${formula.formulaId}: expected exactly one article occurrence, found ${count}`);
+    const occurrenceCount = (article.match(new RegExp(`part2Formula\\(['"]${formula.formulaId}['"]\\)`, 'g')) ?? []).length;
+    if (occurrenceCount !== 1) issues.push(`${formula.formulaId}: expected exactly one article occurrence, found ${occurrenceCount}`);
   }
 
   const numbered = new Set(formulaLedger.formulas.map((formula) => formula.sourceEquationNumber).filter(Boolean));
@@ -64,16 +68,16 @@ if (contentLedger) {
   if (contentLedger.figureCount !== contentLedger.figures.length) issues.push('figureCount mismatch');
   if (contentLedger.annotationCount !== contentLedger.annotations.length) issues.push('annotationCount mismatch');
   for (const entry of contentLedger.content) {
-    const count = (article.match(new RegExp(`source-content:${entry.contentId}`, 'g')) ?? []).length;
-    if (count !== 1) issues.push(`${entry.contentId}: expected one article marker, found ${count}`);
+    const occurrenceCount = (article.match(new RegExp(`source-content:${entry.contentId}`, 'g')) ?? []).length;
+    if (occurrenceCount !== 1) issues.push(`${entry.contentId}: expected one article marker, found ${occurrenceCount}`);
   }
   for (const entry of contentLedger.figures) {
-    const count = (article.match(new RegExp(`source-figure:${entry.figureId}`, 'g')) ?? []).length;
-    if (count !== 1) issues.push(`${entry.figureId}: expected one article marker, found ${count}`);
+    const occurrenceCount = (article.match(new RegExp(`source-figure:${entry.figureId}`, 'g')) ?? []).length;
+    if (occurrenceCount !== 1) issues.push(`${entry.figureId}: expected one article marker, found ${occurrenceCount}`);
   }
   for (const entry of contentLedger.annotations) {
-    const count = (article.match(new RegExp(`source-annotation:${entry.annotationId}`, 'g')) ?? []).length;
-    if (count !== 1) issues.push(`${entry.annotationId}: expected one article marker, found ${count}`);
+    const occurrenceCount = (article.match(new RegExp(`source-annotation:${entry.annotationId}`, 'g')) ?? []).length;
+    if (occurrenceCount !== 1) issues.push(`${entry.annotationId}: expected one article marker, found ${occurrenceCount}`);
   }
 }
 
@@ -124,9 +128,23 @@ if (!fs.existsSync(distPath)) {
   if (renderedFormulaIds.length !== 103) issues.push(`rendered formula count: expected 103, found ${renderedFormulaIds.length}`);
   if (new Set(renderedFormulaIds).size !== 103) issues.push('rendered formula IDs contain duplicates');
 
-  const explanationCount = (html.match(/class="formula-explanation/g) ?? []).length;
+  const explanationCount = count(html, /class="formula-explanation formula-guide/g);
   if (explanationCount !== displayFormulaCount) {
-    issues.push(`display formula explanations: expected ${displayFormulaCount}, found ${explanationCount}`);
+    issues.push(`calculation-first display explanations: expected ${displayFormulaCount}, found ${explanationCount}`);
+  }
+
+  const guideContracts = [
+    ['display formula cards', /data-formula-part="2"/g],
+    ['calculation-first guides', /data-formula-guide="calculation-first"/g],
+    ['calculation walkthroughs', /data-calculation-walkthrough/g],
+    ['worked examples', /data-worked-example/g],
+    ['sanity-check sections', /data-formula-checks/g],
+  ];
+  for (const [label, pattern] of guideContracts) {
+    const actual = count(html, pattern);
+    if (actual !== displayFormulaCount) {
+      issues.push(`Part II ${label}: expected ${displayFormulaCount}, found ${actual}`);
+    }
   }
 
   for (const required of [
@@ -135,7 +153,11 @@ if (!fs.existsSync(distPath)) {
     '2026-08-18 최신 연구 업데이트',
     'Figure 1 재구성',
     'Figure 5 재구성',
-    '쉽게 설명',
+    '쉽게 설명 + 계산 과정',
+    'Calculation walkthrough',
+    '숫자로 직접 계산',
+    '검산 포인트',
+    '같은 계산을 더 깊게 확인할 레퍼런스',
     '수식 복사',
   ]) {
     if (!html.includes(required)) issues.push(`rendered Part II missing: ${required}`);
@@ -152,6 +174,17 @@ if (!fs.existsSync(distPath)) {
   ]) {
     if (html.includes(forbidden)) issues.push(`rendered Part II leaked internal/audit residue: ${forbidden}`);
   }
+
+  const normalEquationFormulaIndex = html.indexOf('data-formula-id="MAI-P2-029"');
+  const normalEquationGuideIndex = html.indexOf('data-calculation-walkthrough', normalEquationFormulaIndex);
+  const normalEquationExampleIndex = html.indexOf('data-worked-example', normalEquationFormulaIndex);
+  if (
+    normalEquationFormulaIndex < 0 ||
+    normalEquationGuideIndex < normalEquationFormulaIndex ||
+    normalEquationExampleIndex < normalEquationGuideIndex
+  ) {
+    issues.push('The Part II normal-equation derivation does not expose a calculation walkthrough and worked example');
+  }
 }
 
 const unique = [...new Set(issues)].sort();
@@ -161,4 +194,4 @@ if (unique.length) {
   process.exit(1);
 }
 
-console.log(`modern-ai-part2-audit: PASS (13 pages; ${formulaLedger.formulas.length} formulas; ${displayFormulaCount} explained display formulas; ${contentLedger.content.length} content blocks; ${contentLedger.figures.length} figures; ${contentLedger.annotations.length} annotations)`);
+console.log(`modern-ai-part2-audit: PASS (13 pages; ${formulaLedger.formulas.length} formulas; ${displayFormulaCount} calculation walkthroughs with worked examples; ${contentLedger.content.length} content blocks; ${contentLedger.figures.length} figures; ${contentLedger.annotations.length} annotations)`);
