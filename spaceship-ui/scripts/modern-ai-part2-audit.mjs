@@ -105,7 +105,7 @@ if (!fs.existsSync(distPath)) {
   for (const required of ['PDF 원자료 재구성', '편집·수학 검증', '2026-08-18 최신 연구 업데이트', 'Figure 1 재구성', 'Figure 5 재구성']) {
     if (!html.includes(required)) issues.push(`rendered Part II missing: ${required}`);
   }
-  for (const forbidden of ['P(S_c\\mid x)=\\boxed', 'source-content:P2-C', 'source-figure:P2-FIG']) {
+  for (const forbidden of ['source-content:P2-C', 'source-figure:P2-FIG', 'source-annotation:P2-ANN']) {
     if (html.includes(forbidden)) issues.push(`rendered Part II leaked source/audit marker: ${forbidden}`);
   }
 }
