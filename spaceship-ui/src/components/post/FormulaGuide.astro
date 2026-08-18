@@ -1,0 +1,230 @@
+---
+import Math from './Math.astro';
+import { buildFormulaGuide } from '@/lib/modern-ai-formula-guide.mjs';
+
+interface Props {
+  formulaId: string;
+  tex: string;
+  section?: string;
+  part?: number;
+  sourceLabel?: string;
+  note?: string | null;
+  statusLabel?: string;
+}
+
+const {
+  formulaId,
+  tex,
+  section = '',
+  part = 1,
+  sourceLabel,
+  note,
+  statusLabel,
+} = Astro.props;
+
+const guide = buildFormulaGuide({ formulaId, tex, section, part });
+---
+
+<details
+  class="formula-explanation formula-guide group border-t border-border/70"
+  data-formula-guide="calculation-first"
+  data-formula-family={guide.family}
+>
+  <summary class="cursor-pointer list-none px-4 py-4 sm:px-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="min-w-0">
+        <span class="block text-sm font-black text-foreground">쉽게 설명 + 계산 과정</span>
+        <span class="mt-1 block text-xs leading-5 text-muted-foreground">
+          {guide.badges.join(' · ')}
+        </span>
+      </div>
+      <span
+        class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/5 text-lg font-black leading-none text-primary transition-transform group-open:rotate-45"
+        aria-hidden="true"
+      >＋</span>
+    </div>
+  </summary>
+
+  <div class="border-t border-border/60 bg-muted/10 px-4 py-5 sm:px-5 sm:py-6">
+    <div class="grid gap-3 lg:grid-cols-2">
+      <section class="rounded-2xl border border-border/70 bg-background/80 p-4">
+        <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">이 식이 답하는 질문</p>
+        <p class="mb-0 mt-2 text-base font-black leading-7 text-foreground">{guide.question}</p>
+      </section>
+      <section class="rounded-2xl border border-border/70 bg-background/80 p-4">
+        <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">한 줄 핵심</p>
+        <p class="mb-0 mt-2 text-sm font-medium leading-7 text-foreground">{guide.summary}</p>
+      </section>
+    </div>
+
+    <section class="mt-6" data-calculation-walkthrough>
+      <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">Calculation walkthrough</p>
+          <h5 class="mb-0 mt-1 text-base font-black text-foreground">계산 과정</h5>
+        </div>
+        <span class="rounded-full border border-border bg-background px-3 py-1 text-xs font-bold text-muted-foreground">
+          중간 계산을 생략하지 않음
+        </span>
+      </div>
+
+      <ol class="m-0 space-y-3 p-0">
+        {guide.steps.map((item, index) => (
+          <li
+            class="grid list-none gap-3 rounded-2xl border border-border/70 bg-background/85 p-4 sm:grid-cols-[2.25rem_minmax(0,1fr)]"
+            data-calculation-step={index + 1}
+          >
+            <span class="grid h-9 w-9 place-items-center rounded-full bg-primary text-sm font-black text-primary-foreground">
+              {index + 1}
+            </span>
+            <div class="min-w-0">
+              <p class="m-0 font-black leading-6 text-foreground">{item.title}</p>
+              {item.explanation && <p class="mb-0 mt-1 text-sm leading-6 text-muted-foreground">{item.explanation}</p>}
+              {item.tex && (
+                <div class="mt-3 overflow-x-auto rounded-xl border border-border/60 bg-muted/20 px-3 py-1">
+                  <Math tex={item.tex} display />
+                </div>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    {guide.example && (
+      <section
+        class="mt-6 overflow-hidden rounded-2xl border border-sky-500/30 bg-sky-500/[0.06]"
+        data-worked-example
+      >
+        <div class="border-b border-sky-500/20 px-4 py-4 sm:px-5">
+          <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">Worked example</p>
+          <h5 class="mb-0 mt-1 text-base font-black text-foreground">숫자로 직접 계산 — {guide.example.title}</h5>
+          <p class="mb-0 mt-1 text-sm leading-6 text-muted-foreground">{guide.example.setup}</p>
+        </div>
+        <ol class="m-0 divide-y divide-sky-500/15 p-0">
+          {guide.example.steps.map((item: { title: string; explanation?: string; tex?: string }, index: number) => (
+            <li class="grid list-none gap-3 px-4 py-4 sm:grid-cols-[2.25rem_minmax(0,1fr)] sm:px-5" data-example-step={index + 1}>
+              <span class="grid h-8 w-8 place-items-center rounded-full border border-sky-500/30 bg-background text-xs font-black text-sky-700 dark:text-sky-300">
+                {index + 1}
+              </span>
+              <div class="min-w-0">
+                <p class="m-0 text-sm font-black text-foreground">{item.title}</p>
+                {item.explanation && <p class="mb-0 mt-1 text-sm leading-6 text-muted-foreground">{item.explanation}</p>}
+                {item.tex && (
+                  <div class="mt-2 overflow-x-auto rounded-xl bg-background/80 px-3 py-1">
+                    <Math tex={item.tex} display />
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div class="border-t border-sky-500/20 bg-background/55 px-4 py-4 sm:px-5">
+          <p class="m-0 text-sm font-black leading-6 text-foreground">결과: {guide.example.result}</p>
+          {guide.example.caution && (
+            <p class="mb-0 mt-2 text-xs leading-5 text-muted-foreground">주의: {guide.example.caution}</p>
+          )}
+        </div>
+      </section>
+    )}
+
+    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+      {guide.checks?.length > 0 && (
+        <section class="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 sm:p-5" data-formula-checks>
+          <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">Sanity check</p>
+          <h5 class="mb-2 mt-1 text-sm font-black text-foreground">검산 포인트</h5>
+          <ul class="m-0 space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
+            {guide.checks.map((check) => <li>{check}</li>)}
+          </ul>
+        </section>
+      )}
+
+      {guide.symbols.length > 0 && (
+        <section class="rounded-2xl border border-border/70 bg-background/80 p-4 sm:p-5">
+          <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">Symbols</p>
+          <h5 class="mb-2 mt-1 text-sm font-black text-foreground">이 식에 실제로 나온 기호</h5>
+          <div class="overflow-x-auto">
+            <table class="m-0 min-w-full text-sm">
+              <thead><tr><th class="whitespace-nowrap">기호</th><th>의미</th></tr></thead>
+              <tbody>
+                {guide.symbols.map((symbol) => (
+                  <tr><td class="whitespace-nowrap"><Math tex={symbol.tex} /></td><td>{symbol.meaning}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </div>
+
+    {note && (
+      <aside class="mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-950 dark:text-amber-100">
+        <strong>{statusLabel ? `${statusLabel}:` : '주의해서 읽기:'}</strong> {note}
+      </aside>
+    )}
+
+    {guide.references?.length > 0 && (
+      <section class="mt-6">
+        <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">Reference-quality follow-up</p>
+        <h5 class="mb-3 mt-1 text-sm font-black text-foreground">같은 계산을 더 깊게 확인할 레퍼런스</h5>
+        <div class="grid gap-3 sm:grid-cols-2">
+          {guide.references.map((reference) => (
+            <a
+              class="rounded-2xl border border-border/70 bg-background/80 p-4 no-underline transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-sm"
+              href={reference.href}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span class="block text-sm font-black text-foreground">{reference.label} ↗</span>
+              <span class="mt-1 block text-xs leading-5 text-muted-foreground">{reference.note}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4 text-xs text-muted-foreground/85">
+      <span>{sourceLabel || `${guide.area} · ${formulaId}`}</span>
+      <span>식별자: {formulaId}</span>
+    </div>
+  </div>
+</details>
+
+<script>
+  const trackFormulaEvent = (eventName: string, params: Record<string, string>) => {
+    const gtag = Reflect.get(window, 'gtag');
+    if (typeof gtag === 'function') Reflect.apply(gtag, window, ['event', eventName, params]);
+  };
+
+  document.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const button = target.closest('.formula-copy');
+    if (!(button instanceof HTMLButtonElement)) return;
+    const tex = button.dataset.copyTex;
+    if (!tex) return;
+    const original = button.textContent;
+    try {
+      await navigator.clipboard.writeText(tex);
+      button.textContent = '복사됨';
+      window.setTimeout(() => (button.textContent = original), 1400);
+      trackFormulaEvent('formula_copy', {
+        formula_id: button.closest('[data-formula-id]')?.getAttribute('data-formula-id') || '',
+      });
+    } catch {
+      button.textContent = '복사 실패';
+      window.setTimeout(() => (button.textContent = original), 1400);
+    }
+  });
+
+  document.addEventListener('toggle', (event) => {
+    const details = event.target;
+    if (!(details instanceof HTMLDetailsElement) || !details.open || !details.classList.contains('formula-guide')) return;
+    const card = details.closest('[data-formula-id]');
+    if (!card) return;
+    trackFormulaEvent('formula_explanation_open', {
+      formula_id: card.getAttribute('data-formula-id') || '',
+      formula_family: details.dataset.formulaFamily || '',
+    });
+  }, true);
+</script>

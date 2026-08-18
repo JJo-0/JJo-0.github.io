@@ -38,11 +38,14 @@ const expectedHashById = new Map(
   hashManifest.formulas.map(({ id, sha256 }) => [id, sha256]),
 );
 const markerPattern = /\{\/\*\s*formula:\s*([^*\s]+)\s*\*\/\}/g;
-const componentPattern = /<Math\s+display\s+tex=\{("(?:\\.|[^"\\])*")\}\s*\/>/g;
+const componentPattern = /<Math\s+formulaId="([^"]+)"\s+display\s+tex=\{("(?:\\.|[^"\\])*")\}\s*\/>/g;
+const immediateComponentPattern = /^\s*<Math\s+formulaId="([^"]+)"\s+display\s+tex=\{/;
 const markers = [...text.matchAll(markerPattern)];
 const components = [...text.matchAll(componentPattern)];
 const actualIds = markers.map((match) => match[1]);
 const actualIdSet = new Set(actualIds);
+const componentIds = components.map((match) => match[1]);
+const componentIdSet = new Set(componentIds);
 const failures = [];
 
 if (
@@ -67,8 +70,14 @@ if (unexpectedInManifest.length) {
 if (!text.includes("series:\n  id: 'modern-artificial-intelligence'\n  order: 1")) {
   failures.push('Part I series metadata is missing or changed.');
 }
-if (!text.includes("import Math from '@/components/post/Math.astro';")) {
-  failures.push('Native Math component import is missing.');
+if (!text.includes("import Math from '@/components/post/ExplainedMath.astro';")) {
+  failures.push('ExplainedMath component import is missing.');
+}
+if (text.includes("import Math from '@/components/post/Math.astro';")) {
+  failures.push('Part I still imports the bare Math renderer instead of ExplainedMath.');
+}
+if (!text.includes('쉽게 설명 + 계산 과정')) {
+  failures.push('Part I reader note for calculation-first formula guides is missing.');
 }
 if (text.includes('## 7. 다음 편') || text.includes('2편부터는 선형대수로 들어간다')) {
   failures.push('A split-draft transition remains in the merged Part I post.');
@@ -82,6 +91,9 @@ if (text.includes('$$')) {
 if (text.includes('<!-- formula:')) {
   failures.push('Legacy HTML formula markers remain; use MDX comments.');
 }
+if (/<Math\s+display\s+tex=/.test(text)) {
+  failures.push('An unexplained display Math call remains without a formulaId.');
+}
 if ([...text].some((character) => {
   const code = character.codePointAt(0) ?? 0;
   return code < 32 && character !== '\n' && character !== '\r';
@@ -93,22 +105,36 @@ if (actualIds.length !== manifestIds.length) {
   failures.push(`Formula marker count changed: expected ${manifestIds.length}, found ${actualIds.length}.`);
 }
 if (components.length !== manifestIds.length) {
-  failures.push(`Math component count changed: expected ${manifestIds.length}, found ${components.length}.`);
+  failures.push(`ExplainedMath component count changed: expected ${manifestIds.length}, found ${components.length}.`);
 }
 if (actualIdSet.size !== actualIds.length) {
   failures.push('Formula identifiers are not unique in the migrated MDX.');
 }
+if (componentIdSet.size !== componentIds.length) {
+  failures.push('ExplainedMath formulaId props are not unique.');
+}
 
 const missingFromSource = manifestIds.filter((id) => !actualIdSet.has(id));
 const unexpectedInSource = actualIds.filter((id) => !manifestIdSet.has(id));
+const missingComponentIds = manifestIds.filter((id) => !componentIdSet.has(id));
+const unexpectedComponentIds = componentIds.filter((id) => !manifestIdSet.has(id));
 if (missingFromSource.length) {
   failures.push(`Missing formula IDs: ${missingFromSource.join(', ')}`);
 }
 if (unexpectedInSource.length) {
   failures.push(`Unexpected formula IDs: ${unexpectedInSource.join(', ')}`);
 }
+if (missingComponentIds.length) {
+  failures.push(`ExplainedMath calls are missing IDs: ${missingComponentIds.join(', ')}`);
+}
+if (unexpectedComponentIds.length) {
+  failures.push(`ExplainedMath calls have unexpected IDs: ${unexpectedComponentIds.join(', ')}`);
+}
 if (actualIds.join('\n') !== manifestIds.join('\n')) {
   failures.push('Formula marker order differs from the pre-migration source manifest.');
+}
+if (componentIds.join('\n') !== manifestIds.join('\n')) {
+  failures.push('ExplainedMath component order differs from the source manifest.');
 }
 
 for (let index = 0; index < markers.length; index += 1) {
@@ -118,18 +144,24 @@ for (let index = 0; index < markers.length; index += 1) {
   const end = index + 1 < markers.length ? (markers[index + 1].index ?? text.length) : text.length;
   const region = text.slice(start, end);
   const owned = [...region.matchAll(componentPattern)];
+  const immediate = region.match(immediateComponentPattern);
 
-  if (!/^\s*<Math\s+display\s+tex=\{/.test(region)) {
-    failures.push(`${id} is not immediately followed by a native display Math component.`);
+  if (!immediate) {
+    failures.push(`${id} is not immediately followed by an ExplainedMath display component.`);
+  } else if (immediate[1] !== id) {
+    failures.push(`${id} is immediately followed by mismatched formulaId ${immediate[1]}.`);
   }
   if (owned.length !== 1) {
-    failures.push(`${id} owns ${owned.length} Math components; expected exactly 1.`);
+    failures.push(`${id} owns ${owned.length} ExplainedMath components; expected exactly 1.`);
     continue;
+  }
+  if (owned[0][1] !== id) {
+    failures.push(`${id} owns ExplainedMath formulaId ${owned[0][1]}.`);
   }
 
   let formula;
   try {
-    formula = JSON.parse(owned[0][1]);
+    formula = JSON.parse(owned[0][2]);
   } catch {
     failures.push(`${id} has a malformed serialized formula prop.`);
     continue;
@@ -142,7 +174,7 @@ for (let index = 0; index < markers.length; index += 1) {
   const actualHash = createHash('sha256').update(formula.trim(), 'utf8').digest('hex');
   const expectedHash = expectedHashById.get(id);
   if (!expectedHash) failures.push(`${id} is missing from the pre-migration formula hash ledger.`);
-  else if (actualHash !== expectedHash) failures.push(`${id} LaTeX content changed during/after MDX migration.`);
+  else if (actualHash !== expectedHash) failures.push(`${id} LaTeX content changed during/after explanation migration.`);
 }
 
 if (failures.length) {
@@ -152,5 +184,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Modern AI formula audit passed: ${actualIds.length} native Math components match the pre-migration SHA-256 formula ledger.`,
+  `Modern AI formula audit passed: ${actualIds.length} source-hashed formulas are paired one-to-one with calculation-first ExplainedMath cards.`,
 );
