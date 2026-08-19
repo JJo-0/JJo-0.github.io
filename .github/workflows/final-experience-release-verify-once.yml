@@ -1,0 +1,50 @@
+name: One-time final experience release verification
+
+on:
+  push:
+    branches: [agent/final-experience-release-verification]
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Assert released phase 1–4 surface
+        shell: bash
+        run: |
+          test -f spaceship-ui/src/components/experience/MotionRuntime.svelte
+          test -f spaceship-ui/src/components/experience/ResearchConstellation.svelte
+          test -f spaceship-ui/src/styles/experience.css
+          test -f spaceship-ui/scripts/experience-contract.mjs
+          test -f spaceship-ui/scripts/research-constellation-contract.mjs
+          grep -q '"gsap"' spaceship-ui/package.json
+          grep -q 'pnpm experience:check' spaceship-ui/package.json
+          grep -q 'pnpm constellation:check' spaceship-ui/package.json
+          grep -q 'MotionRuntime client:idle scope="home"' spaceship-ui/src/pages/index.astro
+          grep -q 'MotionRuntime client:idle scope="research"' spaceship-ui/src/pages/research.astro
+          grep -q 'ResearchConstellation' spaceship-ui/src/pages/research.astro
+      - name: Full final production validation
+        working-directory: spaceship-ui
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm check
+          pnpm seo:check
+          pnpm build
+          pnpm content:check
+      - name: Delete verification branch
+        run: git push origin --delete agent/final-experience-release-verification
