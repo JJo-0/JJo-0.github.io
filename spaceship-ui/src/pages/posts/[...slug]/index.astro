@@ -12,6 +12,7 @@ import SeriesNavigation from '@/components/SeriesNavigation.astro';
 import LanguageSelector from '@/components/LanguageSelector.svelte';
 import CTABlock from '@/components/CTABlock.astro';
 import Comments from '@/components/Comments.svelte';
+import PcaProjectionLab from '@/components/post/interactive/PcaProjectionLab.svelte';
 import { getBlogPostingSchema, getBreadcrumbSchema } from '@/lib/schemas';
 
 export async function getStaticPaths() {
@@ -30,6 +31,9 @@ const { Content, headings } = await render(post);
 const effectiveSlug = getPostSlug(post);
 const canonicalPostUrl = new URL(Astro.url.pathname, Astro.site).toString();
 const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
+const modernAiOrder =
+  post.data.series?.id === 'modern-artificial-intelligence' ? post.data.series.order : null;
+const showPcaVisualLab = modernAiOrder === 1 || modernAiOrder === 2;
 
 const schemas = [
   getBlogPostingSchema({
@@ -131,6 +135,26 @@ const schemas = [
       </div>
 
       <article class="prose max-w-none mt-12 mb-16">
+        {
+          showPcaVisualLab && (
+            <section class="not-prose mb-12" aria-label="현대 인공지능 대화형 PCA 시각화">
+              <div class="mb-4 rounded-2xl border border-primary/20 bg-primary/[0.055] px-4 py-4 sm:px-5">
+                <p class="m-0 text-[0.7rem] font-black uppercase tracking-[0.14em] text-primary">
+                  직접 움직여 보는 개념
+                </p>
+                <h2 class="mb-0 mt-1 text-xl font-black tracking-tight text-foreground sm:text-2xl">
+                  수식이 나타내는 기하를 먼저 움직여 본다
+                </h2>
+                <p class="mb-0 mt-2 text-sm leading-7 text-muted-foreground">
+                  정적인 완성 그림이 아니라 데이터 모양과 정사영 축을 직접 바꾸며 평균 이동, 공분산,
+                  고유벡터, 설명분산이 어떻게 연결되는지 확인한다. 아래 시각화는 외부 자료를 복제하지
+                  않고 이 사이트용으로 새로 구현한 대화형 학습 도구다.
+                </p>
+              </div>
+              <PcaProjectionLab client:visible />
+            </section>
+          )
+        }
         <Content />
       </article>
 
