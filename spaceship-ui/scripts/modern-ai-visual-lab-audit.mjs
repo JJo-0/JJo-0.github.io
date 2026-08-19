@@ -46,7 +46,7 @@ if (fs.existsSync(runtimePath)) {
     'mountLinear',
     'mountData',
     'type="range"',
-    'data-formula-visual-mounted',
+    'formulaVisualMounted',
   ];
   for (const token of required) {
     if (!source.includes(token)) issues.push(`Formula visual runtime missing token: ${token}`);
