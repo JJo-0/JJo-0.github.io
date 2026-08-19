@@ -1,0 +1,51 @@
+name: Final one-time experience branch cleanup
+
+on:
+  push:
+    branches: [agent/experience-motion-foundation-phase123]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/experience-motion-foundation-phase123
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Verify final branch state
+        working-directory: spaceship-ui
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm check
+          pnpm seo:check
+          pnpm build
+          pnpm content:check
+      - name: Remove temporary files and commit
+        shell: bash
+        run: |
+          rm -f .github/experience-verify-trigger.txt
+          rm -f .github/workflows/experience-deps-once.yml
+          rm -f .github/workflows/experience-verify-once.yml
+          rm -f .github/workflows/experience-cleanup-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No cleanup changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: remove one-time experience workflows"
+          git push origin HEAD:agent/experience-motion-foundation-phase123
