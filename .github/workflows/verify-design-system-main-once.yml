@@ -1,0 +1,82 @@
+name: Verify Design System v2 main deployment once
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+env:
+  TARGET_SHA: a57944929f188b3e3962b6de6c1055443fd6ffe1
+
+jobs:
+  verify-and-clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify main workflow conclusions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          verify_workflow() {
+            local workflow="$1"
+            local label="$2"
+            local found=""
+
+            for attempt in $(seq 1 30); do
+              response="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/runs?branch=main&per_page=30")"
+              status="$(jq -r --arg sha "$TARGET_SHA" '.workflow_runs[] | select(.head_sha == $sha) | .status' <<<"$response" | head -n1)"
+              conclusion="$(jq -r --arg sha "$TARGET_SHA" '.workflow_runs[] | select(.head_sha == $sha) | .conclusion // ""' <<<"$response" | head -n1)"
+
+              if [[ -n "$status" ]]; then
+                echo "$label: status=$status conclusion=${conclusion:-pending}"
+                found=1
+              fi
+
+              if [[ "$status" == "completed" ]]; then
+                [[ "$conclusion" == "success" ]] || {
+                  echo "$label failed with conclusion=$conclusion" >&2
+                  exit 1
+                }
+                return 0
+              fi
+
+              sleep 10
+            done
+
+            [[ -n "$found" ]] || echo "$label run for $TARGET_SHA was never found" >&2
+            echo "$label did not complete successfully before timeout" >&2
+            exit 1
+          }
+
+          verify_workflow "blog-ci.yml" "Blog CI"
+          verify_workflow "blog-pages-deploy.yml" "Pages deployment"
+
+      - name: Close verification PR and delete only this task's branches
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh pr comment "$PR_NUMBER" --body "Verified: merge commit \`$TARGET_SHA\` has successful Blog CI and GitHub Pages deployment. Cleaning the Design System v2 work branches now."
+          gh pr close "$PR_NUMBER"
+
+          for branch in \
+            agent/design-system-motion-v2 \
+            agent/design-system-motion-v2-copy \
+            "$HEAD_BRANCH"; do
+            if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null 2>&1; then
+              git push origin --delete "$branch"
+            fi
+          done
