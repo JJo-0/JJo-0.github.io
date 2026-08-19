@@ -1,0 +1,111 @@
+name: One-time constellation integration
+
+on:
+  push:
+    branches: [agent/research-constellation-svg]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/research-constellation-svg
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Integrate constellation into Research and CI
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          research_path = Path('spaceship-ui/src/pages/research.astro')
+          source = research_path.read_text(encoding='utf-8')
+          import_line = "import ResearchConstellation from '@/components/experience/ResearchConstellation.svelte';"
+          if import_line not in source:
+              anchor = "import MotionRuntime from '@/components/experience/MotionRuntime.svelte';"
+              if anchor in source:
+                  source = source.replace(anchor, f"{anchor}\n{import_line}", 1)
+              else:
+                  anchor = "import Breadcrumbs from '@/components/Breadcrumbs.svelte';"
+                  source = source.replace(anchor, f"{anchor}\n{import_line}", 1)
+
+          section = '''
+
+    <section data-motion="reveal" aria-labelledby="constellation-heading" class="mb-12 sm:mb-16">
+      <div class="mb-5 flex items-end justify-between gap-5">
+        <div data-motion-item>
+          <p class="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground">
+            System view
+          </p>
+          <h2 id="constellation-heading" class="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
+            Research Constellation
+          </h2>
+        </div>
+        <p data-motion-item class="hidden max-w-md text-right text-xs leading-relaxed text-muted-foreground sm:block">
+          현재 공개된 연구 축을 하나의 연결 구조로 탐색합니다. 키보드와 모바일에서는 동일한 링크 목록으로 전환됩니다.
+        </p>
+      </div>
+      <div data-motion-item>
+        <ResearchConstellation
+          client:visible
+          focuses={RESEARCH_FOCUS.map(({ id, title, label, description }) => ({
+            id,
+            title,
+            label,
+            description,
+          }))}
+        />
+      </div>
+    </section>
+'''
+          if '<ResearchConstellation' not in source:
+              close_header = '</header>'
+              index = source.find(close_header)
+              if index < 0:
+                  raise SystemExit('research header closing tag was not found')
+              insert_at = index + len(close_header)
+              source = source[:insert_at] + section + source[insert_at:]
+          research_path.write_text(source, encoding='utf-8')
+
+          package_path = Path('spaceship-ui/package.json')
+          package_json = json.loads(package_path.read_text(encoding='utf-8'))
+          package_json['scripts']['constellation:check'] = 'node scripts/research-constellation-contract.mjs'
+          content_check = package_json['scripts']['content:check']
+          if 'pnpm constellation:check' not in content_check:
+              package_json['scripts']['content:check'] = f"{content_check} && pnpm constellation:check"
+          package_path.write_text(json.dumps(package_json, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+      - name: Install and format
+        working-directory: spaceship-ui
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write package.json src/pages/research.astro src/components/experience/ResearchConstellation.svelte scripts/research-constellation-contract.mjs
+      - name: Full validation
+        working-directory: spaceship-ui
+        shell: bash
+        run: |
+          pnpm lint
+          pnpm check
+          pnpm seo:check
+          pnpm build
+          pnpm content:check
+      - name: Remove one-time workflow and commit verified state
+        shell: bash
+        run: |
+          rm -f .github/workflows/constellation-integrate-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: integrate accessible SVG research constellation"
+          git push origin HEAD:agent/research-constellation-svg
