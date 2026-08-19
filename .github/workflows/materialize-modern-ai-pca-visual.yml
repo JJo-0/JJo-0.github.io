@@ -1,0 +1,128 @@
+name: Materialize Modern AI PCA visual
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-angelo-style-visuals
+    paths:
+      - .github/workflows/materialize-modern-ai-pca-visual.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout visual branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-angelo-style-visuals
+          fetch-depth: 0
+
+      - name: Insert PCA lab at the relevant concepts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          root = Path('spaceship-ui')
+          part1 = root / 'site/content/posts/mordern-artificial-intelligence.mdx'
+          part2 = root / 'site/content/posts/modern-artificial-intelligence-2.mdx'
+
+          pca_import = "import PcaProjectionLab from '@/components/post/interactive/PcaProjectionLab.svelte';"
+          visual = '''
+
+> **직접 움직여 보는 시각화**  
+> 아래 그래프는 정적인 그림이 아니다. 데이터 모양과 정사영 축을 바꾸면서 평균 이동 → 공분산 → 고유축 → PCA 정사영의 계산이 어떻게 이어지는지 확인한다.
+
+<PcaProjectionLab client:visible />
+
+'''
+
+          text = part1.read_text(encoding='utf-8')
+          import_anchor = "import Math from '@/components/post/ExplainedMath.astro';"
+          if pca_import not in text:
+              if text.count(import_anchor) != 1:
+                  raise SystemExit('Part I Math import anchor changed')
+              text = text.replace(import_anchor, import_anchor + '\n' + pca_import, 1)
+          heading = '### 5. 행렬에 대한 기울기'
+          if '<PcaProjectionLab client:visible />' not in text:
+              if text.count(heading) != 1:
+                  raise SystemExit('Part I eigen-decomposition insertion anchor changed')
+              text = text.replace(heading, visual + heading, 1)
+          part1.write_text(text, encoding='utf-8')
+
+          text = part2.read_text(encoding='utf-8')
+          import_anchor = "import { part2Formula } from '@/lib/modern-ai-part2';"
+          if pca_import not in text:
+              if text.count(import_anchor) != 1:
+                  raise SystemExit('Part II formula import anchor changed')
+              text = text.replace(import_anchor, import_anchor + '\n' + pca_import, 1)
+          heading = '### 2.9.2 딥러닝은 차원의 저주를 깨는가?'
+          if '<PcaProjectionLab client:visible />' not in text:
+              if text.count(heading) != 1:
+                  raise SystemExit('Part II dimensionality-reduction insertion anchor changed')
+              text = text.replace(heading, visual + heading, 1)
+          part2.write_text(text, encoding='utf-8')
+
+          package_path = root / 'package.json'
+          package = json.loads(package_path.read_text(encoding='utf-8'))
+          scripts = package['scripts']
+          scripts['modern-ai:visual-check'] = 'node scripts/modern-ai-visual-lab-audit.mjs'
+          check = scripts['content:check']
+          if 'pnpm modern-ai:visual-check' not in check:
+              check = check.replace('&& pnpm runtime:check', '&& pnpm modern-ai:visual-check && pnpm runtime:check')
+          scripts['content:check'] = check
+          package_path.write_text(json.dumps(package, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: spaceship-ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: spaceship-ui
+        run: pnpm lint
+
+      - name: Type check
+        working-directory: spaceship-ui
+        run: pnpm check
+
+      - name: SEO metadata
+        working-directory: spaceship-ui
+        run: pnpm seo:check
+
+      - name: Build
+        working-directory: spaceship-ui
+        run: pnpm build
+
+      - name: Full content and visual contract
+        working-directory: spaceship-ui
+        run: pnpm content:check
+
+      - name: Commit materialized visual lab
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/materialize-modern-ai-pca-visual.yml
+          git add spaceship-ui/package.json \
+                  spaceship-ui/site/content/posts/mordern-artificial-intelligence.mdx \
+                  spaceship-ui/site/content/posts/modern-artificial-intelligence-2.mdx
+          git commit -m 'feat: add direct-manipulation PCA visual labs to Modern AI I-II'
+          git push origin HEAD:agent/modern-ai-angelo-style-visuals
