@@ -4,64 +4,80 @@ import process from 'node:process';
 
 const root = process.cwd();
 const issues = [];
-const componentPath = path.join(root, 'src/components/post/interactive/PcaProjectionLab.svelte');
-const pagePath = path.join(root, 'src/pages/posts/[...slug]/index.astro');
+const visualPath = path.join(root, 'src/components/post/FormulaVisual.astro');
+const guidePath = path.join(root, 'src/components/post/FormulaGuide.astro');
+const retiredStandalonePath = path.join(root, 'src/components/post/interactive/PcaProjectionLab.svelte');
 
-for (const file of [componentPath, pagePath]) {
+for (const file of [visualPath, guidePath]) {
   if (!fs.existsSync(file)) issues.push(`${path.relative(root, file)} is missing`);
 }
+if (fs.existsSync(retiredStandalonePath)) {
+  issues.push('Standalone PCA applet remains; visualizations must live inside formula explanation toggles');
+}
 
-if (fs.existsSync(componentPath)) {
-  const source = fs.readFileSync(componentPath, 'utf8');
+if (fs.existsSync(visualPath)) {
+  const source = fs.readFileSync(visualPath, 'utf8');
   const required = [
-    'data-modern-ai-visual="pca"',
-    'Interactive PCA lab',
-    '공분산',
-    '고윳값',
-    'PC1',
+    'data-formula-visual={kind}',
+    'Direct manipulation visual',
+    '직접 움직여 보기',
+    "document.addEventListener('toggle'",
+    'data-formula-visual-mounted',
+    'mountCovariance',
+    'mountOptimization',
+    'mountProbability',
+    'mountClassifier',
+    'mountConvolution',
+    'mountLinear',
+    'mountData',
     'type="range"',
-    'on:pointerdown',
-    'bind:value={angleDeg}',
-    'aria-live="polite"',
-    'touch-action:none',
   ];
   for (const token of required) {
-    if (!source.includes(token)) issues.push(`PCA visual lab missing interaction token: ${token}`);
+    if (!source.includes(token)) issues.push(`Formula visual component missing token: ${token}`);
   }
   if (/<iframe\b|<script\b[^>]*src=|raw\.githubusercontent\.com/i.test(source)) {
-    issues.push('PCA visual lab must remain first-party: iframe/external script/image reference detected');
+    issues.push('Formula visuals must remain first-party: iframe or external runtime reference detected');
   }
 }
 
-if (fs.existsSync(pagePath)) {
-  const source = fs.readFileSync(pagePath, 'utf8');
+if (fs.existsSync(guidePath)) {
+  const source = fs.readFileSync(guidePath, 'utf8');
   const required = [
-    "import PcaProjectionLab from '@/components/post/interactive/PcaProjectionLab.svelte';",
-    "post.data.series?.id === 'modern-artificial-intelligence'",
-    'modernAiOrder === 1 || modernAiOrder === 2',
-    '<PcaProjectionLab client:visible />',
-    '수식이 나타내는 기하를 먼저 움직여 본다',
+    "import FormulaVisual from './FormulaVisual.astro';",
+    '<FormulaVisual family={guide.family} formulaId={formulaId} />',
+    '쉽게 설명 + 계산 과정',
+    '직접 움직이는 시각화',
   ];
   for (const token of required) {
-    if (!source.includes(token)) issues.push(`Post layout missing PCA integration token: ${token}`);
+    if (!source.includes(token)) issues.push(`FormulaGuide missing in-toggle visual token: ${token}`);
+  }
+  const visualIndex = source.indexOf('<FormulaVisual family={guide.family} formulaId={formulaId} />');
+  const walkthroughIndex = source.indexOf('data-calculation-walkthrough');
+  if (visualIndex < 0 || walkthroughIndex < 0 || visualIndex > walkthroughIndex) {
+    issues.push('The visualization must appear inside the toggle before the calculation walkthrough');
   }
 }
 
 const built = [
-  ['Part I', path.join(root, 'dist/posts/2025-05-16-mordern-artificial-intelligence/index.html')],
-  ['Part II', path.join(root, 'dist/posts/2026-08-18-modern-artificial-intelligence-2/index.html')],
+  ['Part I', path.join(root, 'dist/posts/2025-05-16-mordern-artificial-intelligence/index.html'), 238],
+  ['Part II', path.join(root, 'dist/posts/2026-08-18-modern-artificial-intelligence-2/index.html'), 65],
 ];
 
 if (fs.existsSync(path.join(root, 'dist'))) {
-  for (const [label, file] of built) {
+  for (const [label, file, expected] of built) {
     if (!fs.existsSync(file)) {
       issues.push(`${label} built route is missing`);
       continue;
     }
     const html = fs.readFileSync(file, 'utf8');
-    if (!html.includes('data-modern-ai-visual="pca"')) issues.push(`${label} built page lacks PCA lab markup`);
-    if (!html.includes('데이터를 직접 회전·정사영하며 PCA를 이해한다')) issues.push(`${label} built page lacks reader-facing visual title`);
-    if (!html.includes('수식이 나타내는 기하를 먼저 움직여 본다')) issues.push(`${label} built page lacks visual-learning introduction`);
+    const guides = (html.match(/data-formula-guide="calculation-first"/g) || []).length;
+    const visuals = (html.match(/data-formula-visual="[^"]+"/g) || []).length;
+    if (guides !== expected) issues.push(`${label} expected ${expected} formula guides, found ${guides}`);
+    if (visuals !== guides) issues.push(`${label} requires one in-toggle visual per guide: guides=${guides}, visuals=${visuals}`);
+    if (!html.includes('Direct manipulation visual')) issues.push(`${label} lacks reader-facing direct-manipulation visual copy`);
+    if (html.includes('data-modern-ai-visual="pca"') || html.includes('데이터를 직접 회전·정사영하며 PCA를 이해한다')) {
+      issues.push(`${label} still exposes the rejected standalone PCA placement`);
+    }
     if (/katex-error/.test(html)) issues.push(`${label} contains a KaTeX rendering error`);
   }
 }
@@ -72,4 +88,4 @@ if (issues.length) {
   process.exit(1);
 }
 
-console.log('modern-ai-visual-lab-audit: PASS (first-party PCA applet, direct manipulation, live covariance/eigen/projection values, Part I–II layout integration)');
+console.log('modern-ai-visual-lab-audit: PASS (one lazy contextual visualization inside every formula explanation toggle; no standalone PCA block)');
