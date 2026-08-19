@@ -10,10 +10,10 @@
   onMount(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let disposed = false;
-    let cleanup = () => {};
+    let cleanup: (() => void) | undefined;
 
     const initialise = async () => {
-      cleanup();
+      cleanup?.();
 
       const root = document.querySelector<HTMLElement>(`[data-motion-scope="${scope}"]`);
       if (!root) return;
@@ -46,31 +46,31 @@
           .fromTo(
             root.querySelectorAll('[data-motion="hero-kicker"]'),
             { autoAlpha: 0, y: 14 },
-            { autoAlpha: 1, y: 0, duration: 0.55 },
+            { autoAlpha: 1, y: 0, duration: 0.55 }
           )
           .fromTo(
             root.querySelectorAll('[data-motion="hero-line"]'),
             { autoAlpha: 0, yPercent: 115 },
             { autoAlpha: 1, yPercent: 0, duration: 0.82, stagger: 0.09 },
-            '-=0.25',
+            '-=0.25'
           )
           .fromTo(
             root.querySelectorAll('[data-motion="hero-copy"]'),
             { autoAlpha: 0, y: 22 },
             { autoAlpha: 1, y: 0, duration: 0.62 },
-            '-=0.48',
+            '-=0.48'
           )
           .fromTo(
             root.querySelectorAll('[data-motion="hero-actions"]'),
             { autoAlpha: 0, y: 16 },
             { autoAlpha: 1, y: 0, duration: 0.52 },
-            '-=0.38',
+            '-=0.38'
           )
           .fromTo(
             root.querySelectorAll('[data-motion="hero-visual"]'),
             { autoAlpha: 0, scale: 0.94, rotate: -2 },
             { autoAlpha: 1, scale: 1, rotate: 0, duration: 0.72 },
-            '-=0.5',
+            '-=0.5'
           );
 
         root.querySelectorAll<HTMLElement>('[data-motion="reveal"]').forEach((section) => {
@@ -89,7 +89,7 @@
                 start: 'top 88%',
                 once: true,
               },
-            },
+            }
           );
 
           if (items.length > 0) {
@@ -107,7 +107,7 @@
                   start: 'top 84%',
                   once: true,
                 },
-              },
+              }
             );
           }
         });
@@ -125,7 +125,7 @@
                 end: 'max',
                 scrub: 0.2,
               },
-            },
+            }
           );
         }
 
@@ -185,7 +185,7 @@
 
     return () => {
       disposed = true;
-      cleanup();
+      cleanup?.();
       document.removeEventListener('astro:page-load', onPageLoad);
       reducedMotion.removeEventListener('change', onMotionPreferenceChange);
     };
