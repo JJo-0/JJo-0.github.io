@@ -1,0 +1,51 @@
+name: Resolve experience runtime dependency
+
+on:
+  push:
+    branches: [agent/experience-motion-constellation]
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/experience-motion-constellation
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve GSAP and register the experience audit
+        shell: bash
+        run: |
+          pnpm add gsap@latest --save-prod --lockfile-only
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.scripts['experience:check'] = 'node scripts/experience-contract.mjs';
+          if (!pkg.scripts['content:check'].includes('pnpm experience:check')) {
+            pkg.scripts['content:check'] += ' && pnpm experience:check';
+          }
+          fs.writeFileSync('package.json', `${JSON.stringify(pkg, null, 2)}\n`);
+          NODE
+      - name: Commit dependency lock
+        working-directory: .
+        shell: bash
+        run: |
+          if git diff --quiet -- spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml; then
+            echo 'Dependency state already current'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml
+          git commit -m 'chore: add scoped GSAP experience runtime'
+          git push origin HEAD:agent/experience-motion-constellation
