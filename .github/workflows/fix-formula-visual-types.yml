@@ -24,15 +24,22 @@ jobs:
         with:
           ref: agent/modern-ai-angelo-style-visuals
           fetch-depth: 0
-      - name: Suppress generated DOM helper diagnostics
+      - name: Extract shared client runtime
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('spaceship-ui/src/components/post/FormulaVisual.astro')
-          text = p.read_text()
-          text = text.replace('<script>\n  const visualPalette', '<script>\n  // @ts-nocheck\n  const visualPalette', 1)
-          text = text.replace('      const sy = 70 + clamp(y, 0, 16) * 25;\n', '')
-          p.write_text(text)
+
+          component = Path('spaceship-ui/src/components/post/FormulaVisual.astro')
+          runtime = Path('spaceship-ui/src/scripts/formula-visual-runtime.js')
+          text = component.read_text()
+          start = text.index('<script>')
+          end = text.index('</script>', start) + len('</script>')
+          script_body = text[start + len('<script>'):end - len('</script>')].strip()
+          script_body = script_body.replace('      const sy = 70 + clamp(y, 0, 16) * 25;\n', '')
+          runtime.parent.mkdir(parents=True, exist_ok=True)
+          runtime.write_text(script_body + '\n')
+          replacement = "<script>\n  import '@/scripts/formula-visual-runtime.js';\n</script>"
+          component.write_text(text[:start] + replacement + text[end:])
           PY
       - uses: pnpm/action-setup@v4
         with:
@@ -62,6 +69,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/fix-formula-visual-types.yml
-          git add spaceship-ui/src/components/post/FormulaVisual.astro
-          git commit -m 'fix: type-check lazy formula visual runtime'
+          git add spaceship-ui/src/components/post/FormulaVisual.astro \
+                  spaceship-ui/src/scripts/formula-visual-runtime.js
+          git commit -m 'refactor: share lazy formula visual runtime'
           git push origin HEAD:agent/modern-ai-angelo-style-visuals
