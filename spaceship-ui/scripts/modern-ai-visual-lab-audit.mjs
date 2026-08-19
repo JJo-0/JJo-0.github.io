@@ -4,12 +4,10 @@ import process from 'node:process';
 
 const root = process.cwd();
 const issues = [];
-
 const componentPath = path.join(root, 'src/components/post/interactive/PcaProjectionLab.svelte');
-const part1Path = path.join(root, 'site/content/posts/mordern-artificial-intelligence.mdx');
-const part2Path = path.join(root, 'site/content/posts/modern-artificial-intelligence-2.mdx');
+const pagePath = path.join(root, 'src/pages/posts/[...slug]/index.astro');
 
-for (const file of [componentPath, part1Path, part2Path]) {
+for (const file of [componentPath, pagePath]) {
   if (!fs.existsSync(file)) issues.push(`${path.relative(root, file)} is missing`);
 }
 
@@ -25,6 +23,7 @@ if (fs.existsSync(componentPath)) {
     'on:pointerdown',
     'bind:value={angleDeg}',
     'aria-live="polite"',
+    'touch-action:none',
   ];
   for (const token of required) {
     if (!source.includes(token)) issues.push(`PCA visual lab missing interaction token: ${token}`);
@@ -34,14 +33,17 @@ if (fs.existsSync(componentPath)) {
   }
 }
 
-for (const [label, file] of [['Part I', part1Path], ['Part II', part2Path]]) {
-  if (!fs.existsSync(file)) continue;
-  const source = fs.readFileSync(file, 'utf8');
-  if (!source.includes("import PcaProjectionLab from '@/components/post/interactive/PcaProjectionLab.svelte';")) {
-    issues.push(`${label} is missing the PCA lab import`);
-  }
-  if (!source.includes('<PcaProjectionLab client:visible />')) {
-    issues.push(`${label} is missing the progressively hydrated PCA lab`);
+if (fs.existsSync(pagePath)) {
+  const source = fs.readFileSync(pagePath, 'utf8');
+  const required = [
+    "import PcaProjectionLab from '@/components/post/interactive/PcaProjectionLab.svelte';",
+    "post.data.series?.id === 'modern-artificial-intelligence'",
+    'modernAiOrder === 1 || modernAiOrder === 2',
+    '<PcaProjectionLab client:visible />',
+    '수식이 나타내는 기하를 먼저 움직여 본다',
+  ];
+  for (const token of required) {
+    if (!source.includes(token)) issues.push(`Post layout missing PCA integration token: ${token}`);
   }
 }
 
@@ -58,7 +60,8 @@ if (fs.existsSync(path.join(root, 'dist'))) {
     }
     const html = fs.readFileSync(file, 'utf8');
     if (!html.includes('data-modern-ai-visual="pca"')) issues.push(`${label} built page lacks PCA lab markup`);
-    if (!html.includes('데이터를 직접 회전·정사영하며 PCA를 이해한다')) issues.push(`${label} built page lacks reader-facing visual explanation`);
+    if (!html.includes('데이터를 직접 회전·정사영하며 PCA를 이해한다')) issues.push(`${label} built page lacks reader-facing visual title`);
+    if (!html.includes('수식이 나타내는 기하를 먼저 움직여 본다')) issues.push(`${label} built page lacks visual-learning introduction`);
     if (/katex-error/.test(html)) issues.push(`${label} contains a KaTeX rendering error`);
   }
 }
@@ -69,4 +72,4 @@ if (issues.length) {
   process.exit(1);
 }
 
-console.log('modern-ai-visual-lab-audit: PASS (first-party PCA applet, direct manipulation, live covariance/eigen/projection values, Part I–II integration)');
+console.log('modern-ai-visual-lab-audit: PASS (first-party PCA applet, direct manipulation, live covariance/eigen/projection values, Part I–II layout integration)');
