@@ -1,0 +1,40 @@
+name: Add GSAP dependency once
+
+on:
+  push:
+    branches: [agent/design-system-motion-v2]
+
+permissions:
+  contents: write
+
+jobs:
+  update-lock:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/design-system-motion-v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Add GSAP and refresh lockfile
+        run: pnpm add gsap@^3.13.0 --save-prod --lockfile-only
+      - name: Commit dependency files
+        working-directory: .
+        shell: bash
+        run: |
+          if git diff --quiet -- spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml; then
+            echo "Dependency files already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add spaceship-ui/package.json spaceship-ui/pnpm-lock.yaml
+          git commit -m "chore: add GSAP motion dependency"
+          git push origin HEAD:agent/design-system-motion-v2
