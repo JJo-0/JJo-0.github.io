@@ -1,16 +1,14 @@
 ---
 import Layout from '@/layouts/Layout.astro';
 import PostCard from '@/components/PostCard.svelte';
+import MotionRuntime from '@/components/experience/MotionRuntime.astro';
 import { getReadTime } from '@/lib/utils/readTime';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import { RESEARCH_FOCUS } from '@/lib/research';
 import { SITE } from '@/config';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import { parseMarkdown } from '@/lib/simple-markdown';
 
 const posts = (await getPublishedPosts()).sort(
-  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
 
 const featuredPosts = posts.filter((post) => post.data.featured).slice(0, SITE.featuredPostsCount);
@@ -18,119 +16,117 @@ const latestPosts = posts.filter((post) => !post.data.featured).slice(0, SITE.la
 ---
 
 <Layout>
-  <section class="grid md:grid-cols-[1fr_auto] items-center gap-8 sm:gap-12 lg:gap-16 mb-14 sm:mb-18">
-    <div class="min-w-0 text-center md:text-left">
-      <div
-        class="hero-content"
-        set:html={(() => {
-          try {
-            const fullPath = join(process.cwd(), SITE.hero.filePath);
-            const markdown = readFileSync(fullPath, 'utf-8');
-            return parseMarkdown(markdown.replace('{author}', SITE.author));
-          } catch {
-            return `<h1>${SITE.author} — Robotics, AI &amp; Vision</h1><p>${SITE.homeHeroDescription}</p>`;
+  <div class="experience-page" data-experience-page="home">
+    <MotionRuntime scope="home" />
+
+    <section class="experience-hero" aria-labelledby="home-identity">
+      <div class="min-w-0">
+        <p class="experience-kicker" data-motion="hero-kicker">01 / Park JiHo</p>
+
+        <h1 id="home-identity" class="experience-display" aria-label="Park JiHo">
+          <span class="experience-word-mask">
+            <span class="experience-word" data-motion="hero-word">Park</span>
+          </span>
+          <span class="experience-word-mask">
+            <span class="experience-word" data-motion="hero-word">JiHo</span>
+          </span>
+        </h1>
+
+        <p class="experience-role" data-motion="hero-copy">Robotics × AI × Vision</p>
+        <p class="experience-statement" data-motion="hero-copy">
+          I build intelligent robotic systems that perceive, reason, and act around people.
+        </p>
+        <p class="experience-subcopy" data-motion="hero-copy">
+          사람과 함께 일하는 로봇을 위해 perception, system integration, learning을 연결하고
+          구현과 실험으로 검증합니다. {SITE.homeHeroDescription}
+        </p>
+
+        <div class="experience-actions" data-motion="hero-copy">
+          <a href="/research" class="experience-button experience-button--primary">
+            Explore Research
+            <span aria-hidden="true">↗</span>
+          </a>
+          <a href="/posts" class="experience-button experience-button--secondary">
+            Writing Archive
+          </a>
+        </div>
+
+        <div class="experience-socials" data-motion="hero-copy" aria-label="Profile links">
+          {
+            Object.entries(SITE.social).map(([platform, link]) => (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Visit ${SITE.author}'s ${platform} profile`}
+              >
+                {platform}
+              </a>
+            ))
           }
-        })()}
-      />
-
-      <div class="flex flex-wrap justify-center md:justify-start gap-2.5 mb-7">
-        <a
-          href="/research"
-          class="inline-flex items-center rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 no-underline"
-        >
-          Research
-        </a>
-        <a
-          href="/posts"
-          class="inline-flex items-center rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-bold text-foreground hover:bg-accent no-underline"
-        >
-          Writing Archive
-        </a>
+        </div>
       </div>
 
-      <div class="flex flex-wrap justify-center md:justify-start gap-4 sm:gap-6">
-        {
-          Object.entries(SITE.social).map(([platform, link]) => (
-            <a
-              href={link}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Visit ${SITE.author}'s ${platform} profile`}
-              class="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary no-underline"
-            >
-              {platform}
-            </a>
-          ))
-        }
-      </div>
-    </div>
+      <figure class="experience-visual-stage" data-motion="hero-visual" data-parallax>
+        <span class="experience-stage-index">Perception / 01</span>
+        <span class="experience-orbit-label experience-orbit-label--vision">Vision</span>
+        <span class="experience-orbit-label experience-orbit-label--hri">Human · Robot</span>
+        <span class="experience-orbit-label experience-orbit-label--systems">Systems</span>
 
-    <div class="mx-auto md:mx-0 w-32 sm:w-40 md:w-48 lg:w-52 aspect-square shrink-0">
-      <img
-        src="/image/mouse_surprised.gif"
-        alt={`${SITE.author} profile animation`}
-        width="416"
-        height="416"
-        fetchpriority="high"
-        decoding="async"
-        class="w-full h-full object-cover rounded-2xl border border-border shadow-lg"
-      />
-    </div>
-  </section>
+        <div class="experience-mouse-frame">
+          <img
+            src="/image/mouse_surprised.gif"
+            alt={`${SITE.author} profile animation`}
+            width="416"
+            height="416"
+            fetchpriority="high"
+            decoding="async"
+          />
+        </div>
 
-  <section aria-labelledby="current-heading" class="mb-18 sm:mb-24">
-    <div class="flex items-center gap-4 mb-5">
-      <h2 id="current-heading" class="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
-        Current
-      </h2>
-      <div class="h-px flex-1 bg-border opacity-70" />
-    </div>
-    <div class="grid sm:grid-cols-2 gap-3">
-      <div class="rounded-xl border border-border bg-card px-4 py-4 sm:px-5">
-        <p class="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">M.S. Student</p>
-        <p class="mt-1.5 font-black tracking-tight text-foreground">성균관대학교 · Control and Robotics Lab</p>
-      </div>
-      <div class="rounded-xl border border-border bg-card px-4 py-4 sm:px-5">
-        <p class="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">Researcher</p>
-        <p class="mt-1.5 font-black tracking-tight text-foreground">한국생산기술연구원</p>
-      </div>
-    </div>
-  </section>
+        <figcaption class="experience-stage-caption">Don't Worry, Be Happy 😛</figcaption>
+      </figure>
+    </section>
 
-  <div class="flex flex-col gap-20 lg:gap-28">
-    <section aria-labelledby="research-heading">
-      <div class="flex items-baseline justify-between mb-7 sm:mb-9">
-        <h2 id="research-heading" class="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
-          Research Focus
-        </h2>
-        <div class="h-px flex-1 mx-4 sm:mx-8 bg-border opacity-70" />
-        <a
-          href="/research"
-          class="px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-widest hover:bg-accent hover:text-primary no-underline"
-        >
-          Research
-        </a>
+    <section class="experience-section" aria-labelledby="current-heading" data-reveal>
+      <div class="experience-section-header">
+        <h2 id="current-heading" class="experience-section-label">Current</h2>
+        <span aria-hidden="true"></span>
       </div>
 
-      <div class="grid md:grid-cols-3 gap-3 sm:gap-4">
+      <div class="experience-current-grid" data-stagger>
+        <div class="experience-card experience-current-card" data-stagger-item>
+          <span>M.S. Student</span>
+          <strong>성균관대학교 · Control and Robotics Lab</strong>
+        </div>
+        <div class="experience-card experience-current-card" data-stagger-item>
+          <span>Researcher</span>
+          <strong>한국생산기술연구원</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="experience-section" aria-labelledby="research-heading" data-reveal>
+      <div class="experience-section-header">
+        <h2 id="research-heading" class="experience-section-label">Research Focus</h2>
+        <span aria-hidden="true"></span>
+        <a href="/research" class="experience-section-link">Research ↗</a>
+      </div>
+
+      <div class="experience-focus-grid" data-stagger>
         {
           RESEARCH_FOCUS.map((focus, index) => (
             <a
               href={`/research#${focus.id}`}
-              class="group rounded-2xl border border-border bg-card p-5 sm:p-6 hover:bg-accent/60 hover:border-foreground/20 no-underline"
+              class="experience-card experience-focus-card"
+              data-stagger-item
             >
-              <div class="flex items-center justify-between gap-3 mb-7">
-                <span class="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
-                  {focus.label}
-                </span>
-                <span class="text-xs font-bold tabular-nums text-muted-foreground">0{index + 1}</span>
+              <div class="experience-focus-card__topline">
+                <span class="experience-focus-card__meta">{focus.label}</span>
+                <span class="experience-focus-card__meta">0{index + 1}</span>
               </div>
-              <h3 class="text-xl font-black tracking-tight text-foreground group-hover:text-primary">
-                {focus.title}
-              </h3>
-              <p class="mt-3 text-sm leading-relaxed text-muted-foreground">
-                {focus.description}
-              </p>
+              <h3>{focus.title}</h3>
+              <p>{focus.description}</p>
             </a>
           ))
         }
@@ -139,76 +135,48 @@ const latestPosts = posts.filter((post) => !post.data.featured).slice(0, SITE.la
 
     {
       featuredPosts.length > 0 && (
-        <section aria-labelledby="featured-heading">
-          <div class="flex items-baseline justify-between mb-8 sm:mb-10">
-            <h2 id="featured-heading" class="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
-              Selected Writing
-            </h2>
-            <div class="h-px flex-1 mx-4 sm:mx-8 bg-border opacity-70" />
-            <a
-              href="/posts"
-              class="px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-widest hover:bg-accent hover:text-primary no-underline"
-            >
-              All writing
-            </a>
+        <section class="experience-section" aria-labelledby="featured-heading" data-reveal>
+          <div class="experience-section-header">
+            <h2 id="featured-heading" class="experience-section-label">Selected Writing</h2>
+            <span aria-hidden="true"></span>
+            <a href="/posts" class="experience-section-link">All Writing ↗</a>
           </div>
-          <div class="grid gap-3 sm:gap-4">
+
+          <div class="experience-writing-list" data-stagger>
             {featuredPosts.map((post) => (
-              <PostCard {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />
+              <div class="experience-writing-item" data-stagger-item>
+                <PostCard
+                  {post}
+                  slug={getPostSlug(post)}
+                  readTime={getReadTime(post.body || '')}
+                />
+              </div>
             ))}
           </div>
         </section>
       )
     }
 
-    <section aria-labelledby="latest-heading">
-      <div class="flex items-baseline justify-between mb-8 sm:mb-10">
-        <h2 id="latest-heading" class="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
-          Latest Writing
-        </h2>
-        <div class="h-px flex-1 mx-4 sm:mx-8 bg-border opacity-70" />
-        <a
-          href="/posts"
-          class="px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-widest hover:bg-accent hover:text-primary no-underline"
-        >
-          Writing Archive
-        </a>
+    <section class="experience-section" aria-labelledby="latest-heading" data-reveal>
+      <div class="experience-section-header">
+        <h2 id="latest-heading" class="experience-section-label">Latest Writing</h2>
+        <span aria-hidden="true"></span>
+        <a href="/posts" class="experience-section-link">Archive ↗</a>
       </div>
-      <div class="grid gap-3 sm:gap-4">
+
+      <div class="experience-writing-list" data-stagger>
         {
           latestPosts.map((post) => (
-            <PostCard {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />
+            <div class="experience-writing-item" data-stagger-item>
+              <PostCard
+                {post}
+                slug={getPostSlug(post)}
+                readTime={getReadTime(post.body || '')}
+              />
+            </div>
           ))
         }
       </div>
     </section>
   </div>
 </Layout>
-
-<style>
-  .hero-content :global(h1) {
-    font-size: clamp(2rem, 5vw, 3.75rem);
-    line-height: 1.04;
-    font-weight: 900;
-    letter-spacing: -0.035em;
-    margin-bottom: 1rem;
-    color: var(--color-foreground);
-  }
-
-  .hero-content :global(p) {
-    font-size: clamp(1rem, 1.5vw, 1.2rem);
-    line-height: 1.7;
-    color: var(--color-muted-foreground);
-    margin-bottom: 1.5rem;
-    max-width: 44rem;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  @media (min-width: 768px) {
-    .hero-content :global(p) {
-      margin-left: 0;
-      margin-right: 0;
-    }
-  }
-</style>
