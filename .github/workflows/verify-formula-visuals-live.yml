@@ -1,0 +1,116 @@
+name: Verify contextual formula visuals live
+
+on:
+  push:
+    branches:
+      - agent/verify-formula-visuals-live
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the merged Pages deployment and inspect public HTML
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import re
+          import time
+          import urllib.request
+          from pathlib import Path
+
+          pages = [
+              {
+                  'label': 'Part I',
+                  'url': 'https://jjo-0.github.io/posts/2025-05-16-mordern-artificial-intelligence/',
+                  'expected_guides': 238,
+              },
+              {
+                  'label': 'Part II',
+                  'url': 'https://jjo-0.github.io/posts/2026-08-18-modern-artificial-intelligence-2/',
+                  'expected_guides': 65,
+              },
+          ]
+
+          def fetch(url: str) -> tuple[int, str]:
+              request = urllib.request.Request(
+                  url,
+                  headers={
+                      'User-Agent': 'JJo-blog-live-verifier/1.0',
+                      'Cache-Control': 'no-cache',
+                      'Pragma': 'no-cache',
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      return response.status, response.read().decode('utf-8', errors='replace')
+              except Exception as exc:
+                  return 0, f'{type(exc).__name__}: {exc}'
+
+          report = {
+              'target_merge_commit': 'de616006620265512e06205b42857f239b8a41bc',
+              'attempts': 0,
+              'pages': [],
+              'success': False,
+          }
+
+          for attempt in range(1, 31):
+              report['attempts'] = attempt
+              results = []
+              ready = True
+              for page in pages:
+                  status, html = fetch(f"{page['url']}?verify={int(time.time())}")
+                  guides = len(re.findall(r'data-formula-guide="calculation-first"', html))
+                  visuals = len(re.findall(r'data-formula-visual="[^"]+"', html))
+                  visual_ids = len(re.findall(r'data-visual-formula-id="[^"]+"', html))
+                  standalone = bool(re.search(r'data-modern-ai-visual="pca"|데이터를 직접 회전·정사영하며 PCA를 이해한다', html))
+                  has_copy = 'Direct manipulation visual' in html and '직접 움직여 보기' in html
+                  katex_errors = len(re.findall(r'katex-error', html))
+                  result = {
+                      **page,
+                      'http_status': status,
+                      'guides': guides,
+                      'visuals': visuals,
+                      'visual_formula_ids': visual_ids,
+                      'standalone_pca_present': standalone,
+                      'reader_visual_copy_present': has_copy,
+                      'katex_errors': katex_errors,
+                  }
+                  result['passed'] = (
+                      status == 200
+                      and guides == page['expected_guides']
+                      and visuals == guides
+                      and visual_ids == guides
+                      and not standalone
+                      and has_copy
+                      and katex_errors == 0
+                  )
+                  ready = ready and result['passed']
+                  results.append(result)
+
+              report['pages'] = results
+              if ready:
+                  report['success'] = True
+                  break
+              time.sleep(20)
+
+          Path('formula-visuals-live-report.json').write_text(
+              json.dumps(report, ensure_ascii=False, indent=2),
+              encoding='utf-8',
+          )
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          if not report['success']:
+              raise SystemExit('Merged Pages output did not satisfy the contextual visual contract in time')
+          PY
+
+      - name: Upload verification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: formula-visuals-live-report
+          path: formula-visuals-live-report.json
+          retention-days: 7
