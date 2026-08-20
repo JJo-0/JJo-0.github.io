@@ -66,6 +66,7 @@ for (const tier of ["'safe'", "'normal'", "'ultra'"]) {
 }
 for (const marker of [
   'prefers-reduced-motion: reduce',
+  'mobile-svg-fallback',
   'saveData',
   "getContext('webgl2'",
   'failIfMajorPerformanceCaveat',
@@ -91,7 +92,7 @@ if (gpuComponent.includes('client:load')) {
 
 for (const marker of [
   'RESEARCH_RENDERER_MARKER',
-  'new THREE.WebGLRenderer',
+  'new WebGLRenderer',
   'renderer.setPixelRatio',
   'ResizeObserver',
   'IntersectionObserver',
@@ -100,6 +101,9 @@ for (const marker of [
   'requestAnimationFrame',
 ]) {
   if (!renderer.includes(marker)) issues.push(`research-renderer.ts: missing ${marker}`);
+}
+if (renderer.includes('import * as THREE')) {
+  issues.push('research-renderer.ts: namespace import prevents effective tree-shaking');
 }
 if (renderer.includes('WebGPURenderer')) {
   issues.push('research-renderer.ts: WebGPURenderer belongs in the later backend PR, not this core boundary');
@@ -198,5 +202,5 @@ const rendererGzip = rendererChunks.length === 1
   ? gzipSync(fs.readFileSync(rendererChunks[0])).byteLength
   : 0;
 console.log(
-  `three-experience-contract: PASS (SAFE/NORMAL/ULTRA boundary, SVG fallback, isolated ${rendererGzip} B gzip renderer chunk)`,
+  `three-experience-contract: PASS (SAFE/NORMAL/ULTRA boundary, mobile/reduced-motion SVG fallback, isolated ${rendererGzip} B gzip renderer chunk)`,
 );
