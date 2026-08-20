@@ -20,11 +20,16 @@ import {
 } from 'three';
 import type { Material } from 'three';
 import type { CapabilityProfile } from './capability';
-import { experienceState, type ResearchNodeId } from './state';
+import {
+  experienceState,
+  isResearchNodeId,
+  RESEARCH_NODE_IDS,
+  type ResearchNodeId,
+} from './state';
 
 const RENDERER_CORE_SENTINEL = '__JJO_RENDERER_CORE__';
-const RESEARCH_NODE_IDS = ['robotics-systems', 'vision-perception', 'ai-research'] as const;
-type ConcreteResearchNode = (typeof RESEARCH_NODE_IDS)[number];
+
+type ConcreteResearchNode = Exclude<ResearchNodeId, null>;
 
 export type RendererVariant = 'home' | 'research';
 
@@ -45,14 +50,31 @@ interface NodeRecord {
   material: MeshBasicMaterial;
 }
 
-const NODE_POSITIONS: Record<ConcreteResearchNode, [number, number, number]> = {
-  'robotics-systems': [-1.48, 0.92, 0.08],
-  'vision-perception': [1.46, 0.96, 0.16],
-  'ai-research': [0.05, -1.25, -0.08],
-};
+interface RendererPalette {
+  accent: string;
+  accentStrong: string;
+  muted: string;
+  theme: 'light' | 'dark';
+}
 
-function isConcreteResearchNode(value: ResearchNodeId): value is ConcreteResearchNode {
-  return value !== null && RESEARCH_NODE_IDS.includes(value);
+function readRendererPalette(): RendererPalette {
+  const rootStyle = getComputedStyle(document.documentElement);
+  const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  return {
+    accent: rootStyle.getPropertyValue('--experience-accent').trim() || '#0891b2',
+    accentStrong:
+      rootStyle.getPropertyValue('--experience-accent-strong').trim() || '#0e7490',
+    muted: theme === 'dark' ? '#9ca3af' : '#64748b',
+    theme,
+  };
+}
+
+function researchNodePosition(index: number, count: number): [number, number, number] {
+  const angle = -Math.PI / 2 + (index * Math.PI * 2) / Math.max(1, count);
+  const x = Math.cos(angle) * 1.55;
+  const y = Math.sin(angle) * 1.28;
+  const z = (index % 2 === 0 ? 1 : -1) * 0.1;
+  return [x, y, z];
 }
 
 export function mountExperienceRenderer({
@@ -69,12 +91,7 @@ export function mountExperienceRenderer({
   // viewport proximity. Named Three.js imports keep this lazy chunk tree-shakeable.
   host.dataset.rendererCore = RENDERER_CORE_SENTINEL;
 
-  const rootStyle = getComputedStyle(document.documentElement);
-  const accent = rootStyle.getPropertyValue('--experience-accent').trim() || '#0891b2';
-  const accentStrong =
-    rootStyle.getPropertyValue('--experience-accent-strong').trim() || '#0e7490';
-  const muted = document.documentElement.classList.contains('dark') ? '#9ca3af' : '#64748b';
-
+  let palette = readRendererPalette();
   const renderer = new WebGLRenderer({
     canvas,
     alpha: true,
@@ -96,10 +113,11 @@ export function mountExperienceRenderer({
   const geometries = new Set<BufferGeometry>();
   const materials = new Set<Material>();
   const nodeRecords: NodeRecord[] = [];
+  const nodePositions = new Map<ConcreteResearchNode, [number, number, number]>();
 
   const centralGeometry = new IcosahedronGeometry(0.12, 1);
   const centralMaterial = new MeshBasicMaterial({
-    color: new Color(accentStrong),
+    color: new Color(palette.accentStrong),
     transparent: true,
     opacity: 0.9,
   });
@@ -109,10 +127,12 @@ export function mountExperienceRenderer({
   central.scale.setScalar(variant === 'home' ? 1.18 : 1);
   constellation.add(central);
 
-  for (const id of RESEARCH_NODE_IDS) {
+  RESEARCH_NODE_IDS.forEach((rawId, index) => {
+    if (!isResearchNodeId(rawId)) return;
+    const id: ConcreteResearchNode = rawId;
     const geometry = new IcosahedronGeometry(0.09, 1);
     const material = new MeshBasicMaterial({
-      color: new Color(muted),
+      color: new Color(palette.muted),
       transparent: true,
       opacity: 0.62,
     });
@@ -120,32 +140,31 @@ export function mountExperienceRenderer({
     materials.add(material);
 
     const mesh = new Mesh(geometry, material);
-    mesh.position.set(...NODE_POSITIONS[id]);
+    const position = researchNodePosition(index, RESEARCH_NODE_IDS.length);
+    nodePositions.set(id, position);
+    mesh.position.set(...position);
     constellation.add(mesh);
     nodeRecords.push({ id, mesh, material });
-  }
+  });
 
   const edgePoints: number[] = [];
-  const pairs: Array<[ConcreteResearchNode | 'center', ConcreteResearchNode | 'center']> = [
-    ['center', 'robotics-systems'],
-    ['center', 'vision-perception'],
-    ['center', 'ai-research'],
-    ['robotics-systems', 'vision-perception'],
-    ['vision-perception', 'ai-research'],
-    ['ai-research', 'robotics-systems'],
-  ];
-
-  const positionFor = (id: ConcreteResearchNode | 'center'): [number, number, number] =>
-    id === 'center' ? [0, 0, 0] : NODE_POSITIONS[id];
-
-  for (const [from, to] of pairs) {
-    edgePoints.push(...positionFor(from), ...positionFor(to));
+  for (const record of nodeRecords) {
+    const position = nodePositions.get(record.id) ?? [0, 0, 0];
+    edgePoints.push(0, 0, 0, ...position);
   }
+  nodeRecords.forEach((record, index) => {
+    const next = nodeRecords[(index + 1) % nodeRecords.length];
+    if (!next || nodeRecords.length < 3) return;
+    edgePoints.push(
+      ...(nodePositions.get(record.id) ?? [0, 0, 0]),
+      ...(nodePositions.get(next.id) ?? [0, 0, 0]),
+    );
+  });
 
   const edgeGeometry = new BufferGeometry();
   edgeGeometry.setAttribute('position', new Float32BufferAttribute(edgePoints, 3));
   const edgeMaterial = new LineBasicMaterial({
-    color: new Color(accent),
+    color: new Color(palette.accent),
     transparent: true,
     opacity: variant === 'home' ? 0.2 : 0.27,
   });
@@ -155,7 +174,7 @@ export function mountExperienceRenderer({
 
   const ringGeometry = new TorusGeometry(1.96, 0.005, 6, 96);
   const ringMaterial = new MeshBasicMaterial({
-    color: new Color(accent),
+    color: new Color(palette.accent),
     transparent: true,
     opacity: 0.14,
   });
@@ -179,7 +198,7 @@ export function mountExperienceRenderer({
   const particleGeometry = new BufferGeometry();
   particleGeometry.setAttribute('position', new BufferAttribute(particlePositions, 3));
   const particleMaterial = new PointsMaterial({
-    color: new Color(accent),
+    color: new Color(palette.accent),
     size: profile.tier === 'ultra' ? 0.034 : 0.027,
     sizeAttenuation: true,
     transparent: true,
@@ -192,16 +211,39 @@ export function mountExperienceRenderer({
   constellation.add(particles);
 
   let latestSnapshot = experienceState.get();
-  const unsubscribe = experienceState.subscribe((snapshot) => {
-    latestSnapshot = snapshot;
-    const active = snapshot.activeResearchNode;
 
+  const updateNodePalette = (): void => {
+    const active = latestSnapshot.activeResearchNode;
     for (const record of nodeRecords) {
-      const selected = isConcreteResearchNode(active) && record.id === active;
-      record.material.color.set(selected ? accentStrong : muted);
+      const selected = isResearchNodeId(active ?? '') && record.id === active;
+      record.material.color.set(selected ? palette.accentStrong : palette.muted);
       record.material.opacity = selected ? 1 : 0.62;
     }
+  };
+
+  const applyThemePalette = (): void => {
+    palette = readRendererPalette();
+    centralMaterial.color.set(palette.accentStrong);
+    edgeMaterial.color.set(palette.accent);
+    ringMaterial.color.set(palette.accent);
+    particleMaterial.color.set(palette.accent);
+    updateNodePalette();
+    host.dataset.rendererTheme = palette.theme;
+  };
+
+  const unsubscribe = experienceState.subscribe((snapshot) => {
+    latestSnapshot = snapshot;
+    updateNodePalette();
   });
+
+  const themeObserver = new MutationObserver((records) => {
+    if (records.some((record) => record.attributeName === 'class')) applyThemePalette();
+  });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class'],
+  });
+  applyThemePalette();
 
   const resize = (): void => {
     const width = Math.max(1, host.clientWidth);
@@ -217,85 +259,128 @@ export function mountExperienceRenderer({
   resizeObserver.observe(host);
   resize();
 
+  let destroyed = false;
   let inViewport = true;
-  const viewportObserver = new IntersectionObserver(
-    ([entry]) => {
-      inViewport = entry?.isIntersecting ?? false;
-    },
-    { rootMargin: '120px 0px', threshold: 0.01 },
-  );
-  viewportObserver.observe(host);
-
   let documentVisible = !document.hidden;
-  const onVisibilityChange = (): void => {
-    documentVisible = !document.hidden;
-  };
-  document.addEventListener('visibilitychange', onVisibilityChange);
-
   let frameId = 0;
+  let animationRunning = false;
   let lastRenderedAt = performance.now();
   let fpsWindowStartedAt = lastRenderedAt;
   let framesInWindow = 0;
   const minimumFrameInterval = 1000 / profile.maxFps;
 
-  const animate = (now: number): void => {
-    frameId = window.requestAnimationFrame(animate);
-    if (!documentVisible || !inViewport || now - lastRenderedAt < minimumFrameInterval) return;
-
-    const deltaSeconds = Math.min((now - lastRenderedAt) / 1000, 0.08);
-    lastRenderedAt = now;
-    framesInWindow += 1;
-
-    const pointerX = latestSnapshot.pointer.x;
-    const pointerY = latestSnapshot.pointer.y;
-    const scroll = latestSnapshot.scrollProgress;
-    const targetRotationY = pointerX * 0.12 + scroll * 0.34;
-    const targetRotationX = pointerY * -0.08 + (variant === 'research' ? -0.04 : 0.03);
-
-    constellation.rotation.y = MathUtils.lerp(
-      constellation.rotation.y,
-      targetRotationY,
-      Math.min(1, deltaSeconds * 3.2),
-    );
-    constellation.rotation.x = MathUtils.lerp(
-      constellation.rotation.x,
-      targetRotationX,
-      Math.min(1, deltaSeconds * 3.2),
-    );
-    particles.rotation.z += deltaSeconds * (profile.tier === 'ultra' ? 0.045 : 0.025);
-    ring.rotation.z += deltaSeconds * 0.025;
-
-    for (const record of nodeRecords) {
-      const selected = latestSnapshot.activeResearchNode === record.id;
-      const targetScale = selected ? 1.58 : 1;
-      const nextScale = MathUtils.lerp(
-        record.mesh.scale.x,
-        targetScale,
-        Math.min(1, deltaSeconds * 7),
-      );
-      record.mesh.scale.setScalar(nextScale);
-    }
-
-    central.rotation.x += deltaSeconds * 0.18;
-    central.rotation.y += deltaSeconds * 0.22;
-    renderer.render(scene, camera);
-
-    if (now - fpsWindowStartedAt >= 1000) {
-      const fps = Math.round((framesInWindow * 1000) / (now - fpsWindowStartedAt));
-      experienceState.patch({ fps });
-      fpsWindowStartedAt = now;
-      framesInWindow = 0;
-    }
+  const setLoopStatus = (status: 'running' | 'stopped'): void => {
+    host.dataset.rendererLoop = status;
   };
 
-  frameId = window.requestAnimationFrame(animate);
+  const stopAnimation = (): void => {
+    animationRunning = false;
+    if (frameId) window.cancelAnimationFrame(frameId);
+    frameId = 0;
+    framesInWindow = 0;
+    setLoopStatus('stopped');
+    if (experienceState.get().fps !== 0) experienceState.patch({ fps: 0 });
+  };
+
+  const animate = (now: number): void => {
+    frameId = 0;
+    if (!animationRunning || destroyed || !documentVisible || !inViewport) {
+      stopAnimation();
+      return;
+    }
+
+    if (now - lastRenderedAt >= minimumFrameInterval) {
+      const deltaSeconds = Math.min((now - lastRenderedAt) / 1000, 0.08);
+      lastRenderedAt = now;
+      framesInWindow += 1;
+
+      const pointerX = latestSnapshot.pointer.x;
+      const pointerY = latestSnapshot.pointer.y;
+      const scroll = latestSnapshot.scrollProgress;
+      const targetRotationY = pointerX * 0.12 + scroll * 0.34;
+      const targetRotationX = pointerY * -0.08 + (variant === 'research' ? -0.04 : 0.03);
+
+      constellation.rotation.y = MathUtils.lerp(
+        constellation.rotation.y,
+        targetRotationY,
+        Math.min(1, deltaSeconds * 3.2),
+      );
+      constellation.rotation.x = MathUtils.lerp(
+        constellation.rotation.x,
+        targetRotationX,
+        Math.min(1, deltaSeconds * 3.2),
+      );
+      particles.rotation.z += deltaSeconds * (profile.tier === 'ultra' ? 0.045 : 0.025);
+      ring.rotation.z += deltaSeconds * 0.025;
+
+      for (const record of nodeRecords) {
+        const selected = latestSnapshot.activeResearchNode === record.id;
+        const targetScale = selected ? 1.58 : 1;
+        const nextScale = MathUtils.lerp(
+          record.mesh.scale.x,
+          targetScale,
+          Math.min(1, deltaSeconds * 7),
+        );
+        record.mesh.scale.setScalar(nextScale);
+      }
+
+      central.rotation.x += deltaSeconds * 0.18;
+      central.rotation.y += deltaSeconds * 0.22;
+      renderer.render(scene, camera);
+
+      if (now - fpsWindowStartedAt >= 1000) {
+        const fps = Math.round((framesInWindow * 1000) / (now - fpsWindowStartedAt));
+        experienceState.patch({ fps });
+        fpsWindowStartedAt = now;
+        framesInWindow = 0;
+      }
+    }
+
+    if (animationRunning) frameId = window.requestAnimationFrame(animate);
+  };
+
+  const startAnimation = (): void => {
+    if (destroyed || animationRunning || !documentVisible || !inViewport) return;
+    animationRunning = true;
+    const now = performance.now();
+    lastRenderedAt = now;
+    fpsWindowStartedAt = now;
+    framesInWindow = 0;
+    setLoopStatus('running');
+    frameId = window.requestAnimationFrame(animate);
+  };
+
+  const viewportObserver =
+    'IntersectionObserver' in window
+      ? new IntersectionObserver(
+          ([entry]) => {
+            inViewport = entry?.isIntersecting ?? false;
+            if (inViewport) startAnimation();
+            else stopAnimation();
+          },
+          { rootMargin: '120px 0px', threshold: 0.01 },
+        )
+      : null;
+  viewportObserver?.observe(host);
+
+  const onVisibilityChange = (): void => {
+    documentVisible = !document.hidden;
+    if (documentVisible && inViewport) startAnimation();
+    else stopAnimation();
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
   host.dataset.rendererStatus = 'active';
   host.dataset.rendererBackend = 'webgl2';
+  startAnimation();
 
   const destroy = (): void => {
-    window.cancelAnimationFrame(frameId);
-    viewportObserver.disconnect();
+    if (destroyed) return;
+    destroyed = true;
+    stopAnimation();
+    viewportObserver?.disconnect();
     resizeObserver.disconnect();
+    themeObserver.disconnect();
     document.removeEventListener('visibilitychange', onVisibilityChange);
     unsubscribe();
 
@@ -307,6 +392,8 @@ export function mountExperienceRenderer({
 
     delete host.dataset.rendererCore;
     delete host.dataset.rendererBackend;
+    delete host.dataset.rendererLoop;
+    delete host.dataset.rendererTheme;
     host.dataset.rendererStatus = 'idle';
     experienceState.resetRenderer();
   };

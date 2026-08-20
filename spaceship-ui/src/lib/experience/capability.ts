@@ -20,6 +20,7 @@ export interface CapabilityProfile {
   saveData: boolean;
   slowConnection: boolean;
   coarsePointer: boolean;
+  narrowViewport: boolean;
   hardwareConcurrency: number;
   deviceMemory: number;
   dprCap: number;
@@ -55,16 +56,21 @@ export function detectExperienceCapability(): CapabilityProfile {
   const hardwareConcurrency = Math.max(1, nav.hardwareConcurrency || 2);
   const deviceMemory = Math.max(1, nav.deviceMemory || 4);
   const webgpuAvailable = typeof nav.gpu !== 'undefined';
-  const webgl2Available = supportsWebGL2();
   const reasons: string[] = [];
 
   if (reducedMotion) reasons.push('reduced-motion');
   if (saveData) reasons.push('save-data');
   if (slowConnection) reasons.push('slow-connection');
-  if (!webgl2Available) reasons.push('no-webgl2');
   if (hardwareConcurrency <= 2) reasons.push('low-core-count');
   if (deviceMemory <= 2) reasons.push('low-memory');
-  if (coarsePointer && narrowViewport) reasons.push('mobile-safe-fallback');
+  if (narrowViewport) reasons.push('narrow-viewport');
+  if (coarsePointer) reasons.push('coarse-pointer');
+
+  // Keep the CSS and JavaScript SAFE boundary identical. Do not even probe a
+  // GPU context on clients where the renderer is guaranteed to stay hidden.
+  const shouldProbeWebGL2 = reasons.length === 0;
+  const webgl2Available = shouldProbeWebGL2 ? supportsWebGL2() : false;
+  if (shouldProbeWebGL2 && !webgl2Available) reasons.push('no-webgl2');
 
   const mustUseSafe = reasons.length > 0;
   const canUseUltra =
@@ -86,6 +92,7 @@ export function detectExperienceCapability(): CapabilityProfile {
       saveData,
       slowConnection,
       coarsePointer,
+      narrowViewport,
       hardwareConcurrency,
       deviceMemory,
       dprCap: 1,
@@ -99,7 +106,7 @@ export function detectExperienceCapability(): CapabilityProfile {
   return {
     tier,
     // WebGPU is detected and recorded here, but activation remains a separate,
-    // isolated phase. This core deliberately starts on the stable WebGL2 path.
+    // isolated phase. This core deliberately stays on the stable WebGL2 path.
     backend: 'webgl2',
     reducedMotion,
     webgl2Available,
@@ -107,6 +114,7 @@ export function detectExperienceCapability(): CapabilityProfile {
     saveData,
     slowConnection,
     coarsePointer,
+    narrowViewport,
     hardwareConcurrency,
     deviceMemory,
     dprCap: tier === 'ultra' ? 1.6 : 1,

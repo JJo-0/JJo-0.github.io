@@ -15,6 +15,10 @@ on:
       - '.github/workflows/blog-ci.yml'
   workflow_dispatch:
 
+concurrency:
+  group: blog-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -63,3 +67,10 @@ jobs:
 
       - name: Content integrity check
         run: pnpm content:check
+
+      - name: Browser smoke matrix
+        run: pnpm browser:smoke
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+          JJO_SMOKE_MAX_RUNTIME_MS: '240000'
+          NODE_OPTIONS: '--import ./scripts/browser-smoke-exit-guard.mjs'
