@@ -29,11 +29,18 @@
   <div class="flex flex-col gap-1.5">
     <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-4">
       <h2 class="text-base sm:text-lg font-black tracking-tight leading-tight">
-        <a href={`/posts/${slug}`} class="transition-colors no-underline">
+        <a
+          href={`/posts/${slug}`}
+          class="transition-colors no-underline"
+          data-post-transition-slug={slug}
+        >
           <span class="absolute -inset-x-0 -inset-y-0 z-20"></span>
-          <span class="relative z-10 text-foreground group-hover:text-primary transition-colors"
-            >{post.data.title}</span
+          <span
+            class="relative z-10 text-foreground group-hover:text-primary transition-colors"
+            data-post-transition-title
           >
+            {post.data.title}
+          </span>
         </a>
       </h2>
       <time

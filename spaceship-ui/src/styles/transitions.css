@@ -1,0 +1,129 @@
+:root {
+  --route-transition-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --route-transition-duration: 420ms;
+}
+
+.route-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 140;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.route-progress::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  content: '';
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--experience-accent), var(--experience-accent-strong));
+}
+
+html[data-route-loading] .route-progress {
+  opacity: 1;
+}
+
+html[data-route-loading] .route-progress::before {
+  animation: route-progress-loading 1.1s var(--route-transition-ease) both;
+}
+
+html[data-route-ready] .route-progress::before {
+  animation: route-progress-complete 220ms ease-out both;
+}
+
+[data-post-transition-title] {
+  contain: layout style;
+}
+
+::view-transition-group(root) {
+  animation-duration: var(--route-transition-duration);
+  animation-timing-function: var(--route-transition-ease);
+}
+
+::view-transition-group(*) {
+  animation-duration: var(--route-transition-duration);
+  animation-timing-function: var(--route-transition-ease);
+}
+
+::view-transition-old(root) {
+  animation: route-root-out 180ms ease both;
+}
+
+::view-transition-new(root) {
+  animation: route-root-in var(--route-transition-duration) var(--route-transition-ease) both;
+}
+
+html[data-navigation-direction='backward']::view-transition-old(root) {
+  animation-name: route-root-out-backward;
+}
+
+html[data-navigation-direction='backward']::view-transition-new(root) {
+  animation-name: route-root-in-backward;
+}
+
+@keyframes route-progress-loading {
+  0% {
+    transform: scaleX(0.04);
+  }
+  55% {
+    transform: scaleX(0.58);
+  }
+  100% {
+    transform: scaleX(0.86);
+  }
+}
+
+@keyframes route-progress-complete {
+  from {
+    transform: scaleX(0.86);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes route-root-out {
+  to {
+    opacity: 0;
+    transform: translateY(-0.45rem);
+  }
+}
+
+@keyframes route-root-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.65rem);
+  }
+}
+
+@keyframes route-root-out-backward {
+  to {
+    opacity: 0;
+    transform: translateY(0.45rem);
+  }
+}
+
+@keyframes route-root-in-backward {
+  from {
+    opacity: 0;
+    transform: translateY(-0.65rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-progress {
+    display: none;
+  }
+
+  ::view-transition-group(root),
+  ::view-transition-group(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
