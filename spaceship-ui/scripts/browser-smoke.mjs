@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
+// Fail-closed contract cases: Home card to shared state synchronization;
+// Research SVG focus synchronization.
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.JJO_SMOKE_PORT || 4321);
 const BASE = process.env.JJO_SMOKE_BASE_URL || `http://${HOST}:${PORT}`;
