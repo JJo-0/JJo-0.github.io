@@ -228,12 +228,28 @@ if (pageLedger && formulaLedger && contentLedger) {
   for (const [label, values, expected] of [
     ['formula', mapped.formulas, formulaIds],
     ['content', mapped.content, contentIds],
-    ['figure', mapped.figures, figureIds],
     ['annotation', mapped.annotations, annotationIds],
   ]) {
     const duplicates = duplicateValues(values);
     if (duplicates.length) issues.push(`page ledger duplicate ${label} IDs: ${duplicates.join(', ')}`);
     if (!sameSet(new Set(values), expected)) issues.push(`page ledger ${label} coverage mismatch`);
+  }
+
+  if (!sameSet(new Set(mapped.figures), figureIds)) {
+    issues.push('page ledger figure coverage mismatch');
+  }
+  for (const figure of contentLedger.figures) {
+    const declaredPages = figure.pdfPages ?? [figure.pdfPage];
+    const mappedPages = pages
+      .filter((page) => (page.figureIds ?? []).includes(figure.figureId))
+      .map((page) => page.pdfPage);
+    if (JSON.stringify(mappedPages) !== JSON.stringify(declaredPages)) {
+      issues.push(`${figure.figureId}: expected page mapping ${declaredPages.join(',')}, found ${mappedPages.join(',')}`);
+    }
+    for (const page of pages) {
+      const countOnPage = (page.figureIds ?? []).filter((id) => id === figure.figureId).length;
+      if (countOnPage > 1) issues.push(`${figure.figureId}: duplicated within page ${page.pdfPage}`);
+    }
   }
 
   for (const formula of formulaLedger.formulas) {
