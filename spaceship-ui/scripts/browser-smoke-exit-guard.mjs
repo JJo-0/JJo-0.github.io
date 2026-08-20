@@ -1,5 +1,6 @@
 // Loaded only by Blog CI through NODE_OPTIONS. The harness intentionally owns
 // browser/server child processes, so the final semantic marker is authoritative.
+// This guard also gives rebased PR runs a deterministic upper bound.
 const SUCCESS_MARKER = 'browser-smoke: PASS complete matrix';
 const FAILURE_MARKER = 'browser-smoke: FAIL';
 const MAX_RUNTIME_MS = Number(process.env.JJO_SMOKE_MAX_RUNTIME_MS || 240_000);
