@@ -1,5 +1,10 @@
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import {
+  experienceRouteFromPath,
+  experienceState,
+  type ResearchNodeId,
+} from './state';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,16 +19,25 @@ declare global {
 }
 
 const ROOT_SELECTOR = '[data-experience-page]';
+const RESEARCH_NODE_IDS = new Set(['robotics-systems', 'vision-perception', 'ai-research']);
+
+function researchNodeId(value: string): ResearchNodeId {
+  return RESEARCH_NODE_IDS.has(value) ? (value as Exclude<ResearchNodeId, null>) : null;
+}
 
 function revealWithoutMotion(root: HTMLElement): void {
-  const targets = root.querySelectorAll<HTMLElement>('[data-motion], [data-reveal], [data-stagger-item]');
+  const targets = root.querySelectorAll<HTMLElement>(
+    '[data-motion], [data-reveal], [data-stagger-item]',
+  );
   gsap.set(targets, { clearProps: 'all' });
 }
 
 function setActiveResearchNode(root: HTMLElement, id: string): void {
+  const activeResearchNode = researchNodeId(id);
   root.querySelectorAll<Element>('[data-constellation-node]').forEach((node) => {
     node.toggleAttribute('data-active', node.getAttribute('data-constellation-node') === id);
   });
+  experienceState.patch({ activeResearchNode });
 }
 
 export function installExperienceMotion(): void {
@@ -50,6 +64,10 @@ export function installExperienceMotion(): void {
 
     activeRoot = null;
     document.documentElement.style.removeProperty('--experience-progress');
+    experienceState.patch({
+      scrollProgress: 0,
+      activeResearchNode: null,
+    });
   };
 
   const init = (): void => {
@@ -60,6 +78,10 @@ export function installExperienceMotion(): void {
 
     activeRoot = root;
     root.setAttribute('data-motion-ready', '');
+    experienceState.patch({
+      route: experienceRouteFromPath(window.location.pathname),
+      reducedMotion: reducedMotion.matches,
+    });
 
     if (reducedMotion.matches) {
       root.setAttribute('data-motion-mode', 'reduced');
@@ -194,7 +216,11 @@ export function installExperienceMotion(): void {
         start: 0,
         end: 'max',
         onUpdate: (self) => {
-          document.documentElement.style.setProperty('--experience-progress', self.progress.toFixed(4));
+          const progress = Number(self.progress.toFixed(4));
+          document.documentElement.style.setProperty('--experience-progress', progress.toString());
+          if (Math.abs(experienceState.get().scrollProgress - progress) >= 0.002) {
+            experienceState.patch({ scrollProgress: progress });
+          }
         },
       });
 
@@ -229,6 +255,7 @@ export function installExperienceMotion(): void {
     document.removeEventListener('astro:page-load', scheduleInit);
     document.removeEventListener('astro:before-swap', cleanup);
     reducedMotion.removeEventListener('change', scheduleInit);
+    experienceState.patch({ route: 'other' });
     window.__jjoExperienceRuntime = undefined;
   };
 

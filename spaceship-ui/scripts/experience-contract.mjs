@@ -75,6 +75,7 @@ const requiredFiles = [
   'src/lib/experience/motion.ts',
   'src/components/experience/MotionRuntime.astro',
   'src/components/experience/ResearchConstellation.astro',
+  'src/components/experience/ExperienceCanvas.astro',
 ];
 
 for (const relative of requiredFiles) {
@@ -83,8 +84,9 @@ for (const relative of requiredFiles) {
 
 const packageJson = JSON.parse(read('package.json'));
 if (!packageJson.dependencies?.gsap) issues.push('package.json: GSAP dependency is missing');
-if (packageJson.dependencies?.three || packageJson.devDependencies?.three) {
-  issues.push('package.json: Three.js must remain out of the Design System / Motion v1 boundary');
+if (!packageJson.dependencies?.three) issues.push('package.json: isolated Three.js renderer dependency is missing');
+if (!packageJson.scripts?.['renderer:check']) {
+  issues.push('package.json: renderer isolation contract is not wired');
 }
 
 const layoutSource = read('src/layouts/Layout.astro');
@@ -113,6 +115,9 @@ if (!constellationSource.includes("import { RESEARCH_FOCUS } from '@/lib/researc
 }
 if (!constellationSource.includes('RESEARCH_FOCUS.map')) {
   issues.push('ResearchConstellation.astro: canonical focus iteration is missing');
+}
+if (!constellationSource.includes('<ExperienceCanvas variant="research" />')) {
+  issues.push('ResearchConstellation.astro: progressive Research renderer shell is missing');
 }
 if (!motionSource.includes("prefers-reduced-motion: reduce") || !motionSource.includes('ScrollTrigger')) {
   issues.push('motion.ts: reduced-motion or ScrollTrigger support is missing');
@@ -146,8 +151,14 @@ if (!homeHtml.includes('data-experience-runtime="home"')) {
 if (!homeHtml.includes('/image/mouse_surprised.gif')) {
   issues.push('dist/index.html: homepage mouse GIF identity visual is missing');
 }
+if (!homeHtml.includes('data-experience-canvas="home"')) {
+  issues.push('dist/index.html: progressive Home renderer shell is missing');
+}
 if (!researchHtml.includes('data-experience-runtime="research"')) {
   issues.push('dist/research/index.html: research motion runtime marker is missing');
+}
+if (!researchHtml.includes('data-experience-canvas="research"')) {
+  issues.push('dist/research/index.html: progressive Research renderer shell is missing');
 }
 for (const node of researchAreas) {
   if (!researchHtml.includes(`data-constellation-node="${node}"`)) {
@@ -160,17 +171,14 @@ for (const node of researchAreas) {
     issues.push(`dist/research/index.html: canonical research section #${node} is missing`);
   }
 }
-if (/<canvas\b/i.test(homeHtml) || /<canvas\b/i.test(researchHtml)) {
-  issues.push('home/research: GPU canvas was introduced before the Three.js isolation phase');
-}
 
 const homeGzip = scriptGzipBytes(homeHtml);
 const researchGzip = scriptGzipBytes(researchHtml);
 if (homeGzip > HOME_BUDGET_GZIP) {
-  issues.push(`homepage JS budget exceeded: ${homeGzip} B gzip > ${HOME_BUDGET_GZIP} B`);
+  issues.push(`homepage initial JS budget exceeded: ${homeGzip} B gzip > ${HOME_BUDGET_GZIP} B`);
 }
 if (researchGzip > RESEARCH_BUDGET_GZIP) {
-  issues.push(`research JS budget exceeded: ${researchGzip} B gzip > ${RESEARCH_BUDGET_GZIP} B`);
+  issues.push(`research initial JS budget exceeded: ${researchGzip} B gzip > ${RESEARCH_BUDGET_GZIP} B`);
 }
 
 const samplePost = firstPublishedPostHtml();
@@ -178,16 +186,20 @@ if (!samplePost) {
   issues.push('dist/posts: no published post HTML was found');
 } else {
   const postHtml = fs.readFileSync(samplePost, 'utf8');
-  if (postHtml.includes('data-experience-runtime=')) {
-    issues.push(`${path.relative(dist, samplePost)}: article must not mount the experience runtime`);
+  if (postHtml.includes('data-experience-runtime=') || postHtml.includes('data-experience-canvas=')) {
+    issues.push(`${path.relative(dist, samplePost)}: article must not mount portfolio motion/GPU runtime`);
   }
 
   for (const source of localModuleScripts(postHtml)) {
     const file = path.join(dist, source.replace(/^\//, ''));
     if (!fs.existsSync(file)) continue;
     const js = fs.readFileSync(file, 'utf8');
-    if (js.includes('__jjoExperienceRuntime') || js.includes('experience-progress')) {
-      issues.push(`${path.relative(dist, samplePost)}: article references the motion runtime bundle`);
+    if (
+      js.includes('__jjoExperienceRuntime') ||
+      js.includes('__jjoRendererRuntime') ||
+      js.includes('__JJO_RENDERER_CORE__')
+    ) {
+      issues.push(`${path.relative(dist, samplePost)}: article references portfolio runtime bundle`);
     }
   }
 }
@@ -200,5 +212,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `experience-contract: PASS (${researchAreas.length} canonical research areas; home ${homeGzip} B gzip, research ${researchGzip} B gzip; reduced-motion, SVG fallback, no article runtime)`,
+  `experience-contract: PASS (${researchAreas.length} canonical research areas; home ${homeGzip} B initial gzip, research ${researchGzip} B; motion + SVG + isolated renderer shell, no article runtime)`,
 );

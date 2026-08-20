@@ -74,6 +74,10 @@ export default defineConfig({
   },
   image: { service: { entrypoint: 'astro/assets/services/sharp' } },
   vite: {
+    // Three.js is a viewport-lazy chunk. Network cost is enforced separately
+    // by renderer-contract.mjs (500 KiB gzip), so use a raw minified warning
+    // threshold that reflects this intentional isolation boundary.
+    build: { chunkSizeWarningLimit: 650 },
     plugins: [tailwindcss()],
     resolve: {
       alias: {
