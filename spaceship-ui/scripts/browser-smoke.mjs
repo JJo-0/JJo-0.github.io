@@ -176,6 +176,8 @@ async function startChrome() {
 async function attach(cdp) {
   const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
+  await cdp.send('Target.activateTarget', { targetId });
+  await cdp.send('Page.bringToFront', {}, sessionId);
   await cdp.send('Page.enable', {}, sessionId);
   await cdp.send('Runtime.enable', {}, sessionId);
   await cdp.send(
@@ -282,6 +284,7 @@ async function activateNode(cdp, sessionId, selector, index, label) {
         });
         window.__jjoSmokeListenerInstalled = true;
       }
+      window.focus();
       node.focus({ preventScroll: true });
       const focused = document.activeElement === node;
       node.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
