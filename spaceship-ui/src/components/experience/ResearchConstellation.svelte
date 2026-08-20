@@ -11,7 +11,12 @@
   }
 
   let { focuses }: Props = $props();
-  let activeId = $state(focuses[0]?.id ?? '');
+  let activeId = $state('');
+
+  $effect(() => {
+    if (!activeId && focuses[0]?.id) activeId = focuses[0].id;
+  });
+
   let activeFocus = $derived(focuses.find((focus) => focus.id === activeId) ?? focuses[0]);
 
   const positions = [
