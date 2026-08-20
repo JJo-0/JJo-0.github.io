@@ -1,0 +1,1593 @@
+---
+title: '현대 인공지능 III — 퍼셉트론·MLP·CNN과 컨볼루션'
+description: 'ECE5992 강의자료 15쪽을 페이지·문단·표·그림·수식·손글씨 원장으로 완전 추적하며, 퍼셉트론 학습, XOR, MLP 순전파, DropOut·DropConnect, 1D·2D 컨볼루션, 경계조건, patch 행렬화와 PyTorch 모듈을 2026년 연구까지 연결한다.'
+pubDate: 2026-08-20
+updatedDate: 2026-08-20
+category: ai-machine-learning
+subcategory: neural-network-foundations
+type: study-note
+tags:
+  - deep-learning
+  - perceptron
+  - multilayer-perceptron
+  - convolution
+  - convolutional-neural-network
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 5
+
+featured: true
+lang: 'ko'
+series:
+  id: 'modern-artificial-intelligence'
+  order: 3
+---
+
+import SourceFormula from '@/components/post/SourceFormula.astro';
+import { part3Formula } from '@/lib/modern-ai-part3';
+
+> **완전성 계약(Completeness contract)**  
+> 이 글은 `4_CH4-Backgrounds for AI(1).pdf` 15쪽을 기준으로 작성했다. 번호식뿐 아니라 번호 없는 표시식, 의미 있는 인라인 수학, 그림 속 식과 숫자, `?`·`??`·공란, 표의 모든 셀, 캡션·각주·참고문헌, 판독 가능한 손글씨를 원장에 연결했다. 원문 빈칸·표기 문제를 지우지 않고 완성식과 교정식은 별도 상태로 등록한다.
+
+> **세 층을 섞지 않는다.**  
+> ① **2025 PDF 원자료 재구성**, ② **편집·수학 검증**, ③ **2026-08-18 최신 연구 업데이트**를 분리한다. 최신 연구가 강의자료의 문장을 소급해 바꾸지 않는다.
+
+## 원장 현황
+
+- PDF: **15 / 15쪽** 매핑
+- 전체 수식 record: **163개** (`MAI-P3-001`–`MAI-P3-163`)
+- 원자료 수식: **140개**
+- 표시 수식 설명 카드: **99개**
+- 수식 상태: `source-exact`, `source-suspect`, `editorially-completed`, `corrected-variant`
+- 원자료 PDF SHA-256: `2a3855c52d688a79d38e714ab7ef7223dd7a5bc5b46f8385f55da777aa1c78af`
+- 그림은 원본 이미지를 복제하지 않고 구조·숫자·관계를 보존한 새 SVG·HTML 도식으로 재구성했다.
+
+---
+
+# PDF 원자료 재구성
+
+{/* source-content:P3-C001 */}
+## 3. 인공지능과 딥러닝을 위한 배경(Backgrounds for AI and DL)
+
+
+{/* source-content:P3-C002 */}
+이 장은 인공지능(AI)과 딥러닝(DL)을 공부하기 위한 배경으로, 하나의 퍼셉트론에서 시작해 다층 퍼셉트론(MLP), 컨볼루션 신경망(CNN), 컨볼루션의 전역·국소 행렬 표현, PyTorch 핵심 모듈로 이동한다.
+
+
+{/* source-content:P3-C003 */}
+## 3.1 하나의 퍼셉트론 모델(A single perceptron model)
+
+
+{/* source-content:P3-C004 */}
+퍼셉트론은 생물학적 뉴런을 수학적으로 단순화한 모델이다. 강의자료는 수상돌기·시냅스·발화 임계값을 입력값·가중치·가중합·활성함수로 대응시킨다.
+
+
+{/* source-figure:P3-FIG-01 */}
+<figure class="my-8 overflow-hidden rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-2">
+    <section class="rounded-xl border border-border/70 bg-background/80 p-4">
+      <h4 class="mt-0">Biological neuron</h4>
+      <svg viewBox="0 0 420 170" role="img" aria-label="수상돌기, 세포체, 축삭, 시냅스로 구성된 생물학적 뉴런의 새 도식" class="w-full">
+        <circle cx="130" cy="85" r="32" fill="none" stroke="currentColor" stroke-width="3" />
+        <path d="M98 84 C70 55,50 42,22 26 M98 75 C65 76,42 67,18 60 M99 94 C65 107,45 121,18 142" fill="none" stroke="currentColor" stroke-width="3" />
+        <path d="M162 85 C220 85,272 83,340 84" fill="none" stroke="currentColor" stroke-width="4" />
+        <path d="M340 84 C365 65,385 55,405 48 M340 84 C370 84,388 84,408 84 M340 84 C366 103,387 116,405 126" fill="none" stroke="currentColor" stroke-width="3" />
+        <text x="82" y="22" font-size="15">dendrite</text><text x="113" y="91" font-size="15">soma</text><text x="230" y="72" font-size="15">axon</text><text x="350" y="42" font-size="15">synapse</text>
+      </svg>
+    </section>
+    <section class="rounded-xl border border-border/70 bg-background/80 p-4">
+      <h4 class="mt-0">Perceptron</h4>
+      <svg viewBox="0 0 420 170" role="img" aria-label="입력, 가중치, 합산, 계단함수, 출력을 나타내는 퍼셉트론의 새 도식" class="w-full">
+        <g font-size="15"><text x="10" y="35">x₁</text><text x="10" y="80">x₂</text><text x="10" y="125">xₙ</text></g>
+        <g stroke="currentColor" stroke-width="2"><line x1="42" y1="30" x2="160" y2="82"/><line x1="42" y1="75" x2="160" y2="82"/><line x1="42" y1="120" x2="160" y2="82"/></g>
+        <circle cx="180" cy="82" r="27" fill="none" stroke="currentColor" stroke-width="3"/><text x="169" y="89" font-size="24">Σ</text>
+        <line x1="207" y1="82" x2="270" y2="82" stroke="currentColor" stroke-width="3"/><rect x="270" y="55" width="70" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="3"/><path d="M282 94 L298 94 L298 70 L328 70" fill="none" stroke="currentColor" stroke-width="3"/><line x1="340" y1="82" x2="405" y2="82" stroke="currentColor" stroke-width="3"/><text x="352" y="70" font-size="15">output</text><text x="116" y="45" font-size="14">weights</text><text x="266" y="42" font-size="14">sign / step</text>
+      </svg>
+    </section>
+  </div>
+  <div class="mt-4 overflow-x-auto">
+    <table class="m-0 min-w-[680px]">
+      <thead><tr><th>Biological neuron</th><th>Perceptron</th></tr></thead>
+      <tbody>
+        <tr><td>수상돌기는 다른 뉴런의 축삭에서 전기 신호를 받는다.</td><td>전기 신호를 수치 입력값으로 표현한다.</td></tr>
+        <tr><td>수상돌기와 축삭 사이 시냅스가 신호를 서로 다른 양만큼 조절한다.</td><td>각 입력값에 가중치(weight)를 곱하는 것으로 모델링한다.</td></tr>
+        <tr><td>입력 신호의 총 세기가 임계값을 넘을 때만 발화하고, 출력은 다른 뉴런으로 전달된다.</td><td>가중합을 계산한 뒤 sign 같은 활성함수로 출력을 정하고, 그 출력을 다음 퍼셉트론으로 보낸다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p.1 표 재구성.</strong> 원자료의 뉴런 사진과 역사적 웹 도식을 복제하지 않고, 두 열의 대응 관계와 세 행의 설명을 보존해 새 도식과 표로 다시 그렸다.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C005 */}
+### 3.1.1 선형 판별함수(Linear discriminant)
+
+
+{/* source-content:P3-C006 */}
+하나의 퍼셉트론은 선형 분리가 가능한 두 패턴 클래스 사이의 선형 경계를 학습한다. 2차원 직선은 <SourceFormula formula={part3Formula('MAI-P3-001')} part={3} display={false} />로 쓰며, 좌표에 곱해지지 않는 계수 b를 편향(bias)이라 부른다.
+
+
+{/* source-content:P3-C007 */}
+N차원 점은 좌표 <SourceFormula formula={part3Formula('MAI-P3-002')} part={3} display={false} />를 가진 벡터이고, 경계 계수는 <SourceFormula formula={part3Formula('MAI-P3-003')} part={3} display={false} />로 표시한다.
+
+
+{/* source-content:P3-C008 */}
+직선 <SourceFormula formula={part3Formula('MAI-P3-004')} part={3} display={false} />를 한쪽으로 이항하면 <SourceFormula formula={part3Formula('MAI-P3-005')} part={3} display={false} />이며, 보다 일반적인 두 변수 선형 경계는 다음 형식이다.
+
+
+{/* source-content:P3-C009 */}
+<SourceFormula formula={part3Formula('MAI-P3-006')} part={3} display={true} />
+
+
+{/* source-content:P3-C010 */}
+원자료의 연습문제는 “`y=ax+c`를 `w₁x₁+w₂x₂+b=0`으로 어떻게 다시 쓸 것인가?”를 묻고 답을 `?`로 남긴다. 원문 질문을 보존하고 완성 답은 편집층에 분리한다.
+
+
+{/* source-content:P3-C011 */}
+N차원 특징에 대한 판별은 다음 초평면(hyperplane)을 기준으로 한다.
+
+
+{/* source-content:P3-C012 */}
+<SourceFormula formula={part3Formula('MAI-P3-007')} part={3} display={true} />
+
+
+{/* source-content:P3-C013 */}
+벡터 형식은 <SourceFormula formula={part3Formula('MAI-P3-008')} part={3} display={true} />이며, <SourceFormula formula={part3Formula('MAI-P3-009')} part={3} display={false} />는 열벡터다. w는 가중치 벡터, b는 편향이다.
+
+
+{/* source-content:P3-C014 */}
+분류기는 선형 점수 g를 sign 함수에 넣는 결정 규칙을 구현한다.
+
+
+{/* source-content:P3-C015 */}
+<SourceFormula formula={part3Formula('MAI-P3-010')} part={3} display={true} />
+
+
+{/* source-content:P3-C016 */}
+퍼셉트론의 활성함수는 임계형 sign 함수다.
+
+
+{/* source-content:P3-C017 */}
+<SourceFormula formula={part3Formula('MAI-P3-011')} part={3} display={true} />
+
+
+{/* source-content:P3-C018 */}
+- 결정경계는 가중치 벡터에 수직이다. PDF는 원점까지의 거리를 <SourceFormula formula={part3Formula('MAI-P3-012')} part={3} display={false} />로 적는다.
+
+
+{/* source-content:P3-C019 */}
+- PDF는 점 x에서 결정경계까지의 거리를 <SourceFormula formula={part3Formula('MAI-P3-013')} part={3} display={false} />로 적는다.
+
+
+{/* source-content:P3-C020 */}
+- 경계 위에서는 <SourceFormula formula={part3Formula('MAI-P3-014')} part={3} display={false} />, w가 가리키는 양의 쪽에서는 <SourceFormula formula={part3Formula('MAI-P3-015')} part={3} display={false} />, 반대쪽에서는 <SourceFormula formula={part3Formula('MAI-P3-016')} part={3} display={false} />다.
+
+
+{/* source-content:P3-C021 */}
+선형 분리가 가능한 학습집합은 <SourceFormula formula={part3Formula('MAI-P3-017')} part={3} display={false} />로 둔다. 모든 표본이 정확히 분류된다는 조건을 클래스별로 풀어 쓰면 다음과 같다.
+
+
+{/* source-content:P3-C022 */}
+<SourceFormula formula={part3Formula('MAI-P3-018')} part={3} display={true} />
+
+
+{/* source-content:P3-C023 */}
+이를 한 줄의 zero empirical risk 조건으로 압축하면 다음과 같다.
+
+
+{/* source-content:P3-C024 */}
+<SourceFormula formula={part3Formula('MAI-P3-019')} part={3} display={true} />
+
+
+{/* source-content:P3-C025 */}
+### 3.1.2 경사하강법을 이용한 퍼셉트론 학습
+
+
+{/* source-content:P3-C026 */}
+초기 학습모델은 zero empirical risk의 필요충분조건에서 출발한다.
+
+
+{/* source-content:P3-C027 */}
+<SourceFormula formula={part3Formula('MAI-P3-020')} part={3} display={true} />
+
+
+{/* source-content:P3-C028 */}
+강의자료는 먼저 모든 signed score의 합을 키우는 보상 최대화 문제를 구성한다.
+
+
+{/* source-content:P3-C029 */}
+<SourceFormula formula={part3Formula('MAI-P3-021')} part={3} display={true} />
+
+
+{/* source-content:P3-C030 */}
+동일한 목적을 다음 손실 최소화 문제로 바꾼다.
+
+
+{/* source-content:P3-C031 */}
+<SourceFormula formula={part3Formula('MAI-P3-022')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-01 */}
+> **강의 주석 — PDF p.2**  
+> 초평면 옆 손그림은 **w가 결정경계에 수직**이고 점에서 경계로 내린 수선의 길이를 `‖w‖`로 정규화한다는 기하학을 나타낸다. `No training error` 표기가 signed-margin 조건 옆에 적혀 있다. 그 밖의 작은 메모는 문맥을 확정하기 어려워 **판독 불확실**로 남긴다.
+
+
+{/* source-content:P3-C032 */}
+식 (1)에 gradient descent를 적용하기 위해 w와 b에 대한 미분을 구한다. 두 결과는 원자료에서 모두 `??`다.
+
+
+{/* source-content:P3-C033 */}
+<SourceFormula formula={part3Formula('MAI-P3-023')} part={3} display={true} />
+
+
+{/* source-content:P3-C034 */}
+<SourceFormula formula={part3Formula('MAI-P3-024')} part={3} display={true} />
+
+
+{/* source-content:P3-C035 */}
+원자료가 이어서 제시하는 update는 다음 두 식이다.
+
+
+{/* source-content:P3-C036 */}
+<SourceFormula formula={part3Formula('MAI-P3-025')} part={3} display={true} />
+
+
+{/* source-content:P3-C037 */}
+<SourceFormula formula={part3Formula('MAI-P3-026')} part={3} display={true} />
+
+
+{/* source-content:P3-C038 */}
+반복 index는 <SourceFormula formula={part3Formula('MAI-P3-027')} part={3} display={false} />이고 초기값 <SourceFormula formula={part3Formula('MAI-P3-037')} part={3} display={false} />은 임의로 고른다.
+
+
+{/* source-content:P3-C039 */}
+- 학습집합이 선형 분리 가능하면 적어도 한 쌍 (w,b)에 대해 <SourceFormula formula={part3Formula('MAI-P3-028')} part={3} display={false} />가 성립한다.
+
+
+{/* source-content:P3-C040 */}
+- 그 값과 같거나 더 작은 어떤 해도 원자료의 gradient-descent 목적에는 충분하다고 설명한다.
+
+
+{/* source-content:P3-C041 */}
+그러나 식 (1)은 아래로 유계가 아니다. 이미 손실이 음수일 때 w 또는 b를 양수배하면 <SourceFormula formula={part3Formula('MAI-P3-029')} part={3} display={false} />가 가능하므로 수치적으로 부적절하다.
+
+
+{/* source-content:P3-C042 */}
+수정 모델은 오분류된 점에만 주의를 제한한다. 각 반복에서 error set을 다음처럼 정의한다.
+
+
+{/* source-content:P3-C043 */}
+<SourceFormula formula={part3Formula('MAI-P3-030')} part={3} display={true} />
+
+
+{/* source-content:P3-C044 */}
+error set에 포함된 표본만 합산한 손실은 식 (2)다.
+
+
+{/* source-content:P3-C045 */}
+<SourceFormula formula={part3Formula('MAI-P3-031')} part={3} display={true} />
+
+
+{/* source-content:P3-C046 */}
+- E 안에서는 signed score가 음수이므로 <SourceFormula formula={part3Formula('MAI-P3-032')} part={3} display={false} />다.
+
+
+{/* source-content:P3-C047 */}
+- <SourceFormula formula={part3Formula('MAI-P3-033')} part={3} display={false} />이므로 손실 0은 모든 표본이 올바르게 분류됐다는 뜻이다.
+
+
+{/* source-content:P3-C048 */}
+gradient descent update도 error set의 표본만 사용한다.
+
+
+{/* source-content:P3-C049 */}
+<SourceFormula formula={part3Formula('MAI-P3-034')} part={3} display={true} />
+
+
+{/* source-content:P3-C050 */}
+<SourceFormula formula={part3Formula('MAI-P3-035')} part={3} display={true} />
+
+
+{/* source-content:P3-C051 */}
+<SourceFormula formula={part3Formula('MAI-P3-036')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-02 */}
+> **강의 주석 — PDF p.3**  
+> 두 `??` 옆에 각각 **`-Σ yₘxₘ`**, **`-Σ yₘ`**이 손글씨로 적혀 있다. 하단의 메모에서는 loss function과 objective function을 같은 최적화 목적의 표현으로 연결한다. 일부 한국어 문장은 흐려 **판독 불확실**이다.
+
+
+{/* source-figure:P3-FIG-02 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 900 300" role="img" aria-label="입력 숫자 이미지가 컨볼루션과 subsampling을 거쳐 fully connected classifier로 들어가는 새 도식" class="w-full">
+    <rect x="25" y="95" width="90" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="3"/><text x="68" y="151" text-anchor="middle" font-size="46">3</text>
+    <g stroke="currentColor" fill="none" stroke-width="3"><path d="M125 140 L210 140"/><path d="M315 140 L390 140"/><path d="M500 140 L575 140"/><path d="M680 140 L755 140"/></g>
+    <g fill="none" stroke="currentColor" stroke-width="3"><rect x="210" y="55" width="105" height="170" rx="10"/><rect x="390" y="80" width="110" height="120" rx="10"/><rect x="575" y="95" width="105" height="90" rx="10"/></g>
+    <text x="262" y="42" text-anchor="middle" font-size="17">5×5 convolution</text><text x="445" y="68" text-anchor="middle" font-size="17">2×2 subsampling</text><text x="627" y="84" text-anchor="middle" font-size="17">feature maps</text>
+    <g fill="none" stroke="currentColor" stroke-width="2"><circle cx="780" cy="65" r="10"/><circle cx="780" cy="105" r="10"/><circle cx="780" cy="145" r="10"/><circle cx="780" cy="185" r="10"/><circle cx="780" cy="225" r="10"/><line x1="680" y1="140" x2="770" y2="65"/><line x1="680" y1="140" x2="770" y2="225"/></g>
+    <text x="818" y="150" font-size="17">0 … 9</text><text x="445" y="270" text-anchor="middle" font-size="20">feature extraction</text><text x="790" y="270" text-anchor="middle" font-size="20">classification</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 1 재구성.</strong> 입력 숫자 이미지가 두 번의 convolution과 subsampling으로 feature를 추출한 뒤 fully-connected classifier에서 0–9 클래스를 출력하는 흐름을 보존했다.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C052 */}
+퍼셉트론 학습의 대안은 원하는 응답과 실제 선형 응답 사이의 MSE를 최소화하는 것이다.
+
+
+{/* source-content:P3-C053 */}
+<SourceFormula formula={part3Formula('MAI-P3-038')} part={3} display={true} />
+
+
+{/* source-content:P3-C054 */}
+여기서 <SourceFormula formula={part3Formula('MAI-P3-039')} part={3} display={false} />, 확장 파라미터는 <SourceFormula formula={part3Formula('MAI-P3-040')} part={3} display={false} />, 확장 입력은 <SourceFormula formula={part3Formula('MAI-P3-041')} part={3} display={false} />다. 원자료는 <SourceFormula formula={part3Formula('MAI-P3-042')} part={3} display={false} />라고 설명한다.
+
+
+{/* source-content:P3-C055 */}
+이 MSE의 gradient는 원자료에서 `??`로 남아 있다.
+
+
+{/* source-content:P3-C056 */}
+<SourceFormula formula={part3Formula('MAI-P3-043')} part={3} display={true} />
+
+
+{/* source-content:P3-C057 */}
+원자료가 제시하는 update는 residual에 입력을 곱해 누적하는 LMS형 식이다.
+
+
+{/* source-content:P3-C058 */}
+<SourceFormula formula={part3Formula('MAI-P3-044')} part={3} display={true} />
+
+
+{/* source-content:P3-C059 */}
+강의자료는 수렴을 위해 <SourceFormula formula={part3Formula('MAI-P3-045')} part={3} display={false} />가 필요하지만 충분하지 않다고 적고, 전형적 범위로 <SourceFormula formula={part3Formula('MAI-P3-046')} part={3} display={false} />을 제시한다. 데이터 의존 정확한 상한은 편집층에서 분리해 검증한다.
+
+
+{/* source-content:P3-C060 */}
+## 3.2 비선형 판별함수: FCN 또는 MLP
+
+
+{/* source-content:P3-C061 */}
+### 3.2.1 단일 퍼셉트론의 한계
+
+
+{/* source-content:P3-C062 */}
+XOR 문제는 하나의 선형 결정경계로 풀 수 없는 대표 사례다. 강의자료는 false class를 <SourceFormula formula={part3Formula('MAI-P3-047')} part={3} display={false} />, true class를 <SourceFormula formula={part3Formula('MAI-P3-048')} part={3} display={false} />로 배치한다.
+
+
+{/* source-content:P3-C063 */}
+기하를 보면 한 직선으로 두 클래스를 분리할 수 없다. 원자료는 가장 단순한 두 직선 경계 또는 2차함수 같은 비선형 경계로 해결할 수 있다고 설명한다.
+
+
+{/* source-annotation:P3-ANN-03 */}
+> **강의 주석 — PDF p.4**  
+> `w`와 `b`, `x`와 상수 1을 각각 하나의 확장 벡터로 쌓는 손그림이 있다. MSE 빈칸 옆에는 **gradient를 직접 구하라**는 메모, 학습률 설명 옆에는 **lower bound / upper bound**가 보인다. 나머지 작은 글씨는 **판독 불확실**이다.
+
+
+{/* source-content:P3-C064 */}
+원자료는 앞에서 말한 두 해법의 기하학적 모양을 스케치하라고 하고 답을 비워 둔다.
+
+
+{/* source-content:P3-C065 */}
+<SourceFormula formula={part3Formula('MAI-P3-049')} part={3} display={true} />
+
+
+{/* source-content:P3-C066 */}
+이어 “하나보다 많은 퍼셉트론이 XOR을 해결할 수 있는가? 가능하다면 최소 unit 수는 얼마인가?”를 묻는다.
+
+
+{/* source-content:P3-C067 */}
+<SourceFormula formula={part3Formula('MAI-P3-050')} part={3} display={true} />
+
+
+{/* source-content:P3-C068 */}
+### 3.2.2 MLP 개요
+
+
+{/* source-content:P3-C069 */}
+Figure 2는 일반적인 다층 신경망을 보여 준다. 강의자료가 정의한 용어는 다음과 같다.
+
+
+{/* source-content:P3-C070 */}
+- 한 열(column)의 node 집합을 layer라 부른다.
+
+
+{/* source-content:P3-C071 */}
+- 네트워크의 모든 node는 인공뉴런이다.
+
+
+{/* source-content:P3-C072 */}
+- 각 node의 출력이 다음 layer의 모든 node 입력에 연결되면 fully connected network다.
+
+
+{/* source-content:P3-C073 */}
+- loop가 없는 네트워크를 feedforward network라 부른다.
+
+
+{/* source-content:P3-C074 */}
+- layer l의 neuron k 출력, 즉 activation value는 <SourceFormula formula={part3Formula('MAI-P3-051')} part={3} display={false} />로 쓴다.
+
+
+{/* source-content:P3-C075 */}
+목표는 미지의 입력 영상 패턴을 분류하는 것이다. N_L개의 output을 가진 신경망은 가장 큰 output activation의 class를 고른다.
+
+
+{/* source-content:P3-C076 */}
+<SourceFormula formula={part3Formula('MAI-P3-052')} part={3} display={true} />
+
+
+{/* source-content:P3-C077 */}
+### 3.2.3 순전파(Forward pass)
+
+
+{/* source-content:P3-C078 */}
+순전파는 입력층의 x를 출력층으로 사상하며, 출력층의 값으로 class를 정한다. neuron i의 net input과 activation을 scalar로 쓰면 식 (4)다.
+
+
+{/* source-content:P3-C079 */}
+<SourceFormula formula={part3Formula('MAI-P3-053')} part={3} display={true} />
+
+
+{/* source-content:P3-C080 */}
+출력 node는 <SourceFormula formula={part3Formula('MAI-P3-054')} part={3} display={false} />이고, 입력층은 <SourceFormula formula={part3Formula('MAI-P3-055')} part={3} display={false} />로 초기화한다.
+
+
+{/* source-content:P3-C081 */}
+원자료 각주는 마지막 layer에서 sigmoid 대신 softmax를 쓸 수 있다고 설명한다. 모든 activation의 합이 1이어서 확률처럼 해석할 수 있다.
+
+
+{/* source-content:P3-C082 */}
+<SourceFormula formula={part3Formula('MAI-P3-056')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-04 */}
+> **강의 주석 — PDF p.5**  
+> XOR 질문 옆과 forward-pass 식 주변에 `MLP`, activation을 가리키는 화살표가 보인다. 짧은 기호와 영문 메모 대부분은 해상도와 필기 중첩 때문에 **판독 불확실**로 기록한다.
+
+
+{/* source-figure:P3-FIG-03 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 900 500" role="img" aria-label="입력층, 두 hidden layer, 출력층을 모두 연결한 다층 퍼셉트론 새 도식" class="w-full">
+    <defs><marker id="p3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+    <g stroke="currentColor" stroke-width="1.2" opacity=".42">
+      <path d="M110 100 L330 80 M110 100 L330 180 M110 100 L330 280 M110 210 L330 80 M110 210 L330 180 M110 210 L330 280 M110 320 L330 80 M110 320 L330 180 M110 320 L330 280"/>
+      <path d="M350 80 L570 100 M350 80 L570 210 M350 80 L570 320 M350 180 L570 100 M350 180 L570 210 M350 180 L570 320 M350 280 L570 100 M350 280 L570 210 M350 280 L570 320"/>
+      <path d="M590 100 L790 145 M590 100 L790 255 M590 210 L790 145 M590 210 L790 255 M590 320 L790 145 M590 320 L790 255"/>
+    </g>
+    <g fill="var(--background, white)" stroke="currentColor" stroke-width="3">
+      <circle cx="100" cy="100" r="24"/><circle cx="100" cy="210" r="24"/><circle cx="100" cy="320" r="24"/>
+      <circle cx="340" cy="80" r="24"/><circle cx="340" cy="180" r="24"/><circle cx="340" cy="280" r="24"/>
+      <circle cx="580" cy="100" r="24"/><circle cx="580" cy="210" r="24"/><circle cx="580" cy="320" r="24"/>
+      <circle cx="800" cy="145" r="24"/><circle cx="800" cy="255" r="24"/>
+    </g>
+    <g font-size="18" text-anchor="middle"><text x="100" y="420">Layer 1 · input</text><text x="460" y="420">hidden layers</text><text x="800" y="420">Layer L · output</text><text x="100" y="106">x₁</text><text x="100" y="216">x₂</text><text x="100" y="326">xₙ</text><text x="800" y="151">a₁</text><text x="800" y="261">aₙ</text></g>
+    <rect x="292" y="15" width="335" height="62" rx="10" fill="none" stroke="currentColor" stroke-width="2"/><text x="460" y="42" text-anchor="middle" font-size="17">zᵢ(l) = weighted sum + bias</text><text x="460" y="64" text-anchor="middle" font-size="17">aᵢ(l) = h(zᵢ(l))</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 2 재구성.</strong> 입력층, 여러 hidden layer, 출력층, 각 layer 사이의 fully-connected edge, 그리고 neuron 내부의 weighted sum→activation 흐름을 새 SVG로 표현했다.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C083 */}
+식 (4)를 vector/matrix 연산으로 묶으면 activation vector와 net-input vector의 관계가 식 (5)가 된다.
+
+
+{/* source-content:P3-C084 */}
+<SourceFormula formula={part3Formula('MAI-P3-057')} part={3} display={true} />
+
+
+{/* source-figure:P3-FIG-04 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-5 md:grid-cols-2">
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">(a) DropOut</h4><svg viewBox="0 0 390 240" role="img" aria-label="activation 하나를 0으로 mask하는 dropout 새 도식" class="w-full"><g stroke="currentColor" stroke-width="2" opacity=".55"><line x1="50" y1="40" x2="175" y2="60"/><line x1="50" y1="95" x2="175" y2="60"/><line x1="50" y1="150" x2="175" y2="115"/><line x1="50" y1="205" x2="175" y2="170"/></g><g fill="none" stroke="currentColor" stroke-width="3"><circle cx="40" cy="40" r="17"/><circle cx="40" cy="95" r="17"/><circle cx="40" cy="150" r="17"/><circle cx="40" cy="205" r="17"/><circle cx="190" cy="60" r="20"/><circle cx="190" cy="115" r="20"/><circle cx="190" cy="170" r="20"/><circle cx="310" cy="60" r="18"/><circle cx="310" cy="115" r="18"/><circle cx="310" cy="170" r="18"/></g><line x1="210" y1="60" x2="292" y2="60" stroke="currentColor" stroke-width="3"/><line x1="210" y1="115" x2="292" y2="115" stroke="currentColor" stroke-width="3" stroke-dasharray="7 7"/><line x1="210" y1="170" x2="292" y2="170" stroke="currentColor" stroke-width="3"/><path d="M244 96 L270 134 M270 96 L244 134" stroke="currentColor" stroke-width="5"/><text x="230" y="220" font-size="16">activation mask m</text></svg></section>
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">(b) DropConnect</h4><svg viewBox="0 0 390 240" role="img" aria-label="weight edge 일부를 mask하는 DropConnect 새 도식" class="w-full"><g stroke="currentColor" stroke-width="2"><line x1="50" y1="40" x2="190" y2="60"/><line x1="50" y1="95" x2="190" y2="60" stroke-dasharray="7 7"/><line x1="50" y1="150" x2="190" y2="115"/><line x1="50" y1="205" x2="190" y2="170" stroke-dasharray="7 7"/><line x1="50" y1="40" x2="190" y2="170"/><line x1="50" y1="205" x2="190" y2="60"/></g><g fill="none" stroke="currentColor" stroke-width="3"><circle cx="40" cy="40" r="17"/><circle cx="40" cy="95" r="17"/><circle cx="40" cy="150" r="17"/><circle cx="40" cy="205" r="17"/><circle cx="200" cy="60" r="20"/><circle cx="200" cy="115" r="20"/><circle cx="200" cy="170" r="20"/><circle cx="330" cy="60" r="18"/><circle cx="330" cy="115" r="18"/><circle cx="330" cy="170" r="18"/></g><g stroke="currentColor" stroke-width="3"><line x1="220" y1="60" x2="312" y2="60"/><line x1="220" y1="115" x2="312" y2="115"/><line x1="220" y1="170" x2="312" y2="170"/></g><text x="210" y="220" font-size="16">weight mask M ⊙ W</text></svg></section>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 3 재구성.</strong> DropOut은 activation을, DropConnect는 weight connection을 mask한다. 점선·X 표기로 source figure의 차이를 보존했다.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C085 */}
+<SourceFormula formula={part3Formula('MAI-P3-058')} part={3} display={true} />
+
+
+{/* source-content:P3-C086 */}
+<SourceFormula formula={part3Formula('MAI-P3-059')} part={3} display={true} />
+
+
+{/* source-content:P3-C087 */}
+layer l의 weight matrix는 식 (6)으로 정의되지만, 원자료의 모든 entry가 `??`로 남아 있다.
+
+
+{/* source-content:P3-C088 */}
+<SourceFormula formula={part3Formula('MAI-P3-060')} part={3} display={true} />
+
+
+{/* source-content:P3-C089 */}
+이때 이전 layer activation은 <SourceFormula formula={part3Formula('MAI-P3-061')} part={3} display={false} />, bias는 <SourceFormula formula={part3Formula('MAI-P3-062')} part={3} display={false} />, net input은 <SourceFormula formula={part3Formula('MAI-P3-063')} part={3} display={false} />다. 원자료는 node index를 <SourceFormula formula={part3Formula('MAI-P3-064')} part={3} display={false} />로 적고, 입력은 <SourceFormula formula={part3Formula('MAI-P3-065')} part={3} display={false} />라고 둔다.
+
+
+{/* source-content:P3-C090 */}
+N_p개 패턴을 한 번에 분류하려면 각 패턴 vector를 column으로 모은다.
+
+
+{/* source-content:P3-C091 */}
+<SourceFormula formula={part3Formula('MAI-P3-066')} part={3} display={true} />
+
+
+{/* source-content:P3-C092 */}
+초기 activation은 <SourceFormula formula={part3Formula('MAI-P3-067')} part={3} display={false} />이고, mini-batch 순전파는 다음 식이다.
+
+
+{/* source-content:P3-C093 */}
+<SourceFormula formula={part3Formula('MAI-P3-068')} part={3} display={true} />
+
+
+{/* source-content:P3-C094 */}
+원자료는 이전 activation의 shape을 <SourceFormula formula={part3Formula('MAI-P3-069')} part={3} display={false} />, bias duplicate matrix를 <SourceFormula formula={part3Formula('MAI-P3-070')} part={3} display={false} />로 적는다. 각 output column은 한 pattern의 output activation이다.
+
+
+{/* source-content:P3-C095 */}
+### DropOut과 DropConnect
+
+
+{/* source-content:P3-C096 */}
+- DropOut은 activation을 버린다.
+
+
+{/* source-content:P3-C097 */}
+- DropConnect는 weight를 버리며, 원자료는 DropOut을 일반화한 방법으로 소개한다.
+
+
+{/* source-content:P3-C098 */}
+두 방법은 mask를 서로 다른 위치에 적용한다. 강의자료의 Figure 3과 위 재구성에서 그 차이가 드러난다.
+
+
+{/* source-content:P3-C099 */}
+## 3.3 컨볼루션 신경망(Convolutional neural network)
+
+
+{/* source-content:P3-C100 */}
+### 3.3.1 DNN의 핵심 연산자, 컨볼루션
+
+
+{/* source-content:P3-C101 */}
+연속 컨볼루션은 한 함수를 y축에 대해 반사한 뒤 이동시키고, 두 함수의 곱을 적분한다.
+
+
+{/* source-content:P3-C102 */}
+<SourceFormula formula={part3Formula('MAI-P3-071')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-05 */}
+> **강의 주석 — PDF p.7**  
+> DropOut 쪽은 activation vector 일부를 0으로 만드는 mask, DropConnect 쪽은 weight matrix에 mask를 곱하는 식이 손으로 보강돼 있다. 우측에는 **more samples**, **reduce complexity**, 하단에는 **only training**이 판독된다. 컨볼루션 도입부에는 kernel을 뒤집는 손그림이 있다.
+
+
+{/* source-content:P3-C103 */}
+공학에서는 흔히 `f(t)*g(t)`처럼 쓰며, 이산 컨볼루션은 다음 두 동치 형식으로 정의한다.
+
+
+{/* source-content:P3-C104 */}
+<SourceFormula formula={part3Formula('MAI-P3-072')} part={3} display={true} />
+
+
+{/* source-content:P3-C105 */}
+<SourceFormula formula={part3Formula('MAI-P3-073')} part={3} display={true} />
+
+
+{/* source-content:P3-C106 */}
+### 3.3.2 2차원 컨볼루션
+
+
+{/* source-content:P3-C107 */}
+Kronecker impulse의 sifting property를 사용하면 임의의 2D 이산 신호를 shifted impulse의 합으로 표현할 수 있다.
+
+
+{/* source-content:P3-C108 */}
+<SourceFormula formula={part3Formula('MAI-P3-074')} part={3} display={true} />
+
+
+{/* source-content:P3-C109 */}
+선형·공간불변(LSI) 시스템에서는 superposition을 적용해 각 shifted impulse response를 합한다.
+
+
+{/* source-content:P3-C110 */}
+<SourceFormula formula={part3Formula('MAI-P3-075')} part={3} display={true} />
+
+
+{/* source-content:P3-C111 */}
+따라서 일반적인 2D discrete-space LSI 시스템의 입력-출력 관계는 2D convolution sum이 된다.
+
+
+{/* source-content:P3-C112 */}
+<SourceFormula formula={part3Formula('MAI-P3-076')} part={3} display={true} />
+
+
+{/* source-content:P3-C113 */}
+원자료의 boxed note: **LSI 시스템은 impulse response로 완전히 규정된다.**
+
+
+{/* source-content:P3-C114 */}
+#### 2D 컨볼루션 계산 순서
+
+
+{/* source-content:P3-C115 */}
+1. h[k,l]을 원점에 대해 뒤집어 <SourceFormula formula={part3Formula('MAI-P3-077')} part={3} display={false} />을 만든다.
+
+
+{/* source-content:P3-C116 */}
+2. 뒤집은 신호를 m,n만큼 이동해 <SourceFormula formula={part3Formula('MAI-P3-078')} part={3} display={false} />을 만든다.
+
+
+{/* source-content:P3-C117 */}
+3. 이동한 kernel과 f[k,l]을 원소별로 곱한다.
+
+
+{/* source-content:P3-C118 */}
+4. 모든 k,l에 대해 합한다.
+
+
+{/* source-content:P3-C119 */}
+5. 모든 출력 위치 m,n에서 반복한다.
+
+
+{/* source-content:P3-C120 */}
+종이 위에서는 무한 영상을 컨볼루션할 수 있지만 컴퓨터는 직사각형 바깥이 암묵적으로 0인 finite-support 영상만 다룬다. MATLAB `conv2`는 원점을 사용자가 추적해야 한다.
+
+
+{/* source-content:P3-C121 */}
+M₁×N₁ 영상과 M₂×N₂ 영상을 full convolution하면 출력 크기는 다음과 같다.
+
+
+{/* source-content:P3-C122 */}
+<SourceFormula formula={part3Formula('MAI-P3-079')} part={3} display={true} />
+
+
+{/* source-content:P3-C123 */}
+`conv2(..., "same")`은 경계의 추가 pixel을 버려 첫 번째 입력과 같은 크기의 출력을 만든다.
+
+
+{/* source-annotation:P3-ANN-06 */}
+> **강의 주석 — PDF p.8**  
+> 상단에는 1D kernel을 뒤집어 이동하는 작은 그림이 있고, 2D 절 오른쪽에는 입력 patch와 kernel의 격자, 곱한 결과를 합산하는 흐름이 있다. `flip`, weighted sum의 의미는 분명하지만 일부 한국어 설명은 **판독 불확실**이다.
+
+
+{/* source-content:P3-C124 */}
+첫 번째 예제는 주어진 h와 f의 full convolution g를 계산한다.
+
+
+{/* source-content:P3-C125 */}
+<SourceFormula formula={part3Formula('MAI-P3-080')} part={3} display={true} />
+
+
+{/* source-content:P3-C126 */}
+<SourceFormula formula={part3Formula('MAI-P3-081')} part={3} display={true} />
+
+
+{/* source-content:P3-C127 */}
+<SourceFormula formula={part3Formula('MAI-P3-082')} part={3} display={true} />
+
+
+{/* source-content:P3-C128 */}
+<SourceFormula formula={part3Formula('MAI-P3-083')} part={3} display={true} />
+
+
+{/* source-content:P3-C129 */}
+두 번째 예제는 3×3 moving-average 시스템을 무한 checkerboard 입력에 적용한다.
+
+
+{/* source-content:P3-C130 */}
+<SourceFormula formula={part3Formula('MAI-P3-084')} part={3} display={true} />
+
+
+{/* source-content:P3-C131 */}
+<SourceFormula formula={part3Formula('MAI-P3-085')} part={3} display={true} />
+
+
+{/* source-content:P3-C132 */}
+입력은 +1과 -1이 번갈아 나타나는 checkerboard다.
+
+
+{/* source-content:P3-C133 */}
+<SourceFormula formula={part3Formula('MAI-P3-086')} part={3} display={true} />
+
+
+{/* source-content:P3-C134 */}
+<SourceFormula formula={part3Formula('MAI-P3-087')} part={3} display={true} />
+
+
+{/* source-content:P3-C135 */}
+#### 계산량과 분리 가능성(Separability)
+
+
+{/* source-content:P3-C136 */}
+N₁×M₁ 영상과 N₂×M₂ 영상의 2D convolution 연산량을 원자료는 다음 근사로 제시한다.
+
+
+{/* source-content:P3-C137 */}
+<SourceFormula formula={part3Formula('MAI-P3-088')} part={3} display={true} />
+
+
+{/* source-content:P3-C138 */}
+N₁=M₁=N이 kernel 크기 M보다 훨씬 크면 대략 <SourceFormula formula={part3Formula('MAI-P3-089')} part={3} display={false} />에 해당한다.
+
+
+{/* source-content:P3-C139 */}
+kernel이 <SourceFormula formula={part3Formula('MAI-P3-090')} part={3} display={false} />로 분리되면 이중합을 두 번의 1D convolution으로 재배열할 수 있다.
+
+
+{/* source-content:P3-C140 */}
+<SourceFormula formula={part3Formula('MAI-P3-091')} part={3} display={true} />
+
+
+{/* source-content:P3-C141 */}
+- 안쪽 합 <SourceFormula formula={part3Formula('MAI-P3-092')} part={3} display={false} />은 각 column에 h₂를 적용하는 1D convolution이다.
+
+
+{/* source-content:P3-C142 */}
+- 바깥 합 <SourceFormula formula={part3Formula('MAI-P3-093')} part={3} display={false} />은 중간 결과의 각 row에 h₁을 적용한다.
+
+
+{/* source-content:P3-C143 */}
+큰 N×N 영상과 작은 M×M separable kernel의 요구량은 대략 <SourceFormula formula={part3Formula('MAI-P3-094')} part={3} display={false} />이며, 원자료는 약 <SourceFormula formula={part3Formula('MAI-P3-095')} part={3} display={false} />배의 계산 이득이라고 적는다.
+
+
+{/* source-content:P3-C144 */}
+M은 보통 3 이상이므로 최소 감소율을 <SourceFormula formula={part3Formula('MAI-P3-096')} part={3} display={false} />로 묻고 비워 둔다.
+
+
+{/* source-content:P3-C145 */}
+### 3.3.3 컨볼루션의 “전역” 행렬 표현
+
+
+{/* source-content:P3-C146 */}
+단순화를 위해 먼저 1D convolution 관계를 생각한다.
+
+
+{/* source-content:P3-C147 */}
+<SourceFormula formula={part3Formula('MAI-P3-097')} part={3} display={true} />
+
+
+{/* source-content:P3-C148 */}
+DSP 형식을 행렬-벡터 형식으로 쓰는 것이 목표다.
+
+
+{/* source-content:P3-C149 */}
+<SourceFormula formula={part3Formula('MAI-P3-098')} part={3} display={true} />
+
+
+{/* source-content:P3-C150 */}
+원자료 각주는 N≥M일 때 주의 깊게 구현한 N-point 신호와 M-point 신호의 1D convolution이 <SourceFormula formula={part3Formula('MAI-P3-099')} part={3} display={false} />과 거의 같은 수의 덧셈을 요구한다고 적는다.
+
+
+{/* source-annotation:P3-ANN-07 */}
+> **강의 주석 — PDF p.9**  
+> 첫 예제 위에는 kernel을 180° 회전한 `[[3,2,1],[6,4,2]]`가 손으로 적혀 있고, output grid 일부에 직접 계산값이 채워져 있다. separability 옆에는 **factorization / outer product**, 하단에는 periodic convolution과 Fourier transform을 연결하는 메모가 있다. 일부 주파수영역 식은 중첩돼 **판독 불확실**이다.
+
+
+{/* source-figure:P3-FIG-05 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 lg:grid-cols-3">
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">Zero</h4><pre class="overflow-x-auto text-xs">4 2 0 0 0 0
+1 4 2 0 0 0
+0 1 4 2 0 0
+0 0 1 4 2 0
+0 0 0 1 4 2
+0 0 0 0 1 4</pre></section>
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">Extended</h4><pre class="overflow-x-auto text-xs">1 4 2 0 0 0 0 0
+0 1 4 2 0 0 0 0
+0 0 1 4 2 0 0 0
+0 0 0 1 4 2 0 0
+0 0 0 0 1 4 2 0
+0 0 0 0 0 1 4 2</pre></section>
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">Periodic</h4><pre class="overflow-x-auto text-xs">4 2 0 0 0 1
+1 4 2 0 0 0
+0 1 4 2 0 0
+0 0 1 4 2 0
+0 0 0 1 4 2
+2 0 0 0 1 4</pre></section>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 4 재구성.</strong> h[n]={2,4,1}, N=6일 때 zero, extended, periodic boundary condition이 system matrix의 모양을 어떻게 바꾸는지 source의 모든 숫자를 보존했다.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C151 */}
+<SourceFormula formula={part3Formula('MAI-P3-100')} part={3} display={true} />
+
+
+{/* source-content:P3-C152 */}
+<SourceFormula formula={part3Formula('MAI-P3-101')} part={3} display={true} />
+
+
+{/* source-content:P3-C153 */}
+<SourceFormula formula={part3Formula('MAI-P3-102')} part={3} display={true} />
+
+
+{/* source-content:P3-C154 */}
+<SourceFormula formula={part3Formula('MAI-P3-103')} part={3} display={true} />
+
+
+{/* source-content:P3-C155 */}
+y와 x는 유한 길이 column vector이고, A의 entry는 h[n]에 의해 정해진다. 종이 위 convolution sum은 임의 index를 가질 수 있지만 컴퓨터 저장은 유한해야 하므로 boundary condition에 따라 A와 x를 선택한다.
+
+
+{/* source-content:P3-C156 */}
+모든 경우 측정 g[n]을 다음처럼 vectorize한다.
+
+
+{/* source-content:P3-C157 */}
+<SourceFormula formula={part3Formula('MAI-P3-104')} part={3} display={true} />
+
+
+{/* source-content:P3-C158 */}
+행렬 index는 1에서, signal sample index는 0에서 시작하므로 <SourceFormula formula={part3Formula('MAI-P3-105')} part={3} display={false} />다. noise vector도 같은 방식으로 정의한다.
+
+
+{/* source-content:P3-C159 */}
+예시 시스템의 3-point impulse response는 다음과 같다.
+
+
+{/* source-content:P3-C160 */}
+<SourceFormula formula={part3Formula('MAI-P3-106')} part={3} display={true} />
+
+
+{/* source-content:P3-C161 */}
+Kronecker impulse는 다음 piecewise 함수다.
+
+
+{/* source-content:P3-C162 */}
+<SourceFormula formula={part3Formula('MAI-P3-107')} part={3} display={true} />
+
+
+{/* source-content:P3-C163 */}
+#### Zero boundary conditions
+
+
+{/* source-content:P3-C164 */}
+가장 단순한 모델은 <SourceFormula formula={part3Formula('MAI-P3-108')} part={3} display={false} />을 가정하고 convolution sum의 범위를 <SourceFormula formula={part3Formula('MAI-P3-109')} part={3} display={false} />으로 제한한다. 이를 Dirichlet boundary condition이라고도 한다.
+
+
+{/* source-content:P3-C165 */}
+<SourceFormula formula={part3Formula('MAI-P3-110')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-08 */}
+> **강의 주석 — PDF p.10**  
+> 세 matrix 위에 zero/extended/periodic boundary를 대비하는 필기와 circular boundary를 가리키는 표시가 있다. 일부 숫자 예시는 source matrix와 일치하지만, 문장 대부분은 겹쳐 **판독 불확실**이다.
+
+
+{/* source-content:P3-C166 */}
+식 (10)의 N×N A는 대각선마다 값이 일정한 Toeplitz matrix다. source는 이런 matrix를 다루는 비교적 빠른 알고리즘이 있다고 참고문헌 [1,2]로 연결한다.
+
+
+{/* source-content:P3-C167 */}
+<SourceFormula formula={part3Formula('MAI-P3-111')} part={3} display={true} />
+
+
+{/* source-content:P3-C168 */}
+shift-invariant 문제에서는 A를 실제 matrix로 저장하기보다 h와 f를 convolution routine에 전달한다. matrix 표현은 분석에 유용하다.
+
+
+{/* source-content:P3-C169 */}
+shift-variant 문제에서는 A를 matrix로 저장할 수 있으며, h의 nonzero entry가 적으면 sparse representation이 효율적이다.
+
+
+{/* source-content:P3-C170 */}
+#### Extended boundary conditions
+
+
+{/* source-content:P3-C171 */}
+광학 영상에서는 PSF 확산 때문에 측정 field of view 바깥의 더 큰 scene이 측정에 영향을 준다. zero boundary는 비현실적일 수 있고, regularization이나 constraint를 이용하면 measurement vector보다 긴 object vector의 일부를 복원할 수 있다.
+
+
+{/* source-content:P3-C172 */}
+<SourceFormula formula={part3Formula('MAI-P3-112')} part={3} display={true} />
+
+
+{/* source-content:P3-C173 */}
+A는 <SourceFormula formula={part3Formula('MAI-P3-113')} part={3} display={false} />이고, 이 예에서는 L=3이다. 원자료 저자는 가능할 때 extended boundary가 많은 restoration 문제에서 가장 현실적이라고 평가한다.
+
+
+{/* source-content:P3-C174 */}
+MATLAB note: row vector가 <SourceFormula formula={part3Formula('MAI-P3-114')} part={3} display={false} />일 때 `convmtx(fliplr(b), N)`이 위 A를 만든다. 2D `conv2`의 `valid` option과 관련된다.
+
+
+{/* source-content:P3-C175 */}
+#### Periodic boundary conditions
+
+
+{/* source-content:P3-C176 */}
+다른 선택은 <SourceFormula formula={part3Formula('MAI-P3-115')} part={3} display={false} />을 가정하는 것이다. 실제 영상에서 정확히 성립하는 경우는 드물지만 frequency-domain 분석에는 유용하다.
+
+
+{/* source-content:P3-C177 */}
+<SourceFormula formula={part3Formula('MAI-P3-116')} part={3} display={true} />
+
+
+{/* source-content:P3-C178 */}
+주기적으로 겹쳐 더한 impulse response는 식 (12)다.
+
+
+{/* source-content:P3-C179 */}
+<SourceFormula formula={part3Formula('MAI-P3-117')} part={3} display={true} />
+
+
+{/* source-content:P3-C180 */}
+원자료 각주는 modulo와 floor를 다음처럼 정의한다.
+
+
+{/* source-content:P3-C181 */}
+<SourceFormula formula={part3Formula('MAI-P3-118')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-09 */}
+> **강의 주석 — PDF p.11**  
+> Toeplitz·extended·periodic boundary 단락 주변에 frequency-domain/Fourier 분석과 circulant 구조를 연결하는 표시가 있다. 완전한 문장을 신뢰성 있게 전사할 수 없어 **판독 불확실**로 남긴다.
+
+
+{/* source-content:P3-C182 */}
+보통 blur kernel이 |n|≥N에서 0이라고 가정하면 식 (12)는 다음처럼 단순해진다.
+
+
+{/* source-content:P3-C183 */}
+<SourceFormula formula={part3Formula('MAI-P3-119')} part={3} display={true} />
+
+
+{/* source-content:P3-C184 */}
+circular convolution의 N×N system matrix는 식 (13)과 같은 circulant matrix다.
+
+
+{/* source-content:P3-C185 */}
+<SourceFormula formula={part3Formula('MAI-P3-120')} part={3} display={true} />
+
+
+{/* source-content:P3-C186 */}
+entry 관계는 <SourceFormula formula={part3Formula('MAI-P3-121')} part={3} display={false} />이며, source는 이를 Toeplitz form의 근사로 설명한다.
+
+
+{/* source-content:P3-C187 */}
+#### Mirror conditions
+
+
+{/* source-content:P3-C188 */}
+reflective boundary condition을 원자료는 `Nuemann boundary conditions`라고 인쇄한다. 통상 표기는 **Neumann boundary conditions**이며, 양쪽 경계에서 signal을 거울 반사한다.
+
+
+{/* source-content:P3-C189 */}
+<SourceFormula formula={part3Formula('MAI-P3-122')} part={3} display={true} />
+
+
+{/* source-content:P3-C190 */}
+#### 2D matrix-vector representations
+
+
+{/* source-content:P3-C191 */}
+2D와 더 높은 차원에서도 원리는 동일하다. 구체적인 A는 더 복잡하지만 1D와 2D 모두 matrix-vector 수준에서는 <SourceFormula formula={part3Formula('MAI-P3-123')} part={3} display={false} />로 보인다.
+
+
+{/* source-content:P3-C192 */}
+### 3.3.4 컨볼루션의 “국소” 또는 patch-based 표현
+
+
+{/* source-content:P3-C193 */}
+입력 f는 padding을 포함한 크기 <SourceFormula formula={part3Formula('MAI-P3-124')} part={3} display={false} />의 영상이고, 출력 g는 unpadded 입력과 같은 pixel 수를 가진 <SourceFormula formula={part3Formula('MAI-P3-125')} part={3} display={false} />다.
+
+
+{/* source-content:P3-C194 */}
+pixel s 주변의 P개 위치를 window W(s)로 정의한다.
+
+
+{/* source-content:P3-C195 */}
+<SourceFormula formula={part3Formula('MAI-P3-126')} part={3} display={true} />
+
+
+{/* source-content:P3-C196 */}
+여기서 <SourceFormula formula={part3Formula('MAI-P3-127')} part={3} display={false} />는 index neighbor다.
+
+
+{/* source-content:P3-C197 */}
+z_s는 f의 window pixel을 담는 column vector라고 설명되지만, 인쇄식은 y를 사용한다. 원문을 보존한다.
+
+
+{/* source-content:P3-C198 */}
+<SourceFormula formula={part3Formula('MAI-P3-128')} part={3} display={true} />
+
+
+{/* source-content:P3-C199 */}
+h는 filter parameter를 모은 column vector다.
+
+
+{/* source-content:P3-C200 */}
+<SourceFormula formula={part3Formula('MAI-P3-129')} part={3} display={true} />
+
+
+{/* source-content:P3-C201 */}
+boundary를 제외한 pixel subset은 <SourceFormula formula={part3Formula('MAI-P3-130')} part={3} display={false} />, <SourceFormula formula={part3Formula('MAI-P3-131')} part={3} display={false} />, <SourceFormula formula={part3Formula('MAI-P3-132')} part={3} display={false} />로 정의한다.
+
+
+{/* source-content:P3-C202 */}
+각 patch vector를 row로 쌓으면 design matrix Z가 된다.
+
+
+{/* source-content:P3-C203 */}
+<SourceFormula formula={part3Formula('MAI-P3-133')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-10 */}
+> **강의 주석 — PDF p.12**  
+> 상단에는 FCN layer의 weight shape를 적은 작은 그림, 중간에는 zero/circular boundary에서 A의 구조를 비교하는 메모가 있다. 하단 손그림은 영상 patch를 vector로 펴고 filter와 내적해 한 output을 만드는 **patch extraction → dot product** 흐름을 나타낸다. 파란색 한국어 메모 일부는 **판독 불확실**이다.
+
+
+{/* source-content:P3-C204 */}
+output sample을 column vector로 쌓은 source 식에는 마지막 entry 앞에 고립된 x가 인쇄돼 있다.
+
+
+{/* source-content:P3-C205 */}
+<SourceFormula formula={part3Formula('MAI-P3-134')} part={3} display={true} />
+
+
+{/* source-content:P3-C206 */}
+원자료는 이어서 <SourceFormula formula={part3Formula('MAI-P3-135')} part={3} display={false} />라고 적고, patch-based convolution을 다음 한 줄로 요약한다.
+
+
+{/* source-content:P3-C207 */}
+<SourceFormula formula={part3Formula('MAI-P3-136')} part={3} display={true} />
+
+
+{/* source-content:P3-C208 */}
+## 3.4 DNN의 핵심 모듈
+
+
+{/* source-content:P3-C209 */}
+DNN은 여러 연산자를 직렬로 연결하거나 반복한다. 강의자료는 PyTorch `torch.nn` 문서에서 다음 layer를 골라 network를 구성하라고 제안한다.
+
+
+{/* source-content:P3-C210 */}
+- `nn.Linear`: fully-connected network(FCN) 또는 MLP.
+
+
+{/* source-content:P3-C211 */}
+- `nn.Conv2d`: CNN. `out_channels`와 `kernel_size`를 바꾸어 특징 수와 filter 크기를 조절한다.
+
+
+{/* source-content:P3-C212 */}
+- `nn.ConvTranspose2d`: transpose convolution으로 upsampling한다.
+
+
+{/* source-content:P3-C213 */}
+- `nn.ReLU`: <SourceFormula formula={part3Formula('MAI-P3-137')} part={3} display={false} />로 layer 사이에 non-linearity를 제공한다.
+
+
+{/* source-content:P3-C214 */}
+- `nn.MaxPool2d`, `nn.AvgPool2d`: 두 종류의 pooling layer.
+
+
+{/* source-content:P3-C215 */}
+- `nn.Upsample`: 단순 interpolation으로 activation map을 키우며 U-Net에서 널리 사용된다.
+
+
+{/* source-content:P3-C216 */}
+- `nn.Dropout`: overfitting을 줄이는 데 사용된다.
+
+
+{/* source-content:P3-C217 */}
+### PyTorch의 convolution
+
+
+{/* source-content:P3-C218 */}
+원자료는 `Conv1d`, `Conv2d`, `Conv3d`의 API signature screenshot을 제시한다. 예시 설정은 다음과 같다.
+
+
+{/* source-content:P3-C292 */}
+세 screenshot의 우측에는 PyTorch 문서 원문으로 이동하는 `[SOURCE]` 표기가 있으며, PDF에 보이는 signature를 다음처럼 전사한다. PDF에는 활성 URI annotation이 남아 있지 않으므로 목적지를 추측하지 않는다.
+
+
+{/* source-content:P3-C293 */}
+- `torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)`
+
+
+{/* source-content:P3-C294 */}
+- `torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)`
+
+
+{/* source-content:P3-C295 */}
+- `torch.nn.Conv3d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)`
+
+
+{/* source-content:P3-C219 */}
+<SourceFormula formula={part3Formula('MAI-P3-138')} part={3} display={true} />
+
+
+{/* source-figure:P3-FIG-06 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 980 390" role="img" aria-label="64개 입력 채널, 64개의 3×3×64 필터, 64개 출력 채널과 stride 1 이동을 나타낸 Conv2d 재구성 도식" class="w-full">
+    <defs>
+      <marker id="p3-conv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" /></marker>
+    </defs>
+    <g fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="55" y="82" width="220" height="190" rx="10" />
+      <rect x="70" y="67" width="220" height="190" rx="10" opacity=".62" />
+      <rect x="85" y="52" width="220" height="190" rx="10" opacity=".34" />
+      <rect x="390" y="108" width="92" height="92" rx="8" stroke-width="3" />
+      <path d="M421 108 V200 M451 108 V200 M390 139 H482 M390 169 H482" opacity=".58" />
+      <rect x="675" y="82" width="220" height="190" rx="10" />
+      <rect x="690" y="67" width="220" height="190" rx="10" opacity=".62" />
+      <rect x="705" y="52" width="220" height="190" rx="10" opacity=".34" />
+      <path d="M320 150 H370" marker-end="url(#p3-conv-arrow)" />
+      <path d="M500 150 H650" marker-end="url(#p3-conv-arrow)" />
+      <rect x="105" y="92" width="70" height="70" rx="5" stroke-width="4" />
+      <rect x="735" y="92" width="18" height="18" rx="3" stroke-width="4" />
+      <path d="M140 290 H735" stroke-dasharray="8 7" opacity=".55" />
+      <rect x="145" y="315" width="220" height="48" rx="8" />
+      <rect x="175" y="323" width="62" height="32" rx="4" stroke-width="4" />
+      <path d="M385 339 H565" marker-end="url(#p3-conv-arrow)" />
+      <rect x="585" y="315" width="220" height="48" rx="8" />
+      <rect x="625" y="323" width="62" height="32" rx="4" stroke-width="4" />
+    </g>
+    <g fill="currentColor" font-size="20" text-anchor="middle">
+      <text x="180" y="35" font-weight="700">Input feature volume</text>
+      <text x="180" y="297">64 input channels</text>
+      <text x="436" y="84" font-weight="700">one 3×3×64 filter</text>
+      <text x="436" y="229">64 filters → 64 outputs</text>
+      <text x="800" y="35" font-weight="700">Output feature volume</text>
+      <text x="800" y="297">padding 1 · stride 1</text>
+      <text x="475" y="305" font-weight="700">same filter, next spatial position</text>
+      <text x="255" y="382">Step 1</text><text x="695" y="382">Step 2 · shift by one cell</text>
+    </g>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF pp.13–14 단계 도식 재구성.</strong> 64-channel input에서 각 output channel이 64개의 3×3 slice와 내적되고, 64개 filter가 64-channel output을 만든다. padding 1과 stride 1에서 동일한 kernel이 다음 spatial 위치로 한 칸 이동하는 Step 1–2 관계도 보존했다.</figcaption>
+</figure>
+
+
+{/* source-annotation:P3-ANN-11 */}
+> **강의 주석 — PDF p.13**  
+> core-module 제목 옆에 **Read by myself**가 적혀 있다. `ConvTranspose2d`와 convolution kernel flip을 연결하는 화살표, ReLU와 layer를 가리키는 메모가 있으나 일부는 **판독 불확실**이다.
+
+
+{/* source-content:P3-C220 */}
+PDF p.14의 Step 2는 같은 3×3 filter가 다음 spatial 위치로 이동하면서 output voxel을 채우는 모습을 이어서 보여 준다.
+
+
+{/* source-content:P3-C221 */}
+### 3.4.1 PyTorch의 Max pooling
+
+
+{/* source-content:P3-C222 */}
+원자료는 `MaxPool1d`, `MaxPool2d`, `MaxPool3d` API signature screenshot을 제시하고, 다음 설정의 2D 예제를 단계적으로 계산한다.
+
+
+{/* source-content:P3-C296 */}
+세 MaxPool screenshot에도 우측 `[SOURCE]` 표시가 있으며, 보이는 signature는 다음과 같다. 이 PDF에는 링크 URI가 보존되지 않아 화면의 문자열만 원장화한다.
+
+
+{/* source-content:P3-C297 */}
+- `torch.nn.MaxPool1d(kernel_size, stride=None, padding=0, dilation=1, return_indices=False, ceil_mode=False)`
+
+
+{/* source-content:P3-C298 */}
+- `torch.nn.MaxPool2d(kernel_size, stride=None, padding=0, dilation=1, return_indices=False, ceil_mode=False)`
+
+
+{/* source-content:P3-C299 */}
+- `torch.nn.MaxPool3d(kernel_size, stride=None, padding=0, dilation=1, return_indices=False, ceil_mode=False)`
+
+
+{/* source-content:P3-C223 */}
+<SourceFormula formula={part3Formula('MAI-P3-139')} part={3} display={false} />
+
+
+{/* source-figure:P3-FIG-07 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="overflow-x-auto">
+    <div class="grid min-w-[720px] grid-cols-[1fr_auto_1fr] items-center gap-6">
+      <section><h4 class="mt-0">Padded input</h4><pre class="rounded-xl border border-border bg-background p-4 text-sm">0 0 0 0 0 0 0
+0 1 3 2 3 3 0
+0 3 1 2 1 1 0
+0 3 3 3 1 2 0
+0 2 2 1 2 1 0
+0 2 3 2 1 2 0
+0 0 0 0 0 0 0</pre></section>
+      <div class="text-center"><p class="font-black">3×3 window</p><p>stride 2</p><p>padding 1</p><p class="text-3xl">→</p></div>
+      <section><h4 class="mt-0">Source-visible progress</h4><pre class="rounded-xl border border-border bg-background p-4 text-sm">Step 1: 3 · ·
+        · · ·
+        · · ·
+
+Step 2: 3 3 ·
+        · · ·
+        · · ·</pre></section>
+    </div>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF pp.14–15 단계 도식 재구성.</strong> source는 5×5 입력에 1-cell padding을 더한 7×7 grid, 3×3 window, stride 2를 보여 주고 output의 첫 칸과 다음 칸만 채운다. 원자료는 나머지 칸을 비워 둔다.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C224 */}
+<SourceFormula formula={part3Formula('MAI-P3-140')} part={3} display={true} />
+
+
+{/* source-content:P3-C225 */}
+## 강의자료 참고문헌
+
+
+{/* source-content:P3-C226 */}
+1. R. H.-F. Chan and X.-Q. Jin, *An Introduction to Iterative Toeplitz Solvers*. Society for Industrial and Applied Mathematics, 2007.
+
+
+{/* source-content:P3-C227 */}
+2. W. H. Press, S. A. Teukolsky, W. T. Vetterling, and B. P. Flannery, *Numerical Recipes in C*, 2nd ed., Cambridge, U.K., 1992.
+
+
+{/* source-content:P3-C228 */}
+3. P. C. Hansen, J. G. Nagy, and D. P. O’Leary, *Deblurring Images: Matrices, Spectra, and Filtering*. SIAM, 2006, vol. 3.
+
+
+{/* source-content:P3-C229 */}
+4. I. Y. Chun and J. A. Fessler, “Convolutional dictionary learning: Acceleration and convergence,” *IEEE Transactions on Image Processing*, 27(4), 1697–1712, 2018, DOI 10.1109/TIP.2017.2761545.
+
+
+{/* source-content:P3-C230 */}
+5. I. Y. Chun and J. A. Fessler, “Convolutional analysis operator learning: Acceleration and convergence,” *IEEE Transactions on Image Processing*, 29, 2108–2122, 2020, DOI 10.1109/TIP.2019.2937734.
+
+
+{/* source-content:P3-C231 */}
+PDF 곳곳에는 `this link`, `Wiki`, PyTorch documentation 링크가 보이지만 이 파일에서 모든 URI annotation을 신뢰성 있게 복구할 수 있는 것은 아니다. 보이는 출처 표시는 보존하되 목적지를 추측해 만들지 않는다.
+
+
+# 편집·수학 검증(Editorial audit)
+
+
+{/* source-content:P3-C232 */}
+## 직선의 일반형 완성
+
+
+{/* source-content:P3-C233 */}
+PDF p.1의 `?`는 좌표를 x₁=x, x₂=y로 두고 모든 항을 한쪽으로 옮기면 완성된다.
+
+
+{/* source-content:P3-C234 */}
+<SourceFormula formula={part3Formula('MAI-P3-141')} part={3} display={true} />
+
+
+{/* source-content:P3-C235 */}
+## 원점-초평면 거리의 절댓값
+
+
+{/* source-content:P3-C236 */}
+원자료의 b/‖w‖₂는 부호를 가질 수 있다. “거리”라면 절댓값이 필요하다.
+
+
+{/* source-content:P3-C237 */}
+<SourceFormula formula={part3Formula('MAI-P3-142')} part={3} display={true} />
+
+
+{/* source-content:P3-C238 */}
+## 점-초평면 거리의 절댓값
+
+
+{/* source-content:P3-C239 */}
+g(x)/‖w‖₂는 signed distance다. 기하학적 distance는 |g(x)|/‖w‖₂다.
+
+
+{/* source-content:P3-C240 */}
+<SourceFormula formula={part3Formula('MAI-P3-143')} part={3} display={true} />
+
+
+{/* source-content:P3-C241 */}
+## 퍼셉트론 w-gradient 완성
+
+
+{/* source-content:P3-C242 */}
+식 (1)을 w로 미분하면 각 yₘxₘ의 음의 합이다.
+
+
+{/* source-content:P3-C243 */}
+<SourceFormula formula={part3Formula('MAI-P3-144')} part={3} display={true} />
+
+
+{/* source-content:P3-C244 */}
+## 퍼셉트론 b-gradient 완성
+
+
+{/* source-content:P3-C245 */}
+식 (1)을 b로 미분하면 label의 음의 합이다.
+
+
+{/* source-content:P3-C246 */}
+<SourceFormula formula={part3Formula('MAI-P3-145')} part={3} display={true} />
+
+
+{/* source-content:P3-C247 */}
+## MSE gradient 완성
+
+
+{/* source-content:P3-C248 */}
+1/2 residual²의 chain rule을 적용한다.
+
+
+{/* source-content:P3-C249 */}
+<SourceFormula formula={part3Formula('MAI-P3-146')} part={3} display={true} />
+
+
+{/* source-content:P3-C250 */}
+## 학습률 조건의 데이터 의존형 교정
+
+
+{/* source-content:P3-C251 */}
+고정된 `0 < α < 2`만으로는 일반 MSE 수렴을 보장하지 않는다. Hessian 최대 고유값이 상한을 정한다.
+
+
+{/* source-content:P3-C252 */}
+<SourceFormula formula={part3Formula('MAI-P3-147')} part={3} display={true} />
+
+
+{/* source-content:P3-C253 */}
+## XOR 두 직선 경계 완성
+
+
+{/* source-content:P3-C254 */}
+x₁+x₂의 값으로 두 평행선 사이와 바깥을 나누면 source class 배치를 분리한다.
+
+
+{/* source-content:P3-C255 */}
+<SourceFormula formula={part3Formula('MAI-P3-148')} part={3} display={true} />
+
+
+{/* source-content:P3-C256 */}
+## XOR 최소 unit 수
+
+
+{/* source-content:P3-C257 */}
+threshold network의 전형적 구성은 hidden unit 2개와 output unit 1개다.
+
+
+{/* source-content:P3-C258 */}
+<SourceFormula formula={part3Formula('MAI-P3-149')} part={3} display={true} />
+
+
+{/* source-content:P3-C259 */}
+## Weight matrix 식 (6) 완성
+
+
+{/* source-content:P3-C260 */}
+행은 현재 layer neuron, 열은 이전 layer activation에 대응한다.
+
+
+{/* source-content:P3-C261 */}
+<SourceFormula formula={part3Formula('MAI-P3-150')} part={3} display={true} />
+
+
+{/* source-content:P3-C262 */}
+## Scalar forward-pass index 교정
+
+
+{/* source-content:P3-C263 */}
+현재 layer l의 폭은 N_l, 이전 layer 폭은 N_{l-1}로 써야 한다.
+
+
+{/* source-content:P3-C264 */}
+<SourceFormula formula={part3Formula('MAI-P3-151')} part={3} display={true} />
+
+
+{/* source-content:P3-C265 */}
+## Vector forward-pass dimension 교정
+
+
+{/* source-content:P3-C266 */}
+activation, net input, bias는 현재 layer 폭 N_l을 가진다.
+
+
+{/* source-content:P3-C267 */}
+<SourceFormula formula={part3Formula('MAI-P3-152')} part={3} display={true} />
+
+
+{/* source-content:P3-C268 */}
+## Batch forward-pass dimension 교정
+
+
+{/* source-content:P3-C269 */}
+mini-batch column 수 N_p와 current-layer 폭 N_l을 분리한다.
+
+
+{/* source-content:P3-C270 */}
+<SourceFormula formula={part3Formula('MAI-P3-153')} part={3} display={true} />
+
+
+{/* source-content:P3-C271 */}
+## 뒤집힌 2D kernel 완성
+
+
+{/* source-content:P3-C272 */}
+2D mathematical convolution은 kernel을 원점 기준으로 180° 회전한다.
+
+
+{/* source-content:P3-C273 */}
+<SourceFormula formula={part3Formula('MAI-P3-154')} part={3} display={true} />
+
+
+{/* source-content:P3-C274 */}
+## Full 2D convolution grid 완성
+
+
+{/* source-content:P3-C275 */}
+각 output 위치에서 겹치는 entry의 곱을 합해 5×7 full output을 얻는다.
+
+
+{/* source-content:P3-C276 */}
+<SourceFormula formula={part3Formula('MAI-P3-155')} part={3} display={true} />
+
+
+{/* source-content:P3-C277 */}
+## Checkerboard moving-average 응답
+
+
+{/* source-content:P3-C278 */}
+3×3 window에는 같은 부호 5개와 반대 부호 4개가 있어 원래 sign의 1/9이 남는다.
+
+
+{/* source-content:P3-C279 */}
+<SourceFormula formula={part3Formula('MAI-P3-156')} part={3} display={true} />
+
+
+{/* source-content:P3-C280 */}
+## Separable convolution 감소율
+
+
+{/* source-content:P3-C281 */}
+M² 대비 2M 연산이므로 절감률은 1-2/M이다.
+
+
+{/* source-content:P3-C282 */}
+<SourceFormula formula={part3Formula('MAI-P3-157')} part={3} display={true} />
+
+
+{/* source-content:P3-C283 */}
+## Patch vector의 f/y 표기 교정
+
+
+{/* source-content:P3-C284 */}
+본문 정의와 일치하도록 y_W(s)를 f_W(s)로 고친 variant다.
+
+
+{/* source-content:P3-C285 */}
+<SourceFormula formula={part3Formula('MAI-P3-158')} part={3} display={true} />
+
+
+{/* source-content:P3-C286 */}
+## Output vector 마지막 entry 교정
+
+
+{/* source-content:P3-C287 */}
+고립된 x를 제거하고 모든 entry에 동일한 s-index 규칙을 적용한다.
+
+
+{/* source-content:P3-C288 */}
+<SourceFormula formula={part3Formula('MAI-P3-159')} part={3} display={true} />
+
+
+{/* source-content:P3-C289 */}
+## MaxPool 3×3 output grid 완성
+
+
+{/* source-content:P3-C290 */}
+PDF의 두 단계가 채우지 않은 output cell을 같은 window, stride, padding 규칙으로 계산한다.
+
+
+{/* source-content:P3-C291 */}
+<SourceFormula formula={part3Formula('MAI-P3-160')} part={3} display={true} />
+
+
+{/* source-content:P3-C300 */}
+## MSE loss의 비음수성
+
+
+{/* source-content:P3-C301 */}
+원자료는 제곱합 loss를 “always positive”라고 설명하지만 완전 적합에서는 0이 될 수 있으므로 nonnegative가 정확하다.
+
+
+{/* source-content:P3-C302 */}
+<SourceFormula formula={part3Formula('MAI-P3-161')} part={3} display={true} />
+
+
+{/* source-content:P3-C303 */}
+## Error set의 zero-margin 포함
+
+
+{/* source-content:P3-C304 */}
+label이 ±1일 때 g(x)=0이면 sign output은 0이어서 정확한 분류가 아니다. 따라서 초기 error set의 엄격한 `<0`를 `≤0`로 확장한 variant를 병기한다.
+
+
+{/* source-content:P3-C305 */}
+<SourceFormula formula={part3Formula('MAI-P3-162')} part={3} display={true} />
+
+
+{/* source-content:P3-C306 */}
+## Iteration별 error set의 zero-margin 포함
+
+
+{/* source-content:P3-C307 */}
+같은 이유로 iteration별 error set도 zero-margin pattern을 포함하는 것이 분류 의미와 일치한다.
+
+
+{/* source-content:P3-C308 */}
+<SourceFormula formula={part3Formula('MAI-P3-163')} part={3} display={true} />
+
+
+---
+
+# 2026-08-18 최신 연구 업데이트
+
+> 아래 내용은 PDF 원자료가 아니다. 강의자료의 퍼셉트론·MLP·CNN·컨볼루션 축을 2026-08-18까지의 peer-reviewed 논문, 공식 프로시딩, 공식 구현 문서로 확장한다. 원자료의 문장을 소급해 고치지 않는다.
+
+## 1. Activation과 normalization은 “ReLU 하나”보다 훨씬 넓은 설계공간이 됐다
+
+강의자료는 sign과 ReLU를 대표 activation으로 소개한다. 현재 실무에서는 **GELU**, **SiLU/Swish**, gated activation, task-specific activation을 선택하고, normalization도 BatchNorm 하나가 아니라 LayerNorm·RMSNorm·GroupNorm·Global Response Normalization(GRN)까지 architecture와 batch regime에 맞춰 고른다.
+
+- **BatchNorm — ICML 2015, peer-reviewed.** mini-batch 통계를 이용해 학습을 안정화한 고전적 기준점이다. [PMLR 원문](https://proceedings.mlr.press/v37/ioffe15.html)
+- **RMSNorm — NeurIPS 2019, peer-reviewed.** re-centering을 제거하고 root-mean-square만으로 scale을 정규화해 LayerNorm의 계산을 단순화한다. [공식 프로시딩](https://proceedings.neurips.cc/paper/2019/hash/1e8a19426224ca89e83cef47f1e7f53b-Abstract.html)
+- **ConvNeXt V2 — CVPR 2023, peer-reviewed.** fully-convolutional masked autoencoder와 GRN을 함께 설계해 channel 간 feature competition을 강화했다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2023/html/Woo_ConvNeXt_V2_Co-Designing_and_Scaling_ConvNets_With_Masked_Autoencoders_CVPR_2023_paper.html)
+- **Transformers without Normalization — CVPR 2025, peer-reviewed.** Dynamic Tanh는 normalization을 element-wise tanh 기반 mapping으로 대체해 여러 vision/language setting에서 normalized baseline과 비슷하거나 더 나은 결과를 보고했다. 이는 “normalization layer가 항상 필수”라는 단순 명제를 약화하지만, 모든 CNN/MLP에 대한 보편적 제거법을 의미하지는 않는다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2025/html/Zhu_Transformers_without_Normalization_CVPR_2025_paper.html)
+- **Dynamic Group Normalization — CVPR 2025, peer-reviewed.** 고정 channel group 대신 학습 중 통계에 맞춰 group을 동적으로 구성한다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2025/html/Smadar_Dynamic_Group_Normalization_Spatio-Temporal_Adaptation_to_Evolving_Data_Statistics_CVPR_2025_paper.html)
+- **Stronger Normalization-Free Transformers — CVPR 2026, peer-reviewed.** DyT 이후의 point-wise 안정화 함수를 체계적으로 비교하며 normalization-free 설계가 단일 tanh 대안에서 더 넓은 함수 설계 문제로 확장됐음을 보여 준다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2026/html/Chen_Stronger_Normalization-Free_Transformers_CVPR_2026_paper.html)
+- **AcTTA — CVPR 2026, peer-reviewed.** test-time adaptation을 normalization affine parameter에만 맡기지 않고 ReLU·GELU의 threshold와 gradient sensitivity를 동적으로 조정한다. 이는 activation 자체도 distribution shift에 적응시키는 대상임을 보여 준다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2026/html/Kim_AcTTA_Rethinking_Test-Time_Adaptation_via_Dynamic_Activation_CVPR_2026_paper.html)
+
+따라서 activation/normalization은 각각 독립된 장식이 아니라 **gradient scale, residual path, batch size, pretraining objective, hardware kernel**과 함께 검증해야 한다.
+
+## 2. CNN 대 Transformer 논쟁은 “어느 연산이 본질적으로 우월한가”에서 “어떤 bias와 recipe를 결합하는가”로 이동했다
+
+- **ConvNeXt — CVPR 2022, peer-reviewed.** 표준 ResNet을 Transformer 시대의 training·block design으로 단계적으로 modernize해 순수 ConvNet도 Swin 계열과 경쟁할 수 있음을 보였다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2022/html/Liu_A_ConvNet_for_the_2020s_CVPR_2022_paper.html)
+- **ConvNeXt V2 — CVPR 2023.** architecture와 self-supervised pretraining을 따로 최적화하지 않고 공동 설계해야 함을 보여 주었다.
+- **ShiftwiseConv — CVPR 2025, peer-reviewed.** large-kernel 효과를 단순 kernel size가 아니라 feature granularity와 multi-path fusion으로 분해하고, 작은 3×3 kernel로 장거리 sparse dependency를 구성했다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2025/html/Li_ShiftwiseConv_Small_Convolutional_Kernel_with_Large_Kernel_Effect_CVPR_2025_paper.html)
+- **MobileNetV4 — ECCV 2024, peer-reviewed.** Universal Inverted Bottleneck가 inverted bottleneck, ConvNeXt, FFN, extra depthwise design을 하나의 search block에 통합하고, mobile accelerator에 맞춘 attention까지 함께 평가했다. [ECVA 원문](https://www.ecva.net/papers/eccv_2024/papers_ECCV/html/5647_ECCV_2024_paper.php)
+- **ConvNeur — CVPR 2026, peer-reviewed.** global reasoning과 locality-preserving representation을 두 branch로 분리하고 gate로 결합해, CNN과 attention을 하나의 승자 선택이 아니라 역할 분담 문제로 다룬다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2026/html/Yang_Efficiency_Follows_Global-Local_Decoupling_CVPR_2026_paper.html)
+
+현대 비교는 parameter 수나 ImageNet top-1 하나로 끝나지 않는다. **throughput, latency, memory bandwidth, accelerator mapping, detection/segmentation transfer, pretraining data와 recipe**를 같이 맞춰야 한다.
+
+## 3. Gradient descent는 단순히 “아무 최소점”으로 가지 않는다: implicit bias와 feature learning
+
+퍼셉트론 절의 gradient descent는 update rule을 보여 주지만, 과매개변수 신경망에서는 같은 training loss를 만드는 해가 많다. 어떤 해가 선택되는지는 optimizer, 초기화, parametrization, batch size, weight decay에 의해 달라진다.
+
+- **Soudry et al. — JMLR 2018, peer-reviewed.** separable logistic regression에서 gradient descent 방향이 hard-margin SVM 해로 수렴하는 max-margin implicit bias를 증명했다. [JMLR 원문](https://www.jmlr.org/papers/v19/18-188.html)
+- **Tensor Programs IV — ICML 2021, peer-reviewed.** infinite-width limit에서도 parametrization에 따라 kernel regime이 아니라 feature learning이 남는 조건을 제시했다. [PMLR 원문](https://proceedings.mlr.press/v139/yang21c.html)
+- **Critical feature learning — ICML 2024, peer-reviewed.** wide neural network의 feature-learning regime을 scaling 관점에서 분석했다. [PMLR 원문](https://proceedings.mlr.press/v235/bordelon24a.html)
+- **SGD with Weight Decay Secretly Minimizes the Ranks of Your Neural Networks — CPAL 2025, peer-reviewed.** 작은 batch, 큰 learning rate, 강한 weight decay에서 low-rank weight bias가 강해질 수 있음을 이론·실험으로 보고했다. [PMLR 원문](https://proceedings.mlr.press/v280/galanti25a.html)
+- **How Does the ReLU Activation Affect the Implicit Bias… — COLT 2026, peer-reviewed.** 고차원 random data의 shallow ReLU regression에서 GD가 minimum-ℓ₂-norm interpolation에 가까워지는 조건과 activation pattern의 빠른 안정화를 분석했다. 따라서 activation과 data spectrum이 implicit bias를 함께 결정한다. [PMLR 원문](https://proceedings.mlr.press/v336/lai26a.html)
+- **When Both Layers Learn — COLT 2026, peer-reviewed.** one-hidden-layer ReLU network의 두 layer를 동시에 학습할 때 random initialization에서 global minimizer로 가는 동역학과 sample complexity를 분석해 end-to-end feature learning의 단순화된 이론 모델을 제공한다. [PMLR 원문](https://proceedings.mlr.press/v336/tinaz26a.html)
+
+즉, “학습 loss를 줄인다”와 “어떤 representation을 학습한다”는 별개 질문이다. Part III의 MSE·퍼셉트론 update를 현대적으로 확장하려면 **margin, norm, rank, feature drift, lazy/rich regime**을 측정해야 한다.
+
+## 4. Efficient convolution은 separability에서 depthwise·grouped·reparameterization으로 확장됐다
+
+PDF p.9는 2D separable filter가 M² 연산을 2M으로 줄이는 고전적 원리를 보여 준다. 현대 CNN은 이를 channel 차원까지 확장한다.
+
+- **Depthwise convolution**은 channel마다 spatial kernel을 적용하고, **pointwise 1×1 convolution**으로 channel을 섞는다.
+- **Grouped convolution**은 channel을 group으로 분할해 연결 수와 연산량을 조절한다.
+- **Structural reparameterization**은 training 때 multi-branch 구조를 쓰고 inference 전에 하나의 convolution으로 algebraically fuse한다. RepVGG가 대표적이며, 이후 mobile·large-kernel architecture로 확장됐다. [RepVGG CVPR 2021 원문](https://openaccess.thecvf.com/content/CVPR2021/html/Ding_RepVGG_Making_VGG-Style_ConvNets_Great_Again_CVPR_2021_paper.html)
+- **MobileNetV4**는 실제 CPU·DSP·GPU·NPU에서의 Pareto frontier를 목표로 block을 공동 설계한다.
+- **ShiftwiseConv**는 small-kernel operator로 large-kernel 효과를 내는 다른 경로를 제시한다.
+- **PFGNet — CVPR 2026, peer-reviewed.** spatially adaptive large-kernel response를 separable `1×k`와 `k×1` convolution으로 분해해 per-channel cost를 `O(k²)`에서 `O(2k)`로 줄인다. PDF p.9의 separability 원리가 현대 동적 receptive-field 설계에 그대로 이어지는 사례다. [CVF 원문](https://openaccess.thecvf.com/content/CVPR2026/html/Cai_PFGNet_A_Fully_Convolutional_Frequency-Guided_Peripheral_Gating_Network_for_Efficient_CVPR_2026_paper.html)
+
+계산량(FLOPs)이 줄었다고 latency가 반드시 줄지는 않는다. memory access, kernel launch, operator fusion, group 수와 target hardware를 함께 측정해야 한다.
+
+## 5. PyTorch에서 말하는 “convolution”의 정확한 연산 의미
+
+강의자료는 수학적 convolution을 kernel mirror로 설명한 뒤 PyTorch `Conv2d`로 이동한다. 두 convention을 분리해야 한다.
+
+- 공식 PyTorch `Conv2d`는 수학적 kernel flip을 하지 않는 **valid 2D cross-correlation**을 계산한다. [공식 문서](https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html)
+- `ConvTranspose2d`는 `Conv2d`의 input에 대한 gradient로 볼 수 있지만 **convolution의 실제 역연산은 아니다**. stride>1이면 input element 사이에 0을 삽입한다. [공식 문서](https://docs.pytorch.org/docs/stable/generated/torch.nn.ConvTranspose2d.html)
+- `MaxPool2d` padding은 의미상 negative infinity로 취급되므로, 음수 input에서도 padding 0이 부당하게 maximum이 되지 않는다. [공식 문서](https://docs.pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html)
+- `Dropout`은 training 때 Bernoulli mask로 element를 0으로 만들고 남은 값을 `1/(1-p)`로 scale해 evaluation에서 identity가 되도록 한다. [공식 문서](https://docs.pytorch.org/docs/stable/generated/torch.nn.Dropout.html)
+
+따라서 논문 수식, DSP library, deep-learning framework를 비교할 때는 **flip convention, padding convention, tensor layout, groups, dilation, bias, train/eval mode**를 명시해야 한다.
+
+## 6. 남은 연구 질문
+
+1. 동일한 compute·data·training recipe에서 CNN과 Transformer의 inductive bias가 실제 OOD·robustness·dense prediction에 어떻게 다르게 나타나는가?
+2. normalization을 제거하거나 바꿀 때 stability를 지탱하는 activation·residual scaling·optimizer 조건은 무엇인가?
+3. implicit bias를 margin·rank·feature movement로 측정했을 때 어떤 지표가 실제 downstream generalization을 가장 잘 예측하는가?
+
+## 핵심 키워드
+
+- **Perceptron convergence** — 선형 분리 가능성과 update rule 아래에서 finite mistake bound 또는 수렴 성질을 다루는 문제.
+- **Feature learning** — 고정 kernel에서 선형모델만 학습하는 것이 아니라 hidden representation 자체가 task에 맞게 변하는 현상.
+- **Structural reparameterization** — training graph의 여러 branch를 inference용 단일 operator로 정확히 합치는 기법.
+- **Depthwise separable convolution** — spatial filtering과 channel mixing을 분리해 효율을 높이는 convolution 설계.
+- **Cross-correlation convention** — deep-learning framework가 kernel을 뒤집지 않고 sliding dot product를 수행하는 convention.
