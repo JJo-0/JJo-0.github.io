@@ -2,7 +2,16 @@
 title: '파이썬 변수'
 description: '_처음 자료형을 변수에 정하는 것이 아닌_'
 pubDate: 2022-09-26
-tags: ['python', 'study-notes', 'k-digital', '변수', 'resources']
+category: software-engineering-cs
+subcategory: python
+type: study-note
+tags:
+  - python
+  - variables
+  - data-types
+  - operators
+researchFeatured: false
+
 lang: 'ko'
 ---
 

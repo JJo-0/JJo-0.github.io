@@ -2,7 +2,17 @@
 title: 'Gemini Deep Research 여행 프롬프트 엔지니어링 가이드'
 description: 'Gemini Deep Research 기반 여행 프롬프트 엔지니어링 실전 가이드'
 pubDate: 2025-05-23
-tags: ['artificial-intelligence', 'prompt-engineering', 'tools-guides', 'travel', 'projects', 'computer-vision']
+category: research-methods-tools
+subcategory: prompt-engineering
+type: interactive-guide
+tags:
+  - gemini
+  - deep-research
+  - travel-planning
+  - constraint-modeling
+  - prompt-engineering
+researchFeatured: false
+
 lang: 'ko'
 usesChart: true
 ---

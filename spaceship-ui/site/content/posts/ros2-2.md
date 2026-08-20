@@ -2,7 +2,17 @@
 title: 'ROS2 개발환경 구축'
 description: '해당 버전들은 ROS2_Versionhttps://docs.ros.org/en/foxy/Releases.html...'
 pubDate: 2023-07-26
-tags: ['robotics', 'ros2', 'system-setup', 'development-environment', 'projects']
+category: robotics-embedded
+subcategory: ros2
+type: setup-guide
+tags:
+  - ros2
+  - ubuntu
+  - development-environment
+  - dds
+researchArea: robotics-autonomous-systems
+researchFeatured: false
+
 lang: 'ko'
 ---
 

@@ -2,7 +2,18 @@
 title: 'SLAM (2)'
 description: '복습 겸 SLAM의 흐름에 대해서 담은 게시글이다....'
 pubDate: 2023-07-06
-tags: ['computer-vision', 'robotics', 'slam', 'graduation-project', 'projects']
+category: robotics-embedded
+subcategory: localization-mapping
+type: study-note
+tags:
+  - slam
+  - localization
+  - sensor-fusion
+  - kalman-filter
+  - particle-filter
+researchArea: robotics-autonomous-systems
+researchFeatured: false
+
 lang: 'ko'
 ---
 

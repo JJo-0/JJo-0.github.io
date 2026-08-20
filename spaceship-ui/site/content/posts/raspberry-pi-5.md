@@ -2,7 +2,17 @@
 title: 'Raspberry pi 5 설정'
 description: '라즈베리파이 5 시키고 환경설정을 정리하기 위해 글을 끄적여본다.'
 pubDate: 2024-04-05
-tags: ['system-setup', 'raspberry-pi', 'linux', 'ubuntu', 'areas']
+category: robotics-embedded
+subcategory: embedded-systems
+type: setup-guide
+tags:
+  - raspberry-pi
+  - ubuntu
+  - ssh
+  - embedded-linux
+researchArea: robotics-autonomous-systems
+researchFeatured: false
+
 lang: 'ko'
 ---
 

@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'spaceship-ui/**'
+      - 'scripts/normalize_tags.py'
       - '.github/workflows/blog-ci.yml'
   pull_request:
     branches: [main]
     paths:
       - 'spaceship-ui/**'
+      - 'scripts/normalize_tags.py'
       - '.github/workflows/blog-ci.yml'
   workflow_dispatch:
 
@@ -36,8 +38,16 @@ jobs:
           cache: pnpm
           cache-dependency-path: spaceship-ui/pnpm-lock.yaml
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Taxonomy contract
+        run: pnpm taxonomy:check
 
       - name: Lint
         run: pnpm lint

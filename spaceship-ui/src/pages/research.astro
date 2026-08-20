@@ -4,19 +4,26 @@ import Breadcrumbs from '@/components/Breadcrumbs.svelte';
 import MotionRuntime from '@/components/experience/MotionRuntime.astro';
 import ResearchConstellation from '@/components/experience/ResearchConstellation.astro';
 import { RESEARCH_FOCUS } from '@/lib/research';
+import { getPostTypeLabel } from '@/lib/taxonomy.mjs';
 import { formatDate } from '@/lib/utils/date';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import { getBreadcrumbSchema } from '@/lib/schemas';
 
-const posts = (await getPublishedPosts()).sort(
-  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-);
+const posts = await getPublishedPosts();
 
 const focusWithPosts = RESEARCH_FOCUS.map((focus) => ({
   ...focus,
   posts: posts
-    .filter((post) => post.data.tags.some((tag) => focus.tags.includes(tag)))
-    .slice(0, 4),
+    .filter(
+      (post) =>
+        post.data.researchArea === focus.id && post.data.researchFeatured,
+    )
+    .sort(
+      (a, b) =>
+        (a.data.researchOrder ?? Number.MAX_SAFE_INTEGER) -
+          (b.data.researchOrder ?? Number.MAX_SAFE_INTEGER) ||
+        b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+    ),
 }));
 
 const schema = getBreadcrumbSchema([
@@ -46,8 +53,8 @@ const schema = getBreadcrumbSchema([
         <p class="experience-role" data-motion="hero-copy">Problem → Method → Evidence</p>
         <p class="research-experience-copy" data-motion="hero-copy">
           로보틱스·AI·컴퓨터 비전에서 공부하고 실험한 내용을 공개 가능한 기술 글과 연구
-          노트로 연결합니다. 저장소 목록보다 문제를 바라보는 관점, 구현 방법, 그리고 검증
-          과정을 먼저 보여줍니다.
+          노트로 연결합니다. 태그 하나가 우연히 겹친 글이 아니라, 명시적으로 선정한 연구
+          기록만 분야별로 보여줍니다.
         </p>
       </div>
 
@@ -68,17 +75,16 @@ const schema = getBreadcrumbSchema([
           >
             <div class="research-focus-layout">
               <div>
-                <span class="research-focus-number">0{index + 1} / {focus.label}</span>
+                <span class="research-focus-number">
+                  {String(index + 1).padStart(2, '0')} / {focus.label}
+                </span>
                 <h2 id={`${focus.id}-heading`} class="research-focus-title">
                   {focus.title}
                 </h2>
                 <p class="research-focus-description">{focus.description}</p>
-
-                <div class="research-focus-tags" aria-label={`${focus.title} topics`}>
-                  {focus.tags.slice(0, 6).map((tag) => (
-                    <a href={`/posts/tag/${tag}`}>#{tag}</a>
-                  ))}
-                </div>
+                <p class="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  {focus.posts.length} curated public records
+                </p>
               </div>
 
               <div>
@@ -94,6 +100,11 @@ const schema = getBreadcrumbSchema([
                       >
                         <div class="flex items-start justify-between gap-5">
                           <div class="min-w-0">
+                            <div class="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                              <span>{getPostTypeLabel(post.data.type)}</span>
+                              <span aria-hidden="true">·</span>
+                              <span>{post.data.subcategory}</span>
+                            </div>
                             <h3 data-post-transition-title>{post.data.title}</h3>
                             <p class="line-clamp-2">{post.data.description}</p>
                           </div>
@@ -108,7 +119,9 @@ const schema = getBreadcrumbSchema([
                     );
                   })
                 ) : (
-                  <p class="py-4 text-sm text-muted-foreground">관련 공개 기록을 정리하고 있습니다.</p>
+                  <p class="py-4 text-sm text-muted-foreground">
+                    관련 공개 기록을 정리하고 있습니다.
+                  </p>
                 )}
               </div>
             </div>
@@ -122,10 +135,11 @@ const schema = getBreadcrumbSchema([
         <div class="max-w-2xl">
           <p class="experience-section-label">Research Notes</p>
           <h2 class="mt-4 text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            더 많은 구현·리서치 기록은 Writing에 있습니다.
+            전체 학습·구현·리서치 기록은 Writing에서 분야별로 탐색할 수 있습니다.
           </h2>
           <p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
-            주제별 태그와 연도별 아카이브에서 실험, 공부, 구현 과정을 이어서 볼 수 있습니다.
+            대분류, 콘텐츠 형식, 세부 태그와 시리즈를 분리해 연구 대표 글과 전체 기록을
+            서로 다른 기준으로 관리합니다.
           </p>
         </div>
         <a href="/posts" class="experience-button experience-button--primary">Browse Writing</a>

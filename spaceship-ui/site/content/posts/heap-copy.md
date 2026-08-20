@@ -2,7 +2,16 @@
 title: '힙 Heap'
 description: '왼쪽 자식 노드 : 2  부모 index...'
 pubDate: 2024-05-02
-tags: ['data-structure', 'cpp', 'study-notes', 'ubuntu', 'docker', 'resources']
+category: software-engineering-cs
+subcategory: data-structures
+type: implementation
+tags:
+  - heap
+  - priority-queue
+  - c
+  - algorithms
+researchFeatured: false
+
 lang: 'ko'
 ---
 

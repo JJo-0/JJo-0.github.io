@@ -2,7 +2,19 @@
 title: 'ROS2 소개 및 개발환경 구축'
 description: 'ROS2 로봇 운영체제 소개와 개발환경 구축 가이드'
 pubDate: 2023-07-13
-tags: ['robotics', 'ros2', 'system-setup', 'development-environment', 'projects']
+category: robotics-embedded
+subcategory: ros2
+type: tutorial
+tags:
+  - ros2
+  - robot-software
+  - ubuntu
+  - opencv
+  - pcl
+researchArea: robotics-autonomous-systems
+researchFeatured: true
+researchOrder: 3
+
 lang: 'ko'
 ---
 

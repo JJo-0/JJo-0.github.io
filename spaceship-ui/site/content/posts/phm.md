@@ -2,7 +2,19 @@
 title: 'PHM 코드'
 description: '본 데이터는 연구실에서 사용한 데이터로, 데이터를 분석하고, 머신러닝을 적용하는 것을 목표로 한다.'
 pubDate: 2024-02-01
-tags: ['code-analysis', 'data-science', 'machine-learning', 'python', 'pandas', 'resources']
+category: ai-machine-learning
+subcategory: industrial-ai
+type: implementation
+tags:
+  - predictive-maintenance
+  - data-preprocessing
+  - pca
+  - pandas
+  - anomaly-detection
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 4
+
 lang: 'ko'
 ---
 

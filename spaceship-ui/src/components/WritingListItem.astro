@@ -1,5 +1,9 @@
 ---
 import { formatDate } from '@/lib/utils/date';
+import {
+  getPostCategoryMeta,
+  getPostTypeLabel,
+} from '@/lib/taxonomy.mjs';
 
 interface Props {
   post: {
@@ -7,6 +11,9 @@ interface Props {
       title: string;
       description: string;
       pubDate: Date;
+      category: string;
+      subcategory: string;
+      type: string;
       tags: string[];
       lang?: string;
     };
@@ -16,6 +23,7 @@ interface Props {
 }
 
 const { post, slug, readTime } = Astro.props;
+const category = getPostCategoryMeta(post.data.category);
 ---
 
 <article class="group border-b border-border/70 py-5 first:pt-0 last:border-b-0 last:pb-0">
@@ -25,7 +33,7 @@ const { post, slug, readTime } = Astro.props;
     data-post-transition-slug={slug}
   >
     <div class="flex flex-col gap-2">
-      <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-5">
+      <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5">
         <h3
           class="text-base sm:text-lg font-black tracking-tight text-foreground group-hover:text-primary"
           data-post-transition-title
@@ -44,14 +52,25 @@ const { post, slug, readTime } = Astro.props;
         {post.data.description}
       </p>
 
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-        <span>{readTime}</span>
+      <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-bold text-muted-foreground">
+        <span class="uppercase tracking-wider">{category.shortLabel}</span>
+        <span aria-hidden="true">·</span>
+        <span class="uppercase tracking-wider">{getPostTypeLabel(post.data.type)}</span>
+        <span aria-hidden="true">·</span>
+        <span>{post.data.subcategory}</span>
+        <span aria-hidden="true">·</span>
+        <span class="uppercase tracking-wider">{readTime}</span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">
         {
-          post.data.tags.slice(0, 3).map((tag) => (
-            <span class="normal-case tracking-normal">#{tag}</span>
+          post.data.tags.slice(0, 4).map((tag) => (
+            <span>#{tag}</span>
           ))
         }
-        {post.data.lang && post.data.lang !== 'en' && <span>{post.data.lang}</span>}
+        {post.data.lang && post.data.lang !== 'en' && (
+          <span class="font-bold uppercase tracking-wider">{post.data.lang}</span>
+        )}
       </div>
     </div>
   </a>

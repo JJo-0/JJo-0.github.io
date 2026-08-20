@@ -2,7 +2,17 @@
 title: 'Venture Global (VG) 종합 투자보고서 및 2026년 매출 예측'
 description: 'Venture Global VG 종합 투자보고서 및 2026년 매출 예측'
 pubDate: 2026-03-30
-tags: ['investment', 'energy', 'lng', 'venture-global', 'financial-analysis']
+category: finance-industry
+subcategory: energy-investing
+type: financial-analysis
+tags:
+  - venture-global
+  - lng
+  - energy
+  - financial-analysis
+  - commodity-markets
+researchFeatured: false
+
 lang: 'ko'
 ---
 

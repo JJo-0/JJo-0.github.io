@@ -2,7 +2,18 @@
 title: '[Paper Research] Human height estimation '
 description: '단안 카메라일반 카메라를 사용하여 사람의 신장을 추정하는 방법에 대한 논문을 찾았다.'
 pubDate: 2024-12-26
-tags: ['artificial-intelligence', 'computer-vision', 'pose-estimation', 'research-paper', 'projects']
+category: vision-perception-neuroscience
+subcategory: human-measurement
+type: paper-review
+tags:
+  - human-height-estimation
+  - monocular-vision
+  - camera-calibration
+  - object-detection
+researchArea: vision-pose-human-perception
+researchFeatured: true
+researchOrder: 3
+
 lang: 'ko'
 ---
 

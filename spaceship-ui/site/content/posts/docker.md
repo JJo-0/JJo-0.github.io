@@ -2,7 +2,17 @@
 title: 'ROS2 Docker Setting'
 description: '도커의 기초를 배우고 컨테이너를 실행했지만, 일부 그래픽 프로그램은 실행되지 않아요....'
 pubDate: 2024-04-05
-tags: ['system-setup', 'docker', 'containerization', 'development-environment', 'areas']
+category: software-engineering-cs
+subcategory: development-environment
+type: setup-guide
+tags:
+  - docker
+  - ros2
+  - containerization
+  - gui
+  - networking
+researchFeatured: false
+
 lang: 'ko'
 ---
 

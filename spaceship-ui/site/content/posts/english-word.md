@@ -2,7 +2,16 @@
 title: 'Essential Vocabulary'
 description: '<div id="study-section"'
 pubDate: 2024-03-17
-tags: ['study-notes', 'vocabulary', 'technical-terms', 'computer-vision', 'artificial-intelligence', 'resources']
+category: vision-perception-neuroscience
+subcategory: technical-vocabulary
+type: interactive-guide
+tags:
+  - technical-english
+  - computer-vision
+  - vocabulary
+  - quiz
+researchFeatured: false
+
 lang: 'ko'
 ---
 

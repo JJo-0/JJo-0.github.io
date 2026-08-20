@@ -2,7 +2,18 @@
 title: 'AlphaPose Model'
 description: 'WSL 환경에서 AlphaPose 모델을 사용한 2D-3D 인간 자세 추정 프로젝트'
 pubDate: 2025-01-20
-tags: ['computer-vision', 'pose-estimation', 'ros', 'python', 'opencv', 'projects']
+category: vision-perception-neuroscience
+subcategory: human-pose
+type: setup-guide
+tags:
+  - alphapose
+  - human-pose-estimation
+  - wsl
+  - cuda
+  - pytorch
+researchArea: vision-pose-human-perception
+researchFeatured: false
+
 lang: 'ko'
 ---
 

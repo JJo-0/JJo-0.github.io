@@ -3,7 +3,19 @@ title: 'AI가 의식이 있는가? II — 행동·구조·인과 증거 기술 �
 description: '3부작 2편. 프런티어 AI를 16개 후보 단위와 10개 인지 차원으로 분해하고, Evidence Ladder, Theory-System Matrix, 자기보고·SAE·J-space·functional emotion을 행동·구조·인과 증거 수준에서 기술 실사한다.'
 pubDate: 2026-08-13
 slug: 'ai-consciousness-deep-research-2'
-tags: ['artificial-intelligence', 'consciousness', 'mechanistic-interpretability', 'ai-welfare', 'global-workspace', 'deep-research']
+category: ai-machine-learning
+subcategory: ai-consciousness
+type: research-report
+tags:
+  - consciousness
+  - mechanistic-interpretability
+  - global-workspace
+  - causal-intervention
+  - ai-welfare
+researchArea: ai-consciousness-governance
+researchFeatured: true
+researchOrder: 2
+
 featured: true
 lang: 'ko'
 series:

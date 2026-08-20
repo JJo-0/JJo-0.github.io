@@ -2,7 +2,18 @@
 title: 'ROS2 노드와 데이터'
 description: 'ros2 run <특정 패키지 <특정 노드'
 pubDate: 2023-08-08
-tags: ['robotics', 'ros2', 'ros', 'python', 'cpp', 'projects']
+category: robotics-embedded
+subcategory: ros2
+type: study-note
+tags:
+  - ros2
+  - nodes
+  - topics
+  - services
+  - actions
+researchArea: robotics-autonomous-systems
+researchFeatured: false
+
 lang: 'ko'
 ---
 

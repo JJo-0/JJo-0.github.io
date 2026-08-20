@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 const root = process.cwd();
 const issues = [];
@@ -14,44 +15,62 @@ function read(relative) {
   return fs.readFileSync(file, 'utf8');
 }
 
-const component = read('src/components/experience/ResearchConstellation.svelte');
+async function loadResearchAreas() {
+  const file = path.join(root, 'src', 'lib', 'taxonomy.mjs');
+  if (!fs.existsSync(file)) {
+    issues.push('src/lib/taxonomy.mjs: canonical taxonomy is missing');
+    return [];
+  }
+  try {
+    const taxonomy = await import(`${pathToFileURL(file).href}?constellation-contract`);
+    const areas = taxonomy.RESEARCH_AREAS;
+    if (!Array.isArray(areas) || areas.length < 3 || !areas.every((area) => typeof area === 'string')) {
+      issues.push('src/lib/taxonomy.mjs: RESEARCH_AREAS must contain at least three string IDs');
+      return [];
+    }
+    return areas;
+  } catch (error) {
+    issues.push(`src/lib/taxonomy.mjs: failed to load RESEARCH_AREAS: ${error}`);
+    return [];
+  }
+}
+
+const researchAreas = await loadResearchAreas();
+const component = read('src/components/experience/ResearchConstellation.astro');
 const researchPage = read('src/pages/research.astro');
 const researchData = read('src/lib/research.ts');
-const packageJson = JSON.parse(read('package.json') || '{}');
 
 for (const required of [
   'role="img"',
-  '<title id="constellation-title">',
-  '<desc id="constellation-description">',
-  'aria-live="polite"',
-  'aria-label="Research focus quick links"',
-  '@media (prefers-reduced-motion: reduce)',
+  '<title id="research-map-title">',
+  '<desc id="research-map-desc">',
+  'aria-label="Research focus map"',
+  "import { RESEARCH_FOCUS } from '@/lib/research';",
+  'RESEARCH_FOCUS.map',
+  'data-constellation-node={focus.id}',
 ]) {
   if (!component.includes(required)) {
-    issues.push(`ResearchConstellation.svelte: missing accessibility/fallback marker ${required}`);
+    issues.push(`ResearchConstellation.astro: missing canonical/accessibility marker ${required}`);
   }
 }
 
-for (const forbidden of ['<canvas', 'three', 'WebGL', 'WebGPU', 'client:load', 'preventDefault()']) {
+for (const forbidden of ['<canvas', 'three', 'WebGL', 'WebGPU', 'preventDefault()']) {
   if (component.includes(forbidden)) {
-    issues.push(`ResearchConstellation.svelte: forbidden phase-4 implementation marker ${forbidden}`);
+    issues.push(`ResearchConstellation.astro: forbidden implementation marker ${forbidden}`);
   }
 }
 
-if (!researchPage.includes("import ResearchConstellation from '@/components/experience/ResearchConstellation.svelte';")) {
+if (!researchPage.includes("import ResearchConstellation from '@/components/experience/ResearchConstellation.astro';")) {
   issues.push('research.astro: ResearchConstellation import is missing');
 }
-if (!/<ResearchConstellation\s+client:visible/.test(researchPage)) {
-  issues.push('research.astro: constellation must remain client:visible');
+if (!researchPage.includes('<ResearchConstellation />')) {
+  issues.push('research.astro: constellation render boundary is missing');
 }
-if (!researchPage.includes('RESEARCH_FOCUS.map')) {
-  issues.push('research.astro: constellation must derive from the canonical research taxonomy');
+if (!researchPage.includes('RESEARCH_FOCUS.map') || !researchPage.includes('id={focus.id}')) {
+  issues.push('research.astro: sections must derive from the canonical research taxonomy');
 }
-if ((researchData.match(/id:\s*'/g) ?? []).length < 3) {
-  issues.push('research.ts: at least three canonical research threads are required');
-}
-if (!packageJson.scripts?.['constellation:check']) {
-  issues.push('package.json: constellation:check script is missing');
+if (!researchData.includes('RESEARCH_AREAS') || !researchData.includes('RESEARCH_AREA_META')) {
+  issues.push('research.ts: canonical taxonomy adapter is missing');
 }
 
 const built = path.join(root, 'dist', 'research', 'index.html');
@@ -59,15 +78,15 @@ if (!fs.existsSync(built)) {
   issues.push('dist/research/index.html: production build is missing');
 } else {
   const html = fs.readFileSync(built, 'utf8');
-  for (const required of [
-    'data-constellation-root',
-    'Park JiHo research constellation',
-    'href="#robotics-systems"',
-    'href="#vision-perception"',
-    'href="#ai-research"',
-  ]) {
-    if (!html.includes(required)) {
-      issues.push(`dist/research/index.html: missing rendered constellation marker ${required}`);
+  for (const area of researchAreas) {
+    for (const required of [
+      `data-constellation-node="${area}"`,
+      `href="#${area}"`,
+      `id="${area}"`,
+    ]) {
+      if (!html.includes(required)) {
+        issues.push(`dist/research/index.html: missing canonical marker ${required}`);
+      }
     }
   }
 }
@@ -79,4 +98,6 @@ if (unique.length > 0) {
   process.exit(1);
 }
 
-console.log('research-constellation-contract: PASS (canonical data, SVG links, mobile fallback, keyboard/reduced-motion accessibility)');
+console.log(
+  `research-constellation-contract: PASS (${researchAreas.length} canonical taxonomy nodes, matching section anchors, accessible SVG)`,
+);

@@ -1,400 +1,506 @@
 #!/usr/bin/env python3
 """
-Normalize frontmatter tags across _posts.
+Apply and verify the blog's explicit post taxonomy.
 
-Rules:
-- Keep mixed language tags.
-- Canonical key is `tags`.
-- Remove legacy `tag` key.
-- Keep 3~6 tags per post.
-- Do not touch markdown body content.
+This script is the canonical migration manifest for the 50 posts that existed
+when the explicit taxonomy was introduced. It only rewrites YAML frontmatter;
+post bodies, legacy redirect data, slugs, dates, and series metadata are left
+untouched.
+
+Usage:
+    python scripts/normalize_tags.py --write
+    python scripts/normalize_tags.py --check
 """
 
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import re
-import unicodedata
+import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Iterable, Sequence
 
 ROOT = Path(__file__).resolve().parent.parent
 POSTS_DIR = ROOT / "spaceship-ui" / "site" / "content" / "posts"
-REPORTS_DIR = ROOT / "reports"
 
-FILE_TAGS: Dict[str, List[str]] = {
-    "2022-09-20-블로그를 시작하면서.md": ["blog", "github-blog", "study-notes"],
-    "2022-09-26-python_변수.md": ["python", "study-notes", "k-digital", "변수"],
-    "2022-10-26-데이터베이스(1).md": ["database", "oracle", "web-development"],
-    "2023-03-24-Survey JS 설명.md": ["javascript", "surveyjs", "survey-library", "web-development"],
-    "2023-06-20-자료구조(1).md": ["cpp", "data-structure", "study-notes"],
-    "2023-06-28-코딩테스트 기본지식.md": ["cpp", "python", "swift", "coding-test"],
-    "2023-07-06-SLAM(1).md": ["computer-vision", "robotics", "slam", "graduation-project"],
-    "2023-07-06-SLAM(2).md": ["computer-vision", "robotics", "slam", "graduation-project"],
-    "2023-07-11-코딩테스트 자료구조 (1).md": [
-        "cpp",
-        "python",
-        "javascript",
-        "data-structure",
-        "coding-test",
-    ],
-    "2023-07-11-코딩테스트 자료구조 (2).md": ["data-structure", "algorithms", "coding-test", "programming"],
-    "2023-07-13-ROS2 소개.md": ["robotics", "ros2", "system-setup", "development-environment"],
-    "2023-07-26-ROS2 개발환경 구축.md": ["robotics", "ros2", "system-setup", "development-environment"],
-    "2023-08-08-ROS2 노드와 데이터.md": ["robotics", "ros2", "ros", "python", "cpp"],
-    "2024-01-18-SOEM의이해.md": ["robotics", "ros2", "communication-protocols", "ethercat"],
-    "2024-01-19-머신러닝 정리.md": ["artificial-intelligence", "machine-learning", "algorithms", "research-analysis"],
-    "2024-02-01-PHM.md": ["code-analysis", "data-science", "machine-learning", "python", "pandas"],
-    "2024-03-17-English_word.md": [
-        "study-notes",
-        "vocabulary",
-        "technical-terms",
-        "computer-vision",
-        "artificial-intelligence",
-    ],
-    "2024-04-05-Raspberry pi 5 설정.md": ["system-setup", "raspberry-pi", "linux", "ubuntu"],
-    "2024-04-08-Docker 설정.md": ["system-setup", "docker", "containerization", "development-environment"],
-    "2024-05-02-힙 Heap copy.md": ["data-structure", "cpp", "study-notes", "ubuntu", "docker"],
-    "2024-06-04-자료구조1.md": ["data-structure", "cpp", "study-notes"],
-    "2024-06-04-자료구조2.md": ["data-structure", "cpp", "study-notes"],
-    "2024-08-09-숫자야구.md": ["web-development", "javascript", "game-development", "interactive-ui"],
-    "2024-10-29-python 코드 분석_1.md": ["python", "code-analysis", "study-notes"],
-    "2024-12-26-Human Height Estimation.md": [
-        "artificial-intelligence",
-        "computer-vision",
-        "pose-estimation",
-        "research-paper",
-    ],
-    "2025-01-20-AlphaPose_Model.md": ["computer-vision", "pose-estimation", "ros", "python", "opencv"],
-    "2025-02-07-Human_forecasting.md": [
-        "artificial-intelligence",
-        "deep-learning",
-        "computer-vision",
-        "pose-estimation",
-        "research-paper",
-    ],
-    "2025-02-07-Human_pose_estimate.md": [
-        "artificial-intelligence",
-        "deep-learning",
-        "computer-vision",
-        "pose-estimation",
-        "research-paper",
-    ],
-    "2025-02-18-Vision_공부.md": [
-        "computer-vision",
-        "artificial-intelligence",
-        "deep-learning",
-        "machine-learning",
-        "linux",
-    ],
-    "2025-03-07-양산선물.md": ["health-wellness", "product-research", "uv-protection", "lifestyle"],
-    "2025-03-18-Calibration.md": ["computer-vision", "calibration", "linux"],
-    "2025-04-25-평가지표.md": ["artificial-intelligence", "deep-learning", "computer-vision", "evaluation-metrics"],
-    "2025-05-08-선형대수.md": ["artificial-intelligence", "machine-learning", "deep-learning", "linear-algebra"],
-    "2025-05-16-Mordern_Artificial_Intelligence.md": [
-        "artificial-intelligence",
-        "machine-learning",
-        "data-science",
-        "fundamentals",
-    ],
-    "2025-05-20-지속적인_보통_수준의_카페인_섭취.md": ["health-wellness", "nutrition", "neuroscience", "research-analysis"],
-    "2025-05-23-Deep_Search_gemini.md": [
-        "artificial-intelligence",
-        "prompt-engineering",
-        "tools-guides",
-        "research-methods",
-    ],
-    "2025-05-23-Deep_Search_travel_prompt.md": [
-        "artificial-intelligence",
-        "prompt-engineering",
-        "tools-guides",
-        "travel",
-    ],
-    "2025-06-17-linux_단축어.md": ["linux", "system-setup", "development-environment", "tools-guides", "ros"],
-    "2025-06-27-맞춤_마그네슘_영양제_선택.md": ["health-wellness", "health", "nutrition", "supplement", "magnesium"],
-    "2025-07-23-맞춤_비타민B_영양제_선택.md": ["health", "nutrition", "supplement", "vitamin-b", "interactive-ui"],
-    "2025-07-23-맞춤_오메가3_영양제_선택.md": ["health", "nutrition", "supplement", "omega-3", "interactive-ui"],
-    "2025-07-25-인간의_시각.md": [
-        "artificial-intelligence",
-        "시각신경과학",
-        "신경과학",
-        "fmri",
-        "뉴럴디코딩",
-        "시각피질",
-    ],
-    "2025-08-06-당뇨병_통합관리.md": ["당뇨병", "헬스케어", "환자관리", "혈당관리", "식이요법", "운동치료"],
-    "2025-11-08-로봇강화학습_성공사례.md": ["robotics", "artificial-intelligence", "reinforcement-learning", "research-paper"],
-    "2027-01-15-AI 아키텍처.md": ["artificial-intelligence", "system-setup", "python", "linux", "windows"],
-    "2027-02-27-WHAM_model.md": [
-        "artificial-intelligence",
-        "computer-vision",
-        "pose-estimation",
-        "python",
-        "linux",
-        "wsl",
-    ],
-    "2027-05-21-Poseforecasting.md": [
-        "artificial-intelligence",
-        "machine-learning",
-        "deep-learning",
-        "pose-estimation",
-        "robotics",
-    ],
+CATEGORY_IDS = {
+    "ai-machine-learning",
+    "vision-perception-neuroscience",
+    "robotics-embedded",
+    "software-engineering-cs",
+    "research-methods-tools",
+    "health-lifestyle",
+    "finance-industry",
+    "meta",
+}
+
+CONTENT_TYPES = {
+    "study-note",
+    "tutorial",
+    "setup-guide",
+    "implementation",
+    "paper-review",
+    "research-report",
+    "interactive-guide",
+    "buying-guide",
+    "financial-analysis",
+    "essay",
+    "meta",
+}
+
+RESEARCH_AREAS = {
+    "robotics-autonomous-systems",
+    "vision-pose-human-perception",
+    "ml-foundations-evaluation",
+    "ai-consciousness-governance",
+}
+
+STRUCTURAL_TAGS = {
+    "projects",
+    "resources",
+    "areas",
+    "study-notes",
+    "research-paper",
+    "system-setup",
+    "tools-guides",
+    "interactive-ui",
+    "product-research",
+    "code-analysis",
+    "research-analysis",
+    "graduation-project",
 }
 
 
-def normalize_filename(name: str) -> str:
-    """Normalize filename for cross-platform Unicode consistency."""
-    return unicodedata.normalize("NFC", name)
+@dataclass(frozen=True)
+class Taxonomy:
+    category: str
+    subcategory: str
+    content_type: str
+    tags: tuple[str, ...]
+    research_area: str | None = None
+    research_featured: bool = False
+    research_order: int | None = None
 
 
-def build_normalized_file_tags(file_tags: Dict[str, List[str]]) -> Dict[str, List[str]]:
-    normalized: Dict[str, List[str]] = {}
-    for raw_name, tags in file_tags.items():
-        key = normalize_filename(raw_name)
-        if key in normalized and normalized[key] != tags:
-            raise ValueError(
-                f"Conflicting FILE_TAGS mappings after NFC normalization: {raw_name!r}"
-            )
-        normalized[key] = tags
-    return normalized
+POST_TAXONOMY: dict[str, Taxonomy] = {
+    '2022-09-20.md': Taxonomy('meta', 'site-meta', 'meta', ('github-pages', 'blogging', 'knowledge-management')),
+    '2022-10-26.md': Taxonomy('software-engineering-cs', 'databases', 'study-note', ('database', 'oracle', 'structured-data', 'data-modeling')),
+    '2023-06-20.md': Taxonomy('software-engineering-cs', 'data-structures', 'study-note', ('c', 'cpp', 'data-structures', 'glib', 'stl')),
+    '2023-06-28.md': Taxonomy('software-engineering-cs', 'algorithms', 'study-note', ('coding-test', 'algorithms', 'time-complexity', 'space-complexity')),
+    '2023-07-11-2.md': Taxonomy('software-engineering-cs', 'data-structures', 'study-note', ('priority-queue', 'heap', 'map', 'set')),
+    '2023-07-11.md': Taxonomy('software-engineering-cs', 'data-structures', 'study-note', ('linked-list', 'stack', 'queue', 'deque')),
+    '2024-01-19.md': Taxonomy('ai-machine-learning', 'machine-learning-foundations', 'study-note', ('machine-learning', 'classification', 'logistic-regression'), 'ml-foundations-evaluation'),
+    '2024-06-04-2.md': Taxonomy('software-engineering-cs', 'data-structures', 'study-note', ('graph', 'vertex', 'edge', 'network')),
+    '2024-06-04.md': Taxonomy('software-engineering-cs', 'data-structures', 'implementation', ('binary-search-tree', 'tree-traversal', 'c', 'algorithms')),
+    '2024-08-09.md': Taxonomy('software-engineering-cs', 'web-development', 'implementation', ('javascript', 'browser-game', 'dom', 'number-baseball')),
+    '2025-03-07.md': Taxonomy('health-lifestyle', 'consumer-guides', 'buying-guide', ('uv-protection', 'parasol', 'product-comparison', 'lifestyle')),
+    '2025-04-25.md': Taxonomy('ai-machine-learning', 'evaluation-metrics', 'research-report', ('anomaly-detection', 'evaluation-metrics', 'class-imbalance', 'time-series', 'computer-vision'), 'ml-foundations-evaluation', True, 3),
+    '2025-05-08.mdx': Taxonomy('ai-machine-learning', 'mathematical-foundations', 'study-note', ('linear-algebra', 'vector-norm', 'matrix-norm', 'regularization'), 'ml-foundations-evaluation'),
+    '2025-05-20.md': Taxonomy('health-lifestyle', 'nutrition', 'research-report', ('caffeine', 'sleep', 'cognition', 'neuroscience', 'nutrition')),
+    '2025-06-27.md': Taxonomy('health-lifestyle', 'supplements', 'interactive-guide', ('magnesium', 'sleep', 'stress', 'fatigue', 'nutrition')),
+    '2025-07-23-2.md': Taxonomy('health-lifestyle', 'supplements', 'interactive-guide', ('omega-3', 'epa', 'dha', 'supplement', 'nutrition')),
+    '2025-07-23.md': Taxonomy('health-lifestyle', 'supplements', 'interactive-guide', ('vitamin-b', 'fatigue', 'supplement', 'nutrition')),
+    '2025-07-25.md': Taxonomy('vision-perception-neuroscience', 'visual-neuroscience', 'research-report', ('visual-system', 'neuroscience', 'visual-cortex', 'neural-decoding', 'fmri'), 'vision-pose-human-perception'),
+    '2025-08-06.md': Taxonomy('health-lifestyle', 'medical-management', 'interactive-guide', ('diabetes', 'blood-glucose', 'nutrition', 'exercise', 'patient-management')),
+    '2025-11-08.md': Taxonomy('robotics-embedded', 'robot-learning', 'paper-review', ('robotics', 'reinforcement-learning', 'sim-to-real', 'real-world-robotics'), 'robotics-autonomous-systems', True, 1),
+    '2027-01-15.md': Taxonomy('ai-machine-learning', 'ai-systems', 'study-note', ('ai-architecture', 'local-ai', 'gpu', 'development-environment')),
+    'ai-consciousness-deep-research-1.md': Taxonomy('ai-machine-learning', 'ai-consciousness', 'research-report', ('consciousness', 'philosophy-of-mind', 'ai-welfare', 'deep-research', 'mechanistic-interpretability'), 'ai-consciousness-governance', True, 1),
+    'ai-consciousness-deep-research-2.md': Taxonomy('ai-machine-learning', 'ai-consciousness', 'research-report', ('consciousness', 'mechanistic-interpretability', 'global-workspace', 'causal-intervention', 'ai-welfare'), 'ai-consciousness-governance', True, 2),
+    'ai-consciousness-deep-research-3.md': Taxonomy('ai-machine-learning', 'ai-consciousness', 'research-report', ('consciousness', 'ai-governance', 'ai-welfare', 'ethics', 'policy'), 'ai-consciousness-governance', True, 3),
+    'alphapose-model.md': Taxonomy('vision-perception-neuroscience', 'human-pose', 'setup-guide', ('alphapose', 'human-pose-estimation', 'wsl', 'cuda', 'pytorch'), 'vision-pose-human-perception'),
+    'calibration.md': Taxonomy('vision-perception-neuroscience', 'camera-geometry', 'study-note', ('camera-calibration', 'coordinate-systems', 'intrinsic-parameters', 'extrinsic-parameters'), 'vision-pose-human-perception', True, 4),
+    'deep-search-gemini.md': Taxonomy('research-methods-tools', 'deep-research', 'interactive-guide', ('gemini', 'deep-research', 'prompt-engineering', 'research-workflow')),
+    'deep-search-travel-prompt.md': Taxonomy('research-methods-tools', 'prompt-engineering', 'interactive-guide', ('gemini', 'deep-research', 'travel-planning', 'constraint-modeling', 'prompt-engineering')),
+    'docker.md': Taxonomy('software-engineering-cs', 'development-environment', 'setup-guide', ('docker', 'ros2', 'containerization', 'gui', 'networking')),
+    'english-word.md': Taxonomy('vision-perception-neuroscience', 'technical-vocabulary', 'interactive-guide', ('technical-english', 'computer-vision', 'vocabulary', 'quiz')),
+    'heap-copy.md': Taxonomy('software-engineering-cs', 'data-structures', 'implementation', ('heap', 'priority-queue', 'c', 'algorithms')),
+    'human-forecasting.md': Taxonomy('vision-perception-neuroscience', 'human-motion', 'research-report', ('human-pose-forecasting', 'trajectory-prediction', 'motion-prediction', 'diffusion-models', 'multi-agent'), 'vision-pose-human-perception', True, 2),
+    'human-height-estimation.md': Taxonomy('vision-perception-neuroscience', 'human-measurement', 'paper-review', ('human-height-estimation', 'monocular-vision', 'camera-calibration', 'object-detection'), 'vision-pose-human-perception', True, 3),
+    'human-pose-estimate.md': Taxonomy('vision-perception-neuroscience', 'human-pose', 'paper-review', ('3d-human-pose-estimation', 'transformer', 'graph-neural-network', 'motion-reconstruction'), 'vision-pose-human-perception', True, 1),
+    'linux.md': Taxonomy('software-engineering-cs', 'development-environment', 'setup-guide', ('linux', 'cuda', 'wsl', 'bash', 'development-environment')),
+    'modern-artificial-intelligence-2.mdx': Taxonomy('ai-machine-learning', 'machine-learning-foundations', 'study-note', ('machine-learning', 'generalization', 'bayes-classifier', 'support-vector-machine', 'uncertainty'), 'ml-foundations-evaluation', True, 2),
+    'mordern-artificial-intelligence.mdx': Taxonomy('ai-machine-learning', 'mathematical-foundations', 'study-note', ('artificial-intelligence', 'linear-algebra', 'probability', 'optimization', 'deep-learning'), 'ml-foundations-evaluation', True, 1),
+    'phm.md': Taxonomy('ai-machine-learning', 'industrial-ai', 'implementation', ('predictive-maintenance', 'data-preprocessing', 'pca', 'pandas', 'anomaly-detection'), 'ml-foundations-evaluation', True, 4),
+    'python-1.md': Taxonomy('software-engineering-cs', 'python', 'study-note', ('python', 'defaultdict', 'collections', 'data-structures')),
+    'python.md': Taxonomy('software-engineering-cs', 'python', 'study-note', ('python', 'variables', 'data-types', 'operators')),
+    'raspberry-pi-5.md': Taxonomy('robotics-embedded', 'embedded-systems', 'setup-guide', ('raspberry-pi', 'ubuntu', 'ssh', 'embedded-linux'), 'robotics-autonomous-systems'),
+    'ros2-2.md': Taxonomy('robotics-embedded', 'ros2', 'setup-guide', ('ros2', 'ubuntu', 'development-environment', 'dds'), 'robotics-autonomous-systems'),
+    'ros2-3.md': Taxonomy('robotics-embedded', 'ros2', 'study-note', ('ros2', 'nodes', 'topics', 'services', 'actions'), 'robotics-autonomous-systems'),
+    'ros2.md': Taxonomy('robotics-embedded', 'ros2', 'tutorial', ('ros2', 'robot-software', 'ubuntu', 'opencv', 'pcl'), 'robotics-autonomous-systems', True, 3),
+    'slam1.md': Taxonomy('robotics-embedded', 'localization-mapping', 'study-note', ('slam', 'localization', 'mapping', 'sensor-fusion', 'robotics'), 'robotics-autonomous-systems', True, 2),
+    'slam2.md': Taxonomy('robotics-embedded', 'localization-mapping', 'study-note', ('slam', 'localization', 'sensor-fusion', 'kalman-filter', 'particle-filter'), 'robotics-autonomous-systems'),
+    'soem.md': Taxonomy('robotics-embedded', 'industrial-communication', 'study-note', ('ethercat', 'soem', 'industrial-communication', 'real-time-systems'), 'robotics-autonomous-systems', True, 4),
+    'survey-js.md': Taxonomy('software-engineering-cs', 'web-development', 'tutorial', ('surveyjs', 'javascript', 'forms', 'web-development')),
+    'venture-global-comprehensive-report.md': Taxonomy('finance-industry', 'energy-investing', 'financial-analysis', ('venture-global', 'lng', 'energy', 'financial-analysis', 'commodity-markets')),
+    'vision.mdx': Taxonomy('vision-perception-neuroscience', 'computer-vision-foundations', 'study-note', ('computer-vision', 'deep-learning', 'transformer', 'convolutional-neural-network', 'graph-neural-network'), 'vision-pose-human-perception'),
+}
+
+MANAGED_KEYS = (
+    "category",
+    "subcategory",
+    "type",
+    "tags",
+    "researchArea",
+    "researchFeatured",
+    "researchOrder",
+)
+
+SCALAR_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-FILE_TAGS_NFC: Dict[str, List[str]] = build_normalized_file_tags(FILE_TAGS)
+class TaxonomyError(ValueError):
+    """Raised when a post violates the taxonomy contract."""
 
 
-def parse_frontmatter_sections(text: str) -> Tuple[str, List[str], str] | None:
+def post_paths() -> list[Path]:
+    return sorted(
+        path
+        for path in POSTS_DIR.iterdir()
+        if path.is_file()
+        and path.suffix.lower() in {".md", ".mdx"}
+        and not path.name.startswith("_")
+    )
+
+
+def split_frontmatter(text: str, filename: str) -> tuple[list[str], str]:
     lines = text.splitlines(keepends=True)
-    start = None
-    for i, line in enumerate(lines):
-        if line.strip() == "---":
-            start = i
-            break
-    if start is None:
-        return None
+    if not lines or lines[0].strip() != "---":
+        raise TaxonomyError(f"{filename}: frontmatter must start on line 1")
 
-    end = None
-    for i in range(start + 1, len(lines)):
-        if lines[i].strip() == "---":
-            end = i
-            break
+    end = next(
+        (index for index in range(1, len(lines)) if lines[index].strip() == "---"),
+        None,
+    )
     if end is None:
-        return None
+        raise TaxonomyError(f"{filename}: closing frontmatter delimiter not found")
 
-    prefix = "".join(lines[:start])
-    fm_lines = lines[start + 1 : end]
-    body = "".join(lines[end + 1 :])
-    return prefix, fm_lines, body
+    return lines[1:end], "".join(lines[end + 1 :])
 
 
-def extract_tag_values(fm_lines: List[str]) -> List[str]:
-    values: List[str] = []
-    i = 0
-    while i < len(fm_lines):
-        line = fm_lines[i]
-        m = re.match(r"^(tag|tags):\s*(.*)\s*$", line)
-        if not m:
-            i += 1
+def is_top_level_key(line: str) -> bool:
+    return bool(re.match(r"^[A-Za-z][A-Za-z0-9]*\s*:", line))
+
+
+def remove_managed_keys(frontmatter: Sequence[str]) -> list[str]:
+    output: list[str] = []
+    index = 0
+
+    while index < len(frontmatter):
+        line = frontmatter[index]
+        key_match = re.match(r"^([A-Za-z][A-Za-z0-9]*):\s*(.*)$", line.rstrip("\n"))
+        if not key_match or key_match.group(1) not in MANAGED_KEYS:
+            output.append(line)
+            index += 1
             continue
 
-        tail = m.group(2).strip()
-        i += 1
+        tail = key_match.group(2).strip()
+        index += 1
 
+        # Inline scalars/lists occupy one line. Block values continue until the
+        # next unindented top-level key.
         if tail:
-            if tail.startswith("[") and tail.endswith("]"):
-                inner = tail[1:-1].strip()
-                if inner:
-                    parts = [p.strip() for p in inner.split(",")]
-                    for p in parts:
-                        p = p.strip().strip('"').strip("'")
-                        if p:
-                            values.append(p)
-            else:
-                v = tail.strip().strip('"').strip("'")
-                if v:
-                    values.append(v)
             continue
 
-        while i < len(fm_lines):
-            item = fm_lines[i]
-            m_item = re.match(r"^\s*-\s*(.*?)\s*$", item)
-            if not m_item:
-                break
-            raw = m_item.group(1).strip().strip('"').strip("'")
-            if raw:
-                values.append(raw)
-            i += 1
+        while index < len(frontmatter) and not is_top_level_key(frontmatter[index]):
+            index += 1
 
-    # preserve order and dedupe
-    seen = set()
-    deduped: List[str] = []
-    for t in values:
-        if t in seen:
-            continue
-        seen.add(t)
-        deduped.append(t)
-    return deduped
+    return output
 
 
-def remove_tag_blocks(fm_lines: List[str]) -> List[str]:
-    out: List[str] = []
-    i = 0
-    while i < len(fm_lines):
-        line = fm_lines[i]
-        m = re.match(r"^(tag|tags):\s*(.*)\s*$", line)
-        if not m:
-            out.append(line)
-            i += 1
-            continue
-
-        tail = m.group(2).strip()
-        i += 1
-        if tail:
-            # inline list or scalar handled by removing only this line
-            continue
-
-        # block list: consume following "- item" lines
-        while i < len(fm_lines) and re.match(r"^\s*-\s*.*$", fm_lines[i]):
-            i += 1
-
-    # trim trailing extra blank lines but keep one
-    while len(out) >= 2 and out[-1].strip() == "" and out[-2].strip() == "":
-        out.pop()
-    return out
+def insertion_index(frontmatter: Sequence[str]) -> int:
+    preferred = {"title", "description", "pubDate", "updatedDate", "slug"}
+    last = -1
+    for index, line in enumerate(frontmatter):
+        match = re.match(r"^([A-Za-z][A-Za-z0-9]*):", line)
+        if match and match.group(1) in preferred:
+            last = index
+    return last + 1 if last >= 0 else 0
 
 
-def format_tag_value(tag: str) -> str:
-    if re.match(r"^[A-Za-z0-9_+.#/-]+$", tag):
-        return tag
-    if re.match(r"^[가-힣0-9A-Za-z_+.#/-]+$", tag):
-        return tag
-    escaped = tag.replace("'", "''")
-    return f"'{escaped}'"
-
-
-def build_tags_block(tags: List[str]) -> List[str]:
-    lines = ["tags:\n"]
-    for tag in tags:
-        lines.append(f"- {format_tag_value(tag)}\n")
+def taxonomy_block(taxonomy: Taxonomy) -> list[str]:
+    lines = [
+        f"category: {taxonomy.category}\n",
+        f"subcategory: {taxonomy.subcategory}\n",
+        f"type: {taxonomy.content_type}\n",
+        "tags:\n",
+    ]
+    lines.extend(f"  - {tag}\n" for tag in taxonomy.tags)
+    if taxonomy.research_area is not None:
+        lines.append(f"researchArea: {taxonomy.research_area}\n")
+    lines.append(
+        f"researchFeatured: {str(taxonomy.research_featured).lower()}\n"
+    )
+    if taxonomy.research_order is not None:
+        lines.append(f"researchOrder: {taxonomy.research_order}\n")
     return lines
 
 
-def validate_tags(tags: List[str], filename: str) -> None:
-    if not (3 <= len(tags) <= 6):
-        raise ValueError(f"{filename}: expected 3~6 tags, got {len(tags)} => {tags}")
-    seen = set()
-    for t in tags:
-        if t in seen:
-            raise ValueError(f"{filename}: duplicate tag '{t}'")
-        seen.add(t)
+def normalize_blank_lines(lines: list[str]) -> list[str]:
+    output: list[str] = []
+    previous_blank = False
+    for line in lines:
+        blank = line.strip() == ""
+        if blank and previous_blank:
+            continue
+        output.append(line)
+        previous_blank = blank
+
+    while output and output[0].strip() == "":
+        output.pop(0)
+    while output and output[-1].strip() == "":
+        output.pop()
+    return output
 
 
-def normalize_file(path: Path, dry_run: bool) -> Tuple[bool, List[str], List[str]]:
-    text = path.read_text(encoding="utf-8")
-    parsed = parse_frontmatter_sections(text)
-    if parsed is None:
-        raise ValueError(f"{path.name}: frontmatter not found")
+def rewrite_frontmatter(text: str, filename: str, taxonomy: Taxonomy) -> str:
+    frontmatter, body = split_frontmatter(text, filename)
+    cleaned = remove_managed_keys(frontmatter)
+    insert_at = insertion_index(cleaned)
 
-    prefix, fm_lines, body = parsed
-    before_tags = extract_tag_values(fm_lines)
+    before = normalize_blank_lines(list(cleaned[:insert_at]))
+    after = normalize_blank_lines(list(cleaned[insert_at:]))
 
-    key = normalize_filename(path.name)
-    if key not in FILE_TAGS_NFC:
-        raise ValueError(f"{path.name}: no canonical tags mapping")
+    merged: list[str] = []
+    merged.extend(before)
+    if merged and merged[-1].strip() == "":
+        merged.pop()
+    merged.extend(taxonomy_block(taxonomy))
+    if after:
+        if after[0].strip() != "":
+            merged.append("\n")
+        merged.extend(after)
 
-    final_tags = FILE_TAGS_NFC[key]
-    validate_tags(final_tags, path.name)
-
-    cleaned_fm = remove_tag_blocks(fm_lines)
-
-    # ensure one blank line before tags block for readability
-    if cleaned_fm and cleaned_fm[-1].strip() != "":
-        cleaned_fm.append("\n")
-    cleaned_fm.extend(build_tags_block(final_tags))
-
-    new_text = f"{prefix}---\n{''.join(cleaned_fm)}---\n{body}"
-
-    changed = new_text != text
-    if changed and not dry_run:
-        path.write_text(new_text, encoding="utf-8")
-
-    return changed, before_tags, final_tags
+    merged = normalize_blank_lines(merged)
+    return "---\n" + "".join(merged) + "---\n" + body
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Normalize tag/tags frontmatter in _posts")
-    parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing files")
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Exit with code 1 if normalization is required (use with --dry-run)",
-    )
-    parser.add_argument(
-        "--no-report",
-        action="store_true",
-        help="Skip writing reports/tag-audit.md (recommended for CI checks)",
-    )
-    args = parser.parse_args()
+def strip_quotes(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
 
-    if args.check and not args.dry_run:
-        raise SystemExit("--check requires --dry-run")
 
-    posts = sorted(POSTS_DIR.glob("*.md"))
-    post_names = {normalize_filename(p.name) for p in posts}
-    mapping_names = set(FILE_TAGS_NFC.keys())
-    missing_mapping = sorted(post_names - mapping_names)
-    extra_mapping = sorted(mapping_names - post_names)
+def scalar_value(frontmatter: Sequence[str], key: str, filename: str) -> str | None:
+    matches = []
+    pattern = re.compile(rf"^{re.escape(key)}:\s*(.*?)\s*$")
+    for line in frontmatter:
+        match = pattern.match(line.rstrip("\n"))
+        if match:
+            matches.append(strip_quotes(match.group(1)))
 
-    if missing_mapping:
-        raise SystemExit(f"Missing FILE_TAGS mappings for: {missing_mapping}")
-    if extra_mapping:
-        raise SystemExit(f"FILE_TAGS contains non-existent files: {extra_mapping}")
+    if len(matches) > 1:
+        raise TaxonomyError(f"{filename}: duplicate top-level '{key}' fields")
+    return matches[0] if matches else None
 
-    report_rows: List[Tuple[str, List[str], List[str], bool]] = []
-    changed_count = 0
 
-    for path in posts:
-        changed, before_tags, after_tags = normalize_file(path, args.dry_run)
-        if changed:
-            changed_count += 1
-        report_rows.append((path.name, before_tags, after_tags, changed))
+def tags_value(frontmatter: Sequence[str], filename: str) -> tuple[str, ...]:
+    tags: list[str] = []
+    index = 0
 
-    stamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    mode = "DRY-RUN" if args.dry_run else "APPLY"
+    while index < len(frontmatter):
+        match = re.match(r"^tags:\s*(.*?)\s*$", frontmatter[index].rstrip("\n"))
+        if not match:
+            index += 1
+            continue
 
-    lines: List[str] = []
-    lines.append("# Tag Audit Report\n")
-    lines.append(f"\n- Generated: {stamp}\n")
-    lines.append(f"- Mode: {mode}\n")
-    lines.append(f"- Total posts: {len(posts)}\n")
-    lines.append(f"- Changed posts: {changed_count}\n")
-    lines.append("\n## Per-File Changes\n")
+        tail = match.group(1).strip()
+        if tail:
+            if not (tail.startswith("[") and tail.endswith("]")):
+                raise TaxonomyError(f"{filename}: inline tags must use [a, b] syntax")
+            inner = tail[1:-1].strip()
+            if inner:
+                tags.extend(strip_quotes(part.strip()) for part in inner.split(","))
+            index += 1
+            continue
 
-    for filename, before_tags, after_tags, changed in report_rows:
-        status = "changed" if changed else "unchanged"
-        lines.append(f"\n### {filename} ({status})\n")
-        lines.append(f"- before: {before_tags}\n")
-        lines.append(f"- after:  {after_tags}\n")
+        index += 1
+        while index < len(frontmatter):
+            item = re.match(r"^\s+-\s+(.+?)\s*$", frontmatter[index].rstrip("\n"))
+            if not item:
+                break
+            tags.append(strip_quotes(item.group(1)))
+            index += 1
 
-    report_path = REPORTS_DIR / "tag-audit.md"
-    if not args.no_report:
-        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-        report_path.write_text("".join(lines), encoding="utf-8")
+    if not tags:
+        raise TaxonomyError(f"{filename}: tags are required")
+    return tuple(tags)
 
-    print(f"mode={mode}")
-    print(f"total_posts={len(posts)}")
-    print(f"changed_posts={changed_count}")
-    if args.no_report:
-        print("report=skipped")
-    else:
-        print(f"report={report_path}")
 
-    if args.check and changed_count > 0:
-        raise SystemExit(
-            f"Tag normalization check failed: {changed_count} posts require normalization"
+def bool_value(frontmatter: Sequence[str], key: str, filename: str) -> bool | None:
+    raw = scalar_value(frontmatter, key, filename)
+    if raw is None:
+        return None
+    lowered = raw.lower()
+    if lowered not in {"true", "false"}:
+        raise TaxonomyError(f"{filename}: {key} must be true or false")
+    return lowered == "true"
+
+
+def int_value(frontmatter: Sequence[str], key: str, filename: str) -> int | None:
+    raw = scalar_value(frontmatter, key, filename)
+    if raw is None:
+        return None
+    if not re.fullmatch(r"[1-9][0-9]*", raw):
+        raise TaxonomyError(f"{filename}: {key} must be a positive integer")
+    return int(raw)
+
+
+def validate_taxonomy(filename: str, taxonomy: Taxonomy) -> None:
+    if taxonomy.category not in CATEGORY_IDS:
+        raise TaxonomyError(f"{filename}: unknown category {taxonomy.category!r}")
+    if not SCALAR_PATTERN.fullmatch(taxonomy.subcategory):
+        raise TaxonomyError(
+            f"{filename}: invalid subcategory {taxonomy.subcategory!r}"
+        )
+    if taxonomy.content_type not in CONTENT_TYPES:
+        raise TaxonomyError(
+            f"{filename}: unknown type {taxonomy.content_type!r}"
+        )
+    if not 2 <= len(taxonomy.tags) <= 5:
+        raise TaxonomyError(f"{filename}: expected 2-5 semantic tags")
+    if len(set(taxonomy.tags)) != len(taxonomy.tags):
+        raise TaxonomyError(f"{filename}: duplicate tags")
+    for tag in taxonomy.tags:
+        if not SCALAR_PATTERN.fullmatch(tag):
+            raise TaxonomyError(f"{filename}: invalid tag {tag!r}")
+        if tag in STRUCTURAL_TAGS:
+            raise TaxonomyError(
+                f"{filename}: structural value {tag!r} cannot be a semantic tag"
+            )
+    if taxonomy.research_area is not None and taxonomy.research_area not in RESEARCH_AREAS:
+        raise TaxonomyError(
+            f"{filename}: unknown research area {taxonomy.research_area!r}"
+        )
+    if taxonomy.research_featured:
+        if taxonomy.research_area is None:
+            raise TaxonomyError(
+                f"{filename}: featured research posts require researchArea"
+            )
+        if taxonomy.research_order is None or taxonomy.research_order < 1:
+            raise TaxonomyError(
+                f"{filename}: featured research posts require positive researchOrder"
+            )
+    elif taxonomy.research_order is not None:
+        raise TaxonomyError(
+            f"{filename}: non-featured posts cannot define researchOrder"
         )
 
 
+def taxonomy_from_frontmatter(text: str, filename: str) -> Taxonomy:
+    frontmatter, _ = split_frontmatter(text, filename)
+    category = scalar_value(frontmatter, "category", filename)
+    subcategory = scalar_value(frontmatter, "subcategory", filename)
+    content_type = scalar_value(frontmatter, "type", filename)
+    research_area = scalar_value(frontmatter, "researchArea", filename)
+    research_featured = bool_value(
+        frontmatter, "researchFeatured", filename
+    )
+    research_order = int_value(frontmatter, "researchOrder", filename)
+
+    if category is None:
+        raise TaxonomyError(f"{filename}: category is required")
+    if subcategory is None:
+        raise TaxonomyError(f"{filename}: subcategory is required")
+    if content_type is None:
+        raise TaxonomyError(f"{filename}: type is required")
+    if research_featured is None:
+        raise TaxonomyError(f"{filename}: researchFeatured is required")
+
+    taxonomy = Taxonomy(
+        category=category,
+        subcategory=subcategory,
+        content_type=content_type,
+        tags=tags_value(frontmatter, filename),
+        research_area=research_area,
+        research_featured=research_featured,
+        research_order=research_order,
+    )
+    validate_taxonomy(filename, taxonomy)
+    return taxonomy
+
+
+def check_manifest_coverage(paths: Iterable[Path]) -> None:
+    actual = {path.name for path in paths}
+    expected = set(POST_TAXONOMY)
+    missing = sorted(expected - actual)
+    unmapped = sorted(actual - expected)
+    messages = []
+    if missing:
+        messages.append("manifest entries with no file: " + ", ".join(missing))
+    if unmapped:
+        messages.append("post files missing from manifest: " + ", ".join(unmapped))
+    if messages:
+        raise TaxonomyError("; ".join(messages))
+
+
+def apply(write: bool) -> int:
+    paths = post_paths()
+    check_manifest_coverage(paths)
+
+    changed: list[str] = []
+    errors: list[str] = []
+
+    featured_orders: dict[tuple[str, int], str] = {}
+
+    for path in paths:
+        expected = POST_TAXONOMY[path.name]
+        try:
+            validate_taxonomy(path.name, expected)
+            text = path.read_text(encoding="utf-8")
+            normalized = rewrite_frontmatter(text, path.name, expected)
+
+            if write:
+                if normalized != text:
+                    path.write_text(normalized, encoding="utf-8")
+                    changed.append(path.name)
+                actual = taxonomy_from_frontmatter(normalized, path.name)
+            else:
+                actual = taxonomy_from_frontmatter(text, path.name)
+                if actual != expected:
+                    errors.append(
+                        f"{path.name}: taxonomy differs from canonical manifest\n"
+                        f"  expected={expected}\n"
+                        f"  actual={actual}"
+                    )
+
+            if actual.research_featured:
+                assert actual.research_area is not None
+                assert actual.research_order is not None
+                key = (actual.research_area, actual.research_order)
+                previous = featured_orders.get(key)
+                if previous is not None:
+                    errors.append(
+                        f"duplicate researchOrder {actual.research_order} in "
+                        f"{actual.research_area}: {previous}, {path.name}"
+                    )
+                featured_orders[key] = path.name
+        except TaxonomyError as exc:
+            errors.append(str(exc))
+
+    if errors:
+        print("Taxonomy validation failed:", file=sys.stderr)
+        for error in errors:
+            print(f"- {error}", file=sys.stderr)
+        return 1
+
+    mode = "updated" if write else "verified"
+    print(f"Taxonomy {mode}: {len(paths)} posts")
+    if changed:
+        for filename in changed:
+            print(f"- {filename}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--write", action="store_true", help="rewrite canonical frontmatter")
+    mode.add_argument("--check", action="store_true", help="verify canonical frontmatter")
+    args = parser.parse_args()
+    return apply(write=args.write)
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
