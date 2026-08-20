@@ -1,7 +1,8 @@
 ---
 import Math from './Math.astro';
-import FormulaVisual from './FormulaVisual.astro';
+import FormulaLessonHost from './formula-lessons/FormulaLessonHost.astro';
 import { buildFormulaGuide } from '@/lib/modern-ai-formula-guide.mjs';
+import { getFormulaLessonRef } from '@/lib/formula-lessons/registry.mjs';
 
 interface Props {
   formulaId: string;
@@ -24,19 +25,21 @@ const {
 } = Astro.props;
 
 const guide = buildFormulaGuide({ formulaId, tex, section, part });
+const lessonRef = getFormulaLessonRef(formulaId);
 ---
 
 <details
   class="formula-explanation formula-guide group border-t border-border/70"
   data-formula-guide="calculation-first"
   data-formula-family={guide.family}
+  data-formula-lesson-state={lessonRef?.state || 'missing'}
 >
   <summary class="cursor-pointer list-none px-4 py-4 sm:px-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="min-w-0">
         <span class="block text-sm font-black text-foreground">쉽게 설명 + 계산 과정</span>
         <span class="mt-1 block text-xs leading-5 text-muted-foreground">
-          {guide.badges.join(' · ')} · 직접 움직이는 시각화
+          {guide.badges.join(' · ')}{lessonRef?.renderer && ' · 수식별 학습 장면'}
         </span>
       </div>
       <span
@@ -58,9 +61,11 @@ const guide = buildFormulaGuide({ formulaId, tex, section, part });
       </section>
     </div>
 
-    <div class="mt-6">
-      <FormulaVisual family={guide.family} formulaId={formulaId} />
-    </div>
+    {lessonRef?.renderer && (
+      <div class="mt-6">
+        <FormulaLessonHost lesson={lessonRef} />
+      </div>
+    )}
 
     <section class="mt-6" data-calculation-walkthrough>
       <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
