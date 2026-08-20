@@ -1,0 +1,112 @@
+name: Bootstrap explicit content taxonomy
+
+on:
+  push:
+    branches: [feat/content-taxonomy]
+    paths:
+      - 'scripts/bootstrap_taxonomy.py'
+      - '.github/workflows/taxonomy-bootstrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/content-taxonomy
+          fetch-depth: 0
+
+      - name: Materialize taxonomy implementation and migrate frontmatter
+        run: python3 scripts/bootstrap_taxonomy.py
+
+      - name: Verify canonical frontmatter
+        run: python3 scripts/normalize_tags.py --check
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: spaceship-ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Taxonomy contract
+        working-directory: spaceship-ui
+        run: pnpm taxonomy:check
+
+      - name: Lint
+        working-directory: spaceship-ui
+        run: pnpm lint
+
+      - name: Type check
+        working-directory: spaceship-ui
+        run: pnpm check
+
+      - name: Build
+        working-directory: spaceship-ui
+        run: pnpm build
+
+      - name: Full content contracts
+        working-directory: spaceship-ui
+        run: pnpm content:check
+
+      - name: Commit reviewed migration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm scripts/bootstrap_taxonomy.py
+          rm scripts/.taxonomy_payload_00.b64
+          rm scripts/.taxonomy_payload_01.b64
+          rm scripts/.taxonomy_payload_02.b64
+          rm scripts/.taxonomy_payload_03.b64
+          rm scripts/.taxonomy_payload_04.b64
+          rm scripts/.taxonomy_payload_05.b64
+          rm .github/workflows/taxonomy-bootstrap.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -- \
+            scripts/normalize_tags.py \
+            spaceship-ui/package.json \
+            spaceship-ui/scripts/taxonomy-contract.mjs \
+            spaceship-ui/site/content/posts/_template.md \
+            spaceship-ui/site/content/posts/_template.mdx \
+            spaceship-ui/src/components/WritingListItem.astro \
+            spaceship-ui/src/content.config.ts \
+            spaceship-ui/src/lib/research.ts \
+            spaceship-ui/src/lib/taxonomy.mjs \
+            spaceship-ui/src/pages/posts/index.astro \
+            spaceship-ui/src/pages/research.astro \
+            .github/workflows/blog-ci.yml \
+            scripts/bootstrap_taxonomy.py \
+            scripts/.taxonomy_payload_00.b64 \
+            scripts/.taxonomy_payload_01.b64 \
+            scripts/.taxonomy_payload_02.b64 \
+            scripts/.taxonomy_payload_03.b64 \
+            scripts/.taxonomy_payload_04.b64 \
+            scripts/.taxonomy_payload_05.b64 \
+            .github/workflows/taxonomy-bootstrap.yml
+
+          find spaceship-ui/site/content/posts -maxdepth 1 -type f \
+            \( -name '*.md' -o -name '*.mdx' \) -print0 \
+            | xargs -0 git add --
+
+          git diff --cached --stat
+          git commit -m "refactor: migrate posts to explicit taxonomy"
+          git push origin HEAD:feat/content-taxonomy
