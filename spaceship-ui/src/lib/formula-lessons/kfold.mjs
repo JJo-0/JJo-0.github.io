@@ -1,7 +1,7 @@
 export function buildKFoldAssignment(sampleCount, foldCount) {
   if (!Number.isInteger(sampleCount) || sampleCount < 2) throw new RangeError('sampleCount must be >= 2');
   if (!Number.isInteger(foldCount) || foldCount < 2 || foldCount > sampleCount) throw new RangeError('foldCount must be in [2, sampleCount]');
-  const folds = Array.from({ length: foldCount }, () => []);
+  const folds = Array.from({ length: foldCount }, () => /** @type {number[]} */ ([]));
   for (let index = 0; index < sampleCount; index += 1) folds[index % foldCount].push(index);
   return folds;
 }
