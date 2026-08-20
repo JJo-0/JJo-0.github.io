@@ -34,4 +34,4 @@ Every display formula is rendered as a responsive card with `쉽게 설명 + 계
 
 `pnpm modern-ai:part3-check` fails closed when a page, formula, source block, figure, annotation, correction link, hash, reader guide, or rendered marker disappears or is duplicated.
 
-The production branch stores only the reviewed source tree: no source PDF, encoded payload, materialization workflow, or CI self-modification remains.
+The production branch stores only the reviewed source tree: no source PDF, encoded payload, materialization workflow, bootstrap workflow, or CI self-modification remains.
