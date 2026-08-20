@@ -1,4 +1,26 @@
-import * as THREE from 'three';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  Float32BufferAttribute,
+  Group,
+  IcosahedronGeometry,
+  LineBasicMaterial,
+  LineSegments,
+  MathUtils,
+  Mesh,
+  MeshBasicMaterial,
+  PerspectiveCamera,
+  Points,
+  PointsMaterial,
+  Scene,
+  SphereGeometry,
+  SRGBColorSpace,
+  TorusGeometry,
+  Vector2,
+  WebGLRenderer,
+  type Object3D,
+} from 'three';
 import type { ExperienceCapabilities } from './capabilities';
 
 export const RESEARCH_RENDERER_MARKER = '__jjoResearchRenderer';
@@ -18,9 +40,9 @@ interface ResearchRendererOptions {
   nodeIds: string[];
 }
 
-const BASE_COLOR = new THREE.Color(0x64748b);
-const ACTIVE_COLOR = new THREE.Color(0x22d3ee);
-const SECONDARY_COLOR = new THREE.Color(0x8b5cf6);
+const BASE_COLOR = new Color(0x64748b);
+const ACTIVE_COLOR = new Color(0x22d3ee);
+const SECONDARY_COLOR = new Color(0x8b5cf6);
 
 const NODE_POSITIONS: readonly (readonly [number, number, number])[] = [
   [-1.85, 1.15, 0.25],
@@ -36,7 +58,7 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function createParticles(count: number): THREE.Points | null {
+function createParticles(count: number): Points | null {
   if (count <= 0) return null;
 
   const random = seededRandom(20260820);
@@ -50,9 +72,9 @@ function createParticles(count: number): THREE.Points | null {
     positions[index * 3 + 2] = Math.sin(angle) * radius * 0.42;
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const material = new THREE.PointsMaterial({
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new BufferAttribute(positions, 3));
+  const material = new PointsMaterial({
     color: ACTIVE_COLOR,
     size: 0.035,
     transparent: true,
@@ -61,10 +83,10 @@ function createParticles(count: number): THREE.Points | null {
     sizeAttenuation: true,
   });
 
-  return new THREE.Points(geometry, material);
+  return new Points(geometry, material);
 }
 
-function createLineGeometry(nodes: RendererNode[]): THREE.BufferGeometry {
+function createLineGeometry(nodes: RendererNode[]): BufferGeometry {
   const center: readonly [number, number, number] = [0, 0, 0];
   const segments: number[] = [];
 
@@ -77,14 +99,14 @@ function createLineGeometry(nodes: RendererNode[]): THREE.BufferGeometry {
     segments.push(...nodes[index].position, ...next.position);
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(segments, 3));
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(segments, 3));
   return geometry;
 }
 
-function disposeObject(object: THREE.Object3D): void {
+function disposeObject(object: Object3D): void {
   object.traverse((child) => {
-    if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments || child instanceof THREE.Points) {
+    if (child instanceof Mesh || child instanceof LineSegments || child instanceof Points) {
       child.geometry.dispose();
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       for (const material of materials) material.dispose();
@@ -108,7 +130,7 @@ export function createResearchRenderer(
   container.append(canvas);
   container.dataset.rendererMarker = RESEARCH_RENDERER_MARKER;
 
-  const renderer = new THREE.WebGLRenderer({
+  const renderer = new WebGLRenderer({
     canvas,
     alpha: true,
     antialias: capabilities.antialias,
@@ -116,55 +138,55 @@ export function createResearchRenderer(
     preserveDrawingBuffer: false,
   });
   renderer.setClearColor(0x000000, 0);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.outputColorSpace = SRGBColorSpace;
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+  const scene = new Scene();
+  const camera = new PerspectiveCamera(40, 1, 0.1, 100);
   camera.position.set(0, 0.15, 7.2);
 
-  const root = new THREE.Group();
+  const root = new Group();
   root.rotation.x = -0.08;
   scene.add(root);
 
-  const lineMaterial = new THREE.LineBasicMaterial({
+  const lineMaterial = new LineBasicMaterial({
     color: ACTIVE_COLOR,
     transparent: true,
     opacity: capabilities.tier === 'ultra' ? 0.32 : 0.22,
     depthWrite: false,
   });
-  const lines = new THREE.LineSegments(createLineGeometry(nodes), lineMaterial);
+  const lines = new LineSegments(createLineGeometry(nodes), lineMaterial);
   root.add(lines);
 
-  const centerMaterial = new THREE.MeshBasicMaterial({
+  const centerMaterial = new MeshBasicMaterial({
     color: SECONDARY_COLOR,
     transparent: true,
     opacity: 0.72,
   });
-  const center = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 1), centerMaterial);
+  const center = new Mesh(new IcosahedronGeometry(0.16, 1), centerMaterial);
   root.add(center);
 
-  const nodeMeshes = new Map<string, THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>>();
-  const ringMeshes: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>[] = [];
+  const nodeMeshes = new Map<string, Mesh<SphereGeometry, MeshBasicMaterial>>();
+  const ringMeshes: Mesh<TorusGeometry, MeshBasicMaterial>[] = [];
 
   for (const node of nodes) {
-    const material = new THREE.MeshBasicMaterial({
+    const material = new MeshBasicMaterial({
       color: BASE_COLOR,
       transparent: true,
       opacity: 0.9,
     });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 14), material);
+    const mesh = new Mesh(new SphereGeometry(0.13, 20, 14), material);
     mesh.position.set(...node.position);
     mesh.userData.targetScale = 1;
     root.add(mesh);
     nodeMeshes.set(node.id, mesh);
 
-    const ringMaterial = new THREE.MeshBasicMaterial({
+    const ringMaterial = new MeshBasicMaterial({
       color: ACTIVE_COLOR,
       transparent: true,
       opacity: capabilities.tier === 'ultra' ? 0.18 : 0.1,
       depthWrite: false,
     });
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.012, 8, 44), ringMaterial);
+    const ring = new Mesh(new TorusGeometry(0.34, 0.012, 8, 44), ringMaterial);
     ring.position.copy(mesh.position);
     ring.rotation.x = Math.PI / 2;
     root.add(ring);
@@ -175,7 +197,7 @@ export function createResearchRenderer(
   if (particles) root.add(particles);
 
   const wrapper = container.parentElement ?? container;
-  const pointer = new THREE.Vector2();
+  const pointer = new Vector2();
   const startedAt = performance.now();
   let activeId = nodes[0]?.id ?? '';
   let frame = 0;
@@ -220,7 +242,7 @@ export function createResearchRenderer(
 
     for (const mesh of nodeMeshes.values()) {
       const target = Number(mesh.userData.targetScale ?? 1);
-      const scale = THREE.MathUtils.lerp(mesh.scale.x, target, 0.08);
+      const scale = MathUtils.lerp(mesh.scale.x, target, 0.08);
       mesh.scale.setScalar(scale);
     }
 
