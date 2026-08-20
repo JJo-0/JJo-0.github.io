@@ -1,0 +1,70 @@
+name: Complete PR40 formula lessons once
+
+on:
+  push:
+    branches: [agent/formula-specific-lesson-migration]
+    paths:
+      - 'scripts/.pr40_payload_*.b64'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr40-complete-once
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/formula-specific-lesson-migration
+          fetch-depth: 0
+
+      - name: Apply reviewed lesson payload
+        run: |
+          set -euo pipefail
+          cat scripts/.pr40_payload_*.b64 | base64 -d > /tmp/pr40.zip
+          echo '8bf489e698b1a842df2c4bc1cfdf49c40850144e924226ea4ee4274b1ef3afa0  /tmp/pr40.zip' | sha256sum -c -
+          unzip -oq /tmp/pr40.zip
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('spaceship-ui/site/content/posts/modern-artificial-intelligence-2.mdx')
+          text = path.read_text(encoding='utf-8')
+          import_anchor = "import SourceFormula from '@/components/post/SourceFormula.astro';\n"
+          import_line = "import KFoldConceptLesson from '@/components/post/KFoldConceptLesson.astro';\n"
+          c084 = '{/* source-content:P2-C084 */}'
+          c085 = '{/* source-content:P2-C085 */}'
+          mount = '<KFoldConceptLesson />'
+          if text.count(import_anchor) != 1:
+              raise SystemExit('PR40 patch failed: SourceFormula import anchor is not unique')
+          if text.count(c084) != 1 or text.count(c085) != 1 or text.index(c084) > text.index(c085):
+              raise SystemExit('PR40 patch failed: C084/C085 source markers are missing or out of order')
+          if import_line not in text:
+              text = text.replace(import_anchor, import_anchor + import_line, 1)
+          if mount not in text:
+              text = text.replace(c085, mount + '\n\n\n' + c085, 1)
+          if text.count(mount) != 1:
+              raise SystemExit('PR40 patch failed: K-fold concept mount is not unique')
+          path.write_text(text, encoding='utf-8')
+          PY
+          rm scripts/.pr40_payload_*.b64
+          rm .github/workflows/pr40-complete-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- \
+            spaceship-ui/scripts/modern-ai-formula-lesson-audit.mjs \
+            spaceship-ui/src/lib/formula-lessons \
+            spaceship-ui/src/components/post/formula-lessons \
+            spaceship-ui/src/components/post/KFoldConceptLesson.astro \
+            spaceship-ui/site/content/posts/modern-artificial-intelligence-2.mdx \
+            .github/workflows/pr40-complete-once.yml \
+            scripts/.pr40_payload_00.b64 scripts/.pr40_payload_01.b64 scripts/.pr40_payload_02.b64 \
+            scripts/.pr40_payload_03a.b64 scripts/.pr40_payload_03b.b64 scripts/.pr40_payload_04.b64 \
+            scripts/.pr40_payload_05a.b64 scripts/.pr40_payload_05b.b64 scripts/.pr40_payload_06.b64
+          git diff --cached --check
+          git commit -m 'feat: complete exact formula lesson migration'
+          git push origin HEAD:agent/formula-specific-lesson-migration
