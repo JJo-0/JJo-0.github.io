@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Triggered only on the isolated taxonomy migration branch.
 import base64
 import hashlib
 import io
