@@ -82,7 +82,7 @@ The same CI run also preserves the Part I formula SHA-256 contract, Part II 13-p
 
 ## Final validation
 
-Blog CI run **#275** on the merge-ready implementation passed end to end:
+Blog CI runs **#275** and the final docs-only head run **#276** both passed end to end:
 
 - frozen dependency install, taxonomy, lint, Astro/Svelte diagnostics, SEO, and production build: **PASS**;
 - Part I source-hash / reader contracts: **PASS** (`238` formulas);
