@@ -1,0 +1,98 @@
+name: Apply exact Part III MDX source fix
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+    paths:
+      - '.github/workflows/part3-source-fix.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: part3-source-fix-${{ github.head_ref }}
+  cancel-in-progress: false
+
+jobs:
+  source-fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Replace only the two invalid pre blocks
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('spaceship-ui/site/content/posts/modern-artificial-intelligence-3.mdx')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  '''<section><h4 class="mt-0">Padded input</h4><pre class="rounded-xl border border-border bg-background p-4 text-sm">0 0 0 0 0 0 0
+          0 1 3 2 3 3 0
+          0 3 1 2 1 1 0
+          0 3 3 3 1 2 0
+          0 2 2 1 2 1 0
+          0 2 3 2 1 2 0
+          0 0 0 0 0 0 0</pre></section>''',
+                  '''<section>
+            <h4 class="mt-0">Padded input</h4>
+            <pre class="rounded-xl border border-border bg-background p-4 text-sm">{`0 0 0 0 0 0 0
+          0 1 3 2 3 3 0
+          0 3 1 2 1 1 0
+          0 3 3 3 1 2 0
+          0 2 2 1 2 1 0
+          0 2 3 2 1 2 0
+          0 0 0 0 0 0 0`}</pre>
+          </section>''',
+              ),
+              (
+                  '''<section><h4 class="mt-0">Source-visible progress</h4><pre class="rounded-xl border border-border bg-background p-4 text-sm">Step 1: 3 · ·
+                  · · ·
+                  · · ·
+
+          Step 2: 3 3 ·
+                  · · ·
+                  · · ·</pre></section>''',
+                  '''<section>
+            <h4 class="mt-0">Source-visible progress</h4>
+            <pre class="rounded-xl border border-border bg-background p-4 text-sm">{`Step 1: 3 · ·
+                  · · ·
+                  · · ·
+
+          Step 2: 3 3 ·
+                  · · ·
+                  · · ·`}</pre>
+          </section>''',
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'exact source block occurrence must be 1, found {count}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git diff --check
+          grep -n "Padded input\|Source-visible progress" spaceship-ui/site/content/posts/modern-artificial-intelligence-3.mdx
+
+      - name: Commit source fix and remove bootstrap workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/part3-source-fix.yml
+          git add spaceship-ui/site/content/posts/modern-artificial-intelligence-3.mdx
+          git commit -m "fix: make Part III pooling figure valid MDX"
+          git push origin "HEAD:${{ github.head_ref }}"
