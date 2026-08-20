@@ -80,6 +80,19 @@ Representative invariants include:
 
 The same CI run also preserves the Part I formula SHA-256 contract, Part II 13-page / 103-formula / 65-display-formula source ledger, taxonomy, legacy redirects, article isolation from the Three.js renderer, and rendered-content checks.
 
+## Final validation
+
+Blog CI run **#275** on the merge-ready implementation passed end to end:
+
+- frozen dependency install, taxonomy, lint, Astro/Svelte diagnostics, SEO, and production build: **PASS**;
+- Part I source-hash / reader contracts: **PASS** (`238` formulas);
+- Part II source contract: **PASS** (`13` pages, `103` formulas, `65` display walkthroughs, `241` content blocks, `7` figures, `7` annotations);
+- exact formula lesson contract: **PASS** (`303` inventoried, `108` approved, `195` explicit no-visual, `0` unreviewed, `16` exact-ID groups, K-fold section lesson);
+- runtime contract: **PASS**;
+- experience / Three.js isolation contract: **PASS** (`4` canonical research areas, no article runtime);
+- renderer contract: **PASS** (`49` GPU-free articles, SAFE SVG/DOM fallback, lazy modules);
+- transition and rendered-content contracts: **PASS**.
+
 ## Follow-up after PR #40
 
 PR #40 completes the Part I–II migration milestone. Issue #38 remains the umbrella for applying the same exact-ID contract to Modern AI III–VIII as those parts are authored and published.
