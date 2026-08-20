@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Global Semiconductor Supply-Chain Universe</title>
+    <meta
+      name="description"
+      content="2026-08-20 기준 글로벌 반도체 수요·제품·공정·소재·부품·장비·팹 인프라·패키징·테스트·기업을 연결한 인터랙티브 relation map"
+    />
+    <link rel="stylesheet" href="./app.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.min.js",
+          "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.min.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#inspector">선택한 node 정보로 이동</a>
+    <div class="atlas-shell" data-atlas-state="loading">
+      <header class="atlas-header">
+        <div>
+          <p class="eyebrow">Finance &amp; Industry · Research date 2026-08-20 KST</p>
+          <h1>Global Semiconductor<br /><span>Supply-Chain Universe</span></h1>
+          <p class="subtitle">
+            End market → product → process → material/equipment/component → supplier를 한 화면에서 추적한다.
+          </p>
+        </div>
+        <div class="header-status" aria-label="데이터 및 렌더러 상태">
+          <span class="status-pill status-partial">DATA PARTIAL</span>
+          <span class="status-pill" id="backend-pill">GPU INITIALIZING</span>
+          <span class="status-pill" id="count-pill">— NODES</span>
+        </div>
+      </header>
+
+      <section class="toolbar" aria-label="Relation map controls">
+        <div class="search-wrap">
+          <label for="node-search">Node / 기업 검색</label>
+          <input id="node-search" type="search" autocomplete="off" placeholder="EUV, HBM, MFC, FST, ASML…" />
+          <div id="search-results" class="search-results" hidden></div>
+        </div>
+
+        <fieldset class="lens-control">
+          <legend>Lens</legend>
+          <button type="button" class="lens-button is-active" data-lens="taxonomy">Taxonomy</button>
+          <button type="button" class="lens-button" data-lens="process">Process</button>
+          <button type="button" class="lens-button" data-lens="company">Company</button>
+          <button type="button" class="lens-button" data-lens="geography">Geography</button>
+          <button type="button" class="lens-button" data-lens="evidence">Evidence</button>
+        </fieldset>
+
+        <div class="filter-control">
+          <label for="status-filter">Evidence state</label>
+          <select id="status-filter">
+            <option value="all">VERIFIED + PARTIAL</option>
+            <option value="VERIFIED">VERIFIED only</option>
+            <option value="PARTIAL">PARTIAL only</option>
+          </select>
+        </div>
+
+        <div class="toolbar-actions">
+          <button type="button" id="edge-toggle" aria-pressed="true">Edges ON</button>
+          <button type="button" id="reset-view">Reset view</button>
+          <button type="button" id="fullscreen-toggle">Fullscreen</button>
+        </div>
+      </section>
+
+      <main class="workspace">
+        <section class="viewport-panel" aria-label="3D semiconductor relation map">
+          <canvas id="universe-canvas" tabindex="0" aria-label="드래그하여 회전하고 node를 선택하는 3D 공급망 지도"></canvas>
+          <div id="node-labels" class="node-labels" aria-hidden="true"></div>
+          <div id="hover-card" class="hover-card" hidden></div>
+          <div id="loading-card" class="loading-card">
+            <strong>Universe graph loading</strong>
+            <span>WebGPU 우선 · WebGL2 자동 fallback</span>
+          </div>
+          <div class="map-hud">
+            <div>
+              <span class="hud-label">LENS</span>
+              <strong id="lens-name">TAXONOMY</strong>
+            </div>
+            <div>
+              <span class="hud-label">VISIBLE</span>
+              <strong id="visible-count">—</strong>
+            </div>
+            <div>
+              <span class="hud-label">FPS</span>
+              <strong id="fps-value">—</strong>
+            </div>
+          </div>
+          <div class="legend" id="legend"></div>
+          <p class="interaction-help">Drag: rotate · Wheel/pinch: zoom · Click: inspect · Double click: focus</p>
+        </section>
+
+        <aside class="inspector" id="inspector" tabindex="-1">
+          <div class="inspector-empty" id="inspector-empty">
+            <p class="eyebrow">NODE INSPECTOR</p>
+            <h2>공급망의 한 지점을 선택하세요.</h2>
+            <p>
+              선택한 node의 taxonomy 위치, 검증상태, chokepoint, AI/HBM 민감도, 한국 localization gap,
+              upstream/downstream 및 company relation을 표시합니다.
+            </p>
+            <div id="market-baseline" class="market-baseline"></div>
+          </div>
+          <article id="inspector-content" hidden>
+            <div class="inspector-heading">
+              <div>
+                <p class="eyebrow" id="node-kind">NODE</p>
+                <h2 id="node-title"></h2>
+                <p id="node-title-ko" class="node-title-ko"></p>
+              </div>
+              <button type="button" id="clear-selection" aria-label="선택 해제">×</button>
+            </div>
+            <code id="node-id"></code>
+            <p id="node-description" class="node-description"></p>
+            <div id="node-badges" class="node-badges"></div>
+            <div class="score-grid" id="score-grid"></div>
+            <div class="trace-actions">
+              <button type="button" id="trace-upstream">Incoming relations</button>
+              <button type="button" id="trace-downstream">Outgoing relations</button>
+              <button type="button" id="trace-clear">Clear trace</button>
+            </div>
+            <section>
+              <h3>Connected nodes</h3>
+              <div id="neighbor-list" class="neighbor-list"></div>
+            </section>
+          </article>
+        </aside>
+      </main>
+
+      <section class="method-strip">
+        <div><strong>875</strong><span>Phase 1 baseline nodes</span></div>
+        <div><strong>790</strong><span>Taxonomy leaf nodes</span></div>
+        <div><strong>406</strong><span>Supply-side census leaves</span></div>
+        <div><strong>VERIFIED / PARTIAL</strong><span>Unknown을 숨기지 않는 evidence state</span></div>
+      </section>
+
+      <details class="data-table-panel">
+        <summary>2D accessible table / data fallback</summary>
+        <div class="table-tools">
+          <label for="table-search">표 검색</label>
+          <input id="table-search" type="search" placeholder="node ID, 기술, 기업, 국가" />
+          <a href="./graph.json" download>graph.json 다운로드</a>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Node ID</th><th>Name</th><th>Kind</th><th>Group</th><th>Status</th><th>Evidence</th></tr>
+            </thead>
+            <tbody id="node-table-body"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <footer>
+        <p>
+          이 지도는 DR-1 taxonomy baseline, DR-2 full-census baseline, DR-3 adversarial audit의 최종 topology를 시각화한다.
+          790개 leaf의 supplier share·고객 qualification이 모두 완료됐다는 뜻은 아니다.
+        </p>
+        <a href="/posts/semiconductor-supply-chain-universe-map/">연구 보고서 본문으로 돌아가기</a>
+      </footer>
+    </div>
+    <noscript>
+      <div class="noscript-card">
+        JavaScript 없이도 <a href="./graph.json">graph.json</a>을 내려받을 수 있습니다.
+      </div>
+    </noscript>
+    <script>
+      window.__semiconductorAtlasReady = false;
+      window.setTimeout(() => {
+        if (window.__semiconductorAtlasReady) return;
+        const shell = document.querySelector('.atlas-shell');
+        const backend = document.querySelector('#backend-pill');
+        const card = document.querySelector('#loading-card');
+        if (shell) shell.dataset.atlasState = 'error';
+        if (backend) backend.textContent = 'DATA FALLBACK';
+        if (card) card.innerHTML = '<strong>3D module unavailable</strong><span>아래 graph.json 다운로드와 연구 보고서는 계속 사용할 수 있습니다.</span>';
+      }, 12000);
+    </script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
