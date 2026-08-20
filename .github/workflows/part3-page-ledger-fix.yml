@@ -1,9 +1,9 @@
 name: Apply exact multi-page figure audit fix
 
 on:
-  pull_request:
-    branches: [main]
-    types: [synchronize, reopened]
+  push:
+    branches:
+      - agent/modern-ai-part3-source-complete
     paths:
       - '.github/workflows/part3-page-ledger-fix.yml'
 
@@ -11,18 +11,17 @@ permissions:
   contents: write
 
 concurrency:
-  group: part3-page-ledger-fix-${{ github.head_ref }}
+  group: part3-page-ledger-fix
   cancel-in-progress: false
 
 jobs:
   audit-fix:
-    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR head
+      - name: Checkout branch head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: agent/modern-ai-part3-source-complete
           fetch-depth: 0
 
       - name: Permit only declared multi-page figure mappings
@@ -89,4 +88,4 @@ jobs:
           git rm .github/workflows/part3-page-ledger-fix.yml
           git add spaceship-ui/scripts/modern-ai-part3-audit.mjs
           git commit -m "fix: audit declared multi-page Part III figures"
-          git push origin "HEAD:${{ github.head_ref }}"
+          git push origin HEAD:agent/modern-ai-part3-source-complete
