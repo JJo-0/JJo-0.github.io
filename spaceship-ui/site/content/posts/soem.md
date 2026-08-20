@@ -2,7 +2,18 @@
 title: 'SOEM의 이해'
 description: '논문을 읽는 도중 SOEM이라는 단어가 등장했다. 무엇인가 하여 찾아보니 Open EtherCAT Society라는 단체가 등장했는데, 이는 EtherCAT을 오픈소스로 만들어서 사용할 수 있게 만든 단체라는 것을 알았다.'
 pubDate: 2024-01-18
-tags: ['robotics', 'ros2', 'communication-protocols', 'ethercat', 'projects']
+category: robotics-embedded
+subcategory: industrial-communication
+type: study-note
+tags:
+  - ethercat
+  - soem
+  - industrial-communication
+  - real-time-systems
+researchArea: robotics-autonomous-systems
+researchFeatured: true
+researchOrder: 4
+
 lang: 'ko'
 ---
 

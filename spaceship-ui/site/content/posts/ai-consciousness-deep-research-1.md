@@ -3,7 +3,19 @@ title: 'AI가 의식이 있는가? I — AI Consciousness Deep Research'
 description: '3부작 1편. Consciousness, Sentience, Access/Phenomenal consciousness의 정의부터 16개 의식 이론, 전문가·온라인 지식 생태계, AI welfare와 Scientific Audit까지 원 연구를 거의 전체 수록한다.'
 pubDate: 2026-08-13
 slug: 'ai-consciousness-deep-research-1'
-tags: ['artificial-intelligence', 'consciousness', 'philosophy-of-mind', 'mechanistic-interpretability', 'ai-welfare', 'deep-research']
+category: ai-machine-learning
+subcategory: ai-consciousness
+type: research-report
+tags:
+  - consciousness
+  - philosophy-of-mind
+  - ai-welfare
+  - deep-research
+  - mechanistic-interpretability
+researchArea: ai-consciousness-governance
+researchFeatured: true
+researchOrder: 1
+
 featured: true
 lang: 'ko'
 series:

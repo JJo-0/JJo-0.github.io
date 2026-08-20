@@ -2,7 +2,18 @@
 title: 'Calibration'
 description: '- 컴퓨터 비전 관련 수업을 듣는 도중, 필수로 알아야 하는 부분이라고 생각이 들어서 따로 정리한다. 사실 이 부분은 다크_프로그래머https://darkpgmr.tistor...'
 pubDate: 2025-03-18
-tags: ['computer-vision', 'calibration', 'linux', 'projects']
+category: vision-perception-neuroscience
+subcategory: camera-geometry
+type: study-note
+tags:
+  - camera-calibration
+  - coordinate-systems
+  - intrinsic-parameters
+  - extrinsic-parameters
+researchArea: vision-pose-human-perception
+researchFeatured: true
+researchOrder: 4
+
 lang: 'ko'
 ---
 

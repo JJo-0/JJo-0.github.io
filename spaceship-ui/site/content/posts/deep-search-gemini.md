@@ -2,7 +2,16 @@
 title: 'Gemini Deep Research 프롬프트 엔지니어링 가이드'
 description: 'Gemini Deep Research를 활용한 고급 프롬프트 엔지니어링 완전 가이드'
 pubDate: 2025-05-23
-tags: ['artificial-intelligence', 'prompt-engineering', 'tools-guides', 'research-methods', 'resources']
+category: research-methods-tools
+subcategory: deep-research
+type: interactive-guide
+tags:
+  - gemini
+  - deep-research
+  - prompt-engineering
+  - research-workflow
+researchFeatured: false
+
 lang: 'ko'
 ---
 

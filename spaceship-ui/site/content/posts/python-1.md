@@ -2,7 +2,16 @@
 title: 'defaultdict'
 description: '정의 : defaultdict는 Python의 collections 모듈에 포함된 특별한 사전 자료형...'
 pubDate: 2024-10-29
-tags: ['python', 'code-analysis', 'study-notes', 'resources']
+category: software-engineering-cs
+subcategory: python
+type: study-note
+tags:
+  - python
+  - defaultdict
+  - collections
+  - data-structures
+researchFeatured: false
+
 lang: 'ko'
 ---
 

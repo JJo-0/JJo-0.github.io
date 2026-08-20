@@ -2,7 +2,16 @@
 title: 'Survey JS이란?'
 description: '- JavaScript 응용 프로그램을 위한 설문조사 및 퀴즈 폼 빌더이다....'
 pubDate: 2023-03-24
-tags: ['javascript', 'surveyjs', 'survey-library', 'web-development', 'projects']
+category: software-engineering-cs
+subcategory: web-development
+type: tutorial
+tags:
+  - surveyjs
+  - javascript
+  - forms
+  - web-development
+researchFeatured: false
+
 lang: 'ko'
 ---
 

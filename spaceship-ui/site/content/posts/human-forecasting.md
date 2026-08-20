@@ -2,7 +2,19 @@
 title: '[Google research] Pedestrian Trajectory & Pose Prediction/Forecasting'
 description: '인간 자세 예측Human Pose Forecasting/Prediction은 과거의 관찰된 인간 동작 시퀀스를 바탕으로 미래의 인간 자세 또는 동작을 예측하는 컴퓨터 비전 및 그래픽스 분야의 핵심 연구 주제입니다.^1'
 pubDate: 2025-02-07
-tags: ['artificial-intelligence', 'deep-learning', 'computer-vision', 'pose-estimation', 'research-paper', 'projects']
+category: vision-perception-neuroscience
+subcategory: human-motion
+type: research-report
+tags:
+  - human-pose-forecasting
+  - trajectory-prediction
+  - motion-prediction
+  - diffusion-models
+  - multi-agent
+researchArea: vision-pose-human-perception
+researchFeatured: true
+researchOrder: 2
+
 lang: 'ko'
 ---
 

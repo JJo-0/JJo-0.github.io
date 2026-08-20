@@ -3,7 +3,19 @@ title: 'AI가 의식이 있는가? III — 학계 합의·윤리 리스크·거�
 description: '3부작 3편. AI 의식 논쟁을 5대 지식 생태계, 7개 전문가 입장 군집, 학계 합의와 2022–2026 타임라인, 과잉·과소 귀속 윤리 리스크, 3단계 정책 트리거와 제품 설계 원칙으로 종합한다.'
 pubDate: 2026-08-13
 slug: 'ai-consciousness-deep-research-3'
-tags: ['artificial-intelligence', 'consciousness', 'ai-governance', 'ai-welfare', 'ethics', 'deep-research']
+category: ai-machine-learning
+subcategory: ai-consciousness
+type: research-report
+tags:
+  - consciousness
+  - ai-governance
+  - ai-welfare
+  - ethics
+  - policy
+researchArea: ai-consciousness-governance
+researchFeatured: true
+researchOrder: 3
+
 featured: true
 lang: 'ko'
 series:

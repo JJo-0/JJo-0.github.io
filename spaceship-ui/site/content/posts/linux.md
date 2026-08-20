@@ -2,7 +2,17 @@
 title: 'linux 개발환경 세팅, 설치 및 Bash 명령어'
 description: '- 내가 쉽게 쓰기 위해서, 리눅스의 명령어, 썼던 제품들의 명령어등을 정리하고자 한다....'
 pubDate: 2025-06-16
-tags: ['linux', 'system-setup', 'development-environment', 'tools-guides', 'ros', 'projects', 'computer-vision']
+category: software-engineering-cs
+subcategory: development-environment
+type: setup-guide
+tags:
+  - linux
+  - cuda
+  - wsl
+  - bash
+  - development-environment
+researchFeatured: false
+
 lang: 'ko'
 ---
 

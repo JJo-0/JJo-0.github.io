@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 const root = process.cwd();
@@ -11,6 +12,27 @@ const RESEARCH_BUDGET_GZIP = 200 * 1024;
 
 function read(relative) {
   return fs.readFileSync(path.join(root, relative), 'utf8');
+}
+
+async function loadResearchAreas() {
+  const file = path.join(root, 'src', 'lib', 'taxonomy.mjs');
+  if (!fs.existsSync(file)) {
+    issues.push('src/lib/taxonomy.mjs: canonical taxonomy is missing');
+    return [];
+  }
+
+  try {
+    const taxonomy = await import(`${pathToFileURL(file).href}?experience-contract`);
+    const areas = taxonomy.RESEARCH_AREAS;
+    if (!Array.isArray(areas) || areas.length < 3 || !areas.every((area) => typeof area === 'string')) {
+      issues.push('src/lib/taxonomy.mjs: RESEARCH_AREAS must contain at least three string IDs');
+      return [];
+    }
+    return areas;
+  } catch (error) {
+    issues.push(`src/lib/taxonomy.mjs: failed to load canonical research areas: ${error}`);
+    return [];
+  }
 }
 
 function localModuleScripts(html) {
@@ -46,6 +68,8 @@ function firstPublishedPostHtml() {
   return null;
 }
 
+const researchAreas = await loadResearchAreas();
+
 const requiredFiles = [
   'src/styles/experience.css',
   'src/lib/experience/motion.ts',
@@ -66,6 +90,7 @@ if (packageJson.dependencies?.three || packageJson.devDependencies?.three) {
 const layoutSource = read('src/layouts/Layout.astro');
 const homeSource = read('src/pages/index.astro');
 const researchSource = read('src/pages/research.astro');
+const constellationSource = read('src/components/experience/ResearchConstellation.astro');
 const motionSource = read('src/lib/experience/motion.ts');
 const experienceCss = read('src/styles/experience.css');
 
@@ -78,9 +103,16 @@ if (!homeSource.includes('data-experience-page="home"') || !homeSource.includes(
 if (
   !researchSource.includes('data-experience-page="research"') ||
   !researchSource.includes('<MotionRuntime scope="research"') ||
-  !researchSource.includes('<ResearchConstellation')
+  !researchSource.includes('<ResearchConstellation') ||
+  !researchSource.includes('id={focus.id}')
 ) {
-  issues.push('research.astro: research experience/runtime/constellation boundary is incomplete');
+  issues.push('research.astro: research experience/runtime/constellation/canonical section boundary is incomplete');
+}
+if (!constellationSource.includes("import { RESEARCH_FOCUS } from '@/lib/research';")) {
+  issues.push('ResearchConstellation.astro: constellation must derive from canonical research focus data');
+}
+if (!constellationSource.includes('RESEARCH_FOCUS.map')) {
+  issues.push('ResearchConstellation.astro: canonical focus iteration is missing');
 }
 if (!motionSource.includes("prefers-reduced-motion: reduce") || !motionSource.includes('ScrollTrigger')) {
   issues.push('motion.ts: reduced-motion or ScrollTrigger support is missing');
@@ -117,9 +149,15 @@ if (!homeHtml.includes('/image/mouse_surprised.gif')) {
 if (!researchHtml.includes('data-experience-runtime="research"')) {
   issues.push('dist/research/index.html: research motion runtime marker is missing');
 }
-for (const node of ['robotics-systems', 'vision-perception', 'ai-research']) {
-  if (!researchHtml.includes(`data-constellation-node="${node}"`) || !researchHtml.includes(`href="#${node}"`)) {
-    issues.push(`dist/research/index.html: constellation node/link ${node} is missing`);
+for (const node of researchAreas) {
+  if (!researchHtml.includes(`data-constellation-node="${node}"`)) {
+    issues.push(`dist/research/index.html: constellation node ${node} is missing`);
+  }
+  if (!researchHtml.includes(`href="#${node}"`)) {
+    issues.push(`dist/research/index.html: constellation link #${node} is missing`);
+  }
+  if (!researchHtml.includes(`id="${node}"`)) {
+    issues.push(`dist/research/index.html: canonical research section #${node} is missing`);
   }
 }
 if (/<canvas\b/i.test(homeHtml) || /<canvas\b/i.test(researchHtml)) {
@@ -162,5 +200,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `experience-contract: PASS (home ${homeGzip} B gzip, research ${researchGzip} B gzip; reduced-motion, SVG fallback, no article runtime)`,
+  `experience-contract: PASS (${researchAreas.length} canonical research areas; home ${homeGzip} B gzip, research ${researchGzip} B gzip; reduced-motion, SVG fallback, no article runtime)`,
 );

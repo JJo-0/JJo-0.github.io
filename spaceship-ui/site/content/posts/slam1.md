@@ -2,7 +2,19 @@
 title: 'SLAM (1)'
 description: '복습 겸 SLAM의 흐름에 대해서 담은 게시글이다....'
 pubDate: 2023-7-06 11:07:00
-tags: ['computer-vision', 'robotics', 'slam', 'graduation-project', 'projects']
+category: robotics-embedded
+subcategory: localization-mapping
+type: study-note
+tags:
+  - slam
+  - localization
+  - mapping
+  - sensor-fusion
+  - robotics
+researchArea: robotics-autonomous-systems
+researchFeatured: true
+researchOrder: 2
+
 lang: 'ko'
 ---
 

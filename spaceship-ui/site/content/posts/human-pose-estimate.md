@@ -2,7 +2,18 @@
 title: '[Paper research] Human pose estimate'
 description: '최신 연구들은 주로 2D 이미지에서 사람의 포즈를 추정하는 방법에 대해 다루고 있다. 일단 2d의 센서 데이터이든지, 3d 센서 데이터이든지 pose를 추정하는 것은 비슷하다고 가설을 세워놓고, 3d pose estimation을 하는 논문을 찾아보았다.'
 pubDate: 2025-02-07
-tags: ['artificial-intelligence', 'deep-learning', 'computer-vision', 'pose-estimation', 'research-paper', 'projects']
+category: vision-perception-neuroscience
+subcategory: human-pose
+type: paper-review
+tags:
+  - 3d-human-pose-estimation
+  - transformer
+  - graph-neural-network
+  - motion-reconstruction
+researchArea: vision-pose-human-perception
+researchFeatured: true
+researchOrder: 1
+
 lang: 'ko'
 ---
 
