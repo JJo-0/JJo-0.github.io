@@ -15,6 +15,16 @@ declare global {
 const HOST_SELECTOR = '[data-experience-canvas]';
 let rendererModulePromise: Promise<typeof import('./renderer-core')> | null = null;
 
+function loadRendererModule(): Promise<typeof import('./renderer-core')> {
+  rendererModulePromise ??= import('./renderer-core').catch((error: unknown) => {
+    // A transient chunk/network failure must not poison every later route visit
+    // in the same browser session.
+    rendererModulePromise = null;
+    throw error;
+  });
+  return rendererModulePromise;
+}
+
 function setStatus(host: HTMLElement, status: string, label: string): void {
   host.dataset.rendererStatus = status;
   const labelElement = host.querySelector<HTMLElement>('[data-renderer-label]');
@@ -25,6 +35,8 @@ export function installExperienceRendererRuntime(): void {
   if (typeof window === 'undefined' || window.__jjoRendererRuntime) return;
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const compactViewport = window.matchMedia('(max-width: 719px)');
+  const coarsePointer = window.matchMedia('(pointer: coarse)');
   let generation = 0;
   let intersectionObserver: IntersectionObserver | null = null;
   let mountedRenderer: RendererHandle | null = null;
@@ -50,6 +62,8 @@ export function installExperienceRendererRuntime(): void {
       activeHost.dataset.rendererStatus = 'idle';
       delete activeHost.dataset.rendererTier;
       delete activeHost.dataset.rendererReason;
+      delete activeHost.dataset.rendererLoop;
+      delete activeHost.dataset.rendererTheme;
     }
 
     activeHost = null;
@@ -100,8 +114,7 @@ export function installExperienceRendererRuntime(): void {
     setStatus(host, 'loading', 'Loading');
 
     try {
-      rendererModulePromise ??= import('./renderer-core');
-      const { mountExperienceRenderer } = await rendererModulePromise;
+      const { mountExperienceRenderer } = await loadRendererModule();
       if (currentGeneration !== generation || !host.isConnected) return;
 
       mountedRenderer = mountExperienceRenderer({ host, canvas, profile, variant });
@@ -183,12 +196,16 @@ export function installExperienceRendererRuntime(): void {
     document.removeEventListener('astro:page-load', scheduleInit);
     document.removeEventListener('astro:before-swap', cleanup);
     reducedMotion.removeEventListener('change', scheduleInit);
+    compactViewport.removeEventListener('change', scheduleInit);
+    coarsePointer.removeEventListener('change', scheduleInit);
     window.__jjoRendererRuntime = undefined;
   };
 
   document.addEventListener('astro:page-load', scheduleInit);
   document.addEventListener('astro:before-swap', cleanup);
   reducedMotion.addEventListener('change', scheduleInit);
+  compactViewport.addEventListener('change', scheduleInit);
+  coarsePointer.addEventListener('change', scheduleInit);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', scheduleInit, { once: true });

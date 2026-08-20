@@ -3,6 +3,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   experienceRouteFromPath,
   experienceState,
+  isResearchNodeId,
   type ResearchNodeId,
 } from './state';
 
@@ -19,10 +20,9 @@ declare global {
 }
 
 const ROOT_SELECTOR = '[data-experience-page]';
-const RESEARCH_NODE_IDS = new Set(['robotics-systems', 'vision-perception', 'ai-research']);
 
 function researchNodeId(value: string): ResearchNodeId {
-  return RESEARCH_NODE_IDS.has(value) ? (value as Exclude<ResearchNodeId, null>) : null;
+  return isResearchNodeId(value) ? value : null;
 }
 
 function revealWithoutMotion(root: HTMLElement): void {
@@ -34,10 +34,42 @@ function revealWithoutMotion(root: HTMLElement): void {
 
 function setActiveResearchNode(root: HTMLElement, id: string): void {
   const activeResearchNode = researchNodeId(id);
+  if (!activeResearchNode) return;
+
   root.querySelectorAll<Element>('[data-constellation-node]').forEach((node) => {
-    node.toggleAttribute('data-active', node.getAttribute('data-constellation-node') === id);
+    node.toggleAttribute(
+      'data-active',
+      node.getAttribute('data-constellation-node') === activeResearchNode,
+    );
+  });
+  root.querySelectorAll<Element>('[data-research-section]').forEach((section) => {
+    section.toggleAttribute(
+      'data-active',
+      section.getAttribute('data-research-section') === activeResearchNode,
+    );
   });
   experienceState.patch({ activeResearchNode });
+}
+
+function installResearchInteractions(root: HTMLElement, signal: AbortSignal): void {
+  root.querySelectorAll<Element>('[data-constellation-node]').forEach((node) => {
+    const activate = (): void => {
+      const id = node.getAttribute('data-constellation-node');
+      if (id) setActiveResearchNode(root, id);
+    };
+
+    node.addEventListener('pointerenter', activate, { passive: true, signal });
+    node.addEventListener('focusin', activate, { signal });
+    node.addEventListener('click', activate, { passive: true, signal });
+  });
+
+  const activateHashNode = (): void => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (isResearchNodeId(id)) setActiveResearchNode(root, id);
+  };
+
+  window.addEventListener('hashchange', activateHashNode, { signal });
+  activateHashNode();
 }
 
 export function installExperienceMotion(): void {
@@ -46,6 +78,7 @@ export function installExperienceMotion(): void {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let context: gsap.Context | null = null;
   let activeRoot: HTMLElement | null = null;
+  let interactionController: AbortController | null = null;
   let scheduledFrame = 0;
 
   const cleanup = (): void => {
@@ -56,10 +89,15 @@ export function installExperienceMotion(): void {
 
     context?.revert();
     context = null;
+    interactionController?.abort();
+    interactionController = null;
 
     if (activeRoot) {
       activeRoot.removeAttribute('data-motion-ready');
       activeRoot.removeAttribute('data-motion-mode');
+      activeRoot.querySelectorAll('[data-active]').forEach((element) => {
+        element.removeAttribute('data-active');
+      });
     }
 
     activeRoot = null;
@@ -82,6 +120,9 @@ export function installExperienceMotion(): void {
       route: experienceRouteFromPath(window.location.pathname),
       reducedMotion: reducedMotion.matches,
     });
+
+    interactionController = new AbortController();
+    installResearchInteractions(root, interactionController.signal);
 
     if (reducedMotion.matches) {
       root.setAttribute('data-motion-mode', 'reduced');
@@ -150,49 +191,53 @@ export function installExperienceMotion(): void {
         );
       }
 
-      gsap.utils.toArray<HTMLElement>('[data-reveal]', root).forEach((element, index) => {
-        gsap.fromTo(
-          element,
-          { autoAlpha: 0, y: 34 },
-          {
-            autoAlpha: 1,
-            y: 0,
-            duration: 0.82,
-            ease: 'power3.out',
-            scrollTrigger: {
-              id: `experience-reveal-${index}`,
-              trigger: element,
-              start: 'top 88%',
-              once: true,
-              invalidateOnRefresh: true,
+      (gsap.utils.toArray('[data-reveal]', root) as HTMLElement[]).forEach(
+        (element: HTMLElement, index: number) => {
+          gsap.fromTo(
+            element,
+            { autoAlpha: 0, y: 34 },
+            {
+              autoAlpha: 1,
+              y: 0,
+              duration: 0.82,
+              ease: 'power3.out',
+              scrollTrigger: {
+                id: `experience-reveal-${index}`,
+                trigger: element,
+                start: 'top 88%',
+                once: true,
+                invalidateOnRefresh: true,
+              },
             },
-          },
-        );
-      });
+          );
+        },
+      );
 
-      gsap.utils.toArray<HTMLElement>('[data-stagger]', root).forEach((container, index) => {
-        const items = container.querySelectorAll<HTMLElement>(':scope > [data-stagger-item]');
-        if (!items.length) return;
+      (gsap.utils.toArray('[data-stagger]', root) as HTMLElement[]).forEach(
+        (container: HTMLElement, index: number) => {
+          const items = container.querySelectorAll<HTMLElement>(':scope > [data-stagger-item]');
+          if (!items.length) return;
 
-        gsap.fromTo(
-          items,
-          { autoAlpha: 0, y: 26 },
-          {
-            autoAlpha: 1,
-            y: 0,
-            duration: 0.72,
-            stagger: 0.08,
-            ease: 'power3.out',
-            scrollTrigger: {
-              id: `experience-stagger-${index}`,
-              trigger: container,
-              start: 'top 86%',
-              once: true,
-              invalidateOnRefresh: true,
+          gsap.fromTo(
+            items,
+            { autoAlpha: 0, y: 26 },
+            {
+              autoAlpha: 1,
+              y: 0,
+              duration: 0.72,
+              stagger: 0.08,
+              ease: 'power3.out',
+              scrollTrigger: {
+                id: `experience-stagger-${index}`,
+                trigger: container,
+                start: 'top 86%',
+                once: true,
+                invalidateOnRefresh: true,
+              },
             },
-          },
-        );
-      });
+          );
+        },
+      );
 
       if (window.matchMedia('(min-width: 768px)').matches) {
         const parallaxTargets = root.querySelectorAll<HTMLElement>('[data-parallax]');
@@ -215,7 +260,7 @@ export function installExperienceMotion(): void {
         id: 'experience-progress',
         start: 0,
         end: 'max',
-        onUpdate: (self) => {
+        onUpdate: (self: { progress: number }) => {
           const progress = Number(self.progress.toFixed(4));
           document.documentElement.style.setProperty('--experience-progress', progress.toString());
           if (Math.abs(experienceState.get().scrollProgress - progress) >= 0.002) {
@@ -226,7 +271,7 @@ export function installExperienceMotion(): void {
 
       root.querySelectorAll<HTMLElement>('[data-research-section]').forEach((section, index) => {
         const id = section.getAttribute('data-research-section');
-        if (!id) return;
+        if (!id || !isResearchNodeId(id)) return;
 
         ScrollTrigger.create({
           id: `experience-research-${index}`,

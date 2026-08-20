@@ -10,9 +10,16 @@ const issues = [];
 const RENDERER_PAYLOAD_GZIP_BUDGET = 500 * 1024;
 const CORE_SENTINEL = '__JJO_RENDERER_CORE__';
 const RENDERER_CORE_PATH = 'src/lib/experience/renderer-core.ts';
+const STALE_CONSTELLATION_PATH = 'src/components/experience/ResearchConstellation.svelte';
+const OBSOLETE_RESEARCH_IDS = ['robotics-systems', 'vision-perception', 'ai-research'];
 
 function read(relative) {
-  return fs.readFileSync(path.join(root, relative), 'utf8');
+  const file = path.join(root, relative);
+  if (!fs.existsSync(file)) {
+    issues.push(`${relative}: required file missing`);
+    return '';
+  }
+  return fs.readFileSync(file, 'utf8');
 }
 
 function filesUnder(dir, predicate = () => true) {
@@ -28,6 +35,12 @@ function filesUnder(dir, predicate = () => true) {
 
 function count(haystack, needle) {
   return haystack.split(needle).length - 1;
+}
+
+function requireMarkers(source, filename, markers) {
+  for (const marker of markers) {
+    if (!source.includes(marker)) issues.push(`${filename}: missing ${marker}`);
+  }
 }
 
 function localModuleDependencies(file) {
@@ -52,8 +65,10 @@ function collectModuleGraph(entryFiles) {
   return visited;
 }
 
-if (!Array.isArray(RESEARCH_AREAS) || RESEARCH_AREAS.length < 3) {
-  issues.push('taxonomy.mjs: canonical RESEARCH_AREAS are missing or incomplete');
+if (!Array.isArray(RESEARCH_AREAS) || RESEARCH_AREAS.length !== 4) {
+  issues.push(`taxonomy.mjs: expected exactly 4 canonical RESEARCH_AREAS, got ${RESEARCH_AREAS?.length ?? 'missing'}`);
+} else if (new Set(RESEARCH_AREAS).size !== RESEARCH_AREAS.length) {
+  issues.push('taxonomy.mjs: canonical RESEARCH_AREAS contain duplicate IDs');
 }
 
 if (!fs.existsSync(dist)) {
@@ -66,11 +81,20 @@ const requiredFiles = [
   'src/lib/experience/capability.ts',
   'src/lib/experience/renderer-runtime.ts',
   RENDERER_CORE_PATH,
+  'src/lib/experience/motion.ts',
   'src/components/experience/ExperienceCanvas.astro',
+  'src/components/experience/ResearchConstellation.astro',
+  'src/components/Header.astro',
   'src/styles/renderer.css',
+  'src/styles/experience.css',
+  'src/pages/index.astro',
+  'scripts/browser-smoke.mjs',
+  '../.github/workflows/blog-ci.yml',
 ];
-for (const relative of requiredFiles) {
-  if (!fs.existsSync(path.join(root, relative))) issues.push(`${relative}: required renderer file missing`);
+for (const relative of requiredFiles) read(relative);
+
+if (fs.existsSync(path.join(root, STALE_CONSTELLATION_PATH))) {
+  issues.push(`${STALE_CONSTELLATION_PATH}: stale duplicate constellation implementation must be deleted`);
 }
 
 const packageJson = JSON.parse(read('package.json'));
@@ -82,6 +106,9 @@ if (packageJson.devDependencies?.['@types/three'] !== '0.185.3') {
     `package.json: expected @types/three 0.185.3, got ${packageJson.devDependencies?.['@types/three'] ?? 'missing'}`,
   );
 }
+if (packageJson.scripts?.['browser:smoke'] !== 'node scripts/browser-smoke.mjs') {
+  issues.push('package.json: browser:smoke must run scripts/browser-smoke.mjs');
+}
 
 const capability = read('src/lib/experience/capability.ts');
 const runtime = read('src/lib/experience/renderer-runtime.ts');
@@ -89,54 +116,118 @@ const core = read(RENDERER_CORE_PATH);
 const state = read('src/lib/experience/state.ts');
 const component = read('src/components/experience/ExperienceCanvas.astro');
 const rendererCss = read('src/styles/renderer.css');
+const experienceCss = read('src/styles/experience.css');
 const motion = read('src/lib/experience/motion.ts');
 const homePage = read('src/pages/index.astro');
 const researchMap = read('src/components/experience/ResearchConstellation.astro');
+const header = read('src/components/Header.astro');
+const browserSmoke = read('scripts/browser-smoke.mjs');
+const workflow = read('../.github/workflows/blog-ci.yml');
 
-for (const marker of [
+requireMarkers(state, 'state.ts', [
+  "import { RESEARCH_AREAS } from '../taxonomy.mjs';",
+  'RESEARCH_NODE_IDS',
+  'isResearchNodeId',
+  'rendererBackend',
+  'webgpuAvailable',
+  'fps',
+]);
+requireMarkers(motion, 'motion.ts', ['isResearchNodeId', 'activeResearchNode']);
+requireMarkers(core, 'renderer-core.ts', ['RESEARCH_NODE_IDS', 'isResearchNodeId']);
+for (const obsoleteId of OBSOLETE_RESEARCH_IDS) {
+  for (const [filename, source] of [
+    ['state.ts', state],
+    ['motion.ts', motion],
+    ['renderer-core.ts', core],
+  ]) {
+    if (source.includes(obsoleteId)) {
+      issues.push(`${filename}: obsolete research ID ${obsoleteId} is forbidden`);
+    }
+  }
+}
+
+requireMarkers(capability, 'capability.ts', [
   'prefers-reduced-motion',
   'saveData',
   'slowConnection',
   'supportsWebGL2',
-  'mobile-safe-fallback',
+  'narrowViewport',
+  "reasons.push('narrow-viewport')",
+  "reasons.push('coarse-pointer')",
+  'shouldProbeWebGL2',
   "tier === 'safe'",
   "tier === 'ultra'",
-]) {
-  if (!capability.includes(marker)) issues.push(`capability.ts: missing ${marker}`);
-}
-if (!capability.includes("backend: 'webgl2'")) {
-  issues.push('capability.ts: stable WebGL2 renderer boundary missing');
+  "backend: 'webgl2'",
+]);
+if (capability.includes('coarsePointer && narrowViewport')) {
+  issues.push('capability.ts: coarse pointer and narrow viewport must be independent SAFE gates');
 }
 if (capability.includes('WebGPURenderer') || capability.includes('three/webgpu')) {
   issues.push('capability.ts: WebGPU renderer activation is out of scope for this phase');
 }
-
-for (const marker of [
+if (!/@media\s*\(max-width:\s*719px\)\s*,\s*\(pointer:\s*coarse\)/.test(rendererCss)) {
+  issues.push('renderer.css: SAFE media query must use max-width OR coarse-pointer parity');
+}
+requireMarkers(runtime, 'renderer-runtime.ts', [
   'IntersectionObserver',
   "import('./renderer-core')",
+  'loadRendererModule',
+  'rendererModulePromise = null',
   'astro:page-load',
   'astro:before-swap',
   'pointermove',
   "profile.tier === 'safe'",
-]) {
-  if (!runtime.includes(marker)) issues.push(`renderer-runtime.ts: missing ${marker}`);
-}
+  "matchMedia('(max-width: 719px)')",
+  "matchMedia('(pointer: coarse)')",
+  "compactViewport.addEventListener('change', scheduleInit)",
+  "coarsePointer.addEventListener('change', scheduleInit)",
+  "compactViewport.removeEventListener('change', scheduleInit)",
+  "coarsePointer.removeEventListener('change', scheduleInit)",
+]);
 if (/addEventListener\(\s*['"](?:wheel|touchmove)['"]/.test(runtime)) {
   issues.push('renderer-runtime.ts: scroll-hijacking listeners are forbidden');
 }
 
-for (const marker of [
+requireMarkers(motion, 'motion.ts', [
+  'AbortController',
+  "'[data-constellation-node]'",
+  "'pointerenter'",
+  "'focusin'",
+  "'click'",
+  "'hashchange'",
+  "'[data-research-section]'",
+  'setActiveResearchNode',
+  'experienceState.patch',
+]);
+if (count(homePage, 'data-constellation-node={focus.id}') !== 1) {
+  issues.push('index.astro: Home research cards must expose one canonical data-constellation-node mapping');
+}
+if (!researchMap.includes('data-constellation-node={focus.id}')) {
+  issues.push('ResearchConstellation.astro: SVG nodes must derive from canonical focus IDs');
+}
+if (!researchMap.includes('href={`#${focus.id}`}')) {
+  issues.push('ResearchConstellation.astro: SVG links must derive from canonical focus IDs');
+}
+
+requireMarkers(core, 'renderer-core.ts', [
   "from 'three'",
   'WebGLRenderer',
   CORE_SENTINEL,
   'ResizeObserver',
   'visibilitychange',
+  'startAnimation',
+  'stopAnimation',
+  'rendererLoop',
+  "setLoopStatus('stopped')",
+  "setLoopStatus('running')",
+  'MutationObserver',
+  'rendererTheme',
+  'applyThemePalette',
+  'themeObserver.disconnect()',
   'renderer.dispose()',
   'renderer.forceContextLoss()',
   'experienceState.subscribe',
-]) {
-  if (!core.includes(marker)) issues.push(`renderer-core.ts: missing ${marker}`);
-}
+]);
 if (core.includes('WebGPURenderer') || core.includes('three/webgpu')) {
   issues.push('renderer-core.ts: WebGPU activation must remain in the next isolated phase');
 }
@@ -153,27 +244,61 @@ for (const file of sourceFiles) {
   const relative = path.relative(root, file).replaceAll(path.sep, '/');
   const hasDynamicThree = /import\s*\(\s*['"]three['"]\s*\)/.test(source);
   const hasRuntimeStaticThree = /import\s+(?!type\b)[\s\S]*?from\s*['"]three['"]/.test(source);
-
-  if (hasDynamicThree) {
-    issues.push(`${relative}: whole-namespace dynamic Three.js import is forbidden`);
-  }
+  if (hasDynamicThree) issues.push(`${relative}: whole-namespace dynamic Three.js import is forbidden`);
   if (relative !== RENDERER_CORE_PATH && hasRuntimeStaticThree) {
     issues.push(`${relative}: Three.js runtime import must remain isolated to renderer-core.ts`);
   }
 }
 
-if (!state.includes('rendererBackend') || !state.includes('webgpuAvailable') || !state.includes('fps')) {
-  issues.push('state.ts: renderer state boundary is incomplete');
-}
-if (!motion.includes('experienceState.patch') || !motion.includes('activeResearchNode')) {
-  issues.push('motion.ts: DOM/GSAP state is not synchronized with the renderer');
-}
 if (!component.includes('data-experience-canvas') || !component.includes('installExperienceRendererRuntime')) {
   issues.push('ExperienceCanvas.astro: renderer shell/runtime markers missing');
 }
 if (!rendererCss.includes("data-renderer-tier='safe'") || !rendererCss.includes('prefers-reduced-motion')) {
   issues.push('renderer.css: SAFE/reduced-motion fallback missing');
 }
+
+const layeringRule = rendererCss.match(
+  /\.experience-visual-stage\s*>\s*:not\(\.experience-renderer\)\s*\{([\s\S]*?)\}/,
+)?.[1];
+if (!layeringRule) {
+  issues.push('renderer.css: Home renderer layering rule is missing');
+} else if (/\bposition\s*:/.test(layeringRule)) {
+  issues.push('renderer.css: Home renderer layering rule must not override overlay positioning');
+}
+if (!/\.experience-stage-index,\s*\n\.experience-stage-caption,\s*\n\.experience-orbit-label\s*\{[\s\S]*?position:\s*absolute;/.test(experienceCss)) {
+  issues.push('experience.css: Home hero overlays must remain position:absolute');
+}
+
+requireMarkers(header, 'Header.astro', [
+  'data-site-header',
+  'data-header-inner',
+  'data-site-brand',
+  'px-2 sm:px-2 lg:px-3',
+  'whitespace-nowrap',
+]);
+if (/\btruncate\b/.test(header)) issues.push('Header.astro: site brand truncation is forbidden');
+if (header.includes('-mx-1')) issues.push('Header.astro: negative mobile navigation margin is forbidden');
+
+requireMarkers(browserSmoke, 'browser-smoke.mjs', [
+  'data-site-brand',
+  'overlayPositions',
+  'Home card to shared state synchronization',
+  'Research SVG focus synchronization',
+  'Research section scroll synchronization',
+  'live desktop-to-SAFE reclassification',
+  'offscreen RAF stop',
+  'renderer theme palette refresh',
+  'intentional lazy renderer import failure',
+  'lazy renderer retry recovery',
+  'narrow viewport SAFE tier',
+  'wide coarse-pointer SAFE tier',
+  'reduced-motion SAFE tier',
+  'article renderer isolation',
+]);
+if (!workflow.includes('Browser smoke matrix') || !workflow.includes('pnpm browser:smoke')) {
+  issues.push('blog-ci.yml: browser smoke matrix is not wired into CI');
+}
+
 if (count(homePage, '<ExperienceCanvas variant="home" />') !== 1) {
   issues.push('index.astro: expected exactly one Home renderer shell');
 }
@@ -182,12 +307,6 @@ if (!homePage.includes('/image/mouse_surprised.gif')) {
 }
 if (count(researchMap, '<ExperienceCanvas variant="research" />') !== 1) {
   issues.push('ResearchConstellation.astro: expected exactly one Research renderer shell');
-}
-if (!researchMap.includes('data-constellation-node={focus.id}')) {
-  issues.push('ResearchConstellation.astro: SVG nodes must derive from canonical focus IDs');
-}
-if (!researchMap.includes('href={`#${focus.id}`}')) {
-  issues.push('ResearchConstellation.astro: SVG links must derive from canonical focus IDs');
 }
 
 const homeHtml = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
@@ -201,7 +320,13 @@ if (count(researchHtml, 'data-experience-canvas="research"') !== 1) {
 if (!homeHtml.includes('/image/mouse_surprised.gif')) {
   issues.push('dist/index.html: static mouse GIF fallback missing');
 }
+if (!homeHtml.includes('data-site-brand')) {
+  issues.push('dist/index.html: inset-safe site brand marker missing');
+}
 for (const node of RESEARCH_AREAS) {
+  if (!homeHtml.includes(`data-constellation-node="${node}"`)) {
+    issues.push(`dist/index.html: Home canonical research card ${node} missing`);
+  }
   if (!researchHtml.includes(`data-constellation-node="${node}"`)) {
     issues.push(`dist/research/index.html: SVG fallback node ${node} missing`);
   }
@@ -229,7 +354,6 @@ const coreChunks = builtScripts.filter((file) => fs.readFileSync(file, 'utf8').i
 if (coreChunks.length !== 1) {
   issues.push(`built renderer core: expected one sentinel chunk, found ${coreChunks.length}`);
 }
-
 const rendererGraph = collectModuleGraph(coreChunks);
 const rendererPayloadGzip = [...rendererGraph].reduce(
   (total, file) => total + gzipSync(fs.readFileSync(file)).byteLength,
@@ -249,5 +373,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `renderer-contract: PASS (${RESEARCH_AREAS.length} canonical research nodes; ${articleFiles.length} GPU-free articles; SAFE SVG/DOM fallback; ${rendererGraph.size} lazy module(s), ${rendererPayloadGzip} B gzip)`,
+  `renderer-contract: PASS (${RESEARCH_AREAS.length} canonical research nodes; synchronized Home/SVG/sections/GPU; true RAF/theme/retry lifecycle; ${articleFiles.length} GPU-free articles; ${rendererGraph.size} lazy module(s), ${rendererPayloadGzip} B gzip)`,
 );

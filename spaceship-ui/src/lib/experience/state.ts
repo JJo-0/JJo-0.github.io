@@ -1,7 +1,15 @@
+import { RESEARCH_AREAS } from '../taxonomy.mjs';
+
 export type ExperienceRoute = 'home' | 'research' | 'other';
 export type ExperienceTier = 'safe' | 'normal' | 'ultra';
 export type RendererBackend = 'none' | 'webgl2' | 'webgpu';
-export type ResearchNodeId = 'robotics-systems' | 'vision-perception' | 'ai-research' | null;
+
+export const RESEARCH_NODE_IDS = Object.freeze([...RESEARCH_AREAS]) as readonly string[];
+export type ResearchNodeId = string | null;
+
+export function isResearchNodeId(value: string): value is Exclude<ResearchNodeId, null> {
+  return RESEARCH_NODE_IDS.includes(value);
+}
 
 export interface ExperiencePointer {
   x: number;

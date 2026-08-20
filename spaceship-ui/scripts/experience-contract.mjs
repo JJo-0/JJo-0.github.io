@@ -11,7 +11,12 @@ const HOME_BUDGET_GZIP = 200 * 1024;
 const RESEARCH_BUDGET_GZIP = 200 * 1024;
 
 function read(relative) {
-  return fs.readFileSync(path.join(root, relative), 'utf8');
+  const file = path.join(root, relative);
+  if (!fs.existsSync(file)) {
+    issues.push(`${relative}: required file is missing`);
+    return '';
+  }
+  return fs.readFileSync(file, 'utf8');
 }
 
 async function loadResearchAreas() {
@@ -24,8 +29,8 @@ async function loadResearchAreas() {
   try {
     const taxonomy = await import(`${pathToFileURL(file).href}?experience-contract`);
     const areas = taxonomy.RESEARCH_AREAS;
-    if (!Array.isArray(areas) || areas.length < 3 || !areas.every((area) => typeof area === 'string')) {
-      issues.push('src/lib/taxonomy.mjs: RESEARCH_AREAS must contain at least three string IDs');
+    if (!Array.isArray(areas) || areas.length !== 4 || !areas.every((area) => typeof area === 'string')) {
+      issues.push('src/lib/taxonomy.mjs: RESEARCH_AREAS must contain exactly four string IDs');
       return [];
     }
     return areas;
@@ -72,21 +77,25 @@ const researchAreas = await loadResearchAreas();
 
 const requiredFiles = [
   'src/styles/experience.css',
+  'src/styles/renderer.css',
   'src/lib/experience/motion.ts',
   'src/components/experience/MotionRuntime.astro',
   'src/components/experience/ResearchConstellation.astro',
   'src/components/experience/ExperienceCanvas.astro',
+  'src/components/Header.astro',
+  'scripts/browser-smoke.mjs',
+  '../.github/workflows/blog-ci.yml',
 ];
-
-for (const relative of requiredFiles) {
-  if (!fs.existsSync(path.join(root, relative))) issues.push(`${relative}: required experience file is missing`);
-}
+for (const relative of requiredFiles) read(relative);
 
 const packageJson = JSON.parse(read('package.json'));
 if (!packageJson.dependencies?.gsap) issues.push('package.json: GSAP dependency is missing');
 if (!packageJson.dependencies?.three) issues.push('package.json: isolated Three.js renderer dependency is missing');
 if (!packageJson.scripts?.['renderer:check']) {
   issues.push('package.json: renderer isolation contract is not wired');
+}
+if (packageJson.scripts?.['browser:smoke'] !== 'node scripts/browser-smoke.mjs') {
+  issues.push('package.json: browser smoke command is missing or incorrect');
 }
 
 const layoutSource = read('src/layouts/Layout.astro');
@@ -95,12 +104,19 @@ const researchSource = read('src/pages/research.astro');
 const constellationSource = read('src/components/experience/ResearchConstellation.astro');
 const motionSource = read('src/lib/experience/motion.ts');
 const experienceCss = read('src/styles/experience.css');
+const rendererCss = read('src/styles/renderer.css');
+const headerSource = read('src/components/Header.astro');
+const browserSmoke = read('scripts/browser-smoke.mjs');
+const workflow = read('../.github/workflows/blog-ci.yml');
 
 if (!layoutSource.includes("import '@/styles/experience.css'")) {
   issues.push('Layout.astro: experience.css is not loaded');
 }
 if (!homeSource.includes('data-experience-page="home"') || !homeSource.includes('<MotionRuntime scope="home"')) {
   issues.push('index.astro: homepage experience runtime boundary is missing');
+}
+if (!homeSource.includes('data-constellation-node={focus.id}')) {
+  issues.push('index.astro: Home research cards are not connected to the canonical experience state');
 }
 if (
   !researchSource.includes('data-experience-page="research"') ||
@@ -122,6 +138,9 @@ if (!constellationSource.includes('<ExperienceCanvas variant="research" />')) {
 if (!motionSource.includes("prefers-reduced-motion: reduce") || !motionSource.includes('ScrollTrigger')) {
   issues.push('motion.ts: reduced-motion or ScrollTrigger support is missing');
 }
+if (!motionSource.includes('AbortController') || !motionSource.includes("'[data-constellation-node]'")) {
+  issues.push('motion.ts: shared interaction lifecycle is missing');
+}
 if (/addEventListener\(\s*['"](?:wheel|touchmove)['"]/.test(motionSource)) {
   issues.push('motion.ts: scroll hijacking listener is forbidden');
 }
@@ -130,6 +149,36 @@ if (!experienceCss.includes('@media (prefers-reduced-motion: reduce)')) {
 }
 if (!experienceCss.includes('::view-transition-old(root)')) {
   issues.push('experience.css: root view-transition treatment is missing');
+}
+const rendererLayeringRule = rendererCss.match(
+  /\.experience-visual-stage\s*>\s*:not\(\.experience-renderer\)\s*\{([\s\S]*?)\}/,
+)?.[1];
+if (!rendererLayeringRule || /\bposition\s*:/.test(rendererLayeringRule)) {
+  issues.push('renderer.css: renderer layering must preserve absolute Home overlays');
+}
+
+for (const marker of ['data-site-header', 'data-header-inner', 'data-site-brand', 'whitespace-nowrap']) {
+  if (!headerSource.includes(marker)) issues.push(`Header.astro: missing ${marker}`);
+}
+if (/\btruncate\b/.test(headerSource)) issues.push('Header.astro: brand must not be truncated');
+if (headerSource.includes('-mx-1')) issues.push('Header.astro: negative mobile navigation margin is forbidden');
+if (!headerSource.includes('px-2 sm:px-2 lg:px-3')) {
+  issues.push('Header.astro: explicit inner horizontal gutter is missing');
+}
+
+for (const marker of [
+  'desktop Home/header/overlay/card synchronization',
+  'Research state/RAF/theme matrix',
+  'narrow fine-pointer SAFE parity',
+  'mobile SAFE/header matrix',
+  'wide coarse-pointer SAFE parity',
+  'reduced-motion SAFE parity',
+  'article renderer isolation',
+]) {
+  if (!browserSmoke.includes(marker)) issues.push(`browser-smoke.mjs: missing matrix case ${marker}`);
+}
+if (!workflow.includes('Browser smoke matrix') || !workflow.includes('pnpm browser:smoke')) {
+  issues.push('blog-ci.yml: browser smoke matrix is not wired');
 }
 
 if (!fs.existsSync(dist)) {
@@ -154,6 +203,9 @@ if (!homeHtml.includes('/image/mouse_surprised.gif')) {
 if (!homeHtml.includes('data-experience-canvas="home"')) {
   issues.push('dist/index.html: progressive Home renderer shell is missing');
 }
+if (!homeHtml.includes('data-site-header') || !homeHtml.includes('data-site-brand')) {
+  issues.push('dist/index.html: header/brand layout markers are missing');
+}
 if (!researchHtml.includes('data-experience-runtime="research"')) {
   issues.push('dist/research/index.html: research motion runtime marker is missing');
 }
@@ -161,6 +213,9 @@ if (!researchHtml.includes('data-experience-canvas="research"')) {
   issues.push('dist/research/index.html: progressive Research renderer shell is missing');
 }
 for (const node of researchAreas) {
+  if (!homeHtml.includes(`data-constellation-node="${node}"`)) {
+    issues.push(`dist/index.html: Home research node ${node} is missing`);
+  }
   if (!researchHtml.includes(`data-constellation-node="${node}"`)) {
     issues.push(`dist/research/index.html: constellation node ${node} is missing`);
   }
@@ -212,5 +267,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `experience-contract: PASS (${researchAreas.length} canonical research areas; home ${homeGzip} B initial gzip, research ${researchGzip} B; motion + SVG + isolated renderer shell, no article runtime)`,
+  `experience-contract: PASS (${researchAreas.length} canonical research areas; inset-safe header; Home/SVG/section synchronization; browser matrix wired; home ${homeGzip} B initial gzip, research ${researchGzip} B; no article runtime)`,
 );

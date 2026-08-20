@@ -15,6 +15,10 @@ on:
       - '.github/workflows/blog-ci.yml'
   workflow_dispatch:
 
+concurrency:
+  group: blog-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -63,3 +67,11 @@ jobs:
 
       - name: Content integrity check
         run: pnpm content:check
+
+      - name: Browser smoke matrix
+        timeout-minutes: 5
+        # Semantically identical to `pnpm browser:smoke`, but the exit guard is
+        # scoped to this Node process instead of leaking through NODE_OPTIONS.
+        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
