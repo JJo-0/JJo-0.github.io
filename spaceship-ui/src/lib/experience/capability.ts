@@ -83,7 +83,7 @@ export function detectExperienceCapability(): CapabilityProfile {
   // NORMAL deliberately targets WebGL2. A WebGPU-only device that does not
   // satisfy the ULTRA envelope stays on the accessible SVG/DOM surface.
   if (shouldProbeGpu && !webgl2Available && !ultraCandidate) {
-    reasons.push('no-profile-backend');
+    reasons.push('no-gpu-backend');
   }
 
   const mustUseSafe = reasons.length > 0;
