@@ -38,21 +38,23 @@ export function detectExperienceCapabilities(): ExperienceCapabilities {
   const nav = navigator as ExtendedNavigator;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  const narrowViewport = window.innerWidth < 768;
   const saveData = nav.connection?.saveData === true;
   const effectiveType = nav.connection?.effectiveType ?? '';
   const constrainedNetwork = /(?:slow-2g|2g)/i.test(effectiveType);
   const cores = nav.hardwareConcurrency ?? 4;
   const memory = nav.deviceMemory ?? 4;
   const webgpuAvailable = Boolean(nav.gpu);
-  const webgl2Available = !reducedMotion && supportsWebGL2();
+  const webgl2Available = !reducedMotion && !narrowViewport && supportsWebGL2();
   const reasons: string[] = [];
 
   if (reducedMotion) reasons.push('prefers-reduced-motion');
+  if (narrowViewport) reasons.push('mobile-svg-fallback');
   if (saveData) reasons.push('save-data');
   if (constrainedNetwork) reasons.push(`network-${effectiveType}`);
-  if (!webgl2Available && !reducedMotion) reasons.push('webgl2-unavailable');
+  if (!webgl2Available && !reducedMotion && !narrowViewport) reasons.push('webgl2-unavailable');
 
-  if (reducedMotion || saveData || constrainedNetwork || !webgl2Available) {
+  if (reducedMotion || narrowViewport || saveData || constrainedNetwork || !webgl2Available) {
     return {
       tier: 'safe',
       backend: 'none',
