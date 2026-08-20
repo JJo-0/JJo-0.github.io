@@ -4,7 +4,7 @@ Tracking issue: [#38](https://github.com/JJo-0/JJo-0.github.io/issues/38)
 
 ## Contract
 
-A reader-facing visual is selected only by an exact formula ID.
+Every protected display equation has an explicit review state selected by its exact formula ID.
 
 ```text
 formulaId
@@ -14,64 +14,72 @@ formulaId
   -> synchronized equation / table / visualization / checks
 ```
 
-Unreviewed formulas render no visual. They never fall back to a generic Gaussian, matrix, gradient, or `y=x²` scene.
+Production never chooses a visualization from TeX keyword heuristics. An equation is either mapped to an approved exact-ID lesson or explicitly marked `no-visual-with-reason`. The migration-only `unreviewed` state is now zero.
 
-## Approved lessons
+## Completed Part II golden lessons
 
-### 1. Dot-product prediction
+1. **Dot-product prediction** — `MAI-P2-017`.
+2. **Least squares → normal equation** — `MAI-P2-020`–`MAI-P2-027`.
+3. **Residual-gradient chain rule** — `MAI-P2-028`–`MAI-P2-030`.
+4. **Sample sums → matrix notation** — `MAI-P2-031`–`MAI-P2-033`.
+5. **Test MSE / expected generalization gap** — `MAI-P2-034`–`MAI-P2-035`.
+6. **Ridge / weight decay** — `MAI-P2-036`.
+7. **SVM, sigmoid, feature map, and kernel trick** — `MAI-P2-044`–`MAI-P2-048`.
+8. **Minimum-distance prototypes and perpendicular-bisector boundary** — reviewed display equations in `MAI-P2-050`–`MAI-P2-057`.
+9. **Bayes posterior, evidence normalization, loss, and conditional risk** — reviewed display equations in `MAI-P2-062`–`MAI-P2-079`.
+10. **Gaussian discriminants: QDA → LDA → minimum-distance limit** — reviewed display equations in `MAI-P2-081`–`MAI-P2-099`.
+11. **Naive Bayes and the class-prior correction** — `MAI-P2-102` and `MAI-P2-103`.
+12. **Dimensionality growth / feature-observation imbalance** — `MAI-P2-100`.
 
-`MAI-P2-017` decomposes `wᵀx` into the individual products `wᵢxᵢ`, their signed contributions, and their sum.
+K-fold cross-validation is intentionally a **section-level concept lesson**, not a fabricated formula lesson, because the protected source presents a procedure and figure rather than a display equation. It is mounted between source markers `P2-C084` and `P2-C085`.
 
-### 2. Least squares to normal equation
+Source provenance remains explicit. In particular, source blanks and editorial completions (`066/067`, `075/076`), the suspect/corrected one-dimensional Gaussian pair (`087/088`), and the source-suspect/corrected Naive Bayes pair (`102/103`) remain distinct.
 
-`MAI-P2-020`–`MAI-P2-027` share one `X`, `y`, and `w` across prediction, residual, MSE, gradient, `XᵀX`, `Xᵀy`, the normal equation, and the solution.
+## Completed Part I primitives
 
-### 3. Residual-gradient chain rule
+Four reusable exact-ID lesson groups cover the foundations needed by later Modern AI parts:
 
-`MAI-P2-028`–`MAI-P2-030` trace `x -> Ax -> residual -> weighted residual -> 2Aᵀ -> gradient`. The analytical gradient is checked against central finite differences.
+- **Linear algebra primitives** — dot/outer products, matrix products, norms, rank, inverse, orthogonal norm preservation, determinant.
+- **Eigen / covariance primitives** — quadratic forms, eigenvalue relations, covariance construction, positive definiteness, eigendecomposition, decorrelation.
+- **Probability primitives** — CDF/PDF, independence, expectation, covariance, conditional probability, conditional expectation.
+- **Optimization primitives** — expected/empirical risk, MSE, gradient, stationarity, Hessian/positive definiteness, gradient descent, mini-batches.
 
-### 4. Sample sums to matrix notation
+These primitives are selected only for equations where an interactive, derivational, or structural visualization adds faithful information. Supporting definitions, duplicate identities, and equations whose natural interactive treatment belongs to a later series part are explicitly `no-visual-with-reason` rather than receiving a generic placeholder.
 
-`MAI-P2-031`–`MAI-P2-033` accumulate `xₗxₗᵀ` into `XᵀX` and verify that `Σₗ(wᵀxₗ-yₗ)² = ||Xw-y||₂²`.
+## Final Part I–II inventory
 
-### 5. Test MSE and expected generalization gap
+- Part I display formulas: **238**
+- Part II display formulas: **65**
+- Total protected display formulas: **303**
+- Approved formula IDs: **108**
+- Exact formula lesson groups: **16**
+- Section-level concept lessons: **1** (`K-fold`)
+- `no-visual-with-reason`: **195**
+- `unreviewed`: **0**
+- Generic fallback renderers in production: **0**
 
-`MAI-P2-034` and `MAI-P2-035` now keep the source procedure explicit:
+Protected formula TeX, SHA-256 records, PDF page mappings, source equation numbers, and source-status distinctions are unchanged.
 
-1. fit `w★` using only the training set;
-2. evaluate that fixed model on an independent test set;
-3. repeat the complete sample–fit–test procedure to interpret the expectation inequality.
+## Fail-closed validation
 
-The lesson contains selectable test residuals, an exact squared-error table, and a deterministic 80-trial illustration. It also shows that an individual split may reverse the inequality even though the repeated average has larger test error. The repeated experiment is labeled as an illustration, not a proof.
+`modern-ai-formula-lesson-audit.mjs` verifies the 303-item inventory and exact state partition (`108 + 195 + 0`), exact-ID renderer selection, K-fold section placement, lazy disclosure-local loading, mobile-safe layout/reduced-motion behavior, and deterministic numerical invariants across all lesson models.
 
-### 6. Ridge regularization
+Representative invariants include:
 
-`MAI-P2-036` uses the source-aligned setup: a quadratic generating function, a degree-9 fitted model, and a variable weight-decay strength `λ`.
+- every K-fold sample appears in exactly one held-out fold and train/test indices are disjoint;
+- explicit feature-map inner products agree with the corresponding kernel computation;
+- nearest-distance and maximum-discriminant classifications agree;
+- Bayes posterior probabilities sum to one and 0–1 minimum risk agrees with MAP;
+- Gaussian covariance matrices are symmetric and the QDA → LDA → minimum-distance hierarchy is numerically consistent under the stated assumptions;
+- corrected Naive Bayes scores retain class priors;
+- matrix-product outer-sum decompositions agree with direct multiplication;
+- trace/determinant identities agree with eigenvalues;
+- variances are non-negative and conditional distributions normalize to one;
+- stable gradient-descent settings converge while an intentionally excessive learning rate demonstrates instability;
+- all previously approved least-squares, residual-gradient, generalization-gap, and ridge invariants remain enforced.
 
-The same computation controls the curve, `MSE_train`, every coefficient, `||w||²`, every `λwₖ²` contribution, the penalty, and the total objective `MSE_train + λ||w||²`. A Chebyshev basis on the interval from -1 to 1 is used for numerical stability and is disclosed in the lesson.
+The same CI run also preserves the Part I formula SHA-256 contract, Part II 13-page / 103-formula / 65-display-formula source ledger, taxonomy, legacy redirects, article isolation from the Three.js renderer, and rendered-content checks.
 
-## Current inventory
+## Follow-up after PR #40
 
-- Part I display formulas: 238
-- Part II display formulas: 65
-- Total: 303
-- Approved formula IDs: 18
-- Exact lesson groups: 6
-- Unreviewed formulas: 285
-
-Protected formula TeX, SHA-256 records, source page mappings, and source-status distinctions remain unchanged.
-
-## Next work
-
-1. K-fold cross-validation requires a section-level concept lesson because the source provides a procedure and figure but no display formula ID.
-2. SVM margin, sigmoid, and kernel feature mapping.
-3. Minimum-distance prototypes and perpendicular-bisector boundaries.
-4. Bayes posterior, evidence normalization, and Bayes risk.
-5. Gaussian QDA to LDA to minimum-distance hierarchy.
-6. Naive Bayes and dimensionality growth.
-7. Part I linear algebra, probability, and optimization.
-8. Apply the same exact-ID contract to Modern AI III–VIII.
-
-## Fail-closed audit
-
-The audit verifies the 303-item inventory, the exact 18-item approved set, absence of renderers for unreviewed formulas, numerical oracles for every implemented lesson, `test SSE / M = test MSE`, a positive repeated generalization gap with individual reversed splits, ridge objective decomposition, coefficient shrinkage as `λ` increases, lazy dynamic loading, built lesson-host counts, and all existing Part I and Part II source contracts.
+PR #40 completes the Part I–II migration milestone. Issue #38 remains the umbrella for applying the same exact-ID contract to Modern AI III–VIII as those parts are authored and published.
