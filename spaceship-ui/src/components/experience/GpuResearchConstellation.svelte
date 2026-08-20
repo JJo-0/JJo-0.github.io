@@ -25,6 +25,7 @@
     let renderer: ResearchRendererHandle | null = null;
     let disposed = false;
     let bootVersion = 0;
+    let nodeObserver: MutationObserver | null = null;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const nodeListeners: Array<{
       element: Element;
@@ -39,16 +40,27 @@
     };
 
     const bindNodeInteractions = (): void => {
-      document.querySelectorAll<Element>('[data-constellation-node]').forEach((element) => {
+      const nodes = [...document.querySelectorAll<Element>('[data-constellation-node]')];
+      nodeObserver = new MutationObserver((records) => {
+        for (const record of records) {
+          const element = record.target as Element;
+          if (!element.hasAttribute('data-active')) continue;
+          const id = element.getAttribute('data-constellation-node');
+          if (id) setActive(id);
+        }
+      });
+
+      for (const element of nodes) {
         const id = element.getAttribute('data-constellation-node');
-        if (!id) return;
+        if (!id) continue;
 
         const listener = (): void => setActive(id);
         for (const type of ['pointerenter', 'focusin', 'click']) {
           element.addEventListener(type, listener, { passive: true });
           nodeListeners.push({ element, type, listener });
         }
-      });
+        nodeObserver.observe(element, { attributes: true, attributeFilter: ['data-active'] });
+      }
     };
 
     const destroyRenderer = (): void => {
@@ -84,8 +96,7 @@
         setActive(initialId);
         ready = true;
         stage.setAttribute('data-gpu-ready', '');
-      } catch (error) {
-        console.warn('Research GPU renderer fell back to the SVG map.', error);
+      } catch {
         tier = 'safe';
         backend = 'none';
         stage.dataset.experienceTier = 'safe';
@@ -108,6 +119,7 @@
       disposed = true;
       bootVersion += 1;
       destroyRenderer();
+      nodeObserver?.disconnect();
       reducedMotion.removeEventListener('change', boot);
       document.removeEventListener('jjo:research-node', onResearchNode);
       for (const { element, type, listener } of nodeListeners) {
