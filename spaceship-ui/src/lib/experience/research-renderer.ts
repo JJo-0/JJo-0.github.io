@@ -176,11 +176,11 @@ export function createResearchRenderer(
 
   const wrapper = container.parentElement ?? container;
   const pointer = new THREE.Vector2();
+  const startedAt = performance.now();
   let activeId = nodes[0]?.id ?? '';
   let frame = 0;
   let visible = true;
   let destroyed = false;
-  const clock = new THREE.Clock();
 
   const resize = (): void => {
     const rect = container.getBoundingClientRect();
@@ -203,9 +203,9 @@ export function createResearchRenderer(
     }
   };
 
-  const renderFrame = (): void => {
+  const renderFrame = (timestamp: number): void => {
     if (destroyed || !visible) return;
-    const elapsed = clock.getElapsedTime();
+    const elapsed = (timestamp - startedAt) / 1000;
 
     root.rotation.y += (pointer.x * 0.1 + Math.sin(elapsed * 0.18) * 0.045 - root.rotation.y) * 0.035;
     root.rotation.x += (-0.08 - pointer.y * 0.055 - root.rotation.x) * 0.035;
@@ -230,7 +230,6 @@ export function createResearchRenderer(
 
   const start = (): void => {
     if (destroyed || frame || !visible) return;
-    clock.start();
     frame = window.requestAnimationFrame(renderFrame);
   };
 
@@ -238,7 +237,6 @@ export function createResearchRenderer(
     if (!frame) return;
     window.cancelAnimationFrame(frame);
     frame = 0;
-    clock.stop();
   };
 
   const onPointerMove = (event: PointerEvent): void => {
@@ -248,7 +246,9 @@ export function createResearchRenderer(
     pointer.y = ((event.clientY - rect.top) / Math.max(rect.height, 1)) * 2 - 1;
   };
 
-  const onPointerLeave = (): void => pointer.set(0, 0);
+  const onPointerLeave = (): void => {
+    pointer.set(0, 0);
+  };
   const onVisibilityChange = (): void => {
     visible = !document.hidden;
     if (visible) start();
