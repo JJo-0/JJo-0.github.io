@@ -30,7 +30,7 @@
     const nodeListeners: Array<{
       element: Element;
       type: string;
-      listener: EventListener;
+      listener: (event: Event) => void;
     }> = [];
 
     const setActive = (id: string): void => {
