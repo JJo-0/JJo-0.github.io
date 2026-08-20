@@ -62,6 +62,13 @@ export function installExperienceRendererRuntime(): void {
       activeHost.dataset.rendererStatus = 'idle';
       delete activeHost.dataset.rendererTier;
       delete activeHost.dataset.rendererReason;
+      delete activeHost.dataset.rendererPreferredBackend;
+      delete activeHost.dataset.rendererBackend;
+      delete activeHost.dataset.rendererQuality;
+      delete activeHost.dataset.rendererDpr;
+      delete activeHost.dataset.rendererFps;
+      delete activeHost.dataset.rendererTargetFps;
+      delete activeHost.dataset.rendererAdaptation;
       delete activeHost.dataset.rendererLoop;
       delete activeHost.dataset.rendererTheme;
     }
@@ -111,26 +118,32 @@ export function installExperienceRendererRuntime(): void {
       return;
     }
 
-    setStatus(host, 'loading', 'Loading');
+    setStatus(host, 'loading', profile.backend === 'webgpu' ? 'Loading WebGPU' : 'Loading WebGL2');
 
     try {
       const { mountExperienceRenderer } = await loadRendererModule();
       if (currentGeneration !== generation || !host.isConnected) return;
 
-      mountedRenderer = mountExperienceRenderer({ host, canvas, profile, variant });
+      const handle = await mountExperienceRenderer({ host, canvas, profile, variant });
       if (currentGeneration !== generation || !host.isConnected) {
-        mountedRenderer.destroy();
-        mountedRenderer = null;
+        handle.destroy();
         return;
       }
 
-      experienceState.patch({ rendererBackend: 'webgl2' });
-      setStatus(host, 'active', profile.tier === 'ultra' ? 'WebGL2 Ultra' : 'WebGL2');
+      mountedRenderer = handle;
+      experienceState.patch({ rendererBackend: handle.backend });
+      const backendLabel = handle.backend === 'webgpu' ? 'WebGPU' : 'WebGL2';
+      setStatus(host, 'active', `${backendLabel} Adaptive`);
     } catch (error) {
       console.warn('JJo Experience renderer fell back to SVG/DOM.', error);
       mountedRenderer?.destroy();
       mountedRenderer = null;
-      experienceState.patch({ rendererBackend: 'none', tier: 'safe' });
+      experienceState.patch({
+        rendererBackend: 'none',
+        tier: 'safe',
+        quality: 'low',
+        adaptationReason: 'renderer-init-failed',
+      });
       host.dataset.rendererTier = 'safe';
       setStatus(host, 'fallback', 'SVG');
     }
@@ -149,13 +162,18 @@ export function installExperienceRendererRuntime(): void {
     document.documentElement.dataset.experienceTier = profile.tier;
     host.dataset.rendererTier = profile.tier;
     host.dataset.rendererReason = profile.reasons.join(',') || 'capable';
+    host.dataset.rendererPreferredBackend = profile.backend;
     experienceState.patch({
       route,
       reducedMotion: profile.reducedMotion,
       tier: profile.tier,
       rendererBackend: 'none',
       webgpuAvailable: profile.webgpuAvailable,
+      quality: profile.initialQuality,
       fps: 0,
+      dpr: 1,
+      targetFps: profile.maxFps,
+      adaptationReason: 'initial',
     });
 
     if (profile.tier === 'safe') {
@@ -164,7 +182,7 @@ export function installExperienceRendererRuntime(): void {
     }
 
     installPointerTracking(host, profile);
-    setStatus(host, 'idle', profile.tier === 'ultra' ? 'Ultra ready' : 'Ready');
+    setStatus(host, 'idle', profile.backend === 'webgpu' ? 'WebGPU ready' : 'WebGL2 ready');
 
     if (!('IntersectionObserver' in window)) {
       void mountHost(host, profile, currentGeneration);
