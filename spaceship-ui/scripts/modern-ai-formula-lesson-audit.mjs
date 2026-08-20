@@ -2,8 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-import { APPROVED_FORMULA_IDS } from '../src/lib/formula-lessons/overrides.mjs';
-import { FORMULA_LESSON_COUNTS, getFormulaLessonInventory } from '../src/lib/formula-lessons/registry.mjs';
+import {
+  APPROVED_FORMULA_IDS,
+  getApprovedLessonOverride,
+  getNoVisualReason,
+} from '../src/lib/formula-lessons/overrides.mjs';
 import { getFormulaLessonSpec, getAllFormulaLessonSpecs } from '../src/lib/formula-lessons/lesson-specs.mjs';
 import { computeDotProductPrediction } from '../src/lib/formula-lessons/dot-product.mjs';
 import { computeLeastSquares, solveNormalEquation, approximatelyEqual } from '../src/lib/formula-lessons/least-squares.mjs';
@@ -21,7 +24,75 @@ import { computeEigenCovarianceLesson } from '../src/lib/formula-lessons/eigen-c
 import { computeProbabilityLesson } from '../src/lib/formula-lessons/probability-primitives.mjs';
 import { computeOptimizationLesson, gradientDescent } from '../src/lib/formula-lessons/optimization-primitives.mjs';
 
-const root=process.cwd(); const issues=[]; const inventory=getFormulaLessonInventory();
+const root = process.cwd();
+const issues = [];
+
+// Keep the direct-Node audit independent from Vite's JSON-module handling.
+// Production registry.mjs may import JSON through Astro/Vite, while this script
+// deliberately uses Node-native fs + JSON.parse so Node 22 needs no import attributes.
+const part1Ledger = JSON.parse(
+  fs.readFileSync(path.join(root, 'scripts', 'modern-ai-formula-hashes.json'), 'utf8'),
+);
+const part2Ledger = JSON.parse(
+  fs.readFileSync(path.join(root, 'src', 'data', 'modern-ai-part2', 'formula-ledger.json'), 'utf8'),
+);
+
+const displayFormulas = [
+  ...part1Ledger.formulas.map((formula) => ({
+    formulaId: formula.id,
+    part: 1,
+    sourceStatus: 'source-exact',
+  })),
+  ...part2Ledger.formulas
+    .filter((formula) => formula.display === 'display')
+    .map((formula) => ({
+      formulaId: formula.formulaId,
+      part: 2,
+      sourceStatus: formula.status,
+      pdfPage: formula.pdfPage,
+      articleSection: formula.articleSection,
+    })),
+];
+
+const inventory = displayFormulas.map((source) => {
+  const override = getApprovedLessonOverride(source.formulaId);
+  if (override) {
+    return { formulaId: source.formulaId, ...override, source, reason: null };
+  }
+  const reason = getNoVisualReason(source.formulaId, source);
+  if (reason) {
+    return {
+      formulaId: source.formulaId,
+      lessonId: null,
+      focus: null,
+      state: 'no-visual-with-reason',
+      mode: 'none',
+      renderer: null,
+      reason,
+      source,
+    };
+  }
+  return {
+    formulaId: source.formulaId,
+    lessonId: null,
+    focus: null,
+    state: 'unreviewed',
+    mode: 'none',
+    renderer: null,
+    reason: null,
+    source,
+  };
+});
+
+const FORMULA_LESSON_COUNTS = Object.freeze({
+  total: displayFormulas.length,
+  part1: displayFormulas.filter((formula) => formula.part === 1).length,
+  part2: displayFormulas.filter((formula) => formula.part === 2).length,
+  approved: APPROVED_FORMULA_IDS.length,
+  noVisual: inventory.filter((entry) => entry.state === 'no-visual-with-reason').length,
+  unreviewed: inventory.filter((entry) => entry.state === 'unreviewed').length,
+});
+
 const fail=(m)=>issues.push(m); const close=(a,b,t=1e-8)=>approximatelyEqual(a,b,t);
 function expectClose(a,b,label,t=1e-8){if(!close(a,b,t))fail(`${label}: expected ${b}, found ${a}`)}
 function expectVector(a,b,label,t=1e-8){if(!Array.isArray(a)||a.length!==b.length){fail(`${label}: length mismatch`);return;}b.forEach((v,i)=>expectClose(a[i],v,`${label}[${i}]`,t));}
