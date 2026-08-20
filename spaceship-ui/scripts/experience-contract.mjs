@@ -59,8 +59,8 @@ for (const relative of requiredFiles) {
 
 const packageJson = JSON.parse(read('package.json'));
 if (!packageJson.dependencies?.gsap) issues.push('package.json: GSAP dependency is missing');
-if (packageJson.dependencies?.three || packageJson.devDependencies?.three) {
-  issues.push('package.json: Three.js must remain out of the Design System / Motion v1 boundary');
+if (!packageJson.scripts?.['three:check']) {
+  issues.push('package.json: isolated Three.js phase must be guarded by three:check');
 }
 
 const layoutSource = read('src/layouts/Layout.astro');
@@ -123,7 +123,7 @@ for (const node of ['robotics-systems', 'vision-perception', 'ai-research']) {
   }
 }
 if (/<canvas\b/i.test(homeHtml) || /<canvas\b/i.test(researchHtml)) {
-  issues.push('home/research: GPU canvas was introduced before the Three.js isolation phase');
+  issues.push('home/research: GPU canvas must be client-created and cannot be required by static HTML');
 }
 
 const homeGzip = scriptGzipBytes(homeHtml);
@@ -140,16 +140,20 @@ if (!samplePost) {
   issues.push('dist/posts: no published post HTML was found');
 } else {
   const postHtml = fs.readFileSync(samplePost, 'utf8');
-  if (postHtml.includes('data-experience-runtime=')) {
-    issues.push(`${path.relative(dist, samplePost)}: article must not mount the experience runtime`);
+  if (postHtml.includes('data-experience-runtime=') || postHtml.includes('data-gpu-constellation')) {
+    issues.push(`${path.relative(dist, samplePost)}: article must not mount the portfolio experience runtime`);
   }
 
   for (const source of localModuleScripts(postHtml)) {
     const file = path.join(dist, source.replace(/^\//, ''));
     if (!fs.existsSync(file)) continue;
     const js = fs.readFileSync(file, 'utf8');
-    if (js.includes('__jjoExperienceRuntime') || js.includes('experience-progress')) {
-      issues.push(`${path.relative(dist, samplePost)}: article references the motion runtime bundle`);
+    if (
+      js.includes('__jjoExperienceRuntime') ||
+      js.includes('experience-progress') ||
+      js.includes('__jjoResearchRenderer')
+    ) {
+      issues.push(`${path.relative(dist, samplePost)}: article references a portfolio runtime bundle`);
     }
   }
 }
@@ -162,5 +166,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `experience-contract: PASS (home ${homeGzip} B gzip, research ${researchGzip} B gzip; reduced-motion, SVG fallback, no article runtime)`,
+  `experience-contract: PASS (home ${homeGzip} B gzip, research ${researchGzip} B gzip; reduced-motion, static SVG fallback, isolated GPU phase)`,
 );
