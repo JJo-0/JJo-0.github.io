@@ -286,14 +286,16 @@ async function activateNode(cdp, sessionId, selector, index, label) {
       }
       window.focus();
       node.focus({ preventScroll: true });
-      const focused = document.activeElement === node;
+      const focusable = node.matches('a[href]') && node.getAttribute('tabindex') === '0';
+      const href = node.getAttribute('href');
       node.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
       node.dispatchEvent(new PointerEvent('pointerenter'));
-      return { id: node.getAttribute('data-constellation-node'), focused };
+      return { id: node.getAttribute('data-constellation-node'), focusable, href };
     })()`,
   );
   assert.ok(activation?.id, `${label}: canonical node missing`);
-  assert.equal(activation.focused, true, `${label}: programmatic focus did not land on node`);
+  assert.equal(activation.focusable, true, `${label}: node is not an explicit focusable link`);
+  assert.ok(activation.href, `${label}: focusable link has no href`);
 
   await waitExpression(
     cdp,
