@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Triggered only on the isolated taxonomy migration branch.
+# Low-level Git ref trigger after workflow registration.
 import base64
 import hashlib
 import io
