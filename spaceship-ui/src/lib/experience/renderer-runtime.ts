@@ -31,9 +31,13 @@ function setStatus(host: HTMLElement, status: string, label: string): void {
   if (labelElement) labelElement.textContent = label;
 }
 
-function replaceRendererCanvas(host: HTMLElement): void {
-  const canvas = host.querySelector<HTMLCanvasElement>('[data-experience-canvas-element]');
-  if (!canvas) return;
+function replaceRendererCanvas(
+  host: HTMLElement,
+  expectedCanvas?: HTMLCanvasElement,
+): HTMLCanvasElement | null {
+  const canvas =
+    expectedCanvas ?? host.querySelector<HTMLCanvasElement>('[data-experience-canvas-element]');
+  if (!canvas || !canvas.isConnected || canvas.parentElement !== host) return null;
 
   // A WebGPU/WebGL context is permanently bound to its canvas. Reusing that
   // canvas after backend teardown is browser-dependent, so every capability
@@ -42,6 +46,7 @@ function replaceRendererCanvas(host: HTMLElement): void {
   replacement.removeAttribute('width');
   replacement.removeAttribute('height');
   canvas.replaceWith(replacement);
+  return replacement;
 }
 
 export function installExperienceRendererRuntime(): void {
@@ -66,14 +71,13 @@ export function installExperienceRendererRuntime(): void {
 
     intersectionObserver?.disconnect();
     intersectionObserver = null;
-    const hadMountedRenderer = mountedRenderer !== null;
     mountedRenderer?.destroy();
     mountedRenderer = null;
 
     while (cleanupCallbacks.length) cleanupCallbacks.pop()?.();
 
     if (activeHost) {
-      if (hadMountedRenderer && activeHost.isConnected) replaceRendererCanvas(activeHost);
+      if (activeHost.isConnected) replaceRendererCanvas(activeHost);
       activeHost.dataset.rendererStatus = 'idle';
       delete activeHost.dataset.rendererTier;
       delete activeHost.dataset.rendererReason;
@@ -138,12 +142,12 @@ export function installExperienceRendererRuntime(): void {
 
     try {
       const { mountExperienceRenderer } = await loadRendererModule();
-      if (currentGeneration !== generation || !host.isConnected) return;
+      if (currentGeneration !== generation || !host.isConnected || !canvas.isConnected) return;
 
       const handle = await mountExperienceRenderer({ host, canvas, profile, variant });
-      if (currentGeneration !== generation || !host.isConnected) {
+      if (currentGeneration !== generation || !host.isConnected || !canvas.isConnected) {
         handle.destroy();
-        replaceRendererCanvas(host);
+        replaceRendererCanvas(host, canvas);
         return;
       }
 
@@ -153,10 +157,15 @@ export function installExperienceRendererRuntime(): void {
       const backendLabel = handle.backend === 'webgpu' ? 'WebGPU' : 'WebGL2';
       setStatus(host, 'active', `${backendLabel} Adaptive`);
     } catch (error) {
+      if (currentGeneration !== generation || !host.isConnected || !canvas.isConnected) {
+        replaceRendererCanvas(host, canvas);
+        return;
+      }
+
       console.warn('JJo Experience renderer fell back to SVG/DOM.', error);
       mountedRenderer?.destroy();
       mountedRenderer = null;
-      replaceRendererCanvas(host);
+      replaceRendererCanvas(host, canvas);
       host.dataset.rendererError = error instanceof Error ? error.message : String(error);
       experienceState.patch({
         rendererBackend: 'none',
