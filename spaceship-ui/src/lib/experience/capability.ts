@@ -73,18 +73,21 @@ export function detectExperienceCapability(): CapabilityProfile {
   // starts only after motion, network, viewport, and pointer gates pass.
   const shouldProbeGpu = reasons.length === 0;
   const webgl2Available = shouldProbeGpu ? supportsWebGL2() : false;
-  if (shouldProbeGpu && !webgpuAvailable && !webgl2Available) {
-    reasons.push('no-gpu-backend');
-  }
-
-  const mustUseSafe = reasons.length > 0;
-  const canUseUltra =
-    !mustUseSafe &&
+  const ultraCandidate =
+    shouldProbeGpu &&
     webgpuAvailable &&
     window.matchMedia('(min-width: 1100px) and (pointer: fine)').matches &&
     hardwareConcurrency >= 8 &&
     deviceMemory >= 8;
 
+  // NORMAL deliberately targets WebGL2. A WebGPU-only device that does not
+  // satisfy the ULTRA envelope stays on the accessible SVG/DOM surface.
+  if (shouldProbeGpu && !webgl2Available && !ultraCandidate) {
+    reasons.push('no-profile-backend');
+  }
+
+  const mustUseSafe = reasons.length > 0;
+  const canUseUltra = !mustUseSafe && ultraCandidate;
   const tier: ExperienceTier = mustUseSafe ? 'safe' : canUseUltra ? 'ultra' : 'normal';
 
   if (tier === 'safe') {
