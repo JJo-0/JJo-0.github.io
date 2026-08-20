@@ -73,7 +73,7 @@ export function computeGaussianHierarchy({ x, means, covariances, sharedCovarian
   const qda = means.map((mean, index) => gaussianLogDiscriminant(x, mean, covariances[index], priors[index]));
   const lda = means.map((mean, index) => ldaDiscriminant(x, mean, sharedCovariance, priors[index]));
   const minimumDistance = means.map((mean) => minimumDistanceDiscriminant(x, mean));
-  const identityLda = means.map((mean, index) => ldaDiscriminant(x, mean, [[1, 0], [0, 1]], 0.5));
+  const identityLda = means.map((mean) => ldaDiscriminant(x, mean, [[1, 0], [0, 1]], 0.5));
   const identityOffsets = identityLda.map((value, index) => value - minimumDistance[index]);
   return {
     qda,

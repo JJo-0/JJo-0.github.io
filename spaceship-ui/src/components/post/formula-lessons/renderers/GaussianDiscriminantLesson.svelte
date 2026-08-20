@@ -10,9 +10,9 @@
 </script>
 <div class="grid" data-gaussian-discriminant-lesson data-focus={lesson.focus}>
 <section class="panel"><p class="eyebrow">QDA → LDA → minimum-distance</p><table><thead><tr><th>rule</th><th>S1</th><th>S2</th><th>winner</th></tr></thead><tbody>
-<tr><td>QDA</td>{#each result.qda as v}<td>{f(v)}</td>{/each}<td>S{result.qdaClass+1}</td></tr>
-<tr><td>LDA(shared V)</td>{#each result.lda as v}<td>{f(v)}</td>{/each}<td>S{result.ldaClass+1}</td></tr>
-<tr><td>V=I, equal prior</td>{#each result.minimumDistance as v}<td>{f(v)}</td>{/each}<td>S{result.minimumDistanceClass+1}</td></tr>
+<tr><td>QDA</td>{#each result.qda as v,i (i)}<td>{f(v)}</td>{/each}<td>S{result.qdaClass+1}</td></tr>
+<tr><td>LDA(shared V)</td>{#each result.lda as v,i (i)}<td>{f(v)}</td>{/each}<td>S{result.ldaClass+1}</td></tr>
+<tr><td>V=I, equal prior</td>{#each result.minimumDistance as v,i (i)}<td>{f(v)}</td>{/each}<td>S{result.minimumDistanceClass+1}</td></tr>
 </tbody></table><div class="check">identity-LDA − minimum-distance = [{result.identityOffsets.map(v=>f(v,6)).join(', ')}] (same common constant)</div></section>
 <section class="panel"><p class="eyebrow">Move x in the same source symbols</p>
 <label>x₁ <output>{f(qx,2)}</output><input bind:value={qx} type="range" min="-2" max="2" step="0.05"/></label><label>x₂ <output>{f(qy,2)}</output><input bind:value={qy} type="range" min="-2" max="2" step="0.05"/></label>

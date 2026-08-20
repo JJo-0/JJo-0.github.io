@@ -12,7 +12,7 @@
     <h6>f(x)={f(result.linearScore)} · σ(f)={f(result.sigmoidAtLinearScore)}</h6>
     <div class="scorebar"><span style={`width:${Math.max(2,Math.min(98,result.sigmoidAtLinearScore*100))}%`}></span></div>
     <table><thead><tr><th>support</th><th>αₗ xᵀxₗ</th><th>αₗ κ(x,xₗ)</th></tr></thead><tbody>
-      {#each result.linearContributions as value,i}<tr><td>{i+1}</td><td>{f(value)}</td><td>{f(result.kernelContributions[i])}</td></tr>{/each}
+      {#each result.linearContributions as value,i (i)}<tr><td>{i+1}</td><td>{f(value)}</td><td>{f(result.kernelContributions[i])}</td></tr>{/each}
     </tbody><tfoot><tr><th>score+b</th><th>{f(result.linearScore)}</th><th>{f(result.kernelScore)}</th></tr></tfoot></table>
   </section>
   <section class="panel controls">

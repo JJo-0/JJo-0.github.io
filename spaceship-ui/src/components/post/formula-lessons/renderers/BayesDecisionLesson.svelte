@@ -8,10 +8,10 @@
 </script>
 <div class="grid" data-bayes-decision-lesson data-focus={lesson.focus}>
 <section class="panel"><p class="eyebrow">likelihood × prior → evidence → posterior</p><h6>p(x)={f(result.evidence)}</h6>
- {#each result.posterior as p,i}<div class="posterior"><span>S{i+1}</span><i style={`width:${p*100}%`}></i><strong>{f(p)}</strong></div>{/each}
+ {#each result.posterior as p,i (i)}<div class="posterior"><span>S{i+1}</span><i style={`width:${p*100}%`}></i><strong>{f(p)}</strong></div>{/each}
  <div class="sum">Σ posterior = {f(result.posteriorSum,8)} · MAP = S{result.mapClass+1}</div>
 </section>
-<section class="panel"><p class="eyebrow">Conditional risk</p><table><thead><tr><th>action</th><th>0–1 R</th><th>custom R</th></tr></thead><tbody>{#each result.zeroOne.risks as risk,i}<tr><td>a{i+1}</td><td>{f(risk)}</td><td>{f(result.custom.risks[i])}</td></tr>{/each}</tbody></table>
+<section class="panel"><p class="eyebrow">Conditional risk</p><table><thead><tr><th>action</th><th>0–1 R</th><th>custom R</th></tr></thead><tbody>{#each result.zeroOne.risks as risk,i (i)}<tr><td>a{i+1}</td><td>{f(risk)}</td><td>{f(result.custom.risks[i])}</td></tr>{/each}</tbody></table>
  <p class="winner">0–1 best: a{result.zeroOne.bestAction+1} · custom best: a{result.custom.bestAction+1}</p>
  <label>p(x|S1) <output>{f(l1,2)}</output><input bind:value={l1} type="range" min="0.05" max="0.95" step="0.01"/></label>
  <label>p(x|S2) <output>{f(l2,2)}</output><input bind:value={l2} type="range" min="0.05" max="0.95" step="0.01"/></label>

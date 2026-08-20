@@ -6,7 +6,7 @@
  const f=(v,d=5)=>Number(v).toFixed(d);
 </script>
 <div class="grid" data-naive-bayes-lesson data-focus={lesson.focus}>
-<section class="panel"><p class="eyebrow">Conditional independence product</p><table><thead><tr><th>class</th><th>∏ p(xₙ|S)</th><th>× prior</th><th>posterior</th></tr></thead><tbody>{#each result.posterior as p,i}<tr><td>S{i+1}</td><td>{f(result.likelihoodProducts[i])}</td><td>{f(result.scoresWithPrior[i])}</td><td>{f(p)}</td></tr>{/each}</tbody></table><div class="check">Σ posterior={f(result.posteriorSum,8)} · predicted S{result.predictedClass+1}</div></section>
+<section class="panel"><p class="eyebrow">Conditional independence product</p><table><thead><tr><th>class</th><th>∏ p(xₙ|S)</th><th>× prior</th><th>posterior</th></tr></thead><tbody>{#each result.posterior as p,i (i)}<tr><td>S{i+1}</td><td>{f(result.likelihoodProducts[i])}</td><td>{f(result.scoresWithPrior[i])}</td><td>{f(p)}</td></tr>{/each}</tbody></table><div class="check">Σ posterior={f(result.posteriorSum,8)} · predicted S{result.predictedClass+1}</div></section>
 <section class="panel"><p class="eyebrow">Prior matters</p><label>P(S1) <output>{f(prior1,2)}</output><input bind:value={prior1} type="range" min="0.05" max="0.95" step="0.01" /></label><p class="small">Without prior: [{result.scoresWithoutPrior.map(v=>f(v)).join(', ')}]<br/>With prior: [{result.scoresWithPrior.map(v=>f(v)).join(', ')}]</p></section></div>
 <aside class="note">MAI-P2-102 preserves the printed proportionality that omits the class prior. MAI-P2-103 is the corrected general MAP form. Moving the prior above demonstrates exactly when omitting it can change the class ranking.</aside>
 <style>

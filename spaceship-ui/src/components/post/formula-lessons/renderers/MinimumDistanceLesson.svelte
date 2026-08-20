@@ -9,15 +9,15 @@
 <div class="grid" data-minimum-distance-lesson data-focus={lesson.focus}>
 <section class="panel"><p class="eyebrow">Prototype geometry</p><svg viewBox="0 0 320 300" role="img" aria-label="two class prototypes, query, and perpendicular bisector">
  <line x1="20" y1="150" x2="300" y2="150"/><line x1="160" y1="20" x2="160" y2="280"/>
- {#each spec.classes as points,ci}{#each points as p}<circle cx={px(p[0])} cy={py(p[1])} r="4" class={`c${ci}`}/>{/each}{/each}
- {#each result.prototypes as p,ci}<circle cx={px(p[0])} cy={py(p[1])} r="9" class={`prototype c${ci}`}/>{/each}
+ {#each spec.classes as points,ci (ci)}{#each points as p,pi (pi)}<circle cx={px(p[0])} cy={py(p[1])} r="4" class={`c${ci}`}/>{/each}{/each}
+ {#each result.prototypes as p,ci (ci)}<circle cx={px(p[0])} cy={py(p[1])} r="9" class={`prototype c${ci}`}/>{/each}
  <circle cx={px(query[0])} cy={py(query[1])} r="7" class="query"/>
  {#if Math.abs(result.boundary.normal[1])>1e-9}
  <line x1="20" y1={py((-result.boundary.offset-result.boundary.normal[0]*((20-160)/105))/result.boundary.normal[1])} x2="300" y2={py((-result.boundary.offset-result.boundary.normal[0]*((300-160)/105))/result.boundary.normal[1])} class="boundary"/>
  {/if}
  </svg></section>
 <section class="panel"><p class="eyebrow">D_c(x) and d_c(x)</p><h6>Prediction: class {result.predictedByDistance+1}</h6>
- {#each result.prototypes as p,i}<div class="row"><strong>class {i+1} m</strong><span>[{p.map(v=>f(v,2)).join(', ')}]</span><span>D={f(result.distances[i])}</span><span>d={f(result.discriminants[i])}</span></div>{/each}
+ {#each result.prototypes as p,i (i)}<div class="row"><strong>class {i+1} m</strong><span>[{p.map(v=>f(v,2)).join(', ')}]</span><span>D={f(result.distances[i])}</span><span>d={f(result.discriminants[i])}</span></div>{/each}
  <label>x₁ <output>{f(qx,2)}</output><input bind:value={qx} type="range" min="-1.8" max="1.8" step="0.05"/></label>
  <label>x₂ <output>{f(qy,2)}</output><input bind:value={qy} type="range" min="-1.5" max="1.5" step="0.05"/></label>
  <div class="check">midpoint boundary residual = {f(result.boundary.midpointResidual,8)}<br/>distance and discriminant agree: {result.predictedByDistance===result.predictedByDiscriminant?'PASS':'FAIL'}</div>
