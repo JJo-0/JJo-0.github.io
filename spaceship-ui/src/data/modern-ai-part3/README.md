@@ -32,7 +32,7 @@ The source layer preserves printed `?`, `??`, blank grids, signed-distance wordi
 
 Every display formula is rendered as a responsive source card. Formula-specific derivations, worked examples, checks, symbols, and references are shown only when they materially explain that exact expression. Formula-specific visuals remain governed separately by the exact-ID lesson registry.
 
-Generic calculation walkthroughs are forbidden. Definitions, notation-only expressions, and other formulas without a genuine derivation receive concise context/symbol explanation rather than a repeated five-step calculation checklist.
+Generic calculation walkthroughs are forbidden. Definitions, notation-only expressions, and other formulas without a genuine derivation receive concise context/symbol explanation rather than a repeated five-step calculation checklist. This no-generic-walkthrough rule is the default contract for subsequent Modern AI Parts IV–VIII as well.
 
 The guide never changes protected `sourceLatex` or its hash. `pnpm modern-ai:part3-check` fails closed when a page, formula, source block, figure, annotation, correction link, hash, reader guide, or rendered marker disappears or is duplicated, and also fails if retired generic calculation boilerplate returns.
 
