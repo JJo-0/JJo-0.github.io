@@ -6,7 +6,7 @@ import {
   startPreview,
   stopChild,
 } from './browser-smoke-harness.mjs';
-import { auditRenderer } from './browser-smoke-audits.mjs';
+import { auditRenderer } from './browser-renderer-audit-v2.mjs';
 import { auditInteractions } from './browser-interaction-audits-v2.mjs';
 
 async function main() {
