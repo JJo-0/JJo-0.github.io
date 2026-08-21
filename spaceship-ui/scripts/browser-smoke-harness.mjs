@@ -135,7 +135,22 @@ export async function attach(cdp) {
   await cdp.send('Page.enable', {}, sessionId);
   await cdp.send('Runtime.enable', {}, sessionId);
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
-    source: `try { localStorage.setItem('theme', 'light'); } catch {}`,
+    source: `
+      try { localStorage.setItem('theme', 'light'); } catch {}
+      if (typeof SVGAElement !== 'undefined' && typeof SVGAElement.prototype.click !== 'function') {
+        Object.defineProperty(SVGAElement.prototype, 'click', {
+          configurable: true,
+          value() {
+            this.dispatchEvent(new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              view: window,
+            }));
+          },
+        });
+      }
+    `,
   }, sessionId);
   return { targetId, sessionId };
 }
