@@ -61,6 +61,7 @@ const recovery = createAdaptivePerformanceController({
 assert.equal(recovery.sample(60, 1_000).transition, null);
 assert.equal(recovery.sample(60, 7_999).transition, null);
 assert.deepEqual(recovery.sample(60, 8_000).transition, { from: 'low', to: 'balanced' });
+assert.equal(recovery.sample(60, 9_000).reason, 'cooldown');
 assert.equal(recovery.sample(60, 17_999).reason, 'cooldown');
 assert.deepEqual(recovery.sample(60, 18_000).transition, {
   from: 'balanced',
