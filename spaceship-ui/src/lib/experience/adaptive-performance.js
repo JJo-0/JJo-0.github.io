@@ -13,6 +13,7 @@ export const ADAPTIVE_THRESHOLDS = Object.freeze({
   emergencyDurationMs: 1_000,
   degradeDurationMs: 2_000,
   upgradeDurationMs: 8_000,
+  sampleWindowMs: 1_000,
   downgradeCooldownMs: 4_000,
   upgradeCooldownMs: 10_000,
   ewmaAlpha: 0.35,
@@ -90,21 +91,22 @@ export function createAdaptivePerformanceController({
         ? thresholds.ewmaAlpha * rawFps + (1 - thresholds.ewmaAlpha) * filteredFps
         : rawFps;
       hasSample = true;
+      const observationStartedAt = now - Math.max(0, thresholds.sampleWindowMs ?? 0);
 
       if (filteredFps < thresholds.emergencyFps) {
-        emergencySince ??= now;
+        emergencySince ??= observationStartedAt;
       } else {
         emergencySince = null;
       }
 
       if (filteredFps < thresholds.degradeFps) {
-        degradeSince ??= now;
+        degradeSince ??= observationStartedAt;
       } else {
         degradeSince = null;
       }
 
       if (filteredFps > thresholds.upgradeFps) {
-        upgradeSince ??= now;
+        upgradeSince ??= observationStartedAt;
       } else {
         upgradeSince = null;
       }
