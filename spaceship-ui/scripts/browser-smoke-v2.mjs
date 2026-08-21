@@ -2,6 +2,7 @@ import {
   Cdp,
   attach,
   removeProfile,
+  setReducedMotionOverride,
   startChrome,
   startPreview,
   stopChild,
@@ -16,10 +17,19 @@ async function main() {
     chrome = await startChrome();
     cdp = await Cdp.connect(chrome.url);
     const { sessionId } = await attach(cdp);
+
+    // Renderer, GSAP and quality transitions are exercised with ordinary
+    // motion preferences first.
     await auditRenderer(cdp, sessionId);
+
+    // The exhaustive route audit is about activation and destination, not
+    // reveal timing. Reduced-motion mode makes every accessible target
+    // immediately actionable while also testing the site's mandated fallback.
+    setReducedMotionOverride(true);
     const clicks = await auditInteractions(cdp, sessionId);
     console.log(`browser-smoke: PASS complete matrix and ${clicks} core-route internal clicks`);
   } finally {
+    setReducedMotionOverride(null);
     cdp?.close();
     await stopChild(chrome?.child, 'SIGKILL');
     await stopChild(preview, 'SIGTERM');
