@@ -183,12 +183,26 @@ export async function viewport(cdp, sessionId, options) {
 }
 
 export async function navigate(cdp, sessionId, pathname) {
-  const url = `${BASE}${pathname}`;
-  const result = await cdp.send('Page.navigate', { url }, sessionId);
-  if (result.errorText) throw new Error(`Navigation ${url}: ${result.errorText}`);
-  await poll(() => evaluate(cdp, sessionId,
-    `location.href.startsWith(${JSON.stringify(url)}) && document.readyState === 'complete'`),
-  `navigation ${pathname}`);
+  const url = new URL(pathname, BASE);
+  const result = await cdp.send('Page.navigate', { url: url.href }, sessionId);
+  if (result.errorText) throw new Error(`Navigation ${url.href}: ${result.errorText}`);
+
+  // Prefix matching is unsafe for `/`: every same-origin path starts with the
+  // Home URL. Wait for the exact origin/path/query/hash so a preceding route
+  // can never be mistaken for a completed Home navigation.
+  await poll(
+    () =>
+      evaluate(
+        cdp,
+        sessionId,
+        `location.origin === ${JSON.stringify(url.origin)} &&
+         location.pathname === ${JSON.stringify(url.pathname)} &&
+         location.search === ${JSON.stringify(url.search)} &&
+         location.hash === ${JSON.stringify(url.hash)} &&
+         document.readyState === 'complete'`,
+      ),
+    `navigation ${pathname}`,
+  );
   await sleep(250);
 }
 
