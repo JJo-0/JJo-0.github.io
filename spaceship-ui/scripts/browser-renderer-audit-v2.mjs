@@ -97,17 +97,25 @@ async function auditResearchNodeClicks(cdp, sessionId) {
     await waitExpression(
       cdp,
       sessionId,
-      `location.pathname === '/research' &&
-       location.hash === ${JSON.stringify(`#${id}`)} &&
-       Boolean(document.getElementById(${JSON.stringify(id)})) &&
-       window.__jjoSmokeState?.activeResearchNode === ${JSON.stringify(id)} &&
-       document.querySelector('[data-constellation-node][data-active]')
-         ?.getAttribute('data-constellation-node') === ${JSON.stringify(id)}`,
+      `(() => {
+        const renderer = document.querySelector('[data-experience-canvas="research"]');
+        const rendererFocusReady = !renderer ||
+          renderer.dataset.rendererStatus !== 'active' ||
+          renderer.dataset.rendererFocus === ${JSON.stringify(id)};
+        return location.pathname === '/research' &&
+          location.hash === ${JSON.stringify(`#${id}`)} &&
+          Boolean(document.getElementById(${JSON.stringify(id)})) &&
+          window.__jjoSmokeState?.activeResearchNode === ${JSON.stringify(id)} &&
+          document.querySelector('[data-constellation-node][data-active]')
+            ?.getAttribute('data-constellation-node') === ${JSON.stringify(id)} &&
+          rendererFocusReady;
+      })()`,
       `Research node click ${id}`,
     );
   }
 
   console.log('browser-smoke: PASS Research SVG focus synchronization and four-node click routing');
+  console.log('browser-smoke: PASS renderer focus choreography target synchronization');
   return ids;
 }
 
@@ -146,11 +154,16 @@ async function auditResearchSectionScroll(cdp, sessionId, expectedIds) {
       const section = document.getElementById(${JSON.stringify(targetId)});
       const active = document.querySelector('[data-constellation-node][data-active]')
         ?.getAttribute('data-constellation-node');
+      const renderer = document.querySelector('[data-experience-canvas="research"]');
+      const rendererFocusReady = !renderer ||
+        renderer.dataset.rendererStatus !== 'active' ||
+        renderer.dataset.rendererFocus === ${JSON.stringify(targetId)};
       if (!section) return false;
       const top = section.getBoundingClientRect().top;
       return Math.abs(top - innerHeight * 0.5) < 80 &&
         window.__jjoSmokeState?.activeResearchNode === ${JSON.stringify(targetId)} &&
-        active === ${JSON.stringify(targetId)};
+        active === ${JSON.stringify(targetId)} &&
+        rendererFocusReady;
     })()`,
     'Research section scroll synchronization',
   );
@@ -259,6 +272,7 @@ export async function auditRenderer(cdp, sessionId) {
         quality: host.dataset.rendererQuality,
         dpr: Number(host.dataset.rendererDpr),
         targetFps: Number(host.dataset.rendererTargetFps),
+        focus: host.dataset.rendererFocus,
       } : null;
     })()`);
     assert.ok(['webgpu', 'webgl2'].includes(diagnostics?.backend));
@@ -266,19 +280,65 @@ export async function auditRenderer(cdp, sessionId) {
     assert.ok(['low', 'balanced', 'high'].includes(diagnostics?.quality));
     assert.ok(diagnostics?.dpr >= 0.5 && diagnostics?.dpr <= 1.6);
     assert.ok([30, 60].includes(diagnostics?.targetFps));
+    assert.ok(typeof diagnostics?.focus === 'string' && diagnostics.focus.length > 0);
 
     await evaluate(cdp, sessionId, `scrollTo(0, document.documentElement.scrollHeight)`);
+    const stickyParity = await waitExpression(
+      cdp,
+      sessionId,
+      `(() => {
+        const host = document.querySelector('[data-experience-canvas="research"]');
+        if (!host) return false;
+        const rect = host.getBoundingClientRect();
+        const insideObserverMargin = rect.bottom > -120 && rect.top < innerHeight + 120;
+        const expectedLoop = insideObserverMargin ? 'running' : 'stopped';
+        return host.dataset.rendererLoop === expectedLoop
+          ? { insideObserverMargin, loop: host.dataset.rendererLoop }
+          : false;
+      })()`,
+      'sticky viewport RAF parity',
+    );
+    console.log(
+      `browser-smoke: PASS sticky viewport RAF parity (${stickyParity.insideObserverMargin ? 'intersecting/running' : 'offscreen/stopped'})`,
+    );
+
+    await evaluate(cdp, sessionId, `(() => {
+      document.querySelector('[data-renderer-smoke-spacer]')?.remove();
+      const spacer = document.createElement('div');
+      spacer.dataset.rendererSmokeSpacer = 'true';
+      spacer.style.height = '220vh';
+      spacer.style.pointerEvents = 'none';
+      spacer.setAttribute('aria-hidden', 'true');
+      document.body.append(spacer);
+      scrollTo(0, document.documentElement.scrollHeight);
+      dispatchEvent(new Event('scroll'));
+    })()`);
     await waitExpression(
       cdp,
       sessionId,
-      `document.querySelector('[data-experience-canvas="research"]')?.dataset.rendererLoop === 'stopped'`,
+      `(() => {
+        const host = document.querySelector('[data-experience-canvas="research"]');
+        if (!host) return false;
+        const rect = host.getBoundingClientRect();
+        return rect.bottom < -130 && host.dataset.rendererLoop === 'stopped';
+      })()`,
       'offscreen RAF stop',
     );
-    await evaluate(cdp, sessionId, `scrollTo(0, 0)`);
+
+    await evaluate(cdp, sessionId, `(() => {
+      document.querySelector('[data-renderer-smoke-spacer]')?.remove();
+      scrollTo(0, 0);
+      dispatchEvent(new Event('scroll'));
+    })()`);
     await waitExpression(
       cdp,
       sessionId,
-      `document.querySelector('[data-experience-canvas="research"]')?.dataset.rendererLoop === 'running'`,
+      `(() => {
+        const host = document.querySelector('[data-experience-canvas="research"]');
+        if (!host) return false;
+        const rect = host.getBoundingClientRect();
+        return rect.bottom > 0 && rect.top < innerHeight && host.dataset.rendererLoop === 'running';
+      })()`,
       'onscreen RAF restart',
     );
 
