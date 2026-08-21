@@ -12,6 +12,7 @@ export interface AdaptiveThresholds {
   emergencyDurationMs: number;
   degradeDurationMs: number;
   upgradeDurationMs: number;
+  sampleWindowMs: number;
   downgradeCooldownMs: number;
   upgradeCooldownMs: number;
   ewmaAlpha: number;
