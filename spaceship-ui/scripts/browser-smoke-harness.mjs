@@ -12,6 +12,12 @@ export const REQUIRE_GPU = process.env.JJO_SMOKE_REQUIRE_GPU === '1';
 export const TIMEOUT = 20_000;
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+let reducedMotionOverride = null;
+
+export function setReducedMotionOverride(value) {
+  reducedMotionOverride = value;
+}
+
 export async function poll(fn, label, timeout = TIMEOUT) {
   const started = Date.now();
   let value;
@@ -51,8 +57,14 @@ export class Cdp {
     const socket = new WebSocket(url);
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('CDP open timeout')), TIMEOUT);
-      socket.addEventListener('open', () => { clearTimeout(timer); resolve(); });
-      socket.addEventListener('error', () => { clearTimeout(timer); reject(new Error('CDP open error')); });
+      socket.addEventListener('open', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      socket.addEventListener('error', () => {
+        clearTimeout(timer);
+        reject(new Error('CDP open error'));
+      });
     });
     return new Cdp(socket);
   }
@@ -67,54 +79,96 @@ export class Cdp {
         reject(new Error(`CDP timeout: ${method}`));
       }, TIMEOUT);
       this.pending.set(id, {
-        resolve: (value) => { clearTimeout(timer); resolve(value); },
-        reject: (error) => { clearTimeout(timer); reject(error); },
+        resolve: (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        reject: (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
       });
       this.socket.send(JSON.stringify(payload));
     });
   }
 
-  close() { this.socket.close(); }
+  close() {
+    this.socket.close();
+  }
 }
 
 export async function startPreview() {
   if (process.env.JJO_SMOKE_BASE_URL) return null;
   const child = spawn('pnpm', ['preview', '--host', HOST, '--port', String(PORT)], {
-    cwd: process.cwd(), env: process.env, stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
-  child.stdout.on('data', (chunk) => { output += chunk; });
-  child.stderr.on('data', (chunk) => { output += chunk; });
+  child.stdout.on('data', (chunk) => {
+    output += chunk;
+  });
+  child.stderr.on('data', (chunk) => {
+    output += chunk;
+  });
   child.on('exit', (code) => {
     if (code && code !== 0) process.stderr.write(`preview exited ${code}\n${output}\n`);
   });
   await poll(async () => {
-    try { return (await fetch(`${BASE}/`)).status < 500; } catch { return false; }
+    try {
+      return (await fetch(`${BASE}/`)).status < 500;
+    } catch {
+      return false;
+    }
   }, `preview ${BASE}`);
   return child;
 }
 
 export async function startChrome() {
-  const chrome = process.env.CHROME_PATH || executable([
-    'google-chrome-stable', 'google-chrome', 'chromium', 'chromium-browser',
-    '/usr/bin/google-chrome', '/usr/bin/chromium',
-  ]);
+  const chrome =
+    process.env.CHROME_PATH ||
+    executable([
+      'google-chrome-stable',
+      'google-chrome',
+      'chromium',
+      'chromium-browser',
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium',
+    ]);
   if (!chrome) throw new Error('Chrome/Chromium not found');
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jjo-smoke-'));
-  const child = spawn(chrome, [
-    '--headless=new', '--no-sandbox', '--disable-dev-shm-usage',
-    '--disable-background-networking', '--disable-extensions', '--disable-sync',
-    '--mute-audio', '--no-first-run', '--enable-webgl', '--ignore-gpu-blocklist',
-    '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    `--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${profile}`, 'about:blank',
-  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn(
+    chrome,
+    [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-background-networking',
+      '--disable-extensions',
+      '--disable-sync',
+      '--mute-audio',
+      '--no-first-run',
+      '--enable-webgl',
+      '--ignore-gpu-blocklist',
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+      `--remote-debugging-port=${DEBUG_PORT}`,
+      `--user-data-dir=${profile}`,
+      'about:blank',
+    ],
+    { stdio: ['ignore', 'ignore', 'pipe'] },
+  );
   let stderr = '';
-  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  child.stderr.on('data', (chunk) => {
+    stderr += chunk;
+  });
   const info = await poll(async () => {
     try {
       const response = await fetch(`http://${HOST}:${DEBUG_PORT}/json/version`);
       return response.ok ? response.json() : null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }, 'Chrome DevTools endpoint');
   if (!info.webSocketDebuggerUrl) throw new Error(`No DevTools URL\n${stderr}`);
   return { child, profile, url: info.webSocketDebuggerUrl };
@@ -134,31 +188,42 @@ export async function attach(cdp) {
   await cdp.send('Page.bringToFront', {}, sessionId);
   await cdp.send('Page.enable', {}, sessionId);
   await cdp.send('Runtime.enable', {}, sessionId);
-  await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
-    source: `
-      try { localStorage.setItem('theme', 'light'); } catch {}
-      if (typeof SVGAElement !== 'undefined' && typeof SVGAElement.prototype.click !== 'function') {
-        Object.defineProperty(SVGAElement.prototype, 'click', {
-          configurable: true,
-          value() {
-            this.dispatchEvent(new MouseEvent('click', {
-              bubbles: true,
-              cancelable: true,
-              composed: true,
-              view: window,
-            }));
-          },
-        });
-      }
-    `,
-  }, sessionId);
+  await cdp.send(
+    'Page.addScriptToEvaluateOnNewDocument',
+    {
+      source: `
+        try { localStorage.setItem('theme', 'light'); } catch {}
+        if (typeof SVGAElement !== 'undefined' && typeof SVGAElement.prototype.click !== 'function') {
+          Object.defineProperty(SVGAElement.prototype, 'click', {
+            configurable: true,
+            value() {
+              this.dispatchEvent(new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                view: window,
+              }));
+            },
+          });
+        }
+      `,
+    },
+    sessionId,
+  );
   return { targetId, sessionId };
 }
 
 export async function evaluate(cdp, sessionId, expression) {
-  const result = await cdp.send('Runtime.evaluate', {
-    expression, awaitPromise: true, returnByValue: true, userGesture: true,
-  }, sessionId);
+  const result = await cdp.send(
+    'Runtime.evaluate',
+    {
+      expression,
+      awaitPromise: true,
+      returnByValue: true,
+      userGesture: true,
+    },
+    sessionId,
+  );
   if (result.exceptionDetails) {
     throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
   }
@@ -167,19 +232,31 @@ export async function evaluate(cdp, sessionId, expression) {
 
 export async function viewport(cdp, sessionId, options) {
   const { width, height, mobile = false, touch = false, reduced = false } = options;
-  await cdp.send('Emulation.setDeviceMetricsOverride', {
-    width, height, deviceScaleFactor: 1, mobile,
-  }, sessionId);
-  await cdp.send('Emulation.setTouchEmulationEnabled', {
-    enabled: touch, maxTouchPoints: touch ? 5 : 1,
-  }, sessionId);
-  await cdp.send('Emulation.setEmulatedMedia', {
-    media: '',
-    features: [
-      { name: 'prefers-reduced-motion', value: reduced ? 'reduce' : 'no-preference' },
-      { name: 'prefers-color-scheme', value: 'light' },
-    ],
-  }, sessionId);
+  const effectiveReduced = reducedMotionOverride ?? reduced;
+  await cdp.send(
+    'Emulation.setDeviceMetricsOverride',
+    { width, height, deviceScaleFactor: 1, mobile },
+    sessionId,
+  );
+  await cdp.send(
+    'Emulation.setTouchEmulationEnabled',
+    { enabled: touch, maxTouchPoints: touch ? 5 : 1 },
+    sessionId,
+  );
+  await cdp.send(
+    'Emulation.setEmulatedMedia',
+    {
+      media: '',
+      features: [
+        {
+          name: 'prefers-reduced-motion',
+          value: effectiveReduced ? 'reduce' : 'no-preference',
+        },
+        { name: 'prefers-color-scheme', value: 'light' },
+      ],
+    },
+    sessionId,
+  );
 }
 
 export async function navigate(cdp, sessionId, pathname) {
@@ -220,5 +297,7 @@ export async function optionalExpression(cdp, sessionId, expression, timeout = 6
 
 export function removeProfile(profile) {
   if (!profile) return;
-  try { fs.rmSync(profile, { recursive: true, force: true, maxRetries: 3 }); } catch {}
+  try {
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 3 });
+  } catch {}
 }
