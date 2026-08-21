@@ -95,12 +95,9 @@ async function clickRouteLinks(cdp, sessionId, route) {
       targetExpression(anchor, `
         if (!target) return false;
         target.scrollIntoView({ block: 'center', inline: 'nearest' });
-        target.dispatchEvent(new MouseEvent('click', {
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-          view: window,
-        }));
+        // HTMLElement.click() runs the real activation behavior, including the
+        // default hash navigation that synthetic dispatchEvent() can omit.
+        target.click();
         return true;
       `),
     );
@@ -196,9 +193,7 @@ async function auditSearch(cdp, sessionId) {
   await evaluate(
     cdp,
     sessionId,
-    `document.querySelector(${JSON.stringify(`a[href="${href}"]`)})?.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, cancelable: true, composed: true, view: window })
-    )`,
+    `document.querySelector(${JSON.stringify(`a[href="${href}"]`)})?.click()`,
   );
   await waitExpression(cdp, sessionId, `location.pathname === ${JSON.stringify(href)}`, 'search navigation');
   assert.notEqual(await evaluate(cdp, sessionId, `location.pathname`), '/');
