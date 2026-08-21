@@ -81,4 +81,11 @@
     runtime.dataset.semiconductorCompanyLinks = 'true';
     document.head.append(runtime);
   }
+
+  if (!document.querySelector('script[data-semiconductor-process-resources]')) {
+    const runtime = document.createElement('script');
+    runtime.src = './node-resource-runtime.js';
+    runtime.dataset.semiconductorProcessResources = 'true';
+    document.head.append(runtime);
+  }
 })();
