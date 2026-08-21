@@ -4,8 +4,8 @@ import process from 'node:process';
 
 const root = process.cwd();
 const postPath = 'site/content/posts/semiconductor-supply-chain-universe-map.md';
-const assetRoot = 'site/assets/interactive/semiconductor-universe';
-const coverPath = 'site/assets/posts/semiconductor-universe-2026/cover.svg';
+const assetRoot = 'site/assets/assets/interactive/semiconductor-universe';
+const coverPath = 'site/assets/assets/posts/semiconductor-universe-2026/cover.svg';
 const issues = [];
 
 function read(relative) {
