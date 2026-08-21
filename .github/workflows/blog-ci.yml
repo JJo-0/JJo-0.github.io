@@ -14,6 +14,12 @@ on:
       - 'scripts/normalize_tags.py'
       - '.github/workflows/blog-ci.yml'
   workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Optional deployed site URL for the full browser smoke matrix'
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: blog-ci-${{ github.workflow }}-${{ github.ref }}
@@ -69,9 +75,11 @@ jobs:
         run: pnpm content:check
 
       - name: Browser smoke matrix
-        timeout-minutes: 5
+        timeout-minutes: 10
         # Semantically identical to `pnpm browser:smoke`, but the exit guard is
         # scoped to this Node process instead of leaking through NODE_OPTIONS.
+        # A manual run may point the same fail-closed matrix at deployed Pages.
         run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
         env:
           JJO_SMOKE_REQUIRE_GPU: '0'
+          JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
