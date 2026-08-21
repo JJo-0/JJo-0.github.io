@@ -90,5 +90,5 @@ assert.equal(deadband.sample(Number.NaN, 3_000).reason, 'invalid-sample');
 assert.equal(deadband.getQuality(), 'balanced');
 
 console.log(
-  'adaptive-performance-contract: PASS (1s observation windows count toward 30/42/58 FPS duration gates; cooldown and quality ceiling verified)',
+  'adaptive-performance-contract: PASS (30/42/58 FPS bands; 1s observation windows count toward duration gates; cooldown and quality ceiling verified)',
 );
