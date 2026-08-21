@@ -74,7 +74,7 @@ requireMarkers(runtime, runtimePath, [
   'OFFICIAL COMPANY RESOURCES',
   'noopener noreferrer',
   'Promise.allSettled',
-  'dataResourceRole',
+  'dataset.resourceRole',
 ]);
 if (/location\.(?:href|assign|replace)\s*[=(]/.test(runtime)) {
   issues.push(`${runtimePath}: selecting a node must not force external navigation`);
