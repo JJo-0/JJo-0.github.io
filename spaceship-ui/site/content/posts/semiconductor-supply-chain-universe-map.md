@@ -13,6 +13,7 @@ tags:
   - advanced-packaging
   - industry-analysis
 featured: true
+researchFeatured: false
 lang: 'ko'
 ---
 
