@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  statuses: write
 
 concurrency:
   group: pages
@@ -72,6 +73,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -80,3 +83,113 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  live-smoke:
+    runs-on: ubuntu-latest
+    needs: deploy
+    env:
+      JJO_SMOKE_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+      JJO_SMOKE_REQUIRE_GPU: '0'
+    defaults:
+      run:
+        working-directory: spaceship-ui
+
+    steps:
+      - name: Checkout deployed source
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+
+      - name: Install browser-smoke dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Probe deployed routes and release markers
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.JJO_SMOKE_BASE_URL.replace(/\/+$/, '');
+          const probes = [
+            ['/', ['data-world-shell', 'Scroll-driven Research World']],
+            ['/research', ['research-world-shell', 'data-experience-canvas="research"']],
+            ['/posts', ['Writing categories', 'data-astro-reload']],
+            ['/about', ['data-about-page', 'data-about-content']],
+          ];
+
+          for (const [route, markers] of probes) {
+            let last = 'no response';
+            let passed = false;
+            for (let attempt = 1; attempt <= 18; attempt += 1) {
+              try {
+                const response = await fetch(`${base}${route}`, {
+                  redirect: 'follow',
+                  cache: 'no-store',
+                  headers: { 'cache-control': 'no-cache' },
+                });
+                const html = await response.text();
+                const missing = markers.filter((marker) => !html.includes(marker));
+                last = `status=${response.status}; missing=${missing.join(',') || 'none'}`;
+                if (response.ok && missing.length === 0) {
+                  console.log(`pages-live: PASS ${route} (${last})`);
+                  passed = true;
+                  break;
+                }
+              } catch (error) {
+                last = error instanceof Error ? error.message : String(error);
+              }
+              await new Promise((resolve) => setTimeout(resolve, 2_000));
+            }
+            if (!passed) throw new Error(`pages-live: ${route} failed: ${last}`);
+          }
+          NODE
+
+      - name: Live Pages browser smoke
+        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+
+      - name: Publish Pages live-smoke status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LIVE_RESULT: ${{ job.status }}
+          LIVE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: |
+          node --input-type=module <<'NODE'
+          const state = process.env.LIVE_RESULT === 'success'
+            ? 'success'
+            : process.env.LIVE_RESULT === 'cancelled'
+              ? 'error'
+              : 'failure';
+          const targetUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+          const response = await fetch(
+            `${process.env.GITHUB_API_URL}/repos/${process.env.GITHUB_REPOSITORY}/statuses/${process.env.GITHUB_SHA}`,
+            {
+              method: 'POST',
+              headers: {
+                authorization: `Bearer ${process.env.GH_TOKEN}`,
+                accept: 'application/vnd.github+json',
+                'x-github-api-version': '2022-11-28',
+                'content-type': 'application/json',
+              },
+              body: JSON.stringify({
+                state,
+                context: 'pages/live-smoke',
+                target_url: targetUrl,
+                description: state === 'success'
+                  ? `Live Pages routes + Chrome smoke passed at ${process.env.LIVE_URL}`
+                  : `Live Pages smoke ${state}; inspect deployment run`,
+              }),
+            },
+          );
+          if (!response.ok) {
+            throw new Error(`commit status publish failed: ${response.status} ${await response.text()}`);
+          }
+          console.log(`pages-live: published ${state} for ${process.env.GITHUB_SHA}`);
+          NODE
