@@ -8,7 +8,7 @@ import {
   stopChild,
 } from './browser-smoke-harness.mjs';
 import { auditRenderer } from './browser-renderer-audit-v2.mjs';
-import { auditInteractions } from './browser-interaction-audits-v2.mjs';
+import { auditInteractions } from './browser-interaction-audits-v3.mjs';
 
 async function main() {
   let preview, chrome, cdp;
@@ -27,7 +27,7 @@ async function main() {
     // immediately actionable while also testing the site's mandated fallback.
     setReducedMotionOverride(true);
     const clicks = await auditInteractions(cdp, sessionId);
-    console.log(`browser-smoke: PASS complete matrix and ${clicks} core-route internal clicks`);
+    console.log(`browser-smoke: PASS complete matrix and ${clicks} trusted core-route clicks`);
   } finally {
     setReducedMotionOverride(null);
     cdp?.close();
