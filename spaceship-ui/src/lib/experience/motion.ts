@@ -58,9 +58,24 @@ function installResearchInteractions(root: HTMLElement, signal: AbortSignal): vo
       if (id) setActiveResearchNode(root, id);
     };
 
+    const activateAndNavigate = (event: Event): void => {
+      activate();
+      const worldTarget = node.getAttribute('data-world-target');
+      if (!worldTarget) return;
+
+      const target = document.getElementById(worldTarget);
+      if (!target) return;
+
+      event.preventDefault();
+      target.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'center',
+      });
+    };
+
     node.addEventListener('pointerenter', activate, { passive: true, signal });
     node.addEventListener('focusin', activate, { signal });
-    node.addEventListener('click', activate, { passive: true, signal });
+    node.addEventListener('click', activateAndNavigate, { signal });
   });
 
   const activateHashNode = (): void => {

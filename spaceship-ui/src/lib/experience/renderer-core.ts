@@ -16,6 +16,7 @@ import {
   Scene,
   SRGBColorSpace,
   TorusGeometry,
+  Vector3,
   WebGPURenderer,
 } from 'three/webgpu';
 import type { Material } from 'three';
@@ -139,7 +140,16 @@ export async function mountExperienceRenderer({
 
   const scene = new Scene();
   const camera = new PerspectiveCamera(42, 1, 0.1, 20);
-  camera.position.set(0, 0, variant === 'home' ? 5.4 : 5.1);
+  const overviewCameraZ = variant === 'home' ? 5.4 : 5.1;
+  const focusedCameraZ = variant === 'home' ? 4.45 : 4.15;
+  camera.position.set(0, 0, overviewCameraZ);
+  camera.lookAt(0, 0, 0);
+
+  const cameraLookTarget = new Vector3();
+  const desiredCameraPosition = new Vector3(0, 0, overviewCameraZ);
+  const desiredLookTarget = new Vector3();
+  const worldFocus = new Vector3();
+  const desiredWorldPosition = new Vector3();
 
   const constellation = new Group();
   scene.add(constellation);
@@ -158,7 +168,8 @@ export async function mountExperienceRenderer({
   geometries.add(centralGeometry);
   materials.add(centralMaterial);
   const central = new Mesh(centralGeometry, centralMaterial);
-  central.scale.setScalar(variant === 'home' ? 1.18 : 1);
+  const overviewCentralScale = variant === 'home' ? 1.18 : 1;
+  central.scale.setScalar(overviewCentralScale);
   constellation.add(central);
 
   RESEARCH_NODE_IDS.forEach((rawId, index) => {
@@ -246,12 +257,23 @@ export async function mountExperienceRenderer({
 
   let latestSnapshot = experienceState.get();
 
-  const updateNodePalette = (): void => {
+  const activeResearchFocus = (): ConcreteResearchNode | null => {
     const active = latestSnapshot.activeResearchNode;
+    return active && isResearchNodeId(active) ? active : null;
+  };
+
+  const updateFocusDiagnostics = (): void => {
+    const active = activeResearchFocus();
+    host.dataset.rendererFocus = active ?? 'overview';
+    host.dataset.rendererFocusIndex = active ? String(RESEARCH_NODE_IDS.indexOf(active)) : '-1';
+  };
+
+  const updateNodePalette = (): void => {
+    const active = activeResearchFocus();
     for (const record of nodeRecords) {
-      const selected = isResearchNodeId(active ?? '') && record.id === active;
+      const selected = record.id === active;
       record.material.color.set(selected ? palette.accentStrong : palette.muted);
-      record.material.opacity = selected ? 1 : 0.62;
+      record.material.opacity = selected ? 1 : active ? 0.46 : 0.62;
     }
   };
 
@@ -268,6 +290,7 @@ export async function mountExperienceRenderer({
   const unsubscribe = experienceState.subscribe((snapshot) => {
     latestSnapshot = snapshot;
     updateNodePalette();
+    updateFocusDiagnostics();
   });
 
   const themeObserver = new MutationObserver((records) => {
@@ -361,9 +384,55 @@ export async function mountExperienceRenderer({
       const pointerX = latestSnapshot.pointer.x;
       const pointerY = latestSnapshot.pointer.y;
       const scroll = latestSnapshot.scrollProgress;
-      const targetRotationY = pointerX * 0.12 + scroll * 0.34;
-      const targetRotationX = pointerY * -0.08 + (variant === 'research' ? -0.04 : 0.03);
+      const active = activeResearchFocus();
+      const activeIndex = active ? RESEARCH_NODE_IDS.indexOf(active) : -1;
+      const hasFocus = activeIndex >= 0;
+      const chapterProgress = hasFocus
+        ? activeIndex / Math.max(1, RESEARCH_NODE_IDS.length - 1)
+        : 0.5;
+      const [focusX, focusY, focusZ] = active ? (nodePositions.get(active) ?? [0, 0, 0]) : [0, 0, 0];
+      worldFocus.set(focusX, focusY, focusZ);
 
+      // Scroll selects the research chapter; pointer movement only adds a bounded
+      // local parallax. The selected chapter moves the whole constellation and
+      // camera together so the GPU scene behaves like spatial navigation rather
+      // than an unrelated particle ornament.
+      const worldShift = variant === 'home' ? 0.48 : 0.58;
+      desiredWorldPosition.set(
+        hasFocus ? -worldFocus.x * worldShift : 0,
+        hasFocus ? -worldFocus.y * worldShift : 0,
+        hasFocus ? 0.14 + chapterProgress * 0.06 : 0,
+      );
+      const worldBlend = Math.min(1, deltaSeconds * 2.7);
+      constellation.position.x = MathUtils.lerp(
+        constellation.position.x,
+        desiredWorldPosition.x,
+        worldBlend,
+      );
+      constellation.position.y = MathUtils.lerp(
+        constellation.position.y,
+        desiredWorldPosition.y,
+        worldBlend,
+      );
+      constellation.position.z = MathUtils.lerp(
+        constellation.position.z,
+        desiredWorldPosition.z,
+        worldBlend,
+      );
+
+      const targetWorldScale = hasFocus ? 1.08 + chapterProgress * 0.1 : 1;
+      const nextWorldScale = MathUtils.lerp(
+        constellation.scale.x,
+        targetWorldScale,
+        Math.min(1, deltaSeconds * 2.5),
+      );
+      constellation.scale.setScalar(nextWorldScale);
+
+      const chapterYaw = hasFocus ? (chapterProgress - 0.5) * 0.86 : 0;
+      const chapterPitch = hasFocus ? (0.5 - chapterProgress) * 0.18 : 0;
+      const targetRotationY = chapterYaw + pointerX * 0.14 + scroll * 0.2;
+      const targetRotationX =
+        chapterPitch + pointerY * -0.1 + (variant === 'research' ? -0.035 : 0.025);
       constellation.rotation.y = MathUtils.lerp(
         constellation.rotation.y,
         targetRotationY,
@@ -374,12 +443,55 @@ export async function mountExperienceRenderer({
         targetRotationX,
         Math.min(1, deltaSeconds * 3.2),
       );
+
+      desiredCameraPosition.set(
+        (hasFocus ? worldFocus.x * 0.12 : 0) + pointerX * 0.1,
+        (hasFocus ? worldFocus.y * 0.1 : 0) - pointerY * 0.07,
+        hasFocus ? focusedCameraZ + chapterProgress * 0.16 : overviewCameraZ,
+      );
+      const cameraBlend = Math.min(1, deltaSeconds * 2.8);
+      camera.position.x = MathUtils.lerp(camera.position.x, desiredCameraPosition.x, cameraBlend);
+      camera.position.y = MathUtils.lerp(camera.position.y, desiredCameraPosition.y, cameraBlend);
+      camera.position.z = MathUtils.lerp(camera.position.z, desiredCameraPosition.z, cameraBlend);
+
+      desiredLookTarget.set(
+        hasFocus ? worldFocus.x * 0.035 : 0,
+        hasFocus ? worldFocus.y * 0.035 : 0,
+        hasFocus ? 0.05 : 0,
+      );
+      cameraLookTarget.lerp(desiredLookTarget, Math.min(1, deltaSeconds * 3));
+      camera.lookAt(cameraLookTarget);
+
+      const ringPitch = Math.PI * (hasFocus ? 0.47 + chapterProgress * 0.12 : 0.51);
+      ring.rotation.x = MathUtils.lerp(
+        ring.rotation.x,
+        ringPitch,
+        Math.min(1, deltaSeconds * 2.4),
+      );
+      ring.rotation.y = MathUtils.lerp(
+        ring.rotation.y,
+        hasFocus ? (chapterProgress - 0.5) * 0.32 : 0,
+        Math.min(1, deltaSeconds * 2.4),
+      );
+      ring.rotation.z += deltaSeconds * (0.022 + (hasFocus ? chapterProgress * 0.018 : 0));
+
       particles.rotation.z += deltaSeconds * (currentQuality === 'high' ? 0.045 : 0.025);
-      ring.rotation.z += deltaSeconds * 0.025;
+      particles.rotation.x = MathUtils.lerp(
+        particles.rotation.x,
+        hasFocus ? (chapterProgress - 0.5) * 0.14 : 0,
+        Math.min(1, deltaSeconds * 2.2),
+      );
+      const targetParticleScale = hasFocus ? 1.03 + chapterProgress * 0.08 : 1;
+      const nextParticleScale = MathUtils.lerp(
+        particles.scale.x,
+        targetParticleScale,
+        Math.min(1, deltaSeconds * 2.2),
+      );
+      particles.scale.setScalar(nextParticleScale);
 
       for (const record of nodeRecords) {
-        const selected = latestSnapshot.activeResearchNode === record.id;
-        const targetScale = selected ? 1.58 : 1;
+        const selected = active === record.id;
+        const targetScale = selected ? 1.82 : hasFocus ? 0.92 : 1;
         const nextScale = MathUtils.lerp(
           record.mesh.scale.x,
           targetScale,
@@ -388,6 +500,13 @@ export async function mountExperienceRenderer({
         record.mesh.scale.setScalar(nextScale);
       }
 
+      const targetCentralScale = hasFocus ? 0.88 + chapterProgress * 0.05 : overviewCentralScale;
+      const nextCentralScale = MathUtils.lerp(
+        central.scale.x,
+        targetCentralScale,
+        Math.min(1, deltaSeconds * 4),
+      );
+      central.scale.setScalar(nextCentralScale);
       central.rotation.x += deltaSeconds * 0.18;
       central.rotation.y += deltaSeconds * 0.22;
       renderer.render(scene, camera);
@@ -470,6 +589,8 @@ export async function mountExperienceRenderer({
     delete host.dataset.rendererAdaptation;
     delete host.dataset.rendererLoop;
     delete host.dataset.rendererTheme;
+    delete host.dataset.rendererFocus;
+    delete host.dataset.rendererFocusIndex;
     host.dataset.rendererStatus = 'idle';
     experienceState.resetRenderer();
   };
