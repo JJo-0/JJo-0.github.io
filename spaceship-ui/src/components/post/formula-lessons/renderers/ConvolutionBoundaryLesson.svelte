@@ -3,9 +3,8 @@
  export let lesson; export let spec;
  let mode='zero';
  $: r=computeBoundaryLesson({x:spec.x,h:spec.h});
- $: matrix=mode==='periodic'?r.periodicMatrix:r.extendedMatrix;
- $: output=mode==='periodic'?r.periodicOutput:mode==='mirror'?r.mirrorOutput:r.extendedOutput;
- $: if(mode==='zero'){matrix=r.zeroMatrix;output=r.zeroOutput;}
+ $: matrix=mode==='zero'?r.zeroMatrix:mode==='periodic'?r.periodicMatrix:r.extendedMatrix;
+ $: output=mode==='zero'?r.zeroOutput:mode==='periodic'?r.periodicOutput:mode==='mirror'?r.mirrorOutput:r.extendedOutput;
  const f=(v,d=2)=>Number(v).toFixed(d);
 </script>
 <div class="grid" data-convolution-boundary-lesson data-focus={lesson.focus}><section class="panel"><p class="eyebrow">boundary condition → system matrix</p><select bind:value={mode} aria-label="boundary condition"><option value="zero">zero</option><option value="extended">extended (zero outside)</option><option value="periodic">periodic</option><option value="mirror">mirror</option></select><div class="matrix">{#each matrix as row,i (i)}<div>{#each row as v,j (j)}<span>{v}</span>{/each}</div>{/each}</div></section><section class="panel"><p class="eyebrow">y=Ax / circular checks</p><div class="metric"><span>x</span><strong>[{spec.x.join(', ')}]</strong></div><div class="metric"><span>output</span><strong>[{output.join(', ')}]</strong></div><div class="metric"><span>h̃</span><strong>[{r.ht.join(', ')}]</strong></div><div class="metric"><span>periodic residual</span><strong>{f(r.periodicResidual,8)}</strong></div><div class="metric"><span>(−1) mod 6</span><strong>{positiveMod(-1,6)}</strong></div><div class="metric"><span>7 mod 6</span><strong>{positiveMod(7,6)}</strong></div></section></div>
