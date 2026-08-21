@@ -1,9 +1,11 @@
 (() => {
   const marketRegistryUrl = './company-links-korea.json';
   const officialRegistryUrl = './company-links-korea-private.json';
+  const globalListedRegistryUrl = './company-links-global-listed.json';
   const state = {
     marketRegistry: null,
     officialRegistry: null,
+    globalListedRegistry: null,
     panel: null,
   };
 
@@ -38,13 +40,14 @@
     return panel;
   }
 
-  function createAnchor({ href, title, role, publisher, degraded = false }) {
+  function createAnchor({ href, title, role, publisher, degraded = false, generated = false }) {
     const anchor = document.createElement('a');
     anchor.href = href;
     anchor.target = '_blank';
     anchor.rel = 'noopener noreferrer';
     anchor.dataset.resourceRole = role;
     if (degraded) anchor.dataset.resourceAvailability = 'degraded';
+    if (generated) anchor.dataset.resourceAvailability = 'generated';
 
     const text = document.createElement('span');
     text.className = 'company-link-resource-text';
@@ -106,6 +109,28 @@
     }
   }
 
+  function renderGlobalListedProfile(panel, nodeId, profile) {
+    const actions = panel.querySelector('[data-company-link-actions]');
+    panel.querySelector('[data-company-link-eyebrow]').textContent = 'GLOBAL LISTED COMPANY';
+    panel.querySelector('[data-company-link-title]').textContent = profile.name || nodeId;
+    panel.querySelector('[data-company-link-market]').textContent = `${profile.exchange} · ${profile.ticker}`;
+    panel.querySelector('[data-company-link-description]').textContent = `${profile.name || nodeId}의 공식 IR, 반도체 제품·기술 페이지와 primary listing 기준 시장정보로 이동합니다.`;
+    panel.querySelector('[data-company-link-note]').textContent = 'MARKET 링크는 2026-08-21 확인한 primary listing identity를 Google Finance 형식으로 연결한 탐색용 링크입니다. ADR·secondary listing이 있어도 Atlas의 canonical ticker는 primary listing을 유지하며, 외부 링크는 공급관계 evidence를 자동 승격하지 않습니다.';
+    actions.classList.add('is-resource-grid');
+    actions.replaceChildren();
+
+    for (const resource of profile.resources || []) {
+      actions.append(createAnchor({
+        href: resource.url,
+        title: resource.title,
+        role: resource.role,
+        publisher: resource.publisher,
+        degraded: resource.availability === 'DEGRADED',
+        generated: resource.availability === 'GENERATED',
+      }));
+    }
+  }
+
   function renderForNode() {
     const panel = ensurePanel();
     if (!panel) return;
@@ -113,11 +138,14 @@
     const nodeId = document.querySelector('#node-id')?.textContent?.trim() || '';
     const marketProfile = state.marketRegistry?.companies?.[nodeId];
     const officialProfile = state.officialRegistry?.companies?.[nodeId];
+    const globalListedProfile = state.globalListedRegistry?.companies?.[nodeId];
 
     if (marketProfile) {
       renderMarketProfile(panel, nodeId, marketProfile);
     } else if (officialProfile) {
       renderOfficialProfile(panel, nodeId, officialProfile);
+    } else if (globalListedProfile) {
+      renderGlobalListedProfile(panel, nodeId, globalListedProfile);
     } else {
       panel.hidden = true;
       panel.dataset.nodeId = '';
@@ -137,9 +165,10 @@
   }
 
   async function loadRegistries() {
-    const [market, official] = await Promise.allSettled([
+    const [market, official, globalListed] = await Promise.allSettled([
       loadRegistry(marketRegistryUrl, (registry) => registry?.version === 1 && registry.companies && registry.urlTemplates),
       loadRegistry(officialRegistryUrl, (registry) => registry?.version === 1 && registry.companies),
+      loadRegistry(globalListedRegistryUrl, (registry) => registry?.version === 1 && registry.companies),
     ]);
 
     if (market.status === 'fulfilled') state.marketRegistry = market.value;
@@ -147,6 +176,9 @@
 
     if (official.status === 'fulfilled') state.officialRegistry = official.value;
     else console.warn('[semiconductor-company-links:official]', official.reason);
+
+    if (globalListed.status === 'fulfilled') state.globalListedRegistry = globalListed.value;
+    else console.warn('[semiconductor-company-links:global-listed]', globalListed.reason);
 
     renderForNode();
   }
