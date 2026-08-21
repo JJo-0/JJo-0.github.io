@@ -7,7 +7,7 @@ import {
   stopChild,
 } from './browser-smoke-harness.mjs';
 import { auditRenderer } from './browser-smoke-audits.mjs';
-import { auditInteractions } from './browser-interaction-audits-stable.mjs';
+import { auditInteractions } from './browser-interaction-audits-v2.mjs';
 
 async function main() {
   let preview, chrome, cdp;
