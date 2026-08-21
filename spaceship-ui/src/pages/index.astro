@@ -190,27 +190,35 @@ const postCategoryHashes = JSON.stringify(POST_CATEGORIES);
   </div>
 
   <script>
+    const decodeCategoryHash = () => {
+      try {
+        return decodeURIComponent(window.location.hash.slice(1));
+      } catch {
+        return null;
+      }
+    };
+
+    const readPostCategories = (root: HTMLElement) => {
+      try {
+        const value = JSON.parse(root.dataset.postCategoryHashes || '[]');
+        return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+      } catch {
+        return [];
+      }
+    };
+
     const redirectLegacyCategoryHash = () => {
       if (window.location.pathname !== '/' || !window.location.hash) return;
 
       const root = document.querySelector('[data-post-category-hashes]');
       if (!(root instanceof HTMLElement)) return;
 
-      let category = '';
-      try {
-        category = decodeURIComponent(window.location.hash.slice(1));
-      } catch {
-        return;
-      }
+      const category = decodeCategoryHash();
+      if (!category) return;
 
-      let categories: string[] = [];
-      try {
-        categories = JSON.parse(root.dataset.postCategoryHashes || '[]');
-      } catch {
-        return;
-      }
-
+      const categories = readPostCategories(root);
       if (!categories.includes(category)) return;
+
       window.location.replace(`/posts#${category}`);
     };
 
