@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
 
   let isOpen = $state(false);
+  let isHydrated = $state(false);
   let dropdownRef: HTMLDivElement;
 
   function toggleDropdown() {
@@ -15,7 +16,6 @@
 
   function setTheme(newTheme: 'light' | 'dark' | 'system') {
     if (theme.current === newTheme && newTheme !== 'system') {
-      // but for now let's just close.
       closeDropdown();
       return;
     }
@@ -31,6 +31,7 @@
   }
 
   onMount(() => {
+    isHydrated = true;
     document.addEventListener('click', handleClickOutside);
     return () => {
       document.removeEventListener('click', handleClickOutside);
@@ -38,7 +39,7 @@
   });
 </script>
 
-<div class="relative" bind:this={dropdownRef}>
+<div class="relative" bind:this={dropdownRef} data-theme-ready={isHydrated ? 'true' : undefined}>
   <button
     onclick={toggleDropdown}
     class="p-2 rounded-md hover:bg-accent transition-all opacity-70 hover:opacity-100 text-muted-foreground hover:text-primary"
