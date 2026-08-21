@@ -830,28 +830,12 @@ function guideForFamily(family) {
       };
     default:
       return {
-        title: '수식을 계산 가능한 작은 연산으로 분해하기',
-        question: '등호 왼쪽 값을 만들기 위해 오른쪽에서 어떤 연산을 어떤 순서로 수행하는가?',
-        summary: '괄호·인덱스·내적·합·나눗셈을 안쪽부터 계산하고, 마지막에 왼쪽 값의 차원과 의미를 확인한다.',
-        steps: [
-          step('등호 왼쪽의 목표를 확인한다', '스칼라·벡터·행렬·확률 중 무엇을 구하는지 먼저 정한다.'),
-          step('입력 기호의 값과 차원을 적는다', '기호를 말로만 읽지 말고 작은 숫자 예시로 치환한다.'),
-          step('가장 안쪽 괄호와 인덱스부터 계산한다'),
-          step('곱 → 합 → 정규화 순서로 바깥 연산을 진행한다'),
-          step('차원·부호·범위를 검산한다', '왼쪽과 오른쪽의 모양과 단위가 일치해야 한다.'),
-        ],
-        example: example(
-          '직접 계산하는 공통 절차',
-          '복잡한 식도 N=2 또는 샘플 2개로 축소한다.',
-          [
-            step('최소 크기 선택', '', String.raw`N=2`),
-            step('기호를 숫자로 치환', '', String.raw`x=[1,2]^T`),
-            step('안쪽 연산부터 기록', '중간값을 생략하지 않고 한 줄씩 적는다.'),
-            step('최종 범위 확인', '확률이면 0~1, 거리·제곱오차면 0 이상인지 본다.'),
-          ],
-          '이 절차를 적용하면 기호 조작이 아니라 재현 가능한 계산으로 읽을 수 있다.',
-        ),
-        checks: ['좌변과 우변의 차원·단위를 비교한다.', '바로 앞 문단에서 정의된 인덱스 범위와 분모를 다시 확인한다.'],
+        title: '수식의 역할과 기호만 확인하기',
+        question: '이 수식이 본문에서 정의하거나 연결하는 대상은 무엇인가?',
+        summary: '별도의 실제 계산이나 유도 과정이 없는 수식에는 범용 계산 절차를 덧붙이지 않고, 문맥과 기호만 간결하게 확인한다.',
+        steps: [],
+        example: null,
+        checks: [],
         references: REFERENCE_SETS.machineLearning,
       };
   }
@@ -880,9 +864,10 @@ export function buildFormulaGuide({ formulaId = '', tex, section = '', part = 1 
     part,
     symbols: extractSymbols(tex),
     badges: [
-      `${guide.steps.length}단계 계산`,
-      guide.example ? '숫자 예제' : '계산 절차',
-      guide.checks?.length ? '검산 포함' : '개념 설명',
+      ...(guide.steps.length ? [`${guide.steps.length}단계 계산`] : []),
+      ...(guide.example ? ['숫자 예제'] : []),
+      ...(guide.checks?.length ? ['검산 포함'] : []),
+      ...(!guide.steps.length && !guide.example && !guide.checks?.length ? ['핵심 설명'] : []),
     ],
   };
 }

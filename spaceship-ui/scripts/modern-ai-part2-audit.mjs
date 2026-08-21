@@ -136,9 +136,6 @@ if (!fs.existsSync(distPath)) {
   const guideContracts = [
     ['display formula cards', /data-formula-part="2"/g],
     ['calculation-first guides', /data-formula-guide="calculation-first"/g],
-    ['calculation walkthroughs', /data-calculation-walkthrough/g],
-    ['worked examples', /data-worked-example/g],
-    ['sanity-check sections', /data-formula-checks/g],
   ];
   for (const [label, pattern] of guideContracts) {
     const actual = count(html, pattern);
@@ -171,6 +168,11 @@ if (!fs.existsSync(distPath)) {
     'source-figure:P2-FIG',
     'source-annotation:P2-ANN',
     'katex-error',
+    '등호 왼쪽의 목표를 확인한다',
+    '입력 기호의 값과 차원을 적는다',
+    '가장 안쪽 괄호와 인덱스부터 계산한다',
+    '곱 → 합 → 정규화 순서로 바깥 연산을 진행한다',
+    '직접 계산하는 공통 절차',
   ]) {
     if (html.includes(forbidden)) issues.push(`rendered Part II leaked internal/audit residue: ${forbidden}`);
   }
@@ -194,4 +196,4 @@ if (unique.length) {
   process.exit(1);
 }
 
-console.log(`modern-ai-part2-audit: PASS (13 pages; ${formulaLedger.formulas.length} formulas; ${displayFormulaCount} calculation walkthroughs with worked examples; ${contentLedger.content.length} content blocks; ${contentLedger.figures.length} figures; ${contentLedger.annotations.length} annotations)`);
+console.log(`modern-ai-part2-audit: PASS (13 pages; ${formulaLedger.formulas.length} formulas; ${displayFormulaCount} formula guides with curated walkthroughs where meaningful; ${contentLedger.content.length} content blocks; ${contentLedger.figures.length} figures; ${contentLedger.annotations.length} annotations)`);

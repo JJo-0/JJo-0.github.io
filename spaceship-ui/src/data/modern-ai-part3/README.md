@@ -28,10 +28,12 @@ The article keeps three layers separate:
 
 The source layer preserves printed `?`, `??`, blank grids, signed-distance wording, dimension-index inconsistencies, patch-vector notation issues, and typographical artifacts. Completed or corrected expressions are separate records and are moved beside the relevant source item only at reader-render time.
 
-## Reader calculation contract
+## Reader explanation contract
 
-Every display formula is rendered as a responsive card with `쉽게 설명 + 계산 과정`, a worked example, checks, symbols, and reference-quality follow-up. Formula-specific visuals are governed separately by the exact-ID lesson registry; the retired generic formula-visual runtime must not return. The guide never changes protected `sourceLatex` or its hash.
+Every display formula is rendered as a responsive source card. Formula-specific derivations, worked examples, checks, symbols, and references are shown only when they materially explain that exact expression. Formula-specific visuals remain governed separately by the exact-ID lesson registry.
 
-`pnpm modern-ai:part3-check` fails closed when a page, formula, source block, figure, annotation, correction link, hash, reader guide, or rendered marker disappears or is duplicated.
+Generic calculation walkthroughs are forbidden. Definitions, notation-only expressions, and other formulas without a genuine derivation receive concise context/symbol explanation rather than a repeated five-step calculation checklist. This no-generic-walkthrough rule is the default contract for subsequent Modern AI Parts IV–VIII as well.
+
+The guide never changes protected `sourceLatex` or its hash. `pnpm modern-ai:part3-check` fails closed when a page, formula, source block, figure, annotation, correction link, hash, reader guide, or rendered marker disappears or is duplicated, and also fails if retired generic calculation boilerplate returns.
 
 The production branch stores only the reviewed source tree: no source PDF, encoded payload, materialization workflow, bootstrap workflow, or CI self-modification remains.
