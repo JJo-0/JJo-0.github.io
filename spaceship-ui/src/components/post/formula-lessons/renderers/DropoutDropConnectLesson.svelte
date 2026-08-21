@@ -1,0 +1,11 @@
+<script>
+ import { computeDropoutDropConnect } from '@/lib/formula-lessons/part3-advanced.mjs';
+ export let lesson; export let spec;
+ let keepNode1=Boolean(spec.nodeMask[0]),keepNode2=Boolean(spec.nodeMask[1]),keepW12=Boolean(spec.weightMask[0][1]),keepW21=Boolean(spec.weightMask[1][0]);
+ $: nodeMask=[keepNode1?1:0,keepNode2?1:0];
+ $: weightMask=[[1,keepW12?1:0,1],[keepW21?1:0,1,1]];
+ $: r=computeDropoutDropConnect({W:spec.W,v:spec.v,nodeMask,weightMask});
+ const f=(v)=>Number(v).toFixed(3);
+</script>
+<div class="grid" data-dropout-dropconnect-lesson data-focus={lesson.focus}><section class="panel"><p class="eyebrow">DropOut: activation mask</p><div class="formula"><span>dense a(Wv)</span><strong>[{r.dense.map(v=>f(v)).join(', ')}]</strong></div><div class="formula"><span>m⊙a(Wv)</span><strong>[{r.dropout.map(v=>f(v)).join(', ')}]</strong></div><label class="check"><input bind:checked={keepNode1} type="checkbox"/> keep output node 1</label><label class="check"><input bind:checked={keepNode2} type="checkbox"/> keep output node 2</label></section><section class="panel"><p class="eyebrow">DropConnect: weight mask</p><div class="formula"><span>masked preactivation</span><strong>[{r.dropconnectPre.map(v=>f(v)).join(', ')}]</strong></div><div class="formula"><span>a((M⊙W)v)</span><strong>[{r.dropconnect.map(v=>f(v)).join(', ')}]</strong></div><label class="check"><input bind:checked={keepW12} type="checkbox"/> keep W₁₂</label><label class="check"><input bind:checked={keepW21} type="checkbox"/> keep W₂₁</label></section></div>
+<style>.grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}.panel{border:1px solid var(--color-border);border-radius:1rem;background:var(--color-background);padding:1rem}.eyebrow{margin:0 0 .6rem;font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:var(--color-muted-foreground)}.formula{display:flex;justify-content:space-between;gap:.6rem;background:var(--color-muted);border-radius:.7rem;padding:.7rem;margin:.45rem 0;font-size:.72rem}.check{display:flex;align-items:center;gap:.5rem;margin-top:.65rem;font-size:.74rem;font-weight:800}.check input{width:1rem;height:1rem}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style>
