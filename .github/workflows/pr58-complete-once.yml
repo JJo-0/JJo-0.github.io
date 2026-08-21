@@ -1,0 +1,67 @@
+name: Complete PR58 Part III lessons once
+
+on:
+  push:
+    branches: [agent/modern-ai-part3-exact-lessons]
+    paths:
+      - 'scripts/.pr58_payload_*.b64'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr58-complete-once
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-part3-exact-lessons
+          fetch-depth: 0
+
+      - name: Apply reviewed Part III payload
+        run: |
+          set -euo pipefail
+          cat \
+            scripts/.pr58_payload_00.b64 scripts/.pr58_payload_01.b64 scripts/.pr58_payload_02.b64 \
+            scripts/.pr58_payload_03.b64 scripts/.pr58_payload_04.b64 scripts/.pr58_payload_05.b64 \
+            scripts/.pr58_payload_06.b64 scripts/.pr58_payload_07.b64 \
+            scripts/.pr58_payload_08a.b64 scripts/.pr58_payload_08b.b64 \
+            scripts/.pr58_payload_09.b64 scripts/.pr58_payload_10.b64 scripts/.pr58_payload_11.b64 scripts/.pr58_payload_12.b64 \
+            | base64 -d > /tmp/pr58.zip
+          echo '9a4cac3dbd883796e9596a3e9caf8b40eda4dce89da0987df2e5a9327edcc70e  /tmp/pr58.zip' | sha256sum -c -
+          unzip -oq /tmp/pr58.zip
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f -- \
+            .github/workflows/pr58-complete-once.yml \
+            scripts/.pr58_payload_00.b64 scripts/.pr58_payload_01.b64 scripts/.pr58_payload_02.b64 \
+            scripts/.pr58_payload_03.b64 scripts/.pr58_payload_04.b64 scripts/.pr58_payload_05.b64 \
+            scripts/.pr58_payload_06.b64 scripts/.pr58_payload_07.b64 \
+            scripts/.pr58_payload_08a.b64 scripts/.pr58_payload_08b.b64 \
+            scripts/.pr58_payload_09.b64 scripts/.pr58_payload_10.b64 scripts/.pr58_payload_11.b64 scripts/.pr58_payload_12.b64
+          git add -- \
+            spaceship-ui/src/lib/formula-lessons/part3-specs.mjs \
+            spaceship-ui/src/lib/formula-lessons/part3-overrides.mjs \
+            spaceship-ui/src/lib/formula-lessons/part3-advanced.mjs \
+            spaceship-ui/src/components/post/formula-lessons/renderers/ConvolutionBoundaryLesson.svelte \
+            spaceship-ui/src/components/post/formula-lessons/renderers/PatchCnnLesson.svelte \
+            spaceship-ui/src/components/post/formula-lessons/renderers/MlpForwardLesson.svelte \
+            spaceship-ui/src/components/post/formula-lessons/renderers/ConvolutionExercisesLesson.svelte \
+            spaceship-ui/src/components/post/formula-lessons/renderers/DropoutDropConnectLesson.svelte \
+            spaceship-ui/src/components/post/formula-lessons/renderers/ConvolutionPrimitivesLesson.svelte \
+            spaceship-ui/src/components/post/formula-lessons/renderers/XorGeometryLesson.svelte \
+            spaceship-ui/src/components/post/formula-lessons/renderers/PerceptronMseLesson.svelte \
+            spaceship-ui/scripts/modern-ai-part3-lesson-audit.mjs
+          if git diff --cached --name-only | grep -E 'modern-artificial-intelligence-3\.mdx|modern-ai-part3/(formula|page|content)-ledger\.json'; then
+            echo 'Protected Part III source/ledger changed unexpectedly.' >&2
+            exit 1
+          fi
+          git diff --cached --check
+          git commit -m 'feat: complete Part III exact formula lessons'
+          git push origin HEAD:agent/modern-ai-part3-exact-lessons
