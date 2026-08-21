@@ -6,6 +6,8 @@ type RendererRuntimeHandle = {
   destroy: () => void;
 };
 
+type RendererModule = typeof import('./renderer-core');
+
 declare global {
   interface Window {
     __jjoRendererRuntime?: RendererRuntimeHandle;
@@ -13,15 +15,71 @@ declare global {
 }
 
 const HOST_SELECTOR = '[data-experience-canvas]';
-let rendererModulePromise: Promise<typeof import('./renderer-core')> | null = null;
+let rendererModulePromise: Promise<RendererModule> | null = null;
+let rendererRetryBaseUrl: string | null = null;
+let rendererRetryAttempt = 0;
 
-function loadRendererModule(): Promise<typeof import('./renderer-core')> {
-  rendererModulePromise ??= import('./renderer-core').catch((error: unknown) => {
-    // A transient chunk/network failure must not poison every later route visit
-    // in the same browser session.
-    rendererModulePromise = null;
-    throw error;
-  });
+function retryableRendererUrl(error: unknown): string | null {
+  if (!(error instanceof Error) || typeof window === 'undefined') return null;
+
+  const candidate = error.message.match(/https?:\/\/[^\s"'()]+\.js(?:\?[^\s"'()]*)?/i)?.[0];
+  if (!candidate) return null;
+
+  try {
+    const url = new URL(candidate, window.location.href);
+    const assetDirectory = new URL('.', import.meta.url);
+
+    // Never turn an exception string into an arbitrary code-import surface.
+    // Retry only the same-origin JavaScript chunk directory emitted beside
+    // this runtime module.
+    if (
+      url.origin !== assetDirectory.origin ||
+      !url.pathname.startsWith(assetDirectory.pathname) ||
+      !url.pathname.endsWith('.js')
+    ) {
+      return null;
+    }
+
+    url.search = '';
+    url.hash = '';
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+function importRendererModule(): Promise<RendererModule> {
+  if (rendererRetryBaseUrl) {
+    const retryUrl = new URL(rendererRetryBaseUrl);
+    retryUrl.searchParams.set('jjo-renderer-retry', String(++rendererRetryAttempt));
+
+    // A browser module map can retain a failed fetch for the original URL.
+    // The validated same-origin cache-busting URL gives the next route visit
+    // a real recovery path without duplicating the renderer bundle.
+    return import(/* @vite-ignore */ retryUrl.href) as Promise<RendererModule>;
+  }
+
+  return import('./renderer-core');
+}
+
+function loadRendererModule(): Promise<RendererModule> {
+  rendererModulePromise ??= importRendererModule()
+    .then((module) => {
+      rendererRetryBaseUrl = null;
+      rendererRetryAttempt = 0;
+      return module;
+    })
+    .catch((error: unknown) => {
+      // A transient chunk/network failure must not poison every later route
+      // visit in the same browser session.
+      rendererModulePromise = null;
+      const retryUrl = retryableRendererUrl(error);
+      if (retryUrl && retryUrl !== rendererRetryBaseUrl) {
+        rendererRetryBaseUrl = retryUrl;
+        rendererRetryAttempt = 0;
+      }
+      throw error;
+    });
   return rendererModulePromise;
 }
 
@@ -29,6 +87,24 @@ function setStatus(host: HTMLElement, status: string, label: string): void {
   host.dataset.rendererStatus = status;
   const labelElement = host.querySelector<HTMLElement>('[data-renderer-label]');
   if (labelElement) labelElement.textContent = label;
+}
+
+function replaceRendererCanvas(
+  host: HTMLElement,
+  expectedCanvas?: HTMLCanvasElement,
+): HTMLCanvasElement | null {
+  const canvas =
+    expectedCanvas ?? host.querySelector<HTMLCanvasElement>('[data-experience-canvas-element]');
+  if (!canvas || !canvas.isConnected || canvas.parentElement !== host) return null;
+
+  // A WebGPU/WebGL context is permanently bound to its canvas. Reusing that
+  // canvas after backend teardown is browser-dependent, so every capability
+  // reclassification receives a fresh context boundary.
+  const replacement = canvas.cloneNode(false) as HTMLCanvasElement;
+  replacement.removeAttribute('width');
+  replacement.removeAttribute('height');
+  canvas.replaceWith(replacement);
+  return replacement;
 }
 
 export function installExperienceRendererRuntime(): void {
@@ -59,9 +135,17 @@ export function installExperienceRendererRuntime(): void {
     while (cleanupCallbacks.length) cleanupCallbacks.pop()?.();
 
     if (activeHost) {
+      if (activeHost.isConnected) replaceRendererCanvas(activeHost);
       activeHost.dataset.rendererStatus = 'idle';
       delete activeHost.dataset.rendererTier;
       delete activeHost.dataset.rendererReason;
+      delete activeHost.dataset.rendererPreferredBackend;
+      delete activeHost.dataset.rendererBackend;
+      delete activeHost.dataset.rendererQuality;
+      delete activeHost.dataset.rendererDpr;
+      delete activeHost.dataset.rendererFps;
+      delete activeHost.dataset.rendererTargetFps;
+      delete activeHost.dataset.rendererAdaptation;
       delete activeHost.dataset.rendererLoop;
       delete activeHost.dataset.rendererTheme;
     }
@@ -111,26 +195,39 @@ export function installExperienceRendererRuntime(): void {
       return;
     }
 
-    setStatus(host, 'loading', 'Loading');
+    setStatus(host, 'loading', profile.backend === 'webgpu' ? 'Loading WebGPU' : 'Loading WebGL2');
 
     try {
       const { mountExperienceRenderer } = await loadRendererModule();
-      if (currentGeneration !== generation || !host.isConnected) return;
+      if (currentGeneration !== generation || !host.isConnected || !canvas.isConnected) return;
 
-      mountedRenderer = mountExperienceRenderer({ host, canvas, profile, variant });
-      if (currentGeneration !== generation || !host.isConnected) {
-        mountedRenderer.destroy();
-        mountedRenderer = null;
+      const handle = await mountExperienceRenderer({ host, canvas, profile, variant });
+      if (currentGeneration !== generation || !host.isConnected || !canvas.isConnected) {
+        handle.destroy();
+        replaceRendererCanvas(host, canvas);
         return;
       }
 
-      experienceState.patch({ rendererBackend: 'webgl2' });
-      setStatus(host, 'active', profile.tier === 'ultra' ? 'WebGL2 Ultra' : 'WebGL2');
+      mountedRenderer = handle;
+      experienceState.patch({ rendererBackend: handle.backend });
+      const backendLabel = handle.backend === 'webgpu' ? 'WebGPU' : 'WebGL2';
+      setStatus(host, 'active', `${backendLabel} Adaptive`);
     } catch (error) {
+      if (currentGeneration !== generation || !host.isConnected || !canvas.isConnected) {
+        replaceRendererCanvas(host, canvas);
+        return;
+      }
+
       console.warn('JJo Experience renderer fell back to SVG/DOM.', error);
       mountedRenderer?.destroy();
       mountedRenderer = null;
-      experienceState.patch({ rendererBackend: 'none', tier: 'safe' });
+      replaceRendererCanvas(host, canvas);
+      experienceState.patch({
+        rendererBackend: 'none',
+        tier: 'safe',
+        quality: 'low',
+        adaptationReason: 'renderer-init-failed',
+      });
       host.dataset.rendererTier = 'safe';
       setStatus(host, 'fallback', 'SVG');
     }
@@ -149,13 +246,18 @@ export function installExperienceRendererRuntime(): void {
     document.documentElement.dataset.experienceTier = profile.tier;
     host.dataset.rendererTier = profile.tier;
     host.dataset.rendererReason = profile.reasons.join(',') || 'capable';
+    host.dataset.rendererPreferredBackend = profile.backend;
     experienceState.patch({
       route,
       reducedMotion: profile.reducedMotion,
       tier: profile.tier,
       rendererBackend: 'none',
       webgpuAvailable: profile.webgpuAvailable,
+      quality: profile.initialQuality,
       fps: 0,
+      dpr: 1,
+      targetFps: profile.maxFps,
+      adaptationReason: 'initial',
     });
 
     if (profile.tier === 'safe') {
@@ -164,7 +266,7 @@ export function installExperienceRendererRuntime(): void {
     }
 
     installPointerTracking(host, profile);
-    setStatus(host, 'idle', profile.tier === 'ultra' ? 'Ultra ready' : 'Ready');
+    setStatus(host, 'idle', profile.backend === 'webgpu' ? 'WebGPU ready' : 'WebGL2 ready');
 
     if (!('IntersectionObserver' in window)) {
       void mountHost(host, profile, currentGeneration);

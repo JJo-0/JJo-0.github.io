@@ -1,4 +1,5 @@
 import { RESEARCH_AREAS } from '../taxonomy.mjs';
+import type { RendererQuality } from './adaptive-performance.js';
 
 export type ExperienceRoute = 'home' | 'research' | 'other';
 export type ExperienceTier = 'safe' | 'normal' | 'ultra';
@@ -25,7 +26,11 @@ export interface ExperienceSnapshot {
   tier: ExperienceTier;
   rendererBackend: RendererBackend;
   webgpuAvailable: boolean;
+  quality: RendererQuality;
   fps: number;
+  dpr: number;
+  targetFps: number;
+  adaptationReason: string;
 }
 
 type Listener = (snapshot: Readonly<ExperienceSnapshot>) => void;
@@ -39,7 +44,11 @@ const INITIAL_STATE: ExperienceSnapshot = {
   tier: 'safe',
   rendererBackend: 'none',
   webgpuAvailable: false,
+  quality: 'low',
   fps: 0,
+  dpr: 1,
+  targetFps: 0,
+  adaptationReason: 'idle',
 };
 
 class ExperienceStore {
@@ -78,7 +87,11 @@ class ExperienceStore {
     this.patch({
       pointer: { x: 0, y: 0 },
       rendererBackend: 'none',
+      quality: 'low',
       fps: 0,
+      dpr: 1,
+      targetFps: 0,
+      adaptationReason: 'idle',
     });
   }
 }

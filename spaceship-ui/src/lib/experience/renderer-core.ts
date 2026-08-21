@@ -16,20 +16,27 @@ import {
   Scene,
   SRGBColorSpace,
   TorusGeometry,
-  WebGLRenderer,
-} from 'three';
+  WebGPURenderer,
+} from 'three/webgpu';
 import type { Material } from 'three';
+import {
+  QUALITY_PRESETS,
+  createAdaptivePerformanceController,
+  type RendererQuality,
+} from './adaptive-performance.js';
 import type { CapabilityProfile } from './capability';
 import {
   experienceState,
   isResearchNodeId,
   RESEARCH_NODE_IDS,
+  type RendererBackend,
   type ResearchNodeId,
 } from './state';
 
 const RENDERER_CORE_SENTINEL = '__JJO_RENDERER_CORE__';
 
 type ConcreteResearchNode = Exclude<ResearchNodeId, null>;
+type ActiveRendererBackend = Exclude<RendererBackend, 'none'>;
 
 export type RendererVariant = 'home' | 'research';
 
@@ -41,6 +48,7 @@ export interface RendererMountOptions {
 }
 
 export interface RendererHandle {
+  backend: ActiveRendererBackend;
   destroy: () => void;
 }
 
@@ -55,6 +63,11 @@ interface RendererPalette {
   accentStrong: string;
   muted: string;
   theme: 'light' | 'dark';
+}
+
+interface BackendFlags {
+  isWebGPUBackend?: boolean;
+  isWebGLBackend?: boolean;
 }
 
 function readRendererPalette(): RendererPalette {
@@ -77,31 +90,52 @@ function researchNodePosition(index: number, count: number): [number, number, nu
   return [x, y, z];
 }
 
-export function mountExperienceRenderer({
+function readActualBackend(renderer: WebGPURenderer): ActiveRendererBackend {
+  const backend = renderer.backend as typeof renderer.backend & BackendFlags;
+  if (backend.isWebGPUBackend) return 'webgpu';
+  if (backend.isWebGLBackend) return 'webgl2';
+  throw new Error('WebGPURenderer initialized without a recognized backend');
+}
+
+export async function mountExperienceRenderer({
   host,
   canvas,
   profile,
   variant,
-}: RendererMountOptions): RendererHandle {
-  if (profile.backend !== 'webgl2') {
-    throw new Error(`Renderer core requires WebGL2; received ${profile.backend}`);
+}: RendererMountOptions): Promise<RendererHandle> {
+  if (profile.backend === 'none') {
+    throw new Error('Renderer core cannot mount a SAFE profile');
   }
 
-  // renderer-core itself is dynamically imported only after SAFE checks and
-  // viewport proximity. Named Three.js imports keep this lazy chunk tree-shakeable.
+  // This module stays behind the capability and viewport gates. WebGPURenderer
+  // selects WebGPU only for ULTRA profiles and otherwise receives forceWebGL.
   host.dataset.rendererCore = RENDERER_CORE_SENTINEL;
+  host.dataset.rendererPreferredBackend = profile.backend;
 
   let palette = readRendererPalette();
-  const renderer = new WebGLRenderer({
+  const renderer = new WebGPURenderer({
     canvas,
     alpha: true,
     antialias: profile.antialias,
     depth: true,
     powerPreference: profile.tier === 'ultra' ? 'high-performance' : 'low-power',
-    preserveDrawingBuffer: false,
+    forceWebGL: profile.backend === 'webgl2',
   });
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.setClearColor(0x000000, 0);
+  await renderer.init();
+
+  const actualBackend = readActualBackend(renderer);
+  const maximumQuality: RendererQuality =
+    actualBackend === 'webgpu' ? profile.maximumQuality : 'balanced';
+  const performanceController = createAdaptivePerformanceController({
+    initialQuality: profile.initialQuality,
+    maximumQuality,
+  });
+  let currentQuality = performanceController.getQuality();
+
+  host.dataset.rendererBackend = actualBackend;
+  host.dataset.rendererTargetFps = String(profile.maxFps);
 
   const scene = new Scene();
   const camera = new PerspectiveCamera(42, 1, 0.1, 20);
@@ -199,7 +233,7 @@ export function mountExperienceRenderer({
   particleGeometry.setAttribute('position', new BufferAttribute(particlePositions, 3));
   const particleMaterial = new PointsMaterial({
     color: new Color(palette.accent),
-    size: profile.tier === 'ultra' ? 0.034 : 0.027,
+    size: 0.034,
     sizeAttenuation: true,
     transparent: true,
     opacity: variant === 'home' ? 0.34 : 0.44,
@@ -245,19 +279,47 @@ export function mountExperienceRenderer({
   });
   applyThemePalette();
 
+  let currentDpr = 1;
   const resize = (): void => {
     const width = Math.max(1, host.clientWidth);
     const height = Math.max(1, host.clientHeight);
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, profile.dprCap);
+    const preset = QUALITY_PRESETS[currentQuality];
+    const pixelRatio = Math.max(
+      0.5,
+      Math.min(window.devicePixelRatio || 1, profile.dprCap, preset.dprCap),
+    );
+    currentDpr = pixelRatio;
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    host.dataset.rendererDpr = pixelRatio.toFixed(2);
+  };
+
+  const applyQuality = (quality: RendererQuality, reason: string): void => {
+    currentQuality = quality;
+    const preset = QUALITY_PRESETS[quality];
+    const activeParticleCount = Math.max(
+      1,
+      Math.round(profile.particleCount * preset.particleRatio),
+    );
+    particleGeometry.setDrawRange(0, activeParticleCount);
+    particleMaterial.size = quality === 'high' ? 0.034 : quality === 'balanced' ? 0.028 : 0.023;
+    host.dataset.rendererQuality = quality;
+    host.dataset.rendererAdaptation = reason;
+    resize();
+    experienceState.patch({
+      rendererBackend: actualBackend,
+      quality,
+      dpr: currentDpr,
+      targetFps: profile.maxFps,
+      adaptationReason: reason,
+    });
   };
 
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(host);
-  resize();
+  applyQuality(currentQuality, actualBackend === profile.backend ? 'initial' : 'backend-fallback');
 
   let destroyed = false;
   let inViewport = true;
@@ -278,7 +340,9 @@ export function mountExperienceRenderer({
     if (frameId) window.cancelAnimationFrame(frameId);
     frameId = 0;
     framesInWindow = 0;
+    performanceController.reset(currentQuality);
     setLoopStatus('stopped');
+    host.dataset.rendererFps = '0';
     if (experienceState.get().fps !== 0) experienceState.patch({ fps: 0 });
   };
 
@@ -310,7 +374,7 @@ export function mountExperienceRenderer({
         targetRotationX,
         Math.min(1, deltaSeconds * 3.2),
       );
-      particles.rotation.z += deltaSeconds * (profile.tier === 'ultra' ? 0.045 : 0.025);
+      particles.rotation.z += deltaSeconds * (currentQuality === 'high' ? 0.045 : 0.025);
       ring.rotation.z += deltaSeconds * 0.025;
 
       for (const record of nodeRecords) {
@@ -328,9 +392,16 @@ export function mountExperienceRenderer({
       central.rotation.y += deltaSeconds * 0.22;
       renderer.render(scene, camera);
 
-      if (now - fpsWindowStartedAt >= 1000) {
-        const fps = Math.round((framesInWindow * 1000) / (now - fpsWindowStartedAt));
-        experienceState.patch({ fps });
+      if (now - fpsWindowStartedAt >= 1_000) {
+        const rawFps = Math.round((framesInWindow * 1000) / (now - fpsWindowStartedAt));
+        const adaptive = performanceController.sample(rawFps, now);
+        const filteredFps = Math.round(adaptive.filteredFps);
+        host.dataset.rendererFps = String(filteredFps);
+        if (adaptive.transition) {
+          applyQuality(adaptive.quality, adaptive.reason);
+        } else {
+          experienceState.patch({ fps: filteredFps });
+        }
         fpsWindowStartedAt = now;
         framesInWindow = 0;
       }
@@ -346,6 +417,7 @@ export function mountExperienceRenderer({
     lastRenderedAt = now;
     fpsWindowStartedAt = now;
     framesInWindow = 0;
+    performanceController.reset(currentQuality);
     setLoopStatus('running');
     frameId = window.requestAnimationFrame(animate);
   };
@@ -371,7 +443,6 @@ export function mountExperienceRenderer({
   document.addEventListener('visibilitychange', onVisibilityChange);
 
   host.dataset.rendererStatus = 'active';
-  host.dataset.rendererBackend = 'webgl2';
   startAnimation();
 
   const destroy = (): void => {
@@ -388,15 +459,20 @@ export function mountExperienceRenderer({
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
     renderer.dispose();
-    renderer.forceContextLoss();
 
     delete host.dataset.rendererCore;
+    delete host.dataset.rendererPreferredBackend;
     delete host.dataset.rendererBackend;
+    delete host.dataset.rendererQuality;
+    delete host.dataset.rendererDpr;
+    delete host.dataset.rendererFps;
+    delete host.dataset.rendererTargetFps;
+    delete host.dataset.rendererAdaptation;
     delete host.dataset.rendererLoop;
     delete host.dataset.rendererTheme;
     host.dataset.rendererStatus = 'idle';
     experienceState.resetRenderer();
   };
 
-  return { destroy };
+  return { backend: actualBackend, destroy };
 }

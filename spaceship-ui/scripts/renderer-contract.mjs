@@ -7,9 +7,10 @@ import { RESEARCH_AREAS } from '../src/lib/taxonomy.mjs';
 const root = process.cwd();
 const dist = path.join(root, 'dist');
 const issues = [];
-const RENDERER_PAYLOAD_GZIP_BUDGET = 500 * 1024;
+const RENDERER_PAYLOAD_GZIP_BUDGET = 750 * 1024;
 const CORE_SENTINEL = '__JJO_RENDERER_CORE__';
 const RENDERER_CORE_PATH = 'src/lib/experience/renderer-core.ts';
+const ADAPTIVE_PATH = 'src/lib/experience/adaptive-performance.js';
 const STALE_CONSTELLATION_PATH = 'src/components/experience/ResearchConstellation.svelte';
 const OBSOLETE_RESEARCH_IDS = ['robotics-systems', 'vision-perception', 'ai-research'];
 
@@ -66,7 +67,9 @@ function collectModuleGraph(entryFiles) {
 }
 
 if (!Array.isArray(RESEARCH_AREAS) || RESEARCH_AREAS.length !== 4) {
-  issues.push(`taxonomy.mjs: expected exactly 4 canonical RESEARCH_AREAS, got ${RESEARCH_AREAS?.length ?? 'missing'}`);
+  issues.push(
+    `taxonomy.mjs: expected exactly 4 canonical RESEARCH_AREAS, got ${RESEARCH_AREAS?.length ?? 'missing'}`,
+  );
 } else if (new Set(RESEARCH_AREAS).size !== RESEARCH_AREAS.length) {
   issues.push('taxonomy.mjs: canonical RESEARCH_AREAS contain duplicate IDs');
 }
@@ -79,6 +82,8 @@ if (!fs.existsSync(dist)) {
 const requiredFiles = [
   'src/lib/experience/state.ts',
   'src/lib/experience/capability.ts',
+  ADAPTIVE_PATH,
+  'src/lib/experience/adaptive-performance.d.ts',
   'src/lib/experience/renderer-runtime.ts',
   RENDERER_CORE_PATH,
   'src/lib/experience/motion.ts',
@@ -88,6 +93,7 @@ const requiredFiles = [
   'src/styles/renderer.css',
   'src/styles/experience.css',
   'src/pages/index.astro',
+  'scripts/adaptive-performance-contract.mjs',
   'scripts/browser-smoke.mjs',
   '../.github/workflows/blog-ci.yml',
 ];
@@ -109,8 +115,16 @@ if (packageJson.devDependencies?.['@types/three'] !== '0.185.3') {
 if (packageJson.scripts?.['browser:smoke'] !== 'node scripts/browser-smoke.mjs') {
   issues.push('package.json: browser:smoke must run scripts/browser-smoke.mjs');
 }
+if (packageJson.scripts?.['adaptive:check'] !== 'node scripts/adaptive-performance-contract.mjs') {
+  issues.push('package.json: adaptive:check must run the deterministic hysteresis contract');
+}
+if (!packageJson.scripts?.['content:check']?.includes('pnpm adaptive:check')) {
+  issues.push('package.json: content:check must include adaptive:check');
+}
 
 const capability = read('src/lib/experience/capability.ts');
+const adaptive = read(ADAPTIVE_PATH);
+const adaptiveContract = read('scripts/adaptive-performance-contract.mjs');
 const runtime = read('src/lib/experience/renderer-runtime.ts');
 const core = read(RENDERER_CORE_PATH);
 const state = read('src/lib/experience/state.ts');
@@ -130,7 +144,11 @@ requireMarkers(state, 'state.ts', [
   'isResearchNodeId',
   'rendererBackend',
   'webgpuAvailable',
+  'quality',
   'fps',
+  'dpr',
+  'targetFps',
+  'adaptationReason',
 ]);
 requireMarkers(motion, 'motion.ts', ['isResearchNodeId', 'activeResearchNode']);
 requireMarkers(core, 'renderer-core.ts', ['RESEARCH_NODE_IDS', 'isResearchNodeId']);
@@ -151,28 +169,61 @@ requireMarkers(capability, 'capability.ts', [
   'saveData',
   'slowConnection',
   'supportsWebGL2',
+  'webgpuAvailable',
   'narrowViewport',
   "reasons.push('narrow-viewport')",
   "reasons.push('coarse-pointer')",
-  'shouldProbeWebGL2',
+  'shouldProbeGpu',
+  "reasons.push('no-gpu-backend')",
   "tier === 'safe'",
   "tier === 'ultra'",
-  "backend: 'webgl2'",
+  "tier === 'ultra' ? 'webgpu' : 'webgl2'",
+  "initialQuality: 'low'",
+  "maximumQuality: 'low'",
+  'maxFps: 60',
 ]);
 if (capability.includes('coarsePointer && narrowViewport')) {
   issues.push('capability.ts: coarse pointer and narrow viewport must be independent SAFE gates');
 }
-if (capability.includes('WebGPURenderer') || capability.includes('three/webgpu')) {
-  issues.push('capability.ts: WebGPU renderer activation is out of scope for this phase');
-}
 if (!/@media\s*\(max-width:\s*719px\)\s*,\s*\(pointer:\s*coarse\)/.test(rendererCss)) {
   issues.push('renderer.css: SAFE media query must use max-width OR coarse-pointer parity');
 }
+
+requireMarkers(adaptive, 'adaptive-performance.js', [
+  'emergencyFps: 30',
+  'degradeFps: 42',
+  'upgradeFps: 58',
+  'emergencyDurationMs: 1_000',
+  'degradeDurationMs: 2_000',
+  'upgradeDurationMs: 8_000',
+  'downgradeCooldownMs: 4_000',
+  'upgradeCooldownMs: 10_000',
+  'ewmaAlpha: 0.35',
+  "'emergency-fps'",
+  "'sustained-low-fps'",
+  "'sustained-high-fps'",
+]);
+requireMarkers(adaptiveContract, 'adaptive-performance-contract.mjs', [
+  '30/42/58 FPS bands',
+  'emergency',
+  'sustainedLow',
+  'recovery',
+  'normalCeiling',
+  'deadband',
+]);
+
 requireMarkers(runtime, 'renderer-runtime.ts', [
   'IntersectionObserver',
   "import('./renderer-core')",
   'loadRendererModule',
   'rendererModulePromise = null',
+  'await mountExperienceRenderer',
+  'handle.backend',
+  'rendererPreferredBackend',
+  'rendererQuality',
+  'rendererDpr',
+  'rendererFps',
+  'rendererAdaptation',
   'astro:page-load',
   'astro:before-swap',
   'pointermove',
@@ -210,8 +261,21 @@ if (!researchMap.includes('href={`#${focus.id}`}')) {
 }
 
 requireMarkers(core, 'renderer-core.ts', [
-  "from 'three'",
-  'WebGLRenderer',
+  "from 'three/webgpu'",
+  'WebGPURenderer',
+  'await renderer.init()',
+  'forceWebGL',
+  'isWebGPUBackend',
+  'isWebGLBackend',
+  'readActualBackend',
+  'createAdaptivePerformanceController',
+  'QUALITY_PRESETS',
+  'setPixelRatio',
+  'setDrawRange',
+  'rendererQuality',
+  'rendererDpr',
+  'rendererFps',
+  'rendererAdaptation',
   CORE_SENTINEL,
   'ResizeObserver',
   'visibilitychange',
@@ -225,25 +289,26 @@ requireMarkers(core, 'renderer-core.ts', [
   'applyThemePalette',
   'themeObserver.disconnect()',
   'renderer.dispose()',
-  'renderer.forceContextLoss()',
   'experienceState.subscribe',
 ]);
-if (core.includes('WebGPURenderer') || core.includes('three/webgpu')) {
-  issues.push('renderer-core.ts: WebGPU activation must remain in the next isolated phase');
+if (core.includes('WebGLRenderer')) {
+  issues.push('renderer-core.ts: legacy WebGLRenderer path must not coexist with WebGPURenderer');
 }
-if (/import\s+\*\s+as\s+\w+\s+from\s*['"]three['"]/.test(core)) {
+if (/import\s+\*\s+as\s+\w+\s+from\s*['"]three(?:\/webgpu)?['"]/.test(core)) {
   issues.push('renderer-core.ts: namespace import defeats Three.js tree shaking');
 }
-if (/import\s*\(\s*['"]three['"]\s*\)/.test(core)) {
-  issues.push('renderer-core.ts: import the lazy module dynamically, not the entire Three namespace');
+if (/import\s*\(\s*['"]three(?:\/webgpu)?['"]\s*\)/.test(core)) {
+  issues.push('renderer-core.ts: import the isolated lazy module, not the entire Three namespace');
 }
 
-const sourceFiles = filesUnder(path.join(root, 'src'), (file) => /\.(?:ts|astro|svelte)$/.test(file));
+const sourceFiles = filesUnder(path.join(root, 'src'), (file) => /\.(?:js|ts|astro|svelte)$/.test(file));
 for (const file of sourceFiles) {
   const source = fs.readFileSync(file, 'utf8');
   const relative = path.relative(root, file).replaceAll(path.sep, '/');
-  const hasDynamicThree = /import\s*\(\s*['"]three['"]\s*\)/.test(source);
-  const hasRuntimeStaticThree = /import\s+(?!type\b)[\s\S]*?from\s*['"]three['"]/.test(source);
+  const hasDynamicThree = /import\s*\(\s*['"]three(?:\/webgpu)?['"]\s*\)/.test(source);
+  const hasRuntimeStaticThree = /import\s+(?!type\b)[\s\S]*?from\s*['"]three(?:\/webgpu)?['"]/.test(
+    source,
+  );
   if (hasDynamicThree) issues.push(`${relative}: whole-namespace dynamic Three.js import is forbidden`);
   if (relative !== RENDERER_CORE_PATH && hasRuntimeStaticThree) {
     issues.push(`${relative}: Three.js runtime import must remain isolated to renderer-core.ts`);
@@ -373,5 +438,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `renderer-contract: PASS (${RESEARCH_AREAS.length} canonical research nodes; synchronized Home/SVG/sections/GPU; true RAF/theme/retry lifecycle; ${articleFiles.length} GPU-free articles; ${rendererGraph.size} lazy module(s), ${rendererPayloadGzip} B gzip)`,
+  `renderer-contract: PASS (${RESEARCH_AREAS.length} canonical research nodes; actual WebGPU/WebGL2 backend selection; 30/42/58 adaptive FPS hysteresis; true RAF/theme/retry lifecycle; ${articleFiles.length} GPU-free articles; ${rendererGraph.size} lazy module(s), ${rendererPayloadGzip} B gzip)`,
 );

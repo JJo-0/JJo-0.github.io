@@ -1,3 +1,4 @@
+import type { RendererQuality } from './adaptive-performance.js';
 import type { ExperienceTier, RendererBackend } from './state';
 
 interface NetworkInformationLike {
@@ -27,6 +28,8 @@ export interface CapabilityProfile {
   particleCount: number;
   maxFps: 30 | 60;
   antialias: boolean;
+  initialQuality: RendererQuality;
+  maximumQuality: RendererQuality;
   reasons: string[];
 }
 
@@ -66,20 +69,25 @@ export function detectExperienceCapability(): CapabilityProfile {
   if (narrowViewport) reasons.push('narrow-viewport');
   if (coarsePointer) reasons.push('coarse-pointer');
 
-  // Keep the CSS and JavaScript SAFE boundary identical. Do not even probe a
-  // GPU context on clients where the renderer is guaranteed to stay hidden.
-  const shouldProbeWebGL2 = reasons.length === 0;
-  const webgl2Available = shouldProbeWebGL2 ? supportsWebGL2() : false;
-  if (shouldProbeWebGL2 && !webgl2Available) reasons.push('no-webgl2');
-
-  const mustUseSafe = reasons.length > 0;
-  const canUseUltra =
-    !mustUseSafe &&
+  // Keep the CSS and JavaScript SAFE boundary identical. Capability probing
+  // starts only after motion, network, viewport, and pointer gates pass.
+  const shouldProbeGpu = reasons.length === 0;
+  const webgl2Available = shouldProbeGpu ? supportsWebGL2() : false;
+  const ultraCandidate =
+    shouldProbeGpu &&
     webgpuAvailable &&
     window.matchMedia('(min-width: 1100px) and (pointer: fine)').matches &&
     hardwareConcurrency >= 8 &&
     deviceMemory >= 8;
 
+  // NORMAL deliberately targets WebGL2. A WebGPU-only device that does not
+  // satisfy the ULTRA envelope stays on the accessible SVG/DOM surface.
+  if (shouldProbeGpu && !webgl2Available && !ultraCandidate) {
+    reasons.push('no-gpu-backend');
+  }
+
+  const mustUseSafe = reasons.length > 0;
+  const canUseUltra = !mustUseSafe && ultraCandidate;
   const tier: ExperienceTier = mustUseSafe ? 'safe' : canUseUltra ? 'ultra' : 'normal';
 
   if (tier === 'safe') {
@@ -99,15 +107,19 @@ export function detectExperienceCapability(): CapabilityProfile {
       particleCount: 0,
       maxFps: 30,
       antialias: false,
+      initialQuality: 'low',
+      maximumQuality: 'low',
       reasons,
     };
   }
 
+  const backend: RendererBackend = tier === 'ultra' ? 'webgpu' : 'webgl2';
+  const initialQuality: RendererQuality = tier === 'ultra' ? 'high' : 'balanced';
+  const maximumQuality: RendererQuality = tier === 'ultra' ? 'high' : 'balanced';
+
   return {
     tier,
-    // WebGPU is detected and recorded here, but activation remains a separate,
-    // isolated phase. This core deliberately stays on the stable WebGL2 path.
-    backend: 'webgl2',
+    backend,
     reducedMotion,
     webgl2Available,
     webgpuAvailable,
@@ -117,10 +129,12 @@ export function detectExperienceCapability(): CapabilityProfile {
     narrowViewport,
     hardwareConcurrency,
     deviceMemory,
-    dprCap: tier === 'ultra' ? 1.6 : 1,
-    particleCount: tier === 'ultra' ? 96 : 42,
-    maxFps: tier === 'ultra' ? 60 : 30,
+    dprCap: tier === 'ultra' ? 1.75 : 1,
+    particleCount: tier === 'ultra' ? 112 : 64,
+    maxFps: 60,
     antialias: tier === 'ultra',
+    initialQuality,
+    maximumQuality,
     reasons,
   };
 }
