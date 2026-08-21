@@ -1,5 +1,6 @@
 (() => {
   const registryUrl = './node-resources-fe-process.json';
+  const hardeningRegistryUrl = './node-resources-fe-process-hardening.json';
   const state = { registry: null, panel: null };
 
   function ensurePanel() {
@@ -22,7 +23,7 @@
       </div>
       <p class="company-link-description" data-node-resource-description></p>
       <div class="company-link-actions is-resource-grid" data-node-resource-actions></div>
-      <p class="company-link-note">OFFICIAL은 제조사 1차 자료, LEARN은 대학·정부의 중립적 학습자료입니다. 외부 링크만으로 Atlas의 공급관계·고객상태·점유율 evidence가 상향되지는 않습니다.</p>
+      <p class="company-link-note">OFFICIAL은 제조사 1차 자료, LEARN은 대학·정부의 중립적 학습자료입니다. 핵심 공정 링크는 DOUBLE-CHECKED overlay를 통과해야 노출되며, 외부 링크만으로 Atlas의 공급관계·고객상태·점유율 evidence가 상향되지는 않습니다.</p>
     `;
     (scoreGrid || inspector.firstElementChild)?.insertAdjacentElement('afterend', panel);
     state.panel = panel;
@@ -80,16 +81,36 @@
     panel.hidden = false;
   }
 
-  async function loadRegistry() {
+  async function loadJson(url, validator) {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
+    const registry = await response.json();
+    if (!validator(registry)) throw new Error(`${url} schema mismatch`);
+    return registry;
+  }
+
+  async function loadRegistries() {
     try {
-      const response = await fetch(registryUrl, { cache: 'no-store' });
-      if (!response.ok) throw new Error(`process resource registry HTTP ${response.status}`);
-      const registry = await response.json();
-      if (!registry || registry.version !== 1 || !registry.nodes) throw new Error('process resource registry schema mismatch');
-      state.registry = registry;
+      const [base, hardening] = await Promise.all([
+        loadJson(registryUrl, (registry) => registry?.version === 1 && registry.nodes),
+        loadJson(hardeningRegistryUrl, (registry) =>
+          registry?.version === 1 &&
+          registry?.mode === 'REPLACE' &&
+          registry?.verification?.status === 'DOUBLE_CHECKED' &&
+          registry.nodes
+        ),
+      ]);
+
+      state.registry = {
+        ...base,
+        recheckedAt: hardening.recheckedAt,
+        verification: hardening.verification,
+        nodes: { ...base.nodes, ...hardening.nodes },
+      };
       renderForNode();
     } catch (error) {
       console.warn('[semiconductor-process-resources]', error);
+      state.registry = null;
       const panel = ensurePanel();
       if (panel) panel.hidden = true;
     }
@@ -101,5 +122,5 @@
   if (nodeId) observer.observe(nodeId, { childList: true, characterData: true, subtree: true });
   if (inspector) observer.observe(inspector, { attributes: true, attributeFilter: ['hidden'] });
 
-  loadRegistry();
+  loadRegistries();
 })();
