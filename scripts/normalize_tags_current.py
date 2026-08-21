@@ -25,6 +25,18 @@ POST_TAXONOMY.update(
             True,
             5,
         ),
+        "semiconductor-supply-chain-universe-map.md": Taxonomy(
+            "finance-industry",
+            "semiconductor-industry",
+            "research-report",
+            (
+                "semiconductor",
+                "supply-chain",
+                "materials-equipment",
+                "advanced-packaging",
+                "industry-analysis",
+            ),
+        ),
     }
 )
 
