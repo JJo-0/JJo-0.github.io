@@ -30,6 +30,11 @@ if (!fs.existsSync(renderedPath)) {
     '원자료 표기 감사',
     '두 판본을 대조하면서 다음 항목은 원자료 표기와 수학적으로 통상적인 표기를 구분했다',
     'katex-error',
+    '등호 왼쪽의 목표를 확인한다',
+    '입력 기호의 값과 차원을 적는다',
+    '가장 안쪽 괄호와 인덱스부터 계산한다',
+    '곱 → 합 → 정규화 순서로 바깥 연산을 진행한다',
+    '직접 계산하는 공통 절차',
   ]) {
     if (html.includes(forbidden)) {
       issues.push(`reader-facing audit/error residue remains: ${forbidden}`);
@@ -58,9 +63,6 @@ if (!fs.existsSync(renderedPath)) {
     ['formula cards', /data-formula-part="1"/g, expectedFormulaCount],
     ['formula IDs', /data-formula-id="MAI(?:2|3|4|5|6|7|8)-[^"\s]+"/g, expectedFormulaCount],
     ['calculation-first guides', /data-formula-guide="calculation-first"/g, expectedFormulaCount],
-    ['calculation walkthroughs', /data-calculation-walkthrough/g, expectedFormulaCount],
-    ['worked examples', /data-worked-example/g, expectedFormulaCount],
-    ['sanity-check sections', /data-formula-checks/g, expectedFormulaCount],
   ];
 
   for (const [label, pattern, expected] of contracts) {
@@ -93,5 +95,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  'modern-ai-part1-reader-audit: PASS (238 formulas; calculation walkthrough + numeric example + sanity checks + references)',
+  'modern-ai-part1-reader-audit: PASS (238 formulas; curated walkthroughs only; generic calculation boilerplate forbidden)',
 );
