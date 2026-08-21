@@ -3,6 +3,7 @@ import Layout from '@/layouts/Layout.astro';
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
 import MotionRuntime from '@/components/experience/MotionRuntime.astro';
 import ResearchConstellation from '@/components/experience/ResearchConstellation.astro';
+import '@/styles/world.css';
 import { RESEARCH_FOCUS } from '@/lib/research';
 import { getPostTypeLabel } from '@/lib/taxonomy.mjs';
 import { formatDate } from '@/lib/utils/date';
@@ -40,94 +41,94 @@ const schema = getBreadcrumbSchema([
     <MotionRuntime scope="research" />
     <Breadcrumbs items={[{ name: 'Research', href: '/research' }]} />
 
-    <header class="research-experience-hero">
-      <div>
-        <p class="experience-kicker" data-motion="hero-kicker">02 / Research</p>
-        <h1
-          class="research-experience-title"
-          style="font-size: clamp(3rem, 5.7vw, 5rem);"
-          data-motion="hero-copy"
-        >
-          Research<br />Engineering
-        </h1>
-        <p class="experience-role" data-motion="hero-copy">Problem → Method → Evidence</p>
-        <p class="research-experience-copy" data-motion="hero-copy">
-          로보틱스·AI·컴퓨터 비전에서 공부하고 실험한 내용을 공개 가능한 기술 글과 연구
-          노트로 연결합니다. 태그 하나가 우연히 겹친 글이 아니라, 명시적으로 선정한 연구
-          기록만 분야별로 보여줍니다.
-        </p>
-      </div>
-
-      <div data-parallax>
+    <div class="research-world-shell" data-world-shell>
+      <aside class="research-world-sticky" aria-label="Interactive research constellation">
         <ResearchConstellation />
-      </div>
-    </header>
+      </aside>
 
-    <div class="research-focus-stack" data-stagger>
-      {
-        focusWithPosts.map((focus, index) => (
-          <section
-            id={focus.id}
-            aria-labelledby={`${focus.id}-heading`}
-            class="experience-card research-focus-section"
-            data-stagger-item
-            data-research-section={focus.id}
-          >
-            <div class="research-focus-layout">
-              <div>
-                <span class="research-focus-number">
-                  {String(index + 1).padStart(2, '0')} / {focus.label}
-                </span>
-                <h2 id={`${focus.id}-heading`} class="research-focus-title">
-                  {focus.title}
-                </h2>
-                <p class="research-focus-description">{focus.description}</p>
-                <p class="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                  {focus.posts.length} curated public records
-                </p>
-              </div>
+      <div class="research-world-content">
+        <header class="research-experience-hero">
+          <div>
+            <p class="experience-kicker" data-motion="hero-kicker">02 / Research World</p>
+            <h1 class="research-experience-title" data-motion="hero-copy">
+              Research<br />Engineering
+            </h1>
+            <p class="experience-role" data-motion="hero-copy">Problem → Method → Evidence</p>
+            <p class="research-experience-copy" data-motion="hero-copy">
+              로보틱스·AI·컴퓨터 비전에서 공부하고 실험한 내용을 공개 가능한 기술 글과 연구
+              노트로 연결합니다. 왼쪽의 constellation은 장식이 아니라 현재 읽고 있는 연구축과
+              같은 state를 공유합니다.
+            </p>
+          </div>
+        </header>
 
-              <div>
-                <p class="research-notes-label">Selected public evidence</p>
-                {focus.posts.length > 0 ? (
-                  focus.posts.map((post) => {
-                    const slug = getPostSlug(post);
-                    return (
-                      <a
-                        href={`/posts/${slug}`}
-                        class="research-note-link"
-                        data-post-transition-slug={slug}
-                      >
-                        <div class="flex items-start justify-between gap-5">
-                          <div class="min-w-0">
-                            <div class="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                              <span>{getPostTypeLabel(post.data.type)}</span>
-                              <span aria-hidden="true">·</span>
-                              <span>{post.data.subcategory}</span>
-                            </div>
-                            <h3 data-post-transition-title>{post.data.title}</h3>
-                            <p class="line-clamp-2">{post.data.description}</p>
-                          </div>
-                          <time
-                            datetime={post.data.pubDate.toISOString()}
-                            class="shrink-0 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground tabular-nums"
+        <div class="research-focus-stack">
+          {
+            focusWithPosts.map((focus, index) => (
+              <section
+                id={focus.id}
+                aria-labelledby={`${focus.id}-heading`}
+                class="research-focus-section"
+                data-research-section={focus.id}
+                data-world-chapter={focus.id}
+              >
+                <div class="research-focus-layout">
+                  <div>
+                    <span class="research-focus-number">
+                      {String(index + 1).padStart(2, '0')} / {focus.label}
+                    </span>
+                    <h2 id={`${focus.id}-heading`} class="research-focus-title">
+                      {focus.title}
+                    </h2>
+                    <p class="research-focus-description">{focus.description}</p>
+                    <p class="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                      {focus.posts.length} curated public records
+                    </p>
+                  </div>
+
+                  <div>
+                    <p class="research-notes-label">Selected public evidence</p>
+                    {focus.posts.length > 0 ? (
+                      focus.posts.map((post) => {
+                        const slug = getPostSlug(post);
+                        return (
+                          <a
+                            href={`/posts/${slug}`}
+                            class="research-note-link"
+                            data-post-transition-slug={slug}
                           >
-                            {formatDate(post.data.pubDate)}
-                          </time>
-                        </div>
-                      </a>
-                    );
-                  })
-                ) : (
-                  <p class="py-4 text-sm text-muted-foreground">
-                    관련 공개 기록을 정리하고 있습니다.
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
-        ))
-      }
+                            <div class="flex items-start justify-between gap-5">
+                              <div class="min-w-0">
+                                <div class="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                  <span>{getPostTypeLabel(post.data.type)}</span>
+                                  <span aria-hidden="true">·</span>
+                                  <span>{post.data.subcategory}</span>
+                                </div>
+                                <h3 data-post-transition-title>{post.data.title}</h3>
+                                <p class="line-clamp-2">{post.data.description}</p>
+                              </div>
+                              <time
+                                datetime={post.data.pubDate.toISOString()}
+                                class="shrink-0 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground tabular-nums"
+                              >
+                                {formatDate(post.data.pubDate)}
+                              </time>
+                            </div>
+                          </a>
+                        );
+                      })
+                    ) : (
+                      <p class="py-4 text-sm text-muted-foreground">
+                        관련 공개 기록을 정리하고 있습니다.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </section>
+            ))
+          }
+        </div>
+      </div>
     </div>
 
     <section class="experience-section border-t border-border pt-10 sm:pt-12" data-reveal>
