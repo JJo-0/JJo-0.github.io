@@ -66,8 +66,8 @@ export default [
   },
   {
     // CDP teardown deliberately ignores failures after a target/browser has
-    // already disappeared. Keep empty catches scoped to the smoke harness.
-    files: ['scripts/browser-smoke*.mjs'],
+    // already disappeared. Keep empty catches scoped to browser audit modules.
+    files: ['scripts/browser-*.mjs'],
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
     },
