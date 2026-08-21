@@ -88,4 +88,11 @@
     runtime.setAttribute('data-semiconductor-process-resources', 'true');
     document.head.append(runtime);
   }
+
+  if (!document.querySelector('script[data-semiconductor-component-resources]')) {
+    const runtime = document.createElement('script');
+    runtime.src = './component-resource-runtime.js';
+    runtime.setAttribute('data-semiconductor-component-resources', 'true');
+    document.head.append(runtime);
+  }
 })();
