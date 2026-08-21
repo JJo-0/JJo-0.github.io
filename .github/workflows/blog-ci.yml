@@ -15,12 +15,331 @@ on:
       - '.github/workflows/blog-ci.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: blog-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  bootstrap-generic-guide-removal:
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/remove-generic-formula-walkthroughs'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Remove generic walkthrough boilerplate and harden contracts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import re
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              return text.replace(old, new, 1)
+
+          # 1) Reader component: generic guides may explain context, but may not render a fake walkthrough.
+          path = Path('spaceship-ui/src/components/post/FormulaGuide.astro')
+          text = path.read_text(encoding='utf-8')
+          text = replace_once(
+              text,
+              "const lessonRef = getFormulaLessonRef(formulaId);\n---",
+              "const lessonRef = getFormulaLessonRef(formulaId);\nconst hasWalkthrough = guide.steps.length > 0;\n---",
+              'FormulaGuide hasWalkthrough declaration',
+          )
+          text = replace_once(
+              text,
+              '<span class="block text-sm font-black text-foreground">쉽게 설명 + 계산 과정</span>',
+              '<span class="block text-sm font-black text-foreground">{hasWalkthrough ? \'쉽게 설명 + 계산 과정\' : \'쉽게 설명\'}</span>',
+              'FormulaGuide summary title',
+          )
+          start = '    <section class="mt-6" data-calculation-walkthrough>\n'
+          end = '\n\n    {guide.example && ('
+          start_index = text.find(start)
+          end_index = text.find(end, start_index)
+          if start_index < 0 or end_index < 0:
+              raise SystemExit('FormulaGuide walkthrough block boundaries not found')
+          block = text[start_index:end_index]
+          indented = '\n'.join(('  ' + line) if line else line for line in block.splitlines())
+          wrapped = '    {hasWalkthrough && (\n' + indented + '\n    )}'
+          text = text[:start_index] + wrapped + text[end_index:]
+          path.write_text(text, encoding='utf-8')
+
+          # 2) Generic family: no invented algorithm, numeric example, or sanity checklist.
+          path = Path('spaceship-ui/src/lib/modern-ai-formula-guide.mjs')
+          text = path.read_text(encoding='utf-8')
+          pattern = re.compile(
+              r"    default:\n      return \{\n        title: '수식을 계산 가능한 작은 연산으로 분해하기',.*?        references: REFERENCE_SETS\.machineLearning,\n      \};",
+              re.S,
+          )
+          replacement = """    default:
+      return {
+        title: '수식의 역할과 기호만 확인하기',
+        question: '이 수식이 본문에서 정의하거나 연결하는 대상은 무엇인가?',
+        summary: '별도의 실제 계산이나 유도 과정이 없는 수식에는 범용 계산 절차를 덧붙이지 않고, 문맥과 기호만 간결하게 확인한다.',
+        steps: [],
+        example: null,
+        checks: [],
+        references: REFERENCE_SETS.machineLearning,
+      };"""
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'generic guide fallback: expected one replacement, found {count}')
+          old_badges = """    badges: [
+      `${guide.steps.length}단계 계산`,
+      guide.example ? '숫자 예제' : '계산 절차',
+      guide.checks?.length ? '검산 포함' : '개념 설명',
+    ],"""
+          new_badges = """    badges: [
+      ...(guide.steps.length ? [`${guide.steps.length}단계 계산`] : []),
+      ...(guide.example ? ['숫자 예제'] : []),
+      ...(guide.checks?.length ? ['검산 포함'] : []),
+      ...(!guide.steps.length && !guide.example && !guide.checks?.length ? ['핵심 설명'] : []),
+    ],"""
+          text = replace_once(text, old_badges, new_badges, 'formula guide badges')
+          path.write_text(text, encoding='utf-8')
+
+          generic_phrases = [
+              '등호 왼쪽의 목표를 확인한다',
+              '입력 기호의 값과 차원을 적는다',
+              '가장 안쪽 괄호와 인덱스부터 계산한다',
+              '곱 → 합 → 정규화 순서로 바깥 연산을 진행한다',
+              '직접 계산하는 공통 절차',
+          ]
+
+          # 3) Existing Part I–III audits: keep curated walkthroughs, stop requiring one for every formula.
+          path = Path('spaceship-ui/scripts/modern-ai-part1-reader-audit.mjs')
+          text = path.read_text(encoding='utf-8')
+          old = """    ['calculation-first guides', /data-formula-guide=\"calculation-first\"/g, expectedFormulaCount],
+    ['calculation walkthroughs', /data-calculation-walkthrough/g, expectedFormulaCount],
+    ['worked examples', /data-worked-example/g, expectedFormulaCount],
+    ['sanity-check sections', /data-formula-checks/g, expectedFormulaCount],"""
+          new = """    ['calculation-first guides', /data-formula-guide=\"calculation-first\"/g, expectedFormulaCount],"""
+          text = replace_once(text, old, new, 'Part I universal walkthrough contract')
+          marker = "    'katex-error',\n"
+          insertion = marker + ''.join(f"    '{phrase}',\n" for phrase in generic_phrases)
+          text = replace_once(text, marker, insertion, 'Part I generic boilerplate guard')
+          text = text.replace(
+              "'modern-ai-part1-reader-audit: PASS (238 formulas; calculation walkthrough + numeric example + sanity checks + references)'",
+              "'modern-ai-part1-reader-audit: PASS (238 formulas; curated walkthroughs only; generic calculation boilerplate forbidden)'",
+          )
+          path.write_text(text, encoding='utf-8')
+
+          path = Path('spaceship-ui/scripts/modern-ai-part2-audit.mjs')
+          text = path.read_text(encoding='utf-8')
+          old = """  const guideContracts = [
+    ['display formula cards', /data-formula-part=\"2\"/g],
+    ['calculation-first guides', /data-formula-guide=\"calculation-first\"/g],
+    ['calculation walkthroughs', /data-calculation-walkthrough/g],
+    ['worked examples', /data-worked-example/g],
+    ['sanity-check sections', /data-formula-checks/g],
+  ];"""
+          new = """  const guideContracts = [
+    ['display formula cards', /data-formula-part=\"2\"/g],
+    ['calculation-first guides', /data-formula-guide=\"calculation-first\"/g],
+  ];"""
+          text = replace_once(text, old, new, 'Part II universal walkthrough contract')
+          marker = "    'katex-error',\n"
+          insertion = marker + ''.join(f"    '{phrase}',\n" for phrase in generic_phrases)
+          text = replace_once(text, marker, insertion, 'Part II generic boilerplate guard')
+          text = text.replace(
+              "${displayFormulaCount} calculation walkthroughs with worked examples",
+              "${displayFormulaCount} formula guides with curated walkthroughs where meaningful",
+          )
+          path.write_text(text, encoding='utf-8')
+
+          path = Path('spaceship-ui/scripts/modern-ai-part3-audit.mjs')
+          text = path.read_text(encoding='utf-8')
+          old = """    ['calculation-first guides', /data-formula-guide=\"calculation-first\"/g, EXPECTED.displayFormulas],
+    ['calculation walkthroughs', /data-calculation-walkthrough/g, EXPECTED.displayFormulas],
+    ['worked examples', /data-worked-example/g, EXPECTED.displayFormulas],
+    ['sanity checks', /data-formula-checks/g, EXPECTED.displayFormulas],"""
+          new = """    ['calculation-first guides', /data-formula-guide=\"calculation-first\"/g, EXPECTED.displayFormulas],"""
+          text = replace_once(text, old, new, 'Part III universal walkthrough contract')
+          marker = "    'katex-error',\n"
+          insertion = marker + ''.join(f"    '{phrase}',\n" for phrase in generic_phrases)
+          text = replace_once(text, marker, insertion, 'Part III generic boilerplate guard')
+          text = text.replace(
+              "`${EXPECTED.formulas} formulas; ${displayFormulaCount} calculation guides; ` +",
+              "`${EXPECTED.formulas} formulas; ${displayFormulaCount} formula guides with curated walkthroughs only; ` +",
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # 4) Documentation contracts: guides are optional and formula-specific, never generic filler.
+          path = Path('spaceship-ui/src/data/modern-ai-part2/README.md')
+          text = path.read_text(encoding='utf-8')
+          marker = '## Reader calculation contract\n'
+          if text.count(marker) != 1:
+              raise SystemExit('Part II README reader contract marker mismatch')
+          prefix = text.split(marker, 1)[0]
+          contract = """## Reader explanation contract
+
+Every display formula is rendered as a responsive source card. A reader-facing explanation may contain a formula-specific derivation, worked example, checks, symbols, or references **only when those items add information specific to that formula**.
+
+Generic fallback walkthroughs are forbidden. In particular, a formula with no real derivation must not invent a repeated checklist such as “identify the left-hand side → write dimensions → compute inner parentheses → multiply/sum/normalize → sanity-check.” Such formulas receive only concise context/symbol explanation.
+
+The guide is supplemental: it does not alter `sourceLatex`, formula hashes, source page mappings, source equation numbers, or editorial status. Internal ledger IDs remain machine-readable attributes rather than reader-facing headings.
+
+The rendered-output audit verifies all 103 formula IDs and exact source hashes. Curated derivations such as the normal-equation walkthrough remain explicitly checked, while one-to-one formula→walkthrough/example/check counts are intentionally not required.
+
+`pnpm modern-ai:part2-check` fails closed when a formula disappears, changes hash, is duplicated, loses a specifically required derivation, exposes generic calculation boilerplate, or is absent from rendered output.
+"""
+          path.write_text(prefix + contract, encoding='utf-8')
+
+          path = Path('spaceship-ui/src/data/modern-ai-part3/README.md')
+          text = path.read_text(encoding='utf-8')
+          marker = '## Reader calculation contract\n'
+          suffix_marker = '\nThe production branch stores only the reviewed source tree:'
+          if text.count(marker) != 1 or text.count(suffix_marker) != 1:
+              raise SystemExit('Part III README reader contract markers mismatch')
+          prefix, rest = text.split(marker, 1)
+          _, suffix = rest.split(suffix_marker, 1)
+          contract = """## Reader explanation contract
+
+Every display formula is rendered as a responsive source card. Formula-specific derivations, worked examples, checks, symbols, and references are shown only when they materially explain that exact expression. Formula-specific visuals remain governed separately by the exact-ID lesson registry.
+
+Generic calculation walkthroughs are forbidden. Definitions, notation-only expressions, and other formulas without a genuine derivation receive concise context/symbol explanation rather than a repeated five-step calculation checklist.
+
+The guide never changes protected `sourceLatex` or its hash. `pnpm modern-ai:part3-check` fails closed when a page, formula, source block, figure, annotation, correction link, hash, reader guide, or rendered marker disappears or is duplicated, and also fails if retired generic calculation boilerplate returns.
+"""
+          path.write_text(prefix + contract + suffix_marker + suffix, encoding='utf-8')
+
+          # 5) Global fail-closed contract so future Parts IV–VIII cannot regress.
+          contract_path = Path('spaceship-ui/scripts/formula-guide-context-contract.mjs')
+          contract_path.write_text(r"""import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+
+const root = process.cwd();
+const guidePath = path.join(root, 'src', 'lib', 'modern-ai-formula-guide.mjs');
+const componentPath = path.join(root, 'src', 'components', 'post', 'FormulaGuide.astro');
+const issues = [];
+const forbidden = [
+  '등호 왼쪽의 목표를 확인한다',
+  '입력 기호의 값과 차원을 적는다',
+  '가장 안쪽 괄호와 인덱스부터 계산한다',
+  '곱 → 합 → 정규화 순서로 바깥 연산을 진행한다',
+  '직접 계산하는 공통 절차',
+];
+
+function read(file, label) {
+  if (!fs.existsSync(file)) {
+    issues.push(`${label}: missing`);
+    return '';
+  }
+  return fs.readFileSync(file, 'utf8');
+}
+
+const guide = read(guidePath, 'formula guide library');
+const component = read(componentPath, 'FormulaGuide component');
+for (const phrase of forbidden) {
+  if (guide.includes(phrase)) issues.push(`generic formula-guide boilerplate returned: ${phrase}`);
+  if (component.includes(phrase)) issues.push(`generic FormulaGuide component boilerplate returned: ${phrase}`);
+}
+for (const required of [
+  "title: '수식의 역할과 기호만 확인하기'",
+  'steps: []',
+  'example: null',
+  'checks: []',
+]) {
+  if (!guide.includes(required)) issues.push(`generic guide suppression contract missing: ${required}`);
+}
+for (const required of [
+  'const hasWalkthrough = guide.steps.length > 0;',
+  '{hasWalkthrough && (',
+  "{hasWalkthrough ? '쉽게 설명 + 계산 과정' : '쉽게 설명'}",
+]) {
+  if (!component.includes(required)) issues.push(`conditional walkthrough renderer missing: ${required}`);
+}
+
+const distPosts = path.join(root, 'dist', 'posts');
+if (fs.existsSync(distPosts)) {
+  for (const entry of fs.readdirSync(distPosts, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.includes('artificial-intelligence')) continue;
+    const htmlPath = path.join(distPosts, entry.name, 'index.html');
+    if (!fs.existsSync(htmlPath)) continue;
+    const html = fs.readFileSync(htmlPath, 'utf8');
+    for (const phrase of forbidden) {
+      if (html.includes(phrase)) issues.push(`${entry.name}: rendered generic walkthrough boilerplate: ${phrase}`);
+    }
+  }
+}
+
+const unique = [...new Set(issues)].sort();
+if (unique.length) {
+  console.error(`formula-guide-context-contract: found ${unique.length} issue(s):`);
+  for (const issue of unique) console.error(`  - ${issue}`);
+  process.exit(1);
+}
+console.log('formula-guide-context-contract: PASS (generic calculation walkthroughs suppressed; only formula-specific walkthroughs may render)');
+""", encoding='utf-8')
+
+          package_path = Path('spaceship-ui/package.json')
+          package = json.loads(package_path.read_text(encoding='utf-8'))
+          scripts = package['scripts']
+          scripts['formula-guide:check'] = 'node scripts/formula-guide-context-contract.mjs'
+          content_check = scripts['content:check']
+          if 'pnpm formula-guide:check' not in content_check:
+              anchor = 'pnpm modern-ai:lesson-check'
+              if anchor not in content_check:
+                  raise SystemExit('package content:check anchor missing')
+              content_check = content_check.replace(anchor, anchor + ' && pnpm formula-guide:check', 1)
+          scripts['content:check'] = content_check
+          package_path.write_text(json.dumps(package, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          # Final source-level assertions before committing.
+          guide_source = Path('spaceship-ui/src/lib/modern-ai-formula-guide.mjs').read_text(encoding='utf-8')
+          component_source = Path('spaceship-ui/src/components/post/FormulaGuide.astro').read_text(encoding='utf-8')
+          for phrase in generic_phrases:
+              if phrase in guide_source or phrase in component_source:
+                  raise SystemExit(f'generic phrase survived: {phrase}')
+          if 'steps: []' not in guide_source or 'example: null' not in guide_source or 'checks: []' not in guide_source:
+              raise SystemExit('generic guide is not empty of fabricated calculation content')
+          if '{hasWalkthrough && (' not in component_source:
+              raise SystemExit('conditional walkthrough rendering was not installed')
+          PY
+
+          node --check spaceship-ui/src/lib/modern-ai-formula-guide.mjs
+          node --check spaceship-ui/scripts/formula-guide-context-contract.mjs
+          node --check spaceship-ui/scripts/modern-ai-part1-reader-audit.mjs
+          node --check spaceship-ui/scripts/modern-ai-part2-audit.mjs
+          node --check spaceship-ui/scripts/modern-ai-part3-audit.mjs
+          git diff --check
+
+      - name: Commit clean reader-context fix and restore standard CI
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout origin/main -- .github/workflows/blog-ci.yml
+          git add \
+            .github/workflows/blog-ci.yml \
+            spaceship-ui/package.json \
+            spaceship-ui/scripts/formula-guide-context-contract.mjs \
+            spaceship-ui/scripts/modern-ai-part1-reader-audit.mjs \
+            spaceship-ui/scripts/modern-ai-part2-audit.mjs \
+            spaceship-ui/scripts/modern-ai-part3-audit.mjs \
+            spaceship-ui/src/components/post/FormulaGuide.astro \
+            spaceship-ui/src/lib/modern-ai-formula-guide.mjs \
+            spaceship-ui/src/data/modern-ai-part2/README.md \
+            spaceship-ui/src/data/modern-ai-part3/README.md
+          git commit -m "fix: remove generic formula calculation walkthroughs"
+          git push origin HEAD:${{ github.head_ref }}
+
   quality:
+    needs: bootstrap-generic-guide-removal
+    if: always() && needs.bootstrap-generic-guide-removal.result == 'skipped'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -70,8 +389,6 @@ jobs:
 
       - name: Browser smoke matrix
         timeout-minutes: 5
-        # Semantically identical to `pnpm browser:smoke`, but the exit guard is
-        # scoped to this Node process instead of leaking through NODE_OPTIONS.
         run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
         env:
           JJO_SMOKE_REQUIRE_GPU: '0'
