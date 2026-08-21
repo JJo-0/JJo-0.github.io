@@ -66,4 +66,19 @@
       headers: { 'content-type': 'application/json; charset=utf-8' },
     });
   };
+
+  if (!document.querySelector('link[data-semiconductor-company-links]')) {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = './company-links.css';
+    stylesheet.dataset.semiconductorCompanyLinks = 'true';
+    document.head.append(stylesheet);
+  }
+
+  if (!document.querySelector('script[data-semiconductor-company-links]')) {
+    const runtime = document.createElement('script');
+    runtime.src = './company-link-runtime.js';
+    runtime.dataset.semiconductorCompanyLinks = 'true';
+    document.head.append(runtime);
+  }
 })();
