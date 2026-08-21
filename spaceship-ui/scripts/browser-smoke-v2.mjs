@@ -1,7 +1,13 @@
 import {
-  Cdp, attach, removeProfile, startChrome, startPreview, stopChild,
+  Cdp,
+  attach,
+  removeProfile,
+  startChrome,
+  startPreview,
+  stopChild,
 } from './browser-smoke-harness.mjs';
-import { auditInteractions, auditRenderer } from './browser-smoke-audits.mjs';
+import { auditRenderer } from './browser-smoke-audits.mjs';
+import { auditInteractions } from './browser-interaction-audits.mjs';
 
 async function main() {
   let preview, chrome, cdp;
@@ -21,8 +27,10 @@ async function main() {
   }
 }
 
-main().then(() => process.exit(0)).catch((error) => {
-  console.error('browser-smoke: FAIL');
-  console.error(error?.stack || error);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error('browser-smoke: FAIL');
+    console.error(error?.stack || error);
+    process.exit(1);
+  });
