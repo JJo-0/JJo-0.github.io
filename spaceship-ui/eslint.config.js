@@ -65,11 +65,13 @@ export default [
     },
   },
   {
-    // CDP teardown deliberately ignores failures after a target/browser has
-    // already disappeared. Keep empty catches scoped to browser audit modules.
+    // Browser audits intentionally wrap polling failures with URL/hit-test
+    // diagnostics, and teardown may race an already-closed CDP target. Keep
+    // both exceptions scoped to test infrastructure rather than production.
     files: ['scripts/browser-*.mjs'],
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
+      'preserve-caught-error': 'off',
     },
   },
   {
