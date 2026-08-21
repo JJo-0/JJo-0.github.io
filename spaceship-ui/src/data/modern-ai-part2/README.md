@@ -16,22 +16,14 @@ Authoritative source: `1_Ch2 Fundamentals of ML.pdf`
 - `content-ledger.json`: paragraph, bullet, definition, exercise, caption, reference, and annotation inventory
 - `formula-ledger.json`: exact TeX, source page/equation number, editorial status, and SHA-256
 
-## Reader calculation contract
+## Reader explanation contract
 
-Every display formula is rendered as a responsive card with a reader-facing `쉽게 설명 + 계산 과정` disclosure. Each guide contains:
+Every display formula is rendered as a responsive source card. A reader-facing explanation may contain a formula-specific derivation, worked example, checks, symbols, or references **only when those items add information specific to that formula**.
 
-1. the question answered by the formula;
-2. a one-line interpretation;
-3. numbered intermediate calculation steps;
-4. a concrete numerical worked example;
-5. dimensional, sign, range, or assumption checks;
-6. symbols that occur in the formula; and
-7. curated follow-up references.
+Generic fallback walkthroughs are forbidden. A formula with no real derivation must not invent a repeated checklist such as “identify the left-hand side → write dimensions → compute inner parentheses → multiply/sum/normalize → sanity-check.” Such formulas receive only concise context/symbol explanation.
 
-The guide is supplemental: it does not alter `sourceLatex`, formula hashes, source page mappings, source equation numbers, or editorial status. Internal ledger IDs remain machine-readable attributes rather than reader-facing headings. The Astro renderer and every worked-example step are statically type-checked before the production build.
+The guide is supplemental: it does not alter `sourceLatex`, formula hashes, source page mappings, source equation numbers, or editorial status. Internal ledger IDs remain machine-readable attributes rather than reader-facing headings.
 
-The formula status vocabulary distinguishes `source-exact`, `source-suspect`, `editorially-completed`, and `corrected-variant` expressions so that source preservation and mathematical correction are never silently conflated.
+The rendered-output audit verifies all 103 formula IDs and exact source hashes. Curated derivations such as the normal-equation walkthrough remain explicitly checked, while one-to-one formula→walkthrough/example/check counts are intentionally not required.
 
-The rendered-output audit verifies all 103 formula IDs, the exact source hashes, and the one-to-one **65 display formulas → 65 calculation guides → 65 worked examples → 65 sanity-check sections** contract before publication.
-
-`pnpm modern-ai:part2-check` fails closed when a formula disappears, changes hash, is duplicated, loses its calculation guide, loses its worked example, or is absent from rendered output.
+`pnpm modern-ai:part2-check` fails closed when a formula disappears, changes hash, is duplicated, loses a specifically required derivation, exposes generic calculation boilerplate, or is absent from rendered output.

@@ -328,9 +328,6 @@ if (!fs.existsSync(distPath)) {
     ['source hash markers', /data-source-hash="[0-9a-f]{64}"/g, EXPECTED.formulas],
     ['rich formula cards', /data-formula-guide="rich"/g, EXPECTED.displayFormulas],
     ['calculation-first guides', /data-formula-guide="calculation-first"/g, EXPECTED.displayFormulas],
-    ['calculation walkthroughs', /data-calculation-walkthrough/g, EXPECTED.displayFormulas],
-    ['worked examples', /data-worked-example/g, EXPECTED.displayFormulas],
-    ['sanity checks', /data-formula-checks/g, EXPECTED.displayFormulas],
   ];
   for (const [label, pattern, expected] of contracts) {
     const actual = count(html, pattern);
@@ -402,6 +399,11 @@ if (!fs.existsSync(distPath)) {
     'source-annotation:P3-ANN',
     'Array.from({length:',
     'katex-error',
+    '등호 왼쪽의 목표를 확인한다',
+    '입력 기호의 값과 차원을 적는다',
+    '가장 안쪽 괄호와 인덱스부터 계산한다',
+    '곱 → 합 → 정규화 순서로 바깥 연산을 진행한다',
+    '직접 계산하는 공통 절차',
   ]) {
     if (html.includes(forbidden)) issues.push(`rendered Part III leaked internal residue: ${forbidden}`);
   }
@@ -429,7 +431,7 @@ if (uniqueIssues.length) {
 
 console.log(
   `modern-ai-part3-audit: PASS (${EXPECTED.sourcePages} pages; ` +
-    `${EXPECTED.formulas} formulas; ${displayFormulaCount} calculation guides; ` +
+    `${EXPECTED.formulas} formulas; ${displayFormulaCount} formula guides with curated walkthroughs only; ` +
     `${EXPECTED.content} content records; ${EXPECTED.figures} figures; ` +
     `${EXPECTED.annotations} handwritten annotations)`,
 );
