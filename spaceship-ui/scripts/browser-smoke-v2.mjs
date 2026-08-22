@@ -20,6 +20,42 @@ async function closeAuditTarget(cdp, target) {
   } catch {}
 }
 
+async function installFirstPartyLinkIsolation(cdp, sessionId) {
+  await cdp.send(
+    'Page.addScriptToEvaluateOnNewDocument',
+    {
+      source: `
+        (() => {
+          // Google/AdSense may inject annotation anchors into live prose, e.g.
+          // <a href="#" class="google-anno">Robotics</a>. They are not
+          // repository-owned navigation and must not enter the first-party
+          // trusted-link inventory. Keep every real site link untouched.
+          const selector = 'a.google-anno[href="#"]';
+          const scrub = () => {
+            document.querySelectorAll(selector).forEach((node) => node.remove());
+          };
+          const install = () => {
+            scrub();
+            if (window.__jjoSmokeGoogleAnnotationObserver || !document.documentElement) return;
+            const observer = new MutationObserver(scrub);
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+            window.__jjoSmokeGoogleAnnotationObserver = observer;
+          };
+
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', install, { once: true });
+          } else {
+            install();
+          }
+          document.addEventListener('astro:after-swap', scrub);
+          document.addEventListener('astro:page-load', scrub);
+        })();
+      `,
+    },
+    sessionId,
+  );
+}
+
 async function main() {
   let preview, chrome, cdp, rendererTarget, interactionTarget;
   try {
@@ -37,10 +73,11 @@ async function main() {
 
     // The exhaustive route audit is about activation and destination, not
     // reveal timing. Give it a fresh browsing target and reduced-motion mode so
-    // every accessible target is immediately actionable while the production
-    // fallback contract is still exercised.
+    // every accessible first-party target is immediately actionable while the
+    // production fallback contract is still exercised.
     setReducedMotionOverride(true);
     interactionTarget = await attach(cdp);
+    await installFirstPartyLinkIsolation(cdp, interactionTarget.sessionId);
     const clicks = await auditInteractions(cdp, interactionTarget.sessionId);
     console.log(`browser-smoke: PASS complete matrix and ${clicks} stable trusted core-route clicks`);
   } finally {
