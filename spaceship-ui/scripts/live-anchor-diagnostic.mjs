@@ -2,13 +2,13 @@ import {
   Cdp,
   attach,
   evaluate,
+  navigate,
   removeProfile,
   setReducedMotionOverride,
   sleep,
   startChrome,
   stopChild,
   viewport,
-  navigate,
 } from './browser-smoke-harness.mjs';
 
 let chrome, cdp, target;
@@ -79,8 +79,16 @@ try {
 } finally {
   setReducedMotionOverride(null);
   if (cdp && target) {
-    try { await cdp.send('Target.detachFromTarget', { sessionId: target.sessionId }); } catch {}
-    try { await cdp.send('Target.closeTarget', { targetId: target.targetId }); } catch {}
+    try {
+      await cdp.send('Target.detachFromTarget', { sessionId: target.sessionId });
+    } catch {
+      // The diagnostic target may already be detached during browser teardown.
+    }
+    try {
+      await cdp.send('Target.closeTarget', { targetId: target.targetId });
+    } catch {
+      // The diagnostic target may already be closed during browser teardown.
+    }
   }
   cdp?.close();
   await stopChild(chrome?.child, 'SIGKILL');
