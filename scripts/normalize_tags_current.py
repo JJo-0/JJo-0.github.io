@@ -52,6 +52,21 @@ POST_TAXONOMY.update(
             True,
             6,
         ),
+        "modern-artificial-intelligence-5.mdx": Taxonomy(
+            "ai-machine-learning",
+            "image-classification",
+            "study-note",
+            (
+                "image-classification",
+                "convolutional-neural-network",
+                "imagenet",
+                "vision-transformer",
+                "foundation-model",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            7,
+        ),
     }
 )
 

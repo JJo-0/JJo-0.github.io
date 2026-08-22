@@ -1,0 +1,1428 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "title": "5_Ch5-Image classification.pdf",
+    "course": "ECE5992: Modern Artificial Intelligence",
+    "instructor": "Il Yong Chun",
+    "lectureDate": "2025-03-19",
+    "pages": 18,
+    "sizeBytes": 13823037,
+    "sha256": "45102cfc6e7add2d671924ca2f3bc2e373270a915236db364f00f9871cd9ba52",
+    "driveFileId": "1pu3Tn2VQEAwE3AfN9KtOn9g6eAWiPSuN"
+  },
+  "sourceContentCount": 135,
+  "editorialContentCount": 5,
+  "researchContentCount": 13,
+  "figureCount": 34,
+  "annotationCount": 15,
+  "content": [
+    {
+      "contentId": "P5-C001",
+      "pdfPage": 1,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "강의자료 표지는 ECE5992: Modern Artificial Intelligence, Il Yong Chun, 2025-03-19로 표기되어 있고, 5장 제목은 'Modern AI for image classification'이다."
+    },
+    {
+      "contentId": "P5-C002",
+      "pdfPage": 1,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.0은 2D convolution과 max pooling 복습으로 시작한다."
+    },
+    {
+      "contentId": "P5-C003",
+      "pdfPage": 1,
+      "kind": "code",
+      "layer": "source-reconstructed",
+      "text": "PyTorch convolution 모듈로 Conv1d, Conv2d, Conv3d의 생성자 형태를 나열한다."
+    },
+    {
+      "contentId": "P5-C004",
+      "pdfPage": 1,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "예시는 input channel 64, output channel 64, kernel 3, padding 1, stride 1의 2D convolution이다."
+    },
+    {
+      "contentId": "P5-C005",
+      "pdfPage": 1,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "Step 1/Step 2 도식은 다채널 입력에서 각 채널 커널 응답이 합쳐져 출력 채널을 만드는 과정을 시각화한다."
+    },
+    {
+      "contentId": "P5-C006",
+      "pdfPage": 2,
+      "kind": "code",
+      "layer": "source-reconstructed",
+      "text": "PyTorch max-pooling 모듈로 MaxPool1d, MaxPool2d, MaxPool3d를 나열한다."
+    },
+    {
+      "contentId": "P5-C007",
+      "pdfPage": 2,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "max-pooling 예시는 stride 2, padding 1을 사용한다."
+    },
+    {
+      "contentId": "P5-C008",
+      "pdfPage": 2,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "Step 1은 padding된 격자와 3x3 pooling window를, Step 2는 다음 위치로 이동한 window를 보여준다."
+    },
+    {
+      "contentId": "P5-C009",
+      "pdfPage": 2,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "슬라이드는 convolution과 pooling의 spatial 이동을 실제 격자 값으로 대비한다."
+    },
+    {
+      "contentId": "P5-C010",
+      "pdfPage": 3,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.1 Trends of DL-based image classifications."
+    },
+    {
+      "contentId": "P5-C011",
+      "pdfPage": 3,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ImageNet을 WordNet noun hierarchy에 조직된 image database로 소개한다."
+    },
+    {
+      "contentId": "P5-C012",
+      "pdfPage": 3,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "1,000 object classes, 약 1.2M train, 50K validation, 100K test 이미지를 명시한다."
+    },
+    {
+      "contentId": "P5-C013",
+      "pdfPage": 3,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ILSVRC는 2010-2017의 8년 역사 동안 deep learning 연구의 핵심 동력이었다고 서술한다."
+    },
+    {
+      "contentId": "P5-C014",
+      "pdfPage": 3,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "ILSVRC trend chart는 2010년대 초반 높은 error에서 AlexNet, ZFNet, GoogLeNet/VGGNet, ResNet, Inception-v3/WRN, SENet으로 error가 급감하는 흐름을 보여준다."
+    },
+    {
+      "contentId": "P5-C015",
+      "pdfPage": 4,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.2 AlexNet — Overview / Details."
+    },
+    {
+      "contentId": "P5-C016",
+      "pdfPage": 4,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "AlexNet을 ILSVRC 2012 winner로 소개하고 당시 약 60M parameters, 650K neurons의 큰 CNN이었다고 설명한다."
+    },
+    {
+      "contentId": "P5-C017",
+      "pdfPage": 4,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "입력 이미지를 1,000 classes 중 하나로 분류하고, 1,000-dimensional output의 각 성분을 class probability로 해석하며 전체 합을 1로 둔다."
+    },
+    {
+      "contentId": "P5-C018",
+      "pdfPage": 4,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "입력은 RGB 256x256으로 맞추며, 작은 쪽을 256으로 resize 후 crop한다. grayscale이면 single channel을 복제해 RGB 3-channel로 만든다."
+    },
+    {
+      "contentId": "P5-C019",
+      "pdfPage": 4,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "학습 시 256x256 내부에서 227x227 random crop을 생성해 첫 layer에 넣는다."
+    },
+    {
+      "contentId": "P5-C020",
+      "pdfPage": 4,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "AlexNet은 5 convolutional layers + 3 fully-connected layers로 구성된다."
+    },
+    {
+      "contentId": "P5-C021",
+      "pdfPage": 4,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "conv/FC 뒤에는 ReLU를 사용하고 초기 두 convolution 뒤에는 local normalization 후 pooling을 적용한다. 슬라이드는 이후 normalization이 큰 효용을 보이지 않았다고 덧붙인다."
+    },
+    {
+      "contentId": "P5-C022",
+      "pdfPage": 4,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ReLU가 tanh/sigmoid 같은 saturating activation보다 deep CNN 학습을 빠르게 했다는 점을 핵심으로 제시한다."
+    },
+    {
+      "contentId": "P5-C023",
+      "pdfPage": 5,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "CIFAR-10 실험 도표에서 ReLU(solid)가 tanh(dotted)보다 25% training error에 약 6배 빠르게 도달했다고 설명한다."
+    },
+    {
+      "contentId": "P5-C024",
+      "pdfPage": 5,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "tanh는 큰 양/음 입력에서 saturate해 slope가 0에 가까워지고 gradient descent를 느리게 할 수 있다고 설명한다."
+    },
+    {
+      "contentId": "P5-C025",
+      "pdfPage": 5,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ReLU는 positive 영역에서 slope가 0에 가깝지 않아 optimization이 빠르다는 직관을 제시한다. negative 영역 slope는 0이라는 점도 함께 적는다."
+    },
+    {
+      "contentId": "P5-C026",
+      "pdfPage": 5,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "overfitting 완화를 위해 mirroring과 random crops를 사용한다. mirroring은 dataset을 2배, random cropping은 자료 표현상 2048배로 늘린다고 적는다."
+    },
+    {
+      "contentId": "P5-C027",
+      "pdfPage": 5,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "또 다른 regularization으로 dropout을 사용한다."
+    },
+    {
+      "contentId": "P5-C028",
+      "pdfPage": 5,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "하단은 AlexNet의 intermediate feature maps 예시를 보여준다."
+    },
+    {
+      "contentId": "P5-C029",
+      "pdfPage": 6,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.3 VGGNet — Overview / Motivation / Details."
+    },
+    {
+      "contentId": "P5-C030",
+      "pdfPage": 6,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "VGG16은 16-layer CNN이며 ILSVRC-2014 상위 모델로 소개되고 ImageNet test accuracy 92.7%라고 적는다."
+    },
+    {
+      "contentId": "P5-C031",
+      "pdfPage": 6,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "AlexNet의 큰 early kernels(11x11, 5x5) 대신 작은 3x3 filter sequence를 사용한다."
+    },
+    {
+      "contentId": "P5-C032",
+      "pdfPage": 6,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "첫 convolution에서 3x3 receptive field, stride 1을 사용하며 AlexNet의 11x11 stride 4와 비교한다."
+    },
+    {
+      "contentId": "P5-C033",
+      "pdfPage": 6,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "여러 작은 convolution을 쌓으면 더 많은 nonlinear activation을 삽입하면서 큰 receptive field의 기능을 얻는다는 motivation을 제시한다."
+    },
+    {
+      "contentId": "P5-C034",
+      "pdfPage": 6,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "슬라이드는 작은 convolution이 over-fitting 경향을 낮추고 3x3이 spatial left-right/up-down 정보를 잡는 최소 크기라는 식의 설명을 제시한다."
+    },
+    {
+      "contentId": "P5-C035",
+      "pdfPage": 6,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "VGG16은 약 138M parameters이며, 13 convolutional + 3 FC layers로 설명한다."
+    },
+    {
+      "contentId": "P5-C036",
+      "pdfPage": 7,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "VGG input은 RGB 224x224이며 ImageNet에서는 center crop으로 크기를 일정하게 맞춘다고 적는다."
+    },
+    {
+      "contentId": "P5-C037",
+      "pdfPage": 7,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "convolution은 주로 3x3을 쓰고 1x1 convolution도 사용한다. 1x1은 receptive field를 바꾸지 않으면서 ReLU와 함께 non-linearity를 늘리는 용도로 설명한다."
+    },
+    {
+      "contentId": "P5-C038",
+      "pdfPage": 7,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "hidden layers는 ReLU를 쓰며 AlexNet식 Local Response Normalization은 시간/메모리를 늘리고 accuracy 개선이 작다고 설명한다."
+    },
+    {
+      "contentId": "P5-C039",
+      "pdfPage": 7,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "pooling은 feature-map dimensionality와 parameter burden을 줄이며 channel 수는 64→128→256→512로 늘어난다."
+    },
+    {
+      "contentId": "P5-C040",
+      "pdfPage": 7,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "FC layers는 4096, 4096, 1000 channels이다."
+    },
+    {
+      "contentId": "P5-C041",
+      "pdfPage": 7,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "두 개의 3x3은 5x5, 세 개의 3x3은 7x7 receptive field에 대응한다고 설명한다."
+    },
+    {
+      "contentId": "P5-C042",
+      "pdfPage": 7,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "세 3x3 layer는 세 번의 ReLU를 제공하고 27C^2 parameters로, 하나의 7x7의 49C^2보다 적은 parameter를 사용한다."
+    },
+    {
+      "contentId": "P5-C043",
+      "pdfPage": 7,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.4 GoogLeNet을 ILSVRC 2014 winner로 소개하며 ZFNet/AlexNet 대비 개선, VGGNet보다 낮은 error를 언급한다."
+    },
+    {
+      "contentId": "P5-C044",
+      "pdfPage": 8,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "GoogLeNet은 중간에 1x1 convolution을 사용하고 끝에 FC 대신 global average pooling을 사용한다. 두 아이디어는 Network In Network에서 왔다고 설명한다."
+    },
+    {
+      "contentId": "P5-C045",
+      "pdfPage": 8,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "Inception module은 같은 input에 서로 다른 convolution/pooling branch를 병렬 적용한 뒤 output을 stack/concatenate한다."
+    },
+    {
+      "contentId": "P5-C046",
+      "pdfPage": 8,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "NIN의 1x1 convolution은 ReLU와 함께 representational non-linearity를 늘리는 관점으로 소개한다."
+    },
+    {
+      "contentId": "P5-C047",
+      "pdfPage": 8,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "GoogLeNet에서는 1x1 convolution을 dimension reduction module로 사용해 computation bottleneck을 줄이고 depth/width 확장을 가능하게 한다."
+    },
+    {
+      "contentId": "P5-C048",
+      "pdfPage": 8,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "14x14x480 input에 48-channel 5x5 convolution을 직접 적용하면 operation count가 112.9M이라고 계산한다."
+    },
+    {
+      "contentId": "P5-C049",
+      "pdfPage": 8,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "먼저 1x1로 16 channels로 줄이고 5x5로 48 channels를 만들면 operation count가 5.3M으로 감소한다."
+    },
+    {
+      "contentId": "P5-C050",
+      "pdfPage": 8,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "native inception module은 1x1, 3x3, 5x5 convolution과 3x3 max pooling을 병렬로 둔다."
+    },
+    {
+      "contentId": "P5-C051",
+      "pdfPage": 9,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "각 inception branch는 서로 다른 feature를 추출하고, branch outputs를 concatenate해 다음 module input으로 보낸다."
+    },
+    {
+      "contentId": "P5-C052",
+      "pdfPage": 9,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "native inception의 계산량이 커서 branch 앞에 1x1 dimension reduction을 삽입해 cost를 줄인다."
+    },
+    {
+      "contentId": "P5-C053",
+      "pdfPage": 9,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "Global average pooling."
+    },
+    {
+      "contentId": "P5-C054",
+      "pdfPage": 9,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "AlexNet식 network 끝의 FC layer 예에서는 7x7x1024x1024=51.3M connections가 필요하다고 계산한다."
+    },
+    {
+      "contentId": "P5-C055",
+      "pdfPage": 9,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "GoogLeNet의 GAP는 각 7x7 feature map을 1x1로 평균내므로 별도 FC connection 없이 channel descriptor를 만든다."
+    },
+    {
+      "contentId": "P5-C056",
+      "pdfPage": 10,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "GAP 예시의 추가 weight는 0이라고 적는다."
+    },
+    {
+      "contentId": "P5-C057",
+      "pdfPage": 10,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "FC→GAP 변경으로 top-1 accuracy가 약 0.6% 개선되었다고 출처 설명을 제시하며 NIN의 overfitting 완화 아이디어라고 연결한다."
+    },
+    {
+      "contentId": "P5-C058",
+      "pdfPage": 10,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "Overall architecture."
+    },
+    {
+      "contentId": "P5-C059",
+      "pdfPage": 10,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "GoogLeNet 전체 architecture는 총 22 layers이며 여러 inception modules를 연결해 깊어진다고 설명한다."
+    },
+    {
+      "contentId": "P5-C060",
+      "pdfPage": 10,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "AlexNet/ZFNet/VGGNet보다 매우 깊지만 이후 ResNet보다는 얕다고 비교한다."
+    },
+    {
+      "contentId": "P5-C061",
+      "pdfPage": 10,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "Auxiliary classifiers for training."
+    },
+    {
+      "contentId": "P5-C062",
+      "pdfPage": 10,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "중간 softmax branches는 training only auxiliary classifiers이며 loss를 total loss에 weight 0.3으로 더한다."
+    },
+    {
+      "contentId": "P5-C063",
+      "pdfPage": 10,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "auxiliary branches가 vanishing gradient를 완화하고 regularization도 제공한다고 저자 주장으로 소개한다."
+    },
+    {
+      "contentId": "P5-C064",
+      "pdfPage": 10,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.5 ResNet — Overview."
+    },
+    {
+      "contentId": "P5-C065",
+      "pdfPage": 10,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ResNet은 ILSVRC 2015 winner이며 residual learning으로 훨씬 깊은 network를 비슷한 parameter 수로 train할 수 있게 했다고 설명한다."
+    },
+    {
+      "contentId": "P5-C066",
+      "pdfPage": 10,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "depth가 증가하면 accuracy가 saturate 후 degrade하고, 단순히 overfitting 때문이 아니라 deeper plain model의 training error 자체가 커지는 degradation problem을 제시한다."
+    },
+    {
+      "contentId": "P5-C067",
+      "pdfPage": 11,
+      "kind": "quote",
+      "layer": "source-reconstructed",
+      "text": "ResNet 논문의 degradation 문장을 인용하며 더 깊은 suitably deep model에서 training error가 오히려 커지는 현상을 강조한다."
+    },
+    {
+      "contentId": "P5-C068",
+      "pdfPage": 11,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "해결책은 residual learning이며 핵심은 residual/skip connection이다."
+    },
+    {
+      "contentId": "P5-C069",
+      "pdfPage": 11,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "residual block은 nonlinear transform F(x)와 identity x를 element-wise addition으로 합친다."
+    },
+    {
+      "contentId": "P5-C070",
+      "pdfPage": 11,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "ResNet-18 architecture 예시를 block A–E로 보여준다."
+    },
+    {
+      "contentId": "P5-C071",
+      "pdfPage": 11,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "ImageNet Figure 1은 plain 18/34-layer와 ResNet 18/34-layer의 train/validation error를 비교한다."
+    },
+    {
+      "contentId": "P5-C072",
+      "pdfPage": 11,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "plain 34-layer는 plain 18-layer보다 validation error가 높고 training error도 전 구간에서 높아 degradation을 보인다."
+    },
+    {
+      "contentId": "P5-C073",
+      "pdfPage": 11,
+      "kind": "footnote",
+      "layer": "source-reconstructed",
+      "text": "vanishing/exploding gradients는 초기 convergence부터 방해할 수 있으며 normalized initialization, intermediate normalization, ReLU 등으로 완화할 수 있다는 footnote를 보존한다."
+    },
+    {
+      "contentId": "P5-C074",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ResNet에서는 34-layer가 18-layer보다 좋은 결과를 보이고 training error도 낮아 plain-net degradation이 해결됨을 설명한다."
+    },
+    {
+      "contentId": "P5-C075",
+      "pdfPage": 12,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "Further details."
+    },
+    {
+      "contentId": "P5-C076",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ResNet은 every convolutional layer 뒤에 batch normalization을 사용한다고 설명한다."
+    },
+    {
+      "contentId": "P5-C077",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "BN은 current batch mean/variance로 hidden activation을 normalize하며 일반적으로 nonlinear function 직전에 적용한다고 설명한다."
+    },
+    {
+      "contentId": "P5-C078",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "BN의 효과에 대한 해석은 확정되지 않았다고 적고, original internal covariate shift 설명, layer interdependency 완화 가설, optimization landscape smoothing 설명을 병렬로 소개한다."
+    },
+    {
+      "contentId": "P5-C079",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ResNet에는 dropout을 쓰지 않는다고 적는다."
+    },
+    {
+      "contentId": "P5-C080",
+      "pdfPage": 12,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.6 Wide residual network (WRN)."
+    },
+    {
+      "contentId": "P5-C081",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ResNet을 widen하면 같은/더 좋은 accuracy에서 shallower network를 만들 수 있어 layer 수와 training time을 줄일 수 있다고 설명한다."
+    },
+    {
+      "contentId": "P5-C082",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "circuit complexity 관점에서 shallow circuits가 deeper circuits보다 exponentially more components를 요구할 수 있음을 언급한다."
+    },
+    {
+      "contentId": "P5-C083",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "thin/deep ResNet에서 gradient가 residual weights를 우회해 일부 block만 유용한 representation을 학습할 수 있는 diminishing feature reuse 문제를 설명한다."
+    },
+    {
+      "contentId": "P5-C084",
+      "pdfPage": 12,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "WRN은 feature planes를 늘려 widen하고, deepening factor l과 widening factor k를 사용한다. k=1은 ResNet width, k>1은 k배 wider이다."
+    },
+    {
+      "contentId": "P5-C085",
+      "pdfPage": 12,
+      "kind": "footnote",
+      "layer": "source-reconstructed",
+      "text": "BN이 nonlinear function 뒤에 적용되는 경우도 있다는 footnote를 보존한다."
+    },
+    {
+      "contentId": "P5-C086",
+      "pdfPage": 13,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "basic, bottleneck, basic-wide, wide-dropout residual block variants를 비교한다."
+    },
+    {
+      "contentId": "P5-C087",
+      "pdfPage": 13,
+      "kind": "table",
+      "layer": "source-reconstructed",
+      "text": "ILSVRC-2012 validation single-crop table은 ResNet-50/101/152, WRN-50-2-bottleneck, pre-ResNet-200의 top-1/top-5 error, parameter 수, batch time을 비교한다."
+    },
+    {
+      "contentId": "P5-C088",
+      "pdfPage": 13,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "WRN-50-2-bottleneck이 ResNet-152보다 3배 적은 layers로 더 빠르면서 pre-ResNet-200에 가까운 결과를 낸다고 설명한다."
+    },
+    {
+      "contentId": "P5-C089",
+      "pdfPage": 13,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "Pre-Activation ResNet은 BN-ReLU-Conv, original ResNet은 Conv-BN-ReLU 순서를 쓰며 대체로 더 낫지만 around-100-layer ImageNet에서는 뚜렷한 개선이 없다는 설명을 덧붙인다."
+    },
+    {
+      "contentId": "P5-C090",
+      "pdfPage": 13,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.7 DenseNet — Overview."
+    },
+    {
+      "contentId": "P5-C091",
+      "pdfPage": 13,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "DenseNet은 2017 CVPR Best Paper Award를 받았고, 각 layer가 모든 preceding feature maps를 input으로 받고 자신의 feature maps를 모든 subsequent layers에 전달한다고 설명한다."
+    },
+    {
+      "contentId": "P5-C092",
+      "pdfPage": 13,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "standard network는 L connections, L-layer DenseNet은 L(L+1)/2 connections를 가지며 summation 대신 concatenation을 사용한다."
+    },
+    {
+      "contentId": "P5-C093",
+      "pdfPage": 13,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "l-th layer는 모든 preceding feature maps로 이루어진 l inputs를 받는다고 설명한다."
+    },
+    {
+      "contentId": "P5-C094",
+      "pdfPage": 14,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "Dense block에서 standard feed-forward network는 l-th output을 (l+1)-th input으로 연결한다."
+    },
+    {
+      "contentId": "P5-C095",
+      "pdfPage": 14,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "표준 transition을 x_l=H_l(x_{l-1})로 정의하고 H_l을 convolution/ReLU/pooling/BN 등의 composite function으로 설명한다."
+    },
+    {
+      "contentId": "P5-C096",
+      "pdfPage": 14,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "ResNet은 identity mapping과 element-wise addition을 사용해 x_l=H_l(x_{l-1})+x_{l-1} 형태를 만든다."
+    },
+    {
+      "contentId": "P5-C097",
+      "pdfPage": 14,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "DenseNet은 모든 preceding features를 concatenation해 x_l=H_l([x_0,...,x_{l-1}])로 입력한다."
+    },
+    {
+      "contentId": "P5-C098",
+      "pdfPage": 14,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "DenseNet의 H_l은 BN→ReLU→3x3 convolution의 연속 연산으로 정의된다."
+    },
+    {
+      "contentId": "P5-C099",
+      "pdfPage": 14,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "dense blocks 사이 transition layer는 1x1 convolution 뒤 2x2 average pooling을 사용한다."
+    },
+    {
+      "contentId": "P5-C100",
+      "pdfPage": 14,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "dense block 안에서는 feature-map sizes가 같아 concatenation이 가능하고 마지막 dense block 뒤에는 GAP와 softmax classifier를 붙인다."
+    },
+    {
+      "contentId": "P5-C101",
+      "pdfPage": 15,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "각 layer가 preceding feature maps를 재사용하므로 network를 thinner/compact하게 만들 수 있다고 설명한다."
+    },
+    {
+      "contentId": "P5-C102",
+      "pdfPage": 15,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "growth rate k는 each layer가 추가하는 channel 수로 정의된다."
+    },
+    {
+      "contentId": "P5-C103",
+      "pdfPage": 15,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "concatenation during forward propagation 도식은 layer가 이전 features를 누적해 받는 구조를 보여준다."
+    },
+    {
+      "contentId": "P5-C104",
+      "pdfPage": 15,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "Advantages of DenseNet."
+    },
+    {
+      "contentId": "P5-C105",
+      "pdfPage": 15,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "strong gradient flow: final classification layer의 error signal이 earlier layers로 직접 전달되어 implicit deep supervision 효과가 있다고 설명한다."
+    },
+    {
+      "contentId": "P5-C106",
+      "pdfPage": 15,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "parameter/computational efficiency: ResNet layer parameter가 CxC에 비례하는 반면 DenseNet은 l*k*k에 비례하고 k<<C라고 비교한다."
+    },
+    {
+      "contentId": "P5-C107",
+      "pdfPage": 15,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "ResNet connectivity와 DenseNet connectivity의 parameter scaling을 비교한다."
+    },
+    {
+      "contentId": "P5-C108",
+      "pdfPage": 15,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "DenseNet과 ResNet 계열의 top-1 error/parameter 관계 plot을 제시한다."
+    },
+    {
+      "contentId": "P5-C109",
+      "pdfPage": 16,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "DenseNet의 각 layer는 모든 preceding feature를 받아 더 diversified/richer patterns를 얻는다고 설명한다."
+    },
+    {
+      "contentId": "P5-C110",
+      "pdfPage": 16,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "standard convolutional classifier는 가장 complex한 final features를 주로 쓰지만 DenseNet classifier는 여러 complexity level의 features를 이용할 수 있다고 설명한다."
+    },
+    {
+      "contentId": "P5-C111",
+      "pdfPage": 16,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "저자 주장을 따라 이것이 smoother decision boundaries 및 data-insufficient setting의 성능과 연결될 수 있다고 설명한다."
+    },
+    {
+      "contentId": "P5-C112",
+      "pdfPage": 16,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "5.8 Squeeze-and-Excitation Networks."
+    },
+    {
+      "contentId": "P5-C113",
+      "pdfPage": 16,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "SE architecture는 ILSVRC 2017 winner로 소개되고, 일반 CNN의 equal channel weighting 대신 content-aware adaptive channel weighting을 추가한다고 설명한다."
+    },
+    {
+      "contentId": "P5-C114",
+      "pdfPage": 16,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "SE block은 거의 추가 cost 없이 channel interdependencies를 강화하는 lightweight gating mechanism으로 소개한다."
+    },
+    {
+      "contentId": "P5-C115",
+      "pdfPage": 16,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "squeeze는 각 feature map을 single numeric value로 축약해 C-dimensional vector를 만들고, two-layer neural network가 같은 크기의 vector를 출력하며 그 C values로 original feature maps를 channel-wise scale한다."
+    },
+    {
+      "contentId": "P5-C116",
+      "pdfPage": 17,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "SE weights는 각 channel importance에 따라 original feature map을 scale한다."
+    },
+    {
+      "contentId": "P5-C117",
+      "pdfPage": 17,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "SE diagram은 transform X→U, squeeze F_sq, excitation F_ex, scale F_scale의 흐름과 HxWxC tensor geometry를 함께 보여준다."
+    },
+    {
+      "contentId": "P5-C118",
+      "pdfPage": 17,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "squeeze equation은 spatial average로 z_c를 계산한다."
+    },
+    {
+      "contentId": "P5-C119",
+      "pdfPage": 17,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "excitation equation은 two-layer bottleneck W1/W2, activation delta, sigmoid를 통해 channel gates s를 만든다."
+    },
+    {
+      "contentId": "P5-C120",
+      "pdfPage": 17,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "scale equation은 s_c와 u_c의 곱으로 recalibrated channel을 만든다."
+    },
+    {
+      "contentId": "P5-C121",
+      "pdfPage": 17,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "SE block은 ResNet, Inception 등 popular convolutional modules에 쉽게 통합할 수 있다고 설명한다."
+    },
+    {
+      "contentId": "P5-C122",
+      "pdfPage": 17,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "SE-ResNet module은 global pooling→FC(C/r)→ReLU→FC(C)→sigmoid→scale을 residual branch에 삽입하며 r은 reduction ratio다."
+    },
+    {
+      "contentId": "P5-C123",
+      "pdfPage": 17,
+      "kind": "figure",
+      "layer": "source-reconstructed",
+      "text": "SE-ResNet-50와 ResNet-50 train/validation top-1 error curves를 비교한다."
+    },
+    {
+      "contentId": "P5-C124",
+      "pdfPage": 17,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "top-1 score는 최고 probability class가 target label과 같은지 확인하는 metric이라고 설명한다."
+    },
+    {
+      "contentId": "P5-C125",
+      "pdfPage": 17,
+      "kind": "body",
+      "layer": "source-reconstructed",
+      "text": "SE blocks 자체는 depth를 추가하지만 computationally efficient한 방식이라는 문장이 p18 첫 줄까지 이어진다."
+    },
+    {
+      "contentId": "P5-C126",
+      "pdfPage": 18,
+      "kind": "heading",
+      "layer": "source-reconstructed",
+      "text": "References."
+    },
+    {
+      "contentId": "P5-C127",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[1] Simonyan & Zisserman, Very Deep Convolutional Networks for Large-Scale Image Recognition, ICLR 2015."
+    },
+    {
+      "contentId": "P5-C128",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[2] Szegedy et al., Going Deeper with Convolutions, CVPR 2015."
+    },
+    {
+      "contentId": "P5-C129",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[3] LeCun et al., Gradient-Based Learning Applied to Document Recognition, Proc. IEEE 1998."
+    },
+    {
+      "contentId": "P5-C130",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[4] Lin, Chen & Yan, Network in Network, ICLR 2014."
+    },
+    {
+      "contentId": "P5-C131",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[5] He et al., Deep Residual Learning for Image Recognition, CVPR 2016."
+    },
+    {
+      "contentId": "P5-C132",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[6] Ioffe & Szegedy, Batch Normalization, ICML 2015."
+    },
+    {
+      "contentId": "P5-C133",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[7] Santurkar et al., How Does Batch Normalization Help Optimization?, NeurIPS 2018."
+    },
+    {
+      "contentId": "P5-C134",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[8] Huang et al., Densely Connected Convolutional Networks, CVPR 2017."
+    },
+    {
+      "contentId": "P5-C135",
+      "pdfPage": 18,
+      "kind": "reference",
+      "layer": "source-reconstructed",
+      "text": "[9] Hu, Shen & Sun, Squeeze-and-Excitation Networks, CVPR 2018."
+    },
+    {
+      "contentId": "P5-E001",
+      "layer": "editorial-audit",
+      "text": "VGG 슬라이드의 '3x3 is the optimal/smallest possible size'는 spatial context를 동시에 보는 최소 odd kernel이라는 강의 직관으로 읽어야 한다. 1x1 convolution도 존재하며, 3x3이 모든 목적에서 보편적 최적이라는 뜻으로 일반화하면 안 된다."
+    },
+    {
+      "contentId": "P5-E002",
+      "layer": "editorial-audit",
+      "text": "AlexNet 슬라이드의 ReLU 직관 중 'most neurons usually end up positive'는 일반 정리로 취급하지 않는다. ReLU의 비포화 positive branch가 optimization에 유리했다는 역사적 설명과 해당 문장을 분리한다."
+    },
+    {
+      "contentId": "P5-E003",
+      "layer": "editorial-audit",
+      "text": "BN 효과 설명은 원자료처럼 multiple hypotheses를 보존한다. internal covariate shift 하나로 원인을 확정하지 않고, optimization landscape 및 reparameterization 관점이 후속 연구에서 논의됐음을 명시한다."
+    },
+    {
+      "contentId": "P5-E004",
+      "layer": "editorial-audit",
+      "text": "DenseNet의 'higher computational and memory efficiency'는 parameter reuse/compactness 맥락의 source claim이다. dense concatenation은 activation-memory traffic를 늘릴 수 있으므로 현대 구현의 hardware efficiency와 동일시하지 않는다."
+    },
+    {
+      "contentId": "P5-E005",
+      "layer": "editorial-audit",
+      "text": "SE architecture의 ILSVRC 2017 winner 표현은 source wording을 보존하되, challenge 종료 시점과 SENet의 competition result를 역사적 맥락으로 읽는다."
+    },
+    {
+      "contentId": "P5-R001",
+      "layer": "2026-08-18 research-update",
+      "text": "ConvNeXt는 ResNet을 Transformer-era recipe로 단계적으로 modernize하면서 pure ConvNet도 ViT/Swin 계열과 경쟁 가능한 backbone이 될 수 있음을 보였다.",
+      "url": "https://arxiv.org/abs/2201.03545",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R002",
+      "layer": "2026-08-18 research-update",
+      "text": "ConvNeXt V2는 fully convolutional masked autoencoder와 Global Response Normalization을 결합해 architecture와 self-supervised pretraining을 함께 설계했다.",
+      "url": "https://arxiv.org/abs/2301.00808",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R003",
+      "layer": "2026-08-18 research-update",
+      "text": "Vision Transformer는 image patches를 token sequence로 보고 large-scale pretraining 후 image recognition으로 transfer하는 순수 Transformer 경로를 확립했다.",
+      "url": "https://arxiv.org/abs/2010.11929",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R004",
+      "layer": "2026-08-18 research-update",
+      "text": "Swin Transformer는 shifted local windows와 hierarchical feature maps로 classification뿐 아니라 dense prediction까지 general-purpose backbone으로 확장했고, Swin V2는 scale/resolution 안정성을 강화했다.",
+      "url": "https://arxiv.org/abs/2111.09883",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R005",
+      "layer": "2026-08-18 research-update",
+      "text": "ResNet-RS 계열 연구는 architecture 차이와 training/scaling recipe 효과를 분리해, 강한 recipe가 고전 ResNet baseline 자체를 크게 끌어올릴 수 있음을 보였다.",
+      "url": "https://arxiv.org/abs/2103.07579",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R006",
+      "layer": "2026-08-18 research-update",
+      "text": "ImageNet-1K top-1 하나만으로 일반화 품질을 판단하기 어렵다. ImageNet-C/P는 common corruption/perturbation robustness를 별도 측정한다.",
+      "url": "https://arxiv.org/abs/1903.12261",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R007",
+      "layer": "2026-08-18 research-update",
+      "text": "ImageNet-A는 자연 이미지 중 모델이 공통으로 실패하는 hard examples를 adversarial filtration으로 구성해 in-distribution accuracy와 robustness의 차이를 드러냈다.",
+      "url": "https://arxiv.org/abs/1907.07174",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R008",
+      "layer": "2026-08-18 research-update",
+      "text": "modern neural classifier는 높은 accuracy와 별개로 confidence calibration이 나쁠 수 있으며, temperature scaling은 간단한 post-hoc baseline으로 남아 있다.",
+      "url": "https://arxiv.org/abs/1706.04599",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R009",
+      "layer": "2026-08-18 research-update",
+      "text": "CLIP은 natural-language supervision으로 zero-shot classifier를 구성해 ImageNet 밖의 distribution shifts와 transfer 평가를 image classification의 핵심 질문으로 끌어왔다.",
+      "url": "https://arxiv.org/abs/2103.00020",
+      "evidence": "peer-reviewed / official preprint"
+    },
+    {
+      "contentId": "P5-R010",
+      "layer": "2026-08-18 research-update",
+      "text": "foundation vision encoder 시대에는 fixed 1,000-way classifier보다 frozen/transferable representations와 downstream linear/probe/finetune 성능이 중요해졌다.",
+      "url": "https://arxiv.org/abs/2304.07193",
+      "evidence": "official preprint (DINOv2)"
+    },
+    {
+      "contentId": "P5-R011",
+      "layer": "2026-08-18 research-update",
+      "text": "DINOv3는 2025년에 large-scale self-supervised training과 Gram anchoring을 사용해 dense feature degradation을 억제하고 다양한 vision task에서 범용 encoder 성능을 목표로 했다.",
+      "url": "https://arxiv.org/abs/2508.10104",
+      "evidence": "technical report / official preprint"
+    },
+    {
+      "contentId": "P5-R012",
+      "layer": "2026-08-18 research-update",
+      "text": "SigLIP 2는 captioning, self-distillation, masked prediction, online curation을 결합해 multilingual zero-shot classification, retrieval, transfer, localization/dense features를 함께 강화했다.",
+      "url": "https://arxiv.org/abs/2502.14786",
+      "evidence": "technical report / official preprint"
+    },
+    {
+      "contentId": "P5-R013",
+      "layer": "2026-08-18 research-update",
+      "text": "따라서 AlexNet→VGG→Inception→ResNet→DenseNet→SE의 역사적 축은 여전히 architecture 이해에 유효하지만, 2026의 실전 비교는 architecture·training recipe·pretraining data·calibration·distribution shift·transfer cost를 함께 봐야 한다.",
+      "url": "https://arxiv.org/abs/2201.03545",
+      "evidence": "synthesis grounded in cited primary sources"
+    }
+  ],
+  "figures": [
+    {
+      "figureId": "P5-FIG-01",
+      "pdfPage": 1,
+      "title": "PyTorch convolution module signatures",
+      "description": "Conv1d/2d/3d API boxes",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-02",
+      "pdfPage": 1,
+      "title": "2D convolution Step 1/Step 2",
+      "description": "multi-channel convolution geometry",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-03",
+      "pdfPage": 2,
+      "title": "PyTorch max-pooling module signatures",
+      "description": "MaxPool1d/2d/3d API boxes",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-04",
+      "pdfPage": 2,
+      "title": "Max-pooling Step 1/Step 2",
+      "description": "padded grid and moving window",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-05",
+      "pdfPage": 3,
+      "title": "ILSVRC trend chart",
+      "description": "2010-2017 classification-error trajectory",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-06",
+      "pdfPage": 4,
+      "title": "AlexNet architecture",
+      "description": "five convolutional and three FC stages",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-07",
+      "pdfPage": 4,
+      "title": "AlexNet resize/crop preprocessing",
+      "description": "short-side resize, 256 crop, 227 random crop",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-08",
+      "pdfPage": 5,
+      "title": "ReLU vs tanh convergence chart",
+      "description": "25% error comparison",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-09",
+      "pdfPage": 5,
+      "title": "tanh and ReLU function sketches",
+      "description": "saturation versus positive linear slope",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-10",
+      "pdfPage": 5,
+      "title": "AlexNet feature-map examples",
+      "description": "intermediate feature visualization",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-11",
+      "pdfPage": 7,
+      "title": "VGG16 architecture",
+      "description": "224x224 input, repeated 3x3 conv, FC head",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-12",
+      "pdfPage": 8,
+      "title": "Inception naming/meme panel",
+      "description": "source context for inception naming",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-13",
+      "pdfPage": 8,
+      "title": "GoogLeNet 1x1 bottleneck computation",
+      "description": "112.9M versus 5.3M path",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-14",
+      "pdfPage": 8,
+      "title": "Native inception module",
+      "description": "parallel 1x1/3x3/5x5/maxpool branches",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-15",
+      "pdfPage": 9,
+      "title": "Reduced inception module",
+      "description": "1x1 reductions before expensive branches",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-16",
+      "pdfPage": 9,
+      "title": "FC versus global average pooling",
+      "description": "51.3M FC weights versus pooling",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-17",
+      "pdfPage": 10,
+      "title": "GoogLeNet global average pooling",
+      "description": "7x7x1024 to 1x1x1024",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-18",
+      "pdfPage": 10,
+      "title": "GoogLeNet overall architecture",
+      "description": "22-layer inception stack",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-19",
+      "pdfPage": 11,
+      "title": "Residual block",
+      "description": "F(x)+identity addition",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-20",
+      "pdfPage": 11,
+      "title": "ResNet-18 architecture",
+      "description": "stage/block layout",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-21",
+      "pdfPage": 11,
+      "title": "Plain vs residual ImageNet curves",
+      "description": "18/34 layer train/validation errors",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-22",
+      "pdfPage": 13,
+      "title": "WRN block variants",
+      "description": "basic/bottleneck/basic-wide/wide-dropout",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-23",
+      "pdfPage": 13,
+      "title": "WRN/ResNet comparison table",
+      "description": "top-1/top-5/params/time",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-24",
+      "pdfPage": 13,
+      "title": "DenseNet connectivity overview",
+      "description": "all preceding features reused",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-25",
+      "pdfPage": 14,
+      "title": "Standard/ResNet/DenseNet connectivity",
+      "description": "sequential, addition, concatenation",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-26",
+      "pdfPage": 14,
+      "title": "DenseNet blocks and transitions",
+      "description": "1x1 conv + 2x2 average pooling transitions",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-27",
+      "pdfPage": 15,
+      "title": "DenseNet growth-rate connectivity",
+      "description": "k channels per dense layer",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-28",
+      "pdfPage": 15,
+      "title": "DenseNet gradient-flow diagram",
+      "description": "direct error-signal paths",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-29",
+      "pdfPage": 15,
+      "title": "ResNet vs DenseNet parameter scaling",
+      "description": "C^2 versus l k^2",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-30",
+      "pdfPage": 15,
+      "title": "DenseNet/ResNet top-1 error plot",
+      "description": "error versus parameters",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-31",
+      "pdfPage": 16,
+      "title": "Feature-complexity reuse",
+      "description": "standard versus DenseNet classifier inputs",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-32",
+      "pdfPage": 17,
+      "title": "SE squeeze-excitation-scale diagram",
+      "description": "F_sq, F_ex, F_scale tensor geometry",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-33",
+      "pdfPage": 17,
+      "title": "SE-ResNet module",
+      "description": "global pooling/FC/reduction ratio/sigmoid/scale",
+      "layer": "source-reconstructed"
+    },
+    {
+      "figureId": "P5-FIG-34",
+      "pdfPage": 17,
+      "title": "SE-ResNet-50 training curves",
+      "description": "train/validation top-1 error",
+      "layer": "source-reconstructed"
+    }
+  ],
+  "annotations": [
+    {
+      "annotationId": "P5-ANN-01",
+      "pdfPage": 1,
+      "layer": "source-reconstructed",
+      "text": "Convolution 그림 주변 채널·stride 메모. 일부 글씨는 판독 불확실해 숫자/의미를 확정하지 않는다.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-02",
+      "pdfPage": 3,
+      "layer": "source-reconstructed",
+      "text": "ILSVRC trend chart 오른쪽의 짧은 필기. 판독 가능한 핵심은 human/error trend에 대한 표시뿐이며 문장 복원은 보류한다.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-03",
+      "pdfPage": 4,
+      "layer": "source-reconstructed",
+      "text": "AlexNet architecture 상단의 입력/weight 관련 필기와 crop 옆 메모. 식으로 승격하지 않는다.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-04",
+      "pdfPage": 5,
+      "layer": "source-reconstructed",
+      "text": "ReLU/tanh plot 주변의 gradient/slope 관련 필기와 feature-map 메모.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-05",
+      "pdfPage": 6,
+      "layer": "source-reconstructed",
+      "text": "VGG section의 small-kernel/more-layer 요지 필기.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-06",
+      "pdfPage": 7,
+      "layer": "source-reconstructed",
+      "text": "VGG receptive-field/parameter 비교 주변의 'input channel size' 등 필기.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-07",
+      "pdfPage": 8,
+      "layer": "source-reconstructed",
+      "text": "Inception/1x1 계산 주변 Big-O, bottleneck 관련 필기.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-08",
+      "pdfPage": 9,
+      "layer": "source-reconstructed",
+      "text": "FC/GAP 도식 주변 7x7/1x1 및 pooling 관련 필기.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-09",
+      "pdfPage": 10,
+      "layer": "source-reconstructed",
+      "text": "GAP/GoogLeNet architecture 주변 reduction/parameter 메모와 ResNet 시작부 skip-connection 메모.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-10",
+      "pdfPage": 11,
+      "layer": "source-reconstructed",
+      "text": "Residual block 주변 skip connection/identity/gradient 방향 필기.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-11",
+      "pdfPage": 12,
+      "layer": "source-reconstructed",
+      "text": "BN 설명 주변 researchers/optimization 관련 짧은 필기와 WRN widening 메모.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-12",
+      "pdfPage": 13,
+      "layer": "source-reconstructed",
+      "text": "WRN table의 pre-activation 메모와 DenseNet 그림의 recycle/connection 필기.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-13",
+      "pdfPage": 14,
+      "layer": "source-reconstructed",
+      "text": "DenseNet standard/ResNet/DenseNet equations 주변 input/output/concatenation 메모.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-14",
+      "pdfPage": 15,
+      "layer": "source-reconstructed",
+      "text": "growth rate k, gradient flow, k<<C parameter 비교 강조 표시.",
+      "certainty": "partial-readable"
+    },
+    {
+      "annotationId": "P5-ANN-15",
+      "pdfPage": 17,
+      "layer": "source-reconstructed",
+      "text": "SE squeeze/excitation 그림 왼쪽 channel aggregation 필기와 SE-ResNet 'weight matrix' 메모.",
+      "certainty": "partial-readable"
+    }
+  ]
+}

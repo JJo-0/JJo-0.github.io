@@ -1,0 +1,1286 @@
+---
+title: '현대 인공지능 V — 이미지 분류의 발전: AlexNet에서 SE Network까지'
+description: 'ECE5992 Image Classification 강의자료 18쪽을 페이지·본문·수식·도식·표·참고문헌·필기 원장으로 완전 추적하며, AlexNet·VGG·GoogLeNet·ResNet·WRN·DenseNet·SE Network를 2026년 ConvNeXt·ViT·Swin·foundation encoder 흐름까지 연결한다.'
+pubDate: 2026-08-23
+updatedDate: 2026-08-23
+category: ai-machine-learning
+subcategory: image-classification
+type: study-note
+tags:
+  - image-classification
+  - convolutional-neural-network
+  - imagenet
+  - vision-transformer
+  - foundation-model
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 7
+featured: true
+lang: 'ko'
+series:
+  id: 'modern-artificial-intelligence'
+  order: 5
+---
+
+import SourceFormula from '@/components/post/SourceFormula.astro';
+import { part5Formula } from '@/lib/modern-ai-part5';
+
+> **완전성 계약(Completeness contract)**  
+> 이 글은 `5_Ch5-Image classification.pdf` **18 / 18쪽**을 기준으로 작성했다. canonical source는 13,823,037 B, SHA-256 `45102cfc6e7add2d671924ca2f3bc2e373270a915236db364f00f9871cd9ba52`이며 18쪽 모두 200 dpi 렌더와 추출 텍스트를 교차 검토했다. 같은 이름의 두 번째 Drive 사본은 byte SHA가 다르지만 18 / 18쪽 pixel-identical이라 re-save provenance로만 기록한다.
+
+> **세 층을 섞지 않는다.**  
+> ① **2025 PDF 원자료 재구성**, ② **편집·수학 검증**, ③ **2026-08-18 최신 연구 업데이트**를 분리한다. 원자료의 역사적 표현은 지우지 않고, 현재 기준의 한계나 수정은 별도 층에 둔다.
+
+## 원장 현황
+
+- PDF: **18 / 18쪽**
+- PDF SHA-256: `45102cfc6e7add2d671924ca2f3bc2e373270a915236db364f00f9871cd9ba52`
+- source formula record: **52개** — display **19**, inline **33**
+- PDF-source content record: **135개**
+- source visual groups: **34개**
+- readable/partially-readable handwritten annotation clusters: **15개**
+- editorial audit: **5개**
+- 2026-08-18 research update: **13개**
+- Part V display lesson state: **19 / 19 `unreviewed`** — source reconstruction 단계에서는 generic visual을 붙이지 않으며, #38 후속에서 exact-ID lesson을 별도 심사한다.
+
+---
+# PDF 원자료 재구성
+
+## PDF p.1 — 5.0 2D convolution 복습
+
+{/* source-content:P5-C001 */}
+
+### 강의자료 표지는 ECE5992: Modern Artificial Intelligence, Il Yong Chun, 2025-03-19로 표기되어 있고, 5장 제목은 'Modern AI for image classification'이다.
+
+{/* source-content:P5-C002 */}
+
+### 5.0은 2D convolution과 max pooling 복습으로 시작한다.
+
+{/* source-content:P5-C003 */}
+
+PyTorch convolution 모듈로 Conv1d, Conv2d, Conv3d의 생성자 형태를 나열한다.
+
+```text
+torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0,
+                dilation=1, groups=1, bias=True, padding_mode='zeros', ...)
+torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0,
+                dilation=1, groups=1, bias=True, padding_mode='zeros', ...)
+torch.nn.Conv3d(in_channels, out_channels, kernel_size, stride=1, padding=0,
+                dilation=1, groups=1, bias=True, padding_mode='zeros', ...)
+```
+
+{/* source-content:P5-C004 */}
+
+예시는 input channel 64, output channel 64, kernel 3, padding 1, stride 1의 2D convolution이다.
+
+{/* source-content:P5-C005 */}
+
+**그림 원자료.** Step 1/Step 2 도식은 다채널 입력에서 각 채널 커널 응답이 합쳐져 출력 채널을 만드는 과정을 시각화한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-001** · PyTorch convolution example configuration: <SourceFormula formula={part5Formula('MAI-P5-001')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-01 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-01" data-source-page="1">
+
+  <figcaption class="font-black">PyTorch convolution module signatures</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.1의 원본 이미지를 복제하지 않고 구조를 설명한다. Conv1d/2d/3d API boxes.</p>
+</figure>
+
+{/* source-figure:P5-FIG-02 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-02" data-source-page="1">
+
+  <figcaption class="font-black">2D convolution Step 1/Step 2</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.1의 원본 이미지를 복제하지 않고 구조를 설명한다. multi-channel convolution geometry.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-01 */}
+> **P5-ANN-01 · PDF p.1 · 부분 판독.** Convolution 그림 주변 채널·stride 메모. 일부 글씨는 판독 불확실해 숫자/의미를 확정하지 않는다.
+
+## PDF p.2 — max pooling 복습
+
+{/* source-content:P5-C006 */}
+
+PyTorch max-pooling 모듈로 MaxPool1d, MaxPool2d, MaxPool3d를 나열한다.
+
+```text
+torch.nn.MaxPool1d(kernel_size, stride=None, padding=0, dilation=1,
+                   return_indices=False, ceil_mode=False)
+torch.nn.MaxPool2d(kernel_size, stride=None, padding=0, dilation=1,
+                   return_indices=False, ceil_mode=False)
+torch.nn.MaxPool3d(kernel_size, stride=None, padding=0, dilation=1,
+                   return_indices=False, ceil_mode=False)
+```
+
+{/* source-content:P5-C007 */}
+
+max-pooling 예시는 stride 2, padding 1을 사용한다.
+
+{/* source-content:P5-C008 */}
+
+**그림 원자료.** Step 1은 padding된 격자와 3x3 pooling window를, Step 2는 다음 위치로 이동한 window를 보여준다.
+
+{/* source-content:P5-C009 */}
+
+슬라이드는 convolution과 pooling의 spatial 이동을 실제 격자 값으로 대비한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-002** · PyTorch max-pooling example configuration: <SourceFormula formula={part5Formula('MAI-P5-002')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-03 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-03" data-source-page="2">
+
+  <figcaption class="font-black">PyTorch max-pooling module signatures</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.2의 원본 이미지를 복제하지 않고 구조를 설명한다. MaxPool1d/2d/3d API boxes.</p>
+</figure>
+
+{/* source-figure:P5-FIG-04 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-04" data-source-page="2">
+
+  <figcaption class="font-black">Max-pooling Step 1/Step 2</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.2의 원본 이미지를 복제하지 않고 구조를 설명한다. padded grid and moving window.</p>
+</figure>
+
+## PDF p.3 — 5.1 ImageNet과 ILSVRC
+
+{/* source-content:P5-C010 */}
+
+### 5.1 Trends of DL-based image classifications.
+
+{/* source-content:P5-C011 */}
+
+ImageNet을 WordNet noun hierarchy에 조직된 image database로 소개한다.
+
+{/* source-content:P5-C012 */}
+
+1,000 object classes, 약 1.2M train, 50K validation, 100K test 이미지를 명시한다.
+
+{/* source-content:P5-C013 */}
+
+ILSVRC는 2010-2017의 8년 역사 동안 deep learning 연구의 핵심 동력이었다고 서술한다.
+
+{/* source-content:P5-C014 */}
+
+**그림 원자료.** ILSVRC trend chart는 2010년대 초반 높은 error에서 AlexNet, ZFNet, GoogLeNet/VGGNet, ResNet, Inception-v3/WRN, SENet으로 error가 급감하는 흐름을 보여준다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-003** · ImageNet object-class count: <SourceFormula formula={part5Formula('MAI-P5-003')} part={5} display={false} />
+
+- **MAI-P5-004** · Dataset split sizes: <SourceFormula formula={part5Formula('MAI-P5-004')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-05 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-05" data-source-page="3">
+
+  <figcaption class="font-black">ILSVRC trend chart</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.3의 원본 이미지를 복제하지 않고 구조를 설명한다. 2010-2017 classification-error trajectory.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-02 */}
+> **P5-ANN-02 · PDF p.3 · 부분 판독.** ILSVRC trend chart 오른쪽의 짧은 필기. 판독 가능한 핵심은 human/error trend에 대한 표시뿐이며 문장 복원은 보류한다.
+
+## PDF p.4 — 5.2 AlexNet: 구조와 입력
+
+{/* source-content:P5-C015 */}
+
+### 5.2 AlexNet — Overview / Details.
+
+{/* source-content:P5-C016 */}
+
+AlexNet을 ILSVRC 2012 winner로 소개하고 당시 약 60M parameters, 650K neurons의 큰 CNN이었다고 설명한다.
+
+{/* source-content:P5-C017 */}
+
+입력 이미지를 1,000 classes 중 하나로 분류하고, 1,000-dimensional output의 각 성분을 class probability로 해석하며 전체 합을 1로 둔다.
+
+{/* source-content:P5-C018 */}
+
+입력은 RGB 256x256으로 맞추며, 작은 쪽을 256으로 resize 후 crop한다. grayscale이면 single channel을 복제해 RGB 3-channel로 만든다.
+
+{/* source-content:P5-C019 */}
+
+학습 시 256x256 내부에서 227x227 random crop을 생성해 첫 layer에 넣는다.
+
+{/* source-content:P5-C020 */}
+
+AlexNet은 5 convolutional layers + 3 fully-connected layers로 구성된다.
+
+{/* source-content:P5-C021 */}
+
+conv/FC 뒤에는 ReLU를 사용하고 초기 두 convolution 뒤에는 local normalization 후 pooling을 적용한다. 슬라이드는 이후 normalization이 큰 효용을 보이지 않았다고 덧붙인다.
+
+{/* source-content:P5-C022 */}
+
+ReLU가 tanh/sigmoid 같은 saturating activation보다 deep CNN 학습을 빠르게 했다는 점을 핵심으로 제시한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-005** · AlexNet scale stated in source: <SourceFormula formula={part5Formula('MAI-P5-005')} part={5} display={false} />
+
+- **MAI-P5-006** · 1000-dimensional classifier output: <SourceFormula formula={part5Formula('MAI-P5-006')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-007')} part={5} display={true} />
+
+- **MAI-P5-008** · RGB input size: <SourceFormula formula={part5Formula('MAI-P5-008')} part={5} display={false} />
+
+- **MAI-P5-009** · Random crop fed to the first layer: <SourceFormula formula={part5Formula('MAI-P5-009')} part={5} display={false} />
+
+- **MAI-P5-010** · AlexNet layer summary: <SourceFormula formula={part5Formula('MAI-P5-010')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-06 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-06" data-source-page="4">
+
+  <figcaption class="font-black">AlexNet architecture</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.4의 원본 이미지를 복제하지 않고 구조를 설명한다. five convolutional and three FC stages.</p>
+</figure>
+
+{/* source-figure:P5-FIG-07 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-07" data-source-page="4">
+
+  <figcaption class="font-black">AlexNet resize/crop preprocessing</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.4의 원본 이미지를 복제하지 않고 구조를 설명한다. short-side resize, 256 crop, 227 random crop.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-03 */}
+> **P5-ANN-03 · PDF p.4 · 부분 판독.** AlexNet architecture 상단의 입력/weight 관련 필기와 crop 옆 메모. 식으로 승격하지 않는다.
+
+## PDF p.5 — AlexNet: ReLU·augmentation·dropout
+
+{/* source-content:P5-C023 */}
+
+**그림 원자료.** CIFAR-10 실험 도표에서 ReLU(solid)가 tanh(dotted)보다 25% training error에 약 6배 빠르게 도달했다고 설명한다.
+
+{/* source-content:P5-C024 */}
+
+tanh는 큰 양/음 입력에서 saturate해 slope가 0에 가까워지고 gradient descent를 느리게 할 수 있다고 설명한다.
+
+{/* source-content:P5-C025 */}
+
+ReLU는 positive 영역에서 slope가 0에 가깝지 않아 optimization이 빠르다는 직관을 제시한다. negative 영역 slope는 0이라는 점도 함께 적는다.
+
+{/* source-content:P5-C026 */}
+
+overfitting 완화를 위해 mirroring과 random crops를 사용한다. mirroring은 dataset을 2배, random cropping은 자료 표현상 2048배로 늘린다고 적는다.
+
+{/* source-content:P5-C027 */}
+
+또 다른 regularization으로 dropout을 사용한다.
+
+{/* source-content:P5-C028 */}
+
+**그림 원자료.** 하단은 AlexNet의 intermediate feature maps 예시를 보여준다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-011** · Training-error level used in ReLU-vs-tanh comparison: <SourceFormula formula={part5Formula('MAI-P5-011')} part={5} display={false} />
+
+- **MAI-P5-012** · Source says ReLU reached 25% error six times faster: <SourceFormula formula={part5Formula('MAI-P5-012')} part={5} display={false} />
+
+- **MAI-P5-013** · Mirroring doubles the dataset: <SourceFormula formula={part5Formula('MAI-P5-013')} part={5} display={false} />
+
+- **MAI-P5-014** · Source-reported random-cropping augmentation factor: <SourceFormula formula={part5Formula('MAI-P5-014')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-08 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-08" data-source-page="5">
+
+  <figcaption class="font-black">ReLU vs tanh convergence chart</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.5의 원본 이미지를 복제하지 않고 구조를 설명한다. 25% error comparison.</p>
+</figure>
+
+{/* source-figure:P5-FIG-09 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-09" data-source-page="5">
+
+  <figcaption class="font-black">tanh and ReLU function sketches</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.5의 원본 이미지를 복제하지 않고 구조를 설명한다. saturation versus positive linear slope.</p>
+</figure>
+
+{/* source-figure:P5-FIG-10 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-10" data-source-page="5">
+
+  <figcaption class="font-black">AlexNet feature-map examples</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.5의 원본 이미지를 복제하지 않고 구조를 설명한다. intermediate feature visualization.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-04 */}
+> **P5-ANN-04 · PDF p.5 · 부분 판독.** ReLU/tanh plot 주변의 gradient/slope 관련 필기와 feature-map 메모.
+
+## PDF p.6 — 5.3 VGGNet: 작은 kernel을 깊게 쌓기
+
+{/* source-content:P5-C029 */}
+
+### 5.3 VGGNet — Overview / Motivation / Details.
+
+{/* source-content:P5-C030 */}
+
+VGG16은 16-layer CNN이며 ILSVRC-2014 상위 모델로 소개되고 ImageNet test accuracy 92.7%라고 적는다.
+
+{/* source-content:P5-C031 */}
+
+AlexNet의 큰 early kernels(11x11, 5x5) 대신 작은 3x3 filter sequence를 사용한다.
+
+{/* source-content:P5-C032 */}
+
+첫 convolution에서 3x3 receptive field, stride 1을 사용하며 AlexNet의 11x11 stride 4와 비교한다.
+
+{/* source-content:P5-C033 */}
+
+여러 작은 convolution을 쌓으면 더 많은 nonlinear activation을 삽입하면서 큰 receptive field의 기능을 얻는다는 motivation을 제시한다.
+
+{/* source-content:P5-C034 */}
+
+슬라이드는 작은 convolution이 over-fitting 경향을 낮추고 3x3이 spatial left-right/up-down 정보를 잡는 최소 크기라는 식의 설명을 제시한다.
+
+{/* source-content:P5-C035 */}
+
+VGG16은 약 138M parameters이며, 13 convolutional + 3 FC layers로 설명한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-015** · VGG16 depth: <SourceFormula formula={part5Formula('MAI-P5-015')} part={5} display={false} />
+
+- **MAI-P5-016** · Source-reported VGG16 test accuracy: <SourceFormula formula={part5Formula('MAI-P5-016')} part={5} display={false} />
+
+- **MAI-P5-017** · VGG versus early AlexNet kernel sizes: <SourceFormula formula={part5Formula('MAI-P5-017')} part={5} display={false} />
+
+- **MAI-P5-018** · VGG16 parameter count: <SourceFormula formula={part5Formula('MAI-P5-018')} part={5} display={false} />
+
+- **MAI-P5-019** · VGG16 layer decomposition: <SourceFormula formula={part5Formula('MAI-P5-019')} part={5} display={false} />
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-05 */}
+> **P5-ANN-05 · PDF p.6 · 부분 판독.** VGG section의 small-kernel/more-layer 요지 필기.
+
+## PDF p.7 — VGG16 세부와 GoogLeNet 진입
+
+{/* source-content:P5-C036 */}
+
+VGG input은 RGB 224x224이며 ImageNet에서는 center crop으로 크기를 일정하게 맞춘다고 적는다.
+
+{/* source-content:P5-C037 */}
+
+convolution은 주로 3x3을 쓰고 1x1 convolution도 사용한다. 1x1은 receptive field를 바꾸지 않으면서 ReLU와 함께 non-linearity를 늘리는 용도로 설명한다.
+
+{/* source-content:P5-C038 */}
+
+hidden layers는 ReLU를 쓰며 AlexNet식 Local Response Normalization은 시간/메모리를 늘리고 accuracy 개선이 작다고 설명한다.
+
+{/* source-content:P5-C039 */}
+
+pooling은 feature-map dimensionality와 parameter burden을 줄이며 channel 수는 64→128→256→512로 늘어난다.
+
+{/* source-content:P5-C040 */}
+
+FC layers는 4096, 4096, 1000 channels이다.
+
+{/* source-content:P5-C041 */}
+
+두 개의 3x3은 5x5, 세 개의 3x3은 7x7 receptive field에 대응한다고 설명한다.
+
+{/* source-content:P5-C042 */}
+
+세 3x3 layer는 세 번의 ReLU를 제공하고 27C^2 parameters로, 하나의 7x7의 49C^2보다 적은 parameter를 사용한다.
+
+{/* source-content:P5-C043 */}
+
+### 5.4 GoogLeNet을 ILSVRC 2014 winner로 소개하며 ZFNet/AlexNet 대비 개선, VGGNet보다 낮은 error를 언급한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-020** · VGG image input: <SourceFormula formula={part5Formula('MAI-P5-020')} part={5} display={false} />
+
+- **MAI-P5-021** · Channel growth described in source: <SourceFormula formula={part5Formula('MAI-P5-021')} part={5} display={false} />
+
+- **MAI-P5-022** · Three FC widths: <SourceFormula formula={part5Formula('MAI-P5-022')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-023')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-024')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-025')} part={5} display={true} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-11 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-11" data-source-page="7">
+
+  <figcaption class="font-black">VGG16 architecture</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.7의 원본 이미지를 복제하지 않고 구조를 설명한다. 224x224 input, repeated 3x3 conv, FC head.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-06 */}
+> **P5-ANN-06 · PDF p.7 · 부분 판독.** VGG receptive-field/parameter 비교 주변의 'input channel size' 등 필기.
+
+## PDF p.8 — 5.4 GoogLeNet: 1×1 bottleneck과 Inception
+
+{/* source-content:P5-C044 */}
+
+GoogLeNet은 중간에 1x1 convolution을 사용하고 끝에 FC 대신 global average pooling을 사용한다. 두 아이디어는 Network In Network에서 왔다고 설명한다.
+
+{/* source-content:P5-C045 */}
+
+Inception module은 같은 input에 서로 다른 convolution/pooling branch를 병렬 적용한 뒤 output을 stack/concatenate한다.
+
+{/* source-content:P5-C046 */}
+
+NIN의 1x1 convolution은 ReLU와 함께 representational non-linearity를 늘리는 관점으로 소개한다.
+
+{/* source-content:P5-C047 */}
+
+GoogLeNet에서는 1x1 convolution을 dimension reduction module로 사용해 computation bottleneck을 줄이고 depth/width 확장을 가능하게 한다.
+
+{/* source-content:P5-C048 */}
+
+14x14x480 input에 48-channel 5x5 convolution을 직접 적용하면 operation count가 112.9M이라고 계산한다.
+
+{/* source-content:P5-C049 */}
+
+먼저 1x1로 16 channels로 줄이고 5x5로 48 channels를 만들면 operation count가 5.3M으로 감소한다.
+
+{/* source-content:P5-C050 */}
+
+**그림 원자료.** native inception module은 1x1, 3x3, 5x5 convolution과 3x3 max pooling을 병렬로 둔다.
+
+#### 이 페이지의 수식·수치 원장
+
+<SourceFormula formula={part5Formula('MAI-P5-026')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-027')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-028')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-029')} part={5} display={true} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-12 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-12" data-source-page="8">
+
+  <figcaption class="font-black">Inception naming/meme panel</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.8의 원본 이미지를 복제하지 않고 구조를 설명한다. source context for inception naming.</p>
+</figure>
+
+{/* source-figure:P5-FIG-13 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-13" data-source-page="8">
+
+  <figcaption class="font-black">GoogLeNet 1x1 bottleneck computation</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.8의 원본 이미지를 복제하지 않고 구조를 설명한다. 112.9M versus 5.3M path.</p>
+</figure>
+
+{/* source-figure:P5-FIG-14 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-14" data-source-page="8">
+
+  <figcaption class="font-black">Native inception module</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.8의 원본 이미지를 복제하지 않고 구조를 설명한다. parallel 1x1/3x3/5x5/maxpool branches.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-07 */}
+> **P5-ANN-07 · PDF p.8 · 부분 판독.** Inception/1x1 계산 주변 Big-O, bottleneck 관련 필기.
+
+## PDF p.9 — Inception과 global average pooling
+
+{/* source-content:P5-C051 */}
+
+각 inception branch는 서로 다른 feature를 추출하고, branch outputs를 concatenate해 다음 module input으로 보낸다.
+
+{/* source-content:P5-C052 */}
+
+native inception의 계산량이 커서 branch 앞에 1x1 dimension reduction을 삽입해 cost를 줄인다.
+
+{/* source-content:P5-C053 */}
+
+### Global average pooling.
+
+{/* source-content:P5-C054 */}
+
+AlexNet식 network 끝의 FC layer 예에서는 7x7x1024x1024=51.3M connections가 필요하다고 계산한다.
+
+{/* source-content:P5-C055 */}
+
+GoogLeNet의 GAP는 각 7x7 feature map을 1x1로 평균내므로 별도 FC connection 없이 channel descriptor를 만든다.
+
+#### 이 페이지의 수식·수치 원장
+
+<SourceFormula formula={part5Formula('MAI-P5-030')} part={5} display={true} />
+
+- **MAI-P5-031** · Global average pooling geometry: <SourceFormula formula={part5Formula('MAI-P5-031')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-15 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-15" data-source-page="9">
+
+  <figcaption class="font-black">Reduced inception module</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.9의 원본 이미지를 복제하지 않고 구조를 설명한다. 1x1 reductions before expensive branches.</p>
+</figure>
+
+{/* source-figure:P5-FIG-16 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-16" data-source-page="9">
+
+  <figcaption class="font-black">FC versus global average pooling</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.9의 원본 이미지를 복제하지 않고 구조를 설명한다. 51.3M FC weights versus pooling.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-08 */}
+> **P5-ANN-08 · PDF p.9 · 부분 판독.** FC/GAP 도식 주변 7x7/1x1 및 pooling 관련 필기.
+
+## PDF p.10 — GoogLeNet 전체 구조·auxiliary classifier·ResNet 진입
+
+{/* source-content:P5-C056 */}
+
+GAP 예시의 추가 weight는 0이라고 적는다.
+
+{/* source-content:P5-C057 */}
+
+FC→GAP 변경으로 top-1 accuracy가 약 0.6% 개선되었다고 출처 설명을 제시하며 NIN의 overfitting 완화 아이디어라고 연결한다.
+
+{/* source-content:P5-C058 */}
+
+### Overall architecture.
+
+{/* source-content:P5-C059 */}
+
+GoogLeNet 전체 architecture는 총 22 layers이며 여러 inception modules를 연결해 깊어진다고 설명한다.
+
+{/* source-content:P5-C060 */}
+
+AlexNet/ZFNet/VGGNet보다 매우 깊지만 이후 ResNet보다는 얕다고 비교한다.
+
+{/* source-content:P5-C061 */}
+
+### Auxiliary classifiers for training.
+
+{/* source-content:P5-C062 */}
+
+중간 softmax branches는 training only auxiliary classifiers이며 loss를 total loss에 weight 0.3으로 더한다.
+
+{/* source-content:P5-C063 */}
+
+auxiliary branches가 vanishing gradient를 완화하고 regularization도 제공한다고 저자 주장으로 소개한다.
+
+{/* source-content:P5-C064 */}
+
+### 5.5 ResNet — Overview.
+
+{/* source-content:P5-C065 */}
+
+ResNet은 ILSVRC 2015 winner이며 residual learning으로 훨씬 깊은 network를 비슷한 parameter 수로 train할 수 있게 했다고 설명한다.
+
+{/* source-content:P5-C066 */}
+
+depth가 증가하면 accuracy가 saturate 후 degrade하고, 단순히 overfitting 때문이 아니라 deeper plain model의 training error 자체가 커지는 degradation problem을 제시한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-032** · Source example: GAP adds no FC connections: <SourceFormula formula={part5Formula('MAI-P5-032')} part={5} display={false} />
+
+- **MAI-P5-033** · Source-reported top-1 gain after replacing FC with GAP: <SourceFormula formula={part5Formula('MAI-P5-033')} part={5} display={false} />
+
+- **MAI-P5-034** · Source says 22 layers in total: <SourceFormula formula={part5Formula('MAI-P5-034')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-035')} part={5} display={true} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-17 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-17" data-source-page="10">
+
+  <figcaption class="font-black">GoogLeNet global average pooling</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.10의 원본 이미지를 복제하지 않고 구조를 설명한다. 7x7x1024 to 1x1x1024.</p>
+</figure>
+
+{/* source-figure:P5-FIG-18 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-18" data-source-page="10">
+
+  <figcaption class="font-black">GoogLeNet overall architecture</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.10의 원본 이미지를 복제하지 않고 구조를 설명한다. 22-layer inception stack.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-09 */}
+> **P5-ANN-09 · PDF p.10 · 부분 판독.** GAP/GoogLeNet architecture 주변 reduction/parameter 메모와 ResNet 시작부 skip-connection 메모.
+
+## PDF p.11 — 5.5 ResNet: degradation과 residual block
+
+{/* source-content:P5-C067 */}
+
+> ResNet 논문의 degradation 문장을 인용하며 더 깊은 suitably deep model에서 training error가 오히려 커지는 현상을 강조한다.
+
+{/* source-content:P5-C068 */}
+
+해결책은 residual learning이며 핵심은 residual/skip connection이다.
+
+{/* source-content:P5-C069 */}
+
+**그림 원자료.** residual block은 nonlinear transform F(x)와 identity x를 element-wise addition으로 합친다.
+
+{/* source-content:P5-C070 */}
+
+**그림 원자료.** ResNet-18 architecture 예시를 block A–E로 보여준다.
+
+{/* source-content:P5-C071 */}
+
+**그림 원자료.** ImageNet Figure 1은 plain 18/34-layer와 ResNet 18/34-layer의 train/validation error를 비교한다.
+
+{/* source-content:P5-C072 */}
+
+plain 34-layer는 plain 18-layer보다 validation error가 높고 training error도 전 구간에서 높아 degradation을 보인다.
+
+{/* source-content:P5-C073 */}
+
+> **원자료 각주.** vanishing/exploding gradients는 초기 convergence부터 방해할 수 있으며 normalized initialization, intermediate normalization, ReLU 등으로 완화할 수 있다는 footnote를 보존한다.
+
+#### 이 페이지의 수식·수치 원장
+
+<SourceFormula formula={part5Formula('MAI-P5-036')} part={5} display={true} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-19 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-19" data-source-page="11">
+
+  <figcaption class="font-black">Residual block</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.11의 원본 이미지를 복제하지 않고 구조를 설명한다. F(x)+identity addition.</p>
+</figure>
+
+{/* source-figure:P5-FIG-20 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-20" data-source-page="11">
+
+  <figcaption class="font-black">ResNet-18 architecture</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.11의 원본 이미지를 복제하지 않고 구조를 설명한다. stage/block layout.</p>
+</figure>
+
+{/* source-figure:P5-FIG-21 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-21" data-source-page="11">
+
+  <figcaption class="font-black">Plain vs residual ImageNet curves</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.11의 원본 이미지를 복제하지 않고 구조를 설명한다. 18/34 layer train/validation errors.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-10 */}
+> **P5-ANN-10 · PDF p.11 · 부분 판독.** Residual block 주변 skip connection/identity/gradient 방향 필기.
+
+## PDF p.12 — ResNet 세부·BN·5.6 WRN
+
+{/* source-content:P5-C074 */}
+
+ResNet에서는 34-layer가 18-layer보다 좋은 결과를 보이고 training error도 낮아 plain-net degradation이 해결됨을 설명한다.
+
+{/* source-content:P5-C075 */}
+
+### Further details.
+
+{/* source-content:P5-C076 */}
+
+ResNet은 every convolutional layer 뒤에 batch normalization을 사용한다고 설명한다.
+
+{/* source-content:P5-C077 */}
+
+BN은 current batch mean/variance로 hidden activation을 normalize하며 일반적으로 nonlinear function 직전에 적용한다고 설명한다.
+
+{/* source-content:P5-C078 */}
+
+BN의 효과에 대한 해석은 확정되지 않았다고 적고, original internal covariate shift 설명, layer interdependency 완화 가설, optimization landscape smoothing 설명을 병렬로 소개한다.
+
+{/* source-content:P5-C079 */}
+
+ResNet에는 dropout을 쓰지 않는다고 적는다.
+
+{/* source-content:P5-C080 */}
+
+### 5.6 Wide residual network (WRN).
+
+{/* source-content:P5-C081 */}
+
+ResNet을 widen하면 같은/더 좋은 accuracy에서 shallower network를 만들 수 있어 layer 수와 training time을 줄일 수 있다고 설명한다.
+
+{/* source-content:P5-C082 */}
+
+circuit complexity 관점에서 shallow circuits가 deeper circuits보다 exponentially more components를 요구할 수 있음을 언급한다.
+
+{/* source-content:P5-C083 */}
+
+thin/deep ResNet에서 gradient가 residual weights를 우회해 일부 block만 유용한 representation을 학습할 수 있는 diminishing feature reuse 문제를 설명한다.
+
+{/* source-content:P5-C084 */}
+
+WRN은 feature planes를 늘려 widen하고, deepening factor l과 widening factor k를 사용한다. k=1은 ResNet width, k>1은 k배 wider이다.
+
+{/* source-content:P5-C085 */}
+
+> **원자료 각주.** BN이 nonlinear function 뒤에 적용되는 경우도 있다는 footnote를 보존한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-037** · WRN widening-factor definition: <SourceFormula formula={part5Formula('MAI-P5-037')} part={5} display={false} />
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-11 */}
+> **P5-ANN-11 · PDF p.12 · 부분 판독.** BN 설명 주변 researchers/optimization 관련 짧은 필기와 WRN widening 메모.
+
+## PDF p.13 — WRN 비교와 5.7 DenseNet
+
+{/* source-content:P5-C086 */}
+
+**그림 원자료.** basic, bottleneck, basic-wide, wide-dropout residual block variants를 비교한다.
+
+{/* source-content:P5-C087 */}
+
+**표 원자료.** ILSVRC-2012 validation single-crop table은 ResNet-50/101/152, WRN-50-2-bottleneck, pre-ResNet-200의 top-1/top-5 error, parameter 수, batch time을 비교한다.
+
+{/* source-content:P5-C088 */}
+
+WRN-50-2-bottleneck이 ResNet-152보다 3배 적은 layers로 더 빠르면서 pre-ResNet-200에 가까운 결과를 낸다고 설명한다.
+
+{/* source-content:P5-C089 */}
+
+Pre-Activation ResNet은 BN-ReLU-Conv, original ResNet은 Conv-BN-ReLU 순서를 쓰며 대체로 더 낫지만 around-100-layer ImageNet에서는 뚜렷한 개선이 없다는 설명을 덧붙인다.
+
+{/* source-content:P5-C090 */}
+
+### 5.7 DenseNet — Overview.
+
+{/* source-content:P5-C091 */}
+
+DenseNet은 2017 CVPR Best Paper Award를 받았고, 각 layer가 모든 preceding feature maps를 input으로 받고 자신의 feature maps를 모든 subsequent layers에 전달한다고 설명한다.
+
+{/* source-content:P5-C092 */}
+
+standard network는 L connections, L-layer DenseNet은 L(L+1)/2 connections를 가지며 summation 대신 concatenation을 사용한다.
+
+{/* source-content:P5-C093 */}
+
+l-th layer는 모든 preceding feature maps로 이루어진 l inputs를 받는다고 설명한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-038** · Standard network connection count: <SourceFormula formula={part5Formula('MAI-P5-038')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-039')} part={5} display={true} />
+
+- **MAI-P5-040** · The l-th dense layer receives l inputs: <SourceFormula formula={part5Formula('MAI-P5-040')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-22 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-22" data-source-page="13">
+
+  <figcaption class="font-black">WRN block variants</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.13의 원본 이미지를 복제하지 않고 구조를 설명한다. basic/bottleneck/basic-wide/wide-dropout.</p>
+</figure>
+
+{/* source-figure:P5-FIG-23 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-23" data-source-page="13">
+
+  <figcaption class="font-black">WRN/ResNet comparison table</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.13의 원본 이미지를 복제하지 않고 구조를 설명한다. top-1/top-5/params/time.</p>
+</figure>
+
+{/* source-figure:P5-FIG-24 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-24" data-source-page="13">
+
+  <figcaption class="font-black">DenseNet connectivity overview</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.13의 원본 이미지를 복제하지 않고 구조를 설명한다. all preceding features reused.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-12 */}
+> **P5-ANN-12 · PDF p.13 · 부분 판독.** WRN table의 pre-activation 메모와 DenseNet 그림의 recycle/connection 필기.
+
+## PDF p.14 — Dense block: sequential/addition/concatenation
+
+{/* source-content:P5-C094 */}
+
+Dense block에서 standard feed-forward network는 l-th output을 (l+1)-th input으로 연결한다.
+
+{/* source-content:P5-C095 */}
+
+표준 transition을 x_l=H_l(x_{l-1})로 정의하고 H_l을 convolution/ReLU/pooling/BN 등의 composite function으로 설명한다.
+
+{/* source-content:P5-C096 */}
+
+ResNet은 identity mapping과 element-wise addition을 사용해 x_l=H_l(x_{l-1})+x_{l-1} 형태를 만든다.
+
+{/* source-content:P5-C097 */}
+
+DenseNet은 모든 preceding features를 concatenation해 x_l=H_l([x_0,...,x_{l-1}])로 입력한다.
+
+{/* source-content:P5-C098 */}
+
+DenseNet의 H_l은 BN→ReLU→3x3 convolution의 연속 연산으로 정의된다.
+
+{/* source-content:P5-C099 */}
+
+dense blocks 사이 transition layer는 1x1 convolution 뒤 2x2 average pooling을 사용한다.
+
+{/* source-content:P5-C100 */}
+
+dense block 안에서는 feature-map sizes가 같아 concatenation이 가능하고 마지막 dense block 뒤에는 GAP와 softmax classifier를 붙인다.
+
+#### 이 페이지의 수식·수치 원장
+
+<SourceFormula formula={part5Formula('MAI-P5-041')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-042')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-043')} part={5} display={true} />
+
+- **MAI-P5-044** · DenseNet transition-layer structure: <SourceFormula formula={part5Formula('MAI-P5-044')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-25 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-25" data-source-page="14">
+
+  <figcaption class="font-black">Standard/ResNet/DenseNet connectivity</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.14의 원본 이미지를 복제하지 않고 구조를 설명한다. sequential, addition, concatenation.</p>
+</figure>
+
+{/* source-figure:P5-FIG-26 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-26" data-source-page="14">
+
+  <figcaption class="font-black">DenseNet blocks and transitions</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.14의 원본 이미지를 복제하지 않고 구조를 설명한다. 1x1 conv + 2x2 average pooling transitions.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-13 */}
+> **P5-ANN-13 · PDF p.14 · 부분 판독.** DenseNet standard/ResNet/DenseNet equations 주변 input/output/concatenation 메모.
+
+## PDF p.15 — DenseNet의 growth rate와 장점
+
+{/* source-content:P5-C101 */}
+
+각 layer가 preceding feature maps를 재사용하므로 network를 thinner/compact하게 만들 수 있다고 설명한다.
+
+{/* source-content:P5-C102 */}
+
+growth rate k는 each layer가 추가하는 channel 수로 정의된다.
+
+{/* source-content:P5-C103 */}
+
+**그림 원자료.** concatenation during forward propagation 도식은 layer가 이전 features를 누적해 받는 구조를 보여준다.
+
+{/* source-content:P5-C104 */}
+
+### Advantages of DenseNet.
+
+{/* source-content:P5-C105 */}
+
+strong gradient flow: final classification layer의 error signal이 earlier layers로 직접 전달되어 implicit deep supervision 효과가 있다고 설명한다.
+
+{/* source-content:P5-C106 */}
+
+parameter/computational efficiency: ResNet layer parameter가 CxC에 비례하는 반면 DenseNet은 l*k*k에 비례하고 k<<C라고 비교한다.
+
+{/* source-content:P5-C107 */}
+
+**그림 원자료.** ResNet connectivity와 DenseNet connectivity의 parameter scaling을 비교한다.
+
+{/* source-content:P5-C108 */}
+
+**그림 원자료.** DenseNet과 ResNet 계열의 top-1 error/parameter 관계 plot을 제시한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-045** · Growth-rate definition: <SourceFormula formula={part5Formula('MAI-P5-045')} part={5} display={false} />
+
+- **MAI-P5-046** · Source connectivity parameter scaling: <SourceFormula formula={part5Formula('MAI-P5-046')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-047')} part={5} display={true} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-27 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-27" data-source-page="15">
+
+  <figcaption class="font-black">DenseNet growth-rate connectivity</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.15의 원본 이미지를 복제하지 않고 구조를 설명한다. k channels per dense layer.</p>
+</figure>
+
+{/* source-figure:P5-FIG-28 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-28" data-source-page="15">
+
+  <figcaption class="font-black">DenseNet gradient-flow diagram</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.15의 원본 이미지를 복제하지 않고 구조를 설명한다. direct error-signal paths.</p>
+</figure>
+
+{/* source-figure:P5-FIG-29 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-29" data-source-page="15">
+
+  <figcaption class="font-black">ResNet vs DenseNet parameter scaling</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.15의 원본 이미지를 복제하지 않고 구조를 설명한다. C^2 versus l k^2.</p>
+</figure>
+
+{/* source-figure:P5-FIG-30 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-30" data-source-page="15">
+
+  <figcaption class="font-black">DenseNet/ResNet top-1 error plot</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.15의 원본 이미지를 복제하지 않고 구조를 설명한다. error versus parameters.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-14 */}
+> **P5-ANN-14 · PDF p.15 · 부분 판독.** growth rate k, gradient flow, k<<C parameter 비교 강조 표시.
+
+## PDF p.16 — DenseNet feature reuse와 5.8 SE Network
+
+{/* source-content:P5-C109 */}
+
+DenseNet의 각 layer는 모든 preceding feature를 받아 더 diversified/richer patterns를 얻는다고 설명한다.
+
+{/* source-content:P5-C110 */}
+
+standard convolutional classifier는 가장 complex한 final features를 주로 쓰지만 DenseNet classifier는 여러 complexity level의 features를 이용할 수 있다고 설명한다.
+
+{/* source-content:P5-C111 */}
+
+저자 주장을 따라 이것이 smoother decision boundaries 및 data-insufficient setting의 성능과 연결될 수 있다고 설명한다.
+
+{/* source-content:P5-C112 */}
+
+### 5.8 Squeeze-and-Excitation Networks.
+
+{/* source-content:P5-C113 */}
+
+SE architecture는 ILSVRC 2017 winner로 소개되고, 일반 CNN의 equal channel weighting 대신 content-aware adaptive channel weighting을 추가한다고 설명한다.
+
+{/* source-content:P5-C114 */}
+
+SE block은 거의 추가 cost 없이 channel interdependencies를 강화하는 lightweight gating mechanism으로 소개한다.
+
+{/* source-content:P5-C115 */}
+
+squeeze는 각 feature map을 single numeric value로 축약해 C-dimensional vector를 만들고, two-layer neural network가 같은 크기의 vector를 출력하며 그 C values로 original feature maps를 channel-wise scale한다.
+
+#### 이 페이지의 수식·수치 원장
+
+- **MAI-P5-048** · Squeezed channel descriptor size: <SourceFormula formula={part5Formula('MAI-P5-048')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-31 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-31" data-source-page="16">
+
+  <figcaption class="font-black">Feature-complexity reuse</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.16의 원본 이미지를 복제하지 않고 구조를 설명한다. standard versus DenseNet classifier inputs.</p>
+</figure>
+
+## PDF p.17 — SE squeeze·excitation·scale
+
+{/* source-content:P5-C116 */}
+
+SE weights는 각 channel importance에 따라 original feature map을 scale한다.
+
+{/* source-content:P5-C117 */}
+
+**그림 원자료.** SE diagram은 transform X→U, squeeze F_sq, excitation F_ex, scale F_scale의 흐름과 HxWxC tensor geometry를 함께 보여준다.
+
+{/* source-content:P5-C118 */}
+
+squeeze equation은 spatial average로 z_c를 계산한다.
+
+{/* source-content:P5-C119 */}
+
+excitation equation은 two-layer bottleneck W1/W2, activation delta, sigmoid를 통해 channel gates s를 만든다.
+
+{/* source-content:P5-C120 */}
+
+scale equation은 s_c와 u_c의 곱으로 recalibrated channel을 만든다.
+
+{/* source-content:P5-C121 */}
+
+SE block은 ResNet, Inception 등 popular convolutional modules에 쉽게 통합할 수 있다고 설명한다.
+
+{/* source-content:P5-C122 */}
+
+**그림 원자료.** SE-ResNet module은 global pooling→FC(C/r)→ReLU→FC(C)→sigmoid→scale을 residual branch에 삽입하며 r은 reduction ratio다.
+
+{/* source-content:P5-C123 */}
+
+**그림 원자료.** SE-ResNet-50와 ResNet-50 train/validation top-1 error curves를 비교한다.
+
+{/* source-content:P5-C124 */}
+
+top-1 score는 최고 probability class가 target label과 같은지 확인하는 metric이라고 설명한다.
+
+{/* source-content:P5-C125 */}
+
+SE blocks 자체는 depth를 추가하지만 computationally efficient한 방식이라는 문장이 p18 첫 줄까지 이어진다.
+
+#### 이 페이지의 수식·수치 원장
+
+<SourceFormula formula={part5Formula('MAI-P5-049')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-050')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-051')} part={5} display={true} />
+
+- **MAI-P5-052** · SE bottleneck widths with reduction ratio r: <SourceFormula formula={part5Formula('MAI-P5-052')} part={5} display={false} />
+
+#### 이 페이지의 도식·표·그래프 매핑
+
+{/* source-figure:P5-FIG-32 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-32" data-source-page="17">
+
+  <figcaption class="font-black">SE squeeze-excitation-scale diagram</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.17의 원본 이미지를 복제하지 않고 구조를 설명한다. F_sq, F_ex, F_scale tensor geometry.</p>
+</figure>
+
+{/* source-figure:P5-FIG-33 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-33" data-source-page="17">
+
+  <figcaption class="font-black">SE-ResNet module</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.17의 원본 이미지를 복제하지 않고 구조를 설명한다. global pooling/FC/reduction ratio/sigmoid/scale.</p>
+</figure>
+
+{/* source-figure:P5-FIG-34 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-34" data-source-page="17">
+
+  <figcaption class="font-black">SE-ResNet-50 training curves</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">PDF p.17의 원본 이미지를 복제하지 않고 구조를 설명한다. train/validation top-1 error.</p>
+</figure>
+
+#### 강의자 필기
+
+{/* source-annotation:P5-ANN-15 */}
+> **P5-ANN-15 · PDF p.17 · 부분 판독.** SE squeeze/excitation 그림 왼쪽 channel aggregation 필기와 SE-ResNet 'weight matrix' 메모.
+
+## PDF p.18 — 참고문헌
+
+{/* source-content:P5-C126 */}
+
+### References.
+
+{/* source-content:P5-C127 */}
+
+- [1] Simonyan & Zisserman, Very Deep Convolutional Networks for Large-Scale Image Recognition, ICLR 2015.
+
+{/* source-content:P5-C128 */}
+
+- [2] Szegedy et al., Going Deeper with Convolutions, CVPR 2015.
+
+{/* source-content:P5-C129 */}
+
+- [3] LeCun et al., Gradient-Based Learning Applied to Document Recognition, Proc. IEEE 1998.
+
+{/* source-content:P5-C130 */}
+
+- [4] Lin, Chen & Yan, Network in Network, ICLR 2014.
+
+{/* source-content:P5-C131 */}
+
+- [5] He et al., Deep Residual Learning for Image Recognition, CVPR 2016.
+
+{/* source-content:P5-C132 */}
+
+- [6] Ioffe & Szegedy, Batch Normalization, ICML 2015.
+
+{/* source-content:P5-C133 */}
+
+- [7] Santurkar et al., How Does Batch Normalization Help Optimization?, NeurIPS 2018.
+
+{/* source-content:P5-C134 */}
+
+- [8] Huang et al., Densely Connected Convolutional Networks, CVPR 2017.
+
+{/* source-content:P5-C135 */}
+
+- [9] Hu, Shen & Sun, Squeeze-and-Excitation Networks, CVPR 2018.
+
+---
+# 편집·수학 검증
+
+{/* editorial-content:P5-E001 */}
+
+### P5-E001
+VGG 슬라이드의 '3x3 is the optimal/smallest possible size'는 spatial context를 동시에 보는 최소 odd kernel이라는 강의 직관으로 읽어야 한다. 1x1 convolution도 존재하며, 3x3이 모든 목적에서 보편적 최적이라는 뜻으로 일반화하면 안 된다.
+
+{/* editorial-content:P5-E002 */}
+
+### P5-E002
+AlexNet 슬라이드의 ReLU 직관 중 'most neurons usually end up positive'는 일반 정리로 취급하지 않는다. ReLU의 비포화 positive branch가 optimization에 유리했다는 역사적 설명과 해당 문장을 분리한다.
+
+{/* editorial-content:P5-E003 */}
+
+### P5-E003
+BN 효과 설명은 원자료처럼 multiple hypotheses를 보존한다. internal covariate shift 하나로 원인을 확정하지 않고, optimization landscape 및 reparameterization 관점이 후속 연구에서 논의됐음을 명시한다.
+
+{/* editorial-content:P5-E004 */}
+
+### P5-E004
+DenseNet의 'higher computational and memory efficiency'는 parameter reuse/compactness 맥락의 source claim이다. dense concatenation은 activation-memory traffic를 늘릴 수 있으므로 현대 구현의 hardware efficiency와 동일시하지 않는다.
+
+{/* editorial-content:P5-E005 */}
+
+### P5-E005
+SE architecture의 ILSVRC 2017 winner 표현은 source wording을 보존하되, challenge 종료 시점과 SENet의 competition result를 역사적 맥락으로 읽는다.
+
+---
+# 2026-08-18 최신 연구 업데이트
+
+이 절은 PDF page coverage에 포함하지 않는다. 강의자료의 AlexNet→SE 역사축을 지우는 대신, 2026-08-18 시점에 image classification을 평가할 때 추가로 봐야 하는 architecture·training·robustness·transfer 축을 1차 자료와 연결한다.
+
+{/* research-content:P5-R001 */}
+
+### P5-R001
+ConvNeXt는 ResNet을 Transformer-era recipe로 단계적으로 modernize하면서 pure ConvNet도 ViT/Swin 계열과 경쟁 가능한 backbone이 될 수 있음을 보였다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/2201.03545)
+
+{/* research-content:P5-R002 */}
+
+### P5-R002
+ConvNeXt V2는 fully convolutional masked autoencoder와 Global Response Normalization을 결합해 architecture와 self-supervised pretraining을 함께 설계했다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/2301.00808)
+
+{/* research-content:P5-R003 */}
+
+### P5-R003
+Vision Transformer는 image patches를 token sequence로 보고 large-scale pretraining 후 image recognition으로 transfer하는 순수 Transformer 경로를 확립했다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/2010.11929)
+
+{/* research-content:P5-R004 */}
+
+### P5-R004
+Swin Transformer는 shifted local windows와 hierarchical feature maps로 classification뿐 아니라 dense prediction까지 general-purpose backbone으로 확장했고, Swin V2는 scale/resolution 안정성을 강화했다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/2111.09883)
+
+{/* research-content:P5-R005 */}
+
+### P5-R005
+ResNet-RS 계열 연구는 architecture 차이와 training/scaling recipe 효과를 분리해, 강한 recipe가 고전 ResNet baseline 자체를 크게 끌어올릴 수 있음을 보였다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/2103.07579)
+
+{/* research-content:P5-R006 */}
+
+### P5-R006
+ImageNet-1K top-1 하나만으로 일반화 품질을 판단하기 어렵다. ImageNet-C/P는 common corruption/perturbation robustness를 별도 측정한다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/1903.12261)
+
+{/* research-content:P5-R007 */}
+
+### P5-R007
+ImageNet-A는 자연 이미지 중 모델이 공통으로 실패하는 hard examples를 adversarial filtration으로 구성해 in-distribution accuracy와 robustness의 차이를 드러냈다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/1907.07174)
+
+{/* research-content:P5-R008 */}
+
+### P5-R008
+modern neural classifier는 높은 accuracy와 별개로 confidence calibration이 나쁠 수 있으며, temperature scaling은 간단한 post-hoc baseline으로 남아 있다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/1706.04599)
+
+{/* research-content:P5-R009 */}
+
+### P5-R009
+CLIP은 natural-language supervision으로 zero-shot classifier를 구성해 ImageNet 밖의 distribution shifts와 transfer 평가를 image classification의 핵심 질문으로 끌어왔다.
+
+- 근거: [peer-reviewed / official preprint](https://arxiv.org/abs/2103.00020)
+
+{/* research-content:P5-R010 */}
+
+### P5-R010
+foundation vision encoder 시대에는 fixed 1,000-way classifier보다 frozen/transferable representations와 downstream linear/probe/finetune 성능이 중요해졌다.
+
+- 근거: [official preprint (DINOv2)](https://arxiv.org/abs/2304.07193)
+
+{/* research-content:P5-R011 */}
+
+### P5-R011
+DINOv3는 2025년에 large-scale self-supervised training과 Gram anchoring을 사용해 dense feature degradation을 억제하고 다양한 vision task에서 범용 encoder 성능을 목표로 했다.
+
+- 근거: [technical report / official preprint](https://arxiv.org/abs/2508.10104)
+
+{/* research-content:P5-R012 */}
+
+### P5-R012
+SigLIP 2는 captioning, self-distillation, masked prediction, online curation을 결합해 multilingual zero-shot classification, retrieval, transfer, localization/dense features를 함께 강화했다.
+
+- 근거: [technical report / official preprint](https://arxiv.org/abs/2502.14786)
+
+{/* research-content:P5-R013 */}
+
+### P5-R013
+따라서 AlexNet→VGG→Inception→ResNet→DenseNet→SE의 역사적 축은 여전히 architecture 이해에 유효하지만, 2026의 실전 비교는 architecture·training recipe·pretraining data·calibration·distribution shift·transfer cost를 함께 봐야 한다.
+
+- 근거: [synthesis grounded in cited primary sources](https://arxiv.org/abs/2201.03545)
+
+## 2026 관점에서 다시 읽는 한 줄 지도
+
+AlexNet은 **ReLU + data augmentation + dropout**으로 대규모 CNN 학습을 현실화했고, VGG는 **작은 3×3 kernel을 깊게 쌓는 단순성**, GoogLeNet은 **1×1 bottleneck + multi-branch Inception + GAP**, ResNet/WRN은 **identity path와 depth/width trade-off**, DenseNet은 **feature reuse via concatenation**, SE는 **channel-wise adaptive recalibration**을 강조했다.
+
+2026년에는 여기에 **ViT/Swin의 attention backbone**, **ConvNeXt류의 modernized ConvNet**, **training/scaling recipe**, **self-supervised/multimodal foundation encoder**, 그리고 **calibration·distribution shift·robustness·transfer**가 함께 평가축으로 들어간다. 따라서 “어떤 architecture가 ImageNet top-1이 가장 높은가?” 하나만 묻는 방식은 더 이상 충분하지 않다.
