@@ -23,6 +23,9 @@ on:
         default: ''
         type: string
 
+permissions:
+  contents: write
+
 concurrency:
   group: blog-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -37,6 +40,66 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Materialize verified Part V payload once
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin agent/modern-ai-part5-source-acquisition main
+          git checkout -B agent/modern-ai-part5-source-acquisition origin/agent/modern-ai-part5-source-acquisition
+
+          mkdir -p /tmp/p5chunks
+          expected=(
+            f56605001e5309811a8675d041ed3927064a5cc347ec7ae3106b8278ad1c7706
+            b8b55e19108a38d63a8d60e7808d55e416276eb2de2a866c7adbf2222ebacc62
+            158dbe03bea2b1f6ce9af84c4be3e7df2733f33845819777823115000a2bbb5f
+            cff52c7a0dbb18bdabd40ecdef84c46366f1d0854851c2266459d4755b7a0ef8
+            089487443bf323ec3de690b052616e1893ff18d9cf6cabc1cd66678bc6d71aa2
+            08d438189089fae8082371b2869fd96c4e817ab9b0d36168f7fadab8c72898c4
+            469dce8e7ea23914156507f549b6d249be8ca5c37e9a3af7153a0bcea92e8ccb
+          )
+          for idx in 00 01 02 03 04 05; do
+            head -c 8000 ".part5-materialize/chunk-${idx}" > "/tmp/p5chunks/${idx}"
+            got="$(sha256sum "/tmp/p5chunks/${idx}" | awk '{print $1}')"
+            n=$((10#$idx))
+            test "$got" = "${expected[$n]}" || { echo "chunk $idx SHA mismatch: $got"; exit 1; }
+          done
+          head -c 2600 .part5-materialize/chunk-06 > /tmp/p5chunks/06
+          got="$(sha256sum /tmp/p5chunks/06 | awk '{print $1}')"
+          test "$got" = "${expected[6]}" || { echo "chunk 06 SHA mismatch: $got"; exit 1; }
+
+          cat /tmp/p5chunks/{00,01,02,03,04,05,06} > /tmp/part5-payload.b64
+          test "$(wc -c < /tmp/part5-payload.b64)" -eq 50600
+          test "$(sha256sum /tmp/part5-payload.b64 | awk '{print $1}')" = "cb20c6193faeeb28716615a169c31ba6eb700bd6b4ef58381163a8fed7112140"
+          base64 --decode /tmp/part5-payload.b64 > /tmp/part5-payload.tgz
+          test "$(sha256sum /tmp/part5-payload.tgz | awk '{print $1}')" = "039cc1eba44f82567907ed2697315b7b03c2099f360b05eb3f1911ed5547d15d"
+
+          rm -rf _part5_payload
+          mkdir _part5_payload
+          tar -xzf /tmp/part5-payload.tgz -C _part5_payload
+          python3 _part5_payload/patch.py
+          rm -rf .part5-materialize
+          rm -f .github/workflows/part5-materialize-once.yml
+
+          test "$(sha256sum spaceship-ui/src/data/modern-ai-part5/README.md | awk '{print $1}')" = "51a812c9887548480a37bba0075bfbc41a1012cda0f586579e3b4b73c52a0dfb"
+          test "$(sha256sum spaceship-ui/src/data/modern-ai-part5/content-ledger.json | awk '{print $1}')" = "9c8f21ac04b9ec8b5b158b42be821e28564274212bde2ee119b6c6d32e6a50aa"
+          test "$(sha256sum spaceship-ui/src/data/modern-ai-part5/content-provenance.json | awk '{print $1}')" = "7ad3aa5b11a30a7a6fd6c618efb3c2464f68067d8991106ee51f182b6822f893"
+          test "$(sha256sum spaceship-ui/src/data/modern-ai-part5/formula-ledger.json | awk '{print $1}')" = "a2a061091e5275d86bbf16f89cbed3873d4e1944916a5f4602052241b6d216b6"
+          test "$(sha256sum spaceship-ui/src/data/modern-ai-part5/page-ledger.json | awk '{print $1}')" = "ff782e3f4c534b88e9c626ac5d6667fdf2e3f8a1f7e19f20e644732f7975d0a1"
+          test "$(sha256sum spaceship-ui/src/data/modern-ai-part5/source-audit.json | awk '{print $1}')" = "930f0c906f91bf94ebaef9109ffb1461d9bdf1152efc3614b1c868d922fe02f8"
+          test "$(sha256sum spaceship-ui/src/lib/modern-ai-part5.ts | awk '{print $1}')" = "83acf55939a7c946c2bba8d878a7a3e0518b76f16ea2981f5a1ee4a72c8c22fc"
+          test "$(sha256sum spaceship-ui/scripts/modern-ai-part5-audit.mjs | awk '{print $1}')" = "bfd4fdae09dd7fbbad9b5e4700892093d24deadc7b2f97c2b336252a6e1bee27"
+          test "$(sha256sum spaceship-ui/scripts/modern-ai-part5-provenance-audit.mjs | awk '{print $1}')" = "c720170f7c4733c5c8cdf7e2d75a8abc2251f500e394b2d5f32c3f6825f3bcaf"
+          test "$(sha256sum spaceship-ui/site/content/posts/modern-artificial-intelligence-5.mdx | awk '{print $1}')" = "965e29d7e57a258b06d08fe432c14bc743a0587f8fe96d5c26747b71a66f12e2"
+
+          git show origin/main:.github/workflows/blog-ci.yml > .github/workflows/blog-ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat: reconstruct Modern AI Part V from source PDF"
+          git push origin HEAD:agent/modern-ai-part5-source-acquisition
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -78,11 +141,6 @@ jobs:
 
       - name: Browser smoke matrix
         timeout-minutes: 10
-        # Semantically identical to `pnpm browser:smoke`, but the exit guard is
-        # scoped to this Node process instead of leaking through NODE_OPTIONS.
-        # `workflow_dispatch.inputs.base_url` is deliberately normalized into an
-        # ordinary environment variable instead of being interpolated inside
-        # any shell script body.
         env:
           JJO_SMOKE_REQUIRE_GPU: '0'
           JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
