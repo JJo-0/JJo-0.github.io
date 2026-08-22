@@ -37,6 +37,21 @@ POST_TAXONOMY.update(
                 "industry-analysis",
             ),
         ),
+        "modern-artificial-intelligence-4.mdx": Taxonomy(
+            "ai-machine-learning",
+            "optimization",
+            "study-note",
+            (
+                "gradient-descent",
+                "convex-optimization",
+                "accelerated-optimization",
+                "preconditioning",
+                "logistic-regression",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            6,
+        ),
     }
 )
 

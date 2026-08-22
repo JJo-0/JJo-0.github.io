@@ -1,0 +1,1113 @@
+---
+title: '현대 인공지능 IV — 기울기 기반 최적화: GD에서 OGM까지'
+description: 'ECE5992 최적화 강의자료 19쪽을 페이지·본문·수식·표·그림·질문·주석 원장으로 완전 추적하며, Lipschitz 연속성, GD·PSD·PGD·FGM·OGM, 복소수 하강방향, 효율적 선탐색과 로지스틱 회귀를 2026년 연구까지 연결한다.'
+pubDate: 2026-08-21
+updatedDate: 2026-08-21
+category: ai-machine-learning
+subcategory: optimization
+type: study-note
+tags:
+  - gradient-descent
+  - convex-optimization
+  - accelerated-optimization
+  - preconditioning
+  - logistic-regression
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 6
+
+featured: true
+lang: 'ko'
+series:
+  id: 'modern-artificial-intelligence'
+  order: 4
+---
+
+import SourceFormula from '@/components/post/SourceFormula.astro';
+import { part4Formula } from '@/lib/modern-ai-part4';
+
+> **완전성 계약(Completeness contract)**  
+> 이 글은 `5_Ch4-General-purpose gradient-based opt(1).pdf` **19 / 19쪽**을 기준으로 작성했다. 번호식뿐 아니라 번호 없는 표시식, 의미 있는 인라인 수학, 표·그림·캡션, 객관식·`??`·공란, 각주·참고문헌, 판독 가능한 손글씨를 원장에 연결했다. 원문 빈칸·오류 의심 표기는 보존하고 완성식과 교정식은 별도 상태로 등록한다.
+
+> **세 층을 섞지 않는다.**  
+> ① **2025 PDF 원자료 재구성**, ② **편집·수학 검증**, ③ **2026-08-18 최신 연구 업데이트**를 분리한다.
+
+## 원장 현황
+
+- PDF: **19 / 19쪽**
+- PDF SHA-256: `23272c39a5ad9c0dddf24eb7d42fdebe8575344f74bac3de761b7844fd81e58c`
+- 전체 수식 record: **211개**
+- source-derived 수식: **188개**
+- display formula: **110개**, inline formula: **101개**
+- content record: **151개**
+- figures/tables: **10개**
+- handwritten annotations: **17개**
+- editorial completion/correction: **23개**
+
+---
+{/* source-content:P4-C001 */}
+# PDF 원자료 재구성
+
+{/* source-content:P4-C002 */}
+## 4. 범용 기울기 기반 최적화 방법(General-purpose gradient-based optimization methods)
+
+{/* source-content:P4-C003 */}
+비제약 최적화는 비용함수(cost function) <SourceFormula formula={part4Formula('MAI-P4-005')} part={4} display={false} />의 최소화 문제 
+
+<SourceFormula formula={part4Formula('MAI-P4-001')} part={4} display={true} />
+
+에서 시작한다. 초기 추정 <SourceFormula formula={part4Formula('MAI-P4-002')} part={4} display={false} />을 정한 뒤 반복열 <SourceFormula formula={part4Formula('MAI-P4-003')} part={4} display={false} />을 만들고, 어떤 norm에서 <SourceFormula formula={part4Formula('MAI-P4-004')} part={4} display={false} />가 되기를 기대한다.
+
+{/* source-content:P4-C004 */}
+강의자료는 응용에 따라 실수 또는 복소수 공간을 함께 다루기 위해 <SourceFormula formula={part4Formula('MAI-P4-006')} part={4} display={false} />를 사용한다. 이 장의 중심은 convex하고 gradient가 Lipschitz continuous인 smooth objective이며, least-squares는 그 특수한 경우다.
+
+{/* source-figure:P4-FIG-01 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 940 270" role="img" aria-label="비평활 함수에서 quadratic least squares까지 강한 가정이 중첩되는 함수 클래스 도식" class="w-full">
+    <g fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="24" y="24" width="892" height="220" rx="16"/>
+      <rect x="145" y="42" width="750" height="184" rx="14"/>
+      <rect x="285" y="60" width="588" height="148" rx="12"/>
+      <rect x="425" y="78" width="426" height="112" rx="10"/>
+      <rect x="575" y="96" width="254" height="76" rx="8"/>
+      <rect x="705" y="112" width="102" height="44" rx="6"/>
+    </g>
+    <g font-size="17" text-anchor="middle">
+      <text x="83" y="140">nonsmooth</text><text x="214" y="140">composite</text>
+      <text x="350" y="140">differentiable</text><text x="500" y="130">Lipschitz</text><text x="500" y="153">gradient</text>
+      <text x="636" y="130">bounded</text><text x="636" y="153">curvature</text><text x="756" y="140">quadratic LS</text>
+    </g>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p.1 Venn diagram 재구성.</strong> convex function class 안에서 nonsmooth → composite → differentiable → Lipschitz-gradient → bounded-curvature → quadratic least-squares로 가정이 강해지는 관계를 보존했다.</figcaption>
+</figure>
+
+{/* source-content:P4-C005 */}
+### 동기 응용: edge-preserving image recovery
+
+{/* source-content:P4-C006 */}
+측정모델은 <SourceFormula formula={part4Formula('MAI-P4-007')} part={4} display={false} />이고, data fidelity와 convex smooth regularizer를 결합해 
+
+<SourceFormula formula={part4Formula('MAI-P4-008')} part={4} display={true} />
+
+를 푼다. 정규화항은 transform coefficient마다 potential을 더하는 <SourceFormula formula={part4Formula('MAI-P4-009')} part={4} display={false} />의 형태다.
+
+{/* source-figure:P4-FIG-02 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+    <div class="rounded-xl border border-border bg-muted/30 p-5 text-center"><p class="m-0 text-lg font-black">11×11 uniform blur</p><p class="mb-0 mt-2 text-sm text-muted-foreground">additive noise · 60 dB blurred SNR</p></div>
+    <div class="text-center text-3xl" aria-hidden="true">→</div>
+    <div class="rounded-xl border border-border bg-background p-5 text-center"><p class="m-0 text-lg font-black">edge-preserving recovery</p><p class="mb-0 mt-2 text-sm text-muted-foreground">smooth convex regularization + gradient method</p></div>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 1 구조 재구성(PDF pp.1–2).</strong> 원본 사진을 복제하지 않고 degradation 조건과 이 장의 복원 결과가 대비되는 관계만 보존했다.</figcaption>
+</figure>
+
+{/* source-annotation:P4-ANN-01 */}
+> **강의 주석 — PDF p.1.** 우측 필기에서 등고선, gradient 방향, step size와 Lipschitz constant를 연결하는 짧은 메모가 보인다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C007 */}
+## 4.1 Lipschitz 연속성(Lipschitz continuity)
+
+{/* source-content:P4-C008 */}
+함수 <SourceFormula formula={part4Formula('MAI-P4-010')} part={4} display={false} />에 대해 어떤 유한한 <SourceFormula formula={part4Formula('MAI-P4-012')} part={4} display={false} />이 존재하여 
+
+<SourceFormula formula={part4Formula('MAI-P4-011')} part={4} display={true} />
+
+을 만족하면 Lipschitz continuous라 한다. 가능한 상수 중 가장 작은 값을 best Lipschitz constant라고 하며, 자료는 특별한 언급이 없으면 Euclidean norm을 사용한다.
+
+{/* source-content:P4-C009 */}
+이하에서 f와 g의 best constants를 <SourceFormula formula={part4Formula('MAI-P4-013')} part={4} display={false} />로 둔다.
+
+{/* source-content:P4-C010 */}
+- **Scaling:** <SourceFormula formula={part4Formula('MAI-P4-014')} part={4} display={false} />
+- **Translation:** <SourceFormula formula={part4Formula('MAI-P4-015')} part={4} display={false} />
+- **Addition:** <SourceFormula formula={part4Formula('MAI-P4-016')} part={4} display={false} />
+- **Composition:** <SourceFormula formula={part4Formula('MAI-P4-017')} part={4} display={false} />
+- **Affine transformation:** <SourceFormula formula={part4Formula('MAI-P4-018')} part={4} display={false} />
+- **Multiplication:** <SourceFormula formula={part4Formula('MAI-P4-019')} part={4} display={false} />
+
+{/* source-content:P4-C011 */}
+자료는 두 Lipschitz 함수의 곱도 전체 실수축에서 항상 Lipschitz인지 True/False로 묻고 답을 비운다. 
+
+<SourceFormula formula={part4Formula('MAI-P4-020')} part={4} display={true} />
+
+{/* source-content:P4-C012 */}
+곱에 대한 충분조건과 proof도 빈칸 상태로 제시된다. 
+
+<SourceFormula formula={part4Formula('MAI-P4-021')} part={4} display={true} />
+
+<SourceFormula formula={part4Formula('MAI-P4-022')} part={4} display={true} />
+
+<SourceFormula formula={part4Formula('MAI-P4-023')} part={4} display={true} />
+
+{/* source-content:P4-C013 */}
+다음 페이지는 boundedness가 필요한 조건인지 다시 묻는다. <SourceFormula formula={part4Formula('MAI-P4-024')} part={4} display={false} />
+
+{/* source-annotation:P4-ANN-02 */}
+> **강의 주석 — PDF p.2.** 곱의 차이를 한 항씩 더하고 빼서 triangle inequality를 적용하는 proof 방향과 boundedness 표시가 손으로 보강되어 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C014 */}
+### Smooth function: Lipschitz-continuous gradient
+
+{/* source-content:P4-C015 */}
+이 장에서 smooth function은 differentiable하고 gradient가 
+
+<SourceFormula formula={part4Formula('MAI-P4-025')} part={4} display={true} />
+
+을 만족하는 함수다. 복소수 공간의 derivative는 더 미묘하므로 이 정의는 우선 실수공간에 둔다.
+
+{/* source-content:P4-C016 */}
+Least-squares 예제 <SourceFormula formula={part4Formula('MAI-P4-026')} part={4} display={false} />의 gradient는 <SourceFormula formula={part4Formula('MAI-P4-027')} part={4} display={false} />이며, 
+
+<SourceFormula formula={part4Formula('MAI-P4-028')} part={4} display={true} />
+
+에서 
+
+<SourceFormula formula={part4Formula('MAI-P4-029')} part={4} display={true} />
+
+을 얻는다.
+
+{/* source-content:P4-C017 */}
+두 번 미분 가능하고 Hessian spectral norm이 
+
+<SourceFormula formula={part4Formula('MAI-P4-030')} part={4} display={true} />
+
+처럼 bounded이면 gradient Lipschitz의 충분조건이다. Taylor integral form 
+
+<SourceFormula formula={part4Formula('MAI-P4-031')} part={4} display={true} />
+
+과 norm bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-032')} part={4} display={true} />
+
+가 proof를 이룬다. 자료는 이 조건이 sufficient이지만 necessary는 아니라고 명시한다.
+
+{/* source-content:P4-C018 */}
+Quadratic examples로 <SourceFormula formula={part4Formula('MAI-P4-033')} part={4} display={false} />와 rank-one form <SourceFormula formula={part4Formula('MAI-P4-034')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-035')} part={4} display={false} />, 
+
+<SourceFormula formula={part4Formula('MAI-P4-036')} part={4} display={true} />
+
+을 제시한다.
+
+{/* source-annotation:P4-ANN-03 */}
+> **강의 주석 — PDF p.3.** least-squares gradient, Hessian의 spectral norm, singular value와 eigenvalue 관계를 따라가는 필기가 보인다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C019 */}
+### Fair potential과 edge-preserving regularizer
+
+{/* source-content:P4-C020 */}
+Fair potential은 
+
+<SourceFormula formula={part4Formula('MAI-P4-037')} part={4} display={true} />
+
+이며, 
+
+<SourceFormula formula={part4Formula('MAI-P4-038')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-039')} part={4} display={true} />
+
+을 만족한다. 원점 근처에서는 roughly quadratic, 큰 |x|에서는 |x|처럼 증가하고, 두 번째 도함수가 nonnegative라 convex다.
+
+{/* source-figure:P4-FIG-03 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 760 330" role="img" aria-label="원점 근처에서 이차함수이고 큰 절댓값에서는 선형에 가까운 Fair potential" class="w-full">
+    <line x1="55" y1="278" x2="715" y2="278" stroke="currentColor"/><line x1="385" y1="34" x2="385" y2="300" stroke="currentColor"/>
+    <path d="M75 72 C180 138 285 232 385 270 C485 232 590 138 695 72" fill="none" stroke="currentColor" stroke-width="4"/>
+    <path d="M260 205 Q385 298 510 205" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="8 7"/>
+    <text x="90" y="55" font-size="18">approximately |x|</text><text x="500" y="220" font-size="18">quadratic near 0</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p.4 곡선 재구성.</strong> δ=1인 Fair potential의 quadratic/linear-like 두 regime을 새 SVG로 표현했다.</figcaption>
+</figure>
+
+{/* source-content:P4-C021 */}
+자료는 potential 자체도 Lipschitz continuous인지 <SourceFormula formula={part4Formula('MAI-P4-040')} part={4} display={false} />로 질문한다.
+
+{/* source-content:P4-C022 */}
+Regularizer gradient와 그 Lipschitz constant를 합성함수로 계산하는 exercise는 
+
+<SourceFormula formula={part4Formula('MAI-P4-041')} part={4} display={true} />
+
+에서 시작해 <SourceFormula formula={part4Formula('MAI-P4-042')} part={4} display={false} />, 
+
+<SourceFormula formula={part4Formula('MAI-P4-043')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-044')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-045')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-046')} part={4} display={true} />
+
+의 빈칸을 남긴다.
+
+{/* source-annotation:P4-ANN-04 */}
+> **강의 주석 — PDF p.4.** Fair potential 그래프에는 quadratic regime와 edge-preserving 성질을 연결하는 메모가 있고, regularizer exercise 옆에는 chain rule 순서가 표시되어 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C023 */}
+## 4.2 Smooth convex 함수의 gradient descent
+
+{/* source-content:P4-C024 */}
+가정은 finite minimizer <SourceFormula formula={part4Formula('MAI-P4-047')} part={4} display={false} />, Lipschitz gradient <SourceFormula formula={part4Formula('MAI-P4-048')} part={4} display={false} />, 그리고 step size <SourceFormula formula={part4Formula('MAI-P4-049')} part={4} display={false} />이다. 이때 iteration은 
+
+<SourceFormula formula={part4Formula('MAI-P4-050')} part={4} display={true} />
+
+이다.
+
+{/* source-content:P4-C025 */}
+자료가 열거하는 properties는 cost monotonicity <SourceFormula formula={part4Formula('MAI-P4-051')} part={4} display={false} />, minimizer까지 거리의 monotonicity <SourceFormula formula={part4Formula('MAI-P4-052')} part={4} display={false} />, minimizer convergence다. <SourceFormula formula={part4Formula('MAI-P4-055')} part={4} display={false} />에서는 
+
+<SourceFormula formula={part4Formula('MAI-P4-053')} part={4} display={true} />
+
+을 제시하고, 같은 bound가 <SourceFormula formula={part4Formula('MAI-P4-054')} part={4} display={false} />에도 성립할 것이라는 conjecture를 적는다.
+
+{/* source-content:P4-C026 */}
+Convergence rate는 objective gap <SourceFormula formula={part4Formula('MAI-P4-056')} part={4} display={false} />, gradient norm <SourceFormula formula={part4Formula('MAI-P4-057')} part={4} display={false} />, iterate error <SourceFormula formula={part4Formula('MAI-P4-058')} part={4} display={false} />를 global/local하게 본다. fixed step α=1/L인 GD의 tight worst-case objective bound는 
+
+<SourceFormula formula={part4Formula('MAI-P4-059')} part={4} display={true} />
+
+이고, Nesterov FGM은 <SourceFormula formula={part4Formula('MAI-P4-060')} part={4} display={false} /> rate를 갖는다.
+
+{/* source-content:P4-C027 */}
+느린 example은 least-squares에서 <SourceFormula formula={part4Formula('MAI-P4-061')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-062')} part={4} display={false} />를 사용한다. optimal fixed step을 써도 길쭉한 level set 때문에 iteration이 zig-zag한다. 자료는 acceleration의 두 실무 방향으로 preconditioner와 line search를 제시한다.
+
+{/* source-figure:P4-FIG-04 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 820 380" role="img" aria-label="길쭉한 타원형 등고선 위에서 gradient descent가 지그재그로 최소점에 접근하는 도식" class="w-full">
+    <g fill="none" stroke="currentColor" opacity=".62"><ellipse cx="550" cy="190" rx="230" ry="120"/><ellipse cx="550" cy="190" rx="185" ry="92"/><ellipse cx="550" cy="190" rx="135" ry="66"/><ellipse cx="550" cy="190" rx="80" ry="38"/></g>
+    <polyline points="105,75 350,305 438,92 500,250 530,140 548,220 555,165 560,205 563,184 566,194" fill="none" stroke="currentColor" stroke-width="4"/>
+    <g fill="currentColor"><circle cx="105" cy="75" r="7"/><circle cx="350" cy="305" r="6"/><circle cx="438" cy="92" r="6"/><circle cx="500" cy="250" r="6"/><circle cx="530" cy="140" r="6"/><circle cx="566" cy="194" r="7"/></g>
+    <text x="70" y="60" font-size="18">x⁽⁰⁾</text><text x="575" y="190" font-size="18">x̂=0</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 2 재구성(PDF pp.5–6).</strong> anisotropic least-squares contour에서 unpreconditioned GD가 gradient 방향을 번갈아 바꾸며 느리게 수렴하는 관계를 보존했다.</figcaption>
+</figure>
+
+{/* source-annotation:P4-ANN-05 */}
+> **강의 주석 — PDF p.5.** O(1/k)와 O(1/k²) 비교, condition number가 큰 타원에서 zig-zag가 생긴다는 메모가 보인다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C028 */}
+## 4.3 Preconditioned steepest descent(PSD)와 PGD
+
+{/* source-content:P4-C029 */}
+PSD는 negative preconditioned gradient <SourceFormula formula={part4Formula('MAI-P4-063')} part={4} display={false} />, one-dimensional line search <SourceFormula formula={part4Formula('MAI-P4-064')} part={4} display={false} />, update 
+
+<SourceFormula formula={part4Formula('MAI-P4-065')} part={4} display={true} />
+
+를 결합한다.
+
+{/* source-content:P4-C030 */}
+Quadratic case에는 analytic line search <SourceFormula formula={part4Formula('MAI-P4-066')} part={4} display={false} />가 가능하다. <SourceFormula formula={part4Formula('MAI-P4-068')} part={4} display={false} />이면 strict decrease가 필요한 경우 <SourceFormula formula={part4Formula('MAI-P4-067')} part={4} display={false} />를 얻지만, nonquadratic objective에서는 매 iteration의 line search 비용이 생긴다.
+
+{/* source-content:P4-C031 */}
+Exact line search의 first-order condition은 
+
+<SourceFormula formula={part4Formula('MAI-P4-069')} part={4} display={true} />
+
+이므로 다음 gradient와 현재 search direction이 orthogonal하다. inexact line search라면 approximate orthogonality만 기대한다.
+
+{/* source-content:P4-C032 */}
+Fixed-step PGD는 
+
+<SourceFormula formula={part4Formula('MAI-P4-070')} part={4} display={true} />
+
+다. <SourceFormula formula={part4Formula('MAI-P4-071')} part={4} display={false} />와 coordinate change <SourceFormula formula={part4Formula('MAI-P4-072')} part={4} display={false} />를 쓰면 원문 문제를 
+
+<SourceFormula formula={part4Formula('MAI-P4-073')} part={4} display={true} />
+
+로 바꾼다.
+
+{/* source-annotation:P4-ANN-06 */}
+> **강의 주석 — PDF p.6.** line search 후 gradient와 search direction이 직교한다는 표시, FGM/OGM은 L을 알면 line search가 필요 없다는 메모가 보인다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C033 */}
+Chain rule을 적용한 transformed-coordinate GD는 
+
+<SourceFormula formula={part4Formula('MAI-P4-074')} part={4} display={true} />
+
+이며, T를 곱하면 PGD가 된다. 자료는 이 동일성을 <SourceFormula formula={part4Formula('MAI-P4-075')} part={4} display={false} />로 비워 둔다.
+
+{/* source-content:P4-C034 */}
+Least-squares에서는 α=1과 <SourceFormula formula={part4Formula('MAI-P4-076')} part={4} display={false} />을 택하면 <SourceFormula formula={part4Formula('MAI-P4-077')} part={4} display={false} />이고, 따라서 <SourceFormula formula={part4Formula('MAI-P4-078')} part={4} display={false} />를 ideal preconditioner로 해석한다. 좋은 preconditioner는 level set을 거의 spherical하게 만드는 좌표계를 뜻한다.
+
+{/* source-figure:P4-FIG-05 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-5 md:grid-cols-[1fr_auto_1fr] md:items-center">
+    <svg viewBox="0 0 320 220" role="img" aria-label="preconditioning 전 길쭉한 타원 등고선" class="w-full"><ellipse cx="160" cy="110" rx="130" ry="48" fill="none" stroke="currentColor" stroke-width="3"/><ellipse cx="160" cy="110" rx="85" ry="31" fill="none" stroke="currentColor" opacity=".6"/><line x1="45" y1="170" x2="250" y2="55" stroke="currentColor" stroke-dasharray="7 6"/><text x="105" y="205" font-size="17">ill-conditioned x-space</text></svg>
+    <div class="text-center text-3xl">→</div>
+    <svg viewBox="0 0 320 220" role="img" aria-label="preconditioning 후 원형 등고선" class="w-full"><circle cx="160" cy="110" r="90" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="160" cy="110" r="55" fill="none" stroke="currentColor" opacity=".6"/><line x1="55" y1="165" x2="160" y2="110" stroke="currentColor" stroke-dasharray="7 6"/><text x="92" y="205" font-size="17">nearly spherical z-space</text></svg>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p.7 geometry 재구성.</strong> preconditioning을 coordinate transform으로 해석해 길쭉한 level set을 spherical하게 만드는 목적을 표현했다.</figcaption>
+</figure>
+
+{/* source-content:P4-C035 */}
+### Descent direction
+
+{/* source-content:P4-C036 */}
+Definition 4.5는 local decrease를 
+
+<SourceFormula formula={part4Formula('MAI-P4-079')} part={4} display={true} />
+
+로 정의하며 d=0도 degenerate descent direction이다. 실수공간에서 앞 절의 positive-definite P 조건 아래 nonzero 
+
+<SourceFormula formula={part4Formula('MAI-P4-080')} part={4} display={true} />
+
+가 descent direction이고, proof sketch는 
+
+<SourceFormula formula={part4Formula('MAI-P4-081')} part={4} display={true} />
+
+이다.
+
+{/* source-content:P4-C037 */}
+대표 선택은 positive diagonal <SourceFormula formula={part4Formula('MAI-P4-082')} part={4} display={false} />과 
+
+<SourceFormula formula={part4Formula('MAI-P4-083')} part={4} display={true} />
+
+이다. 후자는 circulant 구조일 때 FFT로 P-gradient product를 빠르게 계산할 수 있다고 설명한다.
+
+{/* source-annotation:P4-ANN-07 */}
+> **강의 주석 — PDF p.7.** elliptical level set을 circular하게 만드는 coordinate transform, ideal inverse-Hessian preconditioner, unitary diagonalization 표시가 보인다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C038 */}
+### Descent direction: complex case
+
+{/* source-content:P4-C039 */}
+<SourceFormula formula={part4Formula('MAI-P4-084')} part={4} display={false} />는 holomorphic하지 않지만, positive-definite P에 대해 
+
+<SourceFormula formula={part4Formula('MAI-P4-085')} part={4} display={true} />
+
+가 descent direction이다. 자료는 complex case의 <SourceFormula formula={part4Formula('MAI-P4-086')} part={4} display={false} />를 derivative라기보다 negative descent direction을 만드는 gradient-like quantity로 사용한다. 이어 stationary equation을 <SourceFormula formula={part4Formula('MAI-P4-087')} part={4} display={false} />라고 인쇄한다.
+
+{/* source-content:P4-C040 */}
+## 4.4 Complex edge-preserving regularizer의 descent direction
+
+{/* source-content:P4-C041 */}
+Complex regularizer는 
+
+<SourceFormula formula={part4Formula('MAI-P4-088')} part={4} display={true} />
+
+다. f는 real-valued, nondecreasing on nonnegative arguments, differentiable이고, <SourceFormula formula={part4Formula('MAI-P4-089')} part={4} display={false} />가 t=0에서도 well-defined이며 <SourceFormula formula={part4Formula('MAI-P4-090')} part={4} display={false} />를 만족한다고 가정한다. Fair potential에는 <SourceFormula formula={part4Formula('MAI-P4-091')} part={4} display={false} />가 된다.
+
+{/* source-content:P4-C042 */}
+Claim은 
+
+<SourceFormula formula={part4Formula('MAI-P4-092')} part={4} display={true} />
+
+가 descent direction이라는 것이다. intuition은 <SourceFormula formula={part4Formula('MAI-P4-093')} part={4} display={false} />이다.
+
+{/* source-content:P4-C043 */}
+한 row에 대한 proof는 <SourceFormula formula={part4Formula('MAI-P4-094')} part={4} display={false} />, contraction 
+
+<SourceFormula formula={part4Formula('MAI-P4-095')} part={4} display={true} />
+
+, step interval <SourceFormula formula={part4Formula('MAI-P4-096')} part={4} display={false} />을 사용한다. 마지막 비교는 원자료에 <SourceFormula formula={part4Formula('MAI-P4-097')} part={4} display={false} />로 적혀 있다.
+
+{/* source-annotation:P4-ANN-08 */}
+> **강의 주석 — PDF p.8.** Wirtinger/complex derivative를 직접 쓰지 않고 negative descent direction으로 gradient notation을 재사용한다는 메모와 Hermitian transpose 표시가 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C044 */}
+### Complex descent field의 Lipschitz constant와 practical bound
+
+{/* source-content:P4-C045 */}
+자료는 <SourceFormula formula={part4Formula('MAI-P4-098')} part={4} display={false} />를 <SourceFormula formula={part4Formula('MAI-P4-099')} part={4} display={false} />로 분해한다. real argument에서 <SourceFormula formula={part4Formula('MAI-P4-100')} part={4} display={false} />를 비우고, complex argument에는 numerical evidence에 기반한 conjecture <SourceFormula formula={part4Formula('MAI-P4-101')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-102')} part={4} display={false} />를 제시한다. 이는 원자료의 연구 중 진술로 보존하며 정리로 격상하지 않는다.
+
+{/* source-content:P4-C046 */}
+1D finite difference가 periodic이면 circulant/normal이라 spectral radius 
+
+<SourceFormula formula={part4Formula('MAI-P4-103')} part={4} display={true} />
+
+를 쓸 수 있다. nonperiodic boundary에는 
+
+<SourceFormula formula={part4Formula('MAI-P4-104')} part={4} display={true} />
+
+과 convenient 1-norm bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-105')} part={4} display={true} />
+
+를 사용하여 practical choice <SourceFormula formula={part4Formula('MAI-P4-106')} part={4} display={false} />를 얻는다.
+
+{/* source-content:P4-C047 */}
+Preconditioned fixed step을 정하기 위해 transformed objective <SourceFormula formula={part4Formula('MAI-P4-107')} part={4} display={false} />, gradient <SourceFormula formula={part4Formula('MAI-P4-108')} part={4} display={false} />, Lipschitz bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-109')} part={4} display={true} />
+
+을 계산한다.
+
+{/* source-annotation:P4-ANN-09 */}
+> **강의 주석 — PDF p.9.** finite-difference matrix의 periodic/circulant 구조, spectral radius ≈2, matrix 1-norm으로 4를 얻는 계산이 손으로 보강되어 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C048 */}
+Transformed-coordinate GD를 x-space로 옮기면 
+
+<SourceFormula formula={part4Formula('MAI-P4-110')} part={4} display={true} />
+
+이며, valid fixed step은 
+
+<SourceFormula formula={part4Formula('MAI-P4-111')} part={4} display={true} />
+
+이다. 따라서 preconditioning을 써도 반드시 line search로 갈 필요는 없다.
+
+{/* source-content:P4-C049 */}
+## 4.5 General inverse problems with efficient line search
+
+{/* source-content:P4-C050 */}
+대표 inverse problem은 
+
+<SourceFormula formula={part4Formula('MAI-P4-112')} part={4} display={true} />
+
+이고, 이를 포함하는 general form은 원자료에서 
+
+<SourceFormula formula={part4Formula('MAI-P4-113')} part={4} display={true} />
+
+로 비워 둔다. 각 B_i는 M_i×N, 각 f_i는 보통 convex다.
+
+{/* source-content:P4-C051 */}
+Special case mapping은 
+
+<SourceFormula formula={part4Formula('MAI-P4-114')} part={4} display={true} />
+
+이며, Fair potential일 때 f₂ gradient의 best constant를 
+
+<SourceFormula formula={part4Formula('MAI-P4-115')} part={4} display={true} />
+
+로 묻는다.
+
+{/* source-content:P4-C052 */}
+Naive line search <SourceFormula formula={part4Formula('MAI-P4-116')} part={4} display={false} />는 매 trial마다 B_i product를 반복한다. 미리 products를 계산하면 
+
+<SourceFormula formula={part4Formula('MAI-P4-117')} part={4} display={true} />
+
+가 되고, outer iteration의 update를 곱해 
+
+<SourceFormula formula={part4Formula('MAI-P4-118')} part={4} display={true} />
+
+로 재사용한다. 이 simplification에서 line derivative의 Lipschitz constant는 B_i operator norm을 직접 필요로 하지 않는다.
+
+{/* source-annotation:P4-ANN-10 */}
+> **강의 주석 — PDF p.10.** B_i x와 B_i d를 line search 전에 cache하고 다음 iteration에서 recursive update하라는 계산 흐름이 표시되어 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C053 */}
+## 4.6 Convergence rates
+
+{/* source-content:P4-C054 */}
+Local strict convexity와 twice differentiability 아래에서 PGD·PSD·PCG의 asymptotic behavior를 
+
+<SourceFormula formula={part4Formula('MAI-P4-119')} part={4} display={true} />
+
+, root convergence factor <SourceFormula formula={part4Formula('MAI-P4-120')} part={4} display={false} />, preconditioned Hessian/condition number <SourceFormula formula={part4Formula('MAI-P4-121')} part={4} display={false} />로 정리한다.
+
+{/* source-figure:P4-FIG-06 */}
+<figure class="my-8 overflow-hidden rounded-2xl border border-border bg-card/50">
+  <figcaption class="border-b border-border px-4 py-3 font-black">PDF p.11 convergence-factor table 재구성</figcaption>
+  <div class="overflow-x-auto p-4">
+  <div role="table" aria-label="PGD, PSD, PCG convergence factors" class="min-w-[720px] overflow-hidden rounded-xl border border-border">
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] bg-muted/60 font-black"><div role="columnheader" class="p-3">Method</div><div role="columnheader" class="p-3">ρ</div><div role="columnheader" class="p-3">κ=10²</div></div>
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] border-t border-border"><div role="cell" class="p-3">PGD standard step</div><div role="cell" class="p-3"><SourceFormula formula={part4Formula('MAI-P4-122')} part={4} display={false} /></div><div role="cell" class="p-3">0.99</div></div>
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] border-t border-border"><div role="cell" class="p-3">PGD optimal step</div><div role="cell" class="p-3"><SourceFormula formula={part4Formula('MAI-P4-123')} part={4} display={false} /></div><div role="cell" class="p-3">0.98</div></div>
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] border-t border-border"><div role="cell" class="p-3">PSD exact line search</div><div role="cell" class="p-3"><SourceFormula formula={part4Formula('MAI-P4-124')} part={4} display={false} /></div><div role="cell" class="p-3">0.98</div></div>
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] border-t border-border"><div role="cell" class="p-3">PCG exact line search</div><div role="cell" class="p-3"><SourceFormula formula={part4Formula('MAI-P4-125')} part={4} display={false} /></div><div role="cell" class="p-3">0.82</div></div>
+  </div>
+</div>
+</figure>
+
+{/* source-content:P4-C055 */}
+자료는 이어 <SourceFormula formula={part4Formula('MAI-P4-126')} part={4} display={false} />라고 서술하고, 위 ρ가 lower bound와 맞는다고 적는다.
+
+{/* source-annotation:P4-ANN-11 */}
+> **강의 주석 — PDF p.11.** κ=100에서 0.99·0.98·0.82를 비교하며 preconditioning과 PCG의 이점을 강조하는 표시가 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C056 */}
+### Generalized S-Lipschitz PGD analysis
+
+{/* source-content:P4-C057 */}
+Definition 4.7은 
+
+<SourceFormula formula={part4Formula('MAI-P4-127')} part={4} display={true} />
+
+으로 anisotropic smoothness를 정의하고, <SourceFormula formula={part4Formula('MAI-P4-128')} part={4} display={false} />에서 classic condition을 회복한다. Theorem 4.8은 matrix condition 
+
+<SourceFormula formula={part4Formula('MAI-P4-129')} part={4} display={true} />
+
+ 아래의 PGD 
+
+<SourceFormula formula={part4Formula('MAI-P4-130')} part={4} display={true} />
+
+에 대해 decrease 
+
+<SourceFormula formula={part4Formula('MAI-P4-131')} part={4} display={true} />
+
+와 gradient norm convergence를 준다.
+
+{/* source-content:P4-C058 */}
+P가 SPD이면 condition은 <SourceFormula formula={part4Formula('MAI-P4-132')} part={4} display={false} />이고 weighted distance <SourceFormula formula={part4Formula('MAI-P4-133')} part={4} display={false} />가 감소한다. <SourceFormula formula={part4Formula('MAI-P4-134')} part={4} display={false} />는 MM method와 같으며 classical bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-135')} part={4} display={true} />
+
+, 2014 tight bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-136')} part={4} display={true} />
+
+를 제시한다. Huber-like function이 tight example이다.
+
+{/* source-content:P4-C059 */}
+서로 다른 physical units를 가진 diagonal A example에서 scalar Lipschitz constant의 단위를 
+
+<SourceFormula formula={part4Formula('MAI-P4-137')} part={4} display={true} />
+
+로 묻는다.
+
+{/* source-content:P4-C060 */}
+### Generalized Nesterov fast gradient method(FGM)
+
+{/* source-content:P4-C061 */}
+Generalized FGM은 <SourceFormula formula={part4Formula('MAI-P4-138')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-139')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-140')} part={4} display={false} />를 결합한 
+
+<SourceFormula formula={part4Formula('MAI-P4-141')} part={4} display={true} />
+
+이다. 모든 t=1이면 ordinary GD가 되며, convex S-Lipschitz objective에서 
+
+<SourceFormula formula={part4Formula('MAI-P4-142')} part={4} display={true} />
+
+의 O(1/k²) worst-case rate를 얻는다. quadratic in R^N에서는 CG가 exact arithmetic에서 N iterations 내 종료할 수 있어 worst-case bound가 개별 application을 과도하게 비관할 수 있다고 덧붙인다.
+
+{/* source-content:P4-C062 */}
+Second-order baseline으로 Newton update 
+
+<SourceFormula formula={part4Formula('MAI-P4-143')} part={4} display={true} />
+
+을 제시하지만, large-scale problem에서는 Hessian formation/inversion이 impractical해 first-order methods에 초점을 둔다.
+
+{/* source-annotation:P4-ANN-12 */}
+> **강의 주석 — PDF p.12.** O(1/k)와 O(1/k²) bound, momentum, Newton의 Hessian inverse 비용을 비교하는 필기가 보인다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C063 */}
+## 4.7 Accelerated first-order methods
+
+{/* source-content:P4-C064 */}
+General first-order class는 
+
+<SourceFormula formula={part4Formula('MAI-P4-144')} part={4} display={true} />
+
+, fixed-coefficient FO class는 
+
+<SourceFormula formula={part4Formula('MAI-P4-145')} part={4} display={true} />
+
+다. 어떤 algorithms가 FO인지 
+
+<SourceFormula formula={part4Formula('MAI-P4-146')} part={4} display={true} />
+
+로 묻는다.
+
+{/* source-content:P4-C065 */}
+Barzilai–Borwein method은 <SourceFormula formula={part4Formula('MAI-P4-147')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-148')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-149')} part={4} display={false} />를 묶은 
+
+<SourceFormula formula={part4Formula('MAI-P4-150')} part={4} display={true} />
+
+이다. GFO에는 속하지만 coefficients가 trajectory에 의존하므로 fixed-step FO에는 속하지 않는다.
+
+{/* source-content:P4-C066 */}
+자료가 제시하는 research questions는 주어진 coefficients의 convergence rate 분석, coefficients 최적화, fast recursion, L에 독립적인 universal design, 그리고 GFO가 얼마나 더 나아질 수 있는지다.
+
+{/* source-content:P4-C067 */}
+### Nesterov FGM1의 recursive/FO 표현
+
+{/* source-content:P4-C068 */}
+Nesterov iteration은 usual GD step <SourceFormula formula={part4Formula('MAI-P4-151')} part={4} display={false} />, momentum factor <SourceFormula formula={part4Formula('MAI-P4-152')} part={4} display={false} />, update <SourceFormula formula={part4Formula('MAI-P4-153')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-154')} part={4} display={false} />를 가진 
+
+<SourceFormula formula={part4Formula('MAI-P4-155')} part={4} display={true} />
+
+이다. Implementation은 recursive하지만 analysis에서는 FO coefficient form으로 펼칠 수 있다.
+
+{/* source-annotation:P4-ANN-13 */}
+> **강의 주석 — PDF p.13.** FO/GFO 포함관계, Barzilai–Borwein step이 과거 iterate와 gradient 차이를 이용한다는 표시가 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C069 */}
+FGM1의 fixed-step coefficients는 
+
+<SourceFormula formula={part4Formula('MAI-P4-156')} part={4} display={true} />
+
+이며, 자료는 n=0…5에 대한 lower-triangular numerical coefficient matrix를 함께 보여 준다.
+
+{/* source-figure:P4-FIG-07 */}
+<figure class="my-8 overflow-hidden rounded-2xl border border-border bg-card/50">
+  <figcaption class="border-b border-border px-4 py-3 font-black">PDF p.14 FGM coefficient matrix 재구성</figcaption>
+  <div class="overflow-x-auto p-4">
+  <div role="table" aria-label="FGM fixed-step coefficient matrix" class="min-w-[620px] overflow-hidden rounded-xl border border-border text-center tabular-nums">
+    <div role="row" class="grid grid-cols-6"><div role="cell" class="p-2">1.00</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">1.25</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0.10</div><div role="cell" class="p-2">1.40</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0.05</div><div role="cell" class="p-2">0.20</div><div role="cell" class="p-2">1.50</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0.03</div><div role="cell" class="p-2">0.11</div><div role="cell" class="p-2">1.29</div><div role="cell" class="p-2">1.57</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0.02</div><div role="cell" class="p-2">0.07</div><div role="cell" class="p-2">0.18</div><div role="cell" class="p-2">0.36</div><div role="cell" class="p-2">1.62</div></div>
+  </div>
+</div>
+</figure>
+
+{/* source-content:P4-C070 */}
+Primary sequence bound는 
+
+<SourceFormula formula={part4Formula('MAI-P4-157')} part={4} display={true} />
+
+, Nesterov worst-function lower bound는 
+
+<SourceFormula formula={part4Formula('MAI-P4-158')} part={4} display={true} />
+
+, secondary sequence bound는 
+
+<SourceFormula formula={part4Formula('MAI-P4-159')} part={4} display={true} />
+
+이다. 두 upper bounds는 asymptotically tight하지만 leading constant gap은 개선 여지를 남긴다.
+
+{/* source-content:P4-C071 */}
+ε-accuracy에 필요한 iteration complexity를 
+
+<SourceFormula formula={part4Formula('MAI-P4-160')} part={4} display={true} />
+
+로 묻는다.
+
+{/* source-content:P4-C072 */}
+### Optimized gradient method(OGM)
+
+{/* source-content:P4-C073 */}
+D. Kim이 optimized coefficients 
+
+<SourceFormula formula={part4Formula('MAI-P4-161')} part={4} display={true} />
+
+와 horizon-dependent θ recurrence 
+
+<SourceFormula formula={part4Formula('MAI-P4-162')} part={4} display={true} />
+
+를 제시한다. Analytical bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-163')} part={4} display={true} />
+
+는 O(1/N²)이지만 FGM의 leading constant보다 factor 2 개선된다.
+
+{/* source-annotation:P4-ANN-14 */}
+> **강의 주석 — PDF p.14.** FGM coefficient matrix와 OGM의 새 final-horizon coefficient가 비교되어 있고, ε complexity 질문 옆에 square-root 표시가 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C074 */}
+Efficient OGM recursion은 GD step <SourceFormula formula={part4Formula('MAI-P4-164')} part={4} display={false} />, horizon-aware <SourceFormula formula={part4Formula('MAI-P4-165')} part={4} display={false} />, two-momentum update 
+
+<SourceFormula formula={part4Formula('MAI-P4-166')} part={4} display={true} />
+
+이다. 마지막 새 momentum을 제거하면 Nesterov FGM으로 되돌아간다. 단점은 final bound를 위해 N을 미리 정해야 한다는 점이다.
+
+{/* source-content:P4-C075 */}
+Primary sequence는 
+
+<SourceFormula formula={part4Formula('MAI-P4-167')} part={4} display={true} />
+
+이다. newer OGM'은 standard recurrence <SourceFormula formula={part4Formula('MAI-P4-168')} part={4} display={false} />와 over-relaxed gradient + FGM momentum 
+
+<SourceFormula formula={part4Formula('MAI-P4-169')} part={4} display={true} />
+
+를 사용해 N을 미리 정하지 않는다. 자료는 <SourceFormula formula={part4Formula('MAI-P4-170')} part={4} display={false} />도 각주로 제시한다.
+
+{/* source-figure:P4-FIG-08 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 900 330" role="img" aria-label="GD, FGM, OGM의 gradient와 momentum 구성 비교" class="w-full">
+    <defs><marker id="arr-p4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+    <g fill="none" stroke="currentColor" stroke-width="2.5" marker-end="url(#arr-p4)"><path d="M90 85H330"/><path d="M90 165H330"/><path d="M90 245H330"/><path d="M390 165H650"/><path d="M390 245H650"/></g>
+    <g font-size="18"><text x="30" y="91">GD</text><text x="30" y="171">FGM</text><text x="30" y="251">OGM</text><text x="125" y="70">gradient step</text><text x="420" y="145">FGM momentum</text><text x="420" y="225">extra over-relaxed gradient momentum</text><text x="680" y="171">O(1/k²)</text><text x="680" y="251">same order, better constant</text></g>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF pp.15–16 momentum structure 재구성.</strong> OGM이 FGM momentum에 추가 gradient-related momentum을 더하고, over-relaxation factor가 2에 접근하는 intuition을 보존했다.</figcaption>
+</figure>
+
+{/* source-content:P4-C076 */}
+자료의 intuition은 over-relaxed gradient multiplier가 <SourceFormula formula={part4Formula('MAI-P4-171')} part={4} display={false} />라는 것이다.
+
+{/* source-content:P4-C077 */}
+### OGM의 GFO worst-case optimality
+
+{/* source-content:P4-C078 */}
+OGM은 fixed-step class <SourceFormula formula={part4Formula('MAI-P4-172')} part={4} display={false} />에서 optimized h를 사용해 
+
+<SourceFormula formula={part4Formula('MAI-P4-173')} part={4} display={true} />
+
+을 만족한다. Drori는 dimension d>N인 large-scale setting의 GFO class <SourceFormula formula={part4Formula('MAI-P4-174')} part={4} display={false} /> 전체에 대해 lower bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-175')} part={4} display={true} />
+
+를 보였다. 따라서 이 oracle model 안에서 OGM의 worst-case complexity가 optimal하다고 설명한다.
+
+{/* source-figure:P4-FIG-09 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-5 md:grid-cols-2">
+    <section class="rounded-xl border border-border p-4"><h4 class="mt-0">Huber-like worst case</h4><svg viewBox="0 0 340 210" class="w-full" role="img" aria-label="Huber-like worst-case function"><line x1="30" y1="175" x2="315" y2="175" stroke="currentColor"/><line x1="170" y1="25" x2="170" y2="190" stroke="currentColor"/><path d="M45 60L120 145Q170 188 220 145L295 60" fill="none" stroke="currentColor" stroke-width="3"/><g fill="currentColor"><circle cx="105" cy="130" r="5"/><circle cx="140" cy="163" r="5"/><circle cx="190" cy="170" r="5"/></g></svg></section>
+    <section class="rounded-xl border border-border p-4"><h4 class="mt-0">Quadratic worst case</h4><svg viewBox="0 0 340 210" class="w-full" role="img" aria-label="quadratic worst-case function"><line x1="30" y1="175" x2="315" y2="175" stroke="currentColor"/><line x1="170" y1="25" x2="170" y2="190" stroke="currentColor"/><path d="M50 35Q170 210 290 35" fill="none" stroke="currentColor" stroke-width="3"/><polyline points="55,42 120,132 215,164 285,45" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="7 6"/><g fill="currentColor"><circle cx="55" cy="42" r="5"/><circle cx="120" cy="132" r="5"/><circle cx="215" cy="164" r="5"/><circle cx="285" cy="45" r="5"/></g></svg></section>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p.16 worst-case panels 재구성.</strong> Huber-like function과 quadratic function에서 OGM iterates가 upper bound를 맞추는 두 형태를 개념적으로 다시 그렸다.</figcaption>
+</figure>
+
+{/* source-annotation:P4-ANN-15 */}
+> **강의 주석 — PDF p.16.** OGM이 fixed-step FO뿐 아니라 GFO oracle model에서도 worst-case optimal하다는 “optimal” 강조와 Huber/quadratic 두 worst-case 경로가 표시되어 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C079 */}
+두 worst-case families에는 
+
+<SourceFormula formula={part4Formula('MAI-P4-176')} part={4} display={true} />
+
+가 성립한다. 하지만 일반적으로 FGM/OGM은 
+
+<SourceFormula formula={part4Formula('MAI-P4-177')} part={4} display={true} />
+
+이며, bound가 k에 따라 감소한다고 실제 iterate cost가 monotone인 것은 아니다.
+
+{/* source-content:P4-C080 */}
+## 4.8 Machine learning: Binary classification with logistic regression
+
+{/* source-content:P4-C081 */}
+Feature vectors v_m∈R^N, labels `y_m∈{±1}`, regularization β>0에 대해
+
+<SourceFormula formula={part4Formula('MAI-P4-178')} part={4} display={true} />
+
+를 최소화한다.
+
+{/* source-content:P4-C082 */}
+원하는 classifier margin은 
+
+<SourceFormula formula={part4Formula('MAI-P4-179')} part={4} display={true} />
+
+이며, sign(⟨x,v_m⟩)을 class decision으로 사용한다.
+
+{/* source-content:P4-C083 */}
+Logistic surrogate는 <SourceFormula formula={part4Formula('MAI-P4-180')} part={4} display={false} />, derivative <SourceFormula formula={part4Formula('MAI-P4-181')} part={4} display={false} />, curvature 
+
+<SourceFormula formula={part4Formula('MAI-P4-182')} part={4} display={true} />
+
+라 gradient Lipschitz constant 계산이 가능하다.
+
+{/* source-figure:P4-FIG-10 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-5 lg:grid-cols-2">
+    <section><h4 class="mt-0">Surrogate losses</h4><svg viewBox="0 0 420 280" role="img" aria-label="exponential hinge logistic zero-one surrogate losses" class="w-full"><line x1="45" y1="235" x2="390" y2="235" stroke="currentColor"/><line x1="210" y1="25" x2="210" y2="250" stroke="currentColor"/><path d="M60 35 C120 85 190 155 360 224" fill="none" stroke="currentColor" stroke-width="2"/><path d="M60 80 L210 180 L360 235" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="8 6"/><path d="M60 120 C150 150 220 190 360 228" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60 180 H210 V235 H360" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 5"/><text x="275" y="65" font-size="15">exponential / hinge / logistic / 0–1</text></svg></section>
+    <section><h4 class="mt-0">Decision boundary update</h4><svg viewBox="0 0 420 280" role="img" aria-label="green and blue training points with initial final and ideal decision boundaries" class="w-full"><line x1="45" y1="235" x2="390" y2="235" stroke="currentColor"/><line x1="45" y1="30" x2="45" y2="235" stroke="currentColor"/><g fill="none" stroke="currentColor"><line x1="80" y1="210" x2="340" y2="55" stroke-width="2"/><line x1="65" y1="175" x2="355" y2="85" stroke-width="4" stroke-dasharray="8 6"/><line x1="100" y1="220" x2="310" y2="45" stroke-width="2" stroke-dasharray="3 5"/></g><g fill="currentColor"><circle cx="110" cy="185" r="5"/><circle cx="145" cy="165" r="5"/><circle cx="175" cy="195" r="5"/><circle cx="275" cy="80" r="5"/><circle cx="315" cy="105" r="5"/><circle cx="335" cy="65" r="5"/></g></svg></section>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF pp.17–18 figures 재구성.</strong> surrogate loss shapes와 labeled points에서 initial/final/ideal boundary를 비교하는 관계를 새 SVG로 표현했다.</figcaption>
+</figure>
+
+{/* source-content:P4-C084 */}
+General inverse form과의 대응은 
+
+<SourceFormula formula={part4Formula('MAI-P4-183')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-184')} part={4} display={true} />
+
+로 비워 두고, <SourceFormula formula={part4Formula('MAI-P4-185')} part={4} display={false} />를 정의한다. Gradient와 practical constant는 
+
+<SourceFormula formula={part4Formula('MAI-P4-186')} part={4} display={true} />
+
+이다.
+
+{/* source-content:P4-C085 */}
+Practical notes는 V columns를 unit norm으로 normalize해 exponent overflow를 줄이고, β를 cross-validation으로 tuning하며, convex smooth objective라 FGM/OGM에 적합하다는 것이다. N이 매우 크고 sparse classifier가 필요하면 ℓ₂ regularizer를 ℓ₁으로 바꾸고 FISTA 또는 POGM을 사용하라고 제안한다.
+
+{/* source-content:P4-C086 */}
+Sparse variant의 regularizer 교체는 <SourceFormula formula={part4Formula('MAI-P4-187')} part={4} display={false} />이다.
+
+{/* source-content:P4-C087 */}
+Numerical result는 M=100, N=7 labeled training data에서 initial boundary, optimized final boundary, ideal boundary를 비교한다. 자료 스스로 ‘large scale?’라고 반문한다.
+
+{/* source-annotation:P4-ANN-16 */}
+> **강의 주석 — PDF p.17.** logistic·hinge·exponential·0–1 surrogate를 비교하고 V=[y₁v₁,…]로 데이터를 쌓는 메모가 있다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-annotation:P4-ANN-17 */}
+> **강의 주석 — PDF p.18.** column normalization, cross-validation, sparse ℓ₁ variant를 practical implementation 항목 옆에서 강조한다. 판독이 확정되지 않는 작은 글씨는 추측해 문장으로 만들지 않았다.
+
+{/* source-content:P4-C088 */}
+## 4.9 Summary
+
+{/* source-content:P4-C089 */}
+이 장은 differentiable unconstrained objective를 위한 gradient-based algorithms를 정리한다. 매 iteration의 gradient computation이 흔히 가장 비싸다.
+
+{/* source-content:P4-C090 */}
+PSD와 PCG는 line search를 추가로 요구하며, line search 자체도 cost/gradient를 여러 번 평가하는 1D optimization이다. 그러나 equation (12) 구조에서는 §4.5의 cached products와 recursive update로 효율화할 수 있다.
+
+{/* source-content:P4-C091 */}
+마지막 question은 general form이 모든 Lipschitz-gradient objective의 strict subset인지 
+
+<SourceFormula formula={part4Formula('MAI-P4-188')} part={4} display={true} />
+
+로 묻는다.
+
+{/* source-content:P4-C092 */}
+## 강의자료 참고문헌
+
+{/* source-content:P4-C093 */}
+1. R. C. Fair, “On the robust estimation of econometric models,” Annals of Economic and Social Measurement, 1974.
+
+{/* source-content:P4-C094 */}
+2. K. Lange, “Convergence of EM image reconstruction algorithms with Gibbs smoothing,” IEEE Transactions on Medical Imaging, 1990.
+
+{/* source-content:P4-C095 */}
+3. X. Zheng et al., “Sparse-view X-ray CT reconstruction using ℓ1 prior with learned transform,” submitted 2019; arXiv:1711.00905.
+
+{/* source-content:P4-C096 */}
+4. B. T. Polyak, Introduction to Optimization, 1987.
+
+{/* source-content:P4-C097 */}
+5. Y. Drori and M. Teboulle, “Performance of first-order methods for smooth convex minimization: a novel approach,” Mathematical Programming, 2014.
+
+{/* source-content:P4-C098 */}
+6. A. B. Taylor, J. M. Hendrickx, and F. Glineur, “Smooth strongly convex interpolation and exact worst-case performance of first-order methods,” Mathematical Programming, 2017.
+
+{/* source-content:P4-C099 */}
+7. D. Kim and J. A. Fessler, “Optimized first-order methods for smooth convex minimization,” Mathematical Programming, 2016.
+
+{/* source-content:P4-C100 */}
+8. Y. Nesterov, Lectures on Convex Optimization, 2018.
+
+{/* source-content:P4-C101 */}
+9. I. Y. Chun and J. A. Fessler, “Convolutional analysis operator learning: Acceleration and convergence,” IEEE Transactions on Image Processing, 2020.
+
+{/* source-content:P4-C102 */}
+10. J. Barzilai and J. M. Borwein, “Two-point step size gradient methods,” IMA Journal of Numerical Analysis, 1988.
+
+{/* source-content:P4-C103 */}
+11. Y. Nesterov, “A method for unconstrained convex minimization problem with the rate of convergence O(1/k²),” 1983.
+
+{/* source-content:P4-C104 */}
+12. Y. Nesterov, “Smooth minimization of non-smooth functions,” Mathematical Programming, 2005.
+
+{/* source-content:P4-C105 */}
+13. O. Güler, “New proximal point algorithms for convex minimization,” SIAM Journal on Optimization, 1992.
+
+{/* source-content:P4-C106 */}
+14. D. Kim and J. A. Fessler, “On the convergence analysis of the optimized gradient method,” Journal of Optimization Theory and Applications, 2017.
+
+{/* source-content:P4-C107 */}
+15. Y. Drori, “The exact information-based complexity of smooth convex minimization,” Journal of Complexity, 2017.
+
+{/* source-content:P4-C108 */}
+16. A. Beck and M. Teboulle, “A fast iterative shrinkage-thresholding algorithm for linear inverse problems,” SIAM Journal on Imaging Sciences, 2009.
+
+{/* source-content:P4-C109 */}
+17. A. B. Taylor, J. M. Hendrickx, and F. Glineur, “Exact worst-case performance of first-order methods for composite convex optimization,” SIAM Journal on Optimization, 2017.
+
+{/* source-content:P4-C110 */}
+# 편집·수학 검증(Editorial audit)
+
+{/* source-content:P4-C111 */}
+이 절은 PDF 원문을 덮어쓰지 않는다. 위 source-suspect/blank formula를 그대로 남겨 두고, 아래에서 `corrects`로 연결한 완성식 또는 교정식을 별도 record로 제공한다.
+
+{/* source-content:P4-C112 */}
+## Lipschitz 함수의 곱: 전역 명제는 거짓이고 boundedness는 충분조건
+
+{/* source-content:P4-C113 */}
+Counterexample는 
+
+<SourceFormula formula={part4Formula('MAI-P4-189')} part={4} display={true} />
+
+다. |f|≤fmax, |g|≤gmax이면 decomposition 
+
+<SourceFormula formula={part4Formula('MAI-P4-190')} part={4} display={true} />
+
+와 bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-191')} part={4} display={true} />
+
+가 성립한다. boundedness는 sufficient이지만 necessary는 아니다. 예를 들어 bounded factor 하나와 constant factor의 곱처럼 더 약한 조건에서도 Lipschitz가 될 수 있다.
+
+{/* source-content:P4-C114 */}
+## Fair potential과 real regularizer 빈칸 완성
+
+{/* source-content:P4-C115 */}
+Potential 자체의 constant는 
+
+<SourceFormula formula={part4Formula('MAI-P4-192')} part={4} display={true} />
+
+이다. Real chain rule은 
+
+<SourceFormula formula={part4Formula('MAI-P4-193')} part={4} display={true} />
+
+; component constants와 vector bound는 
+
+<SourceFormula formula={part4Formula('MAI-P4-194')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-195')} part={4} display={true} />
+
+; 최종 regularizer-gradient constant는 
+
+<SourceFormula formula={part4Formula('MAI-P4-196')} part={4} display={true} />
+
+이다. Ldotψ≤1일 때 source MCQ의 선택지는 C다.
+
+{/* source-content:P4-C116 */}
+## Preconditioning 빈칸 완성
+
+{/* source-content:P4-C117 */}
+Coordinate-change answer는 
+
+<SourceFormula formula={part4Formula('MAI-P4-197')} part={4} display={true} />
+
+, unitary diagonalization은 
+
+<SourceFormula formula={part4Formula('MAI-P4-198')} part={4} display={true} />
+
+이다.
+
+{/* source-content:P4-C118 */}
+## Complex notation의 transpose 및 proof-end 교정
+
+{/* source-content:P4-C119 */}
+Complex least-squares stationarity에는 transpose가 아니라 Hermitian transpose가 필요하므로 
+
+<SourceFormula formula={part4Formula('MAI-P4-199')} part={4} display={true} />
+
+이 맞다. single-term proof 마지막은 
+
+<SourceFormula formula={part4Formula('MAI-P4-200')} part={4} display={true} />
+
+로 교정한다. real symmetric derivative의 빈칸은 
+
+<SourceFormula formula={part4Formula('MAI-P4-201')} part={4} display={true} />
+
+이다.
+
+{/* source-content:P4-C120 */}
+## General inverse form 및 line-search exercise 완성
+
+{/* source-content:P4-C121 */}
+Equation (12)의 blank는 
+
+<SourceFormula formula={part4Formula('MAI-P4-202')} part={4} display={true} />
+
+, normalized Fair potential의 MCQ answer는 
+
+<SourceFormula formula={part4Formula('MAI-P4-203')} part={4} display={true} />
+
+로 B다.
+
+{/* source-content:P4-C122 */}
+## PCG의 “quadratic convergence” 문구 분리
+
+{/* source-content:P4-C123 */}
+원자료 문구는 generic numerical-analysis terminology의 quadratic convergence와 혼동될 수 있다. 안전한 교정은 
+
+<SourceFormula formula={part4Formula('MAI-P4-204')} part={4} display={true} />
+
+이다.
+
+{/* source-content:P4-C124 */}
+## 객관식 및 OGM recurrence 교정
+
+{/* source-content:P4-C125 */}
+Heterogeneous units example의 answer는 
+
+<SourceFormula formula={part4Formula('MAI-P4-205')} part={4} display={true} />
+
+; fixed-coefficient FO answer는 
+
+<SourceFormula formula={part4Formula('MAI-P4-206')} part={4} display={true} />
+
+; ε complexity는 
+
+<SourceFormula formula={part4Formula('MAI-P4-207')} part={4} display={true} />
+
+; OGM final-horizon line의 인덱스는 
+
+<SourceFormula formula={part4Formula('MAI-P4-208')} part={4} display={true} />
+
+로 교정한다.
+
+{/* source-content:P4-C126 */}
+## Logistic regression mapping 완성
+
+{/* source-content:P4-C127 */}
+Equation (21)은 <SourceFormula formula={part4Formula('MAI-P4-209')} part={4} display={false} />; exact mapping은 
+
+<SourceFormula formula={part4Formula('MAI-P4-210')} part={4} display={true} />
+
+이다.
+
+{/* source-content:P4-C128 */}
+## 마지막 strict-subset 질문
+
+{/* source-content:P4-C129 */}
+허용되는 f_i가 임의의 Lipschitz-gradient function이면 I=1, B₁=I로 모든 Ψ를 표현할 수 있으므로 
+
+<SourceFormula formula={part4Formula('MAI-P4-211')} part={4} display={true} />
+
+다. 구조를 더 제한할 때에만 proper subset이 된다.
+
+{/* source-content:P4-C130 */}
+# 2026-08-18 최신 연구 업데이트
+
+{/* source-content:P4-C131 */}
+아래는 2025 lecture source가 아니다. 강의자료의 GD–FGM–OGM 축을 2026-08-18까지의 peer-reviewed/official proceedings와 공개 preprint로 확장하며, source claim과 섞지 않는다.
+
+{/* source-content:P4-C132 */}
+## 1. Worst-case analysis는 손계산에서 PEP/SDP 기반의 algorithm design으로 확장됐다
+
+{/* source-content:P4-C133 */}
+Drori–Teboulle의 Performance Estimation Problem(PEP)은 ‘주어진 oracle model에서 최악의 함수·iterate는 무엇인가’를 optimization problem으로 바꾼다. [원 논문](https://arxiv.org/abs/1206.3209)은 smooth convex first-order methods의 tight analysis와 step-coefficient design을 제시했고, [PEPit](https://arxiv.org/abs/2201.04040)은 gradient/prox/projection oracle을 포함한 분석을 Python과 SDP로 자동화한다.
+
+{/* source-content:P4-C134 */}
+2025년 [Numerical Design of Optimized First-Order Algorithms](https://arxiv.org/abs/2507.20773)은 PEP를 사용해 memoryless/full-memory coefficients를 수치적으로 설계한다. 즉 Part IV의 OGM은 끝점이 아니라, function class·oracle·metric·horizon을 명시해 algorithm 자체를 최적화하는 연구 프로그램의 한 사례다.
+
+{/* source-content:P4-C135 */}
+반드시 구분할 것: PEP가 제공하는 것은 명시된 가정 아래의 worst-case certificate다. stochastic noise, mixed precision, finite batch, distributed communication을 추가하면 새로운 PEP 또는 별도의 stability model이 필요하다.
+
+{/* source-content:P4-C136 */}
+## 2. Acceleration은 O(1/k²)만이 아니라 oscillation·restart·monotonicity를 함께 본다
+
+{/* source-content:P4-C137 */}
+FGM/OGM은 objective value가 매번 감소하지 않을 수 있다. [Adaptive Restart for Accelerated Gradient Schemes](https://arxiv.org/abs/1204.3982)는 function/gradient-based restart로 과도한 momentum의 oscillation을 감지한다. [Restarts Subject to Approximate Sharpness](https://link.springer.com/article/10.1007/s10208-024-09673-8)는 2025년 공개된 parameter-free restart 분석으로 sharpness가 근사적으로만 알려진 상황까지 확장한다.
+
+{/* source-content:P4-C138 */}
+실무 gate는 단일 best theoretical rate가 아니라 objective spike, gradient norm, validation metric, restart count, wall-clock, numerical overflow를 함께 본다. accelerated method를 선택할 때 ‘몇 iteration인가’와 ‘한 iteration이 얼마나 비싸고 안정적인가’를 분리해야 한다.
+
+{/* source-content:P4-C139 */}
+## 3. 대규모 모델 optimizer는 diagonal adaptivity, low-rank state, matrix geometry로 분화됐다
+
+{/* source-content:P4-C140 */}
+Adam 계열의 element-wise moment만이 유일한 선택은 아니다. ICLR 2025의 [SPAM](https://openreview.net/forum?id=L9eBxTCpQG)은 gradient spike를 감지해 momentum reset과 clipping을 결합하고, [LDAdam](https://openreview.net/forum?id=Zkp1GuHerF)은 low-dimensional gradient statistics와 projection-aware state transport로 optimizer-memory를 줄인다.
+
+{/* source-content:P4-C141 */}
+ICLR 2026의 [Muon Outperforms Adam in Tail-End Associative Memory Learning](https://openreview.net/forum?id=twbMFL0DMp)은 Muon의 matrix update가 더 isotropic한 singular spectrum을 만들고 heavy-tailed associative-memory task의 tail class 학습에 유리하다는 분석을 보고한다. 이는 Part IV의 preconditioning 관점을 neural-network matrix geometry로 확장한 사례지만, 모든 architecture·dataset에서의 보편적 우월성을 뜻하지는 않는다.
+
+{/* source-content:P4-C142 */}
+## 4. Nonconvex·distributed setting에서는 guarantee의 목표가 달라진다
+
+{/* source-content:P4-C143 */}
+Deep-network training은 일반적으로 convex minimizer guarantee가 아니라 stationarity, gradient norm, stochastic variance, communication complexity를 본다. [BnB-PEP](https://arxiv.org/abs/2203.07305)은 convex/nonconvex method design을 branch-and-bound로 다루고, ICLR 2026의 [Error Feedback for Muon and Friends](https://openreview.net/forum?id=rex7s82Iav)는 non-Euclidean matrix optimizer를 stochastic/distributed compression과 연결한다.
+
+{/* source-content:P4-C144 */}
+따라서 lecture의 `0 < α < 2/L` theorem을 그대로 LLM training에 이식하면 안 된다. objective class, norm geometry, stochastic oracle, optimizer state, distributed operator를 먼저 명시해야 한다.
+
+{/* source-content:P4-C145 */}
+## 5. Second/high-order methods는 iteration 수와 per-step cost의 Pareto 문제다
+
+{/* source-content:P4-C146 */}
+ICLR 2025의 [OPTAMI](https://openreview.net/forum?id=Cpr6Wv2tfr)는 high-order convex methods의 global superlinear analysis와 PyTorch implementation을 제시한다. Hessian 또는 higher-order information은 iteration complexity를 줄일 수 있지만, derivative construction, linear solve, memory, accelerator mapping이 비싸다.
+
+{/* source-content:P4-C147 */}
+결론적으로 optimizer 선택은 GD·FGM·OGM·Adam·Muon·Newton 중 하나를 이름으로 고르는 문제가 아니다. curvature access, batch noise, matrix shape, memory budget, communication, horizon, target accuracy를 포함한 quality–cost–stability Pareto optimization이다.
+
+{/* source-content:P4-C148 */}
+## 핵심 키워드
+
+{/* source-content:P4-C149 */}
+- **L-smoothness** — gradient 변화량을 input 변화량으로 제한하는 first-order regularity.
+- **Performance Estimation Problem(PEP)** — algorithm의 worst-case performance를 SDP 등으로 계산·설계하는 framework.
+- **Restart** — momentum을 reset해 accelerated method의 oscillation과 local mismatch를 줄이는 mechanism.
+- **Preconditioning** — 좌표·norm geometry를 바꾸어 curvature anisotropy와 condition number를 줄이는 설계.
+- **Matrix optimizer** — parameter matrix의 singular spectrum 또는 non-Euclidean norm을 직접 반영하는 update family.
+- **Optimizer-state efficiency** — moment/preconditioner state의 memory와 communication을 줄이는 설계.
+
+{/* source-content:P4-C150 */}
+## 연구 질문
+
+{/* source-content:P4-C151 */}
+1. PEP로 설계한 finite-horizon optimizer가 stochastic mini-batch·mixed precision에서도 동일한 ranking을 유지하는가?
+2. Restart trigger를 objective/gradient/validation 신호 중 무엇으로 정의할 때 wall-clock과 final generalization이 가장 안정적인가?
+3. Diagonal Adam, low-rank adaptive method, Muon-style matrix geometry를 같은 compute·memory budget에서 어떻게 공정하게 비교할 것인가?
