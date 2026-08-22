@@ -47,14 +47,12 @@ jobs:
           source = Path('.part5-materialize/chunk-04').read_text()
           if len(source) != 8001 or source[5887] != 'i':
               raise SystemExit(f'chunk 04 unexpected shape: len={len(source)}, char={source[5887:5888]!r}')
-          fixed = source[:5887] + source[5888:]
-          Path('/tmp/p5chunks/04').write_text(fixed)
+          Path('/tmp/p5chunks/04').write_text(source[:5887] + source[5888:])
           PY
           test "$(sha256sum /tmp/p5chunks/04 | awk '{print $1}')" = "${expected[4]}"
 
           head -c 2600 .part5-materialize/chunk-06 > /tmp/p5chunks/06
           test "$(sha256sum /tmp/p5chunks/06 | awk '{print $1}')" = "${expected[6]}"
-
           cat /tmp/p5chunks/{00,01,02,03,04,05,06} > /tmp/part5-payload.b64
           test "$(wc -c < /tmp/part5-payload.b64)" -eq 50600
           test "$(sha256sum /tmp/part5-payload.b64 | awk '{print $1}')" = "cb20c6193faeeb28716615a169c31ba6eb700bd6b4ef58381163a8fed7112140"
@@ -64,8 +62,141 @@ jobs:
           rm -rf _part5_payload
           mkdir _part5_payload
           tar -xzf /tmp/part5-payload.tgz -C _part5_payload
-          python3 _part5_payload/patch.py
-          rm -rf .part5-materialize
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+
+          root = Path.cwd()
+          payload = root / '_part5_payload' / 'files'
+          for src in payload.rglob('*'):
+              if src.is_dir():
+                  continue
+              rel = src.relative_to(payload)
+              dst = root / rel
+              dst.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(src, dst)
+
+          for rel in [
+              'spaceship-ui/src/data/modern-ai-part5/source-acquisition.json',
+              'spaceship-ui/scripts/modern-ai-part5-acquisition-audit.mjs',
+          ]:
+              p = root / rel
+              if p.exists():
+                  p.unlink()
+
+          def replace_exact(path, old, new, label):
+              p = root / path
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 anchor, got {count}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_exact(
+              'spaceship-ui/package.json',
+              '    "modern-ai:part5-acquisition-check": "node scripts/modern-ai-part5-acquisition-audit.mjs",\n'
+              '    "modern-ai:part5-acquisition-ready": "node scripts/modern-ai-part5-acquisition-audit.mjs --require-complete",\n',
+              '    "modern-ai:part5-check": "node scripts/modern-ai-part5-audit.mjs && node scripts/modern-ai-part5-provenance-audit.mjs",\n',
+              'package Part V scripts',
+          )
+          replace_exact(
+              'spaceship-ui/package.json',
+              ' && pnpm modern-ai:part5-acquisition-check && pnpm formula-guide:check',
+              ' && pnpm modern-ai:part5-check && pnpm formula-guide:check',
+              'package content check',
+          )
+
+          tax_path = root / 'scripts/normalize_tags_current.py'
+          tax = tax_path.read_text(encoding='utf-8')
+          if '"modern-artificial-intelligence-5.mdx"' not in tax:
+              marker = '''        "modern-artificial-intelligence-4.mdx": Taxonomy(
+            "ai-machine-learning",
+            "optimization",
+            "study-note",
+            (
+                "gradient-descent",
+                "convex-optimization",
+                "accelerated-optimization",
+                "preconditioning",
+                "logistic-regression",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            6,
+        ),
+'''
+              addition = marker + '''        "modern-artificial-intelligence-5.mdx": Taxonomy(
+            "ai-machine-learning",
+            "image-classification",
+            "study-note",
+            (
+                "image-classification",
+                "convolutional-neural-network",
+                "imagenet",
+                "vision-transformer",
+                "foundation-model",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            7,
+        ),
+'''
+              if tax.count(marker) != 1:
+                  raise SystemExit('taxonomy: Part IV anchor not unique')
+              tax_path.write_text(tax.replace(marker, addition, 1), encoding='utf-8')
+
+          reg_path = root / 'spaceship-ui/src/lib/formula-lessons/registry.mjs'
+          reg = reg_path.read_text(encoding='utf-8')
+          if 'modern-ai-part5/formula-ledger.json' not in reg:
+              import_anchor = "import part4FormulaLedger from '../../data/modern-ai-part4/formula-ledger.json';\n"
+              if reg.count(import_anchor) != 1:
+                  raise SystemExit('registry: Part IV import anchor not unique')
+              reg = reg.replace(import_anchor, import_anchor + "import part5FormulaLedger from '../../data/modern-ai-part5/formula-ledger.json';\n", 1)
+
+              display_anchor = '''  ...part4ReviewCorrections.corrections.filter((formula) => formula.display === 'display').map((formula) => ({
+    formulaId: formula.formulaId,
+    part: 4,
+    sourceStatus: formula.status,
+    pdfPage: formula.pdfPage,
+    articleSection: formula.articleSection,
+  })),
+];
+'''
+              display_new = '''  ...part4ReviewCorrections.corrections.filter((formula) => formula.display === 'display').map((formula) => ({
+    formulaId: formula.formulaId,
+    part: 4,
+    sourceStatus: formula.status,
+    pdfPage: formula.pdfPage,
+    articleSection: formula.articleSection,
+  })),
+  ...part5FormulaLedger.formulas.filter((formula) => formula.display === 'display').map((formula) => ({
+    formulaId: formula.formulaId,
+    part: 5,
+    sourceStatus: formula.status,
+    pdfPage: formula.pdfPage,
+    articleSection: formula.articleSection,
+  })),
+];
+'''
+              if reg.count(display_anchor) != 1:
+                  raise SystemExit('registry: display anchor not unique')
+              reg = reg.replace(display_anchor, display_new, 1)
+
+              count_anchor = '''  part4:DISPLAY_FORMULAS.filter((formula)=>formula.part===4).length,
+  approved:ALL_APPROVED_FORMULA_IDS.length,
+'''
+              count_new = '''  part4:DISPLAY_FORMULAS.filter((formula)=>formula.part===4).length,
+  part5:DISPLAY_FORMULAS.filter((formula)=>formula.part===5).length,
+  approved:ALL_APPROVED_FORMULA_IDS.length,
+'''
+              if reg.count(count_anchor) != 1:
+                  raise SystemExit(f'registry: count anchor expected 1, got {reg.count(count_anchor)}')
+              reg = reg.replace(count_anchor, count_new, 1)
+              reg_path.write_text(reg, encoding='utf-8')
+          PY
+
+          rm -rf .part5-materialize _part5_payload
           rm -f .github/workflows/part5-materialize-once.yml
 
           test "$(sha256sum spaceship-ui/src/data/modern-ai-part5/README.md | awk '{print $1}')" = "51a812c9887548480a37bba0075bfbc41a1012cda0f586579e3b4b73c52a0dfb"
