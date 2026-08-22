@@ -1,0 +1,129 @@
+name: Part5 source materialize once
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-part5-source-acquisition
+    paths:
+      - .github/workflows/part5-source-materialize-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/modern-ai-part5-source-acquisition
+      - name: Materialize source-complete Part V
+        run: |
+          python3 - <<'PY'
+          import base64, io, json, pathlib, tarfile
+
+          root = pathlib.Path('.')
+          payload = base64.b64decode((root / '.part5-source-payload.b64').read_text().strip())
+          with tarfile.open(fileobj=io.BytesIO(payload), mode='r:gz') as tf:
+              for member in tf.getmembers():
+                  target = (root / member.name).resolve()
+                  if root.resolve() not in target.parents and target != root.resolve():
+                      raise SystemExit(f'unsafe payload path: {member.name}')
+              tf.extractall(root)
+
+          pkg_path = root / 'spaceship-ui/package.json'
+          pkg = pkg_path.read_text()
+          old = '    "modern-ai:part5-acquisition-check": "node scripts/modern-ai-part5-acquisition-audit.mjs",\n    "modern-ai:part5-acquisition-ready": "node scripts/modern-ai-part5-acquisition-audit.mjs --require-complete",'
+          new = '    "modern-ai:part5-check": "node scripts/modern-ai-part5-audit.mjs",'
+          assert pkg.count(old) == 1
+          pkg = pkg.replace(old, new)
+          assert pkg.count('pnpm modern-ai:part5-acquisition-check') == 1
+          pkg = pkg.replace('pnpm modern-ai:part5-acquisition-check', 'pnpm modern-ai:part5-check')
+          pkg_path.write_text(pkg)
+
+          reg_path = root / 'spaceship-ui/src/lib/formula-lessons/registry.mjs'
+          reg = reg_path.read_text()
+          import_marker = "import part4ReviewCorrections from '../../data/modern-ai-part4/review-corrections.json';"
+          assert reg.count(import_marker) == 1
+          reg = reg.replace(import_marker, import_marker + "\nimport part5FormulaLedger from '../../data/modern-ai-part5/formula-ledger.json';")
+          block = """  ...part4ReviewCorrections.corrections.filter((formula) => formula.display === 'display').map((formula) => ({
+    formulaId: formula.formulaId,
+    part: 4,
+    sourceStatus: formula.status,
+    pdfPage: formula.pdfPage,
+    articleSection: formula.articleSection,
+  })),
+];"""
+          replacement = """  ...part4ReviewCorrections.corrections.filter((formula) => formula.display === 'display').map((formula) => ({
+    formulaId: formula.formulaId,
+    part: 4,
+    sourceStatus: formula.status,
+    pdfPage: formula.pdfPage,
+    articleSection: formula.articleSection,
+  })),
+  ...part5FormulaLedger.formulas.filter((formula) => formula.display === 'display').map((formula) => ({
+    formulaId: formula.formulaId,
+    part: 5,
+    sourceStatus: formula.status,
+    pdfPage: formula.pdfPage,
+    articleSection: formula.articleSection,
+  })),
+];"""
+          assert reg.count(block) == 1
+          reg = reg.replace(block, replacement)
+          count_marker = "  part4:DISPLAY_FORMULAS.filter((formula)=>formula.part===4).length,"
+          assert reg.count(count_marker) == 1
+          reg = reg.replace(count_marker, count_marker + "\n  part5:DISPLAY_FORMULAS.filter((formula)=>formula.part===5).length,")
+          reg_path.write_text(reg)
+
+          tax_path = root / 'scripts/normalize_tags_current.py'
+          tax = tax_path.read_text()
+          marker = '''        "modern-artificial-intelligence-4.mdx": Taxonomy(
+            "ai-machine-learning",
+            "optimization",
+            "study-note",
+            (
+                "gradient-descent",
+                "convex-optimization",
+                "accelerated-optimization",
+                "preconditioning",
+                "logistic-regression",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            6,
+        ),'''
+          addition = marker + '''
+        "modern-artificial-intelligence-5.mdx": Taxonomy(
+            "ai-machine-learning",
+            "image-classification",
+            "study-note",
+            (
+                "image-classification",
+                "convolutional-neural-network",
+                "resnet",
+                "densenet",
+                "squeeze-excitation",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            7,
+        ),'''
+          assert tax.count(marker) == 1
+          tax_path.write_text(tax.replace(marker, addition))
+
+          for obsolete in [
+              root / 'spaceship-ui/src/data/modern-ai-part5/source-acquisition.json',
+              root / 'spaceship-ui/scripts/modern-ai-part5-acquisition-audit.mjs',
+              root / '.part5-source-payload.b64',
+              root / '.github/workflows/part5-source-materialize-once.yml',
+          ]:
+              if obsolete.exists():
+                  obsolete.unlink()
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "feat: materialize source-complete Modern AI Part V"
+          git push origin HEAD:agent/modern-ai-part5-source-acquisition
