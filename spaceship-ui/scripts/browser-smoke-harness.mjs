@@ -12,6 +12,17 @@ export const REQUIRE_GPU = process.env.JJO_SMOKE_REQUIRE_GPU === '1';
 export const TIMEOUT = 20_000;
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const TRANSIENT_NAVIGATION_ERROR_PATTERNS = Object.freeze([
+  /Inspected target navigated or closed/i,
+  /Execution context was destroyed/i,
+  /Cannot find context with specified id/i,
+]);
+
+export function isTransientNavigationError(error) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return TRANSIENT_NAVIGATION_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 export function canonicalPathname(value) {
   const pathname = value || '/';
   if (pathname === '/') return '/';
@@ -37,12 +48,21 @@ export function setReducedMotionOverride(value) {
 export async function poll(fn, label, timeout = TIMEOUT) {
   const started = Date.now();
   let value;
+  let lastTransientError = null;
   while (Date.now() - started < timeout) {
-    value = await fn();
-    if (value) return value;
+    try {
+      value = await fn();
+      lastTransientError = null;
+      if (value) return value;
+    } catch (error) {
+      if (!isTransientNavigationError(error)) throw error;
+      lastTransientError = error instanceof Error ? error.message : String(error);
+      value = undefined;
+    }
     await sleep(100);
   }
-  throw new Error(`Timed out: ${label}; last=${JSON.stringify(value)}`);
+  const transient = lastTransientError ? `; transient=${JSON.stringify(lastTransientError)}` : '';
+  throw new Error(`Timed out: ${label}; last=${JSON.stringify(value)}${transient}`);
 }
 
 function executable(candidates) {
