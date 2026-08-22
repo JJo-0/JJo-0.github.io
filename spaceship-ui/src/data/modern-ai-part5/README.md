@@ -36,3 +36,5 @@ Part V may move from acquisition staging to source-complete reconstruction only 
 8. the dated 2026-08-18 research-update layer remains outside PDF source coverage.
 
 `node scripts/modern-ai-part5-acquisition-audit.mjs` validates the current inventory structure. `node scripts/modern-ai-part5-acquisition-audit.mjs --require-complete` is intentionally fail-closed until the conditions above are satisfied.
+
+<!-- materialize-trigger: source-complete-payload-v1 -->
