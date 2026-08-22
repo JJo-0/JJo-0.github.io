@@ -5,6 +5,7 @@ import part4FormulaLedger from '../../data/modern-ai-part4/formula-ledger.json';
 import part4ReviewCorrections from '../../data/modern-ai-part4/review-corrections.json';
 import { APPROVED_FORMULA_IDS, getApprovedLessonOverride, getNoVisualReason } from './overrides.mjs';
 import { PART3_APPROVED_FORMULA_IDS, getPart3ApprovedLessonOverride } from './part3-overrides.mjs';
+import { PART4_APPROVED_FORMULA_IDS, getPart4ApprovedLessonOverride, getPart4NoVisualReason } from './part4-overrides.mjs';
 
 const part4StatusOverrides = part4ReviewCorrections.statusOverrides ?? {};
 const DISPLAY_FORMULAS = [
@@ -31,13 +32,13 @@ const DISPLAY_FORMULAS = [
   })),
 ];
 const DISPLAY_FORMULA_BY_ID = new Map(DISPLAY_FORMULAS.map((formula) => [formula.formulaId, formula]));
-const ALL_APPROVED_FORMULA_IDS = Object.freeze([...APPROVED_FORMULA_IDS, ...PART3_APPROVED_FORMULA_IDS]);
+const ALL_APPROVED_FORMULA_IDS = Object.freeze([...APPROVED_FORMULA_IDS, ...PART3_APPROVED_FORMULA_IDS, ...PART4_APPROVED_FORMULA_IDS]);
 
 export function getFormulaLessonRef(formulaId) {
   const source = DISPLAY_FORMULA_BY_ID.get(formulaId); if (!source) return null;
-  const override = getApprovedLessonOverride(formulaId) ?? getPart3ApprovedLessonOverride(formulaId);
+  const override = getApprovedLessonOverride(formulaId) ?? getPart3ApprovedLessonOverride(formulaId) ?? getPart4ApprovedLessonOverride(formulaId);
   if (override) return { formulaId, ...override, source, reason: null };
-  const reason = getNoVisualReason(formulaId, source);
+  const reason = getPart4NoVisualReason(formulaId) ?? getNoVisualReason(formulaId, source);
   if (reason) return { formulaId, lessonId: null, focus: null, state: 'no-visual-with-reason', mode: 'none', renderer: null, reason, source };
   return { formulaId, lessonId: null, focus: null, state: 'unreviewed', mode: 'none', renderer: null, reason: null, source };
 }
