@@ -1,0 +1,70 @@
+name: Part V materialize once
+
+on:
+  push:
+    branches:
+      - agent/modern-ai-part5-source-acquisition
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/modern-ai-part5-source-acquisition
+          fetch-depth: 0
+
+      - name: Verify and reconstruct payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/p5chunks
+          expected=(
+            f56605001e5309811a8675d041ed3927064a5cc347ec7ae3106b8278ad1c7706
+            b8b55e19108a38d63a8d60e7808d55e416276eb2de2a866c7adbf2222ebacc62
+            158dbe03bea2b1f6ce9af84c4be3e7df2733f33845819777823115000a2bbb5f
+            cff52c7a0dbb18bdabd40ecdef84c46366f1d0854851c2266459d4755b7a0ef8
+            089487443bf323ec3de690b052616e1893ff18d9cf6cabc1cd66678bc6d71aa2
+            08d438189089fae8082371b2869fd96c4e817ab9b0d36168f7fadab8c72898c4
+            469dce8e7ea23914156507f549b6d249be8ca5c37e9a3af7153a0bcea92e8ccb
+          )
+          for idx in 00 01 02 03 04 05; do
+            head -c 8000 ".part5-materialize/chunk-${idx}" > "/tmp/p5chunks/${idx}"
+            got="$(sha256sum "/tmp/p5chunks/${idx}" | awk '{print $1}')"
+            n=$((10#$idx))
+            test "$got" = "${expected[$n]}" || { echo "chunk $idx SHA mismatch: $got"; exit 1; }
+          done
+          head -c 2600 .part5-materialize/chunk-06 > /tmp/p5chunks/06
+          got="$(sha256sum /tmp/p5chunks/06 | awk '{print $1}')"
+          test "$got" = "${expected[6]}" || { echo "chunk 06 SHA mismatch: $got"; exit 1; }
+          cat /tmp/p5chunks/{00,01,02,03,04,05,06} > /tmp/part5-payload.b64
+          test "$(wc -c < /tmp/part5-payload.b64)" -eq 50600
+          test "$(sha256sum /tmp/part5-payload.b64 | awk '{print $1}')" = "cb20c6193faeeb28716615a169c31ba6eb700bd6b4ef58381163a8fed7112140"
+          base64 --decode /tmp/part5-payload.b64 > /tmp/part5-payload.tgz
+          test "$(sha256sum /tmp/part5-payload.tgz | awk '{print $1}')" = "039cc1eba44f82567907ed2697315b7b03c2099f360b05eb3f1911ed5547d15d"
+
+      - name: Materialize source-complete Part V
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf _part5_payload
+          mkdir _part5_payload
+          tar -xzf /tmp/part5-payload.tgz -C _part5_payload
+          python3 _part5_payload/patch.py
+          rm -rf .part5-materialize
+          rm -f .github/workflows/part5-materialize-once.yml
+
+      - name: Commit materialized tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat: reconstruct Modern AI Part V from source PDF"
+          git push origin HEAD:agent/modern-ai-part5-source-acquisition
