@@ -211,16 +211,22 @@ export async function attach(cdp) {
         // GitHub Pages serves Astro directory routes with a terminal slash.
         // Keep the network response untouched, then normalize only the smoke
         // browser's history URL so route assertions stay identical to preview.
-        try {
-          if (location.pathname !== '/' && /\\/+$/u.test(location.pathname)) {
-            const normalizedPath = location.pathname.replace(/\\/+$/u, '') || '/';
-            history.replaceState(
-              history.state,
-              '',
-              normalizedPath + location.search + location.hash,
-            );
-          }
-        } catch {}
+        const normalizeSmokePath = () => {
+          try {
+            if (location.pathname !== '/' && /\\/+$/u.test(location.pathname)) {
+              const normalizedPath = location.pathname.replace(/\\/+$/u, '') || '/';
+              history.replaceState(
+                history.state,
+                '',
+                normalizedPath + location.search + location.hash,
+              );
+            }
+          } catch {}
+        };
+        normalizeSmokePath();
+        document.addEventListener('astro:page-load', normalizeSmokePath);
+        document.addEventListener('astro:after-swap', normalizeSmokePath);
+        window.addEventListener('popstate', normalizeSmokePath);
         try { localStorage.setItem('theme', 'light'); } catch {}
         if (typeof SVGAElement !== 'undefined' && typeof SVGAElement.prototype.click !== 'function') {
           Object.defineProperty(SVGAElement.prototype, 'click', {
