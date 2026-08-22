@@ -295,7 +295,7 @@ else if (formulaLedger && review) {
     ['inline', /data-formula-display="inline"/g, EXPECTED.inline],
     ['hash', /data-source-hash="[0-9a-f]{64}"/g, EXPECTED.renderedFormulas],
     ['guide', /data-formula-guide="rich"/g, EXPECTED.renderedDisplay],
-    ['lesson-unreviewed', /data-formula-lesson-state="unreviewed"/g, EXPECTED.renderedDisplay],
+    ['lesson-state', /data-formula-lesson-state="(?:approved-interactive|approved-derivation|approved-structure|no-visual-with-reason|unreviewed)"/g, EXPECTED.renderedDisplay],
   ];
   for (const [label, pattern, expected] of checks) {
     const actual = (html.match(pattern) ?? []).length;
@@ -325,4 +325,4 @@ if (unique.length) {
   for (const issue of unique) console.error(`  - ${issue}`);
   process.exit(1);
 }
-console.log(`modern-ai-part4-audit: PASS (${EXPECTED.pages} pages; ${EXPECTED.sourceFormulas} source formulas / ${EXPECTED.formulas} frozen formula records; ${EXPECTED.sourceContent} PDF source content / ${EXPECTED.editorialContent} editorial / ${EXPECTED.researchContent} research blocks; ${EXPECTED.reviewCorrections} adversarial corrections; ${EXPECTED.renderedFormulas} rendered unique formulas; ${EXPECTED.renderedDisplay} explicit unreviewed lesson states; ${EXPECTED.figures} figures; ${EXPECTED.annotations} annotations; source-only page coverage)`);
+console.log(`modern-ai-part4-audit: PASS (${EXPECTED.pages} pages; ${EXPECTED.sourceFormulas} source formulas / ${EXPECTED.formulas} frozen formula records; ${EXPECTED.sourceContent} PDF source content / ${EXPECTED.editorialContent} editorial / ${EXPECTED.researchContent} research blocks; ${EXPECTED.reviewCorrections} adversarial corrections; ${EXPECTED.renderedFormulas} rendered unique formulas; ${EXPECTED.renderedDisplay} explicit lesson states; ${EXPECTED.figures} figures; ${EXPECTED.annotations} annotations; source-only page coverage)`);
