@@ -1,40 +1,22 @@
-# Modern AI Part V — source acquisition staging
+# Modern AI Part V source ledgers
 
-Target source: `5_Ch5-Image classification.pdf`
+Authoritative source: `5_Ch5-Image classification.pdf`
 
-This directory is **not yet the authoritative Part V source ledger**. It exists to make incomplete acquisition visible and fail closed while the original PDF cannot be fully opened through the current file-retrieval path.
+- PDF pages: 18
+- canonical byte size: 13,823,037 B
+- canonical SHA-256: `45102cfc6e7add2d671924ca2f3bc2e373270a915236db364f00f9871cd9ba52`
+- canonical Drive file: `1pu3Tn2VQEAwE3AfN9KtOn9g6eAWiPSuN`
+- source formulas: 52 = 19 display + 33 inline
+- PDF-source content blocks: 135
+- editorial-audit blocks: 5
+- 2026-08-18 research-update blocks: 13
+- source visual groups: 34
+- readable/partially-readable annotation clusters: 15
 
-## Known source metadata
+A second same-name Drive file (`1UVwEANZgWG1n5UGY7-VpEWOvPNeS___2`) has SHA-256
+`74388529731c9f82bcc3a42d2a0b0a3f3513ae99a8d849689badbfb7401ebc2e` and differs at the byte/PDF-metadata level, but all 18 pages
+are pixel-identical to the canonical source at 200 dpi. The older copy is the
+canonical byte source and the later copy is recorded only as a re-save provenance record.
 
-- Course: `ECE5992: Modern Artificial Intelligence`
-- Instructor: Il Yong Chun
-- Lecture date: 2025-03-19
-- Expected PDF pages: 18
-- Source SHA-256: **pending direct byte access**
-
-## Current acquisition state
-
-- 16 pages have only snippet-level evidence.
-- Pages **10** and **14** have no page-specific retrievable evidence and are explicitly `unverified`.
-- 0 pages are currently promoted to `rendered-inspected` in this staging ledger.
-- `sourceComplete=false`
-- `canPublish=false`
-
-Snippet evidence is useful for planning the later transcription but is never accepted as a substitute for rendered-page inspection. Candidate formula fragments in `source-acquisition.json` are **not formula-ledger records** and receive no MAI-P5 IDs until the original page is inspected.
-
-## Promotion rule
-
-Part V may move from acquisition staging to source-complete reconstruction only after all of the following are true:
-
-1. source bytes are accessible and SHA-256 is recorded;
-2. every page 1–18 is rendered and inspected;
-3. text extraction is cross-checked against the rendered page;
-4. all display and meaningful inline formulas are assigned exact `MAI-P5-*` IDs and hashes;
-5. every heading, paragraph, bullet, question, table, figure, caption, reference, and readable annotation is inventoried;
-6. source-suspect / blank expressions are preserved before any editorial correction;
-7. page/formula/content ledgers cover the same source-only set exactly;
-8. the dated 2026-08-18 research-update layer remains outside PDF source coverage.
-
-`node scripts/modern-ai-part5-acquisition-audit.mjs` validates the current inventory structure. `node scripts/modern-ai-part5-acquisition-audit.mjs --require-complete` is intentionally fail-closed until the conditions above are satisfied.
-
-<!-- materialize-trigger: source-complete-payload-v1 -->
+Part V display formulas are intentionally registered as `unreviewed`; exact-ID
+visualization triage is the subsequent #38 Part V lesson milestone.

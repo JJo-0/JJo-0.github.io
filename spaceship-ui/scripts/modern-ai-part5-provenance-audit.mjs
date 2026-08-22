@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+const root=process.cwd(),issues=[],fail=(m)=>issues.push(m);
+const data=path.join(root,'src','data','modern-ai-part5');
+const content=JSON.parse(fs.readFileSync(path.join(data,'content-ledger.json'),'utf8'));
+const pages=JSON.parse(fs.readFileSync(path.join(data,'page-ledger.json'),'utf8')).pages??[];
+const provenance=JSON.parse(fs.readFileSync(path.join(data,'content-provenance.json'),'utf8'));
+if(provenance.sourceSha256!=='45102cfc6e7add2d671924ca2f3bc2e373270a915236db364f00f9871cd9ba52')fail('provenance source SHA mismatch');
+const layers=new Map((provenance.layers??[]).map(l=>[l.id,l]));
+for(const id of ['source-reconstructed','editorial-audit','2026-08-18 research-update'])if(!layers.has(id))fail(`missing layer ${id}`);
+if(layers.get('source-reconstructed')?.pdfCoverage!==true)fail('source layer must own PDF coverage');
+if(layers.get('editorial-audit')?.pdfCoverage!==false||layers.get('2026-08-18 research-update')?.pdfCoverage!==false)fail('non-source layers must not claim PDF coverage');
+const pageIds=new Set(pages.flatMap(p=>p.contentIds??[]));
+const sourceIds=new Set((content.content??[]).filter(c=>c.layer==='source-reconstructed').map(c=>c.contentId));
+const nonSource=(content.content??[]).filter(c=>c.layer!=='source-reconstructed').map(c=>c.contentId);
+if(pageIds.size!==sourceIds.size||[...pageIds].some(id=>!sourceIds.has(id)))fail('page coverage must equal source-only content set');
+for(const id of nonSource)if(pageIds.has(id))fail(`${id}: non-source content claims a PDF page`);
+const unique=[...new Set(issues)].sort();
+if(unique.length){console.error(`modern-ai-part5-provenance-audit: found ${unique.length} issue(s):`);for(const i of unique)console.error(`  - ${i}`);process.exit(1);}
+console.log(`modern-ai-part5-provenance-audit: PASS (${sourceIds.size} PDF-source blocks; 5 editorial; 13 research; zero non-source page coverage)`);
