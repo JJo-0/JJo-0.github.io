@@ -1,9 +1,12 @@
 import part1FormulaHashes from '../../../scripts/modern-ai-formula-hashes.json';
 import part2FormulaLedger from '../../data/modern-ai-part2/formula-ledger.json';
 import part3FormulaLedger from '../../data/modern-ai-part3/formula-ledger.json';
+import part4FormulaLedger from '../../data/modern-ai-part4/formula-ledger.json';
+import part4ReviewCorrections from '../../data/modern-ai-part4/review-corrections.json';
 import { APPROVED_FORMULA_IDS, getApprovedLessonOverride, getNoVisualReason } from './overrides.mjs';
 import { PART3_APPROVED_FORMULA_IDS, getPart3ApprovedLessonOverride } from './part3-overrides.mjs';
 
+const part4StatusOverrides = part4ReviewCorrections.statusOverrides ?? {};
 const DISPLAY_FORMULAS = [
   ...part1FormulaHashes.formulas.map((formula) => ({ formulaId: formula.id, part: 1, sourceStatus: 'source-exact' })),
   ...part2FormulaLedger.formulas.filter((formula) => formula.display === 'display').map((formula) => ({
@@ -11,6 +14,20 @@ const DISPLAY_FORMULAS = [
   })),
   ...part3FormulaLedger.formulas.filter((formula) => formula.display === 'display').map((formula) => ({
     formulaId: formula.formulaId, part: 3, sourceStatus: formula.status, pdfPage: formula.pdfPage, articleSection: formula.articleSection,
+  })),
+  ...part4FormulaLedger.formulas.filter((formula) => formula.display === 'display').map((formula) => ({
+    formulaId: formula.formulaId,
+    part: 4,
+    sourceStatus: part4StatusOverrides[formula.formulaId]?.status ?? formula.status,
+    pdfPage: formula.pdfPage,
+    articleSection: formula.articleSection,
+  })),
+  ...part4ReviewCorrections.corrections.filter((formula) => formula.display === 'display').map((formula) => ({
+    formulaId: formula.formulaId,
+    part: 4,
+    sourceStatus: formula.status,
+    pdfPage: formula.pdfPage,
+    articleSection: formula.articleSection,
   })),
 ];
 const DISPLAY_FORMULA_BY_ID = new Map(DISPLAY_FORMULAS.map((formula) => [formula.formulaId, formula]));
@@ -31,6 +48,7 @@ export const FORMULA_LESSON_COUNTS=Object.freeze({
  part1:DISPLAY_FORMULAS.filter((formula)=>formula.part===1).length,
  part2:DISPLAY_FORMULAS.filter((formula)=>formula.part===2).length,
  part3:DISPLAY_FORMULAS.filter((formula)=>formula.part===3).length,
+ part4:DISPLAY_FORMULAS.filter((formula)=>formula.part===4).length,
  approved:ALL_APPROVED_FORMULA_IDS.length,
  noVisual:getFormulaLessonInventory().filter((entry)=>entry?.state==='no-visual-with-reason').length,
  unreviewed:getFormulaLessonInventory().filter((entry)=>entry?.state==='unreviewed').length,
