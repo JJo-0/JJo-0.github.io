@@ -114,7 +114,9 @@ export function detectExperienceCapability(): CapabilityProfile {
   }
 
   const backend: RendererBackend = tier === 'ultra' ? 'webgpu' : 'webgl2';
-  const initialQuality: RendererQuality = tier === 'ultra' ? 'high' : 'balanced';
+  // Do not make first paint pay the maximum visual quality cost. The existing
+  // adaptive controller can promote a stable renderer after sustained headroom.
+  const initialQuality: RendererQuality = tier === 'ultra' ? 'balanced' : 'low';
   const maximumQuality: RendererQuality = tier === 'ultra' ? 'high' : 'balanced';
 
   return {
@@ -129,8 +131,8 @@ export function detectExperienceCapability(): CapabilityProfile {
     narrowViewport,
     hardwareConcurrency,
     deviceMemory,
-    dprCap: tier === 'ultra' ? 1.75 : 1,
-    particleCount: tier === 'ultra' ? 112 : 64,
+    dprCap: tier === 'ultra' ? 1.5 : 1,
+    particleCount: tier === 'ultra' ? 80 : 48,
     maxFps: 60,
     antialias: tier === 'ultra',
     initialQuality,
