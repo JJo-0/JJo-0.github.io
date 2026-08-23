@@ -2,10 +2,10 @@
 import '@/styles/global.css';
 import '@/styles/experience.css';
 import '@/styles/transitions.css';
+import '@/styles/performance.css';
 import { SITE } from '@/config';
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
-import SearchModal from '@/components/SearchModal.svelte';
 import TransitionRuntime from '@/components/navigation/TransitionRuntime.astro';
 import { ClientRouter } from 'astro:transitions';
 import JsonLd from '@/components/JsonLd.astro';
@@ -77,6 +77,30 @@ const gaScript = `
   gtag('js', new Date());
   gtag('config', '${analyticsId}');
 `;
+
+const adsenseLoaderScript = adsenseClientId
+  ? `
+  (function(w,d,client){
+    if (w.__jjoAdsenseRuntime) return;
+    w.__jjoAdsenseRuntime = true;
+    var load = function(){
+      if (d.querySelector('script[data-adsense-deferred]')) return;
+      var script = d.createElement('script');
+      script.async = true;
+      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + client;
+      script.crossOrigin = 'anonymous';
+      script.dataset.adsenseDeferred = 'true';
+      d.head.appendChild(script);
+    };
+    var schedule = function(){
+      if ('requestIdleCallback' in w) w.requestIdleCallback(load, { timeout: 3500 });
+      else w.setTimeout(load, 1500);
+    };
+    if (d.readyState === 'complete') schedule();
+    else w.addEventListener('load', schedule, { once: true });
+  })(window,document,'${adsenseClientId}');
+`
+  : '';
 ---
 
 <html lang={pageLang}>
@@ -94,8 +118,6 @@ const gaScript = `
 
     {analyticsId && <link rel="preconnect" href="https://www.googletagmanager.com" />}
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-    {adsenseClientId && <link rel="preconnect" href="https://pagead2.googlesyndication.com" />}
-    {adsenseClientId && <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />}
     {usesChart && <link rel="preconnect" href="https://cdn.jsdelivr.net" />}
 
     <title>{pageTitle}</title>
@@ -195,12 +217,7 @@ const gaScript = `
       adsenseClientId && (
         <>
           <meta name="google-adsense-account" content={adsenseClientId} />
-          <script
-            is:inline
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
-            crossorigin="anonymous"
-          />
+          <script is:inline set:html={adsenseLoaderScript} />
         </>
       )
     }
@@ -237,7 +254,6 @@ const gaScript = `
       </main>
       <AdSense />
       <Footer />
-      <SearchModal client:idle />
     </div>
   </body>
 </html>
