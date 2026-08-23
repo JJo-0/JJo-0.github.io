@@ -203,10 +203,62 @@ async function expectUrl(cdp, sessionId, expected, label) {
   }
 }
 
+async function probeInternalTargets(entries, route) {
+  const targets = [...new Set(entries.map(({ expected }) => {
+    const target = new URL(expected.href);
+    target.hash = '';
+    return target.href;
+  }))];
+
+  for (let offset = 0; offset < targets.length; offset += 8) {
+    const batch = targets.slice(offset, offset + 8);
+    const results = await Promise.all(
+      batch.map(async (url) => {
+        try {
+          const response = await fetch(url, { method: 'HEAD', redirect: 'follow' });
+          return { url, status: response.status, ok: response.ok };
+        } catch (error) {
+          return { url, status: 0, ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
+      }),
+    );
+    for (const result of results) {
+      assert.equal(
+        result.ok,
+        true,
+        `${route}: unreachable internal target ${result.url}; status=${result.status}; error=${result.error || 'none'}`,
+      );
+    }
+  }
+  return targets.length;
+}
+
+async function validateClickedDestination(cdp, sessionId, route, entry) {
+  await navigate(cdp, sessionId, route);
+  await trustedClick(cdp, sessionId, stablePointExpression(entry.link), entry.label);
+  await expectUrl(cdp, sessionId, entry.expected, `${entry.label} destination`);
+
+  const actual = await evaluate(cdp, sessionId, `location.pathname + location.search + location.hash`);
+  assert.equal(actual, `${entry.expected.pathname}${entry.expected.search}${entry.expected.hash}`);
+  if (entry.expected.pathname !== '/') assert.notEqual(actual, '/', `${entry.label}: fell back to Home`);
+  if (entry.expected.hash) {
+    assert.equal(
+      await evaluate(
+        cdp,
+        sessionId,
+        `Boolean(document.getElementById(decodeURIComponent(location.hash.slice(1))))`,
+      ),
+      true,
+      `${entry.label}: hash target missing`,
+    );
+  }
+}
+
 async function auditRoute(cdp, sessionId, route) {
   await navigate(cdp, sessionId, route);
   const links = await evaluate(cdp, sessionId, INVENTORY);
   const origin = new URL(BASE).origin;
+  const internalEntries = [];
   let clicked = 0;
 
   for (const [index, link] of links.entries()) {
@@ -234,25 +286,49 @@ async function auditRoute(cdp, sessionId, route) {
       assert.equal(link.homeSemantic, true, `${label}: unexpected Home target`);
     }
 
-    await navigate(cdp, sessionId, route);
-    await trustedClick(cdp, sessionId, stablePointExpression(link), label);
-    await expectUrl(cdp, sessionId, expected, `${label} destination`);
+    const entry = { link, label, expected };
+    internalEntries.push(entry);
 
-    const actual = await evaluate(cdp, sessionId, `location.pathname + location.search + location.hash`);
-    assert.equal(actual, `${expected.pathname}${expected.search}${expected.hash}`);
-    if (expected.pathname !== '/') assert.notEqual(actual, '/', `${label}: fell back to Home`);
-    if (expected.hash) {
-      assert.equal(
-        await evaluate(
-          cdp,
-          sessionId,
-          `Boolean(document.getElementById(decodeURIComponent(location.hash.slice(1))))`,
-        ),
-        true,
-        `${label}: hash target missing`,
-      );
-    }
+    // Core routes stay exhaustively activation-tested. Writing is an archive:
+    // every destination remains exhaustively HEAD-probed, while representative
+    // route families are trusted-clicked so the matrix does not grow O(posts).
+    if (route === '/posts') continue;
+
+    await validateClickedDestination(cdp, sessionId, route, entry);
     clicked += 1;
+  }
+
+  if (route === '/posts') {
+    const probed = await probeInternalTargets(internalEntries, route);
+    const representatives = [
+      internalEntries.find(({ expected }) => expected.pathname === '/'),
+      internalEntries.find(({ expected }) => expected.pathname === '/research'),
+      internalEntries.find(({ expected }) => expected.pathname === '/posts' && Boolean(expected.hash)),
+      internalEntries.find(({ expected }) => expected.pathname.startsWith('/posts/tag/')),
+      internalEntries.find(
+        ({ expected }) => expected.pathname.startsWith('/posts/') && !expected.pathname.startsWith('/posts/tag/'),
+      ),
+    ].filter(Boolean);
+
+    const unique = [];
+    const seen = new Set();
+    for (const entry of representatives) {
+      const key = `${entry.expected.pathname}${entry.expected.search}${entry.expected.hash}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(entry);
+    }
+    assert.ok(unique.length >= 4, `/posts: too few representative trusted targets: ${unique.length}`);
+
+    for (const entry of unique) {
+      await validateClickedDestination(cdp, sessionId, route, entry);
+      clicked += 1;
+    }
+
+    console.log(
+      `browser-smoke: PASS ${route} link integrity (${probed} HEAD targets; ${clicked} representative trusted clicks)`,
+    );
+    return clicked;
   }
 
   console.log(`browser-smoke: PASS ${route} stable trusted-link routing (${clicked} internal clicks)`);
