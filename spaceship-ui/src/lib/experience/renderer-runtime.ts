@@ -7,6 +7,14 @@ type RendererRuntimeHandle = {
 };
 
 type RendererModule = typeof import('./renderer-core');
+type IdleDeadlineLike = { didTimeout: boolean; timeRemaining: () => number };
+type WindowWithIdle = Window & {
+  requestIdleCallback?: (
+    callback: (deadline: IdleDeadlineLike) => void,
+    options?: { timeout?: number },
+  ) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
 
 declare global {
   interface Window {
@@ -113,12 +121,22 @@ export function installExperienceRendererRuntime(): void {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const compactViewport = window.matchMedia('(max-width: 719px)');
   const coarsePointer = window.matchMedia('(pointer: coarse)');
+  const idleWindow = window as WindowWithIdle;
   let generation = 0;
   let intersectionObserver: IntersectionObserver | null = null;
   let mountedRenderer: RendererHandle | null = null;
   let activeHost: HTMLElement | null = null;
   const cleanupCallbacks: Array<() => void> = [];
   let scheduledFrame = 0;
+  let idleMountHandle = 0;
+  let fallbackMountTimer = 0;
+
+  const cancelScheduledMount = (): void => {
+    if (idleMountHandle) idleWindow.cancelIdleCallback?.(idleMountHandle);
+    if (fallbackMountTimer) window.clearTimeout(fallbackMountTimer);
+    idleMountHandle = 0;
+    fallbackMountTimer = 0;
+  };
 
   const cleanup = (): void => {
     generation += 1;
@@ -126,6 +144,7 @@ export function installExperienceRendererRuntime(): void {
       window.cancelAnimationFrame(scheduledFrame);
       scheduledFrame = 0;
     }
+    cancelScheduledMount();
 
     intersectionObserver?.disconnect();
     intersectionObserver = null;
@@ -233,6 +252,28 @@ export function installExperienceRendererRuntime(): void {
     }
   };
 
+  const scheduleMount = (
+    host: HTMLElement,
+    profile: CapabilityProfile,
+    currentGeneration: number,
+  ): void => {
+    cancelScheduledMount();
+    const run = (): void => {
+      idleMountHandle = 0;
+      fallbackMountTimer = 0;
+      if (currentGeneration !== generation || !host.isConnected) return;
+      void mountHost(host, profile, currentGeneration);
+    };
+
+    // First content paint and navigation stay responsive; the SVG/DOM fallback
+    // remains visible while the GPU module/context is prepared in an idle slot.
+    if (idleWindow.requestIdleCallback) {
+      idleMountHandle = idleWindow.requestIdleCallback(() => run(), { timeout: 700 });
+    } else {
+      fallbackMountTimer = window.setTimeout(run, 120);
+    }
+  };
+
   const init = (): void => {
     cleanup();
     const host = document.querySelector<HTMLElement>(HOST_SELECTOR);
@@ -269,7 +310,7 @@ export function installExperienceRendererRuntime(): void {
     setStatus(host, 'idle', profile.backend === 'webgpu' ? 'WebGPU ready' : 'WebGL2 ready');
 
     if (!('IntersectionObserver' in window)) {
-      void mountHost(host, profile, currentGeneration);
+      scheduleMount(host, profile, currentGeneration);
       return;
     }
 
@@ -278,9 +319,9 @@ export function installExperienceRendererRuntime(): void {
         if (!entry?.isIntersecting) return;
         intersectionObserver?.disconnect();
         intersectionObserver = null;
-        void mountHost(host, profile, currentGeneration);
+        scheduleMount(host, profile, currentGeneration);
       },
-      { rootMargin: '240px 0px', threshold: 0.01 },
+      { rootMargin: '0px', threshold: 0.01 },
     );
     intersectionObserver.observe(host);
   };
