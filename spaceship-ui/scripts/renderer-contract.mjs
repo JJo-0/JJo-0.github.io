@@ -10,8 +10,10 @@ const issues = [];
 const RENDERER_PAYLOAD_GZIP_BUDGET = 750 * 1024;
 const CORE_SENTINEL = '__JJO_RENDERER_CORE__';
 const RENDERER_CORE_PATH = 'src/lib/experience/renderer-core.ts';
+const ASCII_ART_PATH = 'src/lib/experience/ascii-art.ts';
 const ADAPTIVE_PATH = 'src/lib/experience/adaptive-performance.js';
 const STALE_CONSTELLATION_PATH = 'src/components/experience/ResearchConstellation.svelte';
+const RESEARCH_MAP_PATH = 'src/components/experience/ResearchMap.astro';
 const OBSOLETE_RESEARCH_IDS = ['robotics-systems', 'vision-perception', 'ai-research'];
 
 function read(relative) {
@@ -85,10 +87,11 @@ const requiredFiles = [
   ADAPTIVE_PATH,
   'src/lib/experience/adaptive-performance.d.ts',
   'src/lib/experience/renderer-runtime.ts',
+  ASCII_ART_PATH,
   RENDERER_CORE_PATH,
   'src/lib/experience/motion.ts',
   'src/components/experience/ExperienceCanvas.astro',
-  'src/components/experience/ResearchConstellation.astro',
+  RESEARCH_MAP_PATH,
   'src/components/Header.astro',
   'src/styles/renderer.css',
   'src/styles/experience.css',
@@ -126,6 +129,7 @@ const capability = read('src/lib/experience/capability.ts');
 const adaptive = read(ADAPTIVE_PATH);
 const adaptiveContract = read('scripts/adaptive-performance-contract.mjs');
 const runtime = read('src/lib/experience/renderer-runtime.ts');
+const asciiArt = read(ASCII_ART_PATH);
 const core = read(RENDERER_CORE_PATH);
 const state = read('src/lib/experience/state.ts');
 const component = read('src/components/experience/ExperienceCanvas.astro');
@@ -133,7 +137,7 @@ const rendererCss = read('src/styles/renderer.css');
 const experienceCss = read('src/styles/experience.css');
 const motion = read('src/lib/experience/motion.ts');
 const homePage = read('src/pages/index.astro');
-const researchMap = read('src/components/experience/ResearchConstellation.astro');
+const researchMap = read(RESEARCH_MAP_PATH);
 const header = read('src/components/Header.astro');
 const browserSmoke = read('scripts/browser-smoke.mjs');
 const workflow = read('../.github/workflows/blog-ci.yml');
@@ -152,6 +156,18 @@ requireMarkers(state, 'state.ts', [
 ]);
 requireMarkers(motion, 'motion.ts', ['isResearchNodeId', 'activeResearchNode']);
 requireMarkers(core, 'renderer-core.ts', ['RESEARCH_NODE_IDS', 'isResearchNodeId']);
+requireMarkers(asciiArt, 'ascii-art.ts', [
+  'requestAnimationFrame(draw)',
+  "['·', ':', '+', '*', '#', '@']",
+  "host.addEventListener('pointermove'",
+  "host.addEventListener('pointerdown'",
+  "prefers-reduced-motion: reduce",
+  'IntersectionObserver',
+]);
+requireMarkers(component, 'ExperienceCanvas.astro', [
+  'data-ascii-art',
+  'installAsciiArtRuntime',
+]);
 for (const obsoleteId of OBSOLETE_RESEARCH_IDS) {
   for (const [filename, source] of [
     ['state.ts', state],
@@ -254,10 +270,10 @@ if (count(homePage, 'data-constellation-node={focus.id}') !== 1) {
   issues.push('index.astro: Home research cards must expose one canonical data-constellation-node mapping');
 }
 if (!researchMap.includes('data-constellation-node={focus.id}')) {
-  issues.push('ResearchConstellation.astro: SVG nodes must derive from canonical focus IDs');
+  issues.push('ResearchMap.astro: map markers must derive from canonical focus IDs');
 }
 if (!researchMap.includes('href={`#${focus.id}`}')) {
-  issues.push('ResearchConstellation.astro: SVG links must derive from canonical focus IDs');
+  issues.push('ResearchMap.astro: map links must derive from canonical focus IDs');
 }
 
 requireMarkers(core, 'renderer-core.ts', [
@@ -330,7 +346,7 @@ if (!layeringRule) {
 } else if (/\bposition\s*:/.test(layeringRule)) {
   issues.push('renderer.css: Home renderer layering rule must not override overlay positioning');
 }
-if (!/\.experience-stage-index,\s*\n\.experience-stage-caption,\s*\n\.experience-orbit-label\s*\{[\s\S]*?position:\s*absolute;/.test(experienceCss)) {
+if (!/\.experience-stage-index,\s*\n\.experience-stage-caption,\s*\n\.experience-axis-label\s*\{[\s\S]*?position:\s*absolute;/.test(experienceCss)) {
   issues.push('experience.css: Home hero overlays must remain position:absolute');
 }
 
@@ -371,7 +387,7 @@ if (!homePage.includes('/image/mouse_surprised.gif')) {
   issues.push('index.astro: requested mouse GIF fallback must remain');
 }
 if (count(researchMap, '<ExperienceCanvas variant="research" />') !== 1) {
-  issues.push('ResearchConstellation.astro: expected exactly one Research renderer shell');
+  issues.push('ResearchMap.astro: expected exactly one Research renderer shell');
 }
 
 const homeHtml = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');

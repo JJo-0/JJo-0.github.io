@@ -14,7 +14,9 @@ import remarkEmoji from 'remark-emoji';
 import modernAiPartOneReaderCleanup from './src/lib/remark/modern-ai-part1-reader-cleanup.mjs';
 import modernAiPartTwoReaderCleanup from './src/lib/remark/modern-ai-part2-reader-cleanup.mjs';
 import modernAiPartThreeReaderCleanup from './src/lib/remark/modern-ai-part3-reader-cleanup.mjs';
+import modernAiPartFourReaderCleanup from './src/lib/remark/modern-ai-part4-reader-cleanup.mjs';
 import termTooltips from './src/lib/rehype/term-tooltips.mjs';
+import mediaPerformance from './src/lib/rehype/media-performance.mjs';
 import { isLegacyPathname } from './src/lib/legacy-posts.mjs';
 import {
   transformerNotationDiff,
@@ -46,7 +48,9 @@ export default defineConfig({
     sitemap({ filter: includeInSitemap }),
     partytown({ config: { forward: ['dataLayer.push'] } }),
   ],
-  build: { inlineStylesheets: 'always' },
+  // Keep small route-specific CSS inline, but let shared/large styles become
+  // hashed assets so Astro ClientRouter transitions reuse the browser cache.
+  build: { inlineStylesheets: 'auto' },
   markdown: {
     shikiConfig: {
       themes: { light: 'min-light', dark: 'catppuccin-frappe' },
@@ -63,9 +67,11 @@ export default defineConfig({
       modernAiPartOneReaderCleanup,
       modernAiPartTwoReaderCleanup,
       modernAiPartThreeReaderCleanup,
+      modernAiPartFourReaderCleanup,
     ],
     rehypePlugins: [
       termTooltips,
+      mediaPerformance,
       rehypeSlug,
       [
         rehypeAutolinkHeadings,
@@ -80,9 +86,8 @@ export default defineConfig({
   },
   image: { service: { entrypoint: 'astro/assets/services/sharp' } },
   vite: {
-    // Three.js is a viewport-lazy chunk. Network cost is enforced separately
-    // by renderer-contract.mjs (500 KiB gzip), so use a raw minified warning
-    // threshold that reflects this intentional isolation boundary.
+    // Three.js stays behind the viewport-lazy renderer boundary. The dedicated
+    // renderer/performance contracts enforce compressed payload budgets.
     build: { chunkSizeWarningLimit: 650 },
     plugins: [tailwindcss()],
     resolve: {

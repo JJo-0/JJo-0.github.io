@@ -4,16 +4,33 @@
   z-index: 0;
   overflow: hidden;
   border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
+  pointer-events: auto;
+  touch-action: pan-y;
+  cursor: grab;
+  opacity: 1;
   transition: opacity 520ms var(--experience-ease);
 }
 
+.experience-renderer:active {
+  cursor: grabbing;
+}
+
 .experience-renderer canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   opacity: 0.78;
+}
+
+.experience-renderer__gpu {
+  z-index: 0;
+}
+
+.experience-renderer__ascii {
+  z-index: 1;
+  opacity: 1 !important;
 }
 
 .experience-renderer[data-renderer-status='loading'] {
@@ -26,6 +43,11 @@
 
 .experience-renderer[data-renderer-status='fallback'],
 .experience-renderer[data-renderer-tier='safe'] {
+  opacity: 1;
+}
+
+.experience-renderer[data-renderer-status='fallback'] .experience-renderer__gpu,
+.experience-renderer[data-renderer-tier='safe'] .experience-renderer__gpu {
   display: none;
 }
 
@@ -60,26 +82,26 @@
 }
 
 /* Preserve the absolute positioning declared by experience.css for the hero
-   index, orbit labels, and caption. This layer only assigns stacking order. */
+   index, axis labels, and caption. This layer only assigns stacking order. */
 .experience-visual-stage > :not(.experience-renderer) {
   z-index: 2;
 }
 
-.experience-renderer--home canvas {
+.experience-renderer--home .experience-renderer__gpu {
   opacity: 0.6;
   filter: saturate(0.92);
 }
 
-.research-constellation {
+.research-map {
   isolation: isolate;
 }
 
-.research-constellation > svg {
+.research-map > svg {
   position: relative;
   z-index: 2;
 }
 
-.experience-renderer--research canvas {
+.experience-renderer--research .experience-renderer__gpu {
   opacity: 0.74;
 }
 
@@ -92,14 +114,17 @@ html[data-experience-tier='ultra'] .experience-renderer__status {
 }
 
 @media (max-width: 719px), (pointer: coarse) {
-  .experience-renderer {
+  .experience-renderer__gpu {
     display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .experience-renderer {
-    display: none !important;
     transition: none !important;
+  }
+
+  .experience-renderer__gpu {
+    display: none !important;
   }
 }

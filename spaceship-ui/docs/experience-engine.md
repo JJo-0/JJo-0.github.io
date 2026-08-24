@@ -89,6 +89,7 @@ Production output is exercised in Chromium for:
 - the mouse GIF and accessible Research SVG are permanent fallbacks.
 - no wheel/touch scroll interception, custom cursor, audio, full-page canvas, or loading gate.
 - the stale Svelte constellation implementation must not exist.
+- the canonical research map must remain synchronized with the four public research lines.
 - renderer layering must not override the absolute positioning of Home labels and captions.
 
 ## Deferred phases

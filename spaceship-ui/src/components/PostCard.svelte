@@ -28,7 +28,7 @@
 >
   <div class="flex flex-col gap-1.5">
     <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-4">
-      <h2 class="text-base sm:text-lg font-black tracking-tight leading-tight">
+      <h2 class="post-card-title text-lg sm:text-xl tracking-tight leading-tight">
         <a
           href={`/posts/${slug}`}
           class="transition-colors no-underline"
@@ -135,3 +135,11 @@
     </div>
   </div>
 </article>
+
+<style>
+  .post-card-title {
+    font-family: var(--font-editorial);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+</style>

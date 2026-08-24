@@ -2,9 +2,17 @@
   import { onMount } from 'svelte';
   import { uiState } from '@/lib/ui.svelte';
 
-  function handleKeydown(e: KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault();
+  let SearchDialog = $state<any>(null);
+
+  $effect(() => {
+    if (uiState.isSearchOpen && !SearchDialog) {
+      import('./SearchDialog.svelte').then((module) => (SearchDialog = module.default));
+    }
+  });
+
+  function handleKeydown(event: KeyboardEvent) {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+      event.preventDefault();
       uiState.openSearch();
     }
   }
@@ -43,3 +51,7 @@
     <span class="text-xs">⌘</span>K
   </kbd>
 </button>
+
+{#if uiState.isSearchOpen && SearchDialog}
+  <SearchDialog />
+{/if}

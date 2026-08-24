@@ -33,13 +33,25 @@ const effectiveSlug = getPostSlug(post);
 const canonicalPostUrl = new URL(Astro.url.pathname, Astro.site).toString();
 const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
 const postTransitionName = `post-title-${effectiveSlug.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
-const isModernAiPart4 =
-  post.data.series?.id === 'modern-artificial-intelligence' && post.data.series.order === 4;
+const isModernAiSeries = post.data.series?.id === 'modern-artificial-intelligence';
+const isModernAiPart4 = isModernAiSeries && post.data.series?.order === 4;
+
+const modernAiReaderDescriptions: Record<number, string> = {
+  1: 'AI·ML·DL의 관계에서 선형대수, 확률, 최적화, 퍼셉트론과 컨볼루션까지 현대 인공지능의 수학적 기초를 한 흐름으로 정리한다.',
+  2: '분류·회귀·밀도추정에서 일반화, 정규화, 교차검증, SVM, 최소거리·베이즈 분류기와 차원의 저주까지 머신러닝의 기본 과제를 정리한다.',
+  3: '퍼셉트론 학습과 XOR에서 MLP, Dropout·DropConnect, CNN, 1D·2D 컨볼루션과 PyTorch 모듈까지 신경망의 핵심 구조를 연결한다.',
+  4: 'Lipschitz 연속성에서 GD·PSD·PGD·FGM·OGM, 복소수 하강방향, 선탐색과 로지스틱 회귀까지 기울기 기반 최적화를 단계적으로 정리한다.',
+};
+const seriesOrder = isModernAiSeries ? post.data.series?.order : undefined;
+const effectiveDescription =
+  typeof seriesOrder === 'number' && modernAiReaderDescriptions[seriesOrder]
+    ? modernAiReaderDescriptions[seriesOrder]
+    : post.data.description;
 
 const schemas = [
   getBlogPostingSchema({
     title: displayTitle,
-    description: post.data.description,
+    description: effectiveDescription,
     pubDate: post.data.pubDate,
     url: canonicalPostUrl,
     lang: post.data.lang,
@@ -55,7 +67,7 @@ const schemas = [
 
 <Layout
   title={displayTitle}
-  description={post.data.description}
+  description={effectiveDescription}
   lang={post.data.lang}
   ogImage={`/og/${effectiveSlug}.png`}
   ogType="article"
@@ -69,9 +81,9 @@ const schemas = [
     ]}
   />
 
-  <div class="lg:flex lg:gap-8" data-post-page-slug={effectiveSlug}>
+  <div class="article-layout lg:flex lg:gap-12" data-post-page-slug={effectiveSlug}>
     <div class="flex-1 min-w-0">
-      <div class="mb-8">
+      <div class="article-header mb-10">
         <header class="flex flex-col gap-4">
           <div
             class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground font-bold uppercase tracking-widest"
@@ -116,7 +128,7 @@ const schemas = [
           </div>
 
           <h1
-            class="text-3xl font-black tracking-tight text-foreground sm:text-4xl lg:text-5xl"
+            class="article-title text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl"
             style={`view-transition-name: ${postTransitionName};`}
             data-post-transition-title
             data-post-transition-static
@@ -124,8 +136,8 @@ const schemas = [
             {displayTitle}
           </h1>
 
-          <p class="text-lg text-muted-foreground italic border-l-2 border-primary/20 pl-4 py-1">
-            {post.data.description}
+          <p class="article-deck text-lg text-muted-foreground border-l border-primary pl-5 py-1">
+            {effectiveDescription}
           </p>
         </header>
 
@@ -135,12 +147,15 @@ const schemas = [
           )
         }
 
-        {
-          post.data.translatedPosts && <LanguageSelector translations={post.data.translatedPosts} />
-        }
+        {post.data.translatedPosts && <LanguageSelector translations={post.data.translatedPosts} />}
       </div>
 
-      <article class:list={['prose max-w-none mt-12 mb-16', isModernAiPart4 && 'part4-article']}>
+      <article
+        class:list={[
+          'article-prose prose max-w-none mt-12 mb-16',
+          isModernAiPart4 && 'part4-article',
+        ]}
+      >
         <Content />
         {isModernAiPart4 && <Part4ReviewCorrections />}
       </article>
@@ -163,6 +178,32 @@ const schemas = [
 </Layout>
 
 <style is:global>
+  .article-header {
+    border-top: 1px solid var(--color-border);
+    padding-top: clamp(2rem, 5vw, 4rem);
+  }
+
+  .article-title {
+    max-width: 52rem;
+    font-family: var(--font-editorial);
+    font-weight: 700;
+    letter-spacing: -0.055em;
+    line-height: 1.02;
+    text-wrap: balance;
+  }
+
+  .article-deck {
+    max-width: 48rem;
+    font-family: var(--font-editorial);
+    font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  .article-prose {
+    max-width: 49rem;
+  }
+
   .part4-article svg text:not([fill]) {
     fill: currentColor;
   }

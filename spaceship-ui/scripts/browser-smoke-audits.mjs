@@ -78,7 +78,7 @@ export async function auditRenderer(cdp, sessionId) {
   const home = await waitExpression(cdp, sessionId, `(() => {
     const brand = document.querySelector('[data-site-brand]');
     const stage = document.querySelector('.experience-visual-stage');
-    const overlays = [...document.querySelectorAll('.experience-stage-index,.experience-stage-caption,.experience-orbit-label')];
+    const overlays = [...document.querySelectorAll('.experience-stage-index,.experience-stage-caption,.experience-axis-label')];
     if (!brand || !stage || overlays.length !== 5) return null;
     const b = brand.getBoundingClientRect(), s = stage.getBoundingClientRect();
     return {

@@ -1,0 +1,150 @@
+<div class="relative" data-theme-menu data-theme="system">
+  <button
+    type="button"
+    data-theme-trigger
+    class="p-2 rounded-md hover:bg-accent transition-all opacity-70 hover:opacity-100 text-muted-foreground hover:text-primary"
+    aria-label="Theme Menu"
+    aria-expanded="false"
+    aria-haspopup="true"
+  >
+    <svg data-theme-icon="system" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect width="20" height="14" x="2" y="3" rx="2" />
+      <line x1="8" x2="16" y1="21" y2="21" />
+      <line x1="12" x2="12" y1="17" y2="21" />
+    </svg>
+    <svg data-theme-icon="light" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5" />
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+    <svg data-theme-icon="dark" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  </button>
+
+  <div
+    data-theme-dropdown
+    hidden
+    class="absolute right-0 mt-2 w-36 rounded-md border bg-popover text-popover-foreground shadow-lg focus:outline-none z-50 overflow-hidden"
+  >
+    <div class="p-1">
+      <button type="button" data-theme-option="light" aria-pressed="false" class="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5" />
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+        </svg>
+        Light
+      </button>
+      <button type="button" data-theme-option="dark" aria-pressed="false" class="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+        Dark
+      </button>
+      <button type="button" data-theme-option="system" aria-pressed="false" class="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true">
+          <rect width="20" height="14" x="2" y="3" rx="2" />
+          <line x1="8" x2="16" y1="21" y2="21" />
+          <line x1="12" x2="12" y1="17" y2="21" />
+        </svg>
+        System
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  type ThemeName = 'light' | 'dark' | 'system';
+
+  const THEME_STORAGE_KEY = 'theme';
+  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+  const readTheme = (): ThemeName => {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
+  };
+
+  const updateRootTheme = (theme: ThemeName) => {
+    const isDark = theme === 'dark' || (theme === 'system' && systemTheme.matches);
+    document.documentElement.classList.toggle('dark', isDark);
+  };
+
+  const closeThemeMenus = () => {
+    document.querySelectorAll<HTMLElement>('[data-theme-menu]').forEach((menu) => {
+      const trigger = menu.querySelector<HTMLButtonElement>('[data-theme-trigger]');
+      const dropdown = menu.querySelector<HTMLElement>('[data-theme-dropdown]');
+      if (dropdown) dropdown.hidden = true;
+      trigger?.setAttribute('aria-expanded', 'false');
+    });
+  };
+
+  const syncThemeMenus = () => {
+    const current = readTheme();
+    updateRootTheme(current);
+    document.querySelectorAll<HTMLElement>('[data-theme-menu]').forEach((menu) => {
+      menu.dataset.theme = current;
+      menu.querySelectorAll<HTMLButtonElement>('[data-theme-option]').forEach((button) => {
+        const selected = button.dataset.themeOption === current;
+        button.setAttribute('aria-pressed', String(selected));
+        button.classList.toggle('bg-accent', selected);
+      });
+    });
+  };
+
+  if (!Reflect.get(window, '__jjoThemeMenuRuntime')) {
+    Reflect.set(window, '__jjoThemeMenuRuntime', true);
+
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const trigger = target.closest<HTMLButtonElement>('[data-theme-trigger]');
+      if (trigger) {
+        const menu = trigger.closest<HTMLElement>('[data-theme-menu]');
+        const dropdown = menu?.querySelector<HTMLElement>('[data-theme-dropdown]');
+        if (!menu || !dropdown) return;
+        const willOpen = dropdown.hidden;
+        closeThemeMenus();
+        dropdown.hidden = !willOpen;
+        trigger.setAttribute('aria-expanded', String(willOpen));
+        return;
+      }
+
+      const option = target.closest<HTMLButtonElement>('[data-theme-option]');
+      if (option) {
+        const next = option.dataset.themeOption as ThemeName | undefined;
+        if (next === 'light' || next === 'dark' || next === 'system') {
+          localStorage.setItem(THEME_STORAGE_KEY, next);
+          syncThemeMenus();
+          closeThemeMenus();
+        }
+        return;
+      }
+
+      if (!target.closest('[data-theme-menu]')) closeThemeMenus();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeThemeMenus();
+    });
+
+    systemTheme.addEventListener('change', () => {
+      if (readTheme() === 'system') updateRootTheme('system');
+    });
+
+    document.addEventListener('astro:page-load', syncThemeMenus);
+  }
+
+  syncThemeMenus();
+</script>
+
+<style>
+  [data-theme-menu] [data-theme-icon] {
+    display: none;
+  }
+
+  [data-theme-menu][data-theme='system'] [data-theme-icon='system'],
+  [data-theme-menu][data-theme='light'] [data-theme-icon='light'],
+  [data-theme-menu][data-theme='dark'] [data-theme-icon='dark'] {
+    display: block;
+  }
+</style>

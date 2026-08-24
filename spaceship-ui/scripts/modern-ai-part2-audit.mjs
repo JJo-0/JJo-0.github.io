@@ -106,6 +106,7 @@ if (pageLedger && formulaLedger && contentLedger) {
   }
 }
 
+// Source-level provenance remains mandatory even though it is not reader-facing.
 for (const required of [
   "title: '현대 인공지능 II — 머신러닝의 기본 과제와 일반화'",
   "id: 'modern-artificial-intelligence'",
@@ -145,8 +146,6 @@ if (!fs.existsSync(distPath)) {
   }
 
   for (const required of [
-    '강의자료 출처',
-    'PDF 원자료 재구성',
     '2026-08-18 최신 연구 업데이트',
     'Figure 1 재구성',
     'Figure 5 재구성',
@@ -162,7 +161,12 @@ if (!fs.existsSync(distPath)) {
 
   for (const forbidden of [
     '완전성 계약',
+    '세 층을 섞지 않는다',
     '원장 현황',
+    'PDF SHA-256',
+    '강의자료 출처',
+    '읽는 법',
+    'PDF 원자료 재구성',
     '편집·수학 검증(Editorial audit)',
     'source-content:P2-C',
     'source-figure:P2-FIG',

@@ -2,10 +2,10 @@
 import '@/styles/global.css';
 import '@/styles/experience.css';
 import '@/styles/transitions.css';
+import '@/styles/performance.css';
 import { SITE } from '@/config';
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
-import SearchModal from '@/components/SearchModal.svelte';
 import TransitionRuntime from '@/components/navigation/TransitionRuntime.astro';
 import { ClientRouter } from 'astro:transitions';
 import JsonLd from '@/components/JsonLd.astro';
@@ -24,6 +24,7 @@ interface Props {
   schema?: Record<string, unknown> | Record<string, unknown>[];
   noindex?: boolean;
   usesChart?: boolean;
+  markdownAlternate?: string;
 }
 
 const {
@@ -35,6 +36,7 @@ const {
   schema,
   noindex = false,
   usesChart = false,
+  markdownAlternate,
 } = Astro.props;
 const pageLang = lang || SITE.lang;
 const pageTitle = title ? `${title} | ${SITE.author}` : SITE.seoTitle;
@@ -77,6 +79,30 @@ const gaScript = `
   gtag('js', new Date());
   gtag('config', '${analyticsId}');
 `;
+
+const adsenseLoaderScript = adsenseClientId
+  ? `
+  (function(w,d,client){
+    if (w.__jjoAdsenseRuntime) return;
+    w.__jjoAdsenseRuntime = true;
+    var load = function(){
+      if (d.querySelector('script[data-adsense-deferred]')) return;
+      var script = d.createElement('script');
+      script.async = true;
+      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + client;
+      script.crossOrigin = 'anonymous';
+      script.dataset.adsenseDeferred = 'true';
+      d.head.appendChild(script);
+    };
+    var schedule = function(){
+      if ('requestIdleCallback' in w) w.requestIdleCallback(load, { timeout: 3500 });
+      else w.setTimeout(load, 1500);
+    };
+    if (d.readyState === 'complete') schedule();
+    else w.addEventListener('load', schedule, { once: true });
+  })(window,document,'${adsenseClientId}');
+`
+  : '';
 ---
 
 <html lang={pageLang}>
@@ -94,27 +120,27 @@ const gaScript = `
 
     {analyticsId && <link rel="preconnect" href="https://www.googletagmanager.com" />}
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-    {adsenseClientId && <link rel="preconnect" href="https://pagead2.googlesyndication.com" />}
-    {adsenseClientId && <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />}
     {usesChart && <link rel="preconnect" href="https://cdn.jsdelivr.net" />}
 
     <title>{pageTitle}</title>
     <meta name="description" content={pageDescription} />
 
-    {SITE.googleSiteVerification && (
-      <meta name="google-site-verification" content={SITE.googleSiteVerification} />
-    )}
-    {SITE.naverSiteVerification && (
-      <meta name="naver-site-verification" content={SITE.naverSiteVerification} />
-    )}
-    {SITE.bingSiteVerification && (
-      <meta name="msvalidate.01" content={SITE.bingSiteVerification} />
-    )}
+    {
+      SITE.googleSiteVerification && (
+        <meta name="google-site-verification" content={SITE.googleSiteVerification} />
+      )
+    }
+    {
+      SITE.naverSiteVerification && (
+        <meta name="naver-site-verification" content={SITE.naverSiteVerification} />
+      )
+    }
+    {SITE.bingSiteVerification && <meta name="msvalidate.01" content={SITE.bingSiteVerification} />}
 
     <link rel="canonical" href={canonicalUrl} />
     <meta name="robots" content={shouldNoIndex ? 'noindex, nofollow' : 'index, follow'} />
     <meta name="author" content={SITE.author} />
-    <meta name="theme-color" content="#0a0a0c" />
+    <meta name="theme-color" content="#f3efe4" />
 
     <link
       rel="alternate"
@@ -122,6 +148,7 @@ const gaScript = `
       title={`${SITE.seoTitle} RSS Feed`}
       href="/rss.xml"
     />
+    {markdownAlternate && <link rel="alternate" type="text/markdown" href={markdownAlternate} />}
 
     <script is:inline>
       (function () {
@@ -156,7 +183,7 @@ const gaScript = `
 
     {
       usesChart && (
-        <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+        <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" />
       )
     }
 
@@ -174,15 +201,14 @@ const gaScript = `
     <meta name="twitter:image" content={pageOgImage} />
 
     {
-      analyticsId &&
-        !isGTM && (
-          <script
-            is:inline
-            async
-            type="text/partytown"
-            src={`https://www.googletagmanager.com/gtag/js?id=${analyticsId}`}
-          />
-        )
+      analyticsId && !isGTM && (
+        <script
+          is:inline
+          async
+          type="text/partytown"
+          src={`https://www.googletagmanager.com/gtag/js?id=${analyticsId}`}
+        />
+      )
     }
 
     {
@@ -195,12 +221,7 @@ const gaScript = `
       adsenseClientId && (
         <>
           <meta name="google-adsense-account" content={adsenseClientId} />
-          <script
-            is:inline
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
-            crossorigin="anonymous"
-          />
+          <script is:inline set:html={adsenseLoaderScript} />
         </>
       )
     }
@@ -210,7 +231,7 @@ const gaScript = `
     <ClientRouter fallback="animate" />
     <base href={SITE.base} />
   </head>
-  <body class="bg-background text-foreground min-h-screen">
+  <body class="site-body bg-background text-foreground min-h-screen">
     <TransitionRuntime />
     <a
       href="#main-content"
@@ -230,14 +251,34 @@ const gaScript = `
         </noscript>
       )
     }
-    <div class="max-w-5xl 3xl:max-w-7xl mx-auto container-padding">
+    <div class="site-frame mx-auto container-padding">
       <Header />
-      <main id="main-content" class="py-12 sm:py-16 lg:py-24" tabindex="-1">
+      <main id="main-content" class="py-10 sm:py-14 lg:py-20" tabindex="-1">
         <slot />
       </main>
       <AdSense />
       <Footer />
-      <SearchModal client:idle />
     </div>
   </body>
 </html>
+
+<style is:global>
+  .site-frame {
+    width: min(100%, 92rem);
+  }
+
+  .site-body::after {
+    position: fixed;
+    inset: 0.65rem;
+    z-index: 150;
+    border: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
+    content: '';
+    pointer-events: none;
+  }
+
+  @media (max-width: 640px) {
+    .site-body::after {
+      inset: 0.3rem;
+    }
+  }
+</style>
