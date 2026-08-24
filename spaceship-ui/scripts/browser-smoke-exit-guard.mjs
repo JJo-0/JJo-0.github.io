@@ -40,7 +40,7 @@ if (LIVE_BASE_URL.startsWith('https://')) {
   globalThis.fetch = async (input, init = undefined) => {
     const method = requestMethod(input, init);
     const url = requestUrl(input);
-    let origin = null;
+    let origin;
     try {
       origin = new URL(url, LIVE_BASE_URL).origin;
     } catch {
