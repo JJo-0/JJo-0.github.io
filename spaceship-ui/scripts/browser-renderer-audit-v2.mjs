@@ -207,6 +207,10 @@ export async function auditRenderer(cdp, sessionId) {
   assert.ok(home.positions.every((value) => value === 'absolute'), `overlayPositions=${home.positions}`);
   assert.equal(home.inside, true, 'Home overlay escaped stage');
 
+  // The Home interaction listeners are installed by the motion runtime. Wait
+  // for the same explicit readiness signal used by Research before dispatching
+  // trusted focus/pointer events; otherwise the audit can race initialization.
+  await waitMotionReady(cdp, sessionId, 'Home');
   await stateProbe(cdp, sessionId);
   await evaluate(cdp, sessionId, `(() => {
     const node = document.querySelector('[data-constellation-node]');
