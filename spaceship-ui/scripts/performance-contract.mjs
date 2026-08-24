@@ -56,9 +56,9 @@ requireText(astroConfig, 'astro.config.mjs', 'mediaPerformance,');
 forbidText(astroConfig, 'astro.config.mjs', "inlineStylesheets: 'always'");
 
 requireText(homeSource, 'src/pages/index.astro', 'src="/image/mouse_surprised.gif"');
-requireText(homeSource, 'src/pages/index.astro', 'loading="lazy"');
-requireText(homeSource, 'src/pages/index.astro', 'fetchpriority="low"');
-forbidText(homeSource, 'src/pages/index.astro', 'fetchpriority="high"');
+requireText(homeSource, 'src/pages/index.astro', 'loading="eager"');
+requireText(homeSource, 'src/pages/index.astro', 'fetchpriority="high"');
+requireText(homeSource, 'src/pages/index.astro', 'decoding="async"');
 
 requireText(layoutSource, 'src/layouts/Layout.astro', "import '@/styles/performance.css';");
 requireText(layoutSource, 'src/layouts/Layout.astro', 'data-adsense-deferred');
@@ -108,6 +108,9 @@ if (fs.existsSync(homeHtmlPath)) {
   if (/<script[^>]+src=["']https:\/\/pagead2\.googlesyndication\.com/i.test(homeHtml)) {
     issues.push('Home HTML: eager AdSense network script reintroduced');
   }
+  if (!/<img\b[^>]*src=["']\/image\/mouse_surprised\.gif["'][^>]*loading=["']eager["'][^>]*fetchpriority=["']high["'][^>]*>/i.test(homeHtml)) {
+    issues.push('Home HTML: mouse GIF must render as eager/high-priority media');
+  }
 }
 
 const postHtmlFiles = filesUnder(path.join(dist, 'posts'), (file) => path.basename(file) === 'index.html');
@@ -145,5 +148,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  'performance-contract: PASS (native media lazy hints; deferred GPU/ads; idle search; offscreen containment; Home/Writing/renderer budgets)',
+  'performance-contract: PASS (eager Home identity media; native post lazy hints; deferred GPU/ads; idle search; offscreen containment; Home/Writing/renderer budgets)',
 );
