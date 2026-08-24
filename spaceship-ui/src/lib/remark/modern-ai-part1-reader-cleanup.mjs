@@ -30,19 +30,10 @@ export default function modernAiPartOneReaderCleanup() {
       throw new Error(`Modern AI Part I reader heading not found: ${FIRST_READER_HEADING}`);
     }
 
-    let separatorIndex = firstHeadingIndex - 1;
-    while (separatorIndex >= 0 && children[separatorIndex]?.type !== 'thematicBreak') {
-      separatorIndex -= 1;
-    }
-
-    if (separatorIndex < 0) {
-      throw new Error('Modern AI Part I reader separator was not found');
-    }
-
     const requiredEsm = children
-      .slice(0, separatorIndex)
+      .slice(0, firstHeadingIndex)
       .filter((node) => node.type === 'mdxjsEsm');
 
-    tree.children = [...requiredEsm, ...children.slice(separatorIndex)];
+    tree.children = [...requiredEsm, ...children.slice(firstHeadingIndex)];
   };
 }
