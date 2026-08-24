@@ -69,78 +69,58 @@ const schemas = [
     ]}
   />
 
-  <div class="lg:flex lg:gap-8" data-post-page-slug={effectiveSlug}>
-    <div class="flex-1 min-w-0">
-      <div class="mb-8">
-        <header class="flex flex-col gap-4">
-          <div
-            class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground font-bold uppercase tracking-widest"
-          >
-            <time datetime={post.data.pubDate.toISOString()}>
-              {formatDate(post.data.pubDate)}
-            </time>
-            {
-              post.data.draft && (
-                <>
-                  <span class="hidden sm:inline text-border">•</span>
-                  <div class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-3.5 w-3.5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fill-rule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
-                    Draft
-                  </div>
-                </>
-              )
-            }
-            {
-              post.data.tags && post.data.tags.length > 0 && (
-                <>
-                  <span class="hidden sm:inline text-border">•</span>
-                  <div class="flex flex-wrap gap-2 text-xs uppercase font-bold tracking-widest text-muted-foreground/80">
-                    {post.data.tags.map((tag: string) => (
-                      <span class="opacity-80">#{tag}</span>
-                    ))}
-                  </div>
-                </>
-              )
-            }
-          </div>
+  <div class="reading-shell" data-post-page-slug={effectiveSlug}>
+    <div class="reading-main">
+      <header class="reading-header">
+        <div class="reading-meta">
+          <span>Writing / {post.data.category}</span>
+          <time datetime={post.data.pubDate.toISOString()}>{formatDate(post.data.pubDate)}</time>
+          {
+            post.data.draft && (
+              <span class="text-amber-700 dark:text-amber-300">Draft</span>
+            )
+          }
+        </div>
 
-          <h1
-            class="text-3xl font-black tracking-tight text-foreground sm:text-4xl lg:text-5xl"
-            style={`view-transition-name: ${postTransitionName};`}
-            data-post-transition-title
-            data-post-transition-static
-          >
-            {displayTitle}
-          </h1>
+        <h1
+          class="reading-title"
+          style={`view-transition-name: ${postTransitionName};`}
+          data-post-transition-title
+          data-post-transition-static
+        >
+          {displayTitle}
+        </h1>
 
-          <p class="text-lg text-muted-foreground italic border-l-2 border-primary/20 pl-4 py-1">
-            {post.data.description}
-          </p>
-        </header>
+        <p class="reading-dek">{post.data.description}</p>
 
         {
-          post.data.series && (
-            <SeriesNavigation seriesId={post.data.series.id} currentPostId={post.id} />
+          post.data.tags && post.data.tags.length > 0 && (
+            <div class="mt-6 flex flex-wrap gap-x-3 gap-y-2 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              {post.data.tags.map((tag: string) => (
+                <span>#{tag}</span>
+              ))}
+            </div>
           )
         }
 
         {
-          post.data.translatedPosts && <LanguageSelector translations={post.data.translatedPosts} />
+          post.data.series && (
+            <div class="mt-7">
+              <SeriesNavigation seriesId={post.data.series.id} currentPostId={post.id} />
+            </div>
+          )
         }
-      </div>
 
-      <article class:list={['prose max-w-none mt-12 mb-16', isModernAiPart4 && 'part4-article']}>
+        {
+          post.data.translatedPosts && (
+            <div class="mt-5">
+              <LanguageSelector translations={post.data.translatedPosts} />
+            </div>
+          )
+        }
+      </header>
+
+      <article class:list={['prose mb-16', isModernAiPart4 && 'part4-article']}>
         <Content />
         {isModernAiPart4 && <Part4ReviewCorrections />}
       </article>
@@ -152,9 +132,9 @@ const schemas = [
       {post.data.showComments !== false && <Comments client:visible />}
     </div>
 
-    <div class="hidden lg:block w-52 flex-shrink-0">
+    <aside class="reading-aside" aria-label="Article table of contents">
       <TableOfContents client:idle {headings} />
-    </div>
+    </aside>
   </div>
 
   <script>

@@ -2,6 +2,7 @@
 import Layout from '@/layouts/Layout.astro';
 import WritingListItem from '@/components/WritingListItem.astro';
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
+import '@/styles/writing.css';
 import { getReadTime } from '@/lib/utils/readTime';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import {
@@ -53,79 +54,55 @@ const sortedTags = Object.entries(tagCounts)
 ---
 
 <Layout title="Writing" description={SITE.blogDescription} schema={schema}>
-  <Breadcrumbs items={[{ name: 'Writing', href: '/posts' }]} />
+  <div data-writing-index>
+    <Breadcrumbs items={[{ name: 'Writing', href: '/posts' }]} />
 
-  <header class="mb-10 sm:mb-12 max-w-3xl">
-    <p class="text-xs font-black uppercase tracking-[0.22em] text-muted-foreground mb-3">
-      Notes & Essays
-    </p>
-    <h1 class="text-4xl sm:text-5xl font-black tracking-tight text-foreground leading-[1.05]">
-      Writing
-    </h1>
-    <p class="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-      글의 대표 분야, 콘텐츠 형식, 세부 기술 태그를 분리했습니다. 먼저 대분류를 고른 뒤
-      같은 분야의 학습·구현·연구 기록을 이어서 볼 수 있습니다.
-    </p>
-  </header>
+    <header class="writing-index-header">
+      <p class="writing-index-kicker">Notes · Essays · Research Records</p>
+      <h1 class="writing-index-title">Writing</h1>
+      <p class="writing-index-lead">
+        연구, 구현, 학습을 오래 읽을 수 있는 형태로 정리합니다. 대분류로 방향을 잡고,
+        세부 태그와 콘텐츠 형식으로 필요한 기록까지 좁혀갈 수 있습니다.
+      </p>
+    </header>
 
-  <nav
-    aria-label="Writing categories"
-    class="mb-12 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-  >
-    {
-      categorySections.map((section) => (
-        <a
-          href={`#${section.id}`}
-          aria-controls={section.id}
-          data-astro-reload
-          class="rounded-xl border border-border bg-card/50 p-4 no-underline transition hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-accent/50"
-        >
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <p class="text-sm font-black text-foreground">{section.label}</p>
-              <p class="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                {section.description}
-              </p>
+    <nav aria-label="Writing categories" class="writing-category-grid">
+      {
+        categorySections.map((section) => (
+          <a
+            href={`#${section.id}`}
+            aria-controls={section.id}
+            data-astro-reload
+            class="writing-category-link"
+          >
+            <div class="writing-category-link__top">
+              <span class="writing-category-link__title">{section.label}</span>
+              <span class="writing-category-link__count">{section.posts.length}</span>
             </div>
-            <span class="shrink-0 text-xs font-black tabular-nums text-muted-foreground">
-              {section.posts.length}
-            </span>
-          </div>
-        </a>
-      ))
-    }
-  </nav>
+            <p class="writing-category-link__description line-clamp-3">
+              {section.description}
+            </p>
+          </a>
+        ))
+      }
+    </nav>
 
-  <div class="flex flex-col gap-10 lg:flex-row lg:gap-14">
-    <div class="min-w-0 flex-1">
-      <div class="flex flex-col gap-14">
+    <div class="writing-index-layout">
+      <div class="min-w-0">
         {
           categorySections.map((section) => (
             <section id={section.id}
               aria-labelledby={`${section.id}-heading`}
-              class="writing-category-section scroll-mt-28"
+              class="writing-category-section"
             >
-              <div class="mb-6 border-b border-border/70 pb-5">
-                <div class="flex items-start justify-between gap-6">
-                  <div>
-                    <p class="text-[11px] font-black uppercase tracking-[0.22em] text-muted-foreground">
-                      {section.shortLabel}
-                    </p>
-                    <h2
-                      id={`${section.id}-heading`}
-                      class="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl"
-                    >
-                      {section.label}
-                    </h2>
-                    <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                      {section.description}
-                    </p>
-                  </div>
-                  <span class="shrink-0 text-xs font-black tabular-nums text-muted-foreground">
-                    {section.posts.length}
-                  </span>
+              <header class="writing-category-heading">
+                <div>
+                  <p class="writing-category-heading__eyebrow">{section.shortLabel}</p>
+                  <h2 id={`${section.id}-heading`}>{section.label}</h2>
+                  <p>{section.description}</p>
                 </div>
-              </div>
+                <span class="writing-category-heading__count">{section.posts.length} records</span>
+              </header>
 
               <div>
                 {section.posts.map((post) => (
@@ -140,22 +117,17 @@ const sortedTags = Object.entries(tagCounts)
           ))
         }
       </div>
-    </div>
 
-    <aside class="flex-shrink-0 lg:w-64" aria-label="Writing navigation">
-      <div class="space-y-5">
-        <section class="rounded-xl border border-border/70 bg-secondary/30 p-5">
-          <h2 class="mb-4 text-xs font-black uppercase tracking-[0.18em] text-muted-foreground">
-            Categories
-          </h2>
-          <nav class="flex flex-col gap-1.5" aria-label="Writing category shortcuts">
+      <aside class="writing-index-aside" aria-label="Writing navigation">
+        <section>
+          <h2>Categories</h2>
+          <nav class="writing-index-shortcuts" aria-label="Writing category shortcuts">
             {
               categorySections.map((section) => (
                 <a
                   href={`#${section.id}`}
                   aria-controls={section.id}
                   data-astro-reload
-                  class="flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-xs font-bold text-foreground no-underline hover:bg-accent"
                 >
                   <span>{section.shortLabel}</span>
                   <span class="text-muted-foreground tabular-nums">{section.posts.length}</span>
@@ -165,25 +137,20 @@ const sortedTags = Object.entries(tagCounts)
           </nav>
         </section>
 
-        <section class="rounded-xl border border-border/70 bg-secondary/30 p-5">
-          <h2 class="mb-4 text-xs font-black uppercase tracking-[0.18em] text-muted-foreground">
-            Semantic Topics
-          </h2>
-          <div class="flex flex-wrap gap-2">
+        <section>
+          <h2>Semantic Topics</h2>
+          <div class="writing-topic-list">
             {
               sortedTags.map(([tag, count]) => (
-                <a
-                  href={`/posts/tag/${tag}`}
-                  class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium no-underline hover:border-foreground/20 hover:bg-accent"
-                >
-                  <span class="text-foreground">{tag}</span>
-                  <span class="text-muted-foreground">{count}</span>
+                <a href={`/posts/tag/${tag}`}>
+                  <span>{tag}</span>
+                  <span class="ml-1 text-muted-foreground">{count}</span>
                 </a>
               ))
             }
           </div>
         </section>
-      </div>
-    </aside>
+      </aside>
+    </div>
   </div>
 </Layout>

@@ -2,105 +2,106 @@
 import { RESEARCH_FOCUS } from '@/lib/research';
 import ExperienceCanvas from './ExperienceCanvas.astro';
 
-const center = { x: 310, y: 260 };
-const layouts = {
-  1: [{ x: 310, y: 115 }],
-  2: [
-    { x: 175, y: 175 },
-    { x: 445, y: 345 },
-  ],
-  3: [
-    { x: 170, y: 140 },
-    { x: 455, y: 145 },
-    { x: 318, y: 410 },
-  ],
-  4: [
-    { x: 165, y: 135 },
-    { x: 455, y: 135 },
-    { x: 455, y: 385 },
-    { x: 165, y: 385 },
-  ],
-} as const;
-
-const positions =
-  layouts[Math.min(RESEARCH_FOCUS.length, 4) as keyof typeof layouts] ?? layouts[4];
+const layouts = [
+  { x: 86, y: 104, width: 198, height: 78, anchorX: 284, anchorY: 143 },
+  { x: 356, y: 104, width: 178, height: 78, anchorX: 356, anchorY: 143 },
+  { x: 356, y: 342, width: 178, height: 78, anchorX: 356, anchorY: 381 },
+  { x: 86, y: 342, width: 198, height: 78, anchorX: 284, anchorY: 381 },
+] as const;
 ---
 
-<nav class="research-constellation" aria-label="Research focus map" data-motion="hero-visual">
+<nav class="research-constellation research-topology" aria-label="Research focus map" data-motion="hero-visual">
   <ExperienceCanvas variant="research" />
 
   <svg viewBox="0 0 620 520" role="img" aria-labelledby="research-map-title research-map-desc">
-    <title id="research-map-title">Park JiHo research focus constellation</title>
+    <title id="research-map-title">Park JiHo research topology</title>
     <desc id="research-map-desc">
-      The public research portfolio is generated from the canonical research taxonomy. Every node links to the matching research section on this page.
+      The public research portfolio is shown as a connected evidence topology. Every field links to the matching research section on this page.
     </desc>
 
-    <g aria-hidden="true">
-      {
-        RESEARCH_FOCUS.map((_, index) => {
-          const position = positions[index] ?? center;
-          return (
-            <line
-              class="constellation-edge"
-              x1={center.x}
-              y1={center.y}
-              x2={position.x}
-              y2={position.y}
-            />
-          );
-        })
-      }
-      {
-        RESEARCH_FOCUS.map((_, index) => {
-          if (RESEARCH_FOCUS.length < 3) return null;
-          const from = positions[index] ?? center;
-          const to = positions[(index + 1) % RESEARCH_FOCUS.length] ?? center;
-          return (
-            <line
-              class="constellation-edge"
-              x1={from.x}
-              y1={from.y}
-              x2={to.x}
-              y2={to.y}
-              opacity="0.35"
-            />
-          );
-        })
-      }
+    <g class="topology-guides" aria-hidden="true">
+      <line x1="54" y1="260" x2="566" y2="260" />
+      <line x1="310" y1="56" x2="310" y2="464" />
+      <line x1="54" y1="64" x2="54" y2="456" />
+      <line x1="566" y1="64" x2="566" y2="456" />
     </g>
 
-    <g aria-hidden="true">
-      <circle class="constellation-node__ring" cx={center.x} cy={center.y} r="63" />
-      <circle class="constellation-node__core" cx={center.x} cy={center.y} r="7" />
-      <text class="constellation-node__label" x={center.x} y="250" text-anchor="middle">PUBLIC</text>
-      <text class="constellation-node__label" x={center.x} y="270" text-anchor="middle">RESEARCH</text>
-      <text class="constellation-node__label" x={center.x} y="290" text-anchor="middle">NOTES</text>
+    <g class="topology-edges" aria-hidden="true">
+      <path d="M284 143 H310 V225" />
+      <path d="M356 143 H310 V225" />
+      <path d="M356 381 H310 V295" />
+      <path d="M284 381 H310 V295" />
+      <path d="M54 260 H250" />
+      <path d="M370 260 H566" />
+      <path d="M310 182 V225" />
+      <path d="M310 295 V342" />
+    </g>
+
+    <g class="topology-hub" aria-hidden="true">
+      <rect x="250" y="225" width="120" height="70" rx="10" />
+      <text x="310" y="250" text-anchor="middle">PUBLIC</text>
+      <text x="310" y="268" text-anchor="middle">RESEARCH</text>
+      <text x="310" y="286" text-anchor="middle">EVIDENCE</text>
+      <rect class="topology-hub__mark" x="304" y="254" width="12" height="12" rx="2" />
     </g>
 
     {
       RESEARCH_FOCUS.map((focus, index) => {
-        const position = positions[index] ?? center;
+        const position = layouts[index] ?? layouts[0];
         return (
           <a
             href={`#${focus.id}`}
             tabindex="0"
             data-constellation-node={focus.id}
             aria-label={`Jump to ${focus.title}`}
+            class="topology-node"
           >
             <title>{focus.title}</title>
-            <circle class="constellation-node__ring" cx={position.x} cy={position.y} r="58" />
-            <circle class="constellation-node__core" cx={position.x} cy={position.y} r="6" />
-            <text
-              class="constellation-node__label"
+            <rect
+              class="topology-node__panel"
               x={position.x}
-              y={position.y + 4}
-              text-anchor="middle"
+              y={position.y}
+              width={position.width}
+              height={position.height}
+              rx="10"
+            />
+            <rect
+              class="topology-node__mark"
+              x={position.x + 15}
+              y={position.y + 17}
+              width="8"
+              height="8"
+              rx="1"
+            />
+            <text
+              class="topology-node__index"
+              x={position.x + 32}
+              y={position.y + 25}
+            >
+              {String(index + 1).padStart(2, '0')}
+            </text>
+            <text
+              class="topology-node__label"
+              x={position.x + 15}
+              y={position.y + 51}
             >
               {focus.label.toUpperCase()}
+            </text>
+            <text
+              class="topology-node__arrow"
+              x={position.x + position.width - 23}
+              y={position.y + 51}
+            >
+              ↗
             </text>
           </a>
         );
       })
     }
+
+    <g class="topology-coordinates" aria-hidden="true">
+      <text x="54" y="48">FIELD 01 / KNOWLEDGE TOPOLOGY</text>
+      <text x="566" y="482" text-anchor="end">PROBLEM → METHOD → EVIDENCE</text>
+    </g>
   </svg>
 </nav>
