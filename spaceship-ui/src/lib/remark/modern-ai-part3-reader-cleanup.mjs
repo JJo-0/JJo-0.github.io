@@ -136,15 +136,6 @@ function paragraph(value) {
   return { type: 'paragraph', children: [{ type: 'text', value }] };
 }
 
-// Preserve legacy audit strings only as a non-visible rendered contract marker.
-// Reader-facing provenance boilerplate and the synthetic source heading are removed.
-function sourceNotice() {
-  return {
-    type: 'html',
-    value: '<!-- reader-contract: 강의자료 출처 | PDF 원자료 재구성 -->',
-  };
-}
-
 /**
  * Keep complete source/editorial ledgers in MDX for CI while presenting only
  * substantive lecture content and the dated research layer. Completed and
@@ -215,7 +206,6 @@ export default function modernAiPartThreeReaderCleanup() {
 
     tree.children = [
       ...imports,
-      sourceNotice(),
       ...sourceBody,
       { type: 'thematicBreak' },
       ...updateBody,
