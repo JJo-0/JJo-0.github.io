@@ -290,10 +290,12 @@ for (const [sourceId, correctionId] of CORRECTION_PAIRS) {
 for (const required of [
   'modernAiPartThreeReaderCleanup',
   'Modern AI Part III reader boundaries are missing or out of order',
-  '강의자료 출처',
-  'sourceNotice()',
+  'children.slice(sourceIndex + 1, auditIndex)',
 ]) {
   if (!readerPlugin.includes(required)) issues.push(`reader cleanup missing contract: ${required}`);
+}
+for (const forbidden of ['sourceNotice()', "strong('강의자료 출처')", "strong('읽는 법')"]) {
+  if (readerPlugin.includes(forbidden)) issues.push(`reader cleanup reintroduced reader boilerplate: ${forbidden}`);
 }
 for (const required of [
   "import modernAiPartThreeReaderCleanup from './src/lib/remark/modern-ai-part3-reader-cleanup.mjs';",
@@ -362,8 +364,8 @@ if (!fs.existsSync(distPath)) {
   }
 
   for (const required of [
-    '강의자료 출처',
-    'PDF 원자료 재구성',
+    '3. 인공지능과 딥러닝을 위한 배경',
+    '선형 판별기에서 다층 퍼셉트론으로 확장하고, 1D·2D 컨볼루션과 CNN의 계산 구조를 정리한다.',
     '2026-08-18 최신 연구 업데이트',
     'Figure 1 재구성',
     'Figure 2 재구성',
@@ -392,7 +394,11 @@ if (!fs.existsSync(distPath)) {
 
   for (const forbidden of [
     '완전성 계약',
+    '세 층을 섞지 않는다',
     '원장 현황',
+    '강의자료 출처',
+    '읽는 법',
+    'PDF 원자료 재구성',
     '편집·수학 검증(Editorial audit)',
     'source-content:P3-C',
     'source-figure:P3-FIG',
