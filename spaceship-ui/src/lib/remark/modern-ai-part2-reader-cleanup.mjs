@@ -41,15 +41,6 @@ function paragraph(value) {
   return { type: 'paragraph', children: [{ type: 'text', value }] };
 }
 
-// Keep legacy rendered-audit markers as a non-visible HTML comment while
-// removing their reader-facing prose and heading from the article surface.
-function sourceNotice() {
-  return {
-    type: 'html',
-    value: '<!-- reader-contract: 강의자료 출처 | PDF 원자료 재구성 -->',
-  };
-}
-
 /**
  * Keep source-completeness and editorial ledgers in MDX for CI/maintainers,
  * while exposing only substantive lecture content and the dated research
@@ -93,7 +84,6 @@ export default function modernAiPartTwoReaderCleanup() {
 
     tree.children = [
       ...imports,
-      sourceNotice(),
       ...sourceBody,
       { type: 'thematicBreak' },
       ...updateBody,
