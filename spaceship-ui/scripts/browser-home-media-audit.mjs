@@ -5,57 +5,44 @@ export async function auditHomeIdentityMedia(cdp, sessionId) {
   await viewport(cdp, sessionId, { width: 1440, height: 900 });
   await navigate(cdp, sessionId, '/');
 
-  const media = await waitExpression(
+  const identity = await waitExpression(
     cdp,
     sessionId,
     `(() => {
       const stage = document.querySelector('[data-world-stage]');
-      const frame = document.querySelector('.experience-mouse-frame--world');
-      const image = frame?.querySelector('img[src="/image/mouse_surprised.gif"]');
-      if (!stage || !frame || !image) return null;
-      if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) return null;
+      const card = document.querySelector('[data-world-identity]');
+      if (!stage || !card) return null;
 
       const stageRect = stage.getBoundingClientRect();
-      const frameRect = frame.getBoundingClientRect();
-      const imageRect = image.getBoundingClientRect();
-      const style = getComputedStyle(image);
-      const frameStyle = getComputedStyle(frame);
+      const cardRect = card.getBoundingClientRect();
+      const style = getComputedStyle(card);
       const visible =
         style.display !== 'none' &&
         style.visibility !== 'hidden' &&
         Number(style.opacity || 1) > 0 &&
-        frameStyle.display !== 'none' &&
-        frameStyle.visibility !== 'hidden' &&
-        Number(frameStyle.opacity || 1) > 0 &&
-        imageRect.width > 20 &&
-        imageRect.height > 20 &&
-        frameRect.right > stageRect.left &&
-        frameRect.left < stageRect.right &&
-        frameRect.bottom > stageRect.top &&
-        frameRect.top < stageRect.bottom;
+        cardRect.width > 40 &&
+        cardRect.height > 20 &&
+        cardRect.right > stageRect.left &&
+        cardRect.left < stageRect.right &&
+        cardRect.bottom > stageRect.top &&
+        cardRect.top < stageRect.bottom;
       if (!visible) return null;
 
       return {
-        currentSrc: image.currentSrc,
-        loading: image.getAttribute('loading'),
-        fetchPriority: image.getAttribute('fetchpriority'),
-        naturalWidth: image.naturalWidth,
-        naturalHeight: image.naturalHeight,
-        renderedWidth: Math.round(imageRect.width),
-        renderedHeight: Math.round(imageRect.height),
+        text: (card.textContent || '').replace(/\\s+/g, ' ').trim(),
+        width: Math.round(cardRect.width),
+        height: Math.round(cardRect.height),
       };
     })()`,
-    'Home mouse GIF decoded and visible',
+    'Home editorial identity decoded and visible',
     20_000,
   );
 
-  assert.match(media.currentSrc, /\/image\/mouse_surprised\.gif(?:[?#].*)?$/);
-  assert.equal(media.loading, 'eager');
-  assert.equal(media.fetchPriority, 'high');
-  assert.ok(media.naturalWidth > 0 && media.naturalHeight > 0);
-  assert.ok(media.renderedWidth > 20 && media.renderedHeight > 20);
+  assert.match(identity.text, /JJO/i);
+  assert.match(identity.text, /Research/i);
+  assert.ok(identity.width > 40 && identity.height > 20);
 
   console.log(
-    `browser-smoke: PASS Home mouse GIF visible (${media.naturalWidth}x${media.naturalHeight}, ${media.renderedWidth}x${media.renderedHeight} rendered)`,
+    `browser-smoke: PASS Home editorial identity visible (${identity.width}x${identity.height})`,
   );
 }
