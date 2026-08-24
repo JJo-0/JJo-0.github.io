@@ -70,6 +70,8 @@ if (/<script[^>]+src=["']https:\/\/pagead2\.googlesyndication\.com/i.test(layout
 
 requireText(headerSource, 'src/components/Header.astro', "ThemeToggle from '@/components/ThemeToggle.astro'");
 forbidText(headerSource, 'src/components/Header.astro', "ThemeToggle from '@/components/ThemeToggle.svelte'");
+requireText(headerSource, 'src/components/Header.astro', '<Search client:load />');
+forbidText(headerSource, 'src/components/Header.astro', '<Search client:idle />');
 
 requireText(runtimeSource, 'src/lib/experience/renderer-runtime.ts', 'requestIdleCallback');
 requireText(runtimeSource, 'src/lib/experience/renderer-runtime.ts', "rootMargin: '0px'");
@@ -148,5 +150,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  'performance-contract: PASS (eager Home identity media; native post lazy hints; deferred GPU/ads; idle search; offscreen containment; Home/Writing/renderer budgets)',
+  'performance-contract: PASS (eager Home identity media; native post lazy hints; deferred GPU/ads; load-time Search trigger + lazy dialog; offscreen containment; Home/Writing/renderer budgets)',
 );
