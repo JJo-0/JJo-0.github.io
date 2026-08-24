@@ -262,6 +262,7 @@ if (pageLedger && formulaLedger && contentLedger) {
   }
 }
 
+// Source-level provenance remains mandatory even though it is not reader-facing.
 for (const required of [
   "title: '현대 인공지능 III — 퍼셉트론·MLP·CNN과 컨볼루션'",
   'pubDate: 2026-08-20',
@@ -290,8 +291,7 @@ for (const [sourceId, correctionId] of CORRECTION_PAIRS) {
 for (const required of [
   'modernAiPartThreeReaderCleanup',
   'Modern AI Part III reader boundaries are missing or out of order',
-  '강의자료 출처',
-  'sourceNotice()',
+  'children.slice(sourceIndex + 1, auditIndex)',
 ]) {
   if (!readerPlugin.includes(required)) issues.push(`reader cleanup missing contract: ${required}`);
 }
@@ -362,8 +362,6 @@ if (!fs.existsSync(distPath)) {
   }
 
   for (const required of [
-    '강의자료 출처',
-    'PDF 원자료 재구성',
     '2026-08-18 최신 연구 업데이트',
     'Figure 1 재구성',
     'Figure 2 재구성',
@@ -392,7 +390,12 @@ if (!fs.existsSync(distPath)) {
 
   for (const forbidden of [
     '완전성 계약',
+    '세 층을 섞지 않는다',
     '원장 현황',
+    'PDF SHA-256',
+    '강의자료 출처',
+    '읽는 법',
+    'PDF 원자료 재구성',
     '편집·수학 검증(Editorial audit)',
     'source-content:P3-C',
     'source-figure:P3-FIG',
