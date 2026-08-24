@@ -118,6 +118,12 @@ if (!homeSource.includes('data-experience-page="home"') || !homeSource.includes(
 if (!homeSource.includes('data-constellation-node={focus.id}')) {
   issues.push('index.astro: Home research cards are not connected to the canonical experience state');
 }
+if (!homeSource.includes('data-world-identity')) {
+  issues.push('index.astro: editorial research identity marker is missing');
+}
+if (homeSource.includes('mouse_surprised.gif')) {
+  issues.push('index.astro: legacy mascot hero identity is forbidden');
+}
 if (
   !researchSource.includes('data-experience-page="research"') ||
   !researchSource.includes('<MotionRuntime scope="research"') ||
@@ -197,8 +203,11 @@ const researchHtml = fs.existsSync(researchFile) ? fs.readFileSync(researchFile,
 if (!homeHtml.includes('data-experience-runtime="home"')) {
   issues.push('dist/index.html: homepage motion runtime marker is missing');
 }
-if (!homeHtml.includes('/image/mouse_surprised.gif')) {
-  issues.push('dist/index.html: homepage mouse GIF identity visual is missing');
+if (!homeHtml.includes('data-world-identity')) {
+  issues.push('dist/index.html: editorial research identity visual is missing');
+}
+if (homeHtml.includes('/image/mouse_surprised.gif')) {
+  issues.push('dist/index.html: legacy mascot hero visual must not return');
 }
 if (!homeHtml.includes('data-experience-canvas="home"')) {
   issues.push('dist/index.html: progressive Home renderer shell is missing');
@@ -267,5 +276,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `experience-contract: PASS (${researchAreas.length} canonical research areas; inset-safe header; Home/SVG/section synchronization; browser matrix wired; home ${homeGzip} B initial gzip, research ${researchGzip} B; no article runtime)`,
+  `experience-contract: PASS (${researchAreas.length} canonical research areas; editorial identity; inset-safe header; Home/SVG/section synchronization; browser matrix wired; home ${homeGzip} B initial gzip, research ${researchGzip} B; no article runtime)`,
 );
