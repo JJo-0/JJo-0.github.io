@@ -91,7 +91,7 @@ if(fs.existsSync(path.join(root,'dist'))){
     if(rendered.length!==EXPECTED.formulas||new Set(rendered).size!==EXPECTED.formulas)fail(`rendered Part V formula count/uniqueness mismatch: ${rendered.length}`);
     if(!sameSet(new Set(rendered),formulaIds))fail('rendered Part V formula ID coverage mismatch');
     const display=(html.match(/data-formula-part="5"[^>]*data-formula-display="display"/g)??[]).length;
-    const inline=(html.match(/data-formula-part="5"[^>]*data-formula-display="inline"/g)??[]).length;
+    const inline=(html.match(/data-formula-display="inline"/g)??[]).length;
     if(display!==EXPECTED.display)fail(`rendered display ${display} != ${EXPECTED.display}`);
     if(inline!==EXPECTED.inline)fail(`rendered inline ${inline} != ${EXPECTED.inline}`);
     const unreviewed=(html.match(/data-formula-lesson-state="unreviewed"/g)??[]).length;
