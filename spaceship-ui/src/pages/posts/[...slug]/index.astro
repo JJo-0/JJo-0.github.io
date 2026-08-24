@@ -33,13 +33,25 @@ const effectiveSlug = getPostSlug(post);
 const canonicalPostUrl = new URL(Astro.url.pathname, Astro.site).toString();
 const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
 const postTransitionName = `post-title-${effectiveSlug.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
-const isModernAiPart4 =
-  post.data.series?.id === 'modern-artificial-intelligence' && post.data.series.order === 4;
+const isModernAiSeries = post.data.series?.id === 'modern-artificial-intelligence';
+const isModernAiPart4 = isModernAiSeries && post.data.series?.order === 4;
+
+const modernAiReaderDescriptions: Record<number, string> = {
+  1: 'AI·ML·DL의 관계에서 선형대수, 확률, 최적화, 퍼셉트론과 컨볼루션까지 현대 인공지능의 수학적 기초를 한 흐름으로 정리한다.',
+  2: '분류·회귀·밀도추정에서 일반화, 정규화, 교차검증, SVM, 최소거리·베이즈 분류기와 차원의 저주까지 머신러닝의 기본 과제를 정리한다.',
+  3: '퍼셉트론 학습과 XOR에서 MLP, Dropout·DropConnect, CNN, 1D·2D 컨볼루션과 PyTorch 모듈까지 신경망의 핵심 구조를 연결한다.',
+  4: 'Lipschitz 연속성에서 GD·PSD·PGD·FGM·OGM, 복소수 하강방향, 선탐색과 로지스틱 회귀까지 기울기 기반 최적화를 단계적으로 정리한다.',
+};
+const seriesOrder = isModernAiSeries ? post.data.series?.order : undefined;
+const effectiveDescription =
+  typeof seriesOrder === 'number' && modernAiReaderDescriptions[seriesOrder]
+    ? modernAiReaderDescriptions[seriesOrder]
+    : post.data.description;
 
 const schemas = [
   getBlogPostingSchema({
     title: displayTitle,
-    description: post.data.description,
+    description: effectiveDescription,
     pubDate: post.data.pubDate,
     url: canonicalPostUrl,
     lang: post.data.lang,
@@ -55,7 +67,7 @@ const schemas = [
 
 <Layout
   title={displayTitle}
-  description={post.data.description}
+  description={effectiveDescription}
   lang={post.data.lang}
   ogImage={`/og/${effectiveSlug}.png`}
   ogType="article"
@@ -125,7 +137,7 @@ const schemas = [
           </h1>
 
           <p class="text-lg text-muted-foreground italic border-l-2 border-primary/20 pl-4 py-1">
-            {post.data.description}
+            {effectiveDescription}
           </p>
         </header>
 
