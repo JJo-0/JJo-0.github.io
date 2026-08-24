@@ -136,40 +136,13 @@ function text(value) {
   return { type: 'text', value };
 }
 
-function strong(value) {
-  return { type: 'strong', children: [text(value)] };
-}
-
 function paragraph(value) {
   return { type: 'paragraph', children: [text(value)] };
 }
 
-function sourceNotice() {
-  return {
-    type: 'blockquote',
-    children: [
-      {
-        type: 'paragraph',
-        children: [
-          strong('강의자료 출처'),
-          text(' — 이 글은 성균관대학교 ECE5992 「Modern Artificial Intelligence」의 2025년 3월 19일 강의자료 15쪽을 학습 목적으로 한국어로 재구성했다. 원 강의자료의 저작권은 강의 제작자인 Il Yong Chun 교수와 각 원 제작자에게 있다. 페이지 구성과 삽화를 그대로 복제하지 않고, 수식·표·문단·그림·주석은 원장으로 추적하며 도식과 해설은 새로 작성했다.'),
-        ],
-      },
-      {
-        type: 'paragraph',
-        children: [
-          strong('읽는 법'),
-          text(' — 먼저 퍼셉트론에서 MLP·CNN·컨볼루션의 전역·국소 표현과 PyTorch 모듈까지 2025년 원자료 흐름을 읽고, 마지막의 2026년 연구 업데이트에서 activation·normalization, modern ConvNet, implicit bias, efficient convolution으로 확장한다.'),
-        ],
-      },
-    ],
-  };
-}
-
 /**
- * Keep complete source/editorial ledgers in MDX for CI while presenting only
- * the lecture reconstruction and dated research layer to readers. Completed
- * and corrected formulas are moved beside, never substituted for, their source.
+ * Keep complete source/editorial ledgers in MDX for CI while exposing only
+ * substantive lecture content and the dated research update to readers.
  */
 export default function modernAiPartThreeReaderCleanup() {
   return (tree, file) => {
@@ -208,7 +181,7 @@ export default function modernAiPartThreeReaderCleanup() {
     const imports = children
       .slice(0, sourceIndex)
       .filter((node) => node.type === 'mdxjsEsm');
-    const sourceBody = children.slice(sourceIndex, auditIndex);
+    const sourceBody = children.slice(sourceIndex + 1, auditIndex);
     const auditBody = children.slice(auditIndex, updateIndex);
     const updateBody = children.slice(updateIndex);
 
@@ -232,12 +205,10 @@ export default function modernAiPartThreeReaderCleanup() {
       );
     }
 
-    if (sourceBody[0]?.type === 'heading') sourceBody[0].depth = 2;
     if (updateBody[0]?.type === 'heading') updateBody[0].depth = 2;
 
     tree.children = [
       ...imports,
-      sourceNotice(),
       ...sourceBody,
       { type: 'thematicBreak' },
       ...updateBody,
