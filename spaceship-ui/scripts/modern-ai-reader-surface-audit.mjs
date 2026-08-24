@@ -47,6 +47,11 @@ const forbiddenReaderText = [
   '읽는 법',
   '편집·수학 검증(Editorial audit)',
   '이 절은 PDF 원문을 덮어쓰지 않는다',
+  'Adversarial review · source-preserving corrections',
+  '추가 적대적 검토 교정',
+  '아래 식은 PDF 원문을 덮어쓰지 않는다',
+  'source-suspect 상태로 그대로 남기고',
+  '별도 ID와 corrects 링크를 가진다',
 ];
 
 for (const route of routes) {
@@ -69,6 +74,14 @@ for (const route of routes) {
   for (const forbidden of forbiddenReaderText) {
     if (readerHtml.includes(forbidden)) {
       issues.push(`Part ${route.part}: leaked reader boilerplate: ${forbidden}`);
+    }
+  }
+
+  if (route.part === 4) {
+    for (const required of ['추가 수학적 교정', 'data-part4-review-corrections']) {
+      if (!readerHtml.includes(required)) {
+        issues.push(`Part 4: reader-facing mathematical corrections missing: ${required}`);
+      }
     }
   }
 }
