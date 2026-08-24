@@ -10,13 +10,6 @@ function nodeText(node) {
   return node.children.map(nodeText).join('');
 }
 
-function readerContractMarker() {
-  return {
-    type: 'html',
-    value: '<!-- reader-contract: PDF 원자료 재구성 | 편집·수학 검증 -->',
-  };
-}
-
 /**
  * Part IV keeps its complete source/editorial/research ledgers in MDX so all
  * page/formula/content provenance audits remain fail-closed. The public reader
@@ -75,7 +68,6 @@ export default function modernAiPartFourReaderCleanup() {
 
     tree.children = [
       ...imports,
-      readerContractMarker(),
       ...sourceBody,
       { type: 'thematicBreak' },
       ...editorialBody,
