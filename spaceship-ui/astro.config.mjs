@@ -14,6 +14,7 @@ import remarkEmoji from 'remark-emoji';
 import modernAiPartOneReaderCleanup from './src/lib/remark/modern-ai-part1-reader-cleanup.mjs';
 import modernAiPartTwoReaderCleanup from './src/lib/remark/modern-ai-part2-reader-cleanup.mjs';
 import modernAiPartThreeReaderCleanup from './src/lib/remark/modern-ai-part3-reader-cleanup.mjs';
+import modernAiPartFourReaderCleanup from './src/lib/remark/modern-ai-part4-reader-cleanup.mjs';
 import termTooltips from './src/lib/rehype/term-tooltips.mjs';
 import mediaPerformance from './src/lib/rehype/media-performance.mjs';
 import { isLegacyPathname } from './src/lib/legacy-posts.mjs';
@@ -66,6 +67,7 @@ export default defineConfig({
       modernAiPartOneReaderCleanup,
       modernAiPartTwoReaderCleanup,
       modernAiPartThreeReaderCleanup,
+      modernAiPartFourReaderCleanup,
     ],
     rehypePlugins: [
       termTooltips,
