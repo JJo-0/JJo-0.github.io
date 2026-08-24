@@ -145,8 +145,8 @@ if (!fs.existsSync(distPath)) {
   }
 
   for (const required of [
-    '강의자료 출처',
-    'PDF 원자료 재구성',
+    '2. 머신러닝의 기초',
+    '분류·회귀·밀도추정에서 과적합, 정규화, 검증, SVM, Bayes 분류와 차원의 저주까지 다룬다.',
     '2026-08-18 최신 연구 업데이트',
     'Figure 1 재구성',
     'Figure 5 재구성',
@@ -162,7 +162,11 @@ if (!fs.existsSync(distPath)) {
 
   for (const forbidden of [
     '완전성 계약',
+    '세 층을 섞지 않는다',
     '원장 현황',
+    '강의자료 출처',
+    '읽는 법',
+    'PDF 원자료 재구성',
     '편집·수학 검증(Editorial audit)',
     'source-content:P2-C',
     'source-figure:P2-FIG',
