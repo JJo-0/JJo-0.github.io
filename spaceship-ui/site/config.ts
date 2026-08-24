@@ -8,6 +8,11 @@ export interface SiteConfig {
   base: string;
   website: string;
   social: Record<string, string>;
+  organization: {
+    contactUrl: string;
+    contactType: string;
+    addressCountry: string;
+  };
   googleAnalyticsId?: string;
   googleSiteVerification?: string;
   naverSiteVerification?: string;
@@ -66,6 +71,11 @@ export const SITE: SiteConfig = {
     github: 'https://github.com/JJo-0',
     instagram: 'https://www.instagram.com/jo___09/',
     website: 'https://blog.naver.com/jjo_09_',
+  },
+  organization: {
+    contactUrl: 'https://github.com/JJo-0',
+    contactType: 'technical and research inquiries',
+    addressCountry: 'KR',
   },
   googleAnalyticsId: import.meta.env.PUBLIC_GOOGLE_ANALYTICS_ID || 'G-JL4J2492X6',
   googleSiteVerification: import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION || '',
