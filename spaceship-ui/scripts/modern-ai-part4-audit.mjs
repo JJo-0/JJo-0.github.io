@@ -311,10 +311,32 @@ else if (formulaLedger && review) {
     if (!correctionPattern.test(html)) fail(`${correctionId}: corrected variant not rendered`);
     if (!html.includes(`data-part4-review-correction="${correctionId}" data-corrects="${sourceId}"`)) fail(`${correctionId}: rendered corrects linkage missing`);
   }
-  for (const required of ['현대 인공지능 IV', 'PDF 원자료 재구성', '편집·수학 검증', '추가 적대적 검토 교정', '2026-08-18 최신 연구 업데이트', 'Performance Estimation Problem', 'Muon']) {
+  for (const required of [
+    '현대 인공지능 IV',
+    'Lipschitz 연속성, GD·PSD·PGD·FGM과 최적화된 기울기 방법 OGM의 수렴 구조를 비교한다.',
+    '4. 범용 기울기 기반 최적화 방법',
+    '수식 교정과 해설',
+    '추가 수학적 교정',
+    '2026-08-18 최신 연구 업데이트',
+    'Performance Estimation Problem',
+    'Muon',
+  ]) {
     if (!html.includes(required)) fail(`rendered output missing ${required}`);
   }
-  for (const forbidden of ['source-content:P4-C', 'source-figure:P4-FIG', 'source-annotation:P4-ANN', 'katex-error']) {
+  for (const forbidden of [
+    '완전성 계약',
+    '세 층을 섞지 않는다',
+    '원장 현황',
+    'PDF SHA-256',
+    'PDF 원자료 재구성',
+    '편집·수학 검증(Editorial audit)',
+    '추가 적대적 검토 교정',
+    'Adversarial review · source-preserving corrections',
+    'source-content:P4-C',
+    'source-figure:P4-FIG',
+    'source-annotation:P4-ANN',
+    'katex-error',
+  ]) {
     if (html.includes(forbidden)) fail(`rendered residue: ${forbidden}`);
   }
 }
