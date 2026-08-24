@@ -314,7 +314,7 @@ else if (formulaLedger && review) {
   }
   for (const required of [
     '현대 인공지능 IV',
-    '추가 적대적 검토 교정',
+    '추가 수학적 교정',
     '2026-08-18 최신 연구 업데이트',
     'Performance Estimation Problem',
     'Muon',
@@ -329,6 +329,11 @@ else if (formulaLedger && review) {
     'PDF 원자료 재구성',
     '편집·수학 검증(Editorial audit)',
     '이 절은 PDF 원문을 덮어쓰지 않는다',
+    'Adversarial review · source-preserving corrections',
+    '추가 적대적 검토 교정',
+    '아래 식은 PDF 원문을 덮어쓰지 않는다',
+    'source-suspect 상태로 그대로 남기고',
+    '별도 ID와 corrects 링크를 가진다',
     'source-content:P4-C',
     'source-figure:P4-FIG',
     'source-annotation:P4-ANN',
