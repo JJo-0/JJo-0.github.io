@@ -84,5 +84,15 @@ export function getOrganizationSchema() {
       url: `${SITE.website}/${SITE.ogImage}`,
     },
     sameAs: Object.values(SITE.social),
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: SITE.organization.contactType,
+      url: SITE.organization.contactUrl,
+      availableLanguage: ['ko', 'en'],
+    },
+    address: {
+      '@type': 'PostalAddress',
+      addressCountry: SITE.organization.addressCountry,
+    },
   };
 }
