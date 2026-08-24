@@ -80,7 +80,7 @@ const requiredFiles = [
   'src/styles/renderer.css',
   'src/lib/experience/motion.ts',
   'src/components/experience/MotionRuntime.astro',
-  'src/components/experience/ResearchConstellation.astro',
+  'src/components/experience/ResearchMap.astro',
   'src/components/experience/ExperienceCanvas.astro',
   'src/components/Header.astro',
   'scripts/browser-smoke.mjs',
@@ -101,7 +101,7 @@ if (packageJson.scripts?.['browser:smoke'] !== 'node scripts/browser-smoke.mjs')
 const layoutSource = read('src/layouts/Layout.astro');
 const homeSource = read('src/pages/index.astro');
 const researchSource = read('src/pages/research.astro');
-const constellationSource = read('src/components/experience/ResearchConstellation.astro');
+const constellationSource = read('src/components/experience/ResearchMap.astro');
 const motionSource = read('src/lib/experience/motion.ts');
 const experienceCss = read('src/styles/experience.css');
 const rendererCss = read('src/styles/renderer.css');
@@ -121,19 +121,19 @@ if (!homeSource.includes('data-constellation-node={focus.id}')) {
 if (
   !researchSource.includes('data-experience-page="research"') ||
   !researchSource.includes('<MotionRuntime scope="research"') ||
-  !researchSource.includes('<ResearchConstellation') ||
+  !researchSource.includes('<ResearchMap') ||
   !researchSource.includes('id={focus.id}')
 ) {
   issues.push('research.astro: research experience/runtime/constellation/canonical section boundary is incomplete');
 }
 if (!constellationSource.includes("import { RESEARCH_FOCUS } from '@/lib/research';")) {
-  issues.push('ResearchConstellation.astro: constellation must derive from canonical research focus data');
+  issues.push('ResearchMap.astro: map must derive from canonical research focus data');
 }
 if (!constellationSource.includes('RESEARCH_FOCUS.map')) {
-  issues.push('ResearchConstellation.astro: canonical focus iteration is missing');
+  issues.push('ResearchMap.astro: canonical focus iteration is missing');
 }
 if (!constellationSource.includes('<ExperienceCanvas variant="research" />')) {
-  issues.push('ResearchConstellation.astro: progressive Research renderer shell is missing');
+  issues.push('ResearchMap.astro: progressive Research renderer shell is missing');
 }
 if (!motionSource.includes("prefers-reduced-motion: reduce") || !motionSource.includes('ScrollTrigger')) {
   issues.push('motion.ts: reduced-motion or ScrollTrigger support is missing');

@@ -1,10 +1,10 @@
 import {
   BufferAttribute,
   BufferGeometry,
+  BoxGeometry,
   Color,
   Float32BufferAttribute,
   Group,
-  IcosahedronGeometry,
   LineBasicMaterial,
   LineSegments,
   MathUtils,
@@ -15,7 +15,6 @@ import {
   PointsMaterial,
   Scene,
   SRGBColorSpace,
-  TorusGeometry,
   Vector3,
   WebGPURenderer,
 } from 'three/webgpu';
@@ -75,20 +74,22 @@ function readRendererPalette(): RendererPalette {
   const rootStyle = getComputedStyle(document.documentElement);
   const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   return {
-    accent: rootStyle.getPropertyValue('--experience-accent').trim() || '#0891b2',
-    accentStrong:
-      rootStyle.getPropertyValue('--experience-accent-strong').trim() || '#0e7490',
-    muted: theme === 'dark' ? '#9ca3af' : '#64748b',
+    accent: rootStyle.getPropertyValue('--experience-accent').trim() || '#315e51',
+    accentStrong: rootStyle.getPropertyValue('--experience-accent-strong').trim() || '#24483e',
+    muted: theme === 'dark' ? '#aaa99f' : '#667064',
     theme,
   };
 }
 
 function researchNodePosition(index: number, count: number): [number, number, number] {
-  const angle = -Math.PI / 2 + (index * Math.PI * 2) / Math.max(1, count);
-  const x = Math.cos(angle) * 1.55;
-  const y = Math.sin(angle) * 1.28;
-  const z = (index % 2 === 0 ? 1 : -1) * 0.1;
-  return [x, y, z];
+  const layout: [number, number, number][] = [
+    [-1.55, 0.92, 0.04],
+    [0.62, 1.18, -0.04],
+    [1.5, -0.58, 0.06],
+    [-0.68, -1.16, -0.06],
+  ];
+  const fallbackX = -1.6 + (index / Math.max(1, count - 1)) * 3.2;
+  return layout[index] ?? [fallbackX, index % 2 === 0 ? 0.7 : -0.7, 0];
 }
 
 function readActualBackend(renderer: WebGPURenderer): ActiveRendererBackend {
@@ -148,18 +149,18 @@ export async function mountExperienceRenderer({
   const cameraLookTarget = new Vector3();
   const desiredCameraPosition = new Vector3(0, 0, overviewCameraZ);
   const desiredLookTarget = new Vector3();
-  const worldFocus = new Vector3();
-  const desiredWorldPosition = new Vector3();
+  const topologyFocus = new Vector3();
+  const desiredTopologyPosition = new Vector3();
 
-  const constellation = new Group();
-  scene.add(constellation);
+  const topology = new Group();
+  scene.add(topology);
 
   const geometries = new Set<BufferGeometry>();
   const materials = new Set<Material>();
   const nodeRecords: NodeRecord[] = [];
   const nodePositions = new Map<ConcreteResearchNode, [number, number, number]>();
 
-  const centralGeometry = new IcosahedronGeometry(0.12, 1);
+  const centralGeometry = new BoxGeometry(0.2, 0.2, 0.2);
   const centralMaterial = new MeshBasicMaterial({
     color: new Color(palette.accentStrong),
     transparent: true,
@@ -170,12 +171,12 @@ export async function mountExperienceRenderer({
   const central = new Mesh(centralGeometry, centralMaterial);
   const overviewCentralScale = variant === 'home' ? 1.18 : 1;
   central.scale.setScalar(overviewCentralScale);
-  constellation.add(central);
+  topology.add(central);
 
   RESEARCH_NODE_IDS.forEach((rawId, index) => {
     if (!isResearchNodeId(rawId)) return;
     const id: ConcreteResearchNode = rawId;
-    const geometry = new IcosahedronGeometry(0.09, 1);
+    const geometry = new BoxGeometry(0.15, 0.15, 0.15);
     const material = new MeshBasicMaterial({
       color: new Color(palette.muted),
       transparent: true,
@@ -188,7 +189,7 @@ export async function mountExperienceRenderer({
     const position = researchNodePosition(index, RESEARCH_NODE_IDS.length);
     nodePositions.set(id, position);
     mesh.position.set(...position);
-    constellation.add(mesh);
+    topology.add(mesh);
     nodeRecords.push({ id, mesh, material });
   });
 
@@ -202,7 +203,7 @@ export async function mountExperienceRenderer({
     if (!next || nodeRecords.length < 3) return;
     edgePoints.push(
       ...(nodePositions.get(record.id) ?? [0, 0, 0]),
-      ...(nodePositions.get(next.id) ?? [0, 0, 0]),
+      ...(nodePositions.get(next.id) ?? [0, 0, 0])
     );
   });
 
@@ -215,29 +216,18 @@ export async function mountExperienceRenderer({
   });
   geometries.add(edgeGeometry);
   materials.add(edgeMaterial);
-  constellation.add(new LineSegments(edgeGeometry, edgeMaterial));
-
-  const ringGeometry = new TorusGeometry(1.96, 0.005, 6, 96);
-  const ringMaterial = new MeshBasicMaterial({
-    color: new Color(palette.accent),
-    transparent: true,
-    opacity: 0.14,
-  });
-  geometries.add(ringGeometry);
-  materials.add(ringMaterial);
-  const ring = new Mesh(ringGeometry, ringMaterial);
-  ring.rotation.x = Math.PI * 0.51;
-  ring.rotation.z = Math.PI * 0.08;
-  constellation.add(ring);
+  topology.add(new LineSegments(edgeGeometry, edgeMaterial));
 
   const particlePositions = new Float32Array(profile.particleCount * 3);
+  const columnCount = Math.max(8, Math.ceil(Math.sqrt(profile.particleCount * 1.5)));
+  const rowCount = Math.max(2, Math.ceil(profile.particleCount / columnCount));
   for (let index = 0; index < profile.particleCount; index += 1) {
-    const ratio = index / Math.max(1, profile.particleCount - 1);
-    const angle = index * 2.399963229728653;
-    const radius = 1.65 + (index % 7) * 0.08;
-    particlePositions[index * 3] = Math.cos(angle) * radius;
-    particlePositions[index * 3 + 1] = Math.sin(angle) * radius * 0.82;
-    particlePositions[index * 3 + 2] = (ratio - 0.5) * 0.8;
+    const column = index % columnCount;
+    const row = Math.floor(index / columnCount);
+    particlePositions[index * 3] =
+      (column / Math.max(1, columnCount - 1) - 0.5) * 4.5 + (row % 2) * 0.08;
+    particlePositions[index * 3 + 1] = (row / Math.max(1, rowCount - 1) - 0.5) * 3.3;
+    particlePositions[index * 3 + 2] = ((index % 5) - 2) * 0.035;
   }
 
   const particleGeometry = new BufferGeometry();
@@ -253,7 +243,7 @@ export async function mountExperienceRenderer({
   geometries.add(particleGeometry);
   materials.add(particleMaterial);
   const particles = new Points(particleGeometry, particleMaterial);
-  constellation.add(particles);
+  topology.add(particles);
 
   let latestSnapshot = experienceState.get();
 
@@ -281,7 +271,6 @@ export async function mountExperienceRenderer({
     palette = readRendererPalette();
     centralMaterial.color.set(palette.accentStrong);
     edgeMaterial.color.set(palette.accent);
-    ringMaterial.color.set(palette.accent);
     particleMaterial.color.set(palette.accent);
     updateNodePalette();
     host.dataset.rendererTheme = palette.theme;
@@ -309,7 +298,7 @@ export async function mountExperienceRenderer({
     const preset = QUALITY_PRESETS[currentQuality];
     const pixelRatio = Math.max(
       0.5,
-      Math.min(window.devicePixelRatio || 1, profile.dprCap, preset.dprCap),
+      Math.min(window.devicePixelRatio || 1, profile.dprCap, preset.dprCap)
     );
     currentDpr = pixelRatio;
     renderer.setPixelRatio(pixelRatio);
@@ -324,7 +313,7 @@ export async function mountExperienceRenderer({
     const preset = QUALITY_PRESETS[quality];
     const activeParticleCount = Math.max(
       1,
-      Math.round(profile.particleCount * preset.particleRatio),
+      Math.round(profile.particleCount * preset.particleRatio)
     );
     particleGeometry.setDrawRange(0, activeParticleCount);
     particleMaterial.size = quality === 'high' ? 0.034 : quality === 'balanced' ? 0.028 : 0.023;
@@ -390,64 +379,64 @@ export async function mountExperienceRenderer({
       const chapterProgress = hasFocus
         ? activeIndex / Math.max(1, RESEARCH_NODE_IDS.length - 1)
         : 0.5;
-      const [focusX, focusY, focusZ] = active ? (nodePositions.get(active) ?? [0, 0, 0]) : [0, 0, 0];
-      worldFocus.set(focusX, focusY, focusZ);
+      const [focusX, focusY, focusZ] = active
+        ? (nodePositions.get(active) ?? [0, 0, 0])
+        : [0, 0, 0];
+      topologyFocus.set(focusX, focusY, focusZ);
 
-      // Scroll selects the research chapter; pointer movement only adds a bounded
-      // local parallax. The selected chapter moves the whole constellation and
-      // camera together so the GPU scene behaves like spatial navigation rather
-      // than an unrelated particle ornament.
-      const worldShift = variant === 'home' ? 0.48 : 0.58;
-      desiredWorldPosition.set(
-        hasFocus ? -worldFocus.x * worldShift : 0,
-        hasFocus ? -worldFocus.y * worldShift : 0,
-        hasFocus ? 0.14 + chapterProgress * 0.06 : 0,
+      // Scroll selects the research line; pointer movement only adds bounded
+      // local parallax. The selected line moves the topology and camera together.
+      const topologyShift = variant === 'home' ? 0.48 : 0.58;
+      desiredTopologyPosition.set(
+        hasFocus ? -topologyFocus.x * topologyShift : 0,
+        hasFocus ? -topologyFocus.y * topologyShift : 0,
+        hasFocus ? 0.14 + chapterProgress * 0.06 : 0
       );
-      const worldBlend = Math.min(1, deltaSeconds * 2.7);
-      constellation.position.x = MathUtils.lerp(
-        constellation.position.x,
-        desiredWorldPosition.x,
-        worldBlend,
+      const topologyBlend = Math.min(1, deltaSeconds * 2.7);
+      topology.position.x = MathUtils.lerp(
+        topology.position.x,
+        desiredTopologyPosition.x,
+        topologyBlend
       );
-      constellation.position.y = MathUtils.lerp(
-        constellation.position.y,
-        desiredWorldPosition.y,
-        worldBlend,
+      topology.position.y = MathUtils.lerp(
+        topology.position.y,
+        desiredTopologyPosition.y,
+        topologyBlend
       );
-      constellation.position.z = MathUtils.lerp(
-        constellation.position.z,
-        desiredWorldPosition.z,
-        worldBlend,
+      topology.position.z = MathUtils.lerp(
+        topology.position.z,
+        desiredTopologyPosition.z,
+        topologyBlend
       );
 
       const targetWorldScale = hasFocus ? 1.08 + chapterProgress * 0.1 : 1;
-      const nextWorldScale = MathUtils.lerp(
-        constellation.scale.x,
+      const nextTopologyScale = MathUtils.lerp(
+        topology.scale.x,
         targetWorldScale,
-        Math.min(1, deltaSeconds * 2.5),
+        Math.min(1, deltaSeconds * 2.5)
       );
-      constellation.scale.setScalar(nextWorldScale);
+      topology.scale.setScalar(nextTopologyScale);
 
       const chapterYaw = hasFocus ? (chapterProgress - 0.5) * 0.86 : 0;
       const chapterPitch = hasFocus ? (0.5 - chapterProgress) * 0.18 : 0;
       const targetRotationY = chapterYaw + pointerX * 0.14 + scroll * 0.2;
       const targetRotationX =
         chapterPitch + pointerY * -0.1 + (variant === 'research' ? -0.035 : 0.025);
-      constellation.rotation.y = MathUtils.lerp(
-        constellation.rotation.y,
+      topology.rotation.y = MathUtils.lerp(
+        topology.rotation.y,
         targetRotationY,
-        Math.min(1, deltaSeconds * 3.2),
+        Math.min(1, deltaSeconds * 3.2)
       );
-      constellation.rotation.x = MathUtils.lerp(
-        constellation.rotation.x,
+      topology.rotation.x = MathUtils.lerp(
+        topology.rotation.x,
         targetRotationX,
-        Math.min(1, deltaSeconds * 3.2),
+        Math.min(1, deltaSeconds * 3.2)
       );
 
       desiredCameraPosition.set(
-        (hasFocus ? worldFocus.x * 0.12 : 0) + pointerX * 0.1,
-        (hasFocus ? worldFocus.y * 0.1 : 0) - pointerY * 0.07,
-        hasFocus ? focusedCameraZ + chapterProgress * 0.16 : overviewCameraZ,
+        (hasFocus ? topologyFocus.x * 0.12 : 0) + pointerX * 0.1,
+        (hasFocus ? topologyFocus.y * 0.1 : 0) - pointerY * 0.07,
+        hasFocus ? focusedCameraZ + chapterProgress * 0.16 : overviewCameraZ
       );
       const cameraBlend = Math.min(1, deltaSeconds * 2.8);
       camera.position.x = MathUtils.lerp(camera.position.x, desiredCameraPosition.x, cameraBlend);
@@ -455,37 +444,28 @@ export async function mountExperienceRenderer({
       camera.position.z = MathUtils.lerp(camera.position.z, desiredCameraPosition.z, cameraBlend);
 
       desiredLookTarget.set(
-        hasFocus ? worldFocus.x * 0.035 : 0,
-        hasFocus ? worldFocus.y * 0.035 : 0,
-        hasFocus ? 0.05 : 0,
+        hasFocus ? topologyFocus.x * 0.035 : 0,
+        hasFocus ? topologyFocus.y * 0.035 : 0,
+        hasFocus ? 0.05 : 0
       );
       cameraLookTarget.lerp(desiredLookTarget, Math.min(1, deltaSeconds * 3));
       camera.lookAt(cameraLookTarget);
 
-      const ringPitch = Math.PI * (hasFocus ? 0.47 + chapterProgress * 0.12 : 0.51);
-      ring.rotation.x = MathUtils.lerp(
-        ring.rotation.x,
-        ringPitch,
-        Math.min(1, deltaSeconds * 2.4),
+      particles.position.x = MathUtils.lerp(
+        particles.position.x,
+        pointerX * (currentQuality === 'high' ? 0.08 : 0.04),
+        Math.min(1, deltaSeconds * 2)
       );
-      ring.rotation.y = MathUtils.lerp(
-        ring.rotation.y,
-        hasFocus ? (chapterProgress - 0.5) * 0.32 : 0,
-        Math.min(1, deltaSeconds * 2.4),
-      );
-      ring.rotation.z += deltaSeconds * (0.022 + (hasFocus ? chapterProgress * 0.018 : 0));
-
-      particles.rotation.z += deltaSeconds * (currentQuality === 'high' ? 0.045 : 0.025);
-      particles.rotation.x = MathUtils.lerp(
-        particles.rotation.x,
-        hasFocus ? (chapterProgress - 0.5) * 0.14 : 0,
-        Math.min(1, deltaSeconds * 2.2),
+      particles.position.y = MathUtils.lerp(
+        particles.position.y,
+        -pointerY * 0.05,
+        Math.min(1, deltaSeconds * 2)
       );
       const targetParticleScale = hasFocus ? 1.03 + chapterProgress * 0.08 : 1;
       const nextParticleScale = MathUtils.lerp(
         particles.scale.x,
         targetParticleScale,
-        Math.min(1, deltaSeconds * 2.2),
+        Math.min(1, deltaSeconds * 2.2)
       );
       particles.scale.setScalar(nextParticleScale);
 
@@ -495,7 +475,7 @@ export async function mountExperienceRenderer({
         const nextScale = MathUtils.lerp(
           record.mesh.scale.x,
           targetScale,
-          Math.min(1, deltaSeconds * 7),
+          Math.min(1, deltaSeconds * 7)
         );
         record.mesh.scale.setScalar(nextScale);
       }
@@ -504,7 +484,7 @@ export async function mountExperienceRenderer({
       const nextCentralScale = MathUtils.lerp(
         central.scale.x,
         targetCentralScale,
-        Math.min(1, deltaSeconds * 4),
+        Math.min(1, deltaSeconds * 4)
       );
       central.scale.setScalar(nextCentralScale);
       central.rotation.x += deltaSeconds * 0.18;
@@ -549,7 +529,7 @@ export async function mountExperienceRenderer({
             if (inViewport) startAnimation();
             else stopAnimation();
           },
-          { rootMargin: '120px 0px', threshold: 0.01 },
+          { rootMargin: '120px 0px', threshold: 0.01 }
         )
       : null;
   viewportObserver?.observe(host);

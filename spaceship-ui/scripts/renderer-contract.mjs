@@ -12,6 +12,7 @@ const CORE_SENTINEL = '__JJO_RENDERER_CORE__';
 const RENDERER_CORE_PATH = 'src/lib/experience/renderer-core.ts';
 const ADAPTIVE_PATH = 'src/lib/experience/adaptive-performance.js';
 const STALE_CONSTELLATION_PATH = 'src/components/experience/ResearchConstellation.svelte';
+const RESEARCH_MAP_PATH = 'src/components/experience/ResearchMap.astro';
 const OBSOLETE_RESEARCH_IDS = ['robotics-systems', 'vision-perception', 'ai-research'];
 
 function read(relative) {
@@ -88,7 +89,7 @@ const requiredFiles = [
   RENDERER_CORE_PATH,
   'src/lib/experience/motion.ts',
   'src/components/experience/ExperienceCanvas.astro',
-  'src/components/experience/ResearchConstellation.astro',
+  RESEARCH_MAP_PATH,
   'src/components/Header.astro',
   'src/styles/renderer.css',
   'src/styles/experience.css',
@@ -133,7 +134,7 @@ const rendererCss = read('src/styles/renderer.css');
 const experienceCss = read('src/styles/experience.css');
 const motion = read('src/lib/experience/motion.ts');
 const homePage = read('src/pages/index.astro');
-const researchMap = read('src/components/experience/ResearchConstellation.astro');
+const researchMap = read(RESEARCH_MAP_PATH);
 const header = read('src/components/Header.astro');
 const browserSmoke = read('scripts/browser-smoke.mjs');
 const workflow = read('../.github/workflows/blog-ci.yml');
@@ -254,10 +255,10 @@ if (count(homePage, 'data-constellation-node={focus.id}') !== 1) {
   issues.push('index.astro: Home research cards must expose one canonical data-constellation-node mapping');
 }
 if (!researchMap.includes('data-constellation-node={focus.id}')) {
-  issues.push('ResearchConstellation.astro: SVG nodes must derive from canonical focus IDs');
+  issues.push('ResearchMap.astro: map markers must derive from canonical focus IDs');
 }
 if (!researchMap.includes('href={`#${focus.id}`}')) {
-  issues.push('ResearchConstellation.astro: SVG links must derive from canonical focus IDs');
+  issues.push('ResearchMap.astro: map links must derive from canonical focus IDs');
 }
 
 requireMarkers(core, 'renderer-core.ts', [
@@ -330,7 +331,7 @@ if (!layeringRule) {
 } else if (/\bposition\s*:/.test(layeringRule)) {
   issues.push('renderer.css: Home renderer layering rule must not override overlay positioning');
 }
-if (!/\.experience-stage-index,\s*\n\.experience-stage-caption,\s*\n\.experience-orbit-label\s*\{[\s\S]*?position:\s*absolute;/.test(experienceCss)) {
+if (!/\.experience-stage-index,\s*\n\.experience-stage-caption,\s*\n\.experience-axis-label\s*\{[\s\S]*?position:\s*absolute;/.test(experienceCss)) {
   issues.push('experience.css: Home hero overlays must remain position:absolute');
 }
 
@@ -371,7 +372,7 @@ if (!homePage.includes('/image/mouse_surprised.gif')) {
   issues.push('index.astro: requested mouse GIF fallback must remain');
 }
 if (count(researchMap, '<ExperienceCanvas variant="research" />') !== 1) {
-  issues.push('ResearchConstellation.astro: expected exactly one Research renderer shell');
+  issues.push('ResearchMap.astro: expected exactly one Research renderer shell');
 }
 
 const homeHtml = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');

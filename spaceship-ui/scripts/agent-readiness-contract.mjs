@@ -56,7 +56,7 @@ if (countTag(home, 'h3') < 1) {
 for (const marker of [
   'Robotics × AI × Vision',
   'Current research affiliations',
-  'One system.',
+  'One practice.',
   'Latest Writing',
 ]) {
   requireIncludes(homeText, marker, 'index.html raw content');

@@ -36,7 +36,7 @@ async function loadResearchAreas() {
 }
 
 const researchAreas = await loadResearchAreas();
-const component = read('src/components/experience/ResearchConstellation.astro');
+const component = read('src/components/experience/ResearchMap.astro');
 const researchPage = read('src/pages/research.astro');
 const researchData = read('src/lib/research.ts');
 
@@ -50,21 +50,21 @@ for (const required of [
   'data-constellation-node={focus.id}',
 ]) {
   if (!component.includes(required)) {
-    issues.push(`ResearchConstellation.astro: missing canonical/accessibility marker ${required}`);
+    issues.push(`ResearchMap.astro: missing canonical/accessibility marker ${required}`);
   }
 }
 
 for (const forbidden of ['<canvas', 'three', 'WebGL', 'WebGPU', 'preventDefault()']) {
   if (component.includes(forbidden)) {
-    issues.push(`ResearchConstellation.astro: forbidden implementation marker ${forbidden}`);
+    issues.push(`ResearchMap.astro: forbidden implementation marker ${forbidden}`);
   }
 }
 
-if (!researchPage.includes("import ResearchConstellation from '@/components/experience/ResearchConstellation.astro';")) {
-  issues.push('research.astro: ResearchConstellation import is missing');
+if (!researchPage.includes("import ResearchMap from '@/components/experience/ResearchMap.astro';")) {
+  issues.push('research.astro: ResearchMap import is missing');
 }
-if (!researchPage.includes('<ResearchConstellation />')) {
-  issues.push('research.astro: constellation render boundary is missing');
+if (!researchPage.includes('<ResearchMap />')) {
+  issues.push('research.astro: research map render boundary is missing');
 }
 if (!researchPage.includes('RESEARCH_FOCUS.map') || !researchPage.includes('id={focus.id}')) {
   issues.push('research.astro: sections must derive from the canonical research taxonomy');
