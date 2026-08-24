@@ -28,3 +28,10 @@ export function resolveSeriesPostTitle(
   const numeral = romanNumerals[entry.order] ?? String(entry.order);
   return `${modernAiSeries.title} ${numeral} — ${entry.title}`;
 }
+
+export function resolveSeriesPostDescription(
+  fallbackDescription: string,
+  series: SeriesReference | undefined,
+): string {
+  return getModernAiSeriesEntry(series)?.description ?? fallbackDescription;
+}
