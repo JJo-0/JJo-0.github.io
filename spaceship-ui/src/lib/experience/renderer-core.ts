@@ -165,6 +165,7 @@ export async function mountExperienceRenderer({
     color: new Color(palette.accentStrong),
     transparent: true,
     opacity: 0.9,
+    wireframe: true,
   });
   geometries.add(centralGeometry);
   materials.add(centralMaterial);
@@ -181,6 +182,7 @@ export async function mountExperienceRenderer({
       color: new Color(palette.muted),
       transparent: true,
       opacity: 0.62,
+      wireframe: true,
     });
     geometries.add(geometry);
     materials.add(material);

@@ -10,6 +10,7 @@ const issues = [];
 const RENDERER_PAYLOAD_GZIP_BUDGET = 750 * 1024;
 const CORE_SENTINEL = '__JJO_RENDERER_CORE__';
 const RENDERER_CORE_PATH = 'src/lib/experience/renderer-core.ts';
+const ASCII_ART_PATH = 'src/lib/experience/ascii-art.ts';
 const ADAPTIVE_PATH = 'src/lib/experience/adaptive-performance.js';
 const STALE_CONSTELLATION_PATH = 'src/components/experience/ResearchConstellation.svelte';
 const RESEARCH_MAP_PATH = 'src/components/experience/ResearchMap.astro';
@@ -86,6 +87,7 @@ const requiredFiles = [
   ADAPTIVE_PATH,
   'src/lib/experience/adaptive-performance.d.ts',
   'src/lib/experience/renderer-runtime.ts',
+  ASCII_ART_PATH,
   RENDERER_CORE_PATH,
   'src/lib/experience/motion.ts',
   'src/components/experience/ExperienceCanvas.astro',
@@ -127,6 +129,7 @@ const capability = read('src/lib/experience/capability.ts');
 const adaptive = read(ADAPTIVE_PATH);
 const adaptiveContract = read('scripts/adaptive-performance-contract.mjs');
 const runtime = read('src/lib/experience/renderer-runtime.ts');
+const asciiArt = read(ASCII_ART_PATH);
 const core = read(RENDERER_CORE_PATH);
 const state = read('src/lib/experience/state.ts');
 const component = read('src/components/experience/ExperienceCanvas.astro');
@@ -153,6 +156,18 @@ requireMarkers(state, 'state.ts', [
 ]);
 requireMarkers(motion, 'motion.ts', ['isResearchNodeId', 'activeResearchNode']);
 requireMarkers(core, 'renderer-core.ts', ['RESEARCH_NODE_IDS', 'isResearchNodeId']);
+requireMarkers(asciiArt, 'ascii-art.ts', [
+  'requestAnimationFrame(draw)',
+  "['·', ':', '+', '*', '#', '@']",
+  "host.addEventListener('pointermove'",
+  "host.addEventListener('pointerdown'",
+  "prefers-reduced-motion: reduce",
+  'IntersectionObserver',
+]);
+requireMarkers(component, 'ExperienceCanvas.astro', [
+  'data-ascii-art',
+  'installAsciiArtRuntime',
+]);
 for (const obsoleteId of OBSOLETE_RESEARCH_IDS) {
   for (const [filename, source] of [
     ['state.ts', state],
