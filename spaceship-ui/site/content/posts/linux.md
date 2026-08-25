@@ -2,6 +2,7 @@
 title: 'linux 개발환경 세팅, 설치 및 Bash 명령어'
 description: '- 내가 쉽게 쓰기 위해서, 리눅스의 명령어, 썼던 제품들의 명령어등을 정리하고자 한다....'
 pubDate: 2025-06-16
+updatedDate: 2026-08-25
 category: software-engineering-cs
 subcategory: development-environment
 type: setup-guide
@@ -253,14 +254,16 @@ CUDA는 2007년 1.0부터 시작하여 2.0(2008), 3.0(2010), 4.0(2011), 5.0(2012
 
 CUDA는 병렬 컴퓨팅 분야에서 중요한 역할을 담당하며, 다양한 버전과 아키텍처를 통해 GPU의 강력한 성능을 활용할 수 있게 합니다. Windows·Linux·WSL 등 여러 환경에서 사용 가능하며, 설치 시 드라이버·GPU 아키텍처 호환성·개발 툴 제한 사항 등을 주의해야 합니다. 앞으로도 CUDA는 인공지능·머신러닝·데이터 과학 등 분야에서 발전을 거듭하며, GPU 병렬 처리 기술의 핵심으로 자리 잡을 것입니다. 
 
-### Ros2 Humble && Jazzy
+### ROS 2 환경 전환
+
+> 2026-08-25 기준: Humble의 Tier 1 Ubuntu는 22.04, Jazzy와 Kilted의 Tier 1 Ubuntu는 24.04다. 지원 조합과 종료일은 항상 [REP-2000](https://www.ros.org/reps/rep-2000.html)에서 확인한다. 서로 다른 Ubuntu용 system package를 한 host의 `/opt/ros`에 억지로 함께 설치하지 않는다.
 
 #### ROS 2 Distro Switcher  
-**ROS 2 Humble** 과 **ROS 2 Jazzy** 배포판을 손쉽게 전환할 수 있는 쉘 함수와 alias 설정이다.
+같은 OS에서 공식적으로 설치 가능한 ROS 2 환경 또는 container·RoboStack으로 격리한 환경을 전환하는 예다. 새 Ubuntu 24.04 장기 프로젝트의 기본 선택은 Jazzy이며, Humble은 Ubuntu 22.04 기존 장비를 유지할 때 사용한다.
 
 ##### 📦 요구 사항
 
-- Ubuntu 22.04 이상 (Humble), Ubuntu 24.04 (Jazzy 권장) 설치가 완료되어야 한다.
+- Ubuntu 22.04 + Humble 또는 Ubuntu 24.04 + Jazzy처럼 REP-2000의 지원 조합을 사용한다.
 - 나의 경우 24.04 버전에 **RoboStack** 이용해 설치 했다.
   - 시스템 의존성 없이 다양한 OS에서 ROS2 설치 가능한, conda-forge 위에  올라간 ROS2 배포 binary project
   - RoboStack을 이용해 설치한 경우 밑의 것이 필요가 없다. (Conda activate 만으로 설정 완료됨)
@@ -295,7 +298,8 @@ function switch_ros {
             ;;
     esac
     echo "Switched to ROS 2 $distro"
-    ros2 --version
+    printenv ROS_DISTRO
+    ros2 doctor --report
 }
 
 alias ros_humble='switch_ros humble'
@@ -638,4 +642,3 @@ python3 -c "import torchvision; print('torchvision 버전:', torchvision.__versi
 python3 -c "import torchaudio; print('torchaudio 버전:', torchaudio.__version__)"
 
 ```
-
