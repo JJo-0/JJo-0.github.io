@@ -20,7 +20,7 @@ const REGION = `(anchor) => {
   return 'other';
 }`;
 const VISIBLE = `(node) => {
-  if (!node || node.classList.contains('sr-only')) return false;
+  if (!node || node.closest('.sr-only, [hidden], [aria-hidden="true"]')) return false;
   const style = getComputedStyle(node);
   const rect = node.getBoundingClientRect();
   return style.display !== 'none' && style.visibility !== 'hidden' &&
