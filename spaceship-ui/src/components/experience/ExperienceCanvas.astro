@@ -3,9 +3,10 @@ import '@/styles/renderer.css';
 
 interface Props {
   variant: 'home' | 'research';
+  graph?: import('@/lib/experience/post-graph').PostGraph;
 }
 
-const { variant } = Astro.props;
+const { variant, graph } = Astro.props;
 ---
 
 <div
@@ -13,10 +14,30 @@ const { variant } = Astro.props;
   data-experience-canvas={variant}
   data-renderer-status="idle"
   data-renderer-tier="safe"
-  aria-hidden="true"
+  data-post-graph={graph ? JSON.stringify(graph) : undefined}
+  data-ascii-graph={graph ? 'true' : undefined}
+  aria-label={graph ? `Interactive writing graph with ${graph.nodes.length} articles` : undefined}
+  aria-hidden={graph ? undefined : 'true'}
 >
   <canvas class="experience-renderer__gpu" data-experience-canvas-element tabindex="-1"></canvas>
   <canvas class="experience-renderer__ascii" data-ascii-art tabindex="-1"></canvas>
+  {
+    graph && (
+      <nav class="post-graph-links" aria-label="Writing graph articles">
+        {graph.nodes.map((node) => (
+          <a
+            href={node.href}
+            class="post-graph-node"
+            data-post-graph-node={node.id}
+            aria-label={`${node.title}. ${node.category}. ${node.tags.join(', ')}`}
+          >
+            <span class="post-graph-node__dot" aria-hidden="true" />
+          </a>
+        ))}
+      </nav>
+    )
+  }
+  {graph && <output class="post-graph-tooltip" data-post-graph-tooltip aria-live="polite" />}
   <span class="experience-renderer__status">
     GPU <span data-renderer-label>SVG</span>
   </span>

@@ -70,7 +70,7 @@ function collectModuleGraph(entryFiles) {
 
 if (!Array.isArray(RESEARCH_AREAS) || RESEARCH_AREAS.length !== 4) {
   issues.push(
-    `taxonomy.mjs: expected exactly 4 canonical RESEARCH_AREAS, got ${RESEARCH_AREAS?.length ?? 'missing'}`,
+    `taxonomy.mjs: expected exactly 4 canonical RESEARCH_AREAS, got ${RESEARCH_AREAS?.length ?? 'missing'}`
   );
 } else if (new Set(RESEARCH_AREAS).size !== RESEARCH_AREAS.length) {
   issues.push('taxonomy.mjs: canonical RESEARCH_AREAS contain duplicate IDs');
@@ -103,16 +103,20 @@ const requiredFiles = [
 for (const relative of requiredFiles) read(relative);
 
 if (fs.existsSync(path.join(root, STALE_CONSTELLATION_PATH))) {
-  issues.push(`${STALE_CONSTELLATION_PATH}: stale duplicate constellation implementation must be deleted`);
+  issues.push(
+    `${STALE_CONSTELLATION_PATH}: stale duplicate constellation implementation must be deleted`
+  );
 }
 
 const packageJson = JSON.parse(read('package.json'));
 if (packageJson.dependencies?.three !== '0.185.1') {
-  issues.push(`package.json: expected three 0.185.1, got ${packageJson.dependencies?.three ?? 'missing'}`);
+  issues.push(
+    `package.json: expected three 0.185.1, got ${packageJson.dependencies?.three ?? 'missing'}`
+  );
 }
 if (packageJson.devDependencies?.['@types/three'] !== '0.185.3') {
   issues.push(
-    `package.json: expected @types/three 0.185.3, got ${packageJson.devDependencies?.['@types/three'] ?? 'missing'}`,
+    `package.json: expected @types/three 0.185.3, got ${packageJson.devDependencies?.['@types/three'] ?? 'missing'}`
   );
 }
 if (packageJson.scripts?.['browser:smoke'] !== 'node scripts/browser-smoke.mjs') {
@@ -161,13 +165,10 @@ requireMarkers(asciiArt, 'ascii-art.ts', [
   "['·', ':', '+', '*', '#', '@']",
   "host.addEventListener('pointermove'",
   "host.addEventListener('pointerdown'",
-  "prefers-reduced-motion: reduce",
+  'prefers-reduced-motion: reduce',
   'IntersectionObserver',
 ]);
-requireMarkers(component, 'ExperienceCanvas.astro', [
-  'data-ascii-art',
-  'installAsciiArtRuntime',
-]);
+requireMarkers(component, 'ExperienceCanvas.astro', ['data-ascii-art', 'installAsciiArtRuntime']);
 for (const obsoleteId of OBSOLETE_RESEARCH_IDS) {
   for (const [filename, source] of [
     ['state.ts', state],
@@ -267,7 +268,9 @@ requireMarkers(motion, 'motion.ts', [
   'experienceState.patch',
 ]);
 if (count(homePage, 'data-constellation-node={focus.id}') !== 1) {
-  issues.push('index.astro: Home research cards must expose one canonical data-constellation-node mapping');
+  issues.push(
+    'index.astro: Home research cards must expose one canonical data-constellation-node mapping'
+  );
 }
 if (!researchMap.includes('data-constellation-node={focus.id}')) {
   issues.push('ResearchMap.astro: map markers must derive from canonical focus IDs');
@@ -317,36 +320,49 @@ if (/import\s*\(\s*['"]three(?:\/webgpu)?['"]\s*\)/.test(core)) {
   issues.push('renderer-core.ts: import the isolated lazy module, not the entire Three namespace');
 }
 
-const sourceFiles = filesUnder(path.join(root, 'src'), (file) => /\.(?:js|ts|astro|svelte)$/.test(file));
+const sourceFiles = filesUnder(path.join(root, 'src'), (file) =>
+  /\.(?:js|ts|astro|svelte)$/.test(file)
+);
 for (const file of sourceFiles) {
   const source = fs.readFileSync(file, 'utf8');
   const relative = path.relative(root, file).replaceAll(path.sep, '/');
   const hasDynamicThree = /import\s*\(\s*['"]three(?:\/webgpu)?['"]\s*\)/.test(source);
   const hasRuntimeStaticThree = /import\s+(?!type\b)[\s\S]*?from\s*['"]three(?:\/webgpu)?['"]/.test(
-    source,
+    source
   );
-  if (hasDynamicThree) issues.push(`${relative}: whole-namespace dynamic Three.js import is forbidden`);
+  if (hasDynamicThree)
+    issues.push(`${relative}: whole-namespace dynamic Three.js import is forbidden`);
   if (relative !== RENDERER_CORE_PATH && hasRuntimeStaticThree) {
     issues.push(`${relative}: Three.js runtime import must remain isolated to renderer-core.ts`);
   }
 }
 
-if (!component.includes('data-experience-canvas') || !component.includes('installExperienceRendererRuntime')) {
+if (
+  !component.includes('data-experience-canvas') ||
+  !component.includes('installExperienceRendererRuntime')
+) {
   issues.push('ExperienceCanvas.astro: renderer shell/runtime markers missing');
 }
-if (!rendererCss.includes("data-renderer-tier='safe'") || !rendererCss.includes('prefers-reduced-motion')) {
+if (
+  !rendererCss.includes("data-renderer-tier='safe'") ||
+  !rendererCss.includes('prefers-reduced-motion')
+) {
   issues.push('renderer.css: SAFE/reduced-motion fallback missing');
 }
 
 const layeringRule = rendererCss.match(
-  /\.experience-visual-stage\s*>\s*:not\(\.experience-renderer\)\s*\{([\s\S]*?)\}/,
+  /\.experience-visual-stage\s*>\s*:not\(\.experience-renderer\)\s*\{([\s\S]*?)\}/
 )?.[1];
 if (!layeringRule) {
   issues.push('renderer.css: Home renderer layering rule is missing');
 } else if (/\bposition\s*:/.test(layeringRule)) {
   issues.push('renderer.css: Home renderer layering rule must not override overlay positioning');
 }
-if (!/\.experience-stage-index,\s*\n\.experience-stage-caption,\s*\n\.experience-axis-label\s*\{[\s\S]*?position:\s*absolute;/.test(experienceCss)) {
+if (
+  !/\.experience-stage-index,\s*\n\.experience-stage-caption,\s*\n\.experience-axis-label\s*\{[\s\S]*?position:\s*absolute;/.test(
+    experienceCss
+  )
+) {
   issues.push('experience.css: Home hero overlays must remain position:absolute');
 }
 
@@ -358,7 +374,8 @@ requireMarkers(header, 'Header.astro', [
   'whitespace-nowrap',
 ]);
 if (/\btruncate\b/.test(header)) issues.push('Header.astro: site brand truncation is forbidden');
-if (header.includes('-mx-1')) issues.push('Header.astro: negative mobile navigation margin is forbidden');
+if (header.includes('-mx-1'))
+  issues.push('Header.astro: negative mobile navigation margin is forbidden');
 
 requireMarkers(browserSmoke, 'browser-smoke.mjs', [
   'data-site-brand',
@@ -380,13 +397,13 @@ if (!workflow.includes('Browser smoke matrix') || !workflow.includes('pnpm brows
   issues.push('blog-ci.yml: browser smoke matrix is not wired into CI');
 }
 
-if (count(homePage, '<ExperienceCanvas variant="home" />') !== 1) {
+if (count(homePage, '<ExperienceCanvas variant="home" graph={postGraph} />') !== 1) {
   issues.push('index.astro: expected exactly one Home renderer shell');
 }
 if (!homePage.includes('/image/mouse_surprised.gif')) {
   issues.push('index.astro: requested mouse GIF fallback must remain');
 }
-if (count(researchMap, '<ExperienceCanvas variant="research" />') !== 1) {
+if (count(researchMap, '<ExperienceCanvas variant="research" graph={graph} />') !== 1) {
   issues.push('ResearchMap.astro: expected exactly one Research renderer shell');
 }
 
@@ -419,9 +436,8 @@ for (const node of RESEARCH_AREAS) {
   }
 }
 
-const articleFiles = filesUnder(
-  path.join(dist, 'posts'),
-  (file) => /posts[/\\][^/\\]+[/\\]index\.html$/.test(file),
+const articleFiles = filesUnder(path.join(dist, 'posts'), (file) =>
+  /posts[/\\][^/\\]+[/\\]index\.html$/.test(file)
 );
 for (const file of articleFiles) {
   const html = fs.readFileSync(file, 'utf8');
@@ -431,18 +447,20 @@ for (const file of articleFiles) {
 }
 
 const builtScripts = filesUnder(path.join(dist, '_astro'), (file) => file.endsWith('.js'));
-const coreChunks = builtScripts.filter((file) => fs.readFileSync(file, 'utf8').includes(CORE_SENTINEL));
+const coreChunks = builtScripts.filter((file) =>
+  fs.readFileSync(file, 'utf8').includes(CORE_SENTINEL)
+);
 if (coreChunks.length !== 1) {
   issues.push(`built renderer core: expected one sentinel chunk, found ${coreChunks.length}`);
 }
 const rendererGraph = collectModuleGraph(coreChunks);
 const rendererPayloadGzip = [...rendererGraph].reduce(
   (total, file) => total + gzipSync(fs.readFileSync(file)).byteLength,
-  0,
+  0
 );
 if (rendererPayloadGzip > RENDERER_PAYLOAD_GZIP_BUDGET) {
   issues.push(
-    `renderer payload exceeded: ${rendererPayloadGzip} B gzip > ${RENDERER_PAYLOAD_GZIP_BUDGET} B`,
+    `renderer payload exceeded: ${rendererPayloadGzip} B gzip > ${RENDERER_PAYLOAD_GZIP_BUDGET} B`
   );
 }
 
@@ -454,5 +472,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  `renderer-contract: PASS (${RESEARCH_AREAS.length} canonical research nodes; actual WebGPU/WebGL2 backend selection; 30/42/58 adaptive FPS hysteresis; true RAF/theme/retry lifecycle; ${articleFiles.length} GPU-free articles; ${rendererGraph.size} lazy module(s), ${rendererPayloadGzip} B gzip)`,
+  `renderer-contract: PASS (${RESEARCH_AREAS.length} canonical research nodes; actual WebGPU/WebGL2 backend selection; 30/42/58 adaptive FPS hysteresis; true RAF/theme/retry lifecycle; ${articleFiles.length} GPU-free articles; ${rendererGraph.size} lazy module(s), ${rendererPayloadGzip} B gzip)`
 );

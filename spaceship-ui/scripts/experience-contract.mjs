@@ -132,7 +132,7 @@ if (!constellationSource.includes("import { RESEARCH_FOCUS } from '@/lib/researc
 if (!constellationSource.includes('RESEARCH_FOCUS.map')) {
   issues.push('ResearchMap.astro: canonical focus iteration is missing');
 }
-if (!constellationSource.includes('<ExperienceCanvas variant="research" />')) {
+if (!constellationSource.includes('<ExperienceCanvas variant="research" graph={graph} />')) {
   issues.push('ResearchMap.astro: progressive Research renderer shell is missing');
 }
 if (!motionSource.includes("prefers-reduced-motion: reduce") || !motionSource.includes('ScrollTrigger')) {

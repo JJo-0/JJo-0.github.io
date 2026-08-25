@@ -20,7 +20,7 @@ const REGION = `(anchor) => {
   return 'other';
 }`;
 const VISIBLE = `(node) => {
-  if (!node || node.classList.contains('sr-only')) return false;
+  if (!node || node.closest('.sr-only, [hidden], [aria-hidden="true"]')) return false;
   const style = getComputedStyle(node);
   const rect = node.getBoundingClientRect();
   return style.display !== 'none' && style.visibility !== 'hidden' &&
@@ -56,6 +56,7 @@ const INVENTORY = `(() => {
       target: anchor.getAttribute('target') || '',
       rel: anchor.getAttribute('rel') || '',
       download: anchor.hasAttribute('download'),
+      movingGraph: anchor.hasAttribute('data-post-graph-node'),
       homeSemantic: anchor.hasAttribute('data-site-brand') ||
         anchor.closest('[aria-label="Breadcrumb"]') !== null ||
         /\\bhome\\b|park\\s*jiho/i.test(text + ' ' + aria),
@@ -288,6 +289,11 @@ async function auditRoute(cdp, sessionId, route) {
 
     const entry = { link, label, expected };
     internalEntries.push(entry);
+
+    // Moving ASCII nodes have their article hrefs validated here and their
+    // hover/navigation behavior covered by the dedicated graph audit. A
+    // coordinate hit-test races the animation and can land on an adjacent node.
+    if (link.movingGraph) continue;
 
     // Core routes stay exhaustively activation-tested. Writing is an archive:
     // every destination remains exhaustively HEAD-probed, while representative

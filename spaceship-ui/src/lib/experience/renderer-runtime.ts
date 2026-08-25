@@ -11,7 +11,7 @@ type IdleDeadlineLike = { didTimeout: boolean; timeRemaining: () => number };
 type WindowWithIdle = Window & {
   requestIdleCallback?: (
     callback: (deadline: IdleDeadlineLike) => void,
-    options?: { timeout?: number },
+    options?: { timeout?: number }
   ) => number;
   cancelIdleCallback?: (handle: number) => void;
 };
@@ -99,7 +99,7 @@ function setStatus(host: HTMLElement, status: string, label: string): void {
 
 function replaceRendererCanvas(
   host: HTMLElement,
-  expectedCanvas?: HTMLCanvasElement,
+  expectedCanvas?: HTMLCanvasElement
 ): HTMLCanvasElement | null {
   const canvas =
     expectedCanvas ?? host.querySelector<HTMLCanvasElement>('[data-experience-canvas-element]');
@@ -203,7 +203,7 @@ export function installExperienceRendererRuntime(): void {
   const mountHost = async (
     host: HTMLElement,
     profile: CapabilityProfile,
-    currentGeneration: number,
+    currentGeneration: number
   ): Promise<void> => {
     if (mountedRenderer || currentGeneration !== generation || !host.isConnected) return;
 
@@ -255,7 +255,7 @@ export function installExperienceRendererRuntime(): void {
   const scheduleMount = (
     host: HTMLElement,
     profile: CapabilityProfile,
-    currentGeneration: number,
+    currentGeneration: number
   ): void => {
     cancelScheduledMount();
     const run = (): void => {
@@ -283,6 +283,13 @@ export function installExperienceRendererRuntime(): void {
     const currentGeneration = generation;
     const profile = detectExperienceCapability();
     const route = experienceRouteFromPath(window.location.pathname);
+
+    if (host.dataset.asciiGraph === 'true') {
+      host.dataset.rendererTier = 'safe';
+      host.dataset.rendererReason = 'ascii-writing-graph';
+      setStatus(host, 'fallback', 'ASCII 3D');
+      return;
+    }
 
     document.documentElement.dataset.experienceTier = profile.tier;
     host.dataset.rendererTier = profile.tier;
@@ -321,7 +328,7 @@ export function installExperienceRendererRuntime(): void {
         intersectionObserver = null;
         scheduleMount(host, profile, currentGeneration);
       },
-      { rootMargin: '0px', threshold: 0.01 },
+      { rootMargin: '0px', threshold: 0.01 }
     );
     intersectionObserver.observe(host);
   };

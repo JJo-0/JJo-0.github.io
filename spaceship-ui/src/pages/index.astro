@@ -9,6 +9,7 @@ import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import { RESEARCH_FOCUS } from '@/lib/research';
 import { POST_CATEGORIES } from '@/lib/taxonomy.mjs';
 import { SITE } from '@/config';
+import { buildPostGraph } from '@/lib/experience/post-graph';
 
 const posts = (await getPublishedPosts()).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
@@ -17,6 +18,7 @@ const posts = (await getPublishedPosts()).sort(
 const featuredPosts = posts.filter((post) => post.data.featured).slice(0, SITE.featuredPostsCount);
 const latestPosts = posts.filter((post) => !post.data.featured).slice(0, SITE.latestPostsCount);
 const postCategoryHashes = JSON.stringify(POST_CATEGORIES);
+const postGraph = buildPostGraph(posts);
 ---
 
 <Layout markdownAlternate="/index.md">
@@ -131,22 +133,17 @@ const postCategoryHashes = JSON.stringify(POST_CATEGORIES);
           data-motion="hero-visual"
           data-world-stage
         >
-          <ExperienceCanvas variant="home" />
+          <ExperienceCanvas variant="home" graph={postGraph} />
           <span class="world-axis world-axis--x" aria-hidden="true"></span>
           <span class="world-axis world-axis--y" aria-hidden="true"></span>
 
-          <span class="experience-stage-index">Plate / 01</span>
-          <span class="experience-axis-label experience-axis-label--vision">Perception</span>
-          <span class="experience-axis-label experience-axis-label--hri">Human · Robot</span>
-          <span class="experience-axis-label experience-axis-label--systems">Systems</span>
-          <span class="experience-stage-caption">Live research topology</span>
-
           <div class="world-hud world-hud--top" aria-hidden="true">
-            <span class="world-hud__eyebrow">JJO / Research Index</span>
-            <span class="world-hud__metric">Adaptive GPU · Paper Safe</span>
+            <span class="world-hud__eyebrow">JJO / Writing Atlas</span>
+            <span class="world-hud__metric">{postGraph.nodes.length} Articles · Live Relations</span
+            >
           </div>
 
-          <nav class="world-hud world-hud--nodes" aria-label="Research map sections">
+          <nav class="sr-only" aria-label="Research map sections">
             {
               RESEARCH_FOCUS.map((focus, index) => (
                 <button
