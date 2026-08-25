@@ -471,12 +471,15 @@ async function auditAboutFont(cdp, sessionId) {
     })`,
     'About typography metrics',
   );
-  assert.equal(new Set(metrics.families).size, 1, `mixed fonts: ${metrics.families.join(' | ')}`);
-  assert.equal(metrics.families[0].toLowerCase().includes('outfit'), false);
-  assert.match(metrics.families[0], /Noto Sans KR|Apple SD Gothic Neo|Malgun Gothic/i);
+  const [titleFamily, contentFamily, paragraphFamily, headingFamily] = metrics.families;
+  assert.equal(titleFamily, headingFamily, `editorial fonts diverged: ${metrics.families.join(' | ')}`);
+  assert.equal(contentFamily, paragraphFamily, `reading fonts diverged: ${metrics.families.join(' | ')}`);
+  assert.notEqual(titleFamily, contentFamily, `editorial/reading fonts collapsed: ${titleFamily}`);
+  assert.match(titleFamily, /Iowan Old Style|Noto Serif KR|Nanum Myeongjo|Georgia/i);
+  assert.match(contentFamily, /Noto Sans KR|Apple SD Gothic Neo|Malgun Gothic/i);
   assert.ok(metrics.weight >= 700);
   assert.equal(metrics.overflow, false);
-  console.log(`browser-smoke: PASS About unified Korean typography (${metrics.families[0]})`);
+  console.log(`browser-smoke: PASS About editorial/reading typography (${titleFamily} | ${contentFamily})`);
 }
 
 export async function auditInteractions(cdp, sessionId) {

@@ -67,6 +67,7 @@ const annotationIds=new Set((contentLedger.annotations??[]).map(a=>a.annotationI
 if(!sameSet(pageAnnotations,annotationIds))fail('page ledger annotation coverage mismatch');
 
 if(!article)fail('Part V article missing');
+for(const required of ['완전성 계약(Completeness contract)','세 층을 섞지 않는다','## 원장 현황','# PDF 원자료 재구성','# 편집·수학 검증','# 2026-08-18 최신 연구 업데이트'])if(!article.includes(required))fail(`Part V source contract missing ${required}`);
 for(const c of sourceContent)if(!article.includes(`source-content:${c.contentId}`))fail(`${c.contentId}: article marker missing`);
 for(const c of editorial)if(!article.includes(`editorial-content:${c.contentId}`))fail(`${c.contentId}: editorial marker missing`);
 for(const c of research)if(!article.includes(`research-content:${c.contentId}`))fail(`${c.contentId}: research marker missing`);
@@ -97,7 +98,9 @@ if(fs.existsSync(path.join(root,'dist'))){
     const unreviewed=(html.match(/data-formula-lesson-state="unreviewed"/g)??[]).length;
     if(unreviewed!==EXPECTED.display)fail(`Part V unreviewed lesson states ${unreviewed} != ${EXPECTED.display}`);
     if(html.includes('data-formula-lesson-state="missing"'))fail('Part V lesson state missing');
-    for(const required of ['현대 인공지능 V','PDF 원자료 재구성','편집·수학 검증','2026-08-18 최신 연구 업데이트','DINOv3','SigLIP 2'])if(!html.includes(required))fail(`rendered output missing ${required}`);
+    for(const required of ['현대 인공지능 V','강의자료를 읽을 때 주의할 점','2026-08-18 최신 연구 업데이트','DINOv3','SigLIP 2'])if(!html.includes(required))fail(`rendered output missing ${required}`);
+    for(const forbidden of ['완전성 계약','세 층을 섞지 않는다','원장 현황','PDF SHA-256','PDF 원자료 재구성','편집·수학 검증','PDF page coverage에 포함하지 않는다','Part V display lesson state','P5-E001','P5-R001'])if(html.includes(forbidden))fail(`rendered audit/provenance residue: ${forbidden}`);
+    if(/P5-(?:E|R)\d{3}/.test(html))fail('rendered editorial/research ledger ID leaked');
   }
 }
 
