@@ -1,0 +1,136 @@
+---
+title: '현대 인공지능 VI — 의미론적 영상 분할: FCN·U-Net·DeepLab'
+description: '픽셀 단위 예측, encoder-decoder, skip connection, dilated convolution과 다중 스케일 분할을 다룬다.'
+pubDate: 2026-08-25
+updatedDate: 2026-08-25
+category: ai-machine-learning
+subcategory: semantic-segmentation
+type: study-note
+tags:
+  - semantic-segmentation
+  - fully-convolutional-network
+  - u-net
+  - deeplab
+  - computer-vision
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 8
+featured: true
+lang: 'ko'
+series:
+  id: 'modern-artificial-intelligence'
+  order: 6
+---
+
+import ModernAiConceptVisual from '@/components/post/ModernAiConceptVisual.astro';
+import ModernAiSourceEquation from '@/components/post/ModernAiSourceEquation.astro';
+import { modernAiFormula } from '@/lib/modern-ai-parts6-8';
+
+의미론적 영상 분할은 이미지를 보고 “고양이”라고 답하는 데서 멈추지 않는다. **어느 픽셀이 고양이이고, 어느 픽셀이 배경인지**를 같은 해상도의 label map으로 돌려준다. 이 한 가지 차이 때문에 분류망의 마지막 층을 바꾸는 것만으로는 부족하다. 넓은 문맥을 보는 능력과 정확한 위치를 복원하는 능력을 동시에 설계해야 한다.
+
+## 6.1 분류에서 dense prediction으로
+
+분류는 입력 전체를 하나의 feature vector로 압축한다. 반면 semantic segmentation은 각 위치마다 (K)개 class score를 내야 한다. 출력 tensor가 `H × W × K`가 되고, 같은 class에 속한 서로 떨어진 물체는 같은 label을 받는다. 물체마다 별도의 ID를 붙이는 instance segmentation과 구분되는 지점이다.
+
+<ModernAiConceptVisual kind="dense-prediction" />
+
+[FCN](https://arxiv.org/abs/1411.4038)은 fully connected layer를 convolution으로 바꾸어 임의 크기 입력을 공간 score map으로 처리했다. 깊은 layer의 coarse semantics와 얕은 layer의 fine appearance를 skip 구조로 합친 것이 이후 분할망의 기본 문법이 됐다.
+
+## 6.2 encoder–decoder가 잃고 되찾는 것
+
+encoder는 stride와 pooling으로 해상도를 줄이며 receptive field를 넓힌다. 덕분에 “이 픽셀이 자동차의 일부인가”를 넓은 문맥에서 판단하지만, 정확한 경계는 흐려진다. decoder는 interpolation, unpooling, transposed convolution 등으로 score map을 키운다.
+
+<ModernAiConceptVisual kind="encoder-decoder" />
+
+Transposed convolution은 convolution의 계산 그래프를 뒤집어 입력 하나가 여러 출력 위치에 기여하게 한다. 출력 크기는 다음 관계로 확인할 수 있다. 여기서 (s)는 stride, (p)는 padding, (d)는 dilation, (k)는 kernel 크기, (o)는 output padding이다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-001')} />
+
+kernel overlap이 위치마다 균일하지 않으면 checkerboard artifact가 생길 수 있다. 실무에서는 `interpolation → convolution` 조합이 더 안정적인지 함께 비교한다.
+
+## 6.3 U-Net과 skip connection
+
+[U-Net](https://arxiv.org/abs/1505.04597)은 contracting path와 expanding path를 대칭으로 두고, 같은 해상도의 encoder feature를 decoder로 직접 보낸다. decoder가 깊은 층의 “무엇”과 얕은 층의 “어디”를 함께 보게 하는 구조다.
+
+<ModernAiConceptVisual kind="unet-skip" />
+
+skip connection은 단순한 정보 우회로가 아니다. encoder와 decoder의 feature 크기가 맞는지, concatenate 뒤 channel 수가 얼마나 커지는지, crop 또는 padding이 필요한지를 모두 결정한다. Residual U-Net, FC-DenseNet, RefineNet도 이 **다중 해상도 feature 재사용**을 서로 다른 방식으로 확장한다.
+
+## 6.4 dilation으로 해상도를 지키며 문맥 넓히기
+
+일반 convolution을 계속 downsample하면 문맥은 넓어지지만 경계가 거칠어진다. atrous convolution은 kernel 원소 사이에 간격 (r)을 두어 feature map 크기를 유지하면서 receptive field를 키운다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-005')} />
+
+<ModernAiConceptVisual kind="atrous-pyramid" />
+
+[PSPNet](https://arxiv.org/abs/1612.01105)은 서로 다른 크기의 pooling으로 global context를 모으고, [DeepLabv3](https://arxiv.org/abs/1706.05587)은 여러 dilation rate의 ASPP를 사용한다. [DeepLabv3+](https://arxiv.org/abs/1802.02611)는 ASPP encoder에 가벼운 decoder를 더해 object boundary를 정교하게 복원한다. 세 모델의 차이는 “multi-scale context를 어디서 만들고, 경계를 어떻게 되살리는가”로 읽으면 된다.
+
+## 6.5 pixelwise loss와 class imbalance
+
+가장 직접적인 학습 목표는 모든 픽셀에 cross entropy를 더하는 것이다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-002')} />
+
+하지만 도로 영상의 하늘·도로처럼 큰 class가 작은 표지판·보행자보다 훨씬 많은 픽셀을 차지하면, 평균 loss는 큰 class에 끌린다. class weight를 주면 희소 class의 오류를 더 크게 반영할 수 있다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-003')} />
+
+Dice 계열 목표는 예측 영역과 정답 영역의 겹침을 직접 본다. 작은 foreground나 의료영상처럼 심한 불균형에서 유용하지만, batch 구성과 smoothing `ε`에 민감하다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-004')} />
+
+cross entropy와 Dice는 서로 대체재라기보다 **픽셀별 calibration**과 **영역 겹침**이라는 다른 관점을 제공한다. 실제 학습에서는 둘을 합치고 per-class IoU와 boundary 품질을 따로 확인하는 경우가 많다.
+
+## 6.6 MRF: 예측 뒤에 공간 구조를 넣는 방법
+
+CNN 이전부터 segmentation은 이웃 픽셀이 같은 label일 가능성이 높다는 가정을 써 왔다. Markov random field(MRF)는 한 위치의 조건부 분포가 전체 영상이 아니라 neighborhood에만 의존한다고 둔다. Hammersley–Clifford 관점에서는 이를 clique potential의 energy와 Gibbs distribution으로 표현한다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-006')} />
+
+분할 energy는 보통 두 항으로 읽는다. unary term은 관측 (x_i)가 label (y_i)에 얼마나 맞는지, pairwise term은 이웃 label 조합이 얼마나 자연스러운지를 나타낸다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-007')} />
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-008')} />
+
+<ModernAiConceptVisual kind="mrf-icm" />
+
+Iterated Conditional Modes(ICM)는 현재 이웃 label을 고정하고 한 픽셀의 가장 좋은 label을 선택하는 coordinate descent다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-009')} />
+
+빠르고 직관적이지만 초기화와 local minimum에 민감하다. 오늘날에는 CRF 후처리 대신 neural decoder가 공간 일관성을 직접 학습하는 경우가 많아졌어도, unary와 pairwise를 분리해 보는 관점은 여전히 유용하다.
+
+## 6.7 무엇을 측정해야 하는가
+
+pixel accuracy만 보면 배경을 잘 맞힌 모델이 과대평가될 수 있다. class별 Intersection over Union(IoU)은 예측과 정답의 합집합 가운데 교집합이 차지하는 비율이다.
+
+<ModernAiSourceEquation part={6} {...modernAiFormula(6, 'MAI-P6-010')} />
+
+보고서에서는 보통 class별 IoU와 그 평균 mIoU, 작은 class의 recall, boundary metric을 함께 본다. resize와 padding을 원복한 뒤 평가했는지도 중요하다. 한 픽셀의 정렬 오류가 얇은 구조물에서는 큰 점수 차이가 될 수 있기 때문이다.
+
+## 6.8 한 번에 연결하기
+
+1. encoder가 넓은 문맥을 만든다.
+2. dilation 또는 pyramid가 여러 크기의 문맥을 모은다.
+3. skip connection이 위치 정보를 decoder에 전달한다.
+4. decoder가 원래 해상도의 class score를 복원한다.
+5. cross entropy·Dice로 학습하고 IoU·boundary 품질로 평가한다.
+
+FCN은 dense prediction의 문을 열었고, U-Net은 localization을 되살리는 skip 구조를 정착시켰으며, DeepLab 계열은 dilation과 spatial pyramid로 문맥을 확장했다. 이 세 축을 이해하면 새로운 segmentation architecture도 “문맥, 해상도, 결합 방식”으로 분해해 읽을 수 있다.
+
+{/* source-content:P6-C001 */}
+{/* source-content:P6-C002 */}
+{/* source-content:P6-C003 */}
+{/* source-content:P6-C004 */}
+{/* source-content:P6-C005 */}
+{/* source-content:P6-C006 */}
+{/* source-content:P6-C007 */}
+{/* source-visual:P6-V001 */}
+{/* source-visual:P6-V002 */}
+{/* source-visual:P6-V003 */}
+{/* source-visual:P6-V004 */}
+{/* source-visual:P6-V005 */}
+{/* source-annotation:P6-ANNOTATION-LEDGER */}
+{/* source-page:P6-P01 source-page:P6-P02 source-page:P6-P03 source-page:P6-P04 source-page:P6-P05 source-page:P6-P06 source-page:P6-P07 source-page:P6-P08 source-page:P6-P09 source-page:P6-P10 source-page:P6-P11 source-page:P6-P12 source-page:P6-P13 source-page:P6-P14 source-page:P6-P15 source-page:P6-P16 source-page:P6-P17 source-page:P6-P18 source-page:P6-P19 source-page:P6-P20 source-page:P6-P21 source-page:P6-P22 source-page:P6-P23 source-page:P6-P24 source-page:P6-P25 source-page:P6-P26 source-page:P6-P27 source-page:P6-P28 source-page:P6-P29 */}

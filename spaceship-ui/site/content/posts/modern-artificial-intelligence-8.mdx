@@ -1,0 +1,153 @@
+---
+title: '현대 인공지능 VIII — 대조 표현학습: InfoNCE·SimCLR·BYOL·CLIP'
+description: '양성·음성 쌍, InfoNCE, augmentation, memory bank, SimCLR·BYOL과 이미지-언어 CLIP을 연결한다.'
+pubDate: 2026-08-25
+updatedDate: 2026-08-25
+category: ai-machine-learning
+subcategory: representation-learning
+type: study-note
+tags:
+  - contrastive-learning
+  - self-supervised-learning
+  - infonce
+  - simclr
+  - clip
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 10
+featured: true
+lang: 'ko'
+series:
+  id: 'modern-artificial-intelligence'
+  order: 8
+---
+
+import ModernAiConceptVisual from '@/components/post/ModernAiConceptVisual.astro';
+import ModernAiSourceEquation from '@/components/post/ModernAiSourceEquation.astro';
+import { modernAiFormula } from '@/lib/modern-ai-parts6-8';
+
+대조 표현학습은 label을 직접 예측하는 대신 **무엇을 같게 보고 무엇을 다르게 볼지**를 설계한다. 같은 대상의 두 view는 가깝게, 다른 sample은 멀게 배치하면 embedding 자체가 분류·검색·검출에 재사용되는 특징이 된다. 핵심은 loss 하나가 아니라 positive 정의, augmentation, negative 구성, encoder 갱신 방식의 조합이다.
+
+## 8.1 metric learning에서 contrastive learning으로
+
+contrastive loss는 pair의 거리와 같은지 다른지를 함께 본다. triplet loss는 anchor (a), positive (p), negative (n) 사이에 margin (m)을 요구한다.
+
+<ModernAiConceptVisual kind="contrastive-objective" />
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-001')} />
+
+쉬운 negative는 loss에 거의 기여하지 않고, 너무 어려운 negative는 label noise나 false negative일 수 있다. lifted structured loss와 N-pair loss는 한 triplet만 보지 않고 batch 안의 여러 비교를 동시에 사용해 이 문제를 완화한다.
+
+## 8.2 InfoNCE: 올바른 쌍을 고르는 분류 문제
+
+[Contrastive Predictive Coding](https://arxiv.org/abs/1807.03748)에서 널리 알려진 InfoNCE는 positive score가 batch 또는 dictionary의 모든 후보 중 가장 크도록 softmax cross entropy를 사용한다.
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-002')} />
+
+temperature `τ`는 similarity 분포의 날카로움을 조절한다. 너무 작으면 소수 hard example의 gradient가 과도해지고, 너무 크면 positive와 negative의 구분이 흐려진다. `N`개의 후보를 쓸 때 InfoNCE는 mutual information의 lower bound와 연결된다.
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-003')} />
+
+다만 “모든 다른 이미지가 negative”라는 가정은 같은 class의 서로 다른 샘플을 밀어내는 false-negative 문제를 만든다. debiased objective, hard-negative sampling, supervised positives는 이 가정의 오류를 서로 다른 방식으로 다룬다.
+
+## 8.3 augmentation이 곧 학습할 invariance다
+
+같은 이미지에서 random crop, color jitter, grayscale, blur를 적용한 두 view를 positive로 두면 모델은 그 변화에 불변인 특징을 학습한다. 따라서 augmentation은 단순한 regularization이 아니라 **semantic equivalence를 정의하는 규칙**이다.
+
+- crop이 지나치게 강하면 서로 다른 object patch가 positive가 될 수 있다.
+- color를 과하게 제거하면 색이 중요한 downstream task에 불리하다.
+- mixup·CutMix는 label interpolation 또는 spatial composition을 추가하지만, instance identity 기반 contrastive pair와 충돌할 수 있다.
+- UDA처럼 prediction consistency를 쓰는 방법은 augmentation 뒤에도 output이 같아야 한다고 요구한다.
+
+## 8.4 SimCLR: 단순하지만 batch와 증강에 민감한 기준선
+
+[SimCLR](https://arxiv.org/abs/2002.05709)은 별도 memory bank 없이 큰 batch의 다른 view를 negative로 사용한다. encoder (f) 뒤의 projection head (g)에서 contrastive loss를 계산하고, downstream task에는 projection 전 representation을 쓴다.
+
+<ModernAiConceptVisual kind="simclr" />
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-004')} />
+
+핵심 관찰은 세 가지다. 강한 augmentation 조합이 중요하고, nonlinear projection head가 representation 품질을 높이며, 더 큰 batch와 긴 학습이 유리하다. 이 장점은 동시에 계산·memory 비용이라는 약점이 된다.
+
+## 8.5 negative 없이 collapse를 피할 수 있는가
+
+모든 입력이 같은 embedding으로 가면 positive similarity는 완벽해 보이지만 아무 정보도 남지 않는다. Barlow Twins와 BYOL은 명시적 negative 없이 이 collapse를 막는 서로 다른 장치를 보여준다.
+
+<ModernAiConceptVisual kind="noncontrastive" />
+
+[Barlow Twins](https://arxiv.org/abs/2103.03230)은 두 view embedding의 cross-correlation matrix (C)가 identity에 가까워지게 한다. 대각은 같은 feature의 일치를, 비대각은 feature 사이 redundancy 제거를 담당한다.
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-005')} />
+
+[BYOL](https://arxiv.org/abs/2006.07733)은 online network의 prediction이 momentum target network의 representation을 맞추게 한다. target 쪽에는 stop-gradient를 적용한다.
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-006')} />
+
+predictor의 비대칭, stop-gradient, target network의 느린 갱신, normalization이 함께 작동한다. “negative가 없으므로 자동으로 안전하다”가 아니라 collapse를 막는 구조적 비대칭이 무엇인지 확인해야 한다.
+
+## 8.6 memory bank와 MoCo
+
+large batch 없이 많은 negative를 쓰려면 과거 embedding을 저장할 수 있다. 하지만 encoder가 빠르게 바뀌면 오래된 key와 현재 query가 서로 다른 표현 공간에 놓인다.
+
+<ModernAiConceptVisual kind="moco" />
+
+[MoCo](https://arxiv.org/abs/1911.05722)는 key encoder를 query encoder의 exponential moving average로 갱신해 dictionary의 일관성을 높인다.
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-007')} />
+
+queue는 batch size와 dictionary size를 분리한다. instance discrimination의 memory bank보다 key가 더 최근이고, SimCLR보다 작은 batch에서도 큰 negative set을 유지할 수 있다.
+
+## 8.7 feature clustering: DeepCluster와 SwAV
+
+[DeepCluster](https://arxiv.org/abs/1807.05520)는 feature를 clustering해 얻은 pseudo-label로 encoder를 다시 학습하는 과정을 반복한다. collapse를 막기 위해 빈 cluster와 한 cluster 쏠림을 관리해야 한다.
+
+[SwAV](https://arxiv.org/abs/2006.09882)는 서로 다른 view의 cluster assignment를 교환해 예측한다. 모든 pairwise negative를 직접 비교하는 대신 prototype assignment를 일치시킨다.
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-008')} />
+
+이 계열은 instance를 무조건 서로 밀어내기보다 dataset에 반복되는 prototype을 표현에 담는다.
+
+## 8.8 label이 일부 있다면: supervised contrastive learning
+
+supervised contrastive learning(SupCon)은 anchor와 같은 class의 모든 sample을 positive set (P(i))로 사용한다. 한 개의 정답 logit만 키우는 cross entropy와 달리 class 내부를 모으고 class 사이를 분리하는 representation objective다.
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-009')} />
+
+[SupCon 원 논문](https://arxiv.org/abs/2004.11362)은 여러 positive를 안정적으로 활용하는 형태를 제시한다. 하지만 class 안의 multi-modal structure까지 한 점으로 압축하면 fine-grained variation을 잃을 수 있으므로 downstream 목적과 맞춰야 한다.
+
+## 8.9 CLIP: positive를 image–text pair로 확장
+
+[CLIP](https://arxiv.org/abs/2103.00020)은 image encoder와 text encoder를 함께 학습한다. batch의 `N`개 image와 `N`개 caption으로 `N × N` similarity matrix를 만들고, 맞는 쌍이 있는 대각을 양방향 cross entropy로 키운다.
+
+<ModernAiConceptVisual kind="clip" />
+
+<ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-010')} />
+
+학습 뒤에는 class 이름을 prompt로 바꾸어 text embedding을 만들고 image와 가장 가까운 prompt를 고르는 zero-shot classifier로 쓸 수 있다. 자연어가 label space를 유연하게 만들지만, web-scale image–text data의 bias와 중복, caption quality도 표현에 그대로 들어온다. zero-shot 성능은 prompt wording과 dataset shift에도 민감하다.
+
+## 8.10 방법을 고르는 기준
+
+| 상황                                      | 우선 볼 방법      | 주의점                        |
+| ----------------------------------------- | ----------------- | ----------------------------- |
+| 큰 batch와 강한 augmentation을 쓸 수 있음 | SimCLR            | false negative, batch 비용    |
+| 작은 batch에서 큰 dictionary가 필요함     | MoCo              | momentum·queue staleness      |
+| 명시적 negative를 피하고 싶음             | BYOL·Barlow Twins | collapse 방지 장치            |
+| prototype 구조를 학습하고 싶음            | DeepCluster·SwAV  | cluster imbalance             |
+| label 일부를 representation에 반영        | SupCon            | class 내부 다양성             |
+| image–text zero-shot transfer             | CLIP              | data bias, prompt sensitivity |
+
+대조학습을 비교할 때 loss 이름만 보면 안 된다. **positive를 어떻게 만들었는지, negative 또는 collapse 방지 신호가 무엇인지, dictionary가 얼마나 크고 일관적인지, downstream에서 어느 representation을 쓰는지**를 함께 봐야 한다.
+
+{/* source-content:P8-C001 */}
+{/* source-content:P8-C002 */}
+{/* source-content:P8-C003 */}
+{/* source-content:P8-C004 */}
+{/* source-content:P8-C005 */}
+{/* source-content:P8-C006 */}
+{/* source-visual:P8-V001 */}
+{/* source-visual:P8-V002 */}
+{/* source-visual:P8-V003 */}
+{/* source-visual:P8-V004 */}
+{/* source-visual:P8-V005 */}
+{/* source-annotation:P8-ANNOTATION-LEDGER */}
+{/* source-page:P8-P01 source-page:P8-P02 source-page:P8-P03 source-page:P8-P04 source-page:P8-P05 source-page:P8-P06 source-page:P8-P07 source-page:P8-P08 source-page:P8-P09 source-page:P8-P10 source-page:P8-P11 source-page:P8-P12 source-page:P8-P13 source-page:P8-P14 source-page:P8-P15 source-page:P8-P16 source-page:P8-P17 source-page:P8-P18 source-page:P8-P19 source-page:P8-P20 source-page:P8-P21 */}

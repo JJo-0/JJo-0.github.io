@@ -1,0 +1,232 @@
+---
+type VisualKind =
+  | 'dense-prediction'
+  | 'encoder-decoder'
+  | 'unet-skip'
+  | 'atrous-pyramid'
+  | 'mrf-icm'
+  | 'denoising-estimator'
+  | 'vae'
+  | 'diffusion'
+  | 'guidance'
+  | 'latent-diffusion'
+  | 'contrastive-objective'
+  | 'simclr'
+  | 'noncontrastive'
+  | 'moco'
+  | 'clip';
+
+interface Props {
+  kind: VisualKind;
+}
+
+interface VisualInfo {
+  title: string;
+  description: string;
+  stages: string[];
+  secondary?: string[];
+  source?: { label: string; href: string };
+}
+
+const { kind } = Astro.props;
+
+const visuals: Record<VisualKind, VisualInfo> = {
+  'dense-prediction': {
+    title: '분류에서 픽셀별 예측으로',
+    description:
+      '한 장의 이미지에 하나의 class를 붙이는 대신, 모든 위치에서 class score를 계산해 원래 해상도의 label map을 만든다.',
+    stages: ['RGB image\nH×W×3', 'encoder\nH/32×W/32×C', 'upsampling\nH×W×K', 'label map\nH×W'],
+    source: { label: 'FCN 원 논문', href: 'https://arxiv.org/abs/1411.4038' },
+  },
+  'encoder-decoder': {
+    title: 'encoder–decoder의 병목과 복원',
+    description:
+      'encoder는 넓은 문맥을 얻는 대신 위치 정보를 압축하고, decoder는 interpolation 또는 transposed convolution으로 공간 해상도를 복원한다.',
+    stages: ['세밀한 경계', 'downsample', 'semantic bottleneck', 'upsample', 'dense mask'],
+  },
+  'unet-skip': {
+    title: 'U-Net: 같은 해상도의 특징을 건너 보내기',
+    description:
+      '깊은 층의 의미 정보와 얕은 층의 위치 정보를 concatenate해 작은 물체와 경계를 되살린다.',
+    stages: ['encoder L1', 'encoder L2', 'bottleneck', 'decoder L2', 'decoder L1'],
+    secondary: ['경계·texture', 'skip connection', '문맥', 'skip connection', '정밀 mask'],
+    source: { label: 'U-Net 원 논문', href: 'https://arxiv.org/abs/1505.04597' },
+  },
+  'atrous-pyramid': {
+    title: '서로 다른 dilation rate로 여러 크기의 문맥 보기',
+    description:
+      'feature map 해상도를 더 줄이지 않고 간격을 벌린 kernel을 병렬 적용한다. DeepLab의 ASPP는 이 응답들을 합쳐 multi-scale context를 만든다.',
+    stages: ['feature map', 'rate 1\nlocal', 'rate 6\nmid', 'rate 12\nwide', 'concatenate'],
+    source: { label: 'DeepLabv3 원 논문', href: 'https://arxiv.org/abs/1706.05587' },
+  },
+  'mrf-icm': {
+    title: 'MRF와 ICM: 이웃 픽셀의 합의를 반복해서 찾기',
+    description:
+      '각 픽셀의 관측 적합도와 이웃 label의 매끄러움 비용을 더하고, ICM은 한 위치씩 가장 낮은 local energy의 label로 갱신한다.',
+    stages: ['관측 likelihood', '+', '이웃 potential', 'local argmin', '반복 수렴'],
+  },
+  'denoising-estimator': {
+    title: '잡음제거는 관측으로부터 깨끗한 신호를 추정하는 문제',
+    description:
+      '선형 MMSE는 주변 patch의 가중합을, median filter는 window 안 절대편차를 최소화하는 값을 사용한다.',
+    stages: ['clean x', '+ noise', 'observed y', 'estimator', 'estimate x̂'],
+  },
+  vae: {
+    title: 'VAE: 추론 경로와 생성 경로를 함께 학습',
+    description:
+      'encoder가 qφ(z|x)의 평균과 분산을 만들고, 재매개변수화로 z를 뽑아 decoder가 pθ(x|z)를 복원한다.',
+    stages: ['data x', 'encoder qφ', 'μ, log σ²', 'z=μ+σ⊙ε', 'decoder pθ', 'reconstruction'],
+    source: { label: 'VAE 원 논문', href: 'https://arxiv.org/abs/1312.6114' },
+  },
+  diffusion: {
+    title: '확산모델의 두 방향',
+    description:
+      'forward process는 작은 Gaussian noise를 누적하고, reverse process는 시간 t가 주어진 denoiser로 noise를 단계적으로 제거한다.',
+    stages: ['x₀ data', 'x₁', 'xₜ', 'xT noise'],
+    secondary: ['forward q: noise 추가 →', '← reverse pθ: noise 예측', 'sampling', 'Gaussian'],
+    source: { label: 'DDPM 원 논문', href: 'https://arxiv.org/abs/2006.11239' },
+  },
+  guidance: {
+    title: 'classifier-free guidance의 방향 벡터',
+    description:
+      '조건부 noise 예측과 무조건 예측의 차이를 키워 prompt 일치도를 높인다. guidance가 커질수록 충실도와 다양성의 균형이 달라진다.',
+    stages: ['εθ(xₜ,∅)', '+ w·', 'εθ(xₜ,c)−εθ(xₜ,∅)', '=', 'guided ε̃'],
+    source: { label: 'Classifier-Free Guidance 원 논문', href: 'https://arxiv.org/abs/2207.12598' },
+  },
+  'latent-diffusion': {
+    title: 'latent diffusion: 압축 공간에서 확산하기',
+    description:
+      '고해상도 pixel 전체가 아니라 autoencoder의 latent에서 denoising하고, 마지막에 decoder로 복원해 계산량을 줄인다.',
+    stages: ['image x', 'encoder E', 'latent z', 'diffusion U-Net', 'decoder D', 'image x̂'],
+    source: { label: 'Latent Diffusion 원 논문', href: 'https://arxiv.org/abs/2112.10752' },
+  },
+  'contrastive-objective': {
+    title: '대조학습의 핵심: positive는 가깝게, negative는 멀게',
+    description:
+      'anchor와 같은 의미의 view에는 높은 similarity를, 다른 sample에는 낮은 similarity를 부여하도록 embedding space를 학습한다.',
+    stages: ['anchor', 'positive ↑', 'similarity score', 'negative ↓', 'embedding space'],
+    source: { label: 'CPC·InfoNCE 원 논문', href: 'https://arxiv.org/abs/1807.03748' },
+  },
+  simclr: {
+    title: 'SimCLR: 두 증강, 공유 encoder, projection head',
+    description:
+      '같은 이미지에서 만든 두 view를 positive pair로 두고, batch 안의 다른 view들을 negative로 사용한다.',
+    stages: ['image', 't₁(x), t₂(x)', 'shared f', 'projection g', 'NT-Xent'],
+    source: { label: 'SimCLR 원 논문', href: 'https://arxiv.org/abs/2002.05709' },
+  },
+  noncontrastive: {
+    title: 'BYOL과 Barlow Twins: 명시적 negative 없이 collapse 막기',
+    description:
+      'BYOL은 stop-gradient와 momentum target을, Barlow Twins는 cross-correlation의 대각 정렬과 비대각 억제를 사용한다.',
+    stages: ['online view', 'predictor', 'stop-gradient target', 'alignment', 'collapse 방지'],
+    source: { label: 'BYOL 원 논문', href: 'https://arxiv.org/abs/2006.07733' },
+  },
+  moco: {
+    title: 'MoCo: momentum encoder와 queue로 큰 dictionary 유지',
+    description:
+      'query encoder는 gradient로, key encoder는 이동평균으로 갱신한다. 이전 batch의 key를 queue에 보관해 많은 negative를 일관되게 쓴다.',
+    stages: ['query encoder', 'positive key', 'momentum encoder', 'FIFO queue', 'InfoNCE'],
+    source: { label: 'MoCo 원 논문', href: 'https://arxiv.org/abs/1911.05722' },
+  },
+  clip: {
+    title: 'CLIP: image–text 쌍을 하나의 대조 공간에 정렬',
+    description:
+      'batch의 N개 image와 N개 text 사이 N×N similarity matrix를 만들고, 올바른 대각 쌍이 커지도록 양방향 cross entropy를 학습한다.',
+    stages: ['image encoder', 'N×D', 'similarity matrix', 'N×D', 'text encoder'],
+    source: { label: 'CLIP 원 논문', href: 'https://arxiv.org/abs/2103.00020' },
+  },
+};
+
+const visual = visuals[kind];
+---
+
+<figure
+  class="concept-visual not-prose my-8 overflow-hidden rounded-2xl border border-border/80 bg-card/55 shadow-sm"
+  data-modern-ai-visual
+  data-visual-kind={kind}
+>
+  <div class="border-b border-border/70 bg-muted/25 px-5 py-4 sm:px-6">
+    <figcaption class="text-base font-black leading-7 text-foreground">{visual.title}</figcaption>
+    <p class="mb-0 mt-1 text-sm leading-6 text-muted-foreground">{visual.description}</p>
+  </div>
+  <div class="overflow-x-auto px-4 py-5 sm:px-6">
+    <div class="pipeline" role="img" aria-label={visual.title}>
+      {
+        visual.stages.map((stage, index) => (
+          <>
+            <div class="stage">
+              {stage.split('\n').map((line) => (
+                <span>{line}</span>
+              ))}
+              {visual.secondary?.[index] && <small>{visual.secondary[index]}</small>}
+            </div>
+            {index < visual.stages.length - 1 && (
+              <span class="arrow" aria-hidden="true">
+                →
+              </span>
+            )}
+          </>
+        ))
+      }
+    </div>
+  </div>
+  {
+    visual.source && (
+      <div class="border-t border-border/70 px-5 py-3 text-sm sm:px-6">
+        <a
+          class="font-bold text-primary underline decoration-primary/30 underline-offset-4"
+          href={visual.source.href}
+        >
+          {visual.source.label} ↗
+        </a>
+      </div>
+    )
+  }
+</figure>
+
+<style>
+  .pipeline {
+    display: flex;
+    min-width: max-content;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.55rem;
+  }
+  .stage {
+    display: flex;
+    min-width: 7rem;
+    max-width: 10rem;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--color-primary) 7%, var(--color-background));
+    padding: 0.8rem 1rem;
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--color-foreground);
+  }
+  .stage small {
+    margin-top: 0.4rem;
+    color: var(--color-muted-foreground);
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+  .arrow {
+    align-self: center;
+    color: var(--color-primary);
+    font-size: 1.2rem;
+    font-weight: 900;
+  }
+  @media (max-width: 640px) {
+    .pipeline {
+      justify-content: flex-start;
+    }
+    .stage {
+      min-width: 6.4rem;
+      padding: 0.7rem 0.8rem;
+    }
+  }
+</style>

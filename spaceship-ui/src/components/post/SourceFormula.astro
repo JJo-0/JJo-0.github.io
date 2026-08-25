@@ -22,6 +22,7 @@ interface Props {
   part?: number;
 }
 
+// prettier-ignore
 const {
   formula,
   display = formula.display === 'display',
@@ -41,14 +42,15 @@ const statusLabel = {
 }[formula.status];
 
 const sourceLabel = `PDF ${formula.pdfPage}쪽${formula.sourceEquationNumber ? ` · 식 ${formula.sourceEquationNumber}` : ''}`;
-const showReaderProvenance = part !== 5;
+const showReaderProvenance = part < 5;
 const readerSourceLabel = showReaderProvenance ? sourceLabel : formula.articleSection;
-const readerStatusLabel = part === 5 && formula.status === 'source-exact' ? '핵심 수식' : statusLabel;
-const guideNote = formula.note || (
-  formula.status === 'source-exact'
+const readerStatusLabel =
+  part >= 5 && formula.status === 'source-exact' ? '핵심 수식' : statusLabel;
+const guideNote =
+  formula.note ||
+  (formula.status === 'source-exact'
     ? null
-    : '원자료의 빈칸·표기 문제를 숨기지 않고 원문과 완성식·교정식을 분리해 표시한다.'
-);
+    : '원자료의 빈칸·표기 문제를 숨기지 않고 원문과 완성식·교정식을 분리해 표시한다.');
 const aria = `${title}, ${readerSourceLabel}, ${readerStatusLabel}`;
 ---
 
@@ -74,16 +76,21 @@ const aria = `${title}, ${readerSourceLabel}, ${readerStatusLabel}`;
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/25 px-4 py-3 sm:px-5">
         <div class="min-w-0">
           <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">
-            {readerStatusLabel}{showReaderProvenance && ` · ${sourceLabel}`}
+            {readerStatusLabel}
+            {showReaderProvenance && ` · ${sourceLabel}`}
           </p>
-          <figcaption class="mt-1 text-base font-black leading-6 text-foreground">{title}</figcaption>
+          <figcaption class="mt-1 text-base font-black leading-6 text-foreground">
+            {title}
+          </figcaption>
         </div>
         <button
           type="button"
           class="formula-copy rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:border-primary/40 hover:text-primary"
           data-copy-tex={formula.sourceLatex}
           aria-label={`${title} LaTeX 복사`}
-        >수식 복사</button>
+        >
+          수식 복사
+        </button>
       </div>
 
       <div class="overflow-x-auto overflow-y-hidden px-3 py-2 sm:px-5">
@@ -95,7 +102,9 @@ const aria = `${title}, ${readerSourceLabel}, ${readerStatusLabel}`;
         tex={formula.sourceLatex}
         section={formula.articleSection}
         part={part}
-        sourceLabel={showReaderProvenance ? `${sourceLabel} · ${formula.articleSection}` : undefined}
+        sourceLabel={
+          showReaderProvenance ? `${sourceLabel} · ${formula.articleSection}` : undefined
+        }
         note={guideNote}
         statusLabel={readerStatusLabel}
         showProvenance={showReaderProvenance}
