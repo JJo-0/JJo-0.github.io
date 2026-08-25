@@ -41,12 +41,15 @@ const statusLabel = {
 }[formula.status];
 
 const sourceLabel = `PDF ${formula.pdfPage}쪽${formula.sourceEquationNumber ? ` · 식 ${formula.sourceEquationNumber}` : ''}`;
+const showReaderProvenance = part !== 5;
+const readerSourceLabel = showReaderProvenance ? sourceLabel : formula.articleSection;
+const readerStatusLabel = part === 5 && formula.status === 'source-exact' ? '핵심 수식' : statusLabel;
 const guideNote = formula.note || (
   formula.status === 'source-exact'
     ? null
     : '원자료의 빈칸·표기 문제를 숨기지 않고 원문과 완성식·교정식을 분리해 표시한다.'
 );
-const aria = `${title}, ${sourceLabel}, ${statusLabel}`;
+const aria = `${title}, ${readerSourceLabel}, ${readerStatusLabel}`;
 ---
 
 {
@@ -70,7 +73,9 @@ const aria = `${title}, ${sourceLabel}, ${statusLabel}`;
     >
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/25 px-4 py-3 sm:px-5">
         <div class="min-w-0">
-          <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">{statusLabel} · {sourceLabel}</p>
+          <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">
+            {readerStatusLabel}{showReaderProvenance && ` · ${sourceLabel}`}
+          </p>
           <figcaption class="mt-1 text-base font-black leading-6 text-foreground">{title}</figcaption>
         </div>
         <button
@@ -90,9 +95,10 @@ const aria = `${title}, ${sourceLabel}, ${statusLabel}`;
         tex={formula.sourceLatex}
         section={formula.articleSection}
         part={part}
-        sourceLabel={`${sourceLabel} · ${formula.articleSection}`}
+        sourceLabel={showReaderProvenance ? `${sourceLabel} · ${formula.articleSection}` : undefined}
         note={guideNote}
-        statusLabel={statusLabel}
+        statusLabel={readerStatusLabel}
+        showProvenance={showReaderProvenance}
       />
     </figure>
   ) : (
@@ -104,7 +110,7 @@ const aria = `${title}, ${sourceLabel}, ${statusLabel}`;
       data-formula-hash={formula.sha256}
       data-source-hash={formula.sha256}
       data-formula-display="inline"
-      title={`${sourceLabel} · ${statusLabel}`}
+      title={showReaderProvenance ? `${sourceLabel} · ${statusLabel}` : title}
     >
       <Math tex={formula.sourceLatex} label={aria} />
     </span>

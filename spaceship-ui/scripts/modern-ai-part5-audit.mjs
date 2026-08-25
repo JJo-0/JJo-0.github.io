@@ -88,6 +88,7 @@ if(fs.existsSync(path.join(root,'dist'))){
   if(!fs.existsSync(distPath))fail('rendered Part V output missing');
   else {
     const html=fs.readFileSync(distPath,'utf8');
+    const readerHtml=html.replace(/<!--[\s\S]*?-->/g,'');
     const rendered=[...html.matchAll(/data-formula-id="(MAI-P5-\d{3})"/g)].map(m=>m[1]);
     if(rendered.length!==EXPECTED.formulas||new Set(rendered).size!==EXPECTED.formulas)fail(`rendered Part V formula count/uniqueness mismatch: ${rendered.length}`);
     if(!sameSet(new Set(rendered),formulaIds))fail('rendered Part V formula ID coverage mismatch');
@@ -98,9 +99,12 @@ if(fs.existsSync(path.join(root,'dist'))){
     const unreviewed=(html.match(/data-formula-lesson-state="unreviewed"/g)??[]).length;
     if(unreviewed!==EXPECTED.display)fail(`Part V unreviewed lesson states ${unreviewed} != ${EXPECTED.display}`);
     if(html.includes('data-formula-lesson-state="missing"'))fail('Part V lesson state missing');
-    for(const required of ['현대 인공지능 V','강의자료를 읽을 때 주의할 점','2026-08-18 최신 연구 업데이트','DINOv3','SigLIP 2'])if(!html.includes(required))fail(`rendered output missing ${required}`);
-    for(const forbidden of ['완전성 계약','세 층을 섞지 않는다','원장 현황','PDF SHA-256','PDF 원자료 재구성','편집·수학 검증','PDF page coverage에 포함하지 않는다','Part V display lesson state','P5-E001','P5-R001'])if(html.includes(forbidden))fail(`rendered audit/provenance residue: ${forbidden}`);
-    if(/P5-(?:E|R)\d{3}/.test(html))fail('rendered editorial/research ledger ID leaked');
+    for(const required of ['현대 인공지능 V','강의자료를 읽을 때 주의할 점','2026-08-18 최신 연구 업데이트','DINOv3','SigLIP 2'])if(!readerHtml.includes(required))fail(`rendered output missing ${required}`);
+    for(const kind of ['convolution','pooling','imagenet-trend','alexnet','vgg','inception','resnet-wrn','densenet','se-network'])if(!readerHtml.includes(`data-visual-kind="${kind}"`))fail(`rendered reader visual missing ${kind}`);
+    for(const link of ['imagenet_cvpr09.pdf','c399862d3b9d6b76c8436e924a68c45b-Abstract.html','arxiv.org/abs/1409.1556','Szegedy_Going_Deeper_With_2015_CVPR_paper.html','arxiv.org/abs/1512.03385','arxiv.org/abs/1605.07146','arxiv.org/abs/1608.06993','arxiv.org/abs/1709.01507'])if(!readerHtml.includes(link))fail(`rendered primary-paper link missing ${link}`);
+    for(const forbidden of ['완전성 계약','세 층을 섞지 않는다','원장 현황','PDF SHA-256','PDF 원자료 재구성','편집·수학 검증','PDF page coverage에 포함하지 않는다','Part V display lesson state','P5-E001','P5-R001','그림 원자료.','강의자 필기','이 페이지의 수식·수치 원장','이 페이지의 도식·표·그래프 매핑','원본 이미지를 복제하지 않고 구조를 설명한다'])if(readerHtml.includes(forbidden))fail(`rendered audit/provenance residue: ${forbidden}`);
+    if(/PDF p\.\d+\s*[—-]/.test(readerHtml))fail('rendered PDF page prefix leaked');
+    if(/P5-(?:E|R|ANN)\d{3}/.test(readerHtml))fail('rendered editorial/research/annotation ledger ID leaked');
   }
 }
 

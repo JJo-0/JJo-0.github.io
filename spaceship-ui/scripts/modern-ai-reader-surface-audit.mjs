@@ -35,7 +35,7 @@ const routes = [
     part: 5,
     file: '2026-08-23-modern-artificial-intelligence-5/index.html',
     description: '2D convolution과 ImageNet에서 AlexNet·VGG·GoogLeNet·ResNet·WRN·DenseNet·SE Network를 거쳐 현대 이미지 분류의 발전 흐름을 정리한다.',
-    substantive: 'PDF p.1 — 5.0 2D convolution 복습',
+    substantive: '5.0 2D convolution 복습',
   },
 ];
 
@@ -59,6 +59,11 @@ const forbiddenReaderText = [
   '아래 식은 PDF 원문을 덮어쓰지 않는다',
   'source-suspect 상태로 그대로 남기고',
   '별도 ID와 corrects 링크를 가진다',
+  '그림 원자료.',
+  '강의자 필기',
+  '이 페이지의 수식·수치 원장',
+  '이 페이지의 도식·표·그래프 매핑',
+  '원본 이미지를 복제하지 않고 구조를 설명한다',
 ];
 
 for (const route of routes) {
@@ -76,6 +81,10 @@ for (const route of routes) {
   }
   if (!readerHtml.includes(route.substantive)) {
     issues.push(`Part ${route.part}: substantive opening section missing`);
+  }
+
+  if (route.part === 5 && /PDF p\.\d+\s*[—-]/.test(readerHtml)) {
+    issues.push('Part 5: PDF page prefix leaked into a reader heading');
   }
 
   for (const forbidden of forbiddenReaderText) {
