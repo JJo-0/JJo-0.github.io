@@ -1,7 +1,8 @@
 ---
-title: 'SLAM (1)'
-description: '복습 겸 SLAM의 흐름에 대해서 담은 게시글이다....'
-pubDate: 2023-7-06 11:07:00
+title: 'SLAM의 흐름: 센서 측정에서 pose graph까지'
+description: 'SLAM을 front-end data association과 back-end optimization으로 나누고 좌표계·불확실성·loop closure를 연결해 설명한다.'
+pubDate: 2023-07-06
+updatedDate: 2026-08-25
 category: robotics-embedded
 subcategory: localization-mapping
 type: study-note
@@ -14,72 +15,88 @@ tags:
 researchArea: robotics-autonomous-systems
 researchFeatured: true
 researchOrder: 2
-
 lang: 'ko'
 ---
 
-복습 겸 SLAM의 흐름에 대해서 담은 게시글이다.
+SLAM(Simultaneous Localization and Mapping)은 미지의 환경에서 로봇의 trajectory와 map을 함께 추정하는 문제다. “위치를 알면 지도를 만들고 지도를 알면 위치를 찾는다”는 순환을 센서 관측과 확률적 최적화로 푼다.
 
-# SLAM이란? 
----
-SLAM이란 **Simultaneous Localization and Mapping** 의 약자로, 동시에 로봇의 위치와 지도를 만드는 것을 이야기한다. 
-1. 움직이는 로봇이 자신의 위치를 알고 있으면 지도를 만들 수 있고, 
-2. 지도를 만들면 자신의 위치를 알 수 있기 때문에 
-이 둘을 동시에 해결하는 것이 SLAM이다.
+## 상태와 관측
 
-# SLAM의 흐름
----
-SLAM의 흐름은 크게 3가지로 나눌 수 있다.
-1. 센서 데이터를 받아서
-2. 로봇의 위치를 추정하고
-3. 지도를 만든다.
+```text
+x_t = f(x_{t-1}, u_t) + motion noise
+z_t = h(x_t, m)       + measurement noise
+```
 
-## 센서데이터
-기존적으로 SLAM의 데이터는 Lidar, Camera, IMU, 모터의 encoder 등이 있다. 
+`x_t`는 시각 `t`의 pose, `u_t`는 odometry 또는 control, `z_t`는 camera·LiDAR·IMU 관측, `m`은 landmark 또는 map이다. 센서는 정답을 주는 것이 아니라 noise와 bias가 있는 제약을 제공한다.
 
-주변 환경을 인식하는 센서 : Lidar, Camera 등..
-로봇의 움직임을 인식하는 센서 : IMU, 모터의 encoder 등..
+## 전체 파이프라인
 
+```text
+sensor -> calibration/time sync -> feature or scan extraction
+       -> data association -> relative-pose constraints
+       -> local optimization -> loop detection
+       -> pose-graph optimization -> map update
+```
 
-### 🌱환경 인식 센서
----
-**Lidar의 종류는 크게 2가지로 나눌 수 있다.**
-1. 2D Lidar
-2. 3D Lidar
+### Front-end
 
-**Camera의 종류**
-1. Monocular Camera (단안)
-2. Stereo Camera (쌍안)
-3. Depth 측정이 가능한 카메라  
-ToF[^1] , Structured Light[^2] 등...
+raw sensor에서 대응 관계와 상대 motion을 만든다. visual SLAM은 keypoint·descriptor·optical flow를, LiDAR SLAM은 point correspondence와 scan matching을 사용할 수 있다. 가장 위험한 실패는 “대응 관계는 찾았지만 틀린 대응”이다.
 
-### 🤖로봇의 움직임 인식 센서
----
-**IMU란** 
-Inertial Measurement Unit의 약자로, 가속도 센서와 자이로스코프 센서를 합친 것이다. 도움링크 : [IMU란?](https://velog.io/@717lumos/Sensor-IMU의-개념-및-활용법)
-1. 3축 가속도 센서
-2. 3축 자이로스코프(각속도 센서)
-3. 3축 지자기 센서(일부 IMU에만 존재)
+### Back-end
 
-## 로봇의 위치 추정
-**받은 데이터를 기반으로 로봇의 위치를 추정한다.**
-원리 도움링크 : [Matlab_Slam_설명](https://www.youtube.com/watch?v=Fw8JQ5Q-ZwU)  
-원리에 대해서 쉽게 잘 설명 되어 있다.
+여러 pose와 landmark 제약을 동시에 만족하도록 최적화한다. pose graph에서 node는 pose, edge는 odometry·scan matching·loop closure 같은 상대 transform과 uncertainty다. robust loss 또는 outlier rejection 없이 잘못된 loop edge가 들어가면 전체 map이 무너질 수 있다.
 
-**센서데이터 처리**
-받은 센서데이터들은 오류들이 많아서 데이터 처리과정을 꼭 해야한다. 주로 (1)노이즈 제거, (2)데이터 정합, (3)데이터 보간 등의 과정을 거친다.  
-센서 데이터 처리는 센서마다 다르기 때문에, 센서 데이터 처리에 대해서는 따로 정리하도록 한다.(vision, lidar, imu 등..)
+## Loop closure
 
-**로봇의 위치 추정**
-로봇의 위치를 추정하는 방법은 여러 위치 추정 알고리즘에 의해 실행된다.  
+오래 이동한 뒤 이전 장소를 다시 봤다는 제약은 누적 drift를 줄인다. 하지만 비슷하게 생긴 복도처럼 perceptual aliasing이 있으면 거짓 loop가 생긴다. appearance 후보 검색, geometric verification, temporal consistency를 단계적으로 확인한다.
 
-1. EKF (Extended Kalman Filter)
-2. UKF (Unscented Kalman Filter)
-3. PF (Particle Filter)
-4. 등등.. 
+## 센서별로 바뀌는 관측 가능성
 
-다음 게시물에서 설명 예정  
+- monocular camera: metric scale이 직접 관측되지 않는다.
+- stereo/RGB-D: 제한 범위에서 depth를 얻지만 texture·조명·반사에 취약할 수 있다.
+- 2D LiDAR: 평면 geometry에는 강하지만 높이 변화 정보가 제한된다.
+- 3D LiDAR: 넓은 geometry를 측정하지만 비용·연산량과 motion distortion을 고려해야 한다.
+- IMU: 고주기 motion을 보완하지만 bias가 적분되어 drift한다.
 
----
-[^1] : Time of Flight, 광학적인 방법으로 거리를 측정하는 방법이다. 광원에서 광선을 쏘고, 물체에 반사되어 돌아오는 시간을 측정하여 거리를 측정한다.  
-[^2] : 구조광 방식은 빛을 투사하여 물체의 형태를 파악하는 방식이다. 빛을 투사하여 물체에 반사되어 돌아오는 빛의 패턴을 통해 물체의 형태, 거리를 파악, 측정한다. ![image](https://bitfab.io/wp-content/uploads/2020/03/luz-estructurada.png) 
+센서를 추가한다고 무조건 정확해지지 않는다. extrinsic calibration과 timestamp가 틀리면 서로 다른 시점·좌표의 관측을 결합하게 된다.
+
+## 좌표계
+
+ROS 2에서 흔히 다음 관계를 사용한다.
+
+```text
+map -> odom -> base_link -> sensor frames
+```
+
+`odom`은 짧은 시간 동안 연속적이지만 drift할 수 있고 `map`은 loop closure나 global localization으로 보정되며 불연속적으로 움직일 수 있다. controller가 어느 frame의 pose를 소비하는지 명확해야 한다.
+
+## 평가
+
+- ATE: 정렬 후 global trajectory 차이
+- RPE: 일정 시간·거리 구간의 상대 motion 오차
+- tracking success와 lost 횟수
+- loop precision/recall
+- CPU/GPU, memory, latency
+- map consistency와 재localization 시간
+
+trajectory 정렬에 scale이나 full similarity transform을 허용했는지 기록하지 않으면 ATE 숫자를 공정하게 비교할 수 없다.
+
+## 구현 전 체크리스트
+
+- [ ] camera/LiDAR intrinsic과 sensor-to-body extrinsic 검증
+- [ ] hardware timestamp와 clock offset 확인
+- [ ] dataset 좌표축·단위·ground truth convention 기록
+- [ ] 정적·동적 환경을 분리 평가
+- [ ] loop closure를 끈 baseline과 비교
+- [ ] tracking loss 후 안전 동작과 복구 확인
+- [ ] 설정 파일·commit·지도 생성 조건 보존
+
+## 원본 자료
+
+- [Cadena et al., Past, Present, and Future of SLAM](https://doi.org/10.1109/TRO.2016.2624754)
+- [Dellaert and Kaess, Factor Graphs for Robot Perception](https://doi.org/10.1561/2300000043)
+- [TUM RGB-D benchmark](https://cvg.cit.tum.de/data/datasets/rgbd-dataset)
+- [KITTI odometry benchmark](https://www.cvlibs.net/datasets/kitti/eval_odometry.php)
+- [evo trajectory evaluation toolkit](https://github.com/MichaelGrupp/evo)
+
+SLAM package와 순위는 바뀌어도 measurement model, data association, uncertainty, coordinate convention과 evaluation alignment를 확인하는 원칙은 바뀌지 않는다.
