@@ -10,32 +10,58 @@ const routes = [
   {
     part: 1,
     file: '2025-05-16-mordern-artificial-intelligence/index.html',
-    description: 'AI·ML·DL의 관계에서 선형대수, 확률, 최적화, 퍼셉트론과 컨볼루션까지 현대 인공지능의 수학적 기초를 한 흐름으로 정리한다.',
+    description:
+      'AI·ML·DL의 관계에서 선형대수, 확률, 최적화, 퍼셉트론과 컨볼루션까지 현대 인공지능의 수학적 기초를 한 흐름으로 정리한다.',
     substantive: 'Part 1.0 분야와 연구 생태계',
   },
   {
     part: 2,
     file: '2026-08-18-modern-artificial-intelligence-2/index.html',
-    description: '분류·회귀·밀도추정에서 일반화, 정규화, 교차검증, SVM, 최소거리·베이즈 분류기와 차원의 저주까지 머신러닝의 기본 과제를 정리한다.',
+    description:
+      '분류·회귀·밀도추정에서 일반화, 정규화, 교차검증, SVM, 최소거리·베이즈 분류기와 차원의 저주까지 머신러닝의 기본 과제를 정리한다.',
     substantive: '2. 머신러닝의 기초',
   },
   {
     part: 3,
     file: '2026-08-20-modern-artificial-intelligence-3/index.html',
-    description: '퍼셉트론 학습과 XOR에서 MLP, Dropout·DropConnect, CNN, 1D·2D 컨볼루션과 PyTorch 모듈까지 신경망의 핵심 구조를 연결한다.',
+    description:
+      '퍼셉트론 학습과 XOR에서 MLP, Dropout·DropConnect, CNN, 1D·2D 컨볼루션과 PyTorch 모듈까지 신경망의 핵심 구조를 연결한다.',
     substantive: '3. 인공지능과 딥러닝을 위한 배경',
   },
   {
     part: 4,
     file: '2026-08-21-modern-artificial-intelligence-4/index.html',
-    description: 'Lipschitz 연속성에서 GD·PSD·PGD·FGM·OGM, 복소수 하강방향, 선탐색과 로지스틱 회귀까지 기울기 기반 최적화를 단계적으로 정리한다.',
+    description:
+      'Lipschitz 연속성에서 GD·PSD·PGD·FGM·OGM, 복소수 하강방향, 선탐색과 로지스틱 회귀까지 기울기 기반 최적화를 단계적으로 정리한다.',
     substantive: '4. 범용 기울기 기반 최적화 방법',
   },
   {
     part: 5,
     file: '2026-08-23-modern-artificial-intelligence-5/index.html',
-    description: '2D convolution과 ImageNet에서 AlexNet·VGG·GoogLeNet·ResNet·WRN·DenseNet·SE Network를 거쳐 현대 이미지 분류의 발전 흐름을 정리한다.',
+    description:
+      '2D convolution과 ImageNet에서 AlexNet·VGG·GoogLeNet·ResNet·WRN·DenseNet·SE Network를 거쳐 현대 이미지 분류의 발전 흐름을 정리한다.',
     substantive: '5.0 2D convolution 복습',
+  },
+  {
+    part: 6,
+    file: '2026-08-25-modern-artificial-intelligence-6/index.html',
+    description:
+      '픽셀 단위 예측, encoder-decoder, skip connection, dilated convolution과 다중 스케일 분할을 다룬다.',
+    substantive: '6.1 분류에서 dense prediction으로',
+  },
+  {
+    part: 7,
+    file: '2026-08-25-modern-artificial-intelligence-7/index.html',
+    description:
+      'MMSE와 비선형 필터에서 VAE의 ELBO, 재매개변수화, DDPM의 순방향·역방향 확산으로 이어진다.',
+    substantive: '7.1 잡음제거를 추정 문제로 보기',
+  },
+  {
+    part: 8,
+    file: '2026-08-25-modern-artificial-intelligence-8/index.html',
+    description:
+      '양성·음성 쌍, InfoNCE, augmentation, memory bank, SimCLR·BYOL과 이미지-언어 CLIP을 연결한다.',
+    substantive: '8.1 metric learning에서 contrastive learning으로',
   },
 ];
 
@@ -83,8 +109,8 @@ for (const route of routes) {
     issues.push(`Part ${route.part}: substantive opening section missing`);
   }
 
-  if (route.part === 5 && /PDF p\.\d+\s*[—-]/.test(readerHtml)) {
-    issues.push('Part 5: PDF page prefix leaked into a reader heading');
+  if (route.part >= 5 && /PDF p\.\d+\s*[—-]/.test(readerHtml)) {
+    issues.push(`Part ${route.part}: PDF page prefix leaked into a reader heading`);
   }
 
   for (const forbidden of forbiddenReaderText) {
@@ -110,5 +136,5 @@ if (unique.length) {
 }
 
 console.log(
-  'modern-ai-reader-surface-audit: PASS (Parts I–V hide provenance/ledger boilerplate while preserving substantive content)',
+  'modern-ai-reader-surface-audit: PASS (Parts I–VIII hide provenance/ledger boilerplate while preserving substantive content)'
 );

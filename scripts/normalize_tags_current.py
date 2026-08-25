@@ -67,6 +67,51 @@ POST_TAXONOMY.update(
             True,
             7,
         ),
+        "modern-artificial-intelligence-6.mdx": Taxonomy(
+            "ai-machine-learning",
+            "semantic-segmentation",
+            "study-note",
+            (
+                "semantic-segmentation",
+                "fully-convolutional-network",
+                "u-net",
+                "deeplab",
+                "computer-vision",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            8,
+        ),
+        "modern-artificial-intelligence-7.mdx": Taxonomy(
+            "ai-machine-learning",
+            "generative-models",
+            "study-note",
+            (
+                "image-denoising",
+                "variational-autoencoder",
+                "diffusion-model",
+                "classifier-free-guidance",
+                "score-matching",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            9,
+        ),
+        "modern-artificial-intelligence-8.mdx": Taxonomy(
+            "ai-machine-learning",
+            "representation-learning",
+            "study-note",
+            (
+                "contrastive-learning",
+                "self-supervised-learning",
+                "infonce",
+                "simclr",
+                "clip",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            10,
+        ),
     }
 )
 
