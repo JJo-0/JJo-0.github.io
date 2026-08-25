@@ -14,6 +14,8 @@
   let { headings }: Props = $props();
   let activeId = $state('');
 
+  const getVisibleHeading = (text: string) => text.replace(/^\s*#+\s*/, '').trim();
+
   onMount(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -83,7 +85,7 @@
               ? 'text-primary font-bold'
               : 'text-muted-foreground/80'}
           >
-            {heading.text}
+            {getVisibleHeading(heading.text)}
           </span>
         </a>
       {/each}
