@@ -31,6 +31,12 @@ const routes = [
     description: 'Lipschitz 연속성에서 GD·PSD·PGD·FGM·OGM, 복소수 하강방향, 선탐색과 로지스틱 회귀까지 기울기 기반 최적화를 단계적으로 정리한다.',
     substantive: '4. 범용 기울기 기반 최적화 방법',
   },
+  {
+    part: 5,
+    file: '2026-08-23-modern-artificial-intelligence-5/index.html',
+    description: '2D convolution과 ImageNet에서 AlexNet·VGG·GoogLeNet·ResNet·WRN·DenseNet·SE Network를 거쳐 현대 이미지 분류의 발전 흐름을 정리한다.',
+    substantive: 'PDF p.1 — 5.0 2D convolution 복습',
+  },
 ];
 
 const forbiddenReaderText = [
@@ -43,6 +49,7 @@ const forbiddenReaderText = [
   '원장 현황',
   'PDF SHA-256',
   'PDF 원자료 재구성',
+  'PDF page coverage에 포함하지 않는다',
   '강의자료 출처',
   '읽는 법',
   '편집·수학 검증(Editorial audit)',
@@ -94,5 +101,5 @@ if (unique.length) {
 }
 
 console.log(
-  'modern-ai-reader-surface-audit: PASS (Parts I–IV hide provenance/ledger boilerplate while preserving substantive content)',
+  'modern-ai-reader-surface-audit: PASS (Parts I–V hide provenance/ledger boilerplate while preserving substantive content)',
 );
