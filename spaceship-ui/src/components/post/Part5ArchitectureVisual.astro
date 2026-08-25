@@ -1,0 +1,855 @@
+---
+type VisualKind =
+  | 'convolution'
+  | 'pooling'
+  | 'imagenet-trend'
+  | 'alexnet'
+  | 'vgg'
+  | 'inception'
+  | 'resnet-wrn'
+  | 'densenet'
+  | 'se-network';
+
+interface Props {
+  kind: VisualKind;
+}
+
+interface VisualInfo {
+  title: string;
+  description: string;
+  source?: { label: string; href: string };
+  stages?: string[];
+}
+
+const { kind } = Astro.props;
+
+const visuals: Record<VisualKind, VisualInfo> = {
+  convolution: {
+    title: '다채널 2D convolution이 한 출력 채널을 만드는 과정',
+    description:
+      '각 입력 채널에 대응하는 3×3 kernel 응답을 더한 뒤 bias를 더한다. 같은 kernel 묶음이 다음 위치로 이동하면서 출력 격자를 채운다.',
+  },
+  pooling: {
+    title: '3×3 max pooling window의 이동',
+    description:
+      'padding을 포함한 입력에서 window 안의 최댓값만 남기고, stride 2만큼 이동해 다음 출력을 계산한다.',
+  },
+  'imagenet-trend': {
+    title: 'ILSVRC 분류 오류의 하락 흐름',
+    description:
+      '초기 hand-crafted feature 기반 방식에서 AlexNet을 거쳐 VGG·GoogLeNet, ResNet, SENet으로 이어지며 top-5 오류가 빠르게 낮아진 상대적 흐름을 단순화해 그렸다.',
+    source: {
+      label: 'ImageNet 원 논문',
+      href: 'https://www.image-net.org/static_files/papers/imagenet_cvpr09.pdf',
+    },
+  },
+  alexnet: {
+    title: 'AlexNet의 큰 kernel에서 깊은 classifier까지',
+    description:
+      '초기 층은 큰 11×11 kernel과 stride 4로 해상도를 빠르게 줄이고, 다섯 convolution layer 뒤 세 fully-connected layer가 1,000개 class를 분류한다.',
+    source: {
+      label: 'AlexNet 원 논문',
+      href: 'https://proceedings.neurips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html',
+    },
+    stages: [
+      '227×227 RGB',
+      '11×11 Conv\nstride 4',
+      'Pool',
+      '5×5 Conv',
+      '3×3 Conv ×3',
+      'FC ×3',
+      '1,000 classes',
+    ],
+  },
+  vgg: {
+    title: 'VGGNet: 작은 3×3 kernel을 반복해 깊이 확보',
+    description:
+      '동일한 3×3 convolution을 여러 번 쌓아 receptive field를 넓히고, block 사이의 pooling으로 공간 크기를 절반씩 줄인다.',
+    source: {
+      label: 'VGG 원 논문',
+      href: 'https://arxiv.org/abs/1409.1556',
+    },
+    stages: [
+      '224×224 RGB',
+      '3×3 Conv ×2\n64 ch',
+      'Pool',
+      '3×3 Conv ×2\n128 ch',
+      'Pool',
+      '3×3 Conv ×3\n256→512 ch',
+      'FC / Softmax',
+    ],
+  },
+  inception: {
+    title: 'Inception module: 여러 크기의 특징을 병렬로 추출',
+    description:
+      '1×1 bottleneck으로 채널 수를 먼저 줄인 뒤 3×3·5×5 convolution과 pooling 경로를 병렬 실행하고, 결과를 channel 방향으로 이어 붙인다.',
+    source: {
+      label: 'GoogLeNet 원 논문',
+      href: 'https://openaccess.thecvf.com/content_cvpr_2015/html/Szegedy_Going_Deeper_With_2015_CVPR_paper.html',
+    },
+  },
+  'resnet-wrn': {
+    title: 'ResNet의 identity shortcut과 WRN의 폭 확장',
+    description:
+      'residual branch가 F(x)를 학습하고 shortcut의 x와 더한다. WRN은 같은 원리를 유지하면서 layer 수 대신 channel 폭을 키운다.',
+    source: {
+      label: 'ResNet 원 논문',
+      href: 'https://arxiv.org/abs/1512.03385',
+    },
+  },
+  densenet: {
+    title: 'DenseNet: 앞선 모든 feature를 다음 layer가 재사용',
+    description:
+      '각 layer의 출력은 더해지는 대신 channel 방향으로 concatenate된다. 따라서 l번째 layer는 x₀부터 xₗ₋₁까지 모두 입력으로 받는다.',
+    source: {
+      label: 'DenseNet 원 논문',
+      href: 'https://arxiv.org/abs/1608.06993',
+    },
+  },
+  'se-network': {
+    title: 'SE block: channel별 중요도를 학습해 다시 곱하기',
+    description:
+      'spatial 정보를 global average pooling으로 squeeze하고, 두 fully-connected layer와 sigmoid가 만든 channel weight를 원래 feature map에 곱한다.',
+    source: {
+      label: 'SE Network 원 논문',
+      href: 'https://arxiv.org/abs/1709.01507',
+    },
+  },
+};
+
+const visual = visuals[kind];
+---
+
+<figure
+  class="architecture-visual not-prose my-8 overflow-hidden rounded-2xl border border-border/80 bg-card/55 shadow-sm"
+  data-part5-reader-visual
+  data-visual-kind={kind}
+>
+  <div class="border-b border-border/70 bg-muted/25 px-5 py-4 sm:px-6">
+    <figcaption class="text-base font-black leading-7 text-foreground">{visual.title}</figcaption>
+    <p class="mb-0 mt-1 text-sm leading-6 text-muted-foreground">{visual.description}</p>
+  </div>
+
+  <div class="visual-stage overflow-x-auto px-4 py-5 sm:px-6 sm:py-6">
+    {
+      kind === 'convolution' && (
+        <svg viewBox="0 0 900 330" role="img" aria-label={visual.title}>
+          <g class="soft" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="55" y="55" width="170" height="170" rx="8" />
+            <path d="M89 55v170M123 55v170M157 55v170M191 55v170M55 89h170M55 123h170M55 157h170M55 191h170" />
+            <rect x="75" y="35" width="170" height="170" rx="8" opacity=".55" />
+            <rect x="95" y="15" width="170" height="170" rx="8" opacity=".3" />
+          </g>
+          <rect x="55" y="55" width="102" height="102" rx="6" class="accent-fill" opacity=".22" />
+          <rect
+            x="55"
+            y="55"
+            width="102"
+            height="102"
+            rx="6"
+            class="accent"
+            fill="none"
+            stroke-width="4"
+          />
+          <text x="82" y="265">
+            입력 channel 묶음
+          </text>
+          <text x="92" y="290" class="small">
+            3×3 window · 위치 1
+          </text>
+
+          <text x="320" y="128" class="operator">
+            ⊙
+          </text>
+          <g transform="translate(375 65)">
+            <rect width="130" height="130" rx="12" class="panel" />
+            <path
+              d="M43 0v130M86 0v130M0 43h130M0 86h130"
+              class="soft"
+              fill="none"
+              stroke="currentColor"
+            />
+            <text x="29" y="160">
+              channel별 kernel
+            </text>
+          </g>
+          <text x="535" y="128" class="operator">
+            Σ
+          </text>
+
+          <g transform="translate(635 55)">
+            <rect width="170" height="170" rx="8" class="panel" />
+            <path
+              d="M34 0v170M68 0v170M102 0v170M136 0v170M0 34h170M0 68h170M0 102h170M0 136h170"
+              class="soft"
+              fill="none"
+              stroke="currentColor"
+            />
+            <rect x="3" y="3" width="28" height="28" rx="4" class="accent-fill" />
+            <rect x="37" y="3" width="28" height="28" rx="4" class="accent-fill" opacity=".55" />
+          </g>
+          <text x="653" y="265">
+            한 출력 channel
+          </text>
+          <text x="661" y="290" class="small">
+            stride만큼 옮겨 반복
+          </text>
+        </svg>
+      )
+    }
+
+    {
+      kind === 'pooling' && (
+        <svg viewBox="0 0 900 330" role="img" aria-label={visual.title}>
+          <g transform="translate(60 40)">
+            <rect width="240" height="240" rx="10" class="panel" />
+            <path
+              d="M60 0v240M120 0v240M180 0v240M0 60h240M0 120h240M0 180h240"
+              class="soft"
+              fill="none"
+              stroke="currentColor"
+            />
+            <rect x="0" y="0" width="180" height="180" rx="8" class="accent-fill" opacity=".2" />
+            <rect
+              x="0"
+              y="0"
+              width="180"
+              height="180"
+              rx="8"
+              class="accent"
+              fill="none"
+              stroke-width="4"
+            />
+            <g class="values">
+              <>
+                <text x="24" y="38">
+                  1
+                </text>
+                <text x="84" y="38">
+                  4
+                </text>
+                <text x="144" y="38">
+                  2
+                </text>
+                <text x="204" y="38">
+                  0
+                </text>
+                <text x="24" y="98">
+                  3
+                </text>
+                <text x="84" y="98">
+                  9
+                </text>
+                <text x="144" y="98">
+                  5
+                </text>
+                <text x="204" y="98">
+                  2
+                </text>
+                <text x="24" y="158">
+                  2
+                </text>
+                <text x="84" y="158">
+                  7
+                </text>
+                <text x="144" y="158">
+                  6
+                </text>
+                <text x="204" y="158">
+                  1
+                </text>
+                <text x="24" y="218">
+                  0
+                </text>
+                <text x="84" y="218">
+                  3
+                </text>
+                <text x="144" y="218">
+                  2
+                </text>
+                <text x="204" y="218">
+                  8
+                </text>
+              </>
+            </g>
+          </g>
+          <text x="135" y="315" class="small">
+            Step 1 · 3×3 window
+          </text>
+          <text x="355" y="165" class="operator">
+            max →
+          </text>
+          <g transform="translate(520 85)">
+            <rect width="160" height="160" rx="10" class="panel" />
+            <path d="M80 0v160M0 80h160" class="soft" fill="none" stroke="currentColor" />
+            <>
+              <text x="31" y="53" class="result">
+                9
+              </text>
+              <text x="111" y="53" class="result">
+                5
+              </text>
+              <text x="31" y="133" class="result">
+                7
+              </text>
+              <text x="111" y="133" class="result">
+                8
+              </text>
+            </>
+          </g>
+          <path
+            d="M700 165h105"
+            class="accent"
+            fill="none"
+            stroke-width="4"
+            stroke-dasharray="10 8"
+          />
+          <text x="710" y="145" class="small">
+            stride 2
+          </text>
+          <text x="535" y="285" class="small">
+            작아진 feature map
+          </text>
+        </svg>
+      )
+    }
+
+    {
+      kind === 'imagenet-trend' && (
+        <svg viewBox="0 0 940 380" role="img" aria-label={visual.title}>
+          <line x1="85" y1="315" x2="895" y2="315" class="axis" />
+          <line x1="85" y1="45" x2="85" y2="315" class="axis" />
+          <>
+            <text x="16" y="60" class="small">
+              오류 높음
+            </text>
+            <text x="18" y="310" class="small">
+              오류 낮음
+            </text>
+          </>
+          <path
+            d="M120 85 C220 92 240 145 290 165 S405 205 455 220 S575 260 635 276 S760 292 850 298"
+            class="trend"
+            fill="none"
+          />
+          <g class="dots">
+            <>
+              <circle cx="120" cy="85" r="7" />
+              <circle cx="290" cy="165" r="7" />
+              <circle cx="455" cy="220" r="7" />
+              <circle cx="635" cy="276" r="7" />
+              <circle cx="750" cy="291" r="7" />
+              <circle cx="850" cy="298" r="7" />
+            </>
+          </g>
+          <g class="labels">
+            <>
+              <text x="99" y="55">
+                2010
+              </text>
+              <text x="91" y="110">
+                기존 방식
+              </text>
+            </>
+            <>
+              <text x="264" y="135">
+                2012
+              </text>
+              <text x="255" y="190">
+                AlexNet
+              </text>
+            </>
+            <>
+              <text x="428" y="190">
+                2014
+              </text>
+              <text x="389" y="245">
+                VGG · GoogLeNet
+              </text>
+            </>
+            <>
+              <text x="609" y="246">
+                2015
+              </text>
+              <text x="604" y="302">
+                ResNet
+              </text>
+            </>
+            <>
+              <text x="720" y="260">
+                2016
+              </text>
+              <text x="690" y="324">
+                Inception · WRN
+              </text>
+            </>
+            <>
+              <text x="823" y="270">
+                2017
+              </text>
+              <text x="826" y="324">
+                SENet
+              </text>
+            </>
+          </g>
+          <text x="665" y="82" class="callout">
+            더 깊게 쌓는 법과 연결 방식의 혁신
+          </text>
+          <path
+            d="M710 95C700 145 670 195 640 252"
+            class="soft"
+            fill="none"
+            stroke="currentColor"
+            stroke-dasharray="7 7"
+          />
+        </svg>
+      )
+    }
+
+    {
+      (kind === 'alexnet' || kind === 'vgg') && visual.stages && (
+        <div class="pipeline" aria-label={visual.title} role="img">
+          {visual.stages.map((stage, index) => (
+            <>
+              <div
+                class:list={[
+                  'stage-card',
+                  index === 0 && 'input',
+                  index === visual.stages!.length - 1 && 'output',
+                ]}
+              >
+                {stage.split('\n').map((line) => (
+                  <span>{line}</span>
+                ))}
+              </div>
+              {index < visual.stages!.length - 1 && (
+                <span class="arrow" aria-hidden="true">
+                  →
+                </span>
+              )}
+            </>
+          ))}
+        </div>
+      )
+    }
+
+    {
+      kind === 'inception' && (
+        <div class="branch-diagram" role="img" aria-label={visual.title}>
+          <>
+            <div class="stage-card input">입력 feature</div>
+            <span class="arrow">→</span>
+          </>
+          <div class="branches">
+            <div>
+              <>
+                <b>1×1 Conv</b>
+                <span>그대로 통과</span>
+              </>
+            </div>
+            <div>
+              <>
+                <b>1×1 Conv → 3×3 Conv</b>
+                <span>bottleneck 뒤 중간 크기 특징</span>
+              </>
+            </div>
+            <div>
+              <>
+                <b>1×1 Conv → 5×5 Conv</b>
+                <span>bottleneck 뒤 큰 특징</span>
+              </>
+            </div>
+            <div>
+              <>
+                <b>3×3 MaxPool → 1×1 Conv</b>
+                <span>pooling 특징과 채널 정리</span>
+              </>
+            </div>
+          </div>
+          <>
+            <span class="arrow">→</span>
+            <div class="stage-card output">channel concat</div>
+          </>
+        </div>
+      )
+    }
+
+    {
+      kind === 'resnet-wrn' && (
+        <div class="residual-diagram" role="img" aria-label={visual.title}>
+          <div class="residual-main">
+            <>
+              <div class="stage-card input">x</div>
+              <span>→</span>
+              <div class="stage-card">
+                3×3 Conv
+                <br />
+                BN · ReLU
+              </div>
+              <span>→</span>
+              <div class="stage-card">
+                3×3 Conv
+                <br />
+                BN
+              </div>
+              <span>→</span>
+              <div class="sum">＋</div>
+              <span>→</span>
+              <div class="stage-card output">
+                ReLU
+                <br />
+                F(x)+x
+              </div>
+            </>
+          </div>
+          <div class="shortcut">
+            <span>identity shortcut</span>
+          </div>
+          <div class="width-note">
+            <>
+              <b>WRN</b>
+              <span>더 적은 block × 더 넓은 channel</span>
+              <a href="https://arxiv.org/abs/1605.07146" target="_blank" rel="noreferrer">
+                WRN 원 논문 ↗
+              </a>
+            </>
+          </div>
+        </div>
+      )
+    }
+
+    {
+      kind === 'densenet' && (
+        <div class="dense-diagram" role="img" aria-label={visual.title}>
+          <div class="dense-row">
+            <>
+              <div class="feature f0">x₀</div>
+              <span>→</span>
+              <div class="feature f1">H₁</div>
+              <span>→</span>
+              <div class="feature f2">H₂</div>
+              <span>→</span>
+              <div class="feature f3">H₃</div>
+            </>
+          </div>
+          <svg viewBox="0 0 760 160" aria-hidden="true">
+            <path
+              d="M65 20C65 120 250 120 250 45M65 20C65 145 470 145 470 45M285 20C285 105 470 105 470 45M65 20C65 155 690 155 690 45M285 20C285 130 690 130 690 45M505 20C505 105 690 105 690 45"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              opacity=".45"
+            />
+          </svg>
+          <p>
+            <b>입력:</b> H₃([x₀, x₁, x₂]) — 이전 feature를 channel 방향으로 연결
+          </p>
+        </div>
+      )
+    }
+
+    {
+      kind === 'se-network' && (
+        <div class="se-diagram" role="img" aria-label={visual.title}>
+          <>
+            <div class="se-feature">
+              <>
+                <span>H × W × C</span>
+                <b>feature U</b>
+              </>
+            </div>
+            <span class="arrow">→</span>
+          </>
+          <>
+            <div class="se-step">
+              <>
+                <b>Squeeze</b>
+                <span>Global average pooling</span>
+                <em>1 × 1 × C</em>
+              </>
+            </div>
+            <span class="arrow">→</span>
+          </>
+          <>
+            <div class="se-step">
+              <>
+                <b>Excitation</b>
+                <span>FC C/r → ReLU → FC C</span>
+                <em>sigmoid weight</em>
+              </>
+            </div>
+            <span class="arrow">→</span>
+          </>
+          <>
+            <div class="sum multiply">×</div>
+            <span class="arrow">→</span>
+            <div class="se-feature output">
+              <>
+                <span>H × W × C</span>
+                <b>reweighted U</b>
+              </>
+            </div>
+          </>
+        </div>
+      )
+    }
+  </div>
+
+  {
+    visual.source && (
+      <div class="flex items-center justify-between gap-4 border-t border-border/70 bg-background/55 px-5 py-3 text-sm sm:px-6">
+        <span class="text-muted-foreground">
+          도식은 원 논문의 구조를 바탕으로 새로 제작했습니다.
+        </span>
+        <a
+          class="shrink-0 font-bold text-primary no-underline hover:underline"
+          href={visual.source.href}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {visual.source.label} ↗
+        </a>
+      </div>
+    )
+  }
+</figure>
+
+<style>
+  .architecture-visual {
+    color: hsl(var(--foreground));
+  }
+  .visual-stage {
+    min-width: 0;
+  }
+  svg {
+    width: 100%;
+    min-width: 42rem;
+    height: auto;
+  }
+  svg text {
+    fill: currentColor;
+    font:
+      700 18px/1.3 ui-sans-serif,
+      system-ui,
+      sans-serif;
+  }
+  svg .small {
+    font-size: 14px;
+    opacity: 0.72;
+  }
+  svg .operator {
+    font-size: 28px;
+    font-weight: 900;
+  }
+  svg .values,
+  svg .result {
+    font-size: 20px;
+    font-weight: 900;
+  }
+  svg .result {
+    font-size: 28px;
+  }
+  .soft {
+    opacity: 0.42;
+  }
+  .axis {
+    stroke: currentColor;
+    stroke-width: 2;
+    opacity: 0.45;
+  }
+  .accent {
+    stroke: hsl(var(--primary));
+  }
+  .accent-fill,
+  .dots {
+    fill: hsl(var(--primary));
+  }
+  .panel {
+    fill: hsl(var(--muted) / 0.22);
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+  .trend {
+    stroke: hsl(var(--primary));
+    stroke-width: 6;
+  }
+  .labels {
+    font-size: 15px;
+  }
+  .callout {
+    font-size: 15px;
+    fill: hsl(var(--primary));
+  }
+  .pipeline,
+  .branch-diagram,
+  .se-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-width: 42rem;
+    min-height: 13rem;
+  }
+  .stage-card,
+  .se-step,
+  .se-feature {
+    display: grid;
+    place-items: center;
+    min-height: 6.8rem;
+    min-width: 7.2rem;
+    gap: 0.25rem;
+    padding: 1rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 1rem;
+    background: hsl(var(--muted) / 0.24);
+    text-align: center;
+    font-size: 0.86rem;
+    font-weight: 800;
+    line-height: 1.4;
+  }
+  .stage-card.input,
+  .se-feature {
+    border-color: hsl(var(--primary) / 0.42);
+    background: hsl(var(--primary) / 0.08);
+  }
+  .stage-card.output,
+  .se-feature.output {
+    border-color: hsl(var(--primary) / 0.65);
+    background: hsl(var(--primary) / 0.14);
+  }
+  .arrow {
+    flex: 0 0 auto;
+    color: hsl(var(--primary));
+    font-size: 1.45rem;
+    font-weight: 900;
+  }
+  .branches {
+    display: grid;
+    gap: 0.55rem;
+    min-width: 25rem;
+  }
+  .branches > div {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    gap: 0.8rem;
+    align-items: center;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.8rem;
+    background: hsl(var(--muted) / 0.2);
+    padding: 0.75rem 1rem;
+  }
+  .branches span {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.78rem;
+  }
+  .residual-diagram {
+    position: relative;
+    min-width: 42rem;
+    min-height: 18rem;
+    padding: 2.5rem 1rem 5.5rem;
+  }
+  .residual-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+  }
+  .sum {
+    display: grid;
+    width: 2.8rem;
+    height: 2.8rem;
+    place-items: center;
+    border: 2px solid hsl(var(--primary));
+    border-radius: 999px;
+    font-size: 1.5rem;
+    font-weight: 900;
+  }
+  .shortcut {
+    position: absolute;
+    left: 16%;
+    right: 25%;
+    top: 2.8rem;
+    height: 3.5rem;
+    border: 3px solid hsl(var(--primary) / 0.58);
+    border-bottom: 0;
+    border-radius: 1rem 1rem 0 0;
+  }
+  .shortcut span {
+    position: absolute;
+    left: 50%;
+    top: -0.9rem;
+    transform: translateX(-50%);
+    background: hsl(var(--card));
+    padding: 0 0.6rem;
+    color: hsl(var(--primary));
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+  .width-note {
+    position: absolute;
+    left: 20%;
+    right: 20%;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    border-radius: 1rem;
+    background: hsl(var(--muted) / 0.28);
+    padding: 0.9rem 1rem;
+    font-size: 0.85rem;
+  }
+  .width-note a {
+    color: hsl(var(--primary));
+    font-weight: 800;
+    text-decoration: none;
+  }
+  .dense-diagram {
+    min-width: 42rem;
+    min-height: 18rem;
+    padding: 2rem 3rem 0;
+  }
+  .dense-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1.4rem;
+    font-weight: 900;
+  }
+  .feature {
+    display: grid;
+    width: 5rem;
+    height: 5rem;
+    place-items: center;
+    border: 2px solid hsl(var(--border));
+    border-radius: 1rem;
+    background: hsl(var(--muted) / 0.25);
+  }
+  .f0 {
+    border-color: hsl(var(--primary) / 0.6);
+  }
+  .dense-diagram svg {
+    height: 9rem;
+    margin-top: -1.4rem;
+  }
+  .dense-diagram p {
+    margin: -1.8rem 0 0;
+    text-align: center;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.85rem;
+  }
+  .se-step {
+    min-width: 12.5rem;
+  }
+  .se-step span,
+  .se-step em,
+  .se-feature span {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.76rem;
+    font-style: normal;
+    font-weight: 600;
+  }
+  .multiply {
+    flex: 0 0 auto;
+  }
+</style>

@@ -5,6 +5,12 @@ const UPDATE_HEADING_PREFIX = '2026-08-18 최신 연구 업데이트';
 const UPDATE_PREAMBLE_PREFIX = '이 절은 PDF page coverage에 포함하지 않는다';
 const EDITORIAL_ID = /^P5-E\d{3}$/;
 const RESEARCH_ID = /^P5-R\d{3}$/;
+const PAGE_HEADING_PREFIX = /^PDF p\.\d+\s*[—-]\s*/;
+const FIGURE_SOURCE_PREFIX = '그림 원자료.';
+const READER_LEDGER_HEADINGS = new Set([
+  '이 페이지의 수식·수치 원장',
+  '이 페이지의 도식·표·그래프 매핑',
+]);
 
 function nodeText(node) {
   if (!node || typeof node !== 'object') return '';
@@ -23,6 +29,48 @@ function trimThematicBreaks(nodes) {
   while (nodes[start]?.type === 'thematicBreak') start += 1;
   while (nodes[end - 1]?.type === 'thematicBreak') end -= 1;
   return nodes.slice(start, end);
+}
+
+function isSourceFigure(node) {
+  return (
+    node?.type === 'mdxJsxFlowElement' &&
+    node.name === 'figure' &&
+    node.attributes?.some(
+      (attribute) => attribute.type === 'mdxJsxAttribute' && attribute.name === 'data-source-figure'
+    )
+  );
+}
+
+function cleanSourceReaderBody(nodes) {
+  const cleaned = [];
+
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index];
+    const text = nodeText(node).trim();
+
+    if (node.type === 'heading' && node.depth === 4 && text === '강의자 필기') {
+      while (
+        index + 1 < nodes.length &&
+        !(nodes[index + 1].type === 'heading' && nodes[index + 1].depth <= 4)
+      ) {
+        index += 1;
+      }
+      continue;
+    }
+
+    if (node.type === 'heading' && READER_LEDGER_HEADINGS.has(text)) continue;
+    if (node.type === 'paragraph' && text.startsWith(FIGURE_SOURCE_PREFIX)) continue;
+    if (isSourceFigure(node)) continue;
+
+    if (node.type === 'heading' && node.depth === 2 && PAGE_HEADING_PREFIX.test(text)) {
+      cleaned.push(heading(2, text.replace(PAGE_HEADING_PREFIX, '')));
+      continue;
+    }
+
+    cleaned.push(node);
+  }
+
+  return cleaned;
 }
 
 /**
@@ -65,7 +113,9 @@ export default function modernAiPartFiveReaderCleanup() {
     }
 
     const imports = children.slice(0, sourceIndex).filter((node) => node.type === 'mdxjsEsm');
-    const sourceBody = trimThematicBreaks(children.slice(sourceIndex + 1, auditIndex));
+    const sourceBody = cleanSourceReaderBody(
+      trimThematicBreaks(children.slice(sourceIndex + 1, auditIndex))
+    );
     const editorialBody = trimThematicBreaks(children.slice(auditIndex + 1, updateIndex)).filter(
       (node) => !(node.type === 'heading' && EDITORIAL_ID.test(nodeText(node).trim()))
     );
