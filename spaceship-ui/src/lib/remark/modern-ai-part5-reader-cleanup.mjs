@@ -1,10 +1,10 @@
-const TARGET_POST = /(?:^|[/\\\\])modern-artificial-intelligence-5\\.mdx?$/;
+const TARGET_POST = /(?:^|[/\\])modern-artificial-intelligence-5\.mdx?$/;
 const SOURCE_HEADING = 'PDF 원자료 재구성';
 const AUDIT_HEADING_PREFIX = '편집·수학 검증';
 const UPDATE_HEADING_PREFIX = '2026-08-18 최신 연구 업데이트';
 const UPDATE_PREAMBLE_PREFIX = '이 절은 PDF page coverage에 포함하지 않는다';
-const EDITORIAL_ID = /^P5-E\\d{3}$/;
-const RESEARCH_ID = /^P5-R\\d{3}$/;
+const EDITORIAL_ID = /^P5-E\d{3}$/;
+const RESEARCH_ID = /^P5-R\d{3}$/;
 
 function nodeText(node) {
   if (!node || typeof node !== 'object') return '';
