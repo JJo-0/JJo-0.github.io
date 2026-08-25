@@ -67,6 +67,9 @@ function installResearchInteractions(root: HTMLElement, signal: AbortSignal): vo
       if (!target) return;
 
       event.preventDefault();
+      if (node instanceof HTMLAnchorElement && node.hash) {
+        history.pushState(null, '', `${window.location.pathname}${node.hash}`);
+      }
       target.scrollIntoView({
         behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
         block: 'center',
