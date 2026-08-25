@@ -159,8 +159,8 @@ export async function auditRenderer(cdp, sessionId) {
     `(() => {
       const brand = document.querySelector('[data-site-brand]');
       const stage = document.querySelector('.experience-visual-stage');
-      const overlays = [...stage.querySelectorAll('.world-hud--top > span')];
-      if (!brand || !stage || overlays.length !== 2) return null;
+      const overlays = [...stage.querySelectorAll('.world-hud--top')];
+      if (!brand || !stage || overlays.length !== 1) return null;
       const brandRect = brand.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
       return {
