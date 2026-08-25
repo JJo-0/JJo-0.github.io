@@ -1,103 +1,26 @@
 ---
 import { RESEARCH_FOCUS } from '@/lib/research';
 import ExperienceCanvas from './ExperienceCanvas.astro';
+import type { PostGraph } from '@/lib/experience/post-graph';
 
-const origin = { x: 310, y: 260 };
-const positions = [
-  { x: 145, y: 128 },
-  { x: 455, y: 112 },
-  { x: 475, y: 390 },
-  { x: 155, y: 408 },
-] as const;
+interface Props {
+  graph: PostGraph;
+}
+const { graph } = Astro.props;
 ---
 
 <nav class="research-map" aria-label="Research focus map" data-motion="hero-visual">
-  <ExperienceCanvas variant="research" />
-
-  <svg viewBox="0 0 620 520" role="img" aria-labelledby="research-map-title research-map-desc">
-    <title id="research-map-title">Park JiHo research index</title>
-    <desc id="research-map-desc">
-      Four public research lines connected to selected notes and engineering evidence. Every marker links to the matching section on this page.
-    </desc>
-
-    <g aria-hidden="true">
-      {
-        RESEARCH_FOCUS.map((_, index) => {
-          const position = positions[index] ?? origin;
-          return (
-            <line
-              class="research-map__edge"
-              x1={origin.x}
-              y1={origin.y}
-              x2={position.x}
-              y2={position.y}
-            />
-          );
-        })
-      }
-      {
-        RESEARCH_FOCUS.map((_, index) => {
-          const from = positions[index] ?? origin;
-          const to = positions[index + 1];
-          if (!to) return null;
-          return (
-            <line
-              class="research-map__edge"
-              x1={from.x}
-              y1={from.y}
-              x2={to.x}
-              y2={to.y}
-              opacity="0.28"
-            />
-          );
-        })
-      }
-    </g>
-
-    <g aria-hidden="true">
-      <rect class="research-map__plate" x="222" y="212" width="176" height="96" />
-      <rect class="research-map__point" x="306" y="256" width="8" height="8" />
-      <text class="research-map__label" x={origin.x} y="248" text-anchor="middle">PUBLIC</text>
-      <text class="research-map__label" x={origin.x} y="268" text-anchor="middle">RESEARCH</text>
-      <text class="research-map__label" x={origin.x} y="288" text-anchor="middle">INDEX</text>
-    </g>
-
+  <ExperienceCanvas variant="research" graph={graph} />
+  <div class="research-map__hud" aria-hidden="true">
+    <span>Public Research / Writing Atlas</span><span>{graph.nodes.length} Articles</span>
+  </div>
+  <div class="sr-only">
     {
-      RESEARCH_FOCUS.map((focus, index) => {
-        const position = positions[index] ?? origin;
-        return (
-          <a
-            href={`#${focus.id}`}
-            tabindex="0"
-            data-constellation-node={focus.id}
-            aria-label={`Jump to ${focus.title}`}
-          >
-            <title>{focus.title}</title>
-            <rect
-              class="research-map__plate"
-              x={position.x - 62}
-              y={position.y - 34}
-              width="124"
-              height="68"
-            />
-            <rect
-              class="research-map__point"
-              x={position.x - 4}
-              y={position.y - 4}
-              width="8"
-              height="8"
-            />
-            <text
-              class="research-map__label"
-              x={position.x}
-              y={position.y + 23}
-              text-anchor="middle"
-            >
-              {focus.label.toUpperCase()}
-            </text>
-          </a>
-        );
-      })
+      RESEARCH_FOCUS.map((focus) => (
+        <a href={`#${focus.id}`} data-constellation-node={focus.id}>
+          Jump to {focus.title}
+        </a>
+      ))
     }
-  </svg>
+  </div>
 </nav>
