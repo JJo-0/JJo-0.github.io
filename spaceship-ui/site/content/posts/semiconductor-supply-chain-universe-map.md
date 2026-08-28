@@ -29,7 +29,8 @@ lang: 'ko'
   <a href="/assets/interactive/semiconductor-universe/index.html" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;font-weight:900;">Interactive Universe 전체 화면으로 열기 ↗</a>
 </div>
 
-## 처음 이 지도를 보는 사람을 위한 안내
+<details>
+<summary><strong>처음 읽는 사람을 위한 2분 안내</strong></summary>
 
 반도체 공급망을 처음 보면 회사 이름, 장비 이름, 공정 이름이 한꺼번에 나와 어디서 시작해야 할지 막막하다. 이 글은 외울 목록을 늘리기 위한 지도가 아니다. “칩 하나를 만들려면 어떤 일을 하고, 그 일을 하기 위해 어떤 장비·소재·부품이 함께 움직이는가”를 따라가기 위한 지도다.
 
@@ -46,6 +47,8 @@ lang: 'ko'
 Etcher는 이 지도를 읽는 좋은 출발점이다. 회로의 도안이 웨이퍼에 이미 준비돼 있다고 가정하면, Etcher는 필요 없는 막만 정교하게 제거해 선·구멍·벽을 실제 구조로 만든다. 이 한 장비 안에도 웨이퍼를 옮기는 robot/EFEM, 온도를 맞추는 ESC·chiller, 가스를 계량하는 MFC, 플라즈마를 만드는 RF·matcher, 부산물을 빼는 vacuum pump, 끝점을 판단하는 sensor가 모두 연결된다.
 
 즉 MFC나 pump는 “Etcher 옆에 붙은 작은 부품”이 아니라 결과를 바꾸는 공정 subsystem이다. 이 흐름을 먼저 이해하면 deposition, CMP, scanner, metrology도 같은 방식으로 읽을 수 있다. [인터랙티브 지도에서 Etch부터 열기](/assets/interactive/semiconductor-universe/index.html?lens=process&node=SEM.FE.ETCH)로 바로 시작할 수 있다.
+
+</details>
 
 ## 먼저 읽어야 할 결론
 
@@ -78,46 +81,33 @@ End market ↔ Product demand ↔ Manufacturing demand
 
 이 원칙이 없으면 “ASML=노광장비”, “OSAT=패키징”, “소부장=대형 장비회사” 같은 지나친 축약이 발생한다.
 
-## 전체 Supply-chain topology
+## 1. 반도체 Supply-Chain Topology: 지도에 무엇이 들어 있는가
 
-최종 map은 15개 상위 domain으로 고정했다.
+이 지도는 회사 목록이 아니라, 하나의 반도체가 수요에서 출발해 설계·제조·패키징·검증을 거쳐 시스템에 들어갈 때 필요한 산업 층을 함께 놓은 topology다. 왼쪽의 수요가 제품의 사양과 물량을 만들고, 중간의 설계·웨이퍼·공정이 칩을 만들며, 오른쪽의 패키징·테스트가 사용할 수 있는 부품으로 완성한다. 소재·장비·핵심부품·팹 인프라·자동화는 그 흐름 전체를 가로지르는 공통 기반이다.
 
-| Domain | 무엇을 포함하는가 |
-|---|---|
-| **DEM — End Markets** | AI/HPC, server, mobile, automotive, industrial, robotics, power, medical, defense, IoT |
-| **PROD — Products** | DRAM·HBM·NAND, CPU·GPU·NPU·ASIC, analog, MCU, RF, power, sensor, photonics |
-| **DESIGN — Design Ecosystem** | IDM, fabless, foundry, EDA, IP, design house, verification, DFT, mask data preparation |
-| **WAF — Wafer/Substrate** | polysilicon, CZ/FZ, slicing·polishing, epi, reclaimed wafer, SOI·SiC·GaN·GaAs·InP·glass |
-| **MASK — Photomask/Reticle** | blank, absorber, mask resist, writer, inspection, metrology, repair, pellicle, pod·cleaning |
-| **FE — FEOL/MOL/BEOL** | clean, thermal, epi, lithography, etch, deposition, implant, CMP, metallization, backside |
-| **PC — Process Control** | CD-SEM, optical/e-beam inspection, overlay, OCD, X-ray, SIMS, AFM, defect review, yield/APC |
-| **MAT — Materials** | wafers, resist, chemicals, gases, precursor, targets, CMP, chamber materials, package materials |
-| **EQCOMP — Equipment & Components** | process tools와 vacuum, RF, gas delivery, chamber, motion, optics, thermal, robotics, sensors |
-| **FAB — Fab Infrastructure** | cleanroom, HVAC, UPW, gas, chemical, vacuum, abatement, wastewater, cooling, power, safety |
-| **AUTO — Automation & Software** | AMHS/OHT, FOUP/FOSB, E84/E23, MES, FDC, APC, scheduling, virtual metrology, cybersecurity |
-| **PKG — Packaging** | thinning, dicing, bump, wire/flip-chip, TCB, hybrid bonding, RDL/TSV, substrate, thermal, CPO |
-| **TEST — Test/Reliability** | probe, ATE, handler, socket, load board, burn-in, thermal, SLT, HTOL/HAST/TC/ESD |
-| **HBM — HBM-specific Graph** | DRAM wafer, KGD, TSV, thinning, interface, stack/bond, MR-MUF/NCF, base die, thermal, final test |
-| **SERVICE — Service/Circular Chain** | field service, spares, precision cleaning, coating, refurbishment, calibration, relocation, recycling |
+| 산업 층 | 포함 영역 | 이 지도를 읽을 때의 질문 |
+|---|---|---|
+| **수요·제품** | DEM: AI/HPC·server·mobile·automotive 등 / PROD: DRAM·HBM·NAND·CPU·GPU·power·sensor 등 | 누가 어떤 칩을 얼마나 필요로 하는가? |
+| **설계·원판 준비** | DESIGN: IDM·fabless·foundry·EDA·IP / WAF: silicon·SOI·SiC·GaN·epi / MASK: blank·reticle·pellicle·inspection | 그 칩을 만들 도안과 출발 재료는 무엇인가? |
+| **웨이퍼 제조·공정 제어** | FE: clean·lithography·etch·deposition·implant·CMP·metallization / PC: inspection·overlay·CD·yield·APC | 웨이퍼 위에 구조를 어떻게 만들고, 제대로 만들어졌는지 어떻게 확인하는가? |
+| **소재·장비·핵심부품** | MAT: resist·gas·chemical·precursor·CMP·chamber material / EQCOMP: vacuum·RF·gas delivery·chamber·motion·optics·thermal·robotics·sensor | 공정 결과를 실제로 바꾸는 소모재와 장비 subsystem은 무엇인가? |
+| **공장 운영 기반** | FAB: cleanroom·UPW·gas·chemical·abatement·cooling·power / AUTO: AMHS·FOUP·MES·FDC·APC·cybersecurity | 수천 장의 웨이퍼를 오염 없이, 같은 조건으로 반복 생산하려면 무엇이 필요한가? |
+| **완성·검증·순환** | PKG: thinning·bump·TCB·hybrid bonding·RDL·TSV / TEST: probe·ATE·burn-in·reliability / HBM·SERVICE | 칩을 연결·보호·검증하고, 장비를 유지·복원하는 마지막 단계는 무엇인가? |
 
-## 실제 wafer를 따라가는 Process Walk
+## 2. Wafer를 따라가는 제조 흐름
 
 Taxonomy가 실제 제조흐름과 연결되는지 확인하기 위해 wafer 한 장이 공장을 통과한다고 가정했다.
 
-```text
-Raw material
-→ Wafer / substrate
-→ Photomask / reticle
-→ FEOL device formation
-→ MOL contact
-→ BEOL interconnect
-→ Wafer test / Known Good Die
-→ Backgrind / thinning
-→ Dicing / die sort
-→ Package assembly / advanced packaging
-→ Final test / burn-in / system-level test
-→ System integration
-```
+| 흐름 | 웨이퍼·다이에 일어나는 변화 | 함께 봐야 할 공급망 |
+|---|---|---|
+| **1. 출발 재료** | silicon·SiC·GaN 등을 고순도 웨이퍼로 만든다 | ingot·epi·polishing·clean·substrate 검사 |
+| **2. 도안 준비** | 회로 설계 데이터를 reticle로 옮긴다 | EDA·mask blank·writer·pellicle·mask inspection |
+| **3. 전공정** | 막을 쌓고, 빛으로 도안을 옮기고, 필요한 부분을 깎아 transistor와 배선을 만든다 | deposition·lithography·etch·implant·CMP + gas·resist·vacuum·RF·metrology |
+| **4. 웨이퍼 검사** | die가 전기적으로 동작하는지 판별해 KGD 후보를 고른다 | probe card·tester·inspection·yield analysis |
+| **5. 패키징** | 웨이퍼를 얇게 만들고 절단한 뒤, 다른 die와 연결·보호한다 | dicing·substrate·bump·TCB·hybrid bonding·molding·thermal |
+| **6. 최종 검증·시스템** | 완성품의 성능·신뢰성을 검증하고 서버·모바일·자동차 시스템에 탑재한다 | ATE·handler·burn-in·socket·SLT·reliability |
+
+**한 줄로 보면:** `수요 → 칩 사양 → 설계·마스크 → 웨이퍼 전공정 → 웨이퍼 검사 → 패키징 → 최종 테스트 → 시스템`.  소재·장비·핵심부품·공장 인프라는 이 모든 화살표에 반복해서 붙는다.
 
 각 step마다 장비만 묻지 않았다. 다음 열 가지를 반복해서 확인했다.
 
@@ -134,43 +124,31 @@ Raw material
 
 이 방식으로 일반적인 “8대 공정” 설명에서 빠지는 **post-etch clean, edge/bevel, descum, temporary bonding/debonding, chemical/gas inline analytics, carrier cleaning, calibration, refurbishment**가 독립 node로 드러났다.
 
-## 가장 크게 누락되기 쉬운 영역: 장비 핵심부품
+## 3. 장비 핵심부품: 장비 한 대 안에서 실제로 공정을 만드는 것
 
 소부장 연구에서 가장 자주 빠지는 부분은 장비 OEM이 아니라 **장비 내부 critical subsystem**이다.
 
-Etcher 하나만 분해해도 다음 공급망이 생긴다. Etcher를 한 대의 기계가 아니라 여섯 개의 subsystem이 맞물린 작은 공장이라고 보면 이해가 쉽다.
+Etcher는 대표 사례일 뿐, 이 표의 읽는 법은 scanner·deposition·CMP·clean 장비에도 그대로 적용된다.
 
-1. **반응 공간 — Chamber body, liner, coating, quartz, ceramic, SiC, graphite, seals**
+| Etcher subsystem | 대표 부품 | 공정에서 하는 일 | 흔들리면 나타나는 문제 |
+|---|---|---|---|
+| 반응 공간 | chamber body·liner·coating·quartz·ceramic·SiC·seals | 반응을 가두고 내부 표면을 보호한다 | particle·부식·공정 편차 |
+| 플라즈마·전력 | plasma source·RF generator·matcher·power supply | 가스를 반응성 있는 플라즈마로 만들고 안정적으로 에너지를 전달한다 | 식각 모양·반복성 저하 |
+| 고정·열 관리 | ESC·electrode·edge/focus ring·chiller·heater | 웨이퍼 위치와 온도를 일정하게 유지한다 | 중심/가장자리 불균일 |
+| 가스 전달 | purifier·regulator·valve·MFC·showerhead | 순도·압력·유량·분포를 맞춘다 | 반응 조성·균일도 변화 |
+| 진공·배출 | dry/turbo pump·gauge | 압력과 부산물 배출 조건을 만든다 | 압력 응답·오염·잔류 부산물 |
+| 이송·자동화 | load port·EFEM·robot | 웨이퍼를 오염 없이 정확히 옮긴다 | particle·정렬·처리량 문제 |
 
-   Chamber body는 반응이 일어나는 밀폐 공간이고, liner와 coating은 플라즈마·부식·파티클로부터 챔버 본체를 보호하는 교체 가능 부품이다. Quartz, ceramic, SiC, graphite, seal은 높은 온도·진공·화학 반응·전기장 안에서도 형태와 순도를 유지해야 한다. 이 부품들은 눈에 잘 띄지 않지만, 표면이 마모되거나 오염되면 파티클과 공정 편차의 원인이 될 수 있다.
+<details>
+<summary><strong>사례로 더 보기: Etcher가 공정을 만드는 방식</strong></summary>
 
-2. **플라즈마와 전력 — plasma source, RF generator, matcher, power supply, high-voltage supply**
-
-   Plasma source는 가스를 반응성 높은 상태로 만들고, RF generator는 그 에너지를 공급한다. Matcher는 플라즈마의 전기적 상태가 계속 변하는 상황에서도 전력이 챔버에 안정적으로 전달되게 맞춘다. Power supply와 high-voltage supply는 이 장치들이 필요한 전압·전류를 안전하게 공급한다. 이 묶음의 역할은 단순히 전기를 켜는 것이 아니라, 이온 에너지와 플라즈마 밀도를 반복 가능하게 만드는 것이다.
-
-3. **웨이퍼 고정과 열 관리 — ESC, electrode, edge ring, focus ring, chiller, heater, temperature control**
-
-   ESC(electrostatic chuck)는 정전기로 웨이퍼를 붙잡고, electrode는 전기장을 형성하는 데 관여한다. Edge ring과 focus ring은 웨이퍼 가장자리의 전기장·플라즈마 조건을 보정한다. Chiller, heater, temperature control은 공정 중 열을 빼거나 보태 웨이퍼 온도를 일정하게 유지한다. 이 단계가 불안정하면 중심과 가장자리의 식각 결과가 달라질 수 있다.
-
-4. **가스 전달 — showerhead, gas distribution, MFC, regulator, valve, purifier**
-
-   Purifier는 가스의 수분·산소·입자를 줄이고, regulator와 valve는 압력과 개폐를 제어한다. MFC(mass flow controller)는 각 가스를 정한 유량으로 계량한다. Showerhead와 gas distribution 구조는 그 가스를 웨이퍼 위에 고르게 퍼뜨린다. 즉, 같은 recipe라도 유량·압력·분포가 달라지면 결과가 달라진다.
-
-5. **진공과 배출 — dry pump, turbo pump, vacuum gauge**
-
-   Dry pump와 turbo pump는 챔버를 낮은 압력으로 만들고, 식각 뒤 생긴 휘발성 부산물을 밖으로 보낸다. Vacuum gauge는 그 압력이 목표 범위에 있는지 읽는다. 진공은 단순히 ‘공기를 빼는 기능’이 아니라 가스가 움직이고 반응 부산물이 빠져나가는 조건을 정하는 subsystem이다.
-
-6. **웨이퍼 이송 — robot, EFEM, load port**
-
-   Load port는 FOUP를 장비에 연결하는 입구이고, EFEM은 장비 앞의 청정 이송 공간, robot은 웨이퍼를 실제로 옮기는 팔이다. 이송은 생산성의 문제이기도 하지만, 웨이퍼 표면에 파티클을 만들지 않고 정확한 위치로 넣는 품질 문제이기도 하다.
-
-### 먼저: Etcher는 무엇을 하는 장비인가
+### Etcher는 무엇을 하는 장비인가
 
 Etcher(식각 장비)는 **웨이퍼 위에 이미 쌓인 얇은 막에서, 회로가 필요하지 않은 부분만 골라 제거하는 장비**다. 비유하면 사진 현상 뒤 남은 도안을 따라 돌을 깎는 조각 도구에 가깝다. 빛으로 도안을 옮기는 장비가 노광기라면, Etcher는 그 도안을 실제 3차원 구조로 바꾸는 장비다. [Samsung의 식각 기초 설명](https://semiconductor.samsung.com/support/tools-resources/dictionary/semiconductor-glossary-etching/)과 [Applied Materials의 etch 개요](https://www.appliedmaterials.com/us/en/semiconductor/products/processes/etch.html)에서 먼저 큰 그림을 볼 수 있다.
 
 건식 식각에서는 가스를 진공 챔버에 넣고 RF 전력을 가해 **플라즈마**를 만든다. 플라즈마 안의 라디칼은 재료와 화학 반응을 일으키고, 이온은 아래 방향으로 에너지를 전달해 바닥을 더 잘 깎게 한다. 반응 뒤 생긴 휘발성 부산물은 진공계가 밖으로 빼낸다. 즉, Etcher는 단순히 “가스를 뿌리는 기계”가 아니라 **가스·전기장·온도·압력·이송을 동시에 맞춰 원하는 모양을 만드는 시스템**이다. [Lam Research의 plasma etch 원리](https://newsroom.lamresearch.com/etch-essentials-semiconductor-manufacturing)에서 화학 반응과 이온 충돌이 함께 작동하는 이유를 확인할 수 있다.
 
-### Etcher를 따라가는 5단계
+### 공정 안에서 보는 5단계
 
 1. **웨이퍼를 넣는다 — Robot / EFEM / load port**
 
@@ -198,19 +176,21 @@ Etcher(식각 장비)는 **웨이퍼 위에 이미 쌓인 얇은 막에서, 회�
 
 인터랙티브 지도에서는 [Etch 공정부터 열기](/assets/interactive/semiconductor-universe/index.html?lens=process&node=SEM.FE.ETCH)한 뒤, `MFC`, `Plasma / RF`, `ESC`, `Vacuum Pump`, `Robot / EFEM` 노드를 차례로 선택하면 각 항목의 공식 기술 링크를 확인할 수 있다.
 
-### Scanner도 같은 방식으로 읽는다
+</details>
+
+### 같은 틀로 보는 Scanner
 
 Scanner는 회로 도안을 웨이퍼에 빛으로 옮기는 노광 장비다. Light source는 필요한 파장의 빛을 만들고, optics는 그 빛을 정밀하게 다룬다. Stage는 reticle과 wafer를 매우 정확하게 움직이며, encoder는 그 위치를 읽는다. Vibration isolation은 미세한 흔들림이 패턴 오차로 번지는 것을 막는다. Reticle handling과 wafer handling은 마스크와 웨이퍼를 오염 없이 이송하고, sensor와 overlay metrology는 새로 찍힌 층이 이전 층과 얼마나 정확하게 맞았는지 확인한다.
 
 그래서 Scanner 공급망을 볼 때는 광원 회사나 렌즈만 보는 것으로 끝나지 않는다. 정밀 motion, position encoder, 진동 제어, reticle pod·handling, wafer stage, overlay 계측까지 함께 봐야 한다. 한 층의 위치가 조금만 어긋나도 수많은 회로 층이 쌓인 뒤에는 연결 불량이나 수율 저하로 이어질 수 있기 때문이다.
 
-### Deposition tool은 ‘막을 쌓는 장비’ 이상의 시스템이다
+### 같은 틀로 보는 Deposition
 
 Deposition tool은 웨이퍼 위에 금속·절연막·barrier·liner 같은 얇은 막을 필요한 두께와 균일도로 쌓는다. 이를 위해 precursor delivery가 반응 재료를 공급하고, vaporizer는 액체 전구체를 기체 상태로 바꾸며, MFC·valve·showerhead가 전달량과 분포를 제어한다. Heater는 반응에 필요한 온도를 만들고, plasma/RF는 일부 공정에서 반응성을 높인다. Pump는 쓰고 남은 가스와 부산물을 빼며, abatement는 유해 배출가스를 처리한다.
 
 따라서 deposition 장비의 성능은 ‘막을 만들 수 있는가’가 아니라, 웨이퍼 전체에 같은 막을 만들 수 있는지, 아주 좁고 깊은 구조 안쪽까지 막을 넣을 수 있는지, 불순물과 파티클을 관리하는지에 달려 있다. Etcher와 마찬가지로 gas delivery, thermal control, vacuum, plasma, chamber material이 하나의 연결된 시스템을 이룬다.
 
-### 왜 부품 하나를 바꿔도 다시 검증해야 하는가
+### 장비 핵심부품의 진입장벽: 재검증
 
 반도체 장비의 부품 교체는 일반 설비의 소모품 교체와 다르다. 새 부품이 들어가면 파티클 발생, plasma uniformity, thermal stability, outgassing, corrosion resistance, RF impedance, pressure response가 조금씩 달라질 수 있다. 각 항목은 영어 그대로 쓰더라도 결국 같은 질문으로 돌아온다. “이 부품을 바꾼 뒤에도 웨이퍼가 전과 같은 모양과 전기적 특성으로 나오는가?”
 
