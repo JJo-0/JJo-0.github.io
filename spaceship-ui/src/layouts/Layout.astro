@@ -10,6 +10,7 @@ import TransitionRuntime from '@/components/navigation/TransitionRuntime.astro';
 import { ClientRouter } from 'astro:transitions';
 import JsonLd from '@/components/JsonLd.astro';
 import AdSense from '@/components/AdSense.astro';
+import LanguageAssist from '@/components/LanguageAssist.astro';
 import { getWebSiteSchema, getOrganizationSchema, getPersonSchema } from '@/lib/schemas';
 
 import outfitFont400 from '@fontsource/outfit/files/outfit-latin-400-normal.woff2?url';
@@ -25,6 +26,7 @@ interface Props {
   noindex?: boolean;
   usesChart?: boolean;
   markdownAlternate?: string;
+  languageAlternates?: Record<string, string>;
 }
 
 const {
@@ -37,6 +39,7 @@ const {
   noindex = false,
   usesChart = false,
   markdownAlternate,
+  languageAlternates = {},
 } = Astro.props;
 const pageLang = lang || SITE.lang;
 const pageTitle = title ? `${title} | ${SITE.author}` : SITE.seoTitle;
@@ -138,6 +141,11 @@ const adsenseLoaderScript = adsenseClientId
     {SITE.bingSiteVerification && <meta name="msvalidate.01" content={SITE.bingSiteVerification} />}
 
     <link rel="canonical" href={canonicalUrl} />
+    {
+      Object.entries(languageAlternates).map(([alternateLang, pathname]) => (
+        <link rel="alternate" hreflang={alternateLang} href={new URL(pathname, Astro.site)} />
+      ))
+    }
     <meta name="robots" content={shouldNoIndex ? 'noindex, nofollow' : 'index, follow'} />
     <meta name="author" content={SITE.author} />
     <meta name="theme-color" content="#f3efe4" />
@@ -252,13 +260,14 @@ const adsenseLoaderScript = adsenseClientId
       )
     }
     <div class="site-frame mx-auto container-padding">
-      <Header />
+      <Header pageLang={pageLang} />
       <main id="main-content" class="py-10 sm:py-14 lg:py-20" tabindex="-1">
         <slot />
       </main>
       <AdSense />
       <Footer />
     </div>
+    <LanguageAssist pageLang={pageLang} />
   </body>
 </html>
 
