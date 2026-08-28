@@ -95,4 +95,11 @@
     runtime.setAttribute('data-semiconductor-component-resources', 'true');
     document.head.append(runtime);
   }
+
+  if (!document.querySelector('script[data-semiconductor-etcher-guide]')) {
+    const runtime = document.createElement('script');
+    runtime.src = './etcher-guide-runtime.js';
+    runtime.setAttribute('data-semiconductor-etcher-guide', 'true');
+    document.head.append(runtime);
+  }
 })();
