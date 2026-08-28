@@ -66,65 +66,51 @@ Etcher는 이 지도를 읽는 좋은 출발점이다. 회로의 도안이 웨�
 
 </details>
 
-## 이 지도의 다섯 기준점: TSMC·ASML·KLA·Lam·Applied Materials
+## 웨이퍼 한 장으로 읽는 산업: 공정이 먼저, 기업은 그다음
 
-이 다섯 회사를 외우면 반도체 산업 전체를 이해했다는 뜻은 아니다. 다만 각각이 맡는 자리가 달라서, **수요가 실제 칩과 매출로 바뀌는 경로**를 가장 쉽게 따라갈 수 있다. 먼저 “누가 더 좋은 회사인가”보다 아래의 질문으로 읽는 편이 정확하다.
+기업 이름부터 외우면 ASML=노광, Lam=식각처럼 지나치게 단순해진다. 반대로 웨이퍼가 어떤 변화를 거치는지 먼저 보면 각 기업이 왜 연결되는지 자연스럽게 보인다. 실제 양산은 이 순서를 수십·수백 번 반복하고, 검사와 세정은 각 단계 사이에 끼어든다.
 
-`어떤 칩이 필요해졌는가 → 어떤 설계·공정 난도가 필요한가 → 누가 그 공정을 대량으로 돌리는가 → 문제가 생겼을 때 누가 보며, 어느 장비가 막을 쌓고 깎는가`
+`수요와 칩 설계 → mask와 패터닝 → 막 형성 → 식각과 구조 형성 → 측정·수율 학습 → 대량 제조 → 패키징·테스트`
 
-### 1. TSMC — 설계도를 대량생산 가능한 칩으로 바꾸는 운영 축
+### 1. 수요와 칩 설계 — 무엇을 만들지 정하는 출발점
 
-**지도에서의 위치: 설계와 제조기술 · 생산능력과 운영 · 첨단 패키징.**
+AI 서버, 스마트폰, 자동차, 산업 장비의 수요는 같은 “반도체 수요”가 아니다. AI 가속기는 연산 칩과 HBM, 빠른 패키지 연결을 요구하고, 자동차 전력반도체는 고전압·고신뢰성 재료와 긴 검증을 요구한다. 제품이 달라지면 회로 구조, 필요한 공정 node, 웨이퍼 수, 패키징 방식도 달라진다.
 
-TSMC를 “웨이퍼를 만드는 회사”라고만 보면 너무 좁다. 고객의 설계가 실제 제품이 되려면 공정 설계키트와 제조 규칙을 맞추고, mask를 준비하고, 웨이퍼를 가공하고, 수율을 올리고, 필요하면 여러 die를 패키지에서 연결해야 한다. 쉽게 말해 TSMC는 고객의 회로도를 받아 **반복 가능하고 출하 가능한 제조 시스템으로 번역하는 회사**다.
+설계 회사와 IDM은 이 요구를 회로도로 만든다. 다만 설계도는 아직 칩이 아니다. 제조 규칙에 맞게 바꾸고 mask를 만들고, 실제로 수율 있게 생산할 방법까지 정해져야 한다. 이 접점에서 TSMC 같은 foundry가 등장한다. TSMC가 말하는 Foundry 2.0도 wafer 제조만이 아니라 mask-making·packaging·testing까지 포함한다. [TSMC 2025 Annual Report](https://investor.tsmc.com/static/annualReports/2025/english/index.html)
 
-그래서 AI 가속기나 스마트폰 AP의 수요가 늘어도 TSMC의 실적이 자동으로 같은 비율로 움직인다고 단정할 수는 없다. 실제 연결 고리는 고객의 설계 채택, 공정 node, 웨이퍼 투입량, 수율, 패키징 용량, 가격과 가동률이다. TSMC도 foundry를 logic wafer 제조만으로 정의하지 않고 mask-making·packaging·testing과 관련 기술까지 포함한 `Foundry 2.0`으로 설명한다. 2025년에는 관리 생산능력이 12인치 환산 1,700만 장을 넘었다는 점도, 이 회사를 단순 설계 회사가 아닌 대규모 운영 인프라로 봐야 하는 이유다. [TSMC 2025 Annual Report](https://investor.tsmc.com/static/annualReports/2025/english/index.html)
+### 2. 패터닝 — 빛으로 회로 도안을 웨이퍼 위에 찍는다
 
-**처음 읽을 때 확인할 것.** 고객이 어떤 제품을 출시하는지보다, 그 제품이 어느 공정 node와 패키징을 쓰는지, 해당 capacity가 실제로 언제 가동되는지, 그리고 수율이 안정화됐는지를 함께 확인한다. “첨단 node 수요”와 “당장 인식되는 매출” 사이에는 이 세 단계가 있다.
+패터닝(patterning)은 설계한 회로의 한 층을 웨이퍼에 옮기는 과정이다. 우선 mask에 그려진 도안을 빛으로 photoresist에 비추고, 현상 뒤 남은 resist 모양을 다음 공정의 가이드로 쓴다. 종이에 도장을 찍는 것처럼 보이지만, 선폭이 작아질수록 빛의 회절, mask 오차, 웨이퍼 위치, 앞 공정의 변형이 모두 결과를 바꾼다.
 
-### 2. ASML — 회로 도안을 웨이퍼 위의 실제 위치로 옮기는 축
+ASML은 이 단계의 scanner를 공급한다. 그러나 중요한 것은 scanner 한 대가 아니라, 원하는 선폭과 층간 정렬(overlay)을 속도와 재현성까지 맞춰 반복하는 체계다. 그래서 computational lithography, mask·resist·pellicle, overlay metrology, 설치 뒤 service와 upgrade가 함께 붙는다. [ASML 2025 Annual Report](https://www.asml.com/en/investors/annual-report/2025)
 
-**지도에서의 위치: 설계와 제조기술 · lithography · mask/overlay · installed-base service.**
+### 3. 막 형성(deposition) — 웨이퍼 위에 다음 구조의 재료를 쌓는다
 
-노광(lithography)은 빛으로 회로 도안을 웨이퍼에 옮기는 과정이다. 하지만 미세한 선을 찍을수록 빛의 회절, 마스크의 오차, 웨이퍼 위치, 앞뒤 공정의 변형이 모두 문제를 만든다. ASML을 scanner 한 대를 파는 회사로만 보면 이 핵심을 놓친다. 실제 고객이 사는 것은 “빛을 쏘는 기계” 하나가 아니라 **원하는 선폭과 층간 정렬을 정해진 생산성으로 계속 만들 수 있는 패터닝 체계**다.
+회로는 한 번에 그려지지 않는다. 절연막, 금속 배선, barrier, transistor의 여러 층을 매우 얇고 균일하게 쌓아야 한다. deposition은 이 막을 형성하는 공정이다. CVD는 기체 반응으로, PVD는 물리적으로, ALD는 한 층씩 표면 반응을 이용해 막을 만든다. 어떤 방법을 쓰느냐에 따라 두께 균일도, 계면 품질, 미세 구조 안쪽까지 덮는 능력(conformality)이 달라진다.
 
-이 때문에 ASML의 역할은 노광 장비, 계산 기반 보정(computational lithography), overlay·metrology·inspection, 설치 뒤의 field upgrade·service로 이어진다. 2025년 ASML의 서비스·field option 매출이 증가한 배경도 새 장비만이 아니라 설치대수 확대, 장비 사용량, EUV 업그레이드였다. 즉 반도체 CAPEX를 읽을 때는 신규 장비 수주만이 아니라, 이미 깔린 장비가 얼마나 가동되고 업그레이드되는지도 봐야 한다. [ASML 2025 Annual Report](https://www.asml.com/en/investors/annual-report/2025) · [ASML 2025 financial performance](https://www.asml.com/investors/annual-report/2025/financials)
+Applied Materials는 이 재료·표면·계면을 다루는 장비를 폭넓게 공급한다. 고객이 평가하는 것은 장비 이름이 아니라 “이 재료가 다음 식각과 전기적 동작까지 견디는가”다. precursor·gas·MFC·showerhead·heater·plasma/RF·vacuum·abatement가 연결되는 이유도 막 한 장의 품질이 이 모든 조건의 결과이기 때문이다. [Applied Materials process portfolio](https://www.appliedmaterials.com/us/en/semiconductor/products.html)
 
-**처음 읽을 때 확인할 것.** “EUV가 늘어난다”는 말은 끝이 아니라 시작이다. 어떤 node와 layer에 EUV가 필요한지, mask·resist·pellicle·metrology가 준비됐는지, throughput과 overlay가 고객의 양산 조건에 들어왔는지를 이어서 봐야 한다.
+### 4. 식각(etch) — 필요 없는 막만 제거해 실제 벽·구멍·통로를 만든다
 
-### 3. KLA — 공정이 제대로 됐는지 보며 수율을 학습시키는 축
+패터닝으로 resist 도안이 준비되고 막이 쌓였다면, 식각은 그 도안을 따라 필요 없는 부분을 제거한다. 이때 transistor의 gate, 배선이 닿는 contact hole, 3D NAND의 깊은 hole처럼 실제 구조가 만들어진다. 그래서 etch는 “깎는 공정”이면서 회로를 평면 그림에서 3차원 구조로 바꾸는 공정이다.
 
-**지도에서의 위치: 공정 제어 · 검사/계측 · reticle · advanced packaging.**
+Lam Research와 Applied Materials는 이 단계의 대표적 장비 공급자다. 건식 식각에서는 가스에 RF 전력을 가해 플라즈마를 만들고, 반응성 입자와 이온으로 원하는 재료를 선택적으로 제거한다. 가스 분포, RF 전력, 진공, 온도, ESC와 edge ring이 조금만 달라져도 깊이·각도·균일도가 달라진다. 따라서 NAND 적층이나 3D logic이 복잡해질수록 etch 장비뿐 아니라 chamber·RF·vacuum·gas delivery 같은 subsystem의 난도도 같이 올라간다. [Lam의 plasma etch 기초 설명](https://newsroom.lamresearch.com/etch-essentials-semiconductor-manufacturing)
 
-웨이퍼는 수백 번의 공정을 거친다. 한 단계에서 생긴 아주 작은 결함이나 선폭 오차는 뒤 공정에서 더 이상하게 증폭될 수 있다. KLA의 역할은 완성품 검사만 하는 것이 아니다. 웨이퍼·reticle·패키지의 결함과 치수를 찾아내고, **어느 공정 조건을 고쳐야 수율이 올라가는지 학습할 수 있게 만드는 눈과 측정자**에 가깝다.
+### 5. 측정과 수율 학습 — 매 단계가 제대로 됐는지 보고 되돌린다
 
-그래서 inspection과 metrology는 설비가 멈췄을 때만 필요한 비용이 아니다. 새로운 node, 새로운 3D 구조, 첨단 패키징으로 갈수록 공정 창(process window)이 좁아지고, “문제를 빨리 찾는 능력”이 개발 기간과 양산 수율을 함께 좌우한다. KLA는 2025 회계연도에 반도체 process-control을 핵심 사업으로 설명하며, advanced packaging 매출도 9억 2,500만 달러를 넘겼다고 밝혔다. 이 숫자는 포장 단계도 점점 검사가 덜 필요한 영역이 아니라는 뜻이다. [KLA FY2025 Annual Report](https://ir.kla.com/sec-filings/all-sec-filings/content/0000319201-25-000024/klac-20250630.htm) · [KLA FY2025 shareholder letter](https://ir.kla.com/sec-filings/annual-reports/content/0001193125-25-213412/0001193125-25-213412.pdf)
+웨이퍼는 패터닝·증착·식각을 한 번만 하지 않는다. 이 묶음을 여러 층에서 반복한다. 작은 결함, 두께 오차, 선폭 오차, 층간 정렬 오차를 늦게 찾으면 이미 여러 단계의 웨이퍼가 손실될 수 있다. inspection은 결함을 찾고, metrology는 선폭·두께·overlay처럼 숫자로 관리해야 하는 값을 잰다.
 
-**처음 읽을 때 확인할 것.** 장비 주문만 보지 말고, 고객이 새 공정·새 패키지를 양산 전환하는지, 결함 민감도가 높아지는 구조인지, 설치 장비에서 나오는 서비스 수요가 늘어나는지 본다. 수율은 팹 안에서 생기지만, 수율을 개선하는 데이터와 계측은 공급망 전체의 병목을 드러낸다.
+KLA는 이 공정 제어(process control) 층의 대표 기업이다. 역할은 완성품 불량을 골라내는 데서 끝나지 않는다. 어느 장비·recipe·재료 조건을 고쳐야 수율이 회복되는지 학습할 데이터를 제공한다. 그래서 검사·계측은 전공정뿐 아니라 mask와 advanced packaging에도 이어진다. [KLA FY2025 Annual Report](https://ir.kla.com/sec-filings/all-sec-filings/content/0000319201-25-000024/klac-20250630.htm)
 
-### 4. Lam Research — 쌓인 막을 원하는 3차원 구조로 깎고 다시 쌓는 축
+### 6. 대량 제조와 패키징 — 작동하는 칩을 시스템 부품으로 완성한다
 
-**지도에서의 위치: 전공정 · etch · deposition · clean · chamber/진공/RF subsystem.**
+이 모든 공정을 안정적으로 반복해 양산하는 곳이 fab이다. TSMC 같은 foundry는 고객 설계를 받아 웨이퍼 투입, 공정 운전, 수율 안정화, 출하를 관리한다. 여기서 생산능력은 건물 크기만이 아니다. 검증된 tool 조합, 숙련된 운영, utilities, 공급망, service, 실제 가동률이 함께 만든 capacity다.
 
-회로는 평면 그림이 아니라 여러 층으로 쌓인 3차원 구조다. 막을 쌓는 deposition만으로는 transistor·contact·memory hole을 만들 수 없다. 필요한 부분만 깊이와 각도를 맞춰 제거하는 etch가 있어야 하고, 공정 뒤 남은 잔여물을 정리하는 clean도 필요하다. Lam을 이해하는 가장 쉬운 방법은 “도안을 실제 벽·구멍·통로로 바꾸는 공정 장비”라고 보는 것이다.
+웨이퍼가 완성되면 칩을 분리하고, 기판 위에 연결하고, 열을 빼고, 전기적으로 검사한다. HBM이나 chiplet에서는 여러 die를 패키지 안에서 연결하는 단계가 성능과 공급 병목을 좌우한다. TSMC는 첨단 패키징을 foundry 생태계의 일부로 다루고, KLA는 패키지 검사·계측에도 연결된다. 따라서 “웨이퍼 제조가 끝났으니 반도체가 끝났다”가 아니라, 패키징·테스트를 통과해 시스템에 들어갈 때 비로소 제품이 된다.
 
-식각의 결과는 챔버 안의 플라즈마, 가스 분포, RF 전력, 진공, 온도, 웨이퍼 가장자리 조건이 함께 만든다. 그래서 고객이 바꾸기 어려운 것은 본체 가격만이 아니라 특정 재료·구조에서 검증된 recipe, 공정 성능, 현장 서비스와 부품 공급이다. Lam은 자사 장비와 서비스를 통해 고객이 더 작고 성능 좋은 device를 만들도록 지원하는 글로벌 wafer-fabrication 장비 기업이라고 설명한다. [Lam Research 2025 Annual Report](https://investor.lamresearch.com/annual-reports-and-proxy) · [Lam의 plasma etch 기초 설명](https://newsroom.lamresearch.com/etch-essentials-semiconductor-manufacturing)
+### 기업을 공정 위에 다시 놓으면
 
-**처음 읽을 때 확인할 것.** NAND의 적층 수, logic의 3D 구조, 고종횡비(high-aspect-ratio) 구조가 늘면 단순히 “웨이퍼 수가 증가한다”보다 etch/deposition의 공정 난도와 단계 수가 어떻게 바뀌는지를 본다. 이때 RF·vacuum·gas delivery·chamber material 같은 subsystem도 같이 중요해진다.
-
-### 5. Applied Materials — 재료를 공정 성능으로 바꾸는 폭넓은 축
-
-**지도에서의 위치: 전공정 · deposition/etch/CMP/implant · materials engineering · packaging.**
-
-Applied Materials를 deposition 회사라고 부르는 것은 출발점으로는 맞지만, 끝으로는 부족하다. 반도체에서는 같은 재료라도 어느 순서로, 얼마나 균일하게, 어떤 계면을 만들며 쌓는지에 따라 transistor의 전력·속도·신뢰성이 달라진다. Applied Materials의 중심 역할은 재료, 표면, 계면을 다뤄 **칩의 물리적 구조가 요구 성능을 내도록 만드는 materials engineering**이다.
-
-이 역할은 CVD·PVD·ALD 같은 deposition, etch, CMP, ion implant, metrology, photomask, hybrid bonding 등 여러 공정으로 퍼진다. 따라서 한 회사가 하나의 장비군과만 연결되지 않는다는 이 지도의 원칙을 보여주는 대표 사례다. 공정이 복잡해질수록 고객은 개별 장비의 사양뿐 아니라 장비 조합이 만들어내는 막의 품질, 결함, 생산성, 유지보수성을 함께 평가한다. [Applied Materials 2025 Annual Report](https://ir.appliedmaterials.com/annual-report-proxy/) · [Applied Materials process portfolio](https://www.appliedmaterials.com/us/en/semiconductor/products.html)
-
-**처음 읽을 때 확인할 것.** “첨단 공정 CAPEX”라는 큰 숫자를 바로 장비 매출로 바꾸지 않는다. logic·memory·power 중 어떤 device가 늘어나는지, 층 수와 재료 변화가 무엇인지, 고객의 실제 tool install과 qualification이 어디까지 왔는지를 나눠 본다.
-
-### 다섯 회사를 한 줄로 다시 연결하면
-
-TSMC가 고객의 설계를 **대량 생산과 패키징까지 연결**하고, ASML이 회로 패턴을 **정확한 위치에 형성**하며, Lam과 Applied Materials가 막을 **쌓고 깎아 실제 구조로 만들고**, KLA가 그 결과를 **측정해 수율 학습으로 되돌린다**. 이 다섯 축 사이에 mask·resist·gas·chemical·RF·vacuum·subsystem·automation·test·service가 붙는다. 따라서 어느 한 회사의 장비 수주나 시장점유율만으로 산업 전체를 읽기보다, 수요·기술·capacity·yield·service가 연결되는 지점을 추적해야 한다.
+TSMC는 설계와 fab 운영·첨단 패키징을 연결한다. ASML은 도안을 정확히 찍는 패터닝을 담당한다. Applied Materials는 막과 재료를 다루는 층에서 넓게 연결되고, Lam은 복잡한 구조를 만드는 식각·증착·세정에 강하게 연결된다. KLA는 이 모든 단계의 결과를 보고 수율 학습으로 되돌린다. 이제 기업을 독립 목록이 아니라, 웨이퍼를 따라가는 각 공정의 공급자와 운영자로 읽을 수 있다.
 
 ## 먼저 읽어야 할 결론
 
