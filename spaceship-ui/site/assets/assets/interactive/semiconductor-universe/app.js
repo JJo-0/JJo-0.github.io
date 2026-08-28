@@ -609,6 +609,13 @@ function bindEvents() {
   traceUpstream.addEventListener('click',()=>trace('in'));
   traceDownstream.addEventListener('click',()=>trace('out'));
   traceClear.addEventListener('click',()=>{traceSet.clear();updateVisibilityAndColors();});
+  document.querySelectorAll('[data-focus-node]').forEach(button=>button.addEventListener('click',()=>{
+    const id=button.dataset.focusNode;
+    if (!id || !nodeById.has(id)) return;
+    if (lens !== 'process') setLens('process');
+    selectNode(id,true);
+    document.querySelector('#inspector')?.focus({preventScroll:true});
+  }));
   tableSearch.addEventListener('input',()=>renderTable(tableSearch.value));
   document.addEventListener('visibilitychange',()=>{ if(document.hidden){cancelAnimationFrame(frameHandle);frameHandle=0;} else if(!frameHandle){lastFrame=performance.now();frameHandle=requestAnimationFrame(animate);} });
 }
