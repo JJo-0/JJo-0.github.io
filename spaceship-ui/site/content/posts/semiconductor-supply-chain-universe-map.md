@@ -1,6 +1,6 @@
 ---
-title: '글로벌 반도체 소부장 Universe Map — 공정·소재·부품·장비·HBM 공급망 전수지도'
-description: '수요시장부터 칩, 설계, 웨이퍼, 포토마스크, 전공정, 소재, 장비 핵심부품, 팹 인프라, 패키징·HBM·테스트와 공급기업까지 연결한 2026-08-20 기준 반도체 산업지도다.'
+title: 'Global Semiconductor Universe Map — 수요·설계·제조·패키징·공급망 산업지도'
+description: '수요시장부터 칩·설계·웨이퍼·포토마스크·전공정·장비·소재·핵심부품·팹 운영·패키징·HBM·테스트·서비스와 공급기업까지 연결한 2026-08-20 기준 글로벌 반도체 산업지도다.'
 pubDate: 2026-08-21
 slug: 'semiconductor-supply-chain-universe-map'
 category: finance-industry
@@ -20,7 +20,7 @@ lang: 'ko'
 > **연구 기준일: 2026년 8월 20일, Asia/Seoul**  
 > 이 글은 기업 추천 목록이 아니다. 글로벌 반도체 산업을 **수요시장 → 반도체 제품 → 설계 생태계 → 웨이퍼·마스크 → FEOL/MOL/BEOL → 소재·장비·핵심부품 → 팹 인프라 → 패키징·HBM·테스트 → 서비스**로 분해하고, 각 node 사이의 의존관계를 보존하기 위한 산업지도다.
 
-![글로벌 반도체 소부장 Universe Map 포스터](/assets/posts/semiconductor-universe-2026/cover.svg)
+![Global Semiconductor Universe Map 포스터](/assets/posts/semiconductor-universe-2026/cover.svg)
 
 <div class="not-prose my-8 rounded-2xl border border-border bg-card p-5 sm:p-6">
   <p style="margin:0 0 8px;font-size:0.75rem;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted-foreground);">Interactive Relation Atlas</p>
@@ -28,6 +28,22 @@ lang: 'ko'
   <p style="margin:0 0 18px;color:var(--muted-foreground);line-height:1.65;">Taxonomy, 실제 공정 흐름(Process walk), 기업, 국가, 근거 수준(Evidence)의 다섯 가지 lens를 전환하고, EUV·HBM·MFC·ABF·하이브리드 본딩 같은 node의 upstream/downstream 관계를 추적할 수 있다. WebGPU가 불가능하면 WebGL2로 자동 전환되며, 2D 표와 원본 graph JSON도 함께 제공한다.</p>
   <a href="/assets/interactive/semiconductor-universe/index.html" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;font-weight:900;">Interactive Universe 전체 화면으로 열기 ↗</a>
 </div>
+
+## 이 지도는 ‘소부장 목록’이 아니라 산업 운영체계다
+
+반도체를 이해할 때 장비·소재 회사만 따로 모아 보면 중요한 연결을 놓친다. AI 서버 수요가 늘면 먼저 GPU·HBM·네트워크 칩의 사양과 수량이 바뀌고, 그 변화가 설계·마스크·첨단공정·웨이퍼 투입·패키징·테스트의 부담으로 이어진다. 그 뒤에야 lithography, etch, deposition, inspection, gas, chemical, vacuum, RF, substrate, automation, service의 수요가 구체적인 형태로 나타난다.
+
+그래서 이 지도는 회사를 먼저 배열하지 않는다. 아래 다섯 층을 먼저 연결한 뒤, 기업을 각 층의 실제 공급자로 배치한다.
+
+| 읽는 층 | 핵심 질문 | 대표 결과 |
+|---|---|---|
+| **수요와 제품** | AI·mobile·automotive·industrial 중 어디의 수요가 바뀌는가? | logic·memory·power·sensor의 사양과 물량 |
+| **설계와 제조기술** | 어떤 node·architecture·mask·공정 난도가 필요한가? | wafer starts, 공정 단계 수, mask layer, yield learning |
+| **생산능력과 운영** | 누가 어떤 fab·back-end capacity를 언제 늘리는가? | capacity, utilization, tool install, service demand |
+| **장비·소재·핵심부품** | 어떤 subsystem이 품질·수율·throughput을 제한하는가? | lithography·etch·deposition·inspection, gas·chemical·RF·vacuum·thermal |
+| **패키징·테스트·리스크** | die를 어떻게 연결·검증하고, 어느 공급망이 멈추면 전체가 지연되는가? | advanced packaging, HBM, substrate, test, qualification, geography |
+
+이 관점은 주요 산업 리더의 공개 자료와도 맞닿아 있다. TSMC는 foundry를 logic wafer 제조에만 한정하지 않고 mask-making·packaging·testing까지 포함하는 생태계로 설명한다. ASML은 lithography를 장비 판매가 아니라 computational lithography·metrology·system integration·installed-base service를 포함한 해법으로 다룬다. KLA는 wafer·reticle·advanced packaging 전반의 process control을 수율을 지키는 공통 층으로 본다. [TSMC Annual Reports](https://investor.tsmc.com/english/annual-reports) · [ASML 2025 Annual Report](https://www.asml.com/en/investors/annual-report/2025) · [KLA 2025 Annual Report](https://ir.kla.com/sec-filings/all-sec-filings/content/0000319201-25-000024/klac-20250630.htm)
 
 <details>
 <summary><strong>처음 읽는 사람을 위한 2분 안내</strong></summary>
@@ -126,7 +142,7 @@ Taxonomy가 실제 제조흐름과 연결되는지 확인하기 위해 wafer 한
 
 ## 3. 장비 핵심부품: 장비 한 대 안에서 실제로 공정을 만드는 것
 
-소부장 연구에서 가장 자주 빠지는 부분은 장비 OEM이 아니라 **장비 내부 critical subsystem**이다.
+반도체 산업지도를 만들 때 가장 자주 빠지는 부분은 장비 OEM이 아니라 **장비 내부 critical subsystem**이다.
 
 Etcher는 대표 사례일 뿐, 이 표의 읽는 법은 scanner·deposition·CMP·clean 장비에도 그대로 적용된다.
 
@@ -244,7 +260,7 @@ AI server
 
 `HBM4 mass production`, `HBM4E sample/qualification`, `future HBM roadmap`은 동일한 상태가 아니다. 또한 hybrid bonding을 모든 HBM4 제품의 현재 표준으로 일반화하지 않는다.
 
-## Technology inflection이 소부장에 전달되는 경로
+## Technology inflection이 산업 공급망에 전달되는 경로
 
 ### GAA / Nanosheet
 
@@ -284,7 +300,7 @@ Die 수와 die-to-die interface가 늘어나면 package co-design, RDL/interpose
 | **Tool critical components** | MFC, valve, purifier, RF, ESC, pump/abatement 교체가 tool/process 재검증으로 연결 |
 | **Ultra-high-purity chemistry** | contamination excursion이 여러 lot의 yield loss로 확대될 수 있음 |
 
-## 한국 소부장 지도
+## 한국 반도체 공급망 지도
 
 한국은 메모리 제조 외에도 silicon wafer, specialty gas, 일부 photoresist/process chemicals, dry strip, deposition/clean, high-pressure anneal, scrubber/chiller, cleanroom/FFU, chamber consumables, FCBGA와 test interface에서 의미 있는 공급자층을 형성했다.
 
