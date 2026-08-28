@@ -1,0 +1,180 @@
+---
+interface Props {
+  pageLang: string;
+}
+
+const { pageLang } = Astro.props;
+const isKoreanPage = pageLang.toLowerCase().startsWith('ko');
+---
+
+{
+  isKoreanPage && (
+    <aside
+      class="language-suggestion"
+      data-language-suggestion
+      aria-labelledby="language-suggestion-title"
+      hidden
+    >
+      <div>
+        <p class="language-suggestion__eyebrow">LANGUAGE</p>
+        <p id="language-suggestion-title" class="language-suggestion__title">
+          Prefer to read in English?
+        </p>
+        <p class="language-suggestion__copy">
+          Open an automatically translated version of this page. The Korean page remains the
+          original.
+        </p>
+      </div>
+      <div class="language-suggestion__actions">
+        <button type="button" class="language-suggestion__primary" data-language-english>
+          View in English
+        </button>
+        <button type="button" class="language-suggestion__secondary" data-language-korean>
+          Keep Korean
+        </button>
+      </div>
+    </aside>
+  )
+}
+
+<script>
+  const PREFERENCE_KEY = 'jjo-language-preference';
+
+  function getEnglishTranslationUrl() {
+    const currentUrl = new URL(window.location.href);
+    return `https://translate.google.com/translate?sl=ko&tl=en&u=${encodeURIComponent(currentUrl.toString())}`;
+  }
+
+  function setupLanguageAssist() {
+    const suggestion = document.querySelector<HTMLElement>('[data-language-suggestion]');
+    const englishButtons = document.querySelectorAll<HTMLButtonElement>('[data-language-english]');
+    const koreanButtons = document.querySelectorAll<HTMLButtonElement>('[data-language-korean]');
+
+    if (englishButtons.length === 0) return;
+
+    englishButtons.forEach((button) => {
+      if (button.dataset.languageBound === 'true') return;
+      button.dataset.languageBound = 'true';
+      button.addEventListener('click', () => {
+        try {
+          localStorage.setItem(PREFERENCE_KEY, 'en');
+        } catch {
+          // Translation still works when storage is unavailable.
+        }
+        window.location.assign(getEnglishTranslationUrl());
+      });
+    });
+
+    koreanButtons.forEach((button) => {
+      if (button.dataset.languageBound === 'true') return;
+      button.dataset.languageBound = 'true';
+      button.addEventListener('click', () => {
+        try {
+          localStorage.setItem(PREFERENCE_KEY, 'ko');
+        } catch {
+          // Dismissing for the current page is still useful without storage.
+        }
+        if (suggestion) suggestion.hidden = true;
+      });
+    });
+
+    if (!suggestion) return;
+
+    let savedPreference: string | null = null;
+    try {
+      savedPreference = localStorage.getItem(PREFERENCE_KEY);
+    } catch {
+      // Fall back to the browser language when storage is unavailable.
+    }
+    const browserLanguages = navigator.languages?.length
+      ? navigator.languages
+      : [navigator.language];
+    const prefersKorean = browserLanguages.some((language) =>
+      language.toLowerCase().startsWith('ko')
+    );
+
+    suggestion.hidden = savedPreference !== null || prefersKorean;
+  }
+
+  setupLanguageAssist();
+  document.addEventListener('astro:page-load', setupLanguageAssist);
+</script>
+
+<style>
+  .language-suggestion {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 121;
+    width: min(28rem, calc(100vw - 2rem));
+    border: 1px solid var(--color-border);
+    border-radius: 0.8rem;
+    background: color-mix(in srgb, var(--color-background) 97%, transparent);
+    color: var(--color-foreground);
+    padding: 1.1rem;
+    box-shadow: 0 1.25rem 3.5rem color-mix(in srgb, var(--color-foreground) 16%, transparent);
+    backdrop-filter: blur(16px);
+  }
+
+  .language-suggestion[hidden] {
+    display: none;
+  }
+
+  .language-suggestion__eyebrow {
+    margin: 0 0 0.35rem;
+    color: var(--color-primary);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+  }
+
+  .language-suggestion__title {
+    margin: 0;
+    font-family: var(--font-editorial);
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .language-suggestion__copy {
+    margin: 0.45rem 0 0;
+    color: var(--color-muted-foreground);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .language-suggestion__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.95rem;
+  }
+
+  .language-suggestion__actions button {
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    padding: 0.58rem 0.85rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .language-suggestion__primary {
+    border-color: var(--color-primary) !important;
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  .language-suggestion__secondary {
+    background: transparent;
+    color: var(--color-muted-foreground);
+  }
+
+  @media (max-width: 640px) {
+    .language-suggestion {
+      right: max(0.75rem, env(safe-area-inset-right));
+      bottom: max(0.75rem, env(safe-area-inset-bottom));
+      width: min(28rem, calc(100vw - 1.5rem));
+    }
+  }
+</style>
