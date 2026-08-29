@@ -10,6 +10,21 @@ from normalize_tags import POST_TAXONOMY, Taxonomy, main
 
 POST_TAXONOMY.update(
     {
+        "self-improving-ai-chip-design.md": Taxonomy(
+            "ai-machine-learning",
+            "semiconductor-ai",
+            "research-report",
+            (
+                "ai-for-eda",
+                "reinforcement-learning",
+                "chip-design",
+                "openroad",
+                "semiconductor",
+            ),
+            "ml-foundations-evaluation",
+            True,
+            12,
+        ),
         "modern-artificial-intelligence-3.mdx": Taxonomy(
             "ai-machine-learning",
             "neural-network-foundations",
