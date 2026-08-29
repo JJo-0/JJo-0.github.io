@@ -1,7 +1,7 @@
 ---
 title: '반도체 설계 AI는 정말 스스로 더 좋은 칩을 찾는가 — 폐루프 최적화·RL·전이학습·에이전트 EDA'
 description: '반도체 설계 AI의 “self-improving”을 자동화부터 재귀적 개선까지 0–8단계로 나누고, AlphaChip·DSO.ai·Cerebrus·Fuse·OpenROAD와 제조 AI를 폐루프 검증 관점에서 비교한다.'
-pubDate: 2026-08-30
+pubDate: 2026-08-29
 slug: 'self-improving-ai-chip-design'
 category: ai-machine-learning
 subcategory: semiconductor-ai
