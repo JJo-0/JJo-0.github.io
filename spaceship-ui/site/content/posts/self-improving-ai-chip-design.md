@@ -1,6 +1,6 @@
 ---
-title: '반도체 설계 AI는 정말 스스로 더 좋은 칩을 찾는가 — 폐루프 최적화·RL·전이학습·에이전트 EDA'
-description: '반도체 설계 AI의 “self-improving”을 자동화부터 재귀적 개선까지 0–8단계로 나누고, AlphaChip·DSO.ai·Cerebrus·Fuse·OpenROAD와 제조 AI를 폐루프 검증 관점에서 비교한다.'
+title: '반도체 설계 AI'
+description: '칩이 설계에서 실제 제조 가능한 도면이 되기까지의 과정과, AlphaChip·상용 EDA·OpenROAD 같은 AI가 그 과정에서 실제로 돕는 일을 쉽게 설명한다.'
 pubDate: 2026-08-29
 slug: 'self-improving-ai-chip-design'
 category: ai-machine-learning
@@ -19,81 +19,100 @@ researchOrder: 12
 lang: 'ko'
 ---
 
-> **읽기 전 결론** — 반도체 설계 AI가 EDA를 여러 번 돌려 PPA가 더 좋은 설정을 찾는 일은 이미 현실이다. 그러나 그 자체가 곧 “스스로 진화하는 설계자”는 아니다. 이 글에서는 **피드백을 받는가, 무엇을 실제로 업데이트하는가, 그 지식이 다음 설계에도 남는가, 독립적인 signoff가 매번 막아 주는가**를 기준으로 구분한다. 2026년 공개 근거에서 강하게 확인되는 것은 주로 Level 2–4이며, Level 6–7은 빠르게 등장 중인 실행 구조다. Level 5와 Level 8은 공개적으로 검증된 일반 해법이라고 부르기 어렵다.
+## 칩을 설계한다는 것은 무엇일까
 
-<details>
-<summary><strong>처음 읽는 사람을 위한 핵심 용어 — 이것만 알고 시작해도 됩니다</strong></summary>
+스마트폰이나 AI 서버 안의 칩은 아주 많은 전자 스위치와 금속선을 한 장의 작은 판 위에 넣은 결과물이다. 먼저 설계자는 “이 칩이 무엇을 계산하고, 어떤 순서로 신호를 처리할지”를 코드와 도면으로 적는다. 그러나 그 초안은 아직 공장에서 만들 수 있는 칩이 아니다.
 
-이 글의 주인공은 AI 자체가 아니라 **칩을 실제로 만들 수 있는 설계로 바꾸는 과정**이다. 아래 단어는 외울 필요가 없고, 읽다가 다시 열어 보면 된다.
-
-| 용어 | 쉬운 설명 | 이 글에서 왜 중요한가 |
-|---|---|---|
-| **칩 설계** | 스마트폰·서버 칩 안의 수십억 개 스위치를 어떤 순서로 연결할지 정하는 도면 | 좋은 아이디어도 실제 공장에서 만들 수 있어야 한다. |
-| **RTL** | 칩이 “어떤 일을 어떤 순서로 할지”를 코드처럼 적은 초안 | AI와 EDA가 출발하는 입력이다. |
-| **EDA** | 초안을 실제 칩 배치도로 바꾸고 문제가 없는지 검사하는 전문 소프트웨어 묶음 | AI는 보통 이 도구를 대신하는 것이 아니라, 이 도구를 여러 번 돌리며 설정을 고른다. |
-| **PPA** | Performance(속도), Power(전력), Area(면적)의 줄임말 | 칩은 더 빠르고, 전기를 덜 쓰고, 작을수록 대체로 좋다. 하지만 셋을 동시에 최고로 만들기는 어렵다. |
-| **배치·배선** | 칩 안의 부품을 어디에 놓고, 그 사이를 어떤 금속선으로 연결할지 정하는 일 | 책상 위 부품을 배치하고 너무 길거나 엉킨 전선을 다시 정리하는 일에 가깝다. |
-| **timing** | 신호가 정해진 시간 안에 목적지에 도착하는지 보는 검사 | 늦게 도착하면 빠른 칩이라도 오류가 난다. |
-| **congestion** | 한 구역에 배선이 너무 몰린 상태 | 도로가 막히면 길이 있어도 차가 못 가듯, 배선이 막히면 설계가 완성되지 않는다. |
-| **DRC** | 공장 규칙 위반 검사 | 선 사이 간격, 폭 같은 제조 규칙을 어겼는지 보는 빨간불 검사다. |
-| **signoff** | 생산 직전의 최종 합격 판정 | AI의 추천이 아니라, 결정론적인 검증 도구가 ‘만들어도 된다’를 확인하는 마지막 문이다. |
-| **폐루프(closed loop)** | 바꿔 본 결과를 보고 다음 선택을 다시 고르는 고리 | `설정 변경 → EDA 검사 → 점수 확인 → 다음 설정 변경`이 바로 이 글의 핵심 구조다. |
-
-**한 문장으로:** AI는 ‘더 나은 설계 설정을 제안하는 조수’이고, EDA/signoff는 ‘그 제안이 실제 공장에서 통하는지 채점하고 불합격시키는 심사관’이다.
-
-</details>
-
-## 1. 먼저 ‘스스로 개선’이라는 말을 분해하자
-
-칩 설계는 RTL에서 끝나지 않는다. 합성, 배치, 배선, 타이밍, 전력, 혼잡, 설계규칙검사(DRC)를 거친 뒤에야 실제로 만들 수 있는지 알 수 있다. AI가 하는 일은 이 과정의 knob—예를 들어 floorplan, placement 순서, router 설정, clock 목표, tool recipe—를 바꾸고 결과를 보고 다음 후보를 고르는 것이다.
-
-그런데 “다음 후보를 더 잘 고른다”와 “시스템이 장기적으로 자기 자신을 개선한다”는 다르다. 아래 네 질문 모두에 답해야 후자에 가까워진다.
-
-1. **피드백**: 실제 EDA·signoff·물리 검증 결과를 받는가?
-2. **업데이트**: 단순 후보 목록이 아니라 policy·surrogate·workflow·memory 중 무엇이 바뀌는가?
-3. **보존**: 한 번 얻은 지식이 다음 실행과 다음 설계에 남는가?
-4. **일반화와 안전장치**: 새로운 block/node/PDK에서도 통하고, 결정론적 검증이 나쁜 변경을 거부하는가?
-
-### 성숙도 0–8: 같은 단어를 같은 뜻으로 쓰기 위한 사다리
-
-| 단계 | 이름 | 실제 의미 | 흔한 예 |
-|---|---|---|---|
-| 0 | Automation | 정해진 script/flow를 실행한다. 학습은 없다. | Makefile, Tcl flow |
-| 1 | Parameter search | grid/random sweep으로 후보를 넓게 돌린다. | clock period sweep |
-| 2 | Adaptive optimization | 이전 결과를 써서 다음 후보를 더 유망하게 고른다. | Bayesian optimization, evolutionary search, HPO |
-| 3 | Reinforcement learning | state → action → EDA run → reward → policy update가 반복된다. | macro placement RL |
-| 4 | Transfer learning | 한 block/chip에서 배운 표현·policy를 다음 설계 초기값으로 쓴다. | pretrained placement policy fine-tuning |
-| 5 | Continual / cross-project learning | 여러 프로젝트의 결과가 장기 memory가 되어 이후 전략을 개선한다. | regression을 피하는 project memory |
-| 6 | Agentic EDA | LLM/agent가 계획하고 tool을 호출하고 보고서를 읽어 설정을 고쳐 다시 실행한다. | agent → EDA API/MCP → report |
-| 7 | Self-verifying agentic EDA | agent의 매 행동을 deterministic EDA·physics·signoff가 검증하고 실패하면 수정한다. | signoff-gated agent loop |
-| 8 | Recursive design improvement | search strategy, tool sequence, model, objective 자체를 실험으로 개선한다. | 검증된 meta-optimizer of optimizers |
-
-Level은 “제품이 좋다/나쁘다”의 등급이 아니다. **어디까지의 개선 주장이 증거로 뒷받침되는가**를 적는 좌표다. 예를 들어 자동 parameter tuning은 매우 유용해도 Level 8은 아니다.
-
-<details>
-<summary><strong>처음 읽는 사람을 위한 90초 비유</strong></summary>
-
-EDA를 매우 비싼 모의고사 채점기라고 생각해도 좋다. 설계자는 답안(회로와 설정)을 내고, 채점기는 성능·전력·면적·규칙 위반을 돌려준다. random search는 답안을 무작위로 고쳐 보는 방식이고, Bayesian optimization은 “이 근처를 고치면 점수가 오를 것 같다”고 추정하는 방식이다. RL은 “이 상태에서는 이 행동을 하면 점수가 좋아진다”는 정책을 배운다. agent는 사람 대신 채점표를 읽고 다음 행동을 계획한다. 하지만 최종 합격 판정은 여전히 EDA/signoff가 한다. agent의 말이 물리 법칙을 바꾸지는 않는다.
-
-</details>
-
-## 2. 설계 AI의 중심은 하나의 폐루프다
+그다음에는 수많은 회로 블록을 어디에 놓을지 정하고, 서로 연결할 금속선을 그리며, 전기가 제시간에 도착하는지와 공장 규칙을 지키는지를 검사해야 한다. 이 긴 작업을 돕는 전문 소프트웨어가 EDA(Electronic Design Automation)다. AI는 이 과정을 통째로 대체하기보다, 사람이 고르기 어려운 수많은 설계 선택지에서 더 좋은 후보를 빠르게 찾아 주는 역할을 맡기 시작했다.
 
 ```text
-Design / RTL
-  → EDA configuration
-  → synthesis · place & route · verification
-  → metrics: PPA · timing · congestion · DRC · power
-  → AI evaluator / candidate selector
-  → updated configuration
-  └───────────────────────────────────────────────→ re-run
+칩이 할 일 결정
+  → 회로 초안 작성
+  → 부품을 칩 위에 배치
+  → 금속선으로 연결
+  → 속도·전력·제조 가능성 검사
+  → 실제 생산
 ```
 
-여기서 최적화 대상은 하나가 아니다. 성능(performance), 전력(power), 면적(area), wirelength, congestion, timing slack, IR drop, DRC violations, runtime, compute cost가 서로 충돌한다. clock을 공격적으로 잡으면 성능 목표에는 가까워져도 전력·배선 혼잡·DRC·실행 시간이 나빠질 수 있다. 따라서 실제 문제는 단일 최고점 찾기보다 **제약을 만족하는 Pareto 후보군**을 찾는 multi-objective optimization이다.
+## AI는 설계 과정에서 무엇을 돕나
 
-좋은 실험 기록은 “최고 PPA” 한 줄이 아니라 다음을 남긴다: 기준 flow와 PDK, 설계와 commit, search space, seed, trial 수·compute, 실패 trial, 각 constraint, signoff 결과, 그리고 새 design에서의 재현 여부. 그래야 optimizer가 우연히 한 benchmark를 외운 것인지 판단할 수 있다.
+### 1. 너무 많은 선택지에서 후보를 찾아 준다
 
-## 3. 방법 지도: 무엇이 배우고, 어떤 피드백을 쓰는가
+칩 안의 큰 부품을 어느 위치에 놓을지, 배선 도구의 설정을 어떻게 조절할지에 따라 결과가 달라진다. 한 가지 설정이 속도에는 좋아도 전력 소모나 칩 면적에는 나쁠 수 있다. 그래서 설계팀은 보통 **더 빠르게, 전기를 덜 쓰게, 면적은 더 작게** 만들 방법을 함께 찾는다. 이 세 가지를 묶어 PPA(Performance·Power·Area)라고 부른다.
+
+AI는 수백~수천 가지 후보를 비교해 “다음에는 이 설정을 시험해 보자”고 제안한다. 좋은 답을 한 번에 알아맞히는 마법이 아니라, 결과를 보고 더 나은 다음 실험을 고르는 조수에 가깝다.
+
+### 2. 사람이 읽기 어려운 설계 보고서를 읽게 돕는다
+
+검사 뒤에는 “어느 구역의 배선이 너무 붐빈다”, “신호가 늦는다”, “금속선 간격이 공장 규칙보다 좁다” 같은 보고서가 나온다. AI agent는 이 보고서를 읽어 다음에 바꿔 볼 설정을 계획할 수 있다. 최근 OpenROAD MCP 같은 도구는 AI가 OpenROAD를 실행하고 보고서와 측정값을 다시 읽을 수 있게 연결한다.
+
+다만 AI가 변경을 제안했다고 바로 생산하는 것은 아니다. EDA의 검사와 최종 signoff가 매번 “정말 만들 수 있는가”를 확인한다. **AI는 조수이고, 검증 도구는 심사관**이다.
+
+### 3. 이전 실험을 다음 설계에 재사용할 수 있게 한다
+
+어떤 AI는 한 설계에서 잘 작동한 배치 전략을 비슷한 다음 설계의 출발점으로 가져간다. 이를 전이학습이라고 한다. 예를 들어 이전 설계에서 배선이 덜 꼬였던 부품 배치의 감각을 새 설계의 첫 후보에 반영하는 식이다. 하지만 설계 크기, 제조 공정, 라이브러리가 달라지면 이전 경험이 그대로 통하지 않을 수도 있다. 그래서 새 설계에서도 실제 검사로 다시 확인해야 한다.
+
+<details>
+<summary><strong>처음 읽는 사람을 위한 용어 사전</strong></summary>
+
+| 용어 | 쉽게 말하면 |
+|---|---|
+| **RTL** | 칩이 어떤 일을 할지 코드처럼 적은 초안 |
+| **EDA** | 초안을 실제 제조 가능한 칩 배치도로 바꾸고 검사하는 도구 |
+| **PPA** | 속도(Performance), 전력(Power), 면적(Area)의 균형 |
+| **timing** | 신호가 제시간에 도착하는지 검사하는 일 |
+| **congestion** | 배선이 한곳에 너무 몰려 막힌 상태 |
+| **DRC** | 선폭·간격 같은 공장 규칙 위반 검사 |
+| **signoff** | 생산 직전 ‘만들어도 된다’를 확인하는 최종 합격 판정 |
+
+</details>
+
+## 실제 사례로 보면 더 쉽다
+
+### Google AlphaChip: 큰 부품을 어디에 놓을지 배우는 AI
+
+[circuit_training](https://github.com/google-research/circuit_training)은 큰 회로 블록을 칩의 어느 위치에 둘지 반복해서 배운다. 부품 위치가 좋으면 연결선이 짧아지고 배선이 덜 막힐 가능성이 있다. AI는 한 부품을 놓고 결과를 확인한 다음, 다음 부품의 위치를 고른다. 이를 reinforcement learning(RL)이라고 부른다.
+
+### Synopsys DSO.ai와 Cadence Cerebrus: 설계 도구의 설정을 탐색하는 AI
+
+상용 도구는 보통 칩을 새로 발명하기보다, 기존 설계 도구가 가진 많은 설정을 더 효율적으로 탐색한다. [Synopsys DSO.ai](https://www.synopsys.com/ai/ai-powered-eda/dso-ai.html)와 [Cadence Cerebrus](https://www.cadence.com/en_US/home/tools/digital-design-and-signoff/soc-implementation-and-floorplanning/cadence-cerebrus-ai-studio.html)가 대표적이다. 설계자는 목표와 제약을 정하고, AI는 여러 후보를 실행·비교해 팀이 검토할 결과를 만든다.
+
+### OpenROAD: 직접 실험해 볼 수 있는 공개 도구
+
+[OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD)는 칩 설계의 많은 단계를 공개 도구로 실행할 수 있게 만든 프로젝트다. 여기에 [AutoTuner](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/master/docs/user/InstructionsForAutoTuner.md)를 붙이면 사람이 하나씩 설정을 바꾸지 않아도 여러 후보를 비교할 수 있다. [OpenROAD MCP](https://github.com/The-OpenROAD-Project/OpenROAD-MCP)는 AI assistant가 이 도구의 실행 결과와 보고서를 읽도록 연결한다.
+
+## 그럼 AI가 칩을 혼자 설계하는 시대인가
+
+아직은 아니다. 현재 AI가 특히 잘하는 일은 **반복 실험을 줄이고, 많은 후보 중에서 유망한 방향을 찾는 일**이다. 반면 칩을 생산할 수 있는지의 최종 판단은 전기적 규칙, 물리 현상, 제조 규칙을 확인하는 결정론적 검증 도구가 맡는다.
+
+이 차이를 알고 있으면 “AI가 반도체 설계를 했다”는 표현도 훨씬 정확하게 읽을 수 있다. 대개는 AI가 설계 과정의 한 부분—배치, 설정 탐색, 보고서 해석, 실험 계획—을 더 빠르게 돕고 있다는 뜻이다.
+
+## 더 깊이 보기: 조사와 실험에 쓰는 지도
+
+아래부터는 이 글을 조사·실험에 사용하려는 독자를 위한 상세 자료다. 처음 읽을 때는 건너뛰어도 된다.
+
+<details>
+<summary><strong>AI가 ‘스스로 개선한다’는 말을 나누어 보는 기준</strong></summary>
+
+`설정 변경 → EDA 실행 → 속도·전력·면적·규칙 위반 확인 → 다음 설정 변경`이 설계 AI의 기본 고리다. 여기서 앞선 실험 결과로 다음 선택을 더 잘하면 adaptive optimization, 그 선택 규칙 자체를 보상으로 학습하면 RL, 다른 설계에 경험을 옮기면 transfer learning이라고 부른다.
+
+| 단계 | 조사용 이름 | 뜻 |
+|---|---|---|
+| 0 | Automation | 정해진 script/flow를 실행한다. |
+| 1 | Parameter search | grid/random으로 설정을 넓게 시험한다. |
+| 2 | Adaptive optimization | 이전 결과로 다음 후보를 더 유망하게 고른다. |
+| 3 | Reinforcement learning | 행동 결과의 보상으로 선택 규칙을 갱신한다. |
+| 4 | Transfer learning | 한 설계의 경험을 다음 설계의 출발점으로 가져간다. |
+| 5 | Continual learning | 여러 프로젝트의 경험을 장기적으로 보존·재사용한다. |
+| 6 | Agentic EDA | agent가 계획하고 도구를 호출하고 보고서를 읽는다. |
+| 7 | Self-verifying agentic EDA | agent의 행동을 EDA·물리 검증이 매번 통과/거부한다. |
+| 8 | Recursive improvement | 탐색 전략·목표·도구 순서까지 실험으로 개선한다. |
+
+이 표는 제품의 등급표가 아니다. 공개 근거가 어디까지 있는지 분리하기 위한 조사 틀이다. 특히 장기 기억과 재귀 개선은 공개적으로 검증된 일반 해법이라고 보기 어렵다.
+
+</details>
+
+### 어떤 방식으로 다음 후보를 고르는가
 
 | 방법 | 무엇을 배우나 | 피드백 | 표본 효율 | 일반화 | EDA에 맞는 자리 | 공개 구현 |
 |---|---|---|---|---|---|---|
@@ -111,7 +130,7 @@ Design / RTL
 
 **중요한 구분:** Gaussian process는 Bayesian optimization에서 자주 쓰는 surrogate이고, evolutionary algorithm·genetic algorithm·CMA-ES는 후보 분포를 진화시키는 서로 다른 계열이다. “AI”라는 한 단어로 묶으면 표본 효율, 실패 모드, 재현 비용이 사라진다.
 
-## 4. 대표 사례를 제대로 읽기
+## 대표 사례를 더 자세히 보기
 
 ### AlphaChip / Google circuit_training — RL이 실제 배치를 어떻게 다루는가
 
@@ -131,13 +150,13 @@ Design / RTL
 
 Siemens는 2026년 [Fuse EDA AI Agent](https://news.siemens.com/en-gb/siemens-fuse-eda-ai-agent/)와 [self-verifying architecture](https://blogs.sw.siemens.com/cicv/2026/07/29/self-verifying-eda-ai-agents/)를 발표했다. 여기서 좋은 설계 원리는 LLM이 정답을 선언하지 않고, agent가 계획·실행한 매 step을 deterministic EDA engine 및 physics 기반 분석이 다시 검증한다는 것이다. 이것이 Level 7의 정의에 가장 가깝다. 다만 “every project에서 학습한다” 같은 표현은 vendor architecture/roadmap 주장으로 읽고, public benchmark와 모델 업데이트 범위를 따로 확인해야 한다.
 
-## 5. OpenROAD: 누구나 재현할 수 있는 폐루프
+## OpenROAD: 누구나 재현할 수 있는 설계 실험
 
 [OpenROAD](https://github.com/The-OpenROAD-Project/OpenROAD)와 [OpenROAD-flow-scripts (ORFS)](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts)는 RTL-to-GDSII 흐름을 공개한다. [AutoTuner](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/master/docs/user/InstructionsForAutoTuner.md)는 JSON으로 knob 범위를 정의하고 Ray Tune으로 grid/random, PBT, HyperOpt/TPE, AxSearch, Optuna+CMA-ES, Nevergrad evolutionary search를 고를 수 있다. PPA coefficient와 METRICS2.1 결과를 보상/목표로 쓰므로 Level 1–2의 좋은 기준선이다. RL이 아니어도 충분히 유용한 이유가 여기에 있다.
 
 2026년 [OpenROAD MCP](https://github.com/The-OpenROAD-Project/OpenROAD-MCP)는 AI client가 OpenROAD/ORFS session, command history, metrics, report image를 읽고 실행하도록 연결한다. 가능한 폐루프는 `LLM agent → MCP → ORFS/OpenROAD → metrics·reports → analysis → revised config → re-run`이다. 하지만 MCP는 **도구 연결 규약**일 뿐, 자동으로 학습·전이·안전을 보장하는 optimizer는 아니다. agent가 설정을 바꾸는 권한, command allowlist, experiment DB, deterministic signoff gate를 별도로 설계해야 Level 7에 가까워진다.
 
-## 6. 공개 생태계: ‘AI repo’와 ‘재현 stack’을 섞지 말자
+## 공개 생태계: AI 프로젝트와 재현 도구
 
 아래는 연구·실험을 실제로 조립할 때 유용한 공개 프로젝트다. 첫 묶음은 직접적인 optimization/EDA ML/automation이고, 두 번째 묶음은 이를 평가·재현하기 위한 flow·PDK·검증 기반이다. 모두가 2024–26년에 새로 나온 “자율 설계 AI”라는 뜻은 아니다.
 
@@ -160,7 +179,7 @@ Siemens는 2026년 [Fuse EDA AI Agent](https://news.siemens.com/en-gb/siemens-fu
 
 이 directory는 최소 26개 project를 직접 연결한다. 연구를 시작할 때 “repo가 있다”와 “논문 결과를 재현했다”를 구분해야 한다. commit, version, PDK license, design input, seed, run log가 없으면 둘은 다르다.
 
-## 7. 설계 밖에서도 같은 일이 일어난다: 제조 AI 폐루프
+## 설계 밖에서도 같은 일이 일어난다: 제조 AI
 
 fab에서의 self-optimization은 설계와 다른 시간척도를 가진다.
 
@@ -182,7 +201,7 @@ equipment sensor → process measurement / metrology → AI model
 
 ASML은 [2025 annual report](https://www.asml.com/en/investors/annual-report/2025)에서 computational lithography와 wafer metrology/inspection을 연결해 process window를 예측·제어하는 holistic lithography를 설명한다. Applied Materials의 AIx/ExtractAI, Lam의 Equipment Intelligence/Fabtex, KLA의 inspection·data analytics도 같은 넓은 방향에 놓인다. 하지만 이들은 대부분 고객 fab의 recipe·data·안전 제약 속에서 작동한다. “AI가 fab을 자율 운영한다”는 말보다 **제한된 action space 안에서 측정·검사·수율이 validator가 되는 폐루프**라고 쓰는 편이 정확하다. [Lam Equipment Intelligence](https://www.lamresearch.com/wp-content/uploads/2021/08/Lam-Research-2020-ESG-Report.pdf) · [KLA process control](https://ir.kla.com/sec-filings/all-sec-filings/content/0000319201-25-000024/klac-20250630.htm)
 
-## 8. 그래서 현재 어디까지 왔나: 성숙도 매트릭스
+## 조사용 성숙도 매트릭스
 
 | 시스템 | Automation | Adaptive | RL | Transfer | Continual | Agentic | Self-verification | Recursive |
 |---|---|---|---|---|---|---|---|---|
@@ -197,7 +216,7 @@ ASML은 [2025 annual report](https://www.asml.com/en/investors/annual-report/202
 
 `UNKNOWN`은 실패를 뜻하지 않는다. 공개 자료만으로 업데이트 대상·retention·cross-project benchmark를 검증할 수 없다는 뜻이다. 특히 vendor 발표는 capability와 방향을 알려 주지만, 독립 성능 비교를 대체하지 않는다.
 
-## 9. 재현 가능한 실험 로드맵
+## 재현 가능한 실험 로드맵
 
 가장 좋은 출발은 거대한 agent가 아니라, 실패해도 원인을 알 수 있는 작은 closed loop다.
 
@@ -213,7 +232,7 @@ Stage 1은 PDK·RTL·constraint·seed·trial budget을 고정하고 모든 log�
 
 `design_id, rtl_commit, pdk_version, flow_version, config, seed, action, metrics, constraint_status, reports, runtime, compute_cost, reviewer_decision`을 trial마다 append-only로 남긴다. 이 데이터가 있어야 transfer/continual learning도 검증할 수 있다. memory가 있다는 말은 대화 기록을 저장했다는 뜻이 아니라, **새 design의 성능을 개선하면서 과거 design을 퇴행시키지 않았다는 측정**까지 포함한다.
 
-## 10. 비판적으로 끝맺기: 무엇이 실제로 개선되는가
+## 조사할 때 확인할 질문
 
 앞으로 어떤 “AI가 반도체 설계를 스스로 개선했다”는 주장을 만나면 다음을 묻자.
 
