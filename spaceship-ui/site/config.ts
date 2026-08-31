@@ -79,7 +79,8 @@ export const SITE: SiteConfig = {
   },
   googleAnalyticsId: import.meta.env.PUBLIC_GOOGLE_ANALYTICS_ID || 'G-JL4J2492X6',
   googleSiteVerification: import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION || '',
-  naverSiteVerification: import.meta.env.PUBLIC_NAVER_SITE_VERIFICATION || '',
+  naverSiteVerification:
+    import.meta.env.PUBLIC_NAVER_SITE_VERIFICATION || 'e301d9868b2f046104cb4a8f47ab2897dba547ea',
   bingSiteVerification: import.meta.env.PUBLIC_BING_SITE_VERIFICATION || '',
   adsense: {
     enabled: true,
