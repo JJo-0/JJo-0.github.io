@@ -1,0 +1,142 @@
+---
+title: "WeatherNext 3, 날씨 AI가 관측을 직접 먹기 시작했다"
+description: "Google DeepMind의 WeatherNext 3가 저지연 위성 관측으로 전 지구 예보를 매시간 갱신한다. 핵심 구조와 성능, 실제 배포, 그리고 극한 강수와 재현성 한계를 함께 검증한다."
+pubDate: 2026-09-05
+category: ai-machine-learning
+subcategory: weather-forecasting
+type: research-report
+tags:
+  - frontier-one
+  - ai-weather
+  - weather-forecasting
+  - google-deepmind
+researchFeatured: false
+featured: false
+draft: true
+lang: ko
+---
+
+> **Frontier One · 2026-09-05**  
+> 증거 등급: **INDUSTRY_TRIGGER + EARLY_SIGNAL**  
+> Google의 실제 제품·Cloud 통합 발표는 산업 트리거다. 다만 핵심 성능을 설명하는 논문 `arXiv:2609.03582v1`은 2026년 9월 3일 공개된 preprint이며, 현재 동료평가(peer review) 게재는 확인되지 않았다.
+
+## 1. 한 문장 결론
+
+**WeatherNext 3의 핵심은 단순히 더 큰 날씨 AI가 아니라, 수치예보 분석장(analysis)을 기다리던 전 지구 예보 파이프라인에 저지연 위성 관측을 직접 넣어 매시간 새로운 예보를 시작하게 만든 것이다.**
+
+## 2. 왜 이 문제가 어려운가
+
+운영 기상예보에서는 정확도만큼 **관측이 얼마나 최신인가**가 중요하다. 기존 전 지구 AI 예보는 수치예보(Numerical Weather Prediction, NWP)가 만든 분석장을 초기조건으로 쓰는 경우가 많다. WeatherNext 3 논문은 운영 분석장이 6시간 단위로 생성되고 공개 지연까지 더해지면 최신 상태가 실제 대기보다 6~12시간 뒤처질 수 있다고 설명한다.
+
+이 차이는 강수, 지표 온도, 폭풍처럼 짧은 시간에 빠르게 변하는 변수에서 특히 중요하다. 동시에 전 지구를 높은 공간 해상도와 시간 해상도로 예측하면서 15일짜리 확률 앙상블까지 유지하려면 계산량과 데이터 종류가 크게 늘어난다.
+
+## 3. 기존 방식은 무엇이 부족했나
+
+WeatherNext 2는 Functional Generative Network(FGN)를 이용해 강한 중기 확률예보 성능을 보였지만 기본적으로 0.25° 공간 격자와 6시간 단위 구조에 의존했다. 시간 해상도를 높이는 과정에는 별도 업샘플러도 필요했다.
+
+WeatherNext 3는 같은 FGN 계열을 확장하되, **서로 다른 해상도의 분석장·위성·강수·관측소·태풍 데이터를 하나의 모델 안에서 직접 다루는 방향**으로 바꿨다.
+
+## 4. 새 방법을 3단계로 설명
+
+### ① 최신 위성 관측을 직접 입력한다
+
+모델은 11채널 정지궤도 위성(geostationary satellite) 모자이크를 0.1° 공간 해상도, 1시간 간격으로 입력받는다. 가장 최근 위성 프레임의 운영 지연은 약 1시간이다. 분석장만 기다리는 것보다 최신 대기 상태를 더 빨리 반영할 수 있다.
+
+![WeatherNext 3 모델 입력·출력 구조](https://arxiv.org/html/2609.03582v1/Figures/fig1_alt2.png)
+
+*그림 1. WeatherNext 3의 입력·출력 구조. 출처: Rasp et al., arXiv:2609.03582v1, Figure 1. 논문 라이선스 CC BY 4.0.*
+
+### ② 서로 다른 해상도를 공통 mesh에서 결합한다
+
+0.25°와 0.1° 입력은 각각 encoder/decoder를 거쳐 공통 icosahedral processor mesh에서 상호작용한다. WeatherNext 3는 15일, 64-member ensemble을 생성하며 일부 지표 변수는 시간당 0.1° 출력으로 직접 예측한다.
+
+### ③ 격자 밖 실제 관측값도 직접 예측한다
+
+관측소용 sparse head는 위도·경도뿐 아니라 고도와 육해 정보까지 이용해 2 m 온도와 이슬점(dew point)을 임의 위치와 시간에 질의할 수 있도록 만든다. 학습에 사용하지 않은 관측소에서도 일반화 성능을 평가했다.
+
+## 5. 핵심 실험과 수치
+
+2024년 hold-out 평가에서 중기 상층 변수는 WeatherNext 2보다 대략 **5% CRPS 개선**을 보였고, 논문은 이를 같은 skill에서 약 **6시간의 추가 forecast lead time**에 해당한다고 해석한다.
+
+학습에 사용되지 않은 METAR 관측소에서 짧은 lead time의 2 m 온도 CRPS는 WeatherNext 2 대비 최대 **30%**, ECMWF ENS 대비 최대 **40%** 낮았다. CRPS는 낮을수록 좋은 확률예보다.
+
+![학습에 사용하지 않은 METAR 관측소 평가](https://arxiv.org/html/2609.03582v1/Figures/fig2_station_eval_standalone.png)
+
+*그림 2. Held-out METAR station 평가. 출처: Rasp et al., arXiv:2609.03582v1, Figure 3. CC BY 4.0.*
+
+강수에서는 WN3의 PARDIG head가 초기 lead time 기준으로 IMERG 평가에서 최대 **60%**, MRMS에서 **30%**, rain gauge에서 **10%** 수준의 CRPS 감소를 보고했다. 또한 매시간 초기화(hourly initialization)는 6시간 초기화와 비교해 운영 lead time을 약 **2~3시간** 더 확보했다.
+
+![WeatherNext 3 강수 평가와 hourly initialization](https://arxiv.org/html/2609.03582v1/Figures/fig3_combined.png)
+
+*그림 3. 강수 CRPS·Brier score·hourly initialization·reliability 평가. 출처: Rasp et al., arXiv:2609.03582v1, Figure 4. CC BY 4.0.*
+
+Google은 별도의 공식 발표에서 WeatherNext 3를 Search, Gemini, Google Maps, Google Maps Platform Weather API, Earth Engine 등에 적용하기 시작했다고 밝혔다. 이 부분은 **Google 자체의 제품 배포 발표**이며, 논문의 동료평가 결과와 동일하게 취급하면 안 된다.
+
+## 6. 논문의 한계와 반대 증거
+
+가장 중요한 제한은 세 가지다.
+
+첫째, 논문은 아직 **arXiv v1 preprint**다. 둘째, 저자들은 극한 강수에서 충분한 true positive를 확보하기 어렵기 때문에 평가는 **4 mm / 6 h 이하의 중간 수준 강수에 제한**하고, 극한 강수 평가는 향후 과제로 남겼다. 따라서 “폭우까지 해결했다”는 결론은 근거가 없다.
+
+셋째, 개별 ensemble sample에서는 모델 mesh 구조가 드러나는 육각형 artifact와 6시간 outer step 경계의 시간 불연속이 관찰된다. 저자들은 이런 현상이 precipitation과 station output에서 특히 뚜렷하다고 직접 보고한다.
+
+![WeatherNext 3의 spatial·temporal artifact](https://arxiv.org/html/2609.03582v1/Figures/fig5_combined.png)
+
+*그림 4. 강수의 mesh artifact와 6시간 경계의 temperature discontinuity. 출처: Rasp et al., arXiv:2609.03582v1, Figure 7. CC BY 4.0.*
+
+2026년 quasi-real-time 비교도 7월 1일부터 8월 11일까지 약 6주이므로 작은 차이를 장기간 성능으로 확대 해석하면 안 된다. WN3 전체 모델 가중치와 완전한 재현 코드 공개도 이번 확인 범위에서는 확인되지 않았다.
+
+## 7. 실제로 무엇이 달라질 수 있나
+
+AI weather의 경쟁축이 **“기존 분석장을 얼마나 잘 모사하느냐”에서 “실제 관측을 얼마나 빨리 예보 모델 안으로 넣느냐”**로 이동할 가능성이 있다.
+
+관측 → 데이터 동화(data assimilation) → 예보 → 후처리(post-processing)로 나뉘던 전통적인 단계를 하나의 확률 모델 안에서 더 직접적으로 연결한다면, 기상 AI는 단순한 NWP surrogate를 넘어 운영 예보 시스템 자체의 구조를 바꿀 수 있다.
+
+100 m wind, cloud cover, solar radiation 같은 출력은 풍력·태양광 운영에도 유용할 수 있다. 그러나 실제 발전량 오차 또는 전력망 비용을 줄였다는 독립적인 운영 근거는 이번 자료에서 **확인되지 않았다**.
+
+## 8. 다음에 확인할 트리거
+
+다음 판단 기준은 명확하다.
+
+- 동료평가(peer review) 정식 게재
+- 1년 이상 독립적인 실시간 운영 비교
+- 극한 강수와 재해성 기상에 대한 별도 검증
+- 전체 모델 가중치·코드 또는 재현 가능한 공개 implementation
+- 재생에너지·물류·재난 대응에서의 실제 운영 성과
+
+이 항목들이 확인되면 WeatherNext 3는 단순한 신형 AI 모델을 넘어 **기상 인프라 변화**로 평가할 근거가 더 강해진다.
+
+## 9. 출처
+
+1. Stephan Rasp et al., **WeatherNext 3: Increasing resolution and performance of global weather models with raw observations**, arXiv:2609.03582v1, 2026-09-03.  
+   - Abstract: https://arxiv.org/abs/2609.03582  
+   - HTML / Figures: https://arxiv.org/html/2609.03582  
+   - Paper license: CC BY 4.0
+2. Google, **Introducing WeatherNext 3, our most advanced and accurate global weather AI model**, 2026-09-03.  
+   - https://blog.google/innovation-and-ai/models-and-research/google-deepmind/introducing-weathernext-3/
+3. Google Korea, **더 정밀하고 강력해진 차세대 글로벌 기상 예측 AI 모델, ‘웨더넥스트 3’를 소개합니다**, 2026-09-03.  
+   - https://blog.google/intl/ko-kr/company-news/technology/introducing-weathernext-3-kr/
+4. Google DeepMind, WeatherNext.  
+   - https://deepmind.google/science/weathernext/
+
+## 공식 사이트 이미지 원본 링크
+
+아래 Google Blog 이미지는 글을 이해하기 좋은 **공식 시각자료 후보**다. 다만 Google Blog 페이지에서 별도의 재사용 라이선스를 확인하지 못했으므로 이 draft에서는 직접 재배포하지 않고 원본 링크만 기록한다.
+
+- WeatherNext 3 hero image  
+  https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_Title.width-200.format-webp.webp
+- Google Blog 시스템 구조 이미지  
+  https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_diagrams_fig-01.wid.width-1200.format-webp.webp
+- Google Blog 강수 비교 이미지  
+  https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_diagrams_fig-03.width-1200.format-webp.webp
+
+### 본문에 사용한 CC BY 4.0 논문 Figure 링크
+
+- Figure 1 · Model overview  
+  https://arxiv.org/html/2609.03582v1/Figures/fig1_alt2.png
+- Figure 3 · Held-out station evaluation  
+  https://arxiv.org/html/2609.03582v1/Figures/fig2_station_eval_standalone.png
+- Figure 4 · Precipitation evaluation  
+  https://arxiv.org/html/2609.03582v1/Figures/fig3_combined.png
+- Figure 7 · Artifact visualization  
+  https://arxiv.org/html/2609.03582v1/Figures/fig5_combined.png
