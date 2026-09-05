@@ -127,6 +127,17 @@ POST_TAXONOMY.update(
             True,
             10,
         ),
+        "2026-09-05-weathernext-3-frontier-one.mdx": Taxonomy(
+            "ai-machine-learning",
+            "weather-forecasting",
+            "research-report",
+            (
+                "frontier-one",
+                "ai-weather",
+                "weather-forecasting",
+                "google-deepmind",
+            ),
+        ),
     }
 )
 
