@@ -20,6 +20,22 @@ const DESKTOP = { width: 1366, height: 900, mobile: false, touch: false };
 const modeExpression = (mode) =>
   `document.querySelector('[data-experience-page]')?.dataset.motionMode === ${JSON.stringify(mode)}`;
 
+async function fineViewport(cdp, sessionId, { width, height, reduced = false }) {
+  // Do not send setTouchEmulationEnabled(false): on headless Chrome it can
+  // reset a fresh target's primary pointer to none. Keep the actual desktop
+  // pointer and emulate only dimensions/preferences; assertions verify it.
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    width, height, deviceScaleFactor: 1, mobile: false,
+  }, sessionId);
+  await cdp.send('Emulation.setEmulatedMedia', {
+    media: '',
+    features: [
+      { name: 'prefers-reduced-motion', value: reduced ? 'reduce' : 'no-preference' },
+      { name: 'prefers-color-scheme', value: 'light' },
+    ],
+  }, sessionId);
+}
+
 async function assertVisibleContent(cdp, sessionId, label) {
   const result = await evaluate(cdp, sessionId, `(() => {
     const root = document.querySelector('[data-experience-page]');
@@ -82,8 +98,8 @@ export async function auditMobileMotion(cdp, sessionId) {
     }
     console.log('browser-mobile-motion: PASS cold Home/Research: no GSAP download; visible content; native scroll sync; identity GIF');
 
-    // CDP touch emulation can keep hover:none/pointer:coarse on an existing
-    // target after disabling touch. A wider touch viewport is not a desktop.
+    // Touch-emulated targets do not reliably regain a fine primary pointer
+    // after disabling touch. A wider touch viewport is not a desktop.
     // Verify fine-pointer width transitions in a fresh target, without stubbing
     // matchMedia or weakening the production capability check.
     desktopTarget = await attach(cdp);
@@ -91,20 +107,20 @@ export async function auditMobileMotion(cdp, sessionId) {
     await cdp.send('Network.enable', {}, desktopId);
     await cdp.send('Network.setCacheDisabled', { cacheDisabled: true }, desktopId);
     await cdp.send('Network.setBlockedURLs', { urls: BLOCKED_THIRD_PARTIES }, desktopId);
-    await viewport(cdp, desktopId, DESKTOP);
+    await fineViewport(cdp, desktopId, DESKTOP);
     await navigate(cdp, desktopId, '/research');
     assert.equal(await evaluate(cdp, desktopId,
       "matchMedia('(hover: hover) and (pointer: fine)').matches"), true,
     'desktop fixture must provide a real fine/hover pointer');
     await waitExpression(cdp, desktopId, modeExpression('enhanced'), 'desktop progressive enhancement');
-    await viewport(cdp, desktopId, { ...DESKTOP, width: 390, height: 844 });
+    await fineViewport(cdp, desktopId, { ...DESKTOP, width: 390, height: 844 });
     await waitExpression(cdp, desktopId, modeExpression('native'), 'desktop-to-narrow teardown');
     await assertVisibleContent(cdp, desktopId, 'desktop-to-narrow');
     await assertNativeSectionSync(cdp, desktopId);
-    await viewport(cdp, desktopId, DESKTOP);
+    await fineViewport(cdp, desktopId, DESKTOP);
     await waitExpression(cdp, desktopId, modeExpression('enhanced'), 'narrow-to-desktop remount');
 
-    await viewport(cdp, desktopId, { ...DESKTOP, reduced: true });
+    await fineViewport(cdp, desktopId, { ...DESKTOP, reduced: true });
     await navigate(cdp, desktopId, '/');
     await waitExpression(cdp, desktopId, modeExpression('reduced'), 'cold reduced motion');
     const reducedEngine = await evaluate(cdp, desktopId, 'Boolean(window.gsap || window.ScrollTrigger)');
@@ -115,7 +131,7 @@ export async function auditMobileMotion(cdp, sessionId) {
     await cdp.send('Network.setBlockedURLs', {
       urls: [...BLOCKED_THIRD_PARTIES, '*/motion-engine*.js'],
     }, desktopId);
-    await viewport(cdp, desktopId, DESKTOP);
+    await fineViewport(cdp, desktopId, DESKTOP);
     await navigate(cdp, desktopId, '/');
     await waitExpression(cdp, desktopId, modeExpression('native'), 'failed enhanced import falls back');
     await assertVisibleContent(cdp, desktopId, 'failed-import');
