@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  attach,
   evaluate,
   navigate,
   viewport,
@@ -54,6 +55,7 @@ export async function auditMobileMotion(cdp, sessionId) {
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: true }, sessionId);
   await cdp.send('Network.setBlockedURLs', { urls: BLOCKED_THIRD_PARTIES }, sessionId);
 
+  let desktopTarget;
   try {
     for (const pathname of ['/', '/research']) {
       await viewport(cdp, sessionId, MOBILE);
@@ -80,31 +82,51 @@ export async function auditMobileMotion(cdp, sessionId) {
     }
     console.log('browser-mobile-motion: PASS cold Home/Research: no GSAP download; visible content; native scroll sync; identity GIF');
 
-    await viewport(cdp, sessionId, DESKTOP);
-    await waitExpression(cdp, sessionId, modeExpression('enhanced'), 'desktop progressive enhancement');
-    await viewport(cdp, sessionId, MOBILE);
-    await waitExpression(cdp, sessionId, modeExpression('native'), 'desktop-to-mobile teardown');
-    await assertVisibleContent(cdp, sessionId, 'desktop-to-mobile');
-    await assertNativeSectionSync(cdp, sessionId);
+    // CDP touch emulation can keep hover:none/pointer:coarse on an existing
+    // target after disabling touch. A wider touch viewport is not a desktop.
+    // Verify fine-pointer width transitions in a fresh target, without stubbing
+    // matchMedia or weakening the production capability check.
+    desktopTarget = await attach(cdp);
+    const desktopId = desktopTarget.sessionId;
+    await cdp.send('Network.enable', {}, desktopId);
+    await cdp.send('Network.setCacheDisabled', { cacheDisabled: true }, desktopId);
+    await cdp.send('Network.setBlockedURLs', { urls: BLOCKED_THIRD_PARTIES }, desktopId);
+    await viewport(cdp, desktopId, DESKTOP);
+    await navigate(cdp, desktopId, '/research');
+    assert.equal(await evaluate(cdp, desktopId,
+      "matchMedia('(hover: hover) and (pointer: fine)').matches"), true,
+    'desktop fixture must provide a real fine/hover pointer');
+    await waitExpression(cdp, desktopId, modeExpression('enhanced'), 'desktop progressive enhancement');
+    await viewport(cdp, desktopId, { ...DESKTOP, width: 390, height: 844 });
+    await waitExpression(cdp, desktopId, modeExpression('native'), 'desktop-to-narrow teardown');
+    await assertVisibleContent(cdp, desktopId, 'desktop-to-narrow');
+    await assertNativeSectionSync(cdp, desktopId);
+    await viewport(cdp, desktopId, DESKTOP);
+    await waitExpression(cdp, desktopId, modeExpression('enhanced'), 'narrow-to-desktop remount');
 
-    await viewport(cdp, sessionId, { ...DESKTOP, reduced: true });
-    await navigate(cdp, sessionId, '/');
-    await waitExpression(cdp, sessionId, modeExpression('reduced'), 'cold reduced motion');
-    const reducedEngine = await evaluate(cdp, sessionId, 'Boolean(window.gsap || window.ScrollTrigger)');
+    await viewport(cdp, desktopId, { ...DESKTOP, reduced: true });
+    await navigate(cdp, desktopId, '/');
+    await waitExpression(cdp, desktopId, modeExpression('reduced'), 'cold reduced motion');
+    const reducedEngine = await evaluate(cdp, desktopId, 'Boolean(window.gsap || window.ScrollTrigger)');
     assert.equal(reducedEngine, false, 'cold reduced-motion must not load GSAP');
-    await assertVisibleContent(cdp, sessionId, 'reduced-motion');
-    console.log('browser-mobile-motion: PASS resize lifecycle and cold reduced-motion isolation');
+    await assertVisibleContent(cdp, desktopId, 'reduced-motion');
+    console.log('browser-mobile-motion: PASS bidirectional width lifecycle and cold reduced-motion isolation');
 
     await cdp.send('Network.setBlockedURLs', {
       urls: [...BLOCKED_THIRD_PARTIES, '*/motion-engine*.js'],
-    }, sessionId);
-    await viewport(cdp, sessionId, DESKTOP);
-    await navigate(cdp, sessionId, '/');
-    await waitExpression(cdp, sessionId, modeExpression('native'), 'failed enhanced import falls back');
-    await assertVisibleContent(cdp, sessionId, 'failed-import');
-    await assertNativeSectionSync(cdp, sessionId);
+    }, desktopId);
+    await viewport(cdp, desktopId, DESKTOP);
+    await navigate(cdp, desktopId, '/');
+    await waitExpression(cdp, desktopId, modeExpression('native'), 'failed enhanced import falls back');
+    await assertVisibleContent(cdp, desktopId, 'failed-import');
+    await assertNativeSectionSync(cdp, desktopId);
     console.log('browser-mobile-motion: PASS failed enhanced import preserves readable content and navigation');
   } finally {
+    if (desktopTarget) {
+      try {
+        await cdp.send('Target.closeTarget', { targetId: desktopTarget.targetId });
+      } catch {}
+    }
     await cdp.send('Network.setBlockedURLs', { urls: [] }, sessionId);
     await cdp.send('Network.setCacheDisabled', { cacheDisabled: false }, sessionId);
   }
