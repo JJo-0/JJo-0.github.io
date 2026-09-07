@@ -177,6 +177,10 @@ export async function startChrome() {
     chrome,
     [
       '--headless=new',
+      // Headless CI has no physical mouse. Model the desktop input device in
+      // Blink itself, not by replacing matchMedia in the tested application.
+      // Per-target CDP touch emulation still switches mobile to coarse/no-hover.
+      '--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4',
       '--no-sandbox',
       '--disable-dev-shm-usage',
       '--disable-background-networking',

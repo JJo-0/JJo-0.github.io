@@ -8,6 +8,7 @@ import {
   stopChild,
 } from './browser-smoke-harness.mjs';
 import { auditHomeIdentityMedia } from './browser-home-media-audit.mjs';
+import { auditMobileMotion } from './browser-mobile-motion-audit.mjs';
 import { auditRenderer } from './browser-renderer-audit-v2.mjs';
 import { auditInteractions } from './browser-interaction-audits-v4.mjs';
 
@@ -58,11 +59,18 @@ async function installFirstPartyLinkIsolation(cdp, sessionId) {
 }
 
 async function main() {
-  let preview, chrome, cdp, homeMediaTarget, rendererTarget, interactionTarget;
+  let preview, chrome, cdp, mobileTarget, homeMediaTarget, rendererTarget, interactionTarget;
   try {
     preview = await startPreview();
     chrome = await startChrome();
     cdp = await Cdp.connect(chrome.url);
+
+    // Cold mobile must not import the desktop motion engine. Keep this target
+    // isolated so later GPU/desktop tests cannot warm its module graph.
+    mobileTarget = await attach(cdp);
+    await auditMobileMotion(cdp, mobileTarget.sessionId);
+    await closeAuditTarget(cdp, mobileTarget);
+    mobileTarget = null;
 
     // The Home identity animation is a visible product requirement, not a
     // decorative best-effort asset. Verify actual browser decode/paint before
@@ -95,6 +103,7 @@ async function main() {
     await closeAuditTarget(cdp, interactionTarget);
     await closeAuditTarget(cdp, rendererTarget);
     await closeAuditTarget(cdp, homeMediaTarget);
+    await closeAuditTarget(cdp, mobileTarget);
     cdp?.close();
     await stopChild(chrome?.child, 'SIGKILL');
     await stopChild(preview, 'SIGTERM');
