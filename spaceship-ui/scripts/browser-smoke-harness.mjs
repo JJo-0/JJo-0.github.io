@@ -228,6 +228,22 @@ export async function attach(cdp) {
   await cdp.send('Page.bringToFront', {}, sessionId);
   await cdp.send('Page.enable', {}, sessionId);
   await cdp.send('Runtime.enable', {}, sessionId);
+
+  // Every synthetic target must be isolated before its first site navigation.
+  // These are first-party functional tests, not measurements of real ad UX.
+  // Prevent billable test traffic and third-party layout/annotation races;
+  // leave all site-owned markup, scripts, navigation and assertions untouched.
+  await cdp.send('Network.enable', {}, sessionId);
+  await cdp.send('Network.setBlockedURLs', {
+    urls: [
+      '*googlesyndication.com/*',
+      '*doubleclick.net/*',
+      '*googletagmanager.com/*',
+      '*google-analytics.com/*',
+      '*fundingchoicesmessages.google.com/*',
+    ],
+  }, sessionId);
+
   await cdp.send(
     'Page.addScriptToEvaluateOnNewDocument',
     {
