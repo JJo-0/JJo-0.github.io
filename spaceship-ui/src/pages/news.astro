@@ -1,0 +1,103 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import WritingListItem from '@/components/WritingListItem.astro';
+import Breadcrumbs from '@/components/Breadcrumbs.svelte';
+import { getReadTime } from '@/lib/utils/readTime';
+import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getBreadcrumbSchema } from '@/lib/schemas';
+
+const NEWS_TAG = 'frontier-one';
+const newsPosts = (await getPublishedPosts())
+  .filter((post) => post.data.tags.includes(NEWS_TAG))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const schema = getBreadcrumbSchema([
+  { name: 'News', url: new URL('/news', Astro.site).toString() },
+]);
+---
+
+<Layout
+  title="News"
+  description="Frontier One에서 고른 AI, 바이오, 에너지, 반도체, 로보틱스의 최신 연구·산업 트리거를 날짜순으로 정리합니다."
+  schema={schema}
+>
+  <Breadcrumbs items={[{ name: 'News', href: '/news' }]} />
+
+  <header class="news-intro mb-12 sm:mb-16 max-w-4xl">
+    <p class="mb-3 text-xs font-black uppercase tracking-[0.22em] text-muted-foreground">
+      Frontier One · Research Radar
+    </p>
+    <h1 class="news-intro__title text-5xl sm:text-6xl lg:text-7xl text-foreground leading-[0.96]">
+      News
+    </h1>
+    <p class="mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+      매일 새로 나온 연구와 산업 변화를 훑고, 지금 설명할 가치가 가장 큰 한 가지를 고릅니다.
+      단순 속보를 모으기보다 원 논문·공식 발표를 확인하고, <strong class="text-foreground">무엇이 새롭고 무엇은 아직 검증되지 않았는지</strong> 쉽게 풀어냅니다.
+    </p>
+
+    <div class="mt-7 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-xl border border-border/70 bg-card/40 p-4">
+        <p class="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Scope</p>
+        <p class="mt-2 text-sm font-bold text-foreground">AI · Bio · Energy · Chips · Robotics</p>
+      </div>
+      <div class="rounded-xl border border-border/70 bg-card/40 p-4">
+        <p class="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Evidence</p>
+        <p class="mt-2 text-sm font-bold text-foreground">논문과 1차 출처 우선</p>
+      </div>
+      <div class="rounded-xl border border-border/70 bg-card/40 p-4">
+        <p class="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Series</p>
+        <p class="mt-2 text-sm font-bold text-foreground">Frontier One Daily Research</p>
+      </div>
+    </div>
+  </header>
+
+  <section aria-labelledby="latest-news-heading" class="max-w-5xl">
+    <div class="mb-6 border-b border-border/70 pb-5">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-[0.22em] text-muted-foreground">
+            Latest & Follow-up
+          </p>
+          <h2 id="latest-news-heading" class="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
+            Frontier One
+          </h2>
+        </div>
+        <span class="text-xs font-black tabular-nums text-muted-foreground">{newsPosts.length}</span>
+      </div>
+    </div>
+
+    {
+      newsPosts.length > 0 ? (
+        <div>
+          {newsPosts.map((post) => (
+            <WritingListItem
+              {post}
+              slug={getPostSlug(post)}
+              readTime={getReadTime(post.body || '')}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="rounded-xl border border-dashed border-border bg-secondary/20 p-8 text-center">
+          <p class="text-sm font-bold text-foreground">공개된 Frontier One 글이 아직 없습니다.</p>
+          <p class="mt-2 text-sm text-muted-foreground">
+            draft 글은 검증이 끝난 뒤 이 페이지에 날짜순으로 표시됩니다.
+          </p>
+        </div>
+      )
+    }
+  </section>
+</Layout>
+
+<style>
+  .news-intro {
+    border-top: 1px solid var(--color-border);
+    padding-top: clamp(2rem, 5vw, 4rem);
+  }
+
+  .news-intro__title {
+    font-family: var(--font-editorial);
+    font-weight: 700;
+    letter-spacing: -0.06em;
+  }
+</style>
