@@ -138,6 +138,17 @@ POST_TAXONOMY.update(
                 "google-deepmind",
             ),
         ),
+        "2026-09-09-navier-stokes-openai-frontier-one.mdx": Taxonomy(
+            "ai-machine-learning",
+            "ai-mathematical-discovery",
+            "research-report",
+            (
+                "frontier-one",
+                "ai-mathematics",
+                "formal-verification",
+                "navier-stokes",
+            ),
+        ),
     }
 )
 
