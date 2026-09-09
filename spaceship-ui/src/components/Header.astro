@@ -3,6 +3,7 @@ import { SITE } from '@/config';
 import ThemeToggle from '@/components/ThemeToggle.astro';
 import Search from '@/components/Search.svelte';
 import { getCollection } from 'astro:content';
+import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 
 interface NavLink {
   name: string;
@@ -15,15 +16,27 @@ interface Props {
 
 const { pageLang = SITE.lang } = Astro.props;
 const isKoreanPage = pageLang.toLowerCase().startsWith('ko');
+const currentPath = Astro.url.pathname;
+const currentPostSlug = currentPath.startsWith('/posts/')
+  ? decodeURIComponent(currentPath.slice('/posts/'.length).replace(/\/$/, ''))
+  : null;
 
-const [projects, appearances] = await Promise.all([
+const [projects, appearances, currentPost] = await Promise.all([
   SITE.publicSections.projects ? getCollection('projects') : Promise.resolve([]),
   SITE.publicSections.appearances ? getCollection('appearances') : Promise.resolve([]),
+  currentPostSlug
+    ? getPublishedPosts().then((posts) =>
+        posts.find((post) => getPostSlug(post) === currentPostSlug),
+      )
+    : Promise.resolve(undefined),
 ]);
+
+const currentPostIsNews = Boolean(currentPost?.data.tags.includes('frontier-one'));
 
 const navLinks: NavLink[] = [
   { name: 'Research', href: '/research' },
   { name: 'Writing', href: '/posts' },
+  { name: 'News', href: '/news' },
   ...(SITE.publicSections.projects && projects.length > 0
     ? [{ name: 'Projects', href: '/projects' }]
     : []),
@@ -33,8 +46,10 @@ const navLinks: NavLink[] = [
   { name: 'About', href: '/about' },
 ];
 
-const currentPath = Astro.url.pathname;
-const isActive = (href: string) => currentPath === href || currentPath.startsWith(`${href}/`);
+const isActive = (href: string) => {
+  if (currentPostIsNews) return href === '/news';
+  return currentPath === href || currentPath.startsWith(`${href}/`);
+};
 
 const navClass = (href: string) => [
   'site-nav-link px-1 py-2 text-[0.66rem] font-bold uppercase tracking-[0.16em] transition-colors shrink-0 no-underline',
