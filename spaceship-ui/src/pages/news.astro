@@ -1,15 +1,18 @@
 ---
 import Layout from '@/layouts/Layout.astro';
-import WritingListItem from '@/components/WritingListItem.astro';
+import NewsListItem from '@/components/NewsListItem.astro';
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
 import { getReadTime } from '@/lib/utils/readTime';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import { getBreadcrumbSchema } from '@/lib/schemas';
+import mediaCatalogue from '../../site/news-media.json';
 
 const NEWS_TAG = 'frontier-one';
+const mediaOrder = new Map(Object.values(mediaCatalogue).map((item) => [item.slug, item.order]));
 const newsPosts = (await getPublishedPosts())
   .filter((post) => post.data.tags.includes(NEWS_TAG))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() ||
+    (mediaOrder.get(getPostSlug(a)) ?? 1000) - (mediaOrder.get(getPostSlug(b)) ?? 1000));
 
 const schema = getBreadcrumbSchema([
   { name: 'News', url: new URL('/news', Astro.site).toString() },
@@ -18,8 +21,9 @@ const schema = getBreadcrumbSchema([
 
 <Layout
   title="News"
-  description="Frontier One에서 고른 AI, 바이오, 에너지, 반도체, 로보틱스의 최신 연구·산업 트리거를 날짜순으로 정리합니다."
+  description="AI, 바이오, 에너지, 반도체, 로보틱스의 새로운 연구와 산업 변화를 입문부터 풀어 설명합니다. 원 논문과 공식 발표, 사진과 도식을 함께 읽습니다."
   schema={schema}
+  lang="ko"
 >
   <Breadcrumbs items={[{ name: 'News', href: '/news' }]} />
 
@@ -31,10 +35,10 @@ const schema = getBreadcrumbSchema([
       News
     </h1>
     <p class="mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-      매일 새로 나온 연구와 산업 변화를 훑고, 지금 설명할 가치가 가장 큰 한 가지를 고릅니다.
-      단순 속보를 모으기보다 원 논문·공식 발표를 확인하고, <strong class="text-foreground">무엇이 새롭고 무엇은 아직 검증되지 않았는지</strong> 쉽게 풀어냅니다.
+      새로운 연구와 산업 변화를 처음부터 풀어 설명합니다. 오늘의 대표 소식과 함께 읽을 연구,
+      후속 변화를 모았습니다. 원 논문·공식 발표와 사진을 바탕으로
+      <strong class="text-foreground">무엇이 새롭고 무엇은 아직 검증되지 않았는지</strong> 구분합니다.
     </p>
-
     <div class="mt-7 grid gap-3 sm:grid-cols-3">
       <div class="rounded-xl border border-border/70 bg-card/40 p-4">
         <p class="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Scope</p>
@@ -46,58 +50,38 @@ const schema = getBreadcrumbSchema([
       </div>
       <div class="rounded-xl border border-border/70 bg-card/40 p-4">
         <p class="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Series</p>
-        <p class="mt-2 text-sm font-bold text-foreground">Frontier One Daily Research</p>
+        <p class="mt-2 text-sm font-bold text-foreground">Daily Research & Follow-up</p>
       </div>
     </div>
   </header>
 
-  <section aria-labelledby="latest-news-heading" class="max-w-5xl">
+  <section aria-labelledby="latest-news-heading" class="max-w-5xl" data-news-edition="2026-09-09-illustrated">
     <div class="mb-6 border-b border-border/70 pb-5">
       <div class="flex items-end justify-between gap-4">
         <div>
-          <p class="text-[11px] font-black uppercase tracking-[0.22em] text-muted-foreground">
-            Latest & Follow-up
-          </p>
-          <h2 id="latest-news-heading" class="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-            Frontier One
-          </h2>
+          <p class="text-[11px] font-black uppercase tracking-[0.22em] text-muted-foreground">Latest & Follow-up</p>
+          <h2 id="latest-news-heading" class="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">Frontier One</h2>
         </div>
         <span class="text-xs font-black tabular-nums text-muted-foreground">{newsPosts.length}</span>
       </div>
     </div>
-
     {
       newsPosts.length > 0 ? (
         <div>
           {newsPosts.map((post) => (
-            <WritingListItem
-              {post}
-              slug={getPostSlug(post)}
-              readTime={getReadTime(post.body || '')}
-            />
+            <NewsListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />
           ))}
         </div>
       ) : (
         <div class="rounded-xl border border-dashed border-border bg-secondary/20 p-8 text-center">
           <p class="text-sm font-bold text-foreground">공개된 Frontier One 글이 아직 없습니다.</p>
-          <p class="mt-2 text-sm text-muted-foreground">
-            draft 글은 검증이 끝난 뒤 이 페이지에 날짜순으로 표시됩니다.
-          </p>
+          <p class="mt-2 text-sm text-muted-foreground">검토와 공개 승인이 완료된 글만 날짜순으로 표시됩니다.</p>
         </div>
       )
     }
   </section>
 </Layout>
-
 <style>
-  .news-intro {
-    border-top: 1px solid var(--color-border);
-    padding-top: clamp(2rem, 5vw, 4rem);
-  }
-
-  .news-intro__title {
-    font-family: var(--font-editorial);
-    font-weight: 700;
-    letter-spacing: -0.06em;
-  }
+  .news-intro { border-top: 1px solid var(--color-border); padding-top: clamp(2rem, 5vw, 4rem); }
+  .news-intro__title { font-family: var(--font-editorial); font-weight: 700; letter-spacing: -0.06em; }
 </style>

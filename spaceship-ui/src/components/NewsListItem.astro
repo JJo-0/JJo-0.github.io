@@ -1,0 +1,20 @@
+---
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import WritingListItem from '@/components/WritingListItem.astro';
+import catalogue from '../../site/news-media.json';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props { post: CollectionEntry<'posts'>; slug: string; readTime: string; }
+const { post, slug, readTime } = Astro.props;
+const media = (Object.keys(catalogue) as Array<keyof typeof catalogue>).find((key) => catalogue[key].slug === slug);
+---
+
+<div class:list={['news-list-item', media && 'news-list-item--illustrated']} data-news-card={slug}>
+  {media && <NewsFigure media={media} compact />}
+  <WritingListItem {post} {slug} {readTime} />
+</div>
+<style>
+  .news-list-item { border-bottom: 1px solid var(--color-border); padding: 1.8rem 0; }
+  .news-list-item--illustrated { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 1.75rem; align-items: start; }
+  @media (max-width: 640px) { .news-list-item--illustrated { grid-template-columns: minmax(0, 1fr); gap: 1rem; } }
+</style>
