@@ -1,0 +1,147 @@
+---
+title: "AI가 Navier–Stokes에 던진 답, 쉽게 보기"
+description: "OpenAI가 3차원 Navier–Stokes 문제의 C·D 조건을 만족한다고 주장하는 증명과 Lean 형식화를 공개했다. 무엇을 실제로 보였는지, 왜 아직 공식 해결로 부르면 안 되는지 쉽게 정리한다."
+pubDate: 2026-09-09
+category: ai-machine-learning
+subcategory: ai-mathematical-discovery
+type: research-report
+tags:
+  - frontier-one
+  - ai-mathematics
+  - formal-verification
+  - navier-stokes
+researchFeatured: false
+featured: false
+draft: true
+lang: ko
+---
+
+> **Frontier One · 2026-09-09**  
+> 증거 상태: **EARLY_SIGNAL**  
+> OpenAI가 2026년 9월 8일 증명 초안과 Lean 4 형식화를 공개했다. 하지만 오늘 기준 Clay Mathematics Institute 공식 페이지에는 이 문제가 여전히 **Unsolved**로 표시되어 있다.
+
+## 1. 한 문장 결론
+
+**OpenAI가 보여주려는 것은 “물의 흐름이 아무 조건 없이 갑자기 폭발한다”가 아니라, 아주 매끄러운 힘을 특정 방식으로 가했을 때 유체의 에너지는 유한한데 한 작은 영역의 속도는 유한 시간 안에 끝없이 커질 수 있다는 것이다.**
+
+그리고 이것이 맞다면 Clay가 정한 Navier–Stokes 문제의 정답 경로 중 **C와 D**에 해당한다.
+
+## 2. 먼저, Navier–Stokes가 뭔가?
+
+물을 휘젓거나, 바람이 건물 사이를 지나가거나, 비행기 주위로 공기가 흐르는 모습을 수학으로 표현할 때 쓰는 대표적인 방정식이 **Navier–Stokes equation**이다.
+
+쉽게 말하면 이런 질문을 계산한다.
+
+- 지금 물이 어느 방향으로 움직이는가?
+- 압력이 물을 어디로 밀고 있는가?
+- 점성(viscosity)이 얼마나 흐름을 부드럽게 만드는가?
+- 시간이 지나면 흐름이 어떻게 바뀌는가?
+
+문제는 3차원에서 시작이 아무리 매끄러워도 이 흐름이 영원히 얌전하게 유지되는지, 아니면 어느 순간 수학적으로 감당할 수 없는 **singularity(특이점)**가 생길 수 있는지 아직 확실히 몰랐다는 것이다.
+
+![George Gabriel Stokes](https://www.claymath.org/wp-content/uploads/2022/05/ggstokes.jpg)
+
+*George Gabriel Stokes. Clay Mathematics Institute가 해당 사진을 Public Domain으로 명시한다. [Clay 원본 페이지](https://www.claymath.org/millennium/Navier-Stokes-Equation/) · [Wikimedia Commons 라이선스 정보](https://commons.wikimedia.org/wiki/File:Ggstokes.jpg)*
+
+## 3. “특이점이 생긴다”는 게 무슨 뜻인가?
+
+욕조 물이 배수구로 빨려 들어가는 장면을 떠올리면 쉽다.
+
+보통은 중심으로 갈수록 물이 빠르게 돈다. 그런데 OpenAI가 제시한 수학적 구성에서는 이 소용돌이(vortex)의 중심 영역이 계속 작아지는 동시에 속도는 계속 빨라진다.
+
+**큰 소용돌이 → 더 좁은 소용돌이 → 아주 작은 영역 → 속도는 계속 증가**
+
+중요한 점은 전체 유체가 무한한 에너지를 가지는 것이 아니라는 것이다. 매우 작은 영역만 빠르게 수축하기 때문에 **전체 운동에너지는 유한하게 유지하면서 최대 속도만 무한대로 갈 수 있다**는 것이 핵심 주장이다.
+
+OpenAI 공식 페이지에는 이 inward spiral과 axial stretching을 보여주는 vortex 시각화가 있다. 재사용 라이선스가 별도로 확인되지 않아 이미지를 복제하지 않고 원본으로 연결한다.
+
+- [OpenAI 공식 설명과 vortex 그림 보기](https://openai.com/index/navier-stokes-solution/)
+- [166쪽 원 증명 PDF](https://cdn.openai.com/pdf/32d9f210-8b73-45e0-91bc-82a30aef8a9a/navier-stokes.pdf)
+
+## 4. OpenAI가 한 일을 3단계로 보면
+
+### ① 작아지면서 빨라지는 소용돌이를 만든다
+
+수학적으로는 `t = 1`에 가까워질수록 vortex core가 원점 쪽으로 수축하도록 만든다. 영역은 작아지지만 그 안의 회전 속도는 점점 커진다.
+
+### ② 그런데 외력까지 폭발하면 안 된다
+
+여기서 진짜 어려운 문제가 나온다. 원하는 유체 움직임을 억지로 만들기 위해 **무한히 큰 힘**을 넣는다면 Clay 문제의 조건을 만족하지 못한다.
+
+그래서 연구진은 여러 작은 oscillatory pulse를 추가해 내부의 운동량 전달이 서로 상쇄되도록 설계했다. 쉽게 말하면, **소용돌이가 스스로 필요한 힘의 대부분을 만들어내게 조정한 것**이다.
+
+### ③ 마지막에 외력은 매끄럽게 남긴다
+
+최종적으로는 유체 속도는 `t = 1`에 가까워질수록 한 점 부근에서 끝없이 커지지만, 외부에서 넣는 force는 smooth하게 유지되는 구성을 만든다고 주장한다.
+
+이것이 Clay 공식 문제의 **C**, 그리고 주기적 공간 버전인 **D**와 연결된다.
+
+## 5. 그래서 “밀레니엄 문제 해결”인가?
+
+여기서는 표현을 정확히 해야 한다.
+
+OpenAI는 자신들의 결과가 C와 D를 만족한다고 주장한다. 실제로 Clay의 공식 문제 문서에는 A·B뿐 아니라 **smooth forcing을 허용하는 C·D도 정식 해결 경로**로 적혀 있다.
+
+하지만 **공식 인정은 아직 아니다.**
+
+2026년 9월 9일 기준 Clay의 Navier–Stokes 페이지에는 여전히 `Unsolved`라고 표시되어 있다. 또한 Clay 규칙은 후보 해법이 qualifying outlet에 출판되고, **최소 2년이 지나며**, 세계 수학계에서 general acceptance를 받아야 검토 대상으로 삼는다고 명시한다.
+
+따라서 지금 가장 정확한 표현은 다음이다.
+
+> **“OpenAI가 Navier–Stokes Millennium Prize Problem의 C·D 조건을 해결한다고 주장하는 증명과 기계 검증 가능한 Lean 형식화를 공개했다.”**
+
+## 6. AI가 어떻게 이런 증명을 찾았나?
+
+OpenAI 설명에 따르면 일반적인 챗봇 한 번의 답변으로 나온 결과가 아니다.
+
+Navier–Stokes 탐색에는 대략 **10,000개의 agent가 동시에** 참여했고, 이 문제에만 약 **270만 개 메시지와 1,300억 output token**이 사용됐다. 해법을 찾는 데 약 **88시간**, 이후 Lean formalization과 verification에 약 **17시간**이 더 걸렸다고 회사는 밝혔다.
+
+즉 구조는 대략 이렇다.
+
+**문제 분할 → 수천 개 agent 병렬 탐색 → 좋은 아이디어 합치기 → 긴 수학 증명 → Lean으로 형식 검증**
+
+이 부분은 수학 결과만큼 AI 연구 방식 측면에서도 중요하다.
+
+## 7. Lean이 있으면 100% 끝난 것 아닌가?
+
+아니다.
+
+Lean은 사람이 적어 놓은 정의와 가정 안에서 논리적 단계가 맞는지를 매우 강하게 검사할 수 있다. OpenAI는 Lean 4 저장소와 독립적으로 build하는 방법도 공개했다.
+
+하지만 수학자들은 여전히 다음을 확인해야 한다.
+
+- formalization이 원래 Clay 문제를 정확히 표현했는가?
+- 논문과 Lean theorem 사이에 의미 차이가 없는가?
+- 숨은 가정이나 정의 선택에 문제가 없는가?
+- 기존 연구와의 관계와 우선권은 정확한가?
+
+[OpenAI Lean 4 공식 저장소 보기](https://github.com/openai/NavierStokesAndEuler)
+
+## 8. 다음에 확인할 트리거
+
+이 결과를 계속 추적한다면 네 가지만 보면 된다.
+
+1. 독립 수학자들이 proof를 검증하는가
+2. Lean repository가 독립 환경에서 반복 검증되는가
+3. 정식 수학 저널의 peer review를 통과하는가
+4. 시간이 지난 뒤 Clay Mathematics Institute가 공식 상태를 변경하는가
+
+그전까지는 **“공식 해결 완료”보다 “매우 강한 AI 수학 연구 신호”**로 보는 것이 정확하다.
+
+## 9. 원본 사이트와 자료
+
+- **OpenAI 공식 발표** — [On the Navier–Stokes Millennium Prize Problem](https://openai.com/index/navier-stokes-solution/)
+- **OpenAI 원 증명 PDF (166쪽)** — [Finite Time Blowup for Navier–Stokes](https://cdn.openai.com/pdf/32d9f210-8b73-45e0-91bc-82a30aef8a9a/navier-stokes.pdf)
+- **Lean 4 형식화** — [openai/NavierStokesAndEuler](https://github.com/openai/NavierStokesAndEuler)
+- **Clay 공식 Navier–Stokes 페이지** — [Navier-Stokes Equation](https://www.claymath.org/millennium/Navier-Stokes-Equation/)
+- **Clay 공식 문제 정의 PDF** — [Existence and Smoothness of the Navier–Stokes Equation](https://www.claymath.org/library/monographs/MPPc.pdf)
+- **Clay Millennium Prize 규칙** — [Rules for the Millennium Prize Problems](https://www.claymath.org/millennium-problems/rules/)
+
+### 이미지 원본 링크
+
+- **George Gabriel Stokes 초상 — Public Domain**  
+  https://www.claymath.org/wp-content/uploads/2022/05/ggstokes.jpg
+- **OpenAI vortex 시각화 — 공식 페이지에서 확인**  
+  https://openai.com/index/navier-stokes-solution/
+
+OpenAI vortex 이미지는 공식 페이지에서 직접 볼 수 있지만 별도의 재사용 라이선스를 확인하지 못해 이 draft에서는 이미지를 복제하지 않았다.
