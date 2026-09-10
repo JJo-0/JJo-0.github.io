@@ -1,0 +1,113 @@
+name: NEWS source-chart audit
+on:
+  push:
+    branches: [editorial/news-sep5-8-source-audit-20260910]
+    paths: [.github/workflows/news-source-chart-audit.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser capture dependencies
+        run: |
+          python -m pip install playwright==1.58.0
+          python -m playwright install --with-deps chromium
+      - name: Capture public original charts and methods
+        run: |
+          mkdir -p capture
+          cat > /tmp/capture.py <<'PY'
+          import asyncio, json, pathlib, datetime, traceback
+          from playwright.async_api import async_playwright
+          OUT = pathlib.Path('capture')
+          URL = 'https://openai.com/index/research-acceleration-view-inside-openai/'
+          TITLES = [
+            'Usage growth is faster among researchers than in other parts of the company',
+            'Researchers are using coding agents in new ways',
+            'All categories of research activity have increased since the start of the year',
+          ]
+          async def main():
+            report = {'source_url': URL, 'captured_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'charts': [], 'status': 'NOT_CAPTURED', 'rights_status': 'REVIEW_REQUIRED', 'public_post_changed': False}
+            async with async_playwright() as p:
+              browser = await p.chromium.launch(headless=True)
+              context = await browser.new_context(viewport={'width': 1440, 'height': 1000}, device_scale_factor=2, color_scheme='light')
+              page = await context.new_page()
+              try:
+                response = await page.goto(URL, wait_until='domcontentloaded', timeout=90000)
+                report['http_status'] = response.status if response else None
+                await page.wait_for_timeout(18000)
+                report['page_title'] = await page.title()
+                body = await page.locator('body').inner_text()
+                if 'Research acceleration' not in body or len(body) < 2500:
+                  await page.screenshot(path=str(OUT/'access-result.png'))
+                  report['status'] = 'ACCESS_BLOCKED'
+                  report['body_excerpt'] = body[:2000]
+                  return
+                for _ in range(50):
+                  more = await page.evaluate('''() => { const y=scrollY; scrollBy(0,700); return scrollY!==y; }''')
+                  await page.wait_for_timeout(250)
+                  if not more: break
+                await page.wait_for_timeout(3000)
+                (OUT/'source.html').write_text(await page.content(), encoding='utf8')
+                (OUT/'body.txt').write_text(await page.locator('body').inner_text(), encoding='utf8')
+                inventory = await page.evaluate('''() => [...document.querySelectorAll('svg,canvas,img,iframe,[data-dotcom-chart-logical-container]')].map(e=>({tag:e.tagName,src:e.currentSrc||e.src||null,role:e.getAttribute('role'),alt:e.getAttribute('alt'),w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,text:(e.textContent||'').trim().slice(0,1000)}))''')
+                (OUT/'dom-inventory.json').write_text(json.dumps(inventory, ensure_ascii=False, indent=2))
+                for n,title in enumerate(TITLES,1):
+                  key=f'chart-{n:02d}'
+                  result={'id':key,'title':title,'status':'NOT_FOUND','source_url':URL}
+                  chosen = await page.evaluate('''({title,key}) => {
+                    const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
+                    const exact=[...document.querySelectorAll('h1,h2,h3,h4,h5,p,span,div,text')].filter(e=>norm(e.textContent)===norm(title));
+                    let options=[];
+                    for(const e of exact){ let a=e; for(let j=0;j<9&&a;j++,a=a.parentElement){
+                      const r=a.getBoundingClientRect(); const visual=a.querySelector('svg,canvas,img,[role="img"]');
+                      if(visual&&r.width>=350&&r.height>=200&&r.height<=2600&&a.tagName!=='MAIN'&&a.tagName!=='BODY') options.push(a);
+                    }}
+                    options=[...new Set(options)].sort((a,b)=>a.getBoundingClientRect().height-b.getBoundingClientRect().height);
+                    const target=options[0]; if(!target)return {matches:exact.length,found:false};
+                    target.setAttribute('data-editorial-capture',key);
+                    return {found:true,tag:target.tagName,classes:target.className,text:target.innerText,html:target.outerHTML};
+                  }''', {'title':title,'key':key})
+                  if chosen['found']:
+                    loc=page.locator(f'[data-editorial-capture="{key}"]')
+                    await loc.scroll_into_view_if_needed()
+                    await page.wait_for_timeout(1500)
+                    await loc.screenshot(path=str(OUT/f'{key}.png'),animations='disabled')
+                    (OUT/f'{key}.html').write_text(chosen['html'],encoding='utf8')
+                    (OUT/f'{key}.txt').write_text(chosen['text'],encoding='utf8')
+                    svgs=await loc.locator('svg').evaluate_all('(es)=>es.map(e=>new XMLSerializer().serializeToString(e))')
+                    for k,svg in enumerate(svgs): (OUT/f'{key}-{k:02d}.svg').write_text(svg,encoding='utf8')
+                    result.update(status='CAPTURED_REQUIRES_VISUAL_REVIEW',file=f'{key}.png',svg_count=len(svgs),visible_text=chosen['text'])
+                    buttons=loc.get_by_role('button', name='View methods')
+                    if await buttons.count():
+                      await buttons.first.click()
+                      await page.wait_for_timeout(800)
+                      await page.screenshot(path=str(OUT/f'{key}-methods.png'))
+                      (OUT/f'{key}-methods.txt').write_text(await page.locator('body').inner_text(),encoding='utf8')
+                      await page.keyboard.press('Escape')
+                  else:
+                    result['exact_text_matches']=chosen['matches']
+                  report['charts'].append(result)
+                report['status']='CAPTURED_REQUIRES_REVIEW' if all(x['status'].startswith('CAPTURED') for x in report['charts']) else 'PARTIAL_CAPTURE'
+              except Exception as exc:
+                report['error']=str(exc)
+                report['traceback']=traceback.format_exc()
+                report['status']='CAPTURE_FAILED'
+              finally:
+                (OUT/'manifest.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf8')
+                print(json.dumps(report,ensure_ascii=False,indent=2))
+                await browser.close()
+          asyncio.run(main())
+          PY
+          python /tmp/capture.py
+      - name: Save review artifacts (not public site assets)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openai-original-chart-audit
+          path: capture/
+          retention-days: 7
