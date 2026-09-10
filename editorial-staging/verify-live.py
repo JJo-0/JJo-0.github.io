@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import hashlib
 import json
 import os
 import pathlib
@@ -40,7 +41,7 @@ async def probe_blogger():
     return {'status': 'RATE_LIMITED_NOT_VERIFIED', 'url': BLOGGER, 'attempts': attempts}
 
 async def main():
-    report = {'status': 'RUNNING', 'checked_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'news': [], 'articles': [], 'navier': []}
+    report = {'status': 'RUNNING', 'checked_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'news': [], 'articles': [], 'navier': [], 'image_failures': []}
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
@@ -74,14 +75,29 @@ async def main():
                     assert not await page.evaluate('document.documentElement.scrollWidth > innerWidth + 2'), (slug, width, 'horizontal overflow')
                     images = page.locator('article img')
                     count = await images.count()
+                    decoded = 0
                     for index in range(count):
                         image = images.nth(index)
                         await image.scroll_into_view_if_needed()
-                        await image.evaluate('img => img.decode()')
-                        result = await image.evaluate('''img => { const r=img.getBoundingClientRect(); return {src:img.currentSrc,alt:img.alt,width:img.naturalWidth,height:img.naturalHeight,displayedWidth:r.width,displayedHeight:r.height}; }''')
-                        assert result['width'] > 0 and result['height'] > 0 and result['displayedWidth'] > 0 and result['displayedHeight'] > 0 and result['alt'].strip(), (slug, result)
+                        try:
+                            await image.evaluate('''img => new Promise((resolve,reject) => { if(img.complete) { resolve(); return; } const timer=setTimeout(()=>reject(new Error('Image load timed out')),20000); const finish=()=>{clearTimeout(timer);resolve();}; img.addEventListener('load',finish,{once:true}); img.addEventListener('error',finish,{once:true}); })''')
+                            await image.evaluate('img => img.decode()')
+                            result = await image.evaluate('''img => { const r=img.getBoundingClientRect(); return {src:img.currentSrc,alt:img.alt,width:img.naturalWidth,height:img.naturalHeight,displayedWidth:r.width,displayedHeight:r.height}; }''')
+                            assert result['width'] > 0 and result['height'] > 0 and result['displayedWidth'] > 0 and result['displayedHeight'] > 0 and result['alt'].strip(), result
+                            decoded += 1
+                        except Exception as error:
+                            source = await image.evaluate('img => img.currentSrc || img.src')
+                            failure = {'slug':slug,'viewport':width,'index':index,'src':source,'error':repr(error)}
+                            try:
+                                check = await page.request.get(source, timeout=20000)
+                                body = await check.body()
+                                failure.update(httpStatus=check.status,contentType=check.headers.get('content-type'),bytes=len(body),sha256=hashlib.sha256(body).hexdigest(),firstBytes=body[:100].hex())
+                            except Exception as network_error:
+                                failure['request_error'] = repr(network_error)
+                            report['image_failures'].append(failure)
+                            await page.screenshot(path=str(OUT/f'image-failure-{slug}-{width}-{index}.png'))
                     math_count = await page.locator('article .math-display').count()
-                    report['articles'].append({'slug': slug, 'width': width, 'httpStatus': 200, 'decodedImages': count, 'displayEquations': math_count, 'overflow': False})
+                    report['articles'].append({'slug': slug, 'width': width, 'httpStatus': 200, 'imageCount':count, 'decodedImages': decoded, 'displayEquations': math_count, 'overflow': False})
                     if slug == NAVIER:
                         body = await page.locator('article').inner_text()
                         for phrase in REMOVED:
@@ -102,6 +118,7 @@ async def main():
                         report['navier'].append({'width': width, 'blogger_first_section': True, 'removed_copy': True, 'real_katex_map': True, 'displayEquations': math_count, 'equationGeometry': equation_geometry})
                 await context.close()
             await browser.close()
+        assert not report['image_failures'], report['image_failures']
         report['gitblog_status'] = 'PASS'
         report['blogger'] = await probe_blogger()
         report['status'] = 'PASS' if report['blogger']['status'] == 'PASS' else 'GITBLOG_PASS_EXTERNAL_LINK_NOT_VERIFIED'
@@ -111,6 +128,6 @@ async def main():
         raise
     finally:
         (OUT / 'results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf8')
-        print(json.dumps(report, ensure_ascii=False, indent=2))
+        print(json.dumps(report, ensure_ascii=False,indent=2))
 
 asyncio.run(main())
