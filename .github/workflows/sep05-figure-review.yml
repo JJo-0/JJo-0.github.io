@@ -1,0 +1,53 @@
+name: September 5 figure and supplement review
+on:
+  push:
+    branches: [editorial/sep05-deep-explainers-20260910]
+    paths: [.github/workflows/sep05-figure-review.yml]
+permissions:
+  contents: read
+jobs:
+  figures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download public source figures and supplements
+        run: |
+          python -m pip install requests beautifulsoup4
+          python - <<'PY'
+          import requests,pathlib,json,concurrent.futures,urllib.parse
+          from bs4 import BeautifulSoup
+          root=pathlib.Path('figure-review');root.mkdir(exist_ok=True)
+          assets={
+          'weather-model.png':'https://arxiv.org/html/2609.03582v1/Figures/fig1_alt2.png',
+          'weather-stations.png':'https://arxiv.org/html/2609.03582v1/Figures/fig2_station_eval_standalone.png',
+          'weather-rain.png':'https://arxiv.org/html/2609.03582v1/Figures/fig3_combined.png',
+          'weather-artifacts.png':'https://arxiv.org/html/2609.03582v1/Figures/fig5_combined.png',
+          'astra-injection.png':'https://deploymentsafety.openai.com/data/eval-sets/gpt-6-astra/assets/images/image38.png',
+          'astra-codex.png':'https://deploymentsafety.openai.com/data/eval-sets/gpt-6-astra/assets/images/image22.png',
+          'astra-monitoring.png':'https://deploymentsafety.openai.com/data/eval-sets/gpt-6-astra/assets/images/scatterplots_main.png',
+          'astra-control.png':'https://deploymentsafety.openai.com/data/eval-sets/gpt-6-astra/assets/images/image49.png',
+          'nvidia-repos.png':'https://blogs.nvidia.com/wp-content/uploads/2026/09/light_highres_source-scaled.png',
+          'perovskite-supplement.pdf':'https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41563-026-02722-3/MediaObjects/41563_2026_2722_MOESM1_ESM.pdf'
+          }
+          for i in range(1,5):
+            assets[f'perovskite-figure-{i}.png']=f'https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41563-026-02722-3/MediaObjects/41563_2026_2722_Fig{i}_HTML.png'
+            assets[f'perovskite-data-{i}.xlsx']=f'https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41563-026-02722-3/MediaObjects/41563_2026_2722_MOESM{i+3}_ESM.xlsx'
+            assets[f'perovskite-caption-{i}.html']=f'https://www.nature.com/articles/s41563-026-02722-3/figures/{i}'
+          def fetch(item):
+            name,url=item;result={'name':name,'url':url}
+            try:
+              r=requests.get(url,timeout=60);result.update(status=r.status_code,type=r.headers.get('content-type',''),bytes=len(r.content))
+              if r.status_code==200:
+                (root/name).write_bytes(r.content)
+                if name.endswith('.html'):(root/(name+'.txt')).write_text(BeautifulSoup(r.content,'html.parser').get_text('\n',strip=True))
+            except Exception as e:result['error']=str(e)
+            return result
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(fetch,assets.items()))
+          (root/'manifest.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));print(json.dumps(results,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sep05-figures-and-data
+          path: figure-review/
+          retention-days: 7
