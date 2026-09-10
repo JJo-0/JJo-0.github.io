@@ -80,5 +80,27 @@ POST_TAXONOMY.update(
     }
 )
 
+POST_TAXONOMY.update(
+    {
+        '2026-09-05-aml-paradigm-news.mdx': Taxonomy('health-lifestyle', 'clinical-trial-methods', 'paper-review', ('frontier-one', 'clinical-trial-methods')),
+        '2026-09-05-gpt-6-astra-safety-news.mdx': Taxonomy('ai-machine-learning', 'frontier-model-evaluation', 'research-report', ('frontier-one', 'frontier-model-evaluation')),
+        '2026-09-05-nvidia-hugging-face-news.mdx': Taxonomy('finance-industry', 'ai-infrastructure', 'research-report', ('frontier-one', 'ai-infrastructure')),
+        '2026-09-05-perovskite-interface-news.mdx': Taxonomy('finance-industry', 'photovoltaic-interfaces', 'paper-review', ('frontier-one', 'photovoltaic-interfaces')),
+        '2026-09-06-autothermal-methane-news.mdx': Taxonomy('finance-industry', 'hydrogen-process-engineering', 'paper-review', ('frontier-one', 'hydrogen-process-engineering')),
+        '2026-09-06-clear-ec-news.mdx': Taxonomy('health-lifestyle', 'clinical-oncology', 'paper-review', ('frontier-one', 'clinical-oncology')),
+        '2026-09-06-feederbw-news.mdx': Taxonomy('finance-industry', 'power-grid-data', 'paper-review', ('frontier-one', 'power-grid-data')),
+        '2026-09-06-hugcl-news.mdx': Taxonomy('ai-machine-learning', 'continual-learning-robotics', 'paper-review', ('frontier-one', 'continual-learning-robotics')),
+        '2026-09-06-solar-blind-corona-news.mdx': Taxonomy('finance-industry', 'power-grid-sensing', 'paper-review', ('frontier-one', 'power-grid-sensing')),
+        '2026-09-06-tilted-mnte-news.mdx': Taxonomy('finance-industry', 'spintronics', 'paper-review', ('frontier-one', 'spintronics')),
+        '2026-09-07-dlcatalysis-neuac-news.mdx': Taxonomy('health-lifestyle', 'computational-biomanufacturing', 'paper-review', ('frontier-one', 'computational-biomanufacturing')),
+        '2026-09-07-glud1-hsc-news.mdx': Taxonomy('health-lifestyle', 'stem-cell-bioengineering', 'paper-review', ('frontier-one', 'stem-cell-bioengineering')),
+        '2026-09-08-carep-news.mdx': Taxonomy('health-lifestyle', 'cell-therapy-engineering', 'paper-review', ('frontier-one', 'cell-therapy-engineering')),
+        '2026-09-08-chorus-news.mdx': Taxonomy('health-lifestyle', 'clinical-oncology', 'paper-review', ('frontier-one', 'clinical-oncology')),
+        '2026-09-08-deepwonder3d-news.mdx': Taxonomy('ai-machine-learning', 'biomedical-image-analysis', 'paper-review', ('frontier-one', 'biomedical-image-analysis')),
+        '2026-09-08-imec-nbtin-news.mdx': Taxonomy('finance-industry', 'superconducting-computing', 'research-report', ('frontier-one', 'superconducting-computing')),
+        '2026-09-08-rentosertib-aging-news.mdx': Taxonomy('health-lifestyle', 'aging-biomarkers', 'paper-review', ('frontier-one', 'aging-biomarkers')),
+    }
+)
+
 if __name__ == "__main__":
     raise SystemExit(main())
