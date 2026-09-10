@@ -1,0 +1,70 @@
+---
+import archive from '../../site/news-candidate-archive.json';
+import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+
+const publishedSlugs = new Set((await getPublishedPosts()).map(getPostSlug));
+const appearances = archive.candidates.reduce((total, item) => total + item.dates.length, 0);
+---
+
+<section id="candidate-archive" class="candidate-archive" aria-labelledby="candidate-archive-title" data-news-candidate-archive>
+  <header>
+    <p class="candidate-eyebrow">Frontier One · Full candidate archive</p>
+    <h2 id="candidate-archive-title">9월 5–8일, 대표·보류 후보 모두 보기</h2>
+    <p class="candidate-intro">
+      최종 선정작뿐 아니라 함께 검토한 후보도 남깁니다. <strong>{archive.candidates.length}개 고유 주제</strong>가
+      <strong>{appearances}회</strong> 등장했습니다. HugCL과 MnTe는 두 날짜에서 같은 연구로 연결합니다.
+      후보 선정일과 원문 공개일을 구분하고, 공개된 해설만 내부 링크를 제공합니다.
+    </p>
+    <p class="candidate-status">
+      전체 주제의 상세 원고 초안을 작성했습니다. 원문 그림·집계 방법·재사용 조건의 검토가 남은 원고는 아직 공개 글이 아닙니다.
+      9월 7일 연구 자동화 글의 원문 그래프 보강도 별도로 검토 중입니다. 확인 기준: {archive.reviewedAt}.
+    </p>
+    <nav class="candidate-days" aria-label="후보 선정일">
+      {archive.editionDates.map((date) => <a href={`#candidates-${date}`}>9월 {Number(date.slice(-2))}일</a>)}
+    </nav>
+  </header>
+  {archive.editionDates.map((date) => (
+    <section id={`candidates-${date}`} class="candidate-day" aria-labelledby={`candidate-heading-${date}`}>
+      <h3 id={`candidate-heading-${date}`}>{date} <span>{archive.candidates.filter((item) => item.dates.includes(date)).length}개 후보</span></h3>
+      <div class="candidate-grid">
+        {archive.candidates.filter((item) => item.dates.includes(date)).map((item) => (
+          <article class="candidate-card" data-candidate-id={item.id} data-candidate-edition={date}>
+            <p class="candidate-role">{item.lead ? '그날 대표 선정' : '함께 검토한 후보'}{item.dates.length > 1 && ' · 중복 등장 연구'}</p>
+            <h4>{item.label}</h4>
+            <p class="candidate-evidence">{item.evidence} · 원문 {item.originalDate}</p>
+            <p class="candidate-boundary">{item.boundary}</p>
+            <div class="candidate-actions">
+              {publishedSlugs.has(item.slug)
+                ? <a href={`/posts/${item.slug}/`}>공개 해설 읽기</a>
+                : <span>상세 원고 검토 중</span>}
+              <a href={item.source} target="_blank" rel="noopener noreferrer">1차 출처</a>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  ))}
+</section>
+
+<style>
+  .candidate-archive { max-width: 64rem; margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--color-border); scroll-margin-top: 7rem; }
+  .candidate-eyebrow { font-size: .7rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: var(--color-muted-foreground); }
+  .candidate-archive h2 { margin-top: .65rem; font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 800; line-height: 1.45; }
+  .candidate-intro, .candidate-status { margin-top: 1rem; line-height: 1.85; color: var(--color-muted-foreground); }
+  .candidate-status { font-size: .85rem; padding: 1rem; border: 1px dashed var(--color-border); border-radius: .65rem; }
+  .candidate-days { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.2rem 0; }
+  .candidate-days a { padding: .5rem .85rem; border: 1px solid var(--color-border); border-radius: .5rem; font-size: .85rem; }
+  .candidate-day { margin-top: 2rem; scroll-margin-top: 7rem; }
+  .candidate-day h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 1rem; }
+  .candidate-day h3 span { margin-left: .5rem; font-size: .75rem; font-weight: 500; color: var(--color-muted-foreground); }
+  .candidate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .candidate-card { min-width: 0; border: 1px solid var(--color-border); border-radius: .7rem; padding: 1.1rem; overflow-wrap: anywhere; }
+  .candidate-role { font-size: .7rem; font-weight: 700; color: var(--color-muted-foreground); }
+  .candidate-card h4 { margin-top: .5rem; font-size: 1rem; font-weight: 800; line-height: 1.65; }
+  .candidate-evidence { margin-top: .55rem; font-size: .7rem; color: var(--color-muted-foreground); }
+  .candidate-boundary { margin-top: .7rem; font-size: .85rem; line-height: 1.85; }
+  .candidate-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem; margin-top: 1rem; font-size: .8rem; }
+  .candidate-actions a, .candidate-days a { text-decoration: underline; text-underline-offset: .2em; }
+  .candidate-actions span { color: var(--color-muted-foreground); }
+  @media (max-width: 640px) { .candidate-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
