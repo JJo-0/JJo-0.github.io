@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p audit
           python - <<'PY'
-          import base64,hashlib,json,lzma,pathlib,shutil,subprocess
+          import base64,hashlib,json,lzma,pathlib,shutil,subprocess,re
           staged=pathlib.Path('staging/editorial-staging')
           encoded=''.join((staged/f'release-{i}.b64').read_text().strip() for i in range(4))
           raw=lzma.decompress(base64.b64decode(encoded,validate=True))
@@ -54,13 +54,19 @@ jobs:
               src=pathlib.Path('media')/asset['name']
               assert hashlib.sha256(src.read_bytes()).hexdigest()==asset['sha256'],asset['name']
               f=target(asset['path']);f.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(src,f)
+          weather=target('spaceship-ui/site/content/posts/2026-09-05-weathernext-3-frontier-one.mdx')
+          text=weather.read_text()
+          text=re.sub(r'\*\*([^\n]+?)\*\*',r'<strong>\1</strong>',text)
+          assert '\nslug:' not in text.split('---',2)[1]
+          text=text.replace('pubDate: 2026-09-05\n','pubDate: 2026-09-05\nslug: 2026-09-05-weathernext-3-frontier-one\n',1)
+          weather.write_text(text,encoding='utf8')
           nav=(root/'spaceship-ui/site/content/posts/2026-09-09-navier-stokes-openai-frontier-one.mdx').read_text()
           assert 'https://jjo-0.blogspot.com/2026/09/navierstokes-ai.html' in nav
           assert nav.count('<Math ')>=33
           for removed in ['사용자가 제공한 공식 사이트의 별도 시각화도','<strong>검토 범위:</strong>','<strong>2026년 9월 9일 · 수학과 AI 연구</strong>']:
               assert removed not in nav,removed
           assert 'NewsCandidateArchive' not in (root/'spaceship-ui/src/pages/news.astro').read_text()
-          pathlib.Path('audit/apply.json').write_text(json.dumps({'base':p['base'],'payload_sha256':expected,'text_files':len(p['files']),'deleted':p['delete'],'assets':p['assets'],'editions':p['editions']},ensure_ascii=False,indent=2))
+          pathlib.Path('audit/apply.json').write_text(json.dumps({'base':p['base'],'payload_sha256':expected,'text_files':len(p['files']),'deleted':p['delete'],'assets':p['assets'],'editions':p['editions'],'post_apply_fixes':['WeatherNext explicit slug','WeatherNext HTML emphasis']},ensure_ascii=False,indent=2))
           print('Applied',len(p['files']),'text files and',len(p['assets']),'verified image assets')
           PY
       - uses: pnpm/action-setup@v4
@@ -106,7 +112,7 @@ jobs:
         run: |
           python -m pip install beautifulsoup4
           python - <<'PY'
-          import json,pathlib,collections
+          import json,pathlib
           from bs4 import BeautifulSoup
           root=pathlib.Path('release/spaceship-ui/dist')
           if not (root/'news/index.html').exists():
@@ -151,7 +157,7 @@ jobs:
           git diff --cached --stat
           git commit -m "news: publish September 5-8 articles and the typeset Navier-Stokes guide" -m "Remove the candidate archive, group actual articles by edition date, publish 17 new explainers and WeatherNext, replace the Navier article with its 33-equation educational version, and link the exact Blogger introduction. Preserve existing publishing and browser checks."
           git push origin HEAD
-          git rev-parse HEAD > ../../release-sha.txt
+          git rev-parse HEAD > ../audit/release-sha.txt
           git show --format=fuller --stat HEAD > ../audit/release-commit.txt
           printf '{"sha":"%s","branch":"%s","status":"VALIDATED_NOT_DEPLOYED"}\n' "$(git rev-parse HEAD)" "$(git branch --show-current)" > ../audit/release.json
       - uses: actions/upload-artifact@v4
