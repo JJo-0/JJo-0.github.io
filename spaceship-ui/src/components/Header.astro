@@ -12,10 +12,12 @@ interface NavLink {
 
 interface Props {
   pageLang?: string;
+  englishPath?: string;
 }
 
-const { pageLang = SITE.lang } = Astro.props;
+const { pageLang = SITE.lang, englishPath } = Astro.props;
 const isKoreanPage = pageLang.toLowerCase().startsWith('ko');
+const showEnglishLink = isKoreanPage && typeof englishPath === 'string' && englishPath.length > 0;
 const currentPath = Astro.url.pathname;
 const currentPostSlug = currentPath.startsWith('/posts/')
   ? decodeURIComponent(currentPath.slice('/posts/'.length).replace(/\/$/, ''))
@@ -26,7 +28,7 @@ const [projects, appearances, currentPost] = await Promise.all([
   SITE.publicSections.appearances ? getCollection('appearances') : Promise.resolve([]),
   currentPostSlug
     ? getPublishedPosts().then((posts) =>
-        posts.find((post) => getPostSlug(post) === currentPostSlug),
+        posts.find((post) => getPostSlug(post) === currentPostSlug)
       )
     : Promise.resolve(undefined),
 ]);
@@ -89,16 +91,16 @@ const navClass = (href: string) => [
 
       <div class="flex shrink-0 items-center gap-1 sm:gap-2">
         {
-          isKoreanPage && (
-            <button
-              type="button"
+          showEnglishLink && (
+            <a
+              href={englishPath}
+              hreflang="en"
               class="language-header-switch"
-              data-language-english
               aria-label="View this page in English"
               title="View in English"
             >
               EN
-            </button>
+            </a>
           )
         }
         <Search client:load />
