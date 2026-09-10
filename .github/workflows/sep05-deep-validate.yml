@@ -1,0 +1,194 @@
+name: Validate September 5 deep explainers
+on:
+  push:
+    branches: [editorial/sep05-deep-explainers-20260910]
+    paths: [.github/workflows/sep05-deep-validate.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: sep05-deep-explainer-release
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: staging
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 6c262d0aeedf6f99f80e838f95744fda9a9def16
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: sep05-figures-and-data
+          run-id: 34456703628
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: primary-figures
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare source-data figure renderer
+        run: |
+          python -m pip install matplotlib pillow beautifulsoup4 playwright==1.58.0
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          python -m playwright install --with-deps chromium
+          mkdir -p editorial-audit
+          python -m pip freeze > editorial-audit/renderer-environment.txt
+      - name: Render verified measurements and original figure extracts
+        run: |
+          python staging/editorial-staging/sep05/build_assets.py primary-figures release/spaceship-ui/site/assets/assets/posts/sep05-deep
+          mv release/spaceship-ui/site/assets/assets/posts/sep05-asset-report.json editorial-audit/asset-report.json
+      - name: Apply only the five approved article rewrites and scoped components
+        run: |
+          python - <<'PY'
+          import pathlib,json,re,shutil
+          r=pathlib.Path('release');s=pathlib.Path('staging/editorial-staging/sep05')
+          names=['2026-09-05-weathernext-3-frontier-one','2026-09-05-aml-paradigm-news','2026-09-05-perovskite-interface-news','2026-09-05-gpt-6-astra-safety-news','2026-09-05-nvidia-hugging-face-news']
+          assets=json.loads(pathlib.Path('editorial-audit/asset-report.json').read_text())['assets']
+          report=[]
+          for name in names:
+              target=r/'spaceship-ui/site/content/posts'/f'{name}.mdx'
+              before=target.read_text();after=(s/f'{name}.mdx').read_text()
+              for forbidden in ['편집 점수','증거 등급','INDUSTRY_TRIGGER','EARLY_SIGNAL','공식 시각자료 후보','이 draft']:
+                  assert forbidden not in after,(name,forbidden)
+              assert 'pubDate: 2026-09-05' in after
+              assert len(re.findall(r'^## ',after,re.M))>=10,name
+              assert len(after)>6500,(name,len(after))
+              assert len(after)>len(before)*1.35,(name,len(before),len(after))
+              assert '<ResearchFigure ' in after and '<ResearchFlow ' in after,name
+              def size(match):
+                  tag=match.group(0);filename=re.search(r'src="/assets/posts/sep05-deep/([^"]+)"',tag).group(1)
+                  a=assets[filename]
+                  tag=re.sub(r'\s+(width|height)=\{\d+\}','',tag)
+                  return tag.replace(' />',f' width={{{a["width"]}}} height={{{a["height"]}}} />')
+              after=re.sub(r'<ResearchFigure\s[^>]+?/>',size,after)
+              after=re.sub(r'(https://arxiv.org/html/2609\.03582v1)#[A-Za-z0-9.]+',r'\1',after)
+              after='\n'.join(line.rstrip() for line in after.splitlines())+'\n'
+              target.write_text(after)
+              report.append({'slug':name,'before_source_characters':len(before),'after_source_characters':len(after),'images':after.count('<ResearchFigure '),'explanatory_diagrams':after.count('<ResearchFlow '),'sections':len(re.findall(r'^## ',after,re.M))})
+          for name in ['ResearchFigure.astro','ResearchFlow.astro']:
+              text=(s/name).read_text()
+              if name=='ResearchFigure.astro':
+                  text=text.replace('</style>','  .figure-viewport:has(img[src$="perovskite-module-photo.webp"]) { max-width:23rem; margin-inline:auto; }\n</style>')
+              (r/'spaceship-ui/src/components/post'/name).write_text(text)
+          record=r/'spaceship-ui/ops/blog-harness/records/2026-09-10-sep05-deep-rewrite.json'
+          record.write_text(json.dumps({'scope':'Five September 5 articles only','editorial_changes':report,'figure_provenance':json.loads(pathlib.Path('editorial-audit/asset-report.json').read_text()),'limits':['AML results use the public abstract; no patient-level survival curve reconstruction','NVIDIA article is based on transaction filings and platform documentation, not an invented research paper','Source figure extracts are identified and accompanied by substantive interpretation']},ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('editorial-audit/article-changes.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+          cd release
+          git diff --check
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: release/spaceship-ui/pnpm-lock.yaml
+      - name: Install unchanged site dependencies
+        working-directory: release/spaceship-ui
+        run: pnpm install --frozen-lockfile
+      - name: Taxonomy, lint, types and SEO
+        working-directory: release/spaceship-ui
+        run: |
+          pnpm taxonomy:check
+          pnpm lint
+          pnpm check
+          pnpm seo:check
+      - name: Build and preserve every existing content contract
+        working-directory: release/spaceship-ui
+        run: |
+          pnpm build
+          pnpm content:check
+      - name: Existing browser regression matrix
+        working-directory: release/spaceship-ui
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+      - name: Read all five pages and all figures at mobile and desktop sizes
+        run: |
+          python -m http.server 8765 --directory release/spaceship-ui/dist > editorial-audit/server.log 2>&1 &
+          python - <<'PY'
+          import asyncio,json,pathlib,re
+          from playwright.async_api import async_playwright
+          out=pathlib.Path('editorial-audit');rows=json.loads((out/'article-changes.json').read_text());results=[]
+          async def main():
+              async with async_playwright() as p:
+                  browser=await p.chromium.launch()
+                  for width,height in [(390,844),(1440,1000)]:
+                      context=await browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce',color_scheme='light')
+                      page=await context.new_page()
+                      await page.route('**/*',lambda route:route.abort() if any(d in route.request.url for d in ['googlesyndication.com','doubleclick.net','google-analytics.com','googletagmanager.com']) else route.continue_())
+                      for row in rows:
+                          slug=row['slug'];response=await page.goto('http://127.0.0.1:8765/posts/'+slug+'/',wait_until='domcontentloaded')
+                          assert response.status==200,(slug,response.status)
+                          await page.locator('article h2').first.wait_for();await page.evaluate('document.fonts.ready')
+                          article=page.locator('article');text=await article.inner_text()
+                          for term in ['편집 점수','증거 등급','INDUSTRY_TRIGGER','EARLY_SIGNAL']:
+                              assert term not in text,(slug,term)
+                          assert await article.locator('.katex-error').count()==0,slug
+                          assert await article.locator('[data-research-figure]').count()==row['images'],slug
+                          assert await article.locator('[data-research-flow]').count()==row['explanatory_diagrams'],slug
+                          images=article.locator('[data-research-figure] img')
+                          for i in range(await images.count()):
+                              im=images.nth(i);await im.scroll_into_view_if_needed()
+                              await im.evaluate('''img => new Promise((resolve,reject)=> {const check=()=>img.complete&&img.naturalWidth>0; if(check())return resolve(true); const timer=setTimeout(()=>reject(new Error('image load timeout: '+img.src)),20000);img.addEventListener('load',()=>{clearTimeout(timer);resolve(true)},{once:true});img.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('image failed: '+img.src))},{once:true});})''')
+                              await im.evaluate('img => img.decode()')
+                              assert await im.get_attribute('alt'),slug
+                          assert not await page.evaluate('document.documentElement.scrollWidth > innerWidth + 2'),(slug,width,'page overflow')
+                          captions=await article.locator('[data-research-figure] figcaption').all_inner_texts()
+                          assert all(len(c)>70 for c in captions),(slug,'caption missing')
+                          await article.locator('h2').first.scroll_into_view_if_needed()
+                          await page.screenshot(path=str(out/(slug+'-'+str(width)+'-intro.png')))
+                          for i in range(await article.locator('[data-research-figure]').count()):
+                              f=article.locator('[data-research-figure]').nth(i);await f.scroll_into_view_if_needed()
+                              await f.screenshot(path=str(out/(slug+'-'+str(width)+'-figure-'+str(i+1)+'.png')))
+                          results.append({'slug':slug,'viewport':width,'status':'PASS','reader_text_characters':len(text),'figures':len(captions),'equations':await article.locator('.math-display').count(),'diagrams':row['explanatory_diagrams'],'decoded_images':await images.count(),'page_overflow':False})
+                          (out/'browser-results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+                      await context.close()
+                  await browser.close()
+          asyncio.run(main())
+          assert len(results)==10
+          print(json.dumps(results,ensure_ascii=False,indent=2))
+          PY
+      - name: Create a clean validated release branch without staging files
+        working-directory: release
+        run: |
+          expected=6c262d0aeedf6f99f80e838f95744fda9a9def16
+          current=$(git ls-remote origin refs/heads/main | cut -f1)
+          test "$current" = "$expected" || { echo 'Main changed; no overwrite or promotion allowed'; exit 1; }
+          git config user.name Jiho
+          git config user.email 76779256+JJo-0@users.noreply.github.com
+          git switch -c editorial/validated-sep05-deep-20260910
+          git add spaceship-ui/site/content/posts/2026-09-05-*.mdx spaceship-ui/src/components/post/ResearchFigure.astro spaceship-ui/src/components/post/ResearchFlow.astro spaceship-ui/site/assets/assets/posts/sep05-deep spaceship-ui/ops/blog-harness/records/2026-09-10-sep05-deep-rewrite.json
+          git diff --cached --check
+          git commit -m 'news: expand all five September 5 explainers with source figures and detailed interpretation'
+          git push origin HEAD
+          printf '{"branch":"editorial/validated-sep05-deep-20260910","sha":"%s","status":"VALIDATED_NOT_DEPLOYED"}\n' "$(git rev-parse HEAD)" > ../editorial-audit/release.json
+          git show --stat --oneline HEAD > ../editorial-audit/release-diff.txt
+      - name: Package article sources and figures without fonts or publisher PDFs
+        if: success()
+        run: |
+          python - <<'PY'
+          import zipfile,pathlib,json
+          root=pathlib.Path('release');out=pathlib.Path('editorial-audit');rows=json.loads((out/'article-changes.json').read_text())
+          with zipfile.ZipFile(out/'sep05-expanded-articles.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for row in rows:
+                  f=root/'spaceship-ui/site/content/posts'/f'{row["slug"]}.mdx';z.write(f,'articles/'+f.name)
+              for f in (root/'spaceship-ui/site/assets/assets/posts/sep05-deep').iterdir():z.write(f,'figures/'+f.name)
+              for name in ['ResearchFigure.astro','ResearchFlow.astro']:
+                  f=root/'spaceship-ui/src/components/post'/name;z.write(f,'components/'+name)
+              z.write(out/'article-changes.json','article-changes.json');z.write(out/'asset-report.json','figure-provenance.json')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sep05-deep-editorial-review
+          path: editorial-audit/
+          retention-days: 7
