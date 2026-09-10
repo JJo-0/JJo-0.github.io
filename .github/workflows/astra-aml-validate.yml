@@ -41,7 +41,7 @@ jobs:
         run: |
           mkdir -p audit
           python - <<'PY'
-          import base64,hashlib,json,lzma,pathlib,subprocess
+          import base64,hashlib,json,lzma,pathlib,subprocess,shutil
           staging=pathlib.Path('staging/editorial-staging')
           encoded=''.join((staging/f'review-payload-{i}.b64').read_text().strip() for i in range(4))
           raw=lzma.decompress(base64.b64decode(encoded,validate=True))
@@ -63,8 +63,15 @@ jobs:
                   assert 'pubDate: 2026-09-05' in text and 'draft: false' in text
               target=root/name;target.parent.mkdir(parents=True,exist_ok=True)
               target.write_text('\n'.join(line.rstrip() for line in text.splitlines())+'\n',encoding='utf8')
-          pathlib.Path('audit/source-package.json').write_text(json.dumps({'sha256':expected,'base':package['base'],'paths':sorted(allowed)},indent=2))
-          print('Verified and applied four exact source files')
+          audit_path='spaceship-ui/scripts/browser-news-media-audit.mjs'
+          assert subprocess.check_output(['git','hash-object',audit_path],cwd=root,text=True).strip()=='aeb25f66d7f01551fde07eb53dba106d16b190d6'
+          audit_source=(staging/'browser-news-media-audit.mjs').read_text()
+          assert 'figures: 11, flows: 1, equations: 10' in audit_source
+          assert 'figures: 6, flows: 3, equations: 3' in audit_source
+          assert 'result.imageCount >= 3 && result.diagramCount >= 2' in audit_source
+          shutil.copyfile(staging/'browser-news-media-audit.mjs',root/audit_path)
+          pathlib.Path('audit/source-package.json').write_text(json.dumps({'sha256':expected,'base':package['base'],'paths':sorted(allowed),'additional_test':audit_path,'legacy_media_checks_preserved':True,'research_figures_exact_counts':[11,6]},indent=2))
+          print('Verified and applied four source files and source-layout media integration tests')
           PY
       - name: Build source-preserving imagery and factual or explicitly synthetic charts
         run: |
@@ -93,7 +100,8 @@ jobs:
           Clinical outcome plots are independently generated from public factual summaries. The Kaplan–Meier teaching example and base-rate curve are explicitly synthetic calculations, not patient data or measured model performance.
           No publisher paper PDF, downloaded font file, login-only asset, or full research report is republished.
           Sources: NEJM doi:10.1056/NEJMoa2602804; NCT04801797; MGB 2026-09-02 institutional account; NCI drug definitions and BCL-2 image; ELN 2021 MRD consensus; OpenAI Astra system card, updated 2026-09-09; Guan et al. arXiv:2512.18311v1.
-          Publication must follow unchanged repository checks and independent live image/math verification.
+          Media smoke recognizes the actual research-figure layout with exact 11/6 figure and 1/3 native-flow inventories and equation checks; the original three-image/two-diagram rules remain for all legacy layouts.
+          Publication must follow all repository checks and independent live image/math verification.
           '''.replace('          ',''),encoding='utf8')
           PY
       - uses: pnpm/action-setup@v4
@@ -127,7 +135,7 @@ jobs:
       - name: All unchanged content contracts
         working-directory: release/spaceship-ui
         run: pnpm content:check
-      - name: Existing browser matrix
+      - name: Full browser matrix including both source-figure layouts
         working-directory: release/spaceship-ui
         env:
           JJO_SMOKE_REQUIRE_GPU: '0'
@@ -166,9 +174,9 @@ jobs:
           git config user.name 'Jiho'
           git config user.email '76779256+JJo-0@users.noreply.github.com'
           git switch -c "editorial/validated-astra-aml-${RUN_ID}"
-          git add spaceship-ui/site/content/posts/2026-09-05-gpt-6-astra-safety-news.mdx spaceship-ui/site/content/posts/2026-09-05-aml-paradigm-news.mdx spaceship-ui/src/components/post/ResearchFigure.astro spaceship-ui/src/components/post/ResearchFlow.astro spaceship-ui/site/assets/assets/posts/astra-aml-review spaceship-ui/site/news-media.json spaceship-ui/ops/blog-harness/records/2026-09-10-astra-aml-revision.md
+          git add spaceship-ui/site/content/posts/2026-09-05-gpt-6-astra-safety-news.mdx spaceship-ui/site/content/posts/2026-09-05-aml-paradigm-news.mdx spaceship-ui/src/components/post/ResearchFigure.astro spaceship-ui/src/components/post/ResearchFlow.astro spaceship-ui/scripts/browser-news-media-audit.mjs spaceship-ui/site/assets/assets/posts/astra-aml-review spaceship-ui/site/news-media.json spaceship-ui/ops/blog-harness/records/2026-09-10-astra-aml-revision.md
           git diff --cached --check
-          git commit -m "news: explain Astra safety evaluations and AML results with original figures" -m "Replace two short articles with source-led Korean guides, 17 displayed figures, native explanatory diagrams and derived metrics. Remove the unrelated engineering lesson. Preserve publication dates, original routes and all existing checks."
+          git commit -m "news: explain Astra safety evaluations and AML results with original figures" -m "Replace two short articles with source-led Korean guides, 17 displayed figures, native explanatory diagrams and derived metrics. Remove the unrelated engineering lesson. Preserve publication dates and original routes. Extend media verification to the research-figure layout while preserving all legacy checks."
           git push origin HEAD
           git rev-parse HEAD > ../audit/release-sha.txt
           git show --format=fuller --stat HEAD > ../audit/release-commit.txt
