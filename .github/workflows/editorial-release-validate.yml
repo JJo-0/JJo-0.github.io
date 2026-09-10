@@ -1,0 +1,162 @@
+name: Validate approved dated NEWS release
+on:
+  push:
+    branches: [editorial/publish-sep05-08-20260910]
+    paths: [.github/workflows/editorial-release-validate.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: editorial-dated-news-validation
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: staging
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: bd30ef681b857c7172e02e667e76e10644094ed9
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: editorial-source-media
+          run-id: 34448107870
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: media
+      - name: Validate and apply the exact approved content package
+        run: |
+          mkdir -p audit
+          python - <<'PY'
+          import base64,hashlib,json,lzma,pathlib,shutil,subprocess
+          staged=pathlib.Path('staging/editorial-staging')
+          encoded=''.join((staged/f'release-{i}.b64').read_text().strip() for i in range(4))
+          raw=lzma.decompress(base64.b64decode(encoded,validate=True))
+          expected='cee55c7951d21d95e08e9885b97be20c072c92a1f596ae9b0c35534da3531275'
+          assert hashlib.sha256(raw).hexdigest()==expected,'Payload hash mismatch; do not apply'
+          p=json.loads(raw); root=pathlib.Path('release').resolve()
+          assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==p['base']
+          def target(name):
+              assert name.startswith(('spaceship-ui/','scripts/')) and '..' not in pathlib.PurePosixPath(name).parts,name
+              f=root/name;assert f.resolve().is_relative_to(root),name
+              return f
+          for name,sha in p['expected'].items():
+              f=target(name)
+              assert (hashlib.sha256(f.read_bytes()).hexdigest() if f.exists() else None)==sha,('Base conflict',name)
+          for name,text in p['files'].items():
+              f=target(name);f.parent.mkdir(parents=True,exist_ok=True);f.write_text(text,encoding='utf8')
+          for name in p['delete']:target(name).unlink()
+          for asset in p['assets']:
+              src=pathlib.Path('media')/asset['name']
+              assert hashlib.sha256(src.read_bytes()).hexdigest()==asset['sha256'],asset['name']
+              f=target(asset['path']);f.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(src,f)
+          nav=(root/'spaceship-ui/site/content/posts/2026-09-09-navier-stokes-openai-frontier-one.mdx').read_text()
+          assert 'https://jjo-0.blogspot.com/2026/09/navierstokes-ai.html' in nav
+          assert nav.count('<Math ')>=33
+          for removed in ['사용자가 제공한 공식 사이트의 별도 시각화도','<strong>검토 범위:</strong>','<strong>2026년 9월 9일 · 수학과 AI 연구</strong>']:
+              assert removed not in nav,removed
+          assert 'NewsCandidateArchive' not in (root/'spaceship-ui/src/pages/news.astro').read_text()
+          pathlib.Path('audit/apply.json').write_text(json.dumps({'base':p['base'],'payload_sha256':expected,'text_files':len(p['files']),'deleted':p['delete'],'assets':p['assets'],'editions':p['editions']},ensure_ascii=False,indent=2))
+          print('Applied',len(p['files']),'text files and',len(p['assets']),'verified image assets')
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: release/spaceship-ui/pnpm-lock.yaml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install unchanged lockfile dependencies
+        working-directory: release/spaceship-ui
+        run: pnpm install --frozen-lockfile
+      - name: Taxonomy
+        working-directory: release/spaceship-ui
+        run: pnpm taxonomy:check
+      - name: Lint
+        working-directory: release/spaceship-ui
+        run: pnpm lint
+      - name: Type check
+        working-directory: release/spaceship-ui
+        run: pnpm check
+      - name: SEO and publishing gates
+        working-directory: release/spaceship-ui
+        run: |
+          pnpm seo:check
+          pnpm blog:harness:check
+      - name: Build
+        working-directory: release/spaceship-ui
+        run: pnpm build
+      - name: All content contracts
+        working-directory: release/spaceship-ui
+        run: pnpm content:check
+      - name: Existing full browser matrix
+        working-directory: release/spaceship-ui
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+      - name: Verify published date groups, removed copy and direct Blogger link in output
+        run: |
+          python -m pip install beautifulsoup4
+          python - <<'PY'
+          import json,pathlib,collections
+          from bs4 import BeautifulSoup
+          root=pathlib.Path('release/spaceship-ui/dist')
+          if not (root/'news/index.html').exists():
+              candidates=list(pathlib.Path('release/spaceship-ui').glob('**/news/index.html'))
+              assert len(candidates)==1,candidates
+              root=candidates[0].parent.parent
+          news=BeautifulSoup((root/'news/index.html').read_text(),'html.parser')
+          expected={'2026-09-05':5,'2026-09-06':6,'2026-09-07':3,'2026-09-08':5}
+          groups={}
+          for date,count in expected.items():
+              group=news.select_one(f'[data-news-date="{date}"]');assert group,date
+              cards=group.select('[data-news-card]');assert len(cards)==count,(date,len(cards))
+              groups[date]=[c.get('data-news-card') for c in cards]
+              for slug in groups[date]:
+                  f=root/'posts'/slug/'index.html';assert f.exists(),slug
+                  page=BeautifulSoup(f.read_text(),'html.parser');assert not page.select('.katex-error'),slug
+          for text in ['Full candidate archive','대표·보류 후보 모두 보기','19개 고유 주제가','상세 원고 검토 중']:
+              assert text not in news.get_text(),text
+          slug='2026-09-09-navier-stokes-openai-frontier-one'
+          nav=BeautifulSoup((root/'posts'/slug/'index.html').read_text(),'html.parser')
+          article=nav.select_one('article');assert article
+          assert article.select_one('a[href="https://jjo-0.blogspot.com/2026/09/navierstokes-ai.html"]')
+          assert article.select_one('[data-typeset-equation-map]')
+          assert len(article.select('.math-display'))>=33
+          assert not article.select('.katex-error')
+          for text in ['사용자가 제공한 공식 사이트의 별도 시각화도','검토 범위:','2026년 9월 9일 · 수학과 AI 연구']:
+              assert text not in article.get_text(),text
+          result={'status':'PASS','groups':groups,'navier_display_math':len(article.select('.math-display')),'blogger_direct_link':True,'archive_removed':True,'typeset_map':True}
+          pathlib.Path('audit/output-check.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+          print(json.dumps(result,ensure_ascii=False,indent=2))
+          PY
+      - name: Commit only validated source files to an isolated release branch
+        working-directory: release
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          git config user.name 'Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git switch -c "editorial/validated-news-${RUN_ID}"
+          git add spaceship-ui scripts/normalize_tags_current.py
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "news: publish September 5-8 articles and the typeset Navier-Stokes guide" -m "Remove the candidate archive, group actual articles by edition date, publish 17 new explainers and WeatherNext, replace the Navier article with its 33-equation educational version, and link the exact Blogger introduction. Preserve existing publishing and browser checks."
+          git push origin HEAD
+          git rev-parse HEAD > ../../release-sha.txt
+          git show --format=fuller --stat HEAD > ../audit/release-commit.txt
+          printf '{"sha":"%s","branch":"%s","status":"VALIDATED_NOT_DEPLOYED"}\n' "$(git rev-parse HEAD)" "$(git branch --show-current)" > ../audit/release.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: approved-news-release-validation
+          path: audit/
+          retention-days: 7
