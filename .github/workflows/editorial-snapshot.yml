@@ -11,13 +11,31 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - name: Collect source and existing publishing contracts
+      - name: Read the public Blogger feed and verify matching article URLs
         run: |
           mkdir -p /tmp/editorial-snapshot
-          git rev-parse HEAD > /tmp/editorial-snapshot/head.txt
-          git archive --format=tar HEAD spaceship-ui scripts .github/workflows | gzip > /tmp/editorial-snapshot/source.tar.gz
+          python - <<'PY'
+          import urllib.request,json,pathlib,re
+          out=pathlib.Path('/tmp/editorial-snapshot')
+          url='https://jjo-0.blogspot.com/feeds/posts/default?alt=json&max-results=150'
+          with urllib.request.urlopen(url,timeout=40) as r: feed=json.load(r)
+          result=[]
+          for e in feed.get('feed',{}).get('entry',[]):
+              title=e.get('title',{}).get('$t','')
+              links=[a['href'] for a in e.get('link',[]) if a.get('rel')=='alternate']
+              if any(k in title.lower() for k in ['navier','나비에','스토크스']):
+                  item={'id':e.get('id',{}).get('$t'),'title':title,'urls':links,'published':e.get('published',{}).get('$t'),'content':e.get('content',{}).get('$t','')}
+                  if links:
+                      with urllib.request.urlopen(links[0],timeout=40) as r:
+                          item['http_status']=r.status; html=r.read().decode('utf8'); item['canonical']=re.findall(r'<link[^>]*href=[\"\x27]([^\"\x27]+)[\"\x27][^>]*rel=[\"\x27]canonical',html)
+                  result.append(item)
+          (out/'blogger-matches.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf8')
+          print(json.dumps(result,ensure_ascii=False,indent=2))
+          assert result,'No matching Blogger post was found; do not invent a link'
+          PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: editorial-source-snapshot
+          name: editorial-blogger-link
           path: /tmp/editorial-snapshot/
           retention-days: 3
