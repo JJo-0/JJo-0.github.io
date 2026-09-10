@@ -1,0 +1,169 @@
+name: Validate illustrated Astra AML release
+on:
+  push:
+    branches: [editorial/astra-aml-source-guide-20260910]
+    paths: [.github/workflows/astra-aml-release-v3.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: astra-aml-revision-validation
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: staging
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 6c262d0aeedf6f99f80e838f95744fda9a9def16
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: astra-aml-primary-reading
+          run-id: 34466222764
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: sources/latest
+      - uses: actions/download-artifact@v4
+        with:
+          name: astra-aml-background
+          run-id: 34466843233
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: sources/background
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify and apply exact article package and tested layout integration
+        run: |
+          mkdir -p audit
+          python - <<'PY'
+          import base64,hashlib,json,lzma,pathlib,subprocess,shutil
+          staging=pathlib.Path('staging/editorial-staging');root=pathlib.Path('release')
+          encoded=''.join((staging/f'review-payload-{i}.b64').read_text().strip() for i in range(4))
+          raw=lzma.decompress(base64.b64decode(encoded,validate=True))
+          expected='d95d8aa0c32b4fd206112786b800cf7fdc9cd8078a33d39de48e1d690e6f182a'
+          assert hashlib.sha256(raw).hexdigest()==expected
+          package=json.loads(raw)
+          assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==package['base']
+          allowed={'spaceship-ui/site/content/posts/2026-09-05-gpt-6-astra-safety-news.mdx','spaceship-ui/site/content/posts/2026-09-05-aml-paradigm-news.mdx','spaceship-ui/src/components/post/ResearchFigure.astro','spaceship-ui/src/components/post/ResearchFlow.astro'}
+          assert set(package['files'])==allowed
+          for name,text in package['files'].items():
+              if name.endswith('.mdx'):
+                  for banned in ['공학자가 이 시험에서 배울 점','편집 점수','증거 등급','INDUSTRY_TRIGGER','EARLY_SIGNAL']:
+                      assert banned not in text,(name,banned)
+                  assert 'pubDate: 2026-09-05' in text and 'draft: false' in text
+              target=root/name;target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_text('\n'.join(line.rstrip() for line in text.splitlines())+'\n',encoding='utf8')
+          audit_path='spaceship-ui/scripts/browser-news-media-audit.mjs'
+          assert subprocess.check_output(['git','hash-object',audit_path],cwd=root,text=True).strip()=='aeb25f66d7f01551fde07eb53dba106d16b190d6'
+          test=(staging/'browser-news-media-audit.mjs').read_text()
+          assert 'result.imageCount >= 3 && result.diagramCount >= 2' in test
+          assert 'figures: 11, flows: 1, equations: 10' in test and 'figures: 6, flows: 3, equations: 3' in test
+          shutil.copyfile(staging/'browser-news-media-audit.mjs',root/audit_path)
+          pathlib.Path('audit/source-package.json').write_text(json.dumps({'base':package['base'],'sha256':expected,'article_paths':sorted(allowed),'legacy_media_checks_preserved':True},indent=2))
+          PY
+          python staging/editorial-staging/apply-news-context.py
+      - name: Build figures from original sources and explicitly labeled teaching examples
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-nanum
+          python -m pip install 'numpy<3' 'matplotlib<4' 'Pillow<13' beautifulsoup4
+          python staging/editorial-staging/build-review-assets.py
+      - name: Register source provenance and thumbnails
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          from PIL import Image
+          root=pathlib.Path('release/spaceship-ui');file=root/'site/news-media.json';media=json.loads(file.read_text())
+          specs=[('astra-evaluations','2026-09-05-gpt-6-astra-safety-news','astra-05.webp','간접 프롬프트 주입 평가에서 공격 시도 횟수에 따른 성공률을 비교한 OpenAI 원본 그래프','https://deploymentsafety.openai.com/gpt-6-astra/prompt-injection','OpenAI · GPT-6 Astra system card · Figure 5','원문 평가 그림 인용'),('aml-clinical-results','2026-09-05-aml-paradigm-news','aml-efs.png','PARADIGM 두 치료군의 중앙 EFS와 95% 신뢰구간을 그린 그래프','https://www.nejm.org/doi/abs/10.1056/NEJMoa2602804','JJo · 공개 요약 수치의 독립 시각화','자체 제작 그래프')]
+          for i,(key,slug,name,alt,source,credit,license) in enumerate(specs):
+              assert not any(v['slug']==slug for v in media.values()),('Existing thumbnail conflict',slug)
+              im=Image.open(root/'site/assets/assets/posts/astra-aml-review'/name)
+              media[key]={'slug':slug,'order':21+i,'src':'/assets/posts/astra-aml-review/'+name,'width':im.width,'height':im.height,'alt':alt,'kind':'평가 결과 그래프','caption':alt,'credit':credit,'source':source,'license':license,'rights':source,'changes':'원본 그림 내용 변경 없음' if i==0 else '공개 중앙값과 신뢰구간을 자체 시각화; 실제 환자 생존곡선 아님'}
+          file.write_text(json.dumps(media,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
+          record=root/'ops/blog-harness/records/2026-09-10-astra-aml-revision.md'
+          record.write_text('# Astra and AML source-led revisions\n\nUser-authorized update of the two existing September 5 articles.\n\nAstra: ten selected original system-card figures are quoted with source attribution and individual Korean criticism and interpretation. No open license or general reuse permission is asserted.\n\nAML: the NCI protein-structure image credits Dan Cojocari, CC BY 3.0; it is background, not a PARADIGM result. Outcome plots independently visualize factual public summaries. The Kaplan–Meier example and base-rate curve are labeled synthetic.\n\nNo full publisher paper, login-only material or downloaded font is republished.\n\nSources: OpenAI system card updated 2026-09-09; Guan et al. arXiv:2512.18311v1; NEJM 10.1056/NEJMoa2602804; NCT04801797; MGB 2026-09-02; NCI; ELN 2021 MRD consensus.\n\nThe original media checks remain for legacy layouts. Research layouts add exact 11/6 figure inventories, native-flow and equation checks. Post classification is passed from the authoritative article data to navigation.\n\nPublication requires the complete existing check suite and independent live image/math inspection.\n',encoding='utf8')
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: release/spaceship-ui/pnpm-lock.yaml
+      - name: Install unchanged dependencies
+        working-directory: release/spaceship-ui
+        run: pnpm install --frozen-lockfile
+      - name: Taxonomy
+        working-directory: release/spaceship-ui
+        run: pnpm taxonomy:check
+      - name: Lint
+        working-directory: release/spaceship-ui
+        run: pnpm lint
+      - name: Type check
+        working-directory: release/spaceship-ui
+        run: pnpm check
+      - name: SEO and publishing harness
+        working-directory: release/spaceship-ui
+        run: |
+          pnpm seo:check
+          pnpm blog:harness:check
+      - name: Build
+        working-directory: release/spaceship-ui
+        run: pnpm build
+      - name: All content contracts
+        working-directory: release/spaceship-ui
+        run: pnpm content:check
+      - name: Verify generated content and both navigation bars
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          from bs4 import BeautifulSoup
+          site=pathlib.Path('release/spaceship-ui/dist');report=[]
+          for slug,images,flows,math,h2 in [('2026-09-05-gpt-6-astra-safety-news',11,1,10,18),('2026-09-05-aml-paradigm-news',6,3,3,15)]:
+              html=(site/'posts'/slug/'index.html').read_text();soup=BeautifulSoup(html,'html.parser');article=soup.select_one('article');assert article
+              text=article.get_text(' ',strip=True)
+              for bad in ['공학자가 이 시험에서 배울 점','편집 점수','증거 등급','INDUSTRY_TRIGGER','EARLY_SIGNAL']:assert bad not in text,(slug,bad)
+              assert len(text)>12000,(slug,len(text))
+              assert len(article.select('[data-research-figure]'))==images
+              assert len(article.select('[data-research-flow]'))==flows
+              assert len(article.select('.math-display'))>=math
+              assert len(article.select('h2'))>=h2 and not article.select('.katex-error')
+              navigation=[{'href':a.get('href'),'active':a.get('aria-current')} for a in soup.select('[data-site-header] nav a')]
+              print(slug,'navigation',navigation)
+              assert len(soup.select('[data-site-header] a[href="/news"][aria-current="page"]'))==2,(slug,navigation)
+              for im in article.select('[data-research-figure] img'):assert im.get('alt') and (site/im['src'].lstrip('/')).is_file(),im
+              report.append({'slug':slug,'status':'PASS','characters':len(text),'figures':images,'flows':flows,'math':len(article.select('.math-display')),'sections':len(article.select('h2')),'newsNavigation':True})
+          pathlib.Path('audit/built-content.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf8');print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - name: Full browser matrix including research-figure layouts
+        working-directory: release/spaceship-ui
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+      - name: Commit validated source changes to isolated release branch
+        working-directory: release
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          git config user.name 'Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git switch -c "editorial/validated-astra-aml-${RUN_ID}"
+          git add spaceship-ui/site/content/posts/2026-09-05-gpt-6-astra-safety-news.mdx spaceship-ui/site/content/posts/2026-09-05-aml-paradigm-news.mdx spaceship-ui/src/components/post/ResearchFigure.astro spaceship-ui/src/components/post/ResearchFlow.astro spaceship-ui/scripts/browser-news-media-audit.mjs spaceship-ui/site/assets/assets/posts/astra-aml-review spaceship-ui/site/news-media.json spaceship-ui/ops/blog-harness/records/2026-09-10-astra-aml-revision.md spaceship-ui/src/components/Header.astro spaceship-ui/src/layouts/Layout.astro 'spaceship-ui/src/pages/posts/[...slug]/index.astro'
+          git diff --cached --check
+          git commit -m "news: publish source-led Astra and AML guides with 17 explained figures" -m "Replace two short articles, remove the engineering-lesson section, explain original benchmarks and clinical endpoints, and preserve the two existing URLs. Add native flows and source-figure rendering. Verify all legacy checks and pass authoritative article section to navigation."
+          git push origin HEAD
+          git rev-parse HEAD > ../audit/release-sha.txt
+          git show --format=fuller --stat HEAD > ../audit/release-commit.txt
+          printf '{"status":"VALIDATED_NOT_DEPLOYED","sha":"%s","branch":"%s"}\n' "$(git rev-parse HEAD)" "$(git branch --show-current)" > ../audit/release.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-aml-revision-validation-v3
+          path: audit/
+          retention-days: 7
