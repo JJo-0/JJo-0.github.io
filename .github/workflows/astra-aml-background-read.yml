@@ -1,0 +1,61 @@
+name: Astra AML background and image provenance
+on:
+  push:
+    branches: [editorial/astra-aml-source-guide-20260910]
+    paths: [.github/workflows/astra-aml-background-read.yml]
+permissions:
+  contents: read
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests beautifulsoup4
+      - name: Save identified original sources with source metadata
+        run: |
+          mkdir -p background
+          python - <<'PY'
+          import requests,pathlib,json,concurrent.futures,urllib.parse
+          from bs4 import BeautifulSoup
+          out=pathlib.Path('background')
+          urls={
+            'aml-microscope':'https://upload.wikimedia.org/wikipedia/commons/7/71/Myeloid_leukemia.jpg',
+            'eln-mrd-guideline':'https://pure.amsterdamumc.nl/files/173177581/2021-update-on-mrd-in-acute-myeloid-leukemia.pdf',
+            'nci-bcl2':'https://www.cancer.gov/news-events/cancer-currents-blog/2019/venetoclax-obinutuzumab-fda-approval-cll-sll',
+            'nci-aml':'https://www.cancer.gov/types/leukemia/patient/adult-aml-treatment-pdq',
+            'nci-venetoclax':'https://www.cancer.gov/publications/dictionaries/cancer-drug/def/venetoclax',
+            'nci-azacitidine':'https://www.cancer.gov/publications/dictionaries/cancer-drug/def/azacitidine',
+            'alien-mind':'https://openai.com/index/an-alien-mind/',
+            'cot-monitorability':'https://openai.com/index/evaluating-chain-of-thought-monitorability/',
+            'viale-a':'https://www.nejm.org/doi/abs/10.1056/NEJMoa2012971'
+          }
+          def get(item):
+            name,url=item; row={'name':name,'url':url}
+            try:
+              r=requests.get(url,timeout=45);mime=r.headers.get('Content-Type','');row.update(status=r.status_code,mime=mime)
+              if not r.ok:return row
+              ext='.pdf' if r.content.startswith(b'%PDF') else '.jpg' if mime.startswith('image/') else '.html'
+              (out/(name+ext)).write_bytes(r.content)
+              if ext=='.html':
+                soup=BeautifulSoup(r.content,'html.parser');row['images']=[{'src':im.get('src'),'alt':im.get('alt')} for im in soup.find_all('img')]
+                (out/(name+'.txt')).write_text(soup.get_text('\n',strip=True),encoding='utf8')
+                if name=='nci-bcl2':
+                  selected=[im for im in soup.find_all('img') if 'bcl' in str(im).lower()]
+                  for i,im in enumerate(selected[:3]):
+                    image_url=urllib.parse.urljoin(url,im.get('src',''));p=requests.get(image_url,timeout=30)
+                    if p.ok and p.headers.get('Content-Type','').startswith('image/'):
+                      file=f'bcl2-original-{i}.jpg';(out/file).write_bytes(p.content);row.setdefault('downloaded',[]).append({'file':file,'url':image_url,'alt':im.get('alt')})
+            except Exception as exc:row['error']=str(exc)
+            return row
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:records=list(pool.map(get,urls.items()))
+          (out/'manifest.json').write_text(json.dumps(records,ensure_ascii=False,indent=2),encoding='utf8');print(json.dumps(records,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-aml-background
+          path: background/
+          retention-days: 7
