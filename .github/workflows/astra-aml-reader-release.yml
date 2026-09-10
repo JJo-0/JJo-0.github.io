@@ -1,0 +1,201 @@
+name: Astra and AML reader revision
+on:
+  push:
+    branches: [editorial/astra-aml-source-guide-20260910]
+    paths: [.github/workflows/astra-aml-reader-release.yml]
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: astra-aml-reader-publication
+  cancel-in-progress: false
+jobs:
+  revise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: editorial
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: release
+          fetch-depth: 2
+      - uses: actions/download-artifact@v4
+        with:
+          name: sep05-figures-and-data
+          run-id: 34456703628
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source-figures
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare checked source, requested deletions and local figure assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m pip install requests pillow matplotlib numpy
+          mkdir -p review-audit
+          cat > /tmp/prepare.py <<'PY'
+          import base64,hashlib,json,pathlib,re,subprocess,urllib.request
+          import matplotlib
+          matplotlib.use('Agg')
+          import matplotlib.pyplot as plt
+          import numpy as np
+          from PIL import Image
+          root=pathlib.Path('release'); assets=root/'spaceship-ui/site/assets/assets/posts/sep05-deep';assets.mkdir(parents=True,exist_ok=True)
+          base=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+          assert base=='6c262d0aeedf6f99f80e838f95744fda9a9def16', 'Main changed: reconcile before editing rather than overwrite'
+          source_ref='editorial/sep05-deep-explainers-20260910'
+          def fetch_source(name):
+              url=f'repos/JJo-0/JJo-0.github.io/contents/editorial-staging/sep05/{name}?ref=editorial%2Fsep05-deep-explainers-20260910'
+              obj=json.loads(subprocess.check_output(['gh','api',url],text=True))
+              return base64.b64decode(obj['content']).decode('utf8'),obj['sha']
+          raw=pathlib.Path('editorial/editorial-staging/astra-aml-reader-additions.json').read_text()
+          try: additions=json.loads(raw)
+          except json.JSONDecodeError:
+              def fix(m):return m.group(1)+re.sub(r'(?<!\\)\\(?!\\)',lambda _: '\\\\',m.group(2))+m.group(3)
+              raw=re.sub(r'(String\.raw`)(.*?)(`)',fix,raw,flags=re.S)
+              additions=json.loads(raw)
+          assert all('\x0c' not in x and '\x08' not in x for x in additions.values())
+          additions['astra']=additions['astra'].replace('정렬에 관한 읽기 자료로 사용자가 소개한','정렬에 관한 한국어 읽기 자료로')
+          additions['aml']=additions['aml'].replace('그림을 넣을 수 없을 때 무엇을 다시 그릴 수 있나?','중앙값 그래프와 생존곡선은 서로 다른 정보를 준다')
+          sources={
+            'astra':('2026-09-05-gpt-6-astra-safety-news.mdx','81c7ccf92440f32d6e2d2fd2fb6ccb1f0752f0b0'),
+            'aml':('2026-09-05-aml-paradigm-news.mdx','7b0de09d4f3bef0b824e35268e09a2fdb0e5213d')}
+          report={'base':base,'articles':[],'assets':[],'status':'PREPARED_NOT_PUBLISHED'}
+          for key,(name,sha) in sources.items():
+              text,actual=fetch_source(name);assert actual==sha,(name,'staged article changed; review it')
+              text=re.sub(r'^## 공학자가 이 시험에서 배울 점\s*\n.*?(?=^## |\Z)','',text,flags=re.M|re.S)
+              for forbidden in ['편집 점수:','증거 등급:','공학자가 이 시험에서 배울 점']:
+                  assert forbidden not in text,forbidden
+              marker=re.search(r'^## (?:출처|참고문헌|원문과 참고 자료|출처와 더 읽을 자료).*$',text,re.M)
+              if marker:text=text[:marker.start()]+additions[key]+'\n\n'+text[marker.start():]
+              else:text+='\n\n'+additions[key]
+              text=re.sub(r'[ \t]+\n','\n',text)
+              target=root/'spaceship-ui/site/content/posts'/name
+              old=target.read_text();assert 'draft: false' in text
+              target.write_text(text,encoding='utf8')
+              report['articles'].append({'slug':name[:-4],'old_chars':len(old),'new_chars':len(text),'source_blob':actual,'figures':len(re.findall(r'<ResearchFigure\b',text)),'math':text.count('<Math '),'removed_engineering_tangent':'공학자가 이 시험에서 배울 점' not in text})
+          for name in ['ResearchFigure.astro','ResearchFlow.astro']:
+              text,_=fetch_source(name);(root/'spaceship-ui/src/components/post'/name).write_text(text,encoding='utf8')
+          def source_file(name):
+              found=list(pathlib.Path('source-figures').rglob(name));assert len(found)==1,(name,len(found));return found[0]
+          for name in ['astra-injection','astra-monitoring','astra-control']:
+              Image.open(source_file(name+'.png')).convert('RGB').save(assets/(name+'.webp'),lossless=True)
+          def save(fig,name):
+              fig.tight_layout(pad=1.6);fig.savefig(assets/name,dpi=180,bbox_inches='tight');plt.close(fig)
+          fig,ax=plt.subplots(figsize=(9,4.5));ax.errorbar([14.5,6.2],[1,0],xerr=[[4.1,2.1],[9.9,3.9]],fmt='o',capsize=6)
+          ax.set(yticks=[1,0],yticklabels=['Azacitidine + venetoclax','Induction chemotherapy'],xlim=(0,28),ylim=(-.6,1.6),xlabel='Median EFS (months)',title='PARADIGM: reported medians and 95% confidence intervals')
+          for x,y,label in [(14.5,1,'14.5 [10.4-24.4]'),(6.2,0,'6.2 [4.1-10.1]')]:ax.text(x,y+.22,label,ha='center')
+          ax.grid(axis='x',alpha=.2);save(fig,'aml-efs.png')
+          fig,ax=plt.subplots(figsize=(9,4.8));p=np.array([1,0]);ax.errorbar([28,2],p+.12,xerr=[[9,1.7],[11,6]],fmt='o',capsize=5,label='Azacitidine + venetoclax');ax.errorbar([41,12],p-.12,xerr=[[11,6],[11,8]],fmt='s',capsize=5,label='Induction chemotherapy')
+          ax.set(yticks=[1,0],yticklabels=['Grade 3+ infection','Grade 3+ bleeding'],xlim=(0,60),ylim=(-.6,1.8),xlabel='Patients (%)',title='PARADIGM: selected adverse events and 95% CI');ax.legend(frameon=False);ax.grid(axis='x',alpha=.2);save(fig,'aml-adverse-events.png')
+          fig,ax=plt.subplots(figsize=(9,4.8));ax.step([0,2,6,8,10],[1,.8,8/15,4/15,4/15],where='post',label='Synthetic five-person example');ax.plot([4],[.8],marker='+',markersize=15,linestyle='none',label='Censoring');ax.axhline(.5,linestyle=':',linewidth=1)
+          ax.set(xlim=(0,10),ylim=(0,1.08),xlabel='Time (arbitrary unit)',ylabel='Event-free survival estimate',title='Educational example - NOT the PARADIGM patient curve');ax.legend(frameon=False);ax.grid(alpha=.2);save(fig,'aml-km-teaching-example.png')
+          for article in report['articles']:
+              text=(root/'spaceship-ui/site/content/posts'/(article['slug']+'.mdx')).read_text()
+              for file in re.findall(r'src="/assets/posts/sep05-deep/([^\"]+)"',text):assert (assets/file).is_file(),('missing asset',file)
+          for file in sorted(assets.iterdir()):
+              if file.is_file():report['assets'].append({'file':file.name,'sha256':hashlib.sha256(file.read_bytes()).hexdigest()})
+          record=root/'spaceship-ui/ops/blog-harness/records/2026-09-10-astra-aml-reader-revision.md';record.parent.mkdir(parents=True,exist_ok=True)
+          record.write_text('# Astra and AML reader revision\n\nUser-requested replacement of two existing articles, same URLs and publication dates. Removed the engineering-transfer section. Added alignment measurement, Bayes/PPV derivation, clinical mechanisms, prior VIALE-A context, ELN MRD methods and sampling limits.\n\nOpenAI figures: limited original evaluation excerpts retained with the staged article source links and interpretive captions. AML graphs: original visualizations of reported numerical summaries; the Kaplan-Meier teaching example is explicitly synthetic. No publisher patient-level survival curve is reconstructed. No font files or complete third-party documents added.\n\nExternal Threads material is linked as further reading, not quoted as scientific evidence.\n')
+          pathlib.Path('review-audit/preparation.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+          python /tmp/prepare.py
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: release/spaceship-ui/pnpm-lock.yaml
+      - name: Install unchanged dependencies
+        working-directory: release/spaceship-ui
+        run: pnpm install --frozen-lockfile
+      - name: Existing content and quality gates
+        working-directory: release/spaceship-ui
+        run: |
+          pnpm taxonomy:check
+          pnpm lint
+          pnpm check
+          pnpm seo:check
+          pnpm blog:harness:check
+          pnpm build
+          pnpm content:check
+      - name: Existing browser matrix
+        working-directory: release/spaceship-ui
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+      - name: Validate exact two-article outputs and dispatch capability
+        run: |
+          python -m pip install beautifulsoup4 pyyaml
+          python - <<'PY'
+          import json,pathlib,yaml
+          from bs4 import BeautifulSoup
+          report=json.loads(pathlib.Path('review-audit/preparation.json').read_text());root=pathlib.Path('release/spaceship-ui/dist')
+          if not root.exists():
+              hits=list(pathlib.Path('release/spaceship-ui').glob('**/posts/2026-09-05-aml-paradigm-news/index.html'));assert len(hits)==1,hits;root=hits[0].parents[2]
+          for item in report['articles']:
+              page=root/'posts'/item['slug']/'index.html';assert page.is_file(),page
+              soup=BeautifulSoup(page.read_text(),'html.parser');article=soup.select_one('article');assert article
+              assert not article.select('.katex-error'),item['slug']
+              assert len(article.select('img'))>=3,item['slug']
+              assert '공학자가 이 시험에서 배울 점' not in article.get_text()
+              assert len(article.get_text())>7000,(item['slug'],len(article.get_text()))
+              item['rendered_characters']=len(article.get_text());item['rendered_images']=len(article.select('img'))
+          workflow=yaml.safe_load(pathlib.Path('release/.github/workflows/blog-pages-deploy.yml').read_text());events=workflow.get('on',workflow.get(True));assert 'workflow_dispatch' in events,'Existing deploy workflow must allow an explicit dispatch'
+          pathlib.Path('review-audit/output-check.json').write_text(json.dumps(report,ensure_ascii=False,indent=2));print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish only validated source edits without overwriting concurrent work
+        working-directory: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD)"
+          git config user.name 'Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git add spaceship-ui/site/content/posts/2026-09-05-aml-paradigm-news.mdx spaceship-ui/site/content/posts/2026-09-05-gpt-6-astra-safety-news.mdx spaceship-ui/src/components/post/ResearchFigure.astro spaceship-ui/src/components/post/ResearchFlow.astro spaceship-ui/site/assets/assets/posts/sep05-deep spaceship-ui/ops/blog-harness/records/2026-09-10-astra-aml-reader-revision.md
+          git diff --cached --check
+          git commit -m 'news: expand Astra safety and AML with source figures and detailed evaluation explanations'
+          git push origin HEAD:main
+          git rev-parse HEAD > ../review-audit/published-sha.txt
+          gh workflow run blog-pages-deploy.yml --repo JJo-0/JJo-0.github.io --ref main
+          printf '{"status":"SOURCE_PUSHED_DEPLOYMENT_DISPATCHED_NOT_LIVE_VERIFIED","sha":"%s"}\n' "$(git rev-parse HEAD)" > ../review-audit/publication.json
+      - name: Wait for the published revision and capture delivery status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json,time,urllib.request,pathlib
+          from bs4 import BeautifulSoup
+          urls={
+            'astra':'https://jjo-0.github.io/posts/2026-09-05-gpt-6-astra-safety-news/',
+            'aml':'https://jjo-0.github.io/posts/2026-09-05-aml-paradigm-news/'}
+          required={'astra':'기저율 식은 베이즈 정리와 전확률 법칙의 조합이다','aml':'MRD 음성은 왜'}
+          status={}
+          for attempt in range(36):
+              for key,url in urls.items():
+                  try:
+                      with urllib.request.urlopen(url,timeout=20) as r: html=r.read().decode('utf8');code=r.status
+                      page=BeautifulSoup(html,'html.parser');article=page.select_one('article');text=article.get_text() if article else ''
+                      good=code==200 and required[key] in text and '공학자가 이 시험에서 배울 점' not in text and not page.select('.katex-error')
+                      status[key]={'url':url,'status':code,'revision_visible':good,'characters':len(text),'images':len(article.select('img')) if article else 0}
+                  except Exception as e:status[key]={'url':url,'revision_visible':False,'error':str(e)}
+              if all(x.get('revision_visible') for x in status.values()):break
+              time.sleep(10)
+          report={'status':'PUBLIC_HTML_VERIFIED' if all(x.get('revision_visible') for x in status.values()) else 'LIVE_VERIFICATION_FAILED','articles':status,'note':'Browser image decoding and visual review are separate checks.'}
+          pathlib.Path('review-audit/public-verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2));print(json.dumps(report,ensure_ascii=False,indent=2))
+          assert report['status']=='PUBLIC_HTML_VERIFIED',report
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-aml-reader-release-audit
+          path: review-audit/
+          retention-days: 7
