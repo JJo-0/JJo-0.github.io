@@ -60,13 +60,17 @@ jobs:
           assert '\nslug:' not in text.split('---',2)[1]
           text=text.replace('pubDate: 2026-09-05\n','pubDate: 2026-09-05\nslug: 2026-09-05-weathernext-3-frontier-one\n',1)
           weather.write_text(text,encoding='utf8')
+          for name in p['files']:
+              f=target(name)
+              clean='\n'.join(line.rstrip() for line in f.read_text(encoding='utf8').splitlines())+'\n'
+              f.write_text(clean,encoding='utf8')
           nav=(root/'spaceship-ui/site/content/posts/2026-09-09-navier-stokes-openai-frontier-one.mdx').read_text()
           assert 'https://jjo-0.blogspot.com/2026/09/navierstokes-ai.html' in nav
           assert nav.count('<Math ')>=33
           for removed in ['사용자가 제공한 공식 사이트의 별도 시각화도','<strong>검토 범위:</strong>','<strong>2026년 9월 9일 · 수학과 AI 연구</strong>']:
               assert removed not in nav,removed
           assert 'NewsCandidateArchive' not in (root/'spaceship-ui/src/pages/news.astro').read_text()
-          pathlib.Path('audit/apply.json').write_text(json.dumps({'base':p['base'],'payload_sha256':expected,'text_files':len(p['files']),'deleted':p['delete'],'assets':p['assets'],'editions':p['editions'],'post_apply_fixes':['WeatherNext explicit slug','WeatherNext HTML emphasis']},ensure_ascii=False,indent=2))
+          pathlib.Path('audit/apply.json').write_text(json.dumps({'base':p['base'],'payload_sha256':expected,'text_files':len(p['files']),'deleted':p['delete'],'assets':p['assets'],'editions':p['editions'],'post_apply_fixes':['WeatherNext explicit slug','WeatherNext HTML emphasis','trailing whitespace normalization']},ensure_ascii=False,indent=2))
           print('Applied',len(p['files']),'text files and',len(p['assets']),'verified image assets')
           PY
       - uses: pnpm/action-setup@v4
