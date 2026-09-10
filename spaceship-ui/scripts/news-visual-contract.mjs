@@ -15,6 +15,11 @@ for (const [id, item] of Object.entries(catalogue)) {
   const source = fs.readFileSync(asset, 'utf8');
   assert(source.includes('<title'), `${id}: SVG needs a title`);
   assert(source.includes('<desc'), `${id}: SVG needs a description`);
+  if (id === 'navier-equation-map') {
+    assert(source.includes('νΔu + f'), `${id}: forced equation must include the external force f`);
+    assert(source.includes('비압축 조건: ∇·u = 0'), `${id}: incompressibility must be a separate condition`);
+    assert(!source.includes('νΔu   ·   ∇·u'), `${id}: equations must not be joined by a multiplication dot`);
+  }
   const ids = bySlug.get(item.slug) ?? [];
   ids.push(id);
   bySlug.set(item.slug, ids);
