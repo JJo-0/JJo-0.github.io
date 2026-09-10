@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import urllib.request
+import urllib.error
 from playwright.async_api import async_playwright
 
 OUT = pathlib.Path('live-audit')
@@ -15,12 +16,32 @@ BLOGGER = 'https://jjo-0.blogspot.com/2026/09/navierstokes-ai.html'
 FORBIDDEN = ['Full candidate archive', '대표·보류 후보 모두 보기', '19개 고유 주제가', '상세 원고 검토 중']
 REMOVED = ['사용자가 제공한 공식 사이트의 별도 시각화도', '검토 범위:', '2026년 9월 9일 · 수학과 AI 연구', '여기서 검토 대상인 증명 주장(EARLY_SIGNAL)']
 
+async def probe_blogger():
+    attempts = []
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(BLOGGER, timeout=40) as response:
+                attempts.append({'httpStatus': response.status, 'url': response.url})
+                return {'status': 'PASS' if response.status == 200 else 'FAILED', 'url': BLOGGER, 'attempts': attempts}
+        except urllib.error.HTTPError as error:
+            retry_after = error.headers.get('Retry-After', '')
+            attempts.append({'httpStatus': error.code, 'url': error.url, 'retryAfter': retry_after})
+            if error.code != 429:
+                return {'status': 'FAILED', 'url': BLOGGER, 'attempts': attempts}
+            if attempt == 0:
+                if retry_after and not retry_after.isdigit():
+                    break
+                delay = max(60, int(retry_after or '60'))
+                if delay > 60:
+                    break
+                await asyncio.sleep(delay)
+        except Exception as error:
+            return {'status': 'NOT_VERIFIED', 'url': BLOGGER, 'error': repr(error), 'attempts': attempts}
+    return {'status': 'RATE_LIMITED_NOT_VERIFIED', 'url': BLOGGER, 'attempts': attempts}
+
 async def main():
     report = {'status': 'RUNNING', 'checked_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'news': [], 'articles': [], 'navier': []}
     try:
-        with urllib.request.urlopen(BLOGGER, timeout=40) as response:
-            report['blogger'] = {'url': response.url, 'status': response.status}
-            assert response.status == 200
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             for width, height in [(390, 844), (1440, 1000)]:
@@ -81,7 +102,9 @@ async def main():
                         report['navier'].append({'width': width, 'blogger_first_section': True, 'removed_copy': True, 'real_katex_map': True, 'displayEquations': math_count, 'equationGeometry': equation_geometry})
                 await context.close()
             await browser.close()
-        report['status'] = 'PASS'
+        report['gitblog_status'] = 'PASS'
+        report['blogger'] = await probe_blogger()
+        report['status'] = 'PASS' if report['blogger']['status'] == 'PASS' else 'GITBLOG_PASS_EXTERNAL_LINK_NOT_VERIFIED'
     except Exception as error:
         report['status'] = 'FAIL'
         report['error'] = repr(error)
