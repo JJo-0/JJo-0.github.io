@@ -73,6 +73,10 @@ POST_TAXONOMY.update(
             "finance-industry", "semiconductor-manufacturing", "research-report",
             ("frontier-one", "semiconductor", "high-na-euv", "photomask", "dram"),
         ),
+        "2026-09-07-openai-research-automation-frontier-one.mdx": Taxonomy(
+            "ai-machine-learning", "ai-research-automation", "research-report",
+            ("frontier-one", "ai-agents", "research-automation", "codex"),
+        ),
     }
 )
 
