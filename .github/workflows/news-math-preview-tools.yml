@@ -1,0 +1,28 @@
+name: NEWS math preview tools
+on:
+  push:
+    branches: [editorial/news-sep5-8-source-audit-20260910]
+    paths: [.github/workflows/news-math-preview-tools.yml]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Get the pinned renderer, excluding all font files
+        run: |
+          mkdir -p package-out
+          npm pack katex@0.16.22
+          tar -xzf katex-0.16.22.tgz package/dist/katex.js package/LICENSE
+          cp package/dist/katex.js package-out/
+          cp package/LICENSE package-out/LICENSE-katex
+          node -e "const k=require('./package-out/katex.js'); console.log(k.renderToString('x^2',{output:'mathml',throwOnError:true}))" > package-out/smoke.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: news-math-renderer-no-fonts
+          path: package-out/
+          retention-days: 7
