@@ -1,0 +1,67 @@
+name: NEWS candidate live audit
+on:
+  push:
+    branches: [editorial/news-sep5-8-source-audit-20260910]
+    paths: [.github/workflows/news-candidate-live-audit.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          python -m pip install playwright==1.58.0
+          python -m playwright install --with-deps chromium
+      - name: Verify the deployed candidate list, without touching articles
+        run: |
+          mkdir -p live-audit
+          cat >/tmp/live.py <<'PY'
+          import asyncio,json,pathlib
+          from playwright.async_api import async_playwright
+          OUT=pathlib.Path('live-audit')
+          async def main():
+            report=[]
+            async with async_playwright() as p:
+              browser=await p.chromium.launch()
+              for width,height in [(390,844),(1440,1000)]:
+                context=await browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce')
+                page=await context.new_page()
+                await page.route('**/*',lambda route: route.abort() if any(s in route.request.url for s in ['googlesyndication.com','doubleclick.net','google-analytics.com','googletagmanager.com']) else route.continue_())
+                response=await page.goto('https://jjo-0.github.io/news/',wait_until='domcontentloaded',timeout=60000)
+                await page.locator('[data-news-candidate-archive]').wait_for(timeout=45000)
+                await page.locator('[data-news-candidate-archive]').scroll_into_view_if_needed()
+                await page.wait_for_timeout(800)
+                result=await page.evaluate('''() => {
+                  const cards=[...document.querySelectorAll('[data-candidate-id]')];
+                  const ids=cards.map(n=>n.getAttribute('data-candidate-id'));
+                  const dates={};for(const n of cards){const d=n.getAttribute('data-candidate-edition');dates[d]=(dates[d]||0)+1;}
+                  return {viewport:innerWidth,appearances:cards.length,uniqueTopics:new Set(ids).size,dates,
+                    overflow:document.documentElement.scrollWidth>innerWidth+2,
+                    visible:document.querySelector('[data-news-candidate-archive]').getBoundingClientRect().width>0,
+                    sourceLinks:document.querySelectorAll('[data-news-candidate-archive] a[target="_blank"]').length,
+                    heading:document.querySelector('#candidate-archive-title').textContent,
+                    articleLinks:[...document.querySelectorAll('[data-news-candidate-archive] a[href^="/posts/"]')].map(a=>a.getAttribute('href'))};
+                }''')
+                result['httpStatus']=response.status if response else None
+                await page.screenshot(path=str(OUT/f'news-candidates-{width}.png'))
+                assert result['httpStatus']==200 and result['appearances']==21 and result['uniqueTopics']==19 and result['sourceLinks']==21 and not result['overflow'],result
+                assert result['dates']=={'2026-09-05':5,'2026-09-06':6,'2026-09-07':5,'2026-09-08':5},result
+                report.append(result)
+                if width==1440:(OUT/'candidate-text.txt').write_text(await page.locator('[data-news-candidate-archive]').inner_text(),encoding='utf8')
+                await context.close()
+              await browser.close()
+            (OUT/'results.json').write_text(json.dumps({'status':'PASS','checks':report,'scope':'candidate archive only; detailed draft articles were not published'},ensure_ascii=False,indent=2),encoding='utf8')
+            print(json.dumps(report,ensure_ascii=False,indent=2))
+          asyncio.run(main())
+          PY
+          python /tmp/live.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: news-candidate-live-audit
+          path: live-audit/
+          retention-days: 7
