@@ -13,9 +13,10 @@ interface NavLink {
 interface Props {
   pageLang?: string;
   englishPath?: string;
+  activeSection?: 'news' | 'writing';
 }
 
-const { pageLang = SITE.lang, englishPath } = Astro.props;
+const { pageLang = SITE.lang, englishPath, activeSection } = Astro.props;
 const isKoreanPage = pageLang.toLowerCase().startsWith('ko');
 const showEnglishLink = isKoreanPage && typeof englishPath === 'string' && englishPath.length > 0;
 const currentPath = Astro.url.pathname;
@@ -49,6 +50,7 @@ const navLinks: NavLink[] = [
 ];
 
 const isActive = (href: string) => {
+  if (activeSection) return href === (activeSection === 'news' ? '/news' : '/posts');
   if (currentPostIsNews) return href === '/news';
   return currentPath === href || currentPath.startsWith(`${href}/`);
 };
