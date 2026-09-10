@@ -1,0 +1,23 @@
+name: Editorial source snapshot
+on:
+  push:
+    branches: [editorial/publish-sep05-08-20260910]
+    paths: [.github/workflows/editorial-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect source and existing publishing contracts
+        run: |
+          mkdir -p /tmp/editorial-snapshot
+          git rev-parse HEAD > /tmp/editorial-snapshot/head.txt
+          git archive --format=tar HEAD spaceship-ui scripts .github/workflows | gzip > /tmp/editorial-snapshot/source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: editorial-source-snapshot
+          path: /tmp/editorial-snapshot/
+          retention-days: 3
