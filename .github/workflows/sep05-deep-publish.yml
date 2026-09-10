@@ -1,0 +1,161 @@
+name: Publish verified September 5 explainers
+on:
+  push:
+    branches: [editorial/sep05-deep-explainers-20260910]
+    paths: [.github/workflows/sep05-deep-publish.yml]
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: sep05-deep-production-promotion
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: JJo-0/JJo-0.github.io
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require an already validated clean release and unchanged main
+        id: release
+        run: |
+          python - <<'PY'
+          import json,os,subprocess,time,pathlib
+          repo=os.environ['REPO'];base='6c262d0aeedf6f99f80e838f95744fda9a9def16';head='editorial/validated-sep05-deep-20260910'
+          def api(path):return json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/'+path],text=True))
+          sha=None
+          for attempt in range(24):
+              try:
+                  sha=api('git/ref/heads/'+head)['object']['sha'];break
+              except subprocess.CalledProcessError:
+                  time.sleep(15)
+          assert sha,'Validated branch does not exist; do not publish untested source'
+          commit=api('git/commits/'+sha)
+          assert [p['sha'] for p in commit['parents']]==[base],'Unexpected release ancestry'
+          current=api('git/ref/heads/main')['object']['sha']
+          assert current in [base,sha],('Main changed; no overwrite',current)
+          diff=api('compare/'+base+'...'+sha)
+          expected={
+            'spaceship-ui/site/content/posts/2026-09-05-weathernext-3-frontier-one.mdx',
+            'spaceship-ui/site/content/posts/2026-09-05-aml-paradigm-news.mdx',
+            'spaceship-ui/site/content/posts/2026-09-05-perovskite-interface-news.mdx',
+            'spaceship-ui/site/content/posts/2026-09-05-gpt-6-astra-safety-news.mdx',
+            'spaceship-ui/site/content/posts/2026-09-05-nvidia-hugging-face-news.mdx',
+            'spaceship-ui/src/components/post/ResearchFigure.astro',
+            'spaceship-ui/src/components/post/ResearchFlow.astro',
+            'spaceship-ui/ops/blog-harness/records/2026-09-10-sep05-deep-rewrite.json'
+          }
+          paths={f['filename'] for f in diff['files']}
+          assert expected.issubset(paths),expected-paths
+          assert all(p in expected or p.startswith('spaceship-ui/site/assets/assets/posts/sep05-deep/') for p in paths),paths-expected
+          import base64
+          config=api('contents/.github/workflows/blog-pages-deploy.yml?ref='+sha)
+          assert 'workflow_dispatch' in base64.b64decode(config['content']).decode(),'The existing Pages workflow must support a manual dispatch'
+          pathlib.Path('publish-audit').mkdir(exist_ok=True)
+          pathlib.Path('publish-audit/preflight.json').write_text(json.dumps({'base':base,'release_sha':sha,'validated_branch':head,'main_before':current,'changed_files':sorted(paths)},indent=2))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('sha='+sha+'\n')
+          print('Validated exact release:',sha)
+          PY
+      - name: Fast-forward main and dispatch its existing Pages workflow
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          python - <<'PY'
+          import subprocess,os,json
+          repo=os.environ['REPO'];sha=os.environ['RELEASE_SHA']
+          subprocess.run(['gh','api','--method','PATCH',f'repos/{repo}/git/refs/heads/main','-f','sha='+sha,'-F','force=false'],check=True)
+          subprocess.run(['gh','api','--method','POST',f'repos/{repo}/actions/workflows/blog-pages-deploy.yml/dispatches','-f','ref=main'],check=True)
+          config=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/contents/.github/workflows/blog-ci.yml?ref='+sha],text=True))
+          import base64
+          if 'workflow_dispatch' in base64.b64decode(config['content']).decode():
+              subprocess.run(['gh','api','--method','POST',f'repos/{repo}/actions/workflows/blog-ci.yml/dispatches','-f','ref=main'],check=True)
+          PY
+      - name: Wait for the exact Pages deployment and its live smoke test
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          python - <<'PY'
+          import subprocess,json,os,time,pathlib
+          repo=os.environ['REPO'];sha=os.environ['RELEASE_SHA']
+          for attempt in range(72):
+              data=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/runs?head_sha={sha}&per_page=20'],text=True))
+              runs=[r for r in data['workflow_runs'] if r['path']=='.github/workflows/blog-pages-deploy.yml' and r['event']=='workflow_dispatch']
+              if runs:
+                  run=max(runs,key=lambda r:r['id'])
+                  if run['status']=='completed':
+                      pathlib.Path('publish-audit/deployment.json').write_text(json.dumps(run,indent=2))
+                      assert run['conclusion']=='success',('Pages deployment or live smoke failed',run['html_url'])
+                      print('Pages deployment and live smoke passed:',run['html_url']);break
+              time.sleep(10)
+          else:raise RuntimeError('Timed out waiting for verified Pages deployment')
+          PY
+      - name: Verify the five public articles and all 17 exact image assets
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          python -m pip install beautifulsoup4
+          python - <<'PY'
+          import urllib.request,json,os,subprocess,base64,pathlib,hashlib,time
+          from bs4 import BeautifulSoup
+          repo=os.environ['REPO'];sha=os.environ['RELEASE_SHA'];root='https://jjo-0.github.io'
+          def fetch(url):
+              req=urllib.request.Request(url,headers={'Cache-Control':'no-cache','User-Agent':'JJo editorial publication verification'})
+              with urllib.request.urlopen(req,timeout=40) as response:
+                  assert response.status==200,(url,response.status)
+                  return response.read()
+          raw=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/contents/spaceship-ui/ops/blog-harness/records/2026-09-10-sep05-deep-rewrite.json?ref={sha}'],text=True))
+          record=json.loads(base64.b64decode(raw['content']))
+          result={'status':'RUNNING','release_sha':sha,'articles':[],'images':[]}
+          try:
+              for row in record['editorial_changes']:
+                  slug=row['slug'];url=root+'/posts/'+slug+'/'
+                  for attempt in range(12):
+                      soup=BeautifulSoup(fetch(url),'html.parser');article=soup.select_one('article')
+                      if article and len(article.select('[data-research-figure]'))==row['images']:break
+                      time.sleep(5)
+                  assert article and len(article.select('[data-research-figure]'))==row['images'],url
+                  text=article.get_text(' ',strip=True)
+                  for term in ['편집 점수','증거 등급','INDUSTRY_TRIGGER','EARLY_SIGNAL']:assert term not in text,(url,term)
+                  assert not article.select('.katex-error'),url
+                  result['articles'].append({'url':url,'title':soup.title.get_text(),'reader_text_characters':len(text),'images':len(article.select('[data-research-figure]')),'diagrams':len(article.select('[data-research-flow]')),'equations':len(article.select('.math-display')),'internal_editorial_banner_removed':True})
+              for name,info in record['figure_provenance']['assets'].items():
+                  url=root+'/assets/posts/sep05-deep/'+name;content=fetch(url)
+                  assert hashlib.sha256(content).hexdigest()==info['sha256'],('Live asset does not match tested asset',url)
+                  result['images'].append({'url':url,'bytes':len(content),'sha256_match':True})
+              assert len(result['articles'])==5 and len(result['images'])==17
+              result['status']='PUBLISHED_AND_VERIFIED'
+          except Exception as error:
+              result['status']='VERIFICATION_FAILED';result['error']=str(error);raise
+          finally:
+              pathlib.Path('publish-audit/public-results.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+              print(json.dumps(result,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        id: audit
+        if: always()
+        with:
+          name: sep05-published-editorial-audit
+          path: publish-audit/
+          retention-days: 7
+      - name: Record the actual publication result on the editorial branch
+        if: always()
+        env:
+          PUBLISH_RESULT: ${{ job.status }}
+          AUDIT_ARTIFACT_ID: ${{ steps.audit.outputs.artifact-id }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          python - <<'PY'
+          import json,pathlib,os,subprocess,base64
+          repo=os.environ['REPO'];branch='editorial/sep05-deep-explainers-20260910';path='editorial-staging/sep05/latest-publication-result.json'
+          p=pathlib.Path('publish-audit/public-results.json')
+          result=json.loads(p.read_text()) if p.exists() else {'status':os.environ['PUBLISH_RESULT'],'release_sha':os.environ.get('RELEASE_SHA'),'note':'Publication did not complete all verification steps; inspect the workflow logs'}
+          result.update(workflow_run_id=os.environ['GITHUB_RUN_ID'],artifact_id=os.environ.get('AUDIT_ARTIFACT_ID'))
+          payload={'message':'editorial: record actual September 5 publication result','branch':branch,'content':base64.b64encode((json.dumps(result,ensure_ascii=False,indent=2)+'\n').encode()).decode()}
+          old=subprocess.run(['gh','api',f'repos/{repo}/contents/{path}?ref={branch}'],capture_output=True,text=True)
+          if old.returncode==0:payload['sha']=json.loads(old.stdout)['sha']
+          subprocess.run(['gh','api','--method','PUT',f'repos/{repo}/contents/{path}','--input','-'],input=json.dumps(payload),text=True,check=True)
+          PY
