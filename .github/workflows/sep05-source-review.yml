@@ -1,0 +1,58 @@
+name: September 5 primary source review
+on:
+  push:
+    branches: [editorial/sep05-deep-explainers-20260910]
+    paths: [.github/workflows/sep05-source-review.yml]
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect current source and public research material
+        run: |
+          mkdir -p source-review
+          git archive --format=tar HEAD spaceship-ui scripts .github/workflows | gzip > source-review/repo.tar.gz
+          python -m pip install requests beautifulsoup4
+          python - <<'PY'
+          import requests,pathlib,json,concurrent.futures,urllib.parse
+          from bs4 import BeautifulSoup
+          root=pathlib.Path('source-review')
+          sources={
+            'weather':'https://arxiv.org/html/2609.03582v1',
+            'weather-pdf':'https://arxiv.org/pdf/2609.03582v1',
+            'perovskite':'https://www.nature.com/articles/s41563-026-02722-3',
+            'aml':'https://www.nejm.org/doi/full/10.1056/NEJMoa2602804',
+            'aml-protocol':'https://www.nejm.org/doi/suppl/10.1056/NEJMoa2602804/suppl_file/nejmoa2602804_protocol.pdf',
+            'aml-appendix':'https://www.nejm.org/doi/suppl/10.1056/NEJMoa2602804/suppl_file/nejmoa2602804_appendix.pdf',
+            'aml-registry':'https://clinicaltrials.gov/api/v2/studies/NCT04801797',
+            'astra':'https://deploymentsafety.openai.com/gpt-6-astra',
+            'nvidia':'https://blogs.nvidia.com/blog/nvidia-to-acquire-hugging-face/'
+          }
+          def fetch(item):
+            name,url=item
+            result={'name':name,'url':url}
+            try:
+              r=requests.get(url,timeout=55,headers={'User-Agent':'Research article review (public source reading)'})
+              result.update(status=r.status_code,final_url=r.url,type=r.headers.get('content-type',''))
+              if r.status_code!=200:return result
+              ext='.pdf' if r.content.startswith(b'%PDF') else '.json' if 'json' in result['type'] else '.html'
+              (root/(name+ext)).write_bytes(r.content)
+              if ext=='.html':
+                soup=BeautifulSoup(r.text,'html.parser')
+                result['images']=[{'src':i.get('src'),'srcset':i.get('srcset'),'alt':i.get('alt')} for i in soup.find_all('img')]
+                result['links']=[{'text':a.get_text(' ',strip=True),'url':urllib.parse.urljoin(url,a['href'])} for a in soup.find_all('a',href=True) if any(x in a['href'].lower() for x in ['pdf','xlsx','figures','media.springernature','assets','chart'])]
+                (root/(name+'.txt')).write_text(soup.get_text('\n',strip=True))
+            except Exception as e:result['error']=str(e)
+            return result
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(fetch,sources.items()))
+          (root/'manifest.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+          print(json.dumps([{k:v for k,v in r.items() if k not in ['images','links']} for r in results],indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sep05-primary-sources
+          path: source-review/
+          retention-days: 7
