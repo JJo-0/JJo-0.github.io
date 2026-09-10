@@ -1,0 +1,181 @@
+name: Validate Astra and AML illustrated revisions
+on:
+  push:
+    branches: [editorial/astra-aml-source-guide-20260910]
+    paths: [.github/workflows/astra-aml-validate.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: astra-aml-revision-validation
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: staging
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 6c262d0aeedf6f99f80e838f95744fda9a9def16
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: astra-aml-primary-reading
+          run-id: 34466222764
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: sources/latest
+      - uses: actions/download-artifact@v4
+        with:
+          name: astra-aml-background
+          run-id: 34466843233
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: sources/background
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate content checksum and apply only the approved two-article package
+        run: |
+          mkdir -p audit
+          python - <<'PY'
+          import base64,hashlib,json,lzma,pathlib,subprocess
+          staging=pathlib.Path('staging/editorial-staging')
+          encoded=''.join((staging/f'review-payload-{i}.b64').read_text().strip() for i in range(4))
+          raw=lzma.decompress(base64.b64decode(encoded,validate=True))
+          expected='d95d8aa0c32b4fd206112786b800cf7fdc9cd8078a33d39de48e1d690e6f182a'
+          assert hashlib.sha256(raw).hexdigest()==expected,'Payload checksum mismatch'
+          package=json.loads(raw);root=pathlib.Path('release')
+          assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==package['base']
+          allowed={
+            'spaceship-ui/site/content/posts/2026-09-05-gpt-6-astra-safety-news.mdx',
+            'spaceship-ui/site/content/posts/2026-09-05-aml-paradigm-news.mdx',
+            'spaceship-ui/src/components/post/ResearchFigure.astro',
+            'spaceship-ui/src/components/post/ResearchFlow.astro'}
+          assert set(package['files'])==allowed
+          for name,text in package['files'].items():
+              assert '..' not in pathlib.PurePosixPath(name).parts
+              if name.endswith('.mdx'):
+                  for banned in ['공학자가 이 시험에서 배울 점','편집 점수','증거 등급','INDUSTRY_TRIGGER','EARLY_SIGNAL']:
+                      assert banned not in text,(name,banned)
+                  assert 'pubDate: 2026-09-05' in text and 'draft: false' in text
+              target=root/name;target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_text('\n'.join(line.rstrip() for line in text.splitlines())+'\n',encoding='utf8')
+          pathlib.Path('audit/source-package.json').write_text(json.dumps({'sha256':expected,'base':package['base'],'paths':sorted(allowed)},indent=2))
+          print('Verified and applied four exact source files')
+          PY
+      - name: Build source-preserving imagery and factual or explicitly synthetic charts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-nanum
+          python -m pip install 'numpy<3' 'matplotlib<4' 'Pillow<13' beautifulsoup4
+          python staging/editorial-staging/build-review-assets.py
+      - name: Register thumbnails and media provenance without changing other entries
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          from PIL import Image
+          root=pathlib.Path('release/spaceship-ui')
+          file=root/'site/news-media.json';media=json.loads(file.read_text())
+          specs=[('astra-evaluations','2026-09-05-gpt-6-astra-safety-news','astra-05.webp','간접 프롬프트 주입 평가에서 공격 시도 횟수에 따른 성공률을 비교한 OpenAI 원본 그래프','https://deploymentsafety.openai.com/gpt-6-astra/prompt-injection','OpenAI · GPT-6 Astra system card · Figure 5','원문 평가 그림 인용','https://deploymentsafety.openai.com/gpt-6-astra'),('aml-clinical-results','2026-09-05-aml-paradigm-news','aml-efs.png','PARADIGM 두 치료군의 중앙 EFS와 95% 신뢰구간을 그린 그래프','https://www.nejm.org/doi/abs/10.1056/NEJMoa2602804','JJo · 공개 요약 수치의 독립 시각화','자체 제작 그래프','https://www.nejm.org/doi/abs/10.1056/NEJMoa2602804')]
+          for key,slug,name,alt,source,credit,license,rights in specs:
+              assert not any(v['slug']==slug for v in media.values()),'Existing thumbnail must be reconciled, not overwritten'
+              im=Image.open(root/'site/assets/assets/posts/astra-aml-review'/name)
+              media[key]={'slug':slug,'order':21 if 'astra' in key else 22,'src':'/assets/posts/astra-aml-review/'+name,'width':im.width,'height':im.height,'alt':alt,'kind':'평가 결과 그래프','caption':alt,'credit':credit,'source':source,'license':license,'rights':rights,'changes':'원본 그림 내용 변경 없음' if 'astra' in key else '공개 중앙값과 신뢰구간을 자체 시각화; 실제 환자 생존곡선 아님'}
+          file.write_text(json.dumps(media,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
+          record=root/'ops/blog-harness/records/2026-09-10-astra-aml-revision.md'
+          record.write_text('''# Astra and AML illustrated revisions
+          User-requested public update of the existing two September 5 articles. No unrelated articles changed.
+          Astra: 10 selected original system-card figures are used with source attribution and figure-specific Korean criticism and interpretation; this does not assert an open license or reuse permission beyond the present editorial quotation.
+          AML: the protein structure is credited to Dan Cojocari under CC BY 3.0, as documented on the NCI page. It is mechanistic background, not a PARADIGM observation.
+          Clinical outcome plots are independently generated from public factual summaries. The Kaplan–Meier teaching example and base-rate curve are explicitly synthetic calculations, not patient data or measured model performance.
+          No publisher paper PDF, downloaded font file, login-only asset, or full research report is republished.
+          Sources: NEJM doi:10.1056/NEJMoa2602804; NCT04801797; MGB 2026-09-02 institutional account; NCI drug definitions and BCL-2 image; ELN 2021 MRD consensus; OpenAI Astra system card, updated 2026-09-09; Guan et al. arXiv:2512.18311v1.
+          Publication must follow unchanged repository checks and independent live image/math verification.
+          '''.replace('          ',''),encoding='utf8')
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: release/spaceship-ui/pnpm-lock.yaml
+      - name: Install unchanged dependencies
+        working-directory: release/spaceship-ui
+        run: pnpm install --frozen-lockfile
+      - name: Taxonomy
+        working-directory: release/spaceship-ui
+        run: pnpm taxonomy:check
+      - name: Lint
+        working-directory: release/spaceship-ui
+        run: pnpm lint
+      - name: Type check
+        working-directory: release/spaceship-ui
+        run: pnpm check
+      - name: SEO and publishing harness
+        working-directory: release/spaceship-ui
+        run: |
+          pnpm seo:check
+          pnpm blog:harness:check
+      - name: Build
+        working-directory: release/spaceship-ui
+        run: pnpm build
+      - name: All unchanged content contracts
+        working-directory: release/spaceship-ui
+        run: pnpm content:check
+      - name: Existing browser matrix
+        working-directory: release/spaceship-ui
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+      - name: Verify both generated articles and all image references
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          from bs4 import BeautifulSoup
+          site=pathlib.Path('release/spaceship-ui/dist')
+          articles={'2026-09-05-gpt-6-astra-safety-news':(11,1,10,18),'2026-09-05-aml-paradigm-news':(6,3,3,15)}
+          report=[]
+          for slug,(images,flows,equations,sections) in articles.items():
+              file=site/'posts'/slug/'index.html';assert file.is_file(),str(file)
+              soup=BeautifulSoup(file.read_text(),'html.parser');article=soup.select_one('article');assert article
+              text=article.get_text(' ',strip=True)
+              for phrase in ['공학자가 이 시험에서 배울 점','편집 점수','증거 등급','INDUSTRY_TRIGGER','EARLY_SIGNAL']:
+                  assert phrase not in text,(slug,phrase)
+              assert len(article.select('[data-research-figure]'))==images,(slug,'images')
+              assert len(article.select('[data-research-flow]'))==flows,(slug,'flows')
+              assert len(article.select('.math-display'))>=equations,(slug,'math')
+              assert not article.select('.katex-error'),slug
+              assert len(article.select('h2'))>=sections,(slug,'sections')
+              assert len(text)>12000,(slug,len(text))
+              for im in article.select('[data-research-figure] img'):
+                  assert im.get('alt') and (site/im['src'].lstrip('/')).is_file(),im
+              report.append({'slug':slug,'status':'PASS','renderedCharacters':len(text),'images':images,'flows':flows,'equations':len(article.select('.math-display')),'sections':len(article.select('h2'))})
+          pathlib.Path('audit/built-content.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - name: Commit validated sources to a release branch only
+        working-directory: release
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          git config user.name 'Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git switch -c "editorial/validated-astra-aml-${RUN_ID}"
+          git add spaceship-ui/site/content/posts/2026-09-05-gpt-6-astra-safety-news.mdx spaceship-ui/site/content/posts/2026-09-05-aml-paradigm-news.mdx spaceship-ui/src/components/post/ResearchFigure.astro spaceship-ui/src/components/post/ResearchFlow.astro spaceship-ui/site/assets/assets/posts/astra-aml-review spaceship-ui/site/news-media.json spaceship-ui/ops/blog-harness/records/2026-09-10-astra-aml-revision.md
+          git diff --cached --check
+          git commit -m "news: explain Astra safety evaluations and AML results with original figures" -m "Replace two short articles with source-led Korean guides, 17 displayed figures, native explanatory diagrams and derived metrics. Remove the unrelated engineering lesson. Preserve publication dates, original routes and all existing checks."
+          git push origin HEAD
+          git rev-parse HEAD > ../audit/release-sha.txt
+          git show --format=fuller --stat HEAD > ../audit/release-commit.txt
+          printf '{"status":"VALIDATED_NOT_DEPLOYED","sha":"%s","branch":"%s"}\n' "$(git rev-parse HEAD)" "$(git branch --show-current)" > ../audit/release.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-aml-revision-validation
+          path: audit/
+          retention-days: 7
