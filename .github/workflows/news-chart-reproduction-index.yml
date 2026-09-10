@@ -1,0 +1,62 @@
+name: NEWS chart reproduction index
+on:
+  push:
+    branches: [editorial/news-sep5-8-source-audit-20260910]
+    paths: [.github/workflows/news-chart-reproduction-index.yml]
+permissions:
+  contents: read
+jobs:
+  locate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests beautifulsoup4
+      - name: Inspect existing public reproductions; do not infer chart values
+        run: |
+          mkdir -p index-review
+          cat >/tmp/locate.py <<'PY'
+          import requests,json,pathlib,concurrent.futures,urllib.parse
+          from bs4 import BeautifulSoup
+          out=pathlib.Path('index-review')
+          urls={
+           'han':'https://benjaminhan.net/posts/20260908-research-acceleration-view-inside-openai/',
+           'progressive':'https://www.progressiverobot.com/2026/09/07/openai-automated-research-intern/',
+           'teknotum':'https://teknotum.net/2026/09/openai-says-recursive-self-improvement-could-happen-in-2028/',
+           'brocker':'https://www.brocker.org/openai-research-acceleration-alien-mind-rsi-september-2026'
+          }
+          def get(item):
+            key,url=item; result={'key':key,'url':url,'images':[]}
+            try:
+              r=requests.get(url,timeout=25);result['status']=r.status_code
+              if not r.ok:return result
+              soup=BeautifulSoup(r.text,'html.parser')
+              (out/(key+'.html')).write_text(r.text,encoding='utf8')
+              (out/(key+'.txt')).write_text(soup.get_text('\n',strip=True),encoding='utf8')
+              main=soup.find('article') or soup.find('main') or soup
+              for n,im in enumerate(main.find_all('img')[:15]):
+                src=im.get('data-src') or im.get('src'); row={'alt':im.get('alt'),'src':src}
+                if src and not src.startswith('data:'):
+                  absolute=urllib.parse.urljoin(url,src);row['absolute_url']=absolute
+                  try:
+                    img=requests.get(absolute,timeout=15);row['status']=img.status_code
+                    mime=img.headers.get('Content-Type','')
+                    if img.ok and mime.startswith('image/') and len(img.content)<3000000:
+                      ext='.svg' if 'svg' in mime else '.webp' if 'webp' in mime else '.jpg' if 'jpeg' in mime else '.png'
+                      name=f'{key}-{n:02d}{ext}';(out/name).write_bytes(img.content);row['file']=name
+                  except Exception as e:row['error']=str(e)
+                result['images'].append(row)
+            except Exception as e:result['error']=str(e)
+            return result
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool: result=list(pool.map(get,urls.items()))
+          (out/'manifest.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf8')
+          print(json.dumps(result,ensure_ascii=False,indent=2))
+          PY
+          python /tmp/locate.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-chart-reproduction-index
+          path: index-review/
+          retention-days: 7
