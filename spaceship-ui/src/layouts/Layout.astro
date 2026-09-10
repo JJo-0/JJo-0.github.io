@@ -24,6 +24,7 @@ interface Props {
   schema?: Record<string, unknown> | Record<string, unknown>[];
   noindex?: boolean;
   usesChart?: boolean;
+  adsEnabled?: boolean;
   markdownAlternate?: string;
   languageAlternates?: Record<string, string>;
 }
@@ -37,6 +38,7 @@ const {
   schema,
   noindex = false,
   usesChart = false,
+  adsEnabled = true,
   markdownAlternate,
   languageAlternates = {},
 } = Astro.props;
@@ -66,7 +68,7 @@ const finalSchema = schema
 
 const analyticsId = SITE.googleAnalyticsId;
 const isGTM = analyticsId?.startsWith('GTM-');
-const adsenseClientId = SITE.adsense?.enabled ? SITE.adsense.clientId : '';
+const adsenseClientId = adsEnabled && SITE.adsense?.enabled ? SITE.adsense.clientId : '';
 
 const gtmScript = `
   (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -264,7 +266,7 @@ const adsenseLoaderScript = adsenseClientId
       <main id="main-content" class="py-10 sm:py-14 lg:py-20" tabindex="-1">
         <slot />
       </main>
-      <AdSense />
+      {adsenseClientId && <AdSense />}
       <Footer />
     </div>
   </body>
