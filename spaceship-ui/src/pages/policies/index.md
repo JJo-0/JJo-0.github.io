@@ -8,9 +8,9 @@ area: policy
 
 이 블로그는 연구와 학습 과정을 공유하는 개인 아카이브입니다. 이 안내는 Writing과 News를 포함한 공개 콘텐츠에 적용되는 편집 원칙이며, 개별 글에 표시된 출처·기준일·조건을 함께 확인해야 합니다.
 
-**[공지: 성경 연구 아카이브 개설 및 콘텐츠 운영 원칙 선언](/notices/2026-09-11-biblical-studies-and-policies/)**
+**[공지: 성경 연구 아카이브 개설 및 콘텐츠 운영 원칙 선언](/notices/2026-09-11-biblical-studies-and-policies)**
 
-[성경 글을 읽기 전에](/bible/reading-guide/) · [분야별 면책 안내](/policies/disclaimer/) · [저작권·재사용 안내](/policies/copyright/)
+[성경 글을 읽기 전에](/bible/reading-guide) · [분야별 면책 안내](/policies/disclaimer) · [저작권·재사용 안내](/policies/copyright)
 
 ## 개인의 기록과 공식 입장
 
