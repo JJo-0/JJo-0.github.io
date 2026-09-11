@@ -6,6 +6,7 @@ export const POST_CATEGORIES = Object.freeze([
   'research-methods-tools',
   'health-lifestyle',
   'finance-industry',
+  'biblical-studies',
   'meta',
 ]);
 
@@ -26,7 +27,7 @@ export const POST_CATEGORY_META = Object.freeze({
     label: 'Robotics & Embedded Systems',
     shortLabel: 'Robotics',
     description:
-      'ROS2, SLAM, 로봇 학습, 산업 통신, 임베디드 시스템 구현 기록입니다.',
+      'ROS2, SLAM, 로봇 학습, 산업 통신, 임베디드 시스템 구현·검증 기록입니다.',
   },
   'software-engineering-cs': {
     label: 'Software Engineering & CS',
@@ -51,6 +52,12 @@ export const POST_CATEGORY_META = Object.freeze({
     shortLabel: 'Finance',
     description:
       '기업, 산업 구조, 에너지·원자재 시장과 투자 분석을 다룹니다.',
+  },
+  'biblical-studies': {
+    label: '성경 · Biblical Studies',
+    shortLabel: '성경',
+    description:
+      '성경 본문 주해, 문학·역사적 맥락과 신학적 쟁점을 탐구하는 개인 연구 기록입니다.',
   },
   meta: {
     label: 'Site Meta',

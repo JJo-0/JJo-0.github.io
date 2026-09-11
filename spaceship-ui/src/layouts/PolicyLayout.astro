@@ -1,0 +1,57 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import Breadcrumbs from '@/components/Breadcrumbs.svelte';
+import { getBreadcrumbSchema } from '@/lib/schemas';
+
+interface Props {
+  frontmatter: {
+    title: string;
+    description: string;
+    updated: string;
+    area?: 'bible' | 'policy';
+  };
+}
+
+const { title, description, updated, area = 'policy' } = Astro.props.frontmatter;
+const isBible = area === 'bible';
+const isPolicyIndex = Astro.url.pathname.replace(/\/$/, '') === '/policies';
+const parents = isBible
+  ? [{ name: 'Writing', href: '/posts' }, { name: '성경', href: '/bible/' }]
+  : isPolicyIndex ? [] : [{ name: '운영 원칙', href: '/policies/' }];
+const breadcrumbs = [...parents, { name: title, href: Astro.url.pathname }];
+const schema = getBreadcrumbSchema(
+  breadcrumbs.map(({ name, href }) => ({ name, url: new URL(href, Astro.site).toString() }))
+);
+---
+
+<Layout {title} {description} {schema} lang="ko-KR" adsEnabled={false}>
+  <Breadcrumbs items={breadcrumbs} />
+  <div class="mx-auto max-w-4xl">
+    <header class="mb-10 border-t border-border pt-10 sm:pt-14">
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+        {isBible ? 'Biblical Exegesis & Theological Inquiry' : 'Editorial & Use Policies'}
+      </p>
+      <h1 class="policy-title text-3xl font-bold tracking-tight text-foreground sm:text-5xl">{title}</h1>
+      <p class="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{description}</p>
+      <p class="mt-4 text-xs text-muted-foreground">문서 수정 <time datetime={updated}>{updated}</time></p>
+    </header>
+    <article class="prose max-w-none">
+      <slot />
+    </article>
+    <nav class="mt-12 flex flex-wrap gap-x-5 gap-y-3 border-t border-border pt-6 text-sm" aria-label="관련 안내">
+      <a href="/notices/2026-09-11-biblical-studies-and-policies/">공지 선언문</a>
+      <a href="/bible/">성경 아카이브</a>
+      <a href="/policies/">운영 원칙</a>
+      <a href="/policies/disclaimer/">면책 안내</a>
+      <a href="/policies/copyright/">저작권·재사용</a>
+    </nav>
+  </div>
+</Layout>
+
+<style>
+  .policy-title {
+    font-family: var(--font-editorial);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+</style>
