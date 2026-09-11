@@ -102,5 +102,13 @@ POST_TAXONOMY.update(
     }
 )
 
+POST_TAXONOMY.update(
+    {
+        '2026-09-11-embryo-base-editing-news.mdx': Taxonomy('health-lifestyle', 'genome-editing', 'paper-review', ('frontier-one', 'genome-editing')),
+        '2026-09-11-high-na-large-mask-news.mdx': Taxonomy('finance-industry', 'semiconductor-lithography', 'research-report', ('frontier-one', 'semiconductor-lithography')),
+        '2026-09-11-sulfide-electrolyte-film-news.mdx': Taxonomy('finance-industry', 'solid-state-batteries', 'paper-review', ('frontier-one', 'solid-state-batteries')),
+    }
+)
+
 if __name__ == "__main__":
     raise SystemExit(main())
