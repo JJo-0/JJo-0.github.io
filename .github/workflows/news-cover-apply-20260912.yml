@@ -18,7 +18,15 @@ jobs:
       - name: Apply reviewed covers
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python .github/news_cover_patch.py
+        shell: python
+        run: |
+          from pathlib import Path
+          source=Path('.github/news_cover_patch.py').read_text()
+          old='body=body.replace(\'<NewsFigure media="research-cycle" priority />\',\'\').strip()'
+          new='body=re.sub(r\'^[ \\t]+$\', \'\', body.replace(\'<NewsFigure media="research-cycle" priority />\',\'\'), flags=re.M).strip()'
+          assert source.count(old)==1
+          source=source.replace(old,new).replace('原본 PNG','원본 PNG')
+          exec(compile(source,'.github/news_cover_patch.py','exec'), {'__name__':'__main__'})
       - name: Validate scoped changes and remove temporary tooling
         shell: bash
         run: |
