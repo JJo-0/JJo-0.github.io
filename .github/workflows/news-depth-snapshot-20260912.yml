@@ -1,0 +1,26 @@
+name: NEWS and i18n source snapshot 20260912
+on:
+  push:
+    branches: [content/news-depth-english-20260912]
+    paths: [.github/workflows/news-depth-snapshot-20260912.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 5c07acd69fe8d569ed5c7cea9895794ff8400973
+          persist-credentials: false
+      - name: Export public source only
+        run: |
+          mkdir -p "$RUNNER_TEMP/news-depth-snapshot"
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/news-depth-snapshot/repository.tar.gz"
+          git rev-parse HEAD > "$RUNNER_TEMP/news-depth-snapshot/head.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: news-depth-snapshot-20260912
+          path: ${{ runner.temp }}/news-depth-snapshot
+          retention-days: 3
