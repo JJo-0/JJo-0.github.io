@@ -7,7 +7,12 @@ import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import { getBreadcrumbSchema } from '@/lib/schemas';
 import mediaCatalogue from '../../site/news-media.json';
 
-const mediaOrder = new Map(Object.values(mediaCatalogue).map((item) => [item.slug, item.order]));
+// NewsListItem selects the first image for each article. Use that same entry's
+// order so later in-article figures cannot silently reorder the NEWS cards.
+const mediaOrder = new Map<string, number>();
+for (const item of Object.values(mediaCatalogue)) {
+  if (!mediaOrder.has(item.slug)) mediaOrder.set(item.slug, item.order);
+}
 const newsPosts = (await getPublishedPosts())
   .filter((post) => post.data.tags.includes('frontier-one'))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() ||
