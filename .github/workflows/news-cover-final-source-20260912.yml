@@ -1,0 +1,44 @@
+name: NEWS final cover source 20260912
+on:
+  push:
+    branches: [content/news-sep05-08-covers-20260912]
+    paths: [.github/workflows/news-cover-final-source-20260912.yml]
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: python -m pip install --quiet requests beautifulsoup4 pillow
+      - shell: python
+        run: |
+          import os,json,hashlib,io
+          from pathlib import Path
+          import requests
+          from PIL import Image
+          from bs4 import BeautifulSoup
+          out=Path(os.environ['RUNNER_TEMP'])/'news-final-cover-source';out.mkdir()
+          urls={
+            'aml-original.jpg':'https://upload.wikimedia.org/wikipedia/commons/4/4b/Myeloblasts_on_peripheral_bloodsmear.jpg',
+            'weather-license.html':'https://arxiv.org/abs/2609.03582',
+            'aml-license.html':'https://commons.wikimedia.org/wiki/File:Myeloblasts_on_peripheral_bloodsmear.jpg'
+          }
+          records=[]
+          for name,url in urls.items():
+            rec={'file':name,'url':url}
+            try:
+              r=requests.get(url,headers={'User-Agent':'Mozilla/5.0 (compatible; JJO-source-review/1.0)'},timeout=40);r.raise_for_status()
+              if name.endswith('.jpg'):
+                im=Image.open(io.BytesIO(r.content));rec.update(width=im.width,height=im.height)
+              else:
+                soup=BeautifulSoup(r.content,'html.parser');(out/(name+'.txt')).write_text(soup.get_text(' ',strip=True))
+              (out/name).write_bytes(r.content);rec['sha256']=hashlib.sha256(r.content).hexdigest()
+            except Exception as e:rec['error']=str(e)
+            records.append(rec)
+          (out/'metadata.json').write_text(json.dumps(records,indent=2));print(json.dumps(records,indent=2))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: news-final-cover-source-20260912
+          path: ${{ runner.temp }}/news-final-cover-source
+          retention-days: 3
