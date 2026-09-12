@@ -89,7 +89,7 @@ POST_TAXONOMY.update(
         '2026-09-05-gpt-6-astra-safety-news.mdx': Taxonomy('ai-machine-learning', 'frontier-model-evaluation', 'research-report', ('frontier-one', 'frontier-model-evaluation')),
         '2026-09-05-nvidia-hugging-face-news.mdx': Taxonomy('finance-industry', 'ai-infrastructure', 'research-report', ('frontier-one', 'ai-infrastructure')),
         '2026-09-05-perovskite-interface-news.mdx': Taxonomy('finance-industry', 'photovoltaic-interfaces', 'paper-review', ('frontier-one', 'photovoltaic-interfaces')),
-        '2026-09-06-autothermal-methane-news.mdx': Taxonomy('finance-industry', 'hydrogen-process-engineering', 'research-report', ('frontier-one', 'hydrogen-process-engineering')),
+        '2026-09-06-autothermal-methane-news.mdx': Taxonomy('finance-industry', 'hydrogen-process-engineering', 'paper-review', ('frontier-one', 'hydrogen-process-engineering')),
         '2026-09-06-clear-ec-news.mdx': Taxonomy('health-lifestyle', 'clinical-oncology', 'paper-review', ('frontier-one', 'clinical-oncology')),
         '2026-09-06-feederbw-news.mdx': Taxonomy('finance-industry', 'power-grid-data', 'paper-review', ('frontier-one', 'power-grid-data')),
         '2026-09-06-hugcl-news.mdx': Taxonomy('ai-machine-learning', 'continual-learning-robotics', 'paper-review', ('frontier-one', 'continual-learning-robotics')),
