@@ -1,0 +1,107 @@
+name: NEWS cover source probe 20260912
+on:
+  push:
+    branches: [content/news-sep05-08-covers-20260912]
+    paths: [.github/workflows/news-cover-probe-20260912.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python -m pip install --quiet requests beautifulsoup4 pillow pymupdf
+      - name: Read public source pages and image candidates
+        shell: python
+        run: |
+          import os,re,json,hashlib,tarfile,concurrent.futures
+          from pathlib import Path
+          from urllib.parse import urljoin,urlparse
+          import requests,fitz
+          from bs4 import BeautifulSoup
+          from PIL import Image
+          import io
+          out=Path(os.environ['RUNNER_TEMP'])/'news-cover-probe'; out.mkdir()
+          pages=out/'sources';pages.mkdir()
+          posts=Path('spaceship-ui/site/content/posts')
+          items=[]
+          for p in sorted(posts.glob('2026-09-0[5678]*.mdx')):
+              text=p.read_text();urls=list(dict.fromkeys(re.findall(r'https?://[^\s\)\]<>\"\x27]+',text)))
+              pri=re.search(r'\[primary\]:\s*(https?://\S+)',text)
+              if pri: source=pri.group(1)
+              elif 'weathernext' in p.name: source='https://arxiv.org/html/2609.03582v1'
+              elif 'astra' in p.name: source='https://deploymentsafety.openai.com/gpt-6-astra'
+              elif 'aml-' in p.name: source='https://www.cancer.gov/types/leukemia/patient/adult-aml-treatment-pdq'
+              elif 'research-automation' in p.name: source='https://epoch.ai/gradient-updates/toward-an-onet-for-ai-rnd'
+              else: raise ValueError(p.name)
+              if 'nvidia-hugging' in p.name:source='https://blogs.nvidia.com/blog/nvidia-to-acquire-hugging-face/'
+              items.append({'slug':p.stem,'source':source,'urls':urls,'sourceBlob':hashlib.sha1(b'blob '+str(len(p.read_bytes())).encode()+b'\0'+p.read_bytes()).hexdigest()})
+          headers={'User-Agent':'Mozilla/5.0 (compatible; JJOResearchBlog/1.0; public-source-verification)'}
+          def get(url):
+              r=requests.get(url,headers=headers,timeout=35);r.raise_for_status();return r
+          def probe(item):
+              folder=pages/item['slug'];folder.mkdir();rec=dict(item,candidates=[],pdfs=[])
+              try:
+                  r=get(item['source']);(folder/'source.html').write_bytes(r.content);soup=BeautifulSoup(r.text,'html.parser')
+                  txt=soup.get_text(' ',strip=True);(folder/'source.txt').write_text(txt)
+                  rec['title']=soup.title.get_text() if soup.title else ''
+                  rec['licenseText']=[txt[max(0,m.start()-150):m.end()+700] for m in re.finditer(r'Creative Commons|Rights and permissions|Copyright|Photo credit|Photography|Image credit',txt,re.I)][:12]
+                  candidates=[]
+                  for fig in soup.select('figure'):
+                      cap=fig.get_text(' ',strip=True)
+                      for img in fig.find_all('img')[:1]:
+                          u=img.get('src') or img.get('data-src')
+                          if u:candidates.append((urljoin(r.url,u),cap,img.get('alt','')))
+                  for tag in soup.select('meta[property="og:image"], meta[name="twitter:image"]'):
+                      if tag.get('content'):candidates.append((urljoin(r.url,tag['content']),'Page social image',''))
+                  if 'arxiv.org' in item['source']:
+                      candidates.insert(0,('https://arxiv.org/html/2609.03582v1/Figures/fig1_alt2.png','Original paper model overview',''))
+                  # Preserve a few non-logo body images on institute/newsroom pages.
+                  if 'nature.com' not in item['source']:
+                      for img in soup.find_all('img'):
+                          u=img.get('src') or img.get('data-src')
+                          if u and not re.search(r'logo|icon|avatar|1x1|pixel',u,re.I):candidates.append((urljoin(r.url,u),img.parent.get_text(' ',strip=True)[:500],img.get('alt','')))
+                  seen=set()
+                  for u,cap,alt in candidates:
+                      if u in seen or len(rec['candidates'])>=5:continue
+                      seen.add(u)
+                      try:
+                          rr=get(u);im=Image.open(io.BytesIO(rr.content));w,h=im.size
+                          if w<250 or h<100:continue
+                          ext=Image.registered_extensions();suffix={'JPEG':'.jpg','PNG':'.png','WEBP':'.webp','GIF':'.gif'}.get(im.format,'.img')
+                          name='candidate-'+str(len(rec['candidates']))+suffix;(folder/name).write_bytes(rr.content)
+                          rec['candidates'].append({'file':name,'url':u,'caption':cap,'alt':alt,'width':w,'height':h,'sha256':hashlib.sha256(rr.content).hexdigest()})
+                      except Exception as e:rec.setdefault('imageErrors',[]).append({'url':u,'error':str(e)})
+                  # Accepted manuscripts may expose figures only inside the public PDF.
+                  if 'nature.com/articles/' in item['source'] and not any('MediaObjects' in x['url'] for x in rec['candidates']):
+                      pdfmeta=soup.find('meta',attrs={'name':'citation_pdf_url'})
+                      pu=pdfmeta.get('content') if pdfmeta else item['source']+'.pdf'
+                      try:
+                          rr=get(urljoin(r.url,pu));d=fitz.open(stream=rr.content,filetype='pdf');(folder/'source.pdf').write_bytes(rr.content)
+                          rec['pdfs'].append({'url':rr.url,'sha256':hashlib.sha256(rr.content).hexdigest(),'pages':len(d)})
+                          hits=[]
+                          for n,p in enumerate(d):
+                              text=p.get_text();blocks=p.get_text('blocks')
+                              if any(re.match(r'\s*(?:Fig(?:ure)?\.?\s*1\b|FIG(?:URE)?\.?\s*1\b)',b[4]) for b in blocks):hits.append(n)
+                          rec['figurePages']=hits
+                          for n in hits[:3]:
+                              p=d[n];p.get_pixmap(matrix=fitz.Matrix(1.6,1.6)).save(folder/f'figure-page-{n+1}.png');(folder/f'figure-page-{n+1}.txt').write_text(p.get_text())
+                          (folder/'pdf-text.txt').write_text('\n\n'.join(p.get_text() for p in d))
+                      except Exception as e:rec['pdfError']=str(e)
+              except Exception as e:rec['error']=str(e)
+              (folder/'metadata.json').write_text(json.dumps(rec,ensure_ascii=False,indent=2));return rec
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:results=list(pool.map(probe,items))
+          (out/'inventory.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+          with tarfile.open(out/'repository.tar.gz','w:gz') as t:
+              for p in Path('.').iterdir():
+                  if p.name!='.git':t.add(p,arcname=p.name)
+          print(json.dumps([{'slug':r['slug'],'candidates':len(r['candidates']),'pdfs':r['pdfs'],'error':r.get('error'),'pdfError':r.get('pdfError')} for r in results],ensure_ascii=False,indent=2))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: news-cover-probe-20260912
+          path: ${{ runner.temp }}/news-cover-probe
+          retention-days: 3
+          if-no-files-found: error
