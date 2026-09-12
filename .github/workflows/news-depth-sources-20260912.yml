@@ -1,0 +1,80 @@
+name: NEWS primary source review 20260912
+on:
+  push:
+    branches: [content/news-depth-english-20260912]
+    paths: [.github/workflows/news-depth-sources-20260912.yml]
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: python -m pip install --quiet requests beautifulsoup4 pymupdf
+      - name: Read allowlisted scholarly sources without executing downloaded content
+        shell: python
+        run: |
+          from pathlib import Path
+          from urllib.parse import urljoin, urlparse
+          from concurrent.futures import ThreadPoolExecutor
+          import requests, json, hashlib, time
+          import pymupdf
+          from bs4 import BeautifulSoup
+          out=Path('/tmp/news-depth-primary-20260912');out.mkdir(exist_ok=True)
+          entries=json.loads(Path('.github/news-depth-source-list.json').read_text())
+          allowed={urlparse(r['url']).hostname for r in entries}|{'media.springernature.com','static-content.springer-cdn.com','www.nature.com','arxiv.org'}
+          def get(url):
+              assert urlparse(url).scheme=='https' and urlparse(url).hostname in allowed
+              response=requests.get(url,timeout=40,headers={'User-Agent':'JJoResearchBlog/1.0 (public scholarly source verification)'})
+              if len(response.content)>40000000:raise ValueError('Source larger than allowed bound')
+              return response
+          def pdf_text(data,path):
+              if not data.startswith(b'%PDF-'):return
+              path.write_bytes(data)
+              with pymupdf.open(stream=data,filetype='pdf') as doc:
+                  text='\n'.join(f'\n=== PDF PAGE {i+1} ===\n'+page.get_text() for i,page in enumerate(doc))
+              path.with_suffix('.txt').write_text(text)
+          def one(row):
+              folder=out/row['id'];folder.mkdir(exist_ok=True)
+              rec=dict(row,checkedAt='2026-09-12',documents=[])
+              try:
+                  r=get(row['url']);rec['documents'].append({'url':row['url'],'finalUrl':r.url,'status':r.status_code,'sha256':hashlib.sha256(r.content).hexdigest(),'bytes':len(r.content),'contentType':r.headers.get('content-type','')})
+                  if r.status_code!=200:return rec
+                  if r.content.startswith(b'%PDF-'):
+                      pdf_text(r.content,folder/'source.pdf');return rec
+                  (folder/'source.html').write_text(r.text)
+                  soup=BeautifulSoup(r.text,'html.parser')
+                  candidates=[]
+                  if 'nature.com' in urlparse(row['url']).hostname:
+                      article_id=row['url'].split('/articles/')[-1].split('/')[0]
+                      for tag in soup.find_all(['a','meta']):
+                          href=tag.get('href') or (tag.get('content') if tag.get('name')=='citation_pdf_url' else '')
+                          if not href:continue
+                          url=urljoin(row['url'],href)
+                          if '.pdf' not in url or urlparse(url).hostname not in allowed:continue
+                          label=tag.get_text(' ',strip=True)
+                          if article_id in url or 'Supplementary Information' in label:
+                              if url not in candidates:candidates.append(url)
+                  for element in soup(['script','style','nav','header','footer']):element.decompose()
+                  main=soup.find('article') or soup.find('main') or soup
+                  (folder/'source.txt').write_text(main.get_text('\n',strip=True))
+                  for index,url in enumerate(candidates[:3]):
+                      time.sleep(.3)
+                      try:
+                          p=get(url);info={'url':url,'finalUrl':p.url,'status':p.status_code,'bytes':len(p.content),'sha256':hashlib.sha256(p.content).hexdigest(),'pdf':p.content.startswith(b'%PDF-')};rec['documents'].append(info)
+                          if p.status_code==200 and info['pdf']:
+                              info['filename']=f'linked-{index}.pdf';pdf_text(p.content,folder/info['filename'])
+                      except Exception as e:rec['documents'].append({'url':url,'error':str(e)[:300]})
+              except Exception as e:rec['error']=str(e)[:300]
+              return rec
+          with ThreadPoolExecutor(max_workers=3) as pool:records=list(pool.map(one,entries))
+          (out/'sources.json').write_text(json.dumps(records,ensure_ascii=False,indent=2))
+          for r in records:print(r['id'],[(d.get('status'),d.get('bytes')) for d in r['documents']],r.get('error',''))
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: news-depth-primary-20260912
+          path: /tmp/news-depth-primary-20260912
+          retention-days: 3
