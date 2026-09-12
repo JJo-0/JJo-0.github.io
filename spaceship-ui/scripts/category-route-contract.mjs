@@ -115,8 +115,16 @@ if (fs.existsSync(homeHtmlPath) && fs.existsSync(postsHtmlPath)) {
       if (!noticeHtml.includes(`href="${common}"`)) issues.push(`${category}: notice missing shared policy ${common}`);
     }
   }
+
+  // Only the category is compacted. The existing global footer may still link
+  // to the Bible reading guide and must not trigger this category regression.
+  const bibleSectionHtml = postsHtml.match(/<section\b[^>]*\bid="biblical-studies"[^>]*>[\s\S]*?<\/section>/)?.[0] || '';
+  if (!bibleSectionHtml) issues.push('Rendered Writing Bible category could not be inspected');
+  if (!bibleSectionHtml.includes('data-category-notice="biblical-studies"')) {
+    issues.push('Writing Bible notice must be inside its category section');
+  }
   for (const repeated of ['성경 글을 읽기 전에', '성경 아카이브 · 프로젝트 안내', '현재 공개된 본문 연구 글은 없습니다.']) {
-    if (postsHtml.includes(repeated)) issues.push(`Rendered Writing repeats category guidance: ${repeated}`);
+    if (bibleSectionHtml.includes(repeated)) issues.push(`Rendered Writing Bible category repeats guidance: ${repeated}`);
   }
 
   for (const htmlPath of walkHtml(path.join(root, 'dist'))) {
