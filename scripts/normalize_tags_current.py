@@ -124,5 +124,14 @@ POST_TAXONOMY.update(
     }
 )
 
+POST_TAXONOMY.update(
+    {
+        '2026-09-12-lithium-disulfur-dichloride-frontier-one.mdx': Taxonomy(
+            'finance-industry', 'lithium-sulfur-batteries', 'research-report',
+            ('frontier-one', 'energy-storage', 'lithium-sulfur-batteries'),
+        ),
+    }
+)
+
 if __name__ == "__main__":
     raise SystemExit(main())
