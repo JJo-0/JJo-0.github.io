@@ -10,6 +10,12 @@ const sizes = [
   { width: 1440, height: 1000, reduced: true },
 ];
 
+async function pressEnter(cdp, sessionId) {
+  // A native summary activates on Enter's character input, not a bare raw key.
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r', unmodifiedText: '\r' }, sessionId);
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, sessionId);
+}
+
 export async function auditActsStudies(cdp, sessionId) {
   assert.equal(series.entries.length, 6);
   assert.deepEqual(series.entries.map((entry) => entry.order), [1, 2, 3, 4, 5, 6]);
@@ -40,12 +46,13 @@ export async function auditActsStudies(cdp, sessionId) {
       await navigate(cdp, sessionId, `/posts/${entry.slug}`);
       await waitExpression(cdp, sessionId, `Boolean(document.querySelector('[data-study-tools]:not([hidden])'))`, 'Study controls initialize');
       assert.equal(await evaluate(cdp, sessionId, `document.querySelector('[data-acts-original]').open`), false);
-      await evaluate(cdp, sessionId, `document.querySelector('[data-acts-original] summary').focus()`);
-      await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, sessionId);
-      await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, sessionId);
-      await waitExpression(cdp, sessionId, `document.querySelector('[data-acts-original]').open`, 'Keyboard opens original details');
+      await evaluate(cdp, sessionId, `(() => { const summary = document.querySelector('[data-acts-original] summary'); summary.scrollIntoView({block:'center',behavior:'instant'}); summary.focus(); })()`);
+      assert.equal(await evaluate(cdp, sessionId, `document.activeElement === document.querySelector('[data-acts-original] summary')`), true, `${entry.slug}: native summary receives focus`);
+      await pressEnter(cdp, sessionId);
+      await waitExpression(cdp, sessionId, `document.querySelector('[data-acts-original]').open`, `${entry.slug}: keyboard opens original details`);
       assert.equal(await evaluate(cdp, sessionId, `document.querySelector('[data-acts-source]').href`), entry.source);
-      await evaluate(cdp, sessionId, `document.querySelector('[data-acts-original]').open = false`);
+      await pressEnter(cdp, sessionId);
+      await waitExpression(cdp, sessionId, `!document.querySelector('[data-acts-original]').open`, `${entry.slug}: keyboard closes original details`);
       for (const dark of [false, true]) {
         const result = await evaluate(cdp, sessionId, `(() => {
           document.documentElement.classList.toggle('dark', ${dark});
@@ -68,6 +75,7 @@ export async function auditActsStudies(cdp, sessionId) {
       assert.equal(await evaluate(cdp, sessionId, `document.querySelector('jjo-study-table').querySelectorAll('[data-study-row]:not([hidden])').length`), 0);
       await evaluate(cdp, sessionId, `document.querySelector('[data-study-reset]').click()`);
       assert(await evaluate(cdp, sessionId, `document.querySelector('jjo-study-table').querySelectorAll('[data-study-row]:not([hidden])').length > 0`));
+      console.log(`acts-reader: PASS ${entry.slug} width=${size.width} light/dark keyboard open/close search/reset`);
     }
   }
 
