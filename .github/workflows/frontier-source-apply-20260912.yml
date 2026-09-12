@@ -1,0 +1,52 @@
+name: Frontier source apply 20260912
+on:
+  push:
+    branches: [content/lithium-sulfur-visuals-20260912]
+    paths: [.github/workflows/frontier-source-apply-20260912.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.repository == 'JJo-0/JJo-0.github.io' && github.ref == 'refs/heads/content/lithium-sulfur-visuals-20260912'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/lithium-sulfur-visuals-20260912
+          fetch-depth: 1
+      - name: Install image and PDF readers
+        run: python3 -m pip install Pillow==12.3.0 PyMuPDF==1.26.7
+      - name: Apply reviewed image and source patch
+        run: |
+          sed -i 's/Cheng Lou/Chunya Lou/g' .github/frontier_source_media_patch.py
+          python3 .github/frontier_source_media_patch.py
+          cd spaceship-ui
+          node scripts/news-sulfur-visual-contract.mjs
+          node scripts/post-content-contract.mjs
+          node scripts/seo-check.mjs
+      - name: Commit only reviewed content paths to this PR branch
+        run: |
+          git config user.name 'JJo Source Media Audit'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git add spaceship-ui/site/assets/assets/posts/frontier-source-20260912/ \
+            spaceship-ui/site/news-media.json \
+            spaceship-ui/scripts/news-sulfur-visual-contract.mjs \
+            spaceship-ui/site/content/posts/2026-09-12-lithium-disulfur-dichloride-frontier-one.mdx \
+            spaceship-ui/site/content/posts/2026-09-11-embryo-base-editing-news.mdx \
+            spaceship-ui/site/content/posts/2026-09-11-high-na-large-mask-news.mdx \
+            spaceship-ui/site/content/posts/2026-09-11-sulfide-electrolyte-film-news.mdx
+          git diff --cached --check
+          git commit -m 'content: vendor verified original source images for four Frontier drafts'
+          git push origin HEAD:refs/heads/content/lithium-sulfur-visuals-20260912
+      - name: Package exact changed files for review
+        run: |
+          mkdir -p "$RUNNER_TEMP/applied"
+          git archive HEAD | gzip > "$RUNNER_TEMP/applied/repository.tar.gz"
+          git rev-parse HEAD > "$RUNNER_TEMP/applied/head.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontier-source-applied-20260912
+          path: ${{ runner.temp }}/applied/
+          retention-days: 3
+          if-no-files-found: error
