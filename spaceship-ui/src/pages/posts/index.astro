@@ -1,7 +1,6 @@
 ---
 import Layout from '@/layouts/Layout.astro';
 import WritingListItem from '@/components/WritingListItem.astro';
-import ContentNotice from '@/components/ContentNotice.astro';
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
 import { getReadTime } from '@/lib/utils/readTime';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
@@ -24,13 +23,21 @@ interface CategorySection {
   label: string;
   shortLabel: string;
   description: string;
+  noticeHref?: string;
   posts: PublishedPost[];
 }
+
+const categoryNoticeLinks: Readonly<Record<string, string>> = {
+  'biblical-studies': '/notices/2026-09-11-biblical-studies-and-policies',
+  'finance-industry': '/policies/finance',
+  'health-lifestyle': '/policies/health',
+};
 
 const categorySections: CategorySection[] = (POST_CATEGORIES as readonly string[])
   .map((category) => ({
     id: category,
     ...getPostCategoryMeta(category),
+    noticeHref: categoryNoticeLinks[category],
     posts: posts.filter((post) => post.data.category === category),
   }))
   .filter((section) => section.posts.length > 0 || section.id === 'biblical-studies');
@@ -130,6 +137,19 @@ const sortedTags = Object.entries(tagCounts)
                     </h2>
                     <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                       {section.description}
+                      {section.noticeHref && (
+                        <>
+                          {' '}
+                          <a
+                            href={section.noticeHref}
+                            data-category-notice={section.id}
+                            aria-label={`${section.label} 공지: 저작권·면책·자료 이용 원칙`}
+                            class="inline-block whitespace-nowrap rounded-sm font-bold underline underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+                          >
+                            [공지]
+                          </a>
+                        </>
+                      )}
                     </p>
                   </div>
                   <span class="shrink-0 text-xs font-black tabular-nums text-muted-foreground">
@@ -137,16 +157,6 @@ const sortedTags = Object.entries(tagCounts)
                   </span>
                 </div>
               </div>
-
-              {section.id === 'biblical-studies' && (
-                <div class="mb-6">
-                  <ContentNotice category="biblical-studies" />
-                  <a href="/bible" class="text-sm font-bold underline underline-offset-4">성경 아카이브 · 프로젝트 안내</a>
-                  {section.posts.length === 0 && (
-                    <p class="mt-3 text-sm leading-relaxed text-muted-foreground">현재 공개된 본문 연구 글은 없습니다. 프로젝트 소개와 읽기 전 안내를 먼저 확인해 주세요.</p>
-                  )}
-                </div>
-              )}
 
               <div>
                 {section.posts.map((post) => (
