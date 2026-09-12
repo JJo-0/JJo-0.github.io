@@ -36,7 +36,8 @@ for (const [slug, hero] of expected) {
   const source = fs.readFileSync(new URL(`../site/content/posts/${slug}.mdx`, import.meta.url), 'utf8');
   const fm = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   assert(fm, `${slug}: frontmatter required`);
-  assert.match(fm[1], /^draft: true$/m, `${slug}: this merge does not authorize publication`);
+  const authorizedToday = slug === '2026-09-12-lithium-disulfur-dichloride-frontier-one';
+  assert.match(fm[1], authorizedToday ? /^draft: false$/m : /^draft: true$/m, `${slug}: preserve the explicitly authorized publication scope`);
   assert.match(fm[1], new RegExp(`^slug: ${slug}$`, 'm'), `${slug}: catalogue and route slug must match`);
   const body = source.slice(fm[0].length).replace(/^import .*;\s*$/gm, '');
   const figure = body.indexOf(`<NewsFigure media="${hero}" priority />`);
@@ -52,4 +53,4 @@ assert.match(media['sulfide-film-fig2'].license, /BY-NC-ND/);
 assert.match(media['sulfide-cycle-fig5'].caption, /40°C.*0.5C.*2MPa/);
 assert.match(media['high-na-2024-source'].caption, /2026.*아니다/);
 assert.match(media['embryo-study-photo'].caption, /안전성 검증이 아니다/);
-console.log('news-source-media-contract: PASS seven verified local images, four original-first draft articles, rights preserved');
+console.log('news-source-media-contract: PASS seven verified local images, four original-first articles with explicit publication scope, rights preserved');
