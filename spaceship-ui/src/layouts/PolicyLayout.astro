@@ -14,7 +14,9 @@ interface Props {
 
 const { title, description, updated, area = 'policy' } = Astro.props.frontmatter;
 const isBible = area === 'bible';
-const isPolicyIndex = Astro.url.pathname.replace(/\/$/, '') === '/policies';
+const pathname = Astro.url.pathname.replace(/\/$/, '');
+const isPolicyIndex = pathname === '/policies';
+const isBibleContext = isBible || pathname === '/notices/2026-09-11-biblical-studies-and-policies';
 const parents = isBible
   ? [{ name: 'Writing', href: '/posts' }, { name: '성경', href: '/bible' }]
   : isPolicyIndex ? [] : [{ name: '운영 원칙', href: '/policies' }];
@@ -39,8 +41,13 @@ const schema = getBreadcrumbSchema(
       <slot />
     </article>
     <nav class="mt-12 flex flex-wrap gap-x-5 gap-y-3 border-t border-border pt-6 text-sm" aria-label="관련 안내">
-      <a href="/notices/2026-09-11-biblical-studies-and-policies">공지 선언문</a>
-      <a href="/bible">성경 아카이브</a>
+      <a href="/posts">Writing</a>
+      {isBibleContext && (
+        <>
+          <a href="/notices/2026-09-11-biblical-studies-and-policies">성경 공지</a>
+          <a href="/bible">성경 아카이브</a>
+        </>
+      )}
       <a href="/policies">운영 원칙</a>
       <a href="/policies/disclaimer">면책 안내</a>
       <a href="/policies/copyright">저작권·재사용</a>
