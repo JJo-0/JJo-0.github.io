@@ -36,8 +36,7 @@ for (const [slug, hero] of expected) {
   const source = fs.readFileSync(new URL(`../site/content/posts/${slug}.mdx`, import.meta.url), 'utf8');
   const fm = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   assert(fm, `${slug}: frontmatter required`);
-  const authorizedToday = slug === '2026-09-12-lithium-disulfur-dichloride-frontier-one';
-  assert.match(fm[1], authorizedToday ? /^draft: false$/m : /^draft: true$/m, `${slug}: preserve the explicitly authorized publication scope`);
+  assert.match(fm[1], /^draft: false$/m, `${slug}: publication explicitly authorized for all four articles on 2026-09-12`);
   assert.match(fm[1], new RegExp(`^slug: ${slug}$`, 'm'), `${slug}: catalogue and route slug must match`);
   const body = source.slice(fm[0].length).replace(/^import .*;\s*$/gm, '');
   const figure = body.indexOf(`<NewsFigure media="${hero}" priority />`);
