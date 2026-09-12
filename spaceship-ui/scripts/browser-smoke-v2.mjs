@@ -12,6 +12,7 @@ import { auditMobileMotion } from './browser-mobile-motion-audit.mjs';
 import { auditRenderer } from './browser-renderer-audit-v2.mjs';
 import { auditInteractions } from './browser-interaction-audits-v4.mjs';
 import { auditNewsMedia } from './browser-news-media-audit.mjs';
+import { auditActsStudies } from './browser-acts-study-audit.mjs';
 
 async function closeAuditTarget(cdp, target) {
   if (!target) return;
@@ -60,7 +61,7 @@ async function installFirstPartyLinkIsolation(cdp, sessionId) {
 }
 
 async function main() {
-  let preview, chrome, cdp, mobileTarget, homeMediaTarget, newsTarget, rendererTarget, interactionTarget;
+  let preview, chrome, cdp, mobileTarget, homeMediaTarget, newsTarget, actsTarget, rendererTarget, interactionTarget;
   try {
     preview = await startPreview();
     chrome = await startChrome();
@@ -88,6 +89,12 @@ async function main() {
     await closeAuditTarget(cdp, newsTarget);
     newsTarget = null;
 
+    // The six Acts articles extend the suite without replacing existing checks.
+    actsTarget = await attach(cdp);
+    await auditActsStudies(cdp, actsTarget.sessionId);
+    await closeAuditTarget(cdp, actsTarget);
+    actsTarget = null;
+
     rendererTarget = await attach(cdp);
 
     // Renderer, GSAP, retry, theme and adaptive-quality transitions mutate a
@@ -110,6 +117,7 @@ async function main() {
     setReducedMotionOverride(null);
     await closeAuditTarget(cdp, interactionTarget);
     await closeAuditTarget(cdp, rendererTarget);
+    await closeAuditTarget(cdp, actsTarget);
     await closeAuditTarget(cdp, newsTarget);
     await closeAuditTarget(cdp, homeMediaTarget);
     await closeAuditTarget(cdp, mobileTarget);
