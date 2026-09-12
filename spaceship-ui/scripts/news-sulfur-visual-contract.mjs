@@ -11,11 +11,11 @@ assert.match(frontmatter[1], /^draft: (true|false)$/m, 'sulfur: explicit draft s
 assert.match(frontmatter[1], /^researchFeatured: false$/m);
 assert.match(frontmatter[1], new RegExp(`^slug: ${slug}$`, 'm'));
 const body = source.slice(frontmatter[0].length).replace(/^import .*;\s*$/gm, '').trim();
-assert(body.startsWith('<NewsFigure media="sulfur-crystal" priority />'), 'sulfur: hero must be first visible body node');
-const ids = ['sulfur-crystal', 'sulfur-electron-range', 'sulfur-mass-basis'];
+assert(body.startsWith('<NewsFigure media="sulfur-source-fig1" priority />'), 'sulfur: hero must be first visible body node');
+const ids = ['sulfur-source-fig1', 'sulfur-crystal', 'sulfur-electron-range', 'sulfur-mass-basis'];
 const selected = Object.entries(media).filter(([, item]) => item.slug === slug);
 assert.deepEqual(selected.map(([id]) => id), ids, 'sulfur: NewsListItem must select photo before diagrams');
-assert.equal((body.match(/<NewsFigure\b/g) || []).length, 3, 'sulfur: exactly three role-specific visuals expected');
+assert.equal((body.match(/<NewsFigure\b/g) || []).length, 4, 'sulfur: source figure, material photograph and two educational diagrams expected');
 for (const id of ids) {
   const item = media[id];
   for (const field of ['src', 'alt', 'kind', 'caption', 'credit', 'source', 'license', 'rights', 'changes']) {
@@ -30,8 +30,13 @@ for (const id of ids) {
 assert.equal(media['sulfur-crystal'].license, 'CC BY-SA 2.5');
 assert.match(media['sulfur-crystal'].caption, /2006/);
 assert.match(media['sulfur-crystal'].kind, /연구 시료 아님/);
-assert.equal(new URL(media['sulfur-crystal'].src).hostname, 'thumb.wikimedia.org');
-for (const id of ids.slice(1)) {
+for (const id of ids.slice(0, 2)) {
+  assert(media[id].src.startsWith('/assets/posts/frontier-source-20260912/'));
+  assert(fs.existsSync(new URL(`../site/assets${media[id].src}`, import.meta.url)));
+}
+assert.match(media['sulfur-source-fig1'].caption, /이론/);
+assert.match(media['sulfur-source-fig1'].license, /원저작권/);
+for (const id of ids.slice(2)) {
   const item = media[id];
   assert(item.src.startsWith('/assets/posts/lithium-sulfur-20260912/'), `${id}: local post asset required`);
   const svg = read(`../site/assets${item.src}`);
@@ -52,4 +57,4 @@ const prose = body.split('## 9. 출처')[0]
   .replace(/[*|]/g, '')
   .replace(/\s+/g, ' ').trim();
 assert(prose.length >= 7000 && prose.length <= 10000, `sulfur: body must stay within 7,000–10,000 characters; got ${prose.length}`);
-console.log(`news-sulfur-visual-contract: PASS image-first body, photo-first thumbnail, 3 credited visuals, ${prose.length} prose characters`);
+console.log(`news-sulfur-visual-contract: PASS image-first body, photo-first thumbnail, 4 credited visuals, ${prose.length} prose characters`);
