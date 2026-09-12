@@ -37,3 +37,5 @@ for (const [slug, ids] of bySlug) {
 
 assert.equal(bySlug.size, 5, 'expected visual coverage for five September 9 NEWS articles');
 console.log('news-visual-contract: PASS five articles with three role-specific visuals each');
+
+await import('./news-sulfur-visual-contract.mjs');
