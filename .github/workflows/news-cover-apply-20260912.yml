@@ -1,0 +1,50 @@
+name: NEWS cover integration 20260912
+on:
+  push:
+    branches: [content/news-sep05-08-covers-20260912]
+    paths: [.github/workflows/news-cover-apply-20260912.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/news-sep05-08-covers-20260912
+      - run: python -m pip install --quiet requests beautifulsoup4 pillow pymupdf
+      - name: Apply reviewed covers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/news_cover_patch.py
+      - name: Validate scoped changes and remove temporary tooling
+        shell: bash
+        run: |
+          node spaceship-ui/scripts/news-cover-contract.mjs
+          node --check spaceship-ui/scripts/browser-news-media-audit.mjs
+          git diff --check
+          git rm -- .github/news_cover_patch.py .github/workflows/news-cover-probe-20260912.yml .github/workflows/news-cover-acquire-20260912.yml .github/workflows/news-cover-final-source-20260912.yml .github/workflows/news-cover-apply-20260912.yml
+          git add -- THIRD_PARTY_NOTICES.md spaceship-ui/docs/2026-09-12-news-covers-sep05-08.md spaceship-ui/scripts/news-cover-contract.mjs spaceship-ui/scripts/news-visual-contract.mjs spaceship-ui/scripts/news-source-media-contract.mjs spaceship-ui/scripts/browser-news-media-audit.mjs spaceship-ui/site/news-media.json spaceship-ui/site/news-covers-20260912.json spaceship-ui/site/assets/assets/posts/news-covers-20260912 spaceship-ui/site/content/posts/2026-09-0[5678]*.mdx spaceship-ui/site/content/posts/2026-09-12-lithium-disulfur-dichloride-frontier-one.mdx
+          git config user.name 'Park Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git commit -m 'content: publish September 12 NEWS and add local source covers to all 19 September 5–8 posts'
+          git push origin HEAD:content/news-sep05-08-covers-20260912
+      - name: Export integration evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/news-cover-integrated"
+          tar --exclude=.git -czf "$RUNNER_TEMP/news-cover-integrated/repository.tar.gz" .
+          cp -R spaceship-ui/site/assets/assets/posts/news-covers-20260912 "$RUNNER_TEMP/news-cover-integrated/" 2>/dev/null || true
+          cp spaceship-ui/site/news-covers-20260912.json "$RUNNER_TEMP/news-cover-integrated/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/news-cover-inputs/aml-source.txt" "$RUNNER_TEMP/news-cover-integrated/" 2>/dev/null || true
+          git rev-parse HEAD > "$RUNNER_TEMP/news-cover-integrated/head.txt"
+          git show --stat --oneline HEAD > "$RUNNER_TEMP/news-cover-integrated/change-stat.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: news-cover-integrated-20260912
+          path: ${{ runner.temp }}/news-cover-integrated
+          retention-days: 3
