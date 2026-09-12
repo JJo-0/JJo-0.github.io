@@ -40,3 +40,5 @@ console.log('news-visual-contract: PASS five articles with three role-specific v
 
 await import('./news-sulfur-visual-contract.mjs');
 await import('./news-source-media-contract.mjs');
+
+await import('./news-cover-contract.mjs');

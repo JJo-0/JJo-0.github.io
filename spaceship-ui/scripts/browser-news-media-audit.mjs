@@ -6,6 +6,9 @@ export async function auditNewsMedia(cdp, sessionId) {
   const media = JSON.parse(
     fs.readFileSync(new URL('../site/news-media.json', import.meta.url), 'utf8')
   );
+  const covers = JSON.parse(fs.readFileSync(new URL('../site/news-covers-20260912.json', import.meta.url), 'utf8'));
+  assert.equal(covers.entries.length, 19);
+  const coverOnly = new Set(covers.entries.filter((r) => !r.legacyVisualSuite).map((r) => r.slug));
   // Media registration does not publish a post. Validate source state first,
   // then require published images and reject draft listing/route exposure.
   const draftSlugs = new Set();
@@ -47,7 +50,26 @@ export async function auditNewsMedia(cdp, sessionId) {
       assert.equal(draftResponse.status, 404, `Draft route must remain unpublished: ${slug}`);
       console.log(`news-media-qa: PASS draft excluded ${slug} at ${size.width}px`);
     }
+    for (const row of covers.entries) {
+      await evaluate(cdp, sessionId, `document.querySelector('[data-news-card="${row.slug}"]').scrollIntoView({block:'center',behavior:'instant'})`);
+      const card = await waitExpression(cdp, sessionId, `(() => {
+        const card = document.querySelector('[data-news-card="${row.slug}"]');
+        const img = card?.querySelector('figure.news-figure img');
+        const title = card?.querySelector('[data-post-transition-title]');
+        if (!img || !title || !img.complete || !img.naturalWidth) return null;
+        const ir = img.getBoundingClientRect(), tr = title.getBoundingClientRect();
+        return {width:img.naturalWidth,height:img.naturalHeight,src:img.getAttribute('src'),
+          before:Boolean(img.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING),
+          positioned:innerWidth <= 640 ? ir.bottom <= tr.top + 2 : ir.right <= tr.left + 2,
+          overflow:document.documentElement.scrollWidth > innerWidth + 2};
+      })()`, `cover decoded ${row.slug}`, 20000);
+      assert(card.before && card.positioned && !card.overflow, JSON.stringify(card));
+      assert.equal(card.src, row.src); assert.equal(card.width, row.width); assert.equal(card.height, row.height);
+      console.log(`news-cover-qa: PASS ${row.slug} at ${size.width}px`);
+    }
     for (const [id, item] of publishedMedia) {
+      const minFigures = coverOnly.has(item.slug) ? 1 : 3;
+      const minDiagrams = coverOnly.has(item.slug) ? 0 : 2;
       const route = `/posts/${item.slug}/`;
       const response = await fetch(new URL(route, BASE));
       assert.equal(response.status, 200, `Published route ${route}`);
@@ -61,8 +83,8 @@ export async function auditNewsMedia(cdp, sessionId) {
       await waitExpression(
         cdp,
         sessionId,
-        `document.querySelectorAll('article figure.news-figure img').length >= 3`,
-        `three visuals ${item.slug}`
+        `document.querySelectorAll('article figure.news-figure img').length >= ${minFigures}`,
+        `required visuals ${item.slug}`
       );
       const imageCount = await evaluate(
         cdp,
@@ -101,8 +123,8 @@ export async function auditNewsMedia(cdp, sessionId) {
       })()`
       );
       assert(
-        result.imageCount >= 3 &&
-          result.diagramCount >= 2 &&
+        result.imageCount >= minFigures &&
+          result.diagramCount >= minDiagrams &&
           result.decoded &&
           result.captions &&
           !result.overflow &&
