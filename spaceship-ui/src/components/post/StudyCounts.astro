@@ -1,0 +1,20 @@
+---
+interface Props { label: string; note: string; items: { label: string; count: number }[]; }
+const { label, note, items } = Astro.props;
+if (items.some((item) => !Number.isFinite(item.count) || item.count < 0)) throw new Error('Study counts must be nonnegative');
+const total = items.reduce((sum, item) => sum + item.count, 0);
+const max = Math.max(1, ...items.map((item) => item.count));
+---
+<figure class="study-counts not-prose" data-study-counts>
+  <figcaption><strong>{label}</strong><span>{note}</span></figcaption>
+  <ul>{items.map((item) => <li><div><span>{item.label}</span><strong>{item.count} <small>/ {total}</small></strong></div><div class="study-counts__track" aria-hidden="true"><span style={`width:${item.count / max * 100}%`}></span></div></li>)}</ul>
+</figure>
+<style>
+  .study-counts { margin: 1.5rem 0; padding: 1.25rem; border: 1px solid var(--color-border); background: var(--color-card); color: var(--color-foreground); font-family: var(--font-reading); }
+  figcaption { display: grid; gap: .4rem; font-size: .95rem; }
+  figcaption span, small { color: var(--color-muted-foreground); font-size: .8rem; }
+  ul { display: grid; gap: 1rem; list-style: none; padding: 0; margin: 1.25rem 0 0; }
+  li > div:first-child { display: flex; justify-content: space-between; gap: 1rem; font-size: .87rem; margin-bottom: .35rem; }
+  .study-counts__track { height: .45rem; background: var(--color-secondary); border-radius: 2px; }
+  .study-counts__track span { display: block; height: 100%; background: var(--color-primary); border-radius: 2px; }
+</style>

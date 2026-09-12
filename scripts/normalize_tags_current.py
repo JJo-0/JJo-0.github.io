@@ -6,7 +6,10 @@ explicit taxonomy was introduced. New posts are registered here, then the same
 strict parser, rewrite path, and manifest-coverage check are reused unchanged.
 """
 
-from normalize_tags import POST_TAXONOMY, Taxonomy, main
+from normalize_tags import CATEGORY_IDS, POST_TAXONOMY, Taxonomy, main
+
+# Extend the current registry without rewriting the frozen cutover manifest.
+CATEGORY_IDS.add("biblical-studies")
 
 POST_TAXONOMY.update(
     {
@@ -107,6 +110,17 @@ POST_TAXONOMY.update(
         '2026-09-11-embryo-base-editing-news.mdx': Taxonomy('health-lifestyle', 'genome-editing', 'paper-review', ('frontier-one', 'genome-editing')),
         '2026-09-11-high-na-large-mask-news.mdx': Taxonomy('finance-industry', 'semiconductor-lithography', 'research-report', ('frontier-one', 'semiconductor-lithography')),
         '2026-09-11-sulfide-electrolyte-film-news.mdx': Taxonomy('finance-industry', 'solid-state-batteries', 'paper-review', ('frontier-one', 'solid-state-batteries')),
+    }
+)
+
+POST_TAXONOMY.update(
+    {
+        'acts-overview-1.mdx': Taxonomy('biblical-studies', 'acts-overview', 'interactive-guide', ('acts', 'biblical-studies', 'narrative-criticism', 'new-testament')),
+        'acts-overview-2.mdx': Taxonomy('biblical-studies', 'acts-overview', 'interactive-guide', ('acts', 'biblical-studies', 'archaeology', 'textual-criticism')),
+        'acts-overview-3.mdx': Taxonomy('biblical-studies', 'acts-overview', 'interactive-guide', ('acts', 'biblical-studies', 'reception-history', 'comparative-theology')),
+        'acts-1-1-5-1.mdx': Taxonomy('biblical-studies', 'acts-1-1-5', 'interactive-guide', ('acts', 'biblical-studies', 'greek-exegesis', 'textual-criticism')),
+        'acts-1-1-5-2.mdx': Taxonomy('biblical-studies', 'acts-1-1-5', 'interactive-guide', ('acts', 'biblical-studies', 'narrative-criticism', 'rhetoric')),
+        'acts-1-1-5-3.mdx': Taxonomy('biblical-studies', 'acts-1-1-5', 'interactive-guide', ('acts', 'biblical-studies', 'pneumatology', 'reception-history')),
     }
 )
 

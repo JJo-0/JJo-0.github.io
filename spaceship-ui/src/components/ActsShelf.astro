@@ -1,0 +1,29 @@
+---
+import WritingListItem from '@/components/WritingListItem.astro';
+import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getReadTime } from '@/lib/utils/readTime';
+import series from '@/data/acts-series.json';
+const allPosts = (await getPublishedPosts()).filter((post) => post.data.category === 'biblical-studies');
+const groups = [
+  { id: 'overview', title: '먼저 · 사도행전 전체 읽기', description: '책의 큰 구조, 역사 자료, 여러 해석 관점을 먼저 살펴봅니다.' },
+  { id: 'exegesis', title: '이어서 · 사도행전 1장 1–5절', description: '전체 지도를 바탕으로 원어, 문학, 신학과 수용사를 자세히 읽습니다.' },
+];
+const entries = series.entries.map((entry) => ({ ...entry, post: allPosts.find((post) => getPostSlug(post) === entry.slug) }));
+const otherPosts = allPosts.filter((post) => !series.entries.some((entry) => entry.slug === getPostSlug(post))).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+<div data-acts-shelf class="acts-shelf">
+  {groups.map((group) => <section class="acts-shelf__group" data-acts-group={group.id}>
+    <header class="acts-shelf__header"><h3>{group.title}</h3><p>{group.description}</p></header>
+    {entries.filter((entry) => entry.group === group.id && entry.post).map((entry) => entry.post && <div data-acts-card={entry.slug} data-acts-order={entry.order}>
+      <WritingListItem post={entry.post} slug={entry.slug} readTime={getReadTime(entry.post.body || '')} />
+    </div>)}
+  </section>)}
+  {otherPosts.length > 0 && <section class="acts-shelf__group"><header class="acts-shelf__header"><h3>다른 성경 연구</h3></header>{otherPosts.map((post) => <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}</section>}
+</div>
+<style>
+  .acts-shelf { min-width: 0; }
+  .acts-shelf__group { margin: 2rem 0 3rem; }
+  .acts-shelf__header { border-left: 3px solid var(--color-primary); padding: .35rem 0 .35rem 1rem; margin-bottom: 1rem; }
+  .acts-shelf__header h3 { margin: 0; font-family: var(--font-editorial); font-size: clamp(1.2rem, 2vw, 1.6rem); color: var(--color-foreground); line-height: 1.4; }
+  .acts-shelf__header p { margin: .5rem 0 0; font-size: .9rem; line-height: 1.7; color: var(--color-muted-foreground); }
+</style>

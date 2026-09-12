@@ -1,0 +1,92 @@
+---
+interface Props {
+  id: string;
+  label: string;
+  columns: string[];
+  rows: string[][];
+  filterColumn?: number;
+}
+const { id, label, columns, rows, filterColumn = -1 } = Astro.props;
+if (!/^[a-z][a-z0-9-]*$/.test(id)) throw new Error('Study table id must be kebab-case');
+if (rows.some((row) => row.length !== columns.length)) throw new Error(`Study table ${id}: column mismatch`);
+const groups = filterColumn >= 0 ? [...new Set(rows.map((row) => row[filterColumn]))] : [];
+---
+<jjo-study-table class="study-table not-prose" data-study-table={id}>
+  <div class="study-table__tools" data-study-tools hidden>
+    <label for={`${id}-search`}>검색
+      <input id={`${id}-search`} type="search" placeholder="인물·본문·용어 검색" data-study-query autocomplete="off" />
+    </label>
+    {groups.length > 0 && <label for={`${id}-filter`}>{columns[filterColumn]}
+      <select id={`${id}-filter`} data-study-filter><option value="">전체</option>{groups.map((group) => <option value={group}>{group}</option>)}</select>
+    </label>}
+    <button type="button" data-study-reset>초기화</button>
+  </div>
+  <p class="study-table__count" role="status" aria-live="polite" aria-atomic="true" data-study-count>{rows.length}개 항목</p>
+  <div class="study-table__scroll" role="region" aria-label={`${label} — 가로로 스크롤할 수 있습니다`} tabindex="0">
+    <table>
+      <caption>{label}</caption>
+      <thead><tr>{columns.map((column) => <th scope="col">{column}</th>)}</tr></thead>
+      <tbody>{rows.map((row) => <tr data-study-row data-study-group={filterColumn >= 0 ? row[filterColumn] : ''}>{row.map((value, index) => index === 0 ? <th scope="row">{value}</th> : <td>{value}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+  <p data-study-empty hidden>검색 결과가 없습니다. 검색어 또는 필터를 바꾸어 보세요.</p>
+</jjo-study-table>
+<script>
+  class StudyTableElement extends HTMLElement {
+    private controller?: AbortController;
+    connectedCallback() {
+      this.controller?.abort();
+      this.controller = new AbortController();
+      const { signal } = this.controller;
+      const query = this.querySelector<HTMLInputElement>('[data-study-query]');
+      const filter = this.querySelector<HTMLSelectElement>('[data-study-filter]');
+      const count = this.querySelector<HTMLElement>('[data-study-count]');
+      const empty = this.querySelector<HTMLElement>('[data-study-empty]');
+      const rows = [...this.querySelectorAll<HTMLTableRowElement>('[data-study-row]')];
+      const normalize = (value: string) => value.normalize('NFKC').toLocaleLowerCase('ko').trim();
+      const texts = rows.map((row) => normalize(row.textContent || ''));
+      const update = () => {
+        const term = normalize(query?.value || '');
+        const selected = filter?.value || '';
+        let visible = 0;
+        rows.forEach((row, index) => {
+          row.hidden = !texts[index].includes(term) || Boolean(selected && selected !== row.dataset.studyGroup);
+          if (!row.hidden) visible += 1;
+        });
+        if (count) count.textContent = `${visible} / ${rows.length}개 항목`;
+        if (empty) empty.hidden = visible !== 0;
+      };
+      query?.addEventListener('input', update, { signal });
+      filter?.addEventListener('change', update, { signal });
+      this.querySelector('[data-study-reset]')?.addEventListener('click', () => {
+        if (query) query.value = '';
+        if (filter) filter.value = '';
+        update();
+        query?.focus();
+      }, { signal });
+      const tools = this.querySelector<HTMLElement>('[data-study-tools]');
+      if (tools) tools.hidden = false;
+      update();
+    }
+    disconnectedCallback() { this.controller?.abort(); }
+  }
+  if (!customElements.get('jjo-study-table')) customElements.define('jjo-study-table', StudyTableElement);
+</script>
+<style>
+  .study-table { display: block; max-width: 100%; min-width: 0; margin: 1.8rem 0 2.5rem; color: var(--color-foreground); font-family: var(--font-reading); }
+  .study-table__tools { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; padding: .8rem; border: 1px solid var(--color-border); background: var(--color-secondary); }
+  .study-table [hidden] { display: none !important; }
+  .study-table label { display: grid; flex: 1 1 12rem; gap: .3rem; font-size: .78rem; font-weight: 700; min-width: 0; }
+  .study-table input, .study-table select, .study-table button { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: .6rem .75rem; font: inherit; min-height: 44px; max-width: 100%; color: var(--color-foreground); background: var(--color-background); }
+  .study-table button { cursor: pointer; font-size: .8rem; color: var(--color-primary); font-weight: 700; }
+  .study-table :is(input,select,button,.study-table__scroll):focus-visible { outline: 2px solid var(--color-ring); outline-offset: 3px; }
+  .study-table__count { margin: .65rem 0; font-size: .78rem; color: var(--color-muted-foreground); }
+  .study-table__scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; border: 1px solid var(--color-border); scrollbar-width: thin; }
+  .study-table table { display: table; width: 100%; margin: 0 !important; max-width: none; border: 0; border-collapse: collapse !important; font-size: .87rem; line-height: 1.75; box-shadow: none; border-radius: 0; background: var(--color-card); }
+  .study-table caption { padding: .85rem; text-align: left; background: var(--color-secondary); font-weight: 700; }
+  .study-table :is(th,td) { padding: .9rem !important; min-width: 12rem; max-width: 30rem; text-align: left; vertical-align: top; border: 1px solid var(--color-border); white-space: normal; overflow-wrap: anywhere; }
+  .study-table thead th { background: var(--color-secondary); }
+  .study-table tbody th { min-width: 7rem; color: var(--color-primary); }
+  .study-table tr > :first-child { position: static; }
+  @media (max-width: 640px) { .study-table :is(th,td) { min-width: 10rem; font-size: .83rem; } .study-table tbody th { min-width: 7rem; } }
+</style>
