@@ -8,6 +8,9 @@ export async function auditNewsMedia(cdp, sessionId) {
   );
   const covers = JSON.parse(fs.readFileSync(new URL('../site/news-covers-20260912.json', import.meta.url), 'utf8'));
   assert.equal(covers.entries.length, 19);
+  const sep11 = JSON.parse(fs.readFileSync(new URL('../site/news-sep11-release.json', import.meta.url), 'utf8'));
+  const sourceFigurePosts = new Map(sep11.entries.map((row) => [row.slug, row]));
+  const sourceCards = sep11.entries.map((row) => ({slug: row.slug, ...media[row.mediaIds[0]]}));
   const coverOnly = new Set(covers.entries.filter((r) => !r.legacyVisualSuite).map((r) => r.slug));
   // Media registration does not publish a post. Validate source state first,
   // then require published images and reject draft listing/route exposure.
@@ -50,7 +53,7 @@ export async function auditNewsMedia(cdp, sessionId) {
       assert.equal(draftResponse.status, 404, `Draft route must remain unpublished: ${slug}`);
       console.log(`news-media-qa: PASS draft excluded ${slug} at ${size.width}px`);
     }
-    for (const row of covers.entries) {
+    for (const row of [...covers.entries, ...sourceCards]) {
       await evaluate(cdp, sessionId, `document.querySelector('[data-news-card="${row.slug}"]').scrollIntoView({block:'center',behavior:'instant'})`);
       const card = await waitExpression(cdp, sessionId, `(() => {
         const card = document.querySelector('[data-news-card="${row.slug}"]');
@@ -68,8 +71,9 @@ export async function auditNewsMedia(cdp, sessionId) {
       console.log(`news-cover-qa: PASS ${row.slug} at ${size.width}px`);
     }
     for (const [id, item] of publishedMedia) {
-      const minFigures = coverOnly.has(item.slug) ? 1 : 3;
-      const minDiagrams = coverOnly.has(item.slug) ? 0 : 2;
+      const declaredSource = sourceFigurePosts.get(item.slug);
+      const minFigures = declaredSource ? declaredSource.mediaIds.length : (coverOnly.has(item.slug) ? 1 : 3);
+      const minDiagrams = declaredSource ? 0 : (coverOnly.has(item.slug) ? 0 : 2);
       const route = `/posts/${item.slug}/`;
       const response = await fetch(new URL(route, BASE));
       assert.equal(response.status, 200, `Published route ${route}`);
@@ -131,6 +135,10 @@ export async function auditNewsMedia(cdp, sessionId) {
           result.newsActive,
         JSON.stringify(result)
       );
+      if (declaredSource) {
+        const ids = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('article [data-news-figure]')).map((el) => el.getAttribute('data-news-figure'))`);
+        assert.deepEqual(ids, declaredSource.mediaIds, 'All declared original figures must appear exactly once in order');
+      }
       results.push(result);
       console.log('news-media-qa: PASS ' + JSON.stringify(result));
     }
