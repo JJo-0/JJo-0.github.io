@@ -1,11 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  BASE,
-  evaluate,
-  navigate,
-  viewport,
-  waitExpression,
-} from './browser-smoke-harness.mjs';
+import { BASE, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
 const ROUTES = ['/', '/research', '/about', '/posts'];
 const NORMALIZE = `(value) => (value || '').replace(/\\s+/g, ' ').trim()`;
@@ -145,13 +139,17 @@ function stablePointExpression(link) {
 
 async function trustedClick(cdp, sessionId, pointExpression, label) {
   const point = await waitExpression(cdp, sessionId, pointExpression, `${label} hit-test`, 20_000);
-  assert.equal(point?.blocked, undefined, `${label}: click target blocked: ${JSON.stringify(point)}`);
+  assert.equal(
+    point?.blocked,
+    undefined,
+    `${label}: click target blocked: ${JSON.stringify(point)}`
+  );
   assert.ok(Number.isFinite(point?.x) && Number.isFinite(point?.y), `${label}: invalid point`);
 
   await cdp.send(
     'Input.dispatchMouseEvent',
     { type: 'mouseMoved', x: point.x, y: point.y, button: 'none', pointerType: 'mouse' },
-    sessionId,
+    sessionId
   );
   await cdp.send(
     'Input.dispatchMouseEvent',
@@ -164,7 +162,7 @@ async function trustedClick(cdp, sessionId, pointExpression, label) {
       clickCount: 1,
       pointerType: 'mouse',
     },
-    sessionId,
+    sessionId
   );
   await cdp.send(
     'Input.dispatchMouseEvent',
@@ -177,7 +175,7 @@ async function trustedClick(cdp, sessionId, pointExpression, label) {
       clickCount: 1,
       pointerType: 'mouse',
     },
-    sessionId,
+    sessionId
   );
   return point;
 }
@@ -191,25 +189,33 @@ async function expectUrl(cdp, sessionId, expected, label) {
        location.search === ${JSON.stringify(expected.search)} &&
        location.hash === ${JSON.stringify(expected.hash)}`,
       label,
-      8_000,
+      8_000
     );
   } catch (error) {
-    const diagnostic = await evaluate(cdp, sessionId, `({
+    const diagnostic = await evaluate(
+      cdp,
+      sessionId,
+      `({
       actual: location.pathname + location.search + location.hash,
       href: location.href,
       activeText: (document.activeElement?.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 120),
       activeHref: document.activeElement?.getAttribute?.('href') || null,
-    })`);
+    })`
+    );
     throw new Error(`${label}: ${error.message}; diagnostic=${JSON.stringify(diagnostic)}`);
   }
 }
 
 async function probeInternalTargets(entries, route) {
-  const targets = [...new Set(entries.map(({ expected }) => {
-    const target = new URL(expected.href);
-    target.hash = '';
-    return target.href;
-  }))];
+  const targets = [
+    ...new Set(
+      entries.map(({ expected }) => {
+        const target = new URL(expected.href);
+        target.hash = '';
+        return target.href;
+      })
+    ),
+  ];
 
   for (let offset = 0; offset < targets.length; offset += 8) {
     const batch = targets.slice(offset, offset + 8);
@@ -219,15 +225,20 @@ async function probeInternalTargets(entries, route) {
           const response = await fetch(url, { method: 'HEAD', redirect: 'follow' });
           return { url, status: response.status, ok: response.ok };
         } catch (error) {
-          return { url, status: 0, ok: false, error: error instanceof Error ? error.message : String(error) };
+          return {
+            url,
+            status: 0,
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
         }
-      }),
+      })
     );
     for (const result of results) {
       assert.equal(
         result.ok,
         true,
-        `${route}: unreachable internal target ${result.url}; status=${result.status}; error=${result.error || 'none'}`,
+        `${route}: unreachable internal target ${result.url}; status=${result.status}; error=${result.error || 'none'}`
       );
     }
   }
@@ -239,18 +250,22 @@ async function validateClickedDestination(cdp, sessionId, route, entry) {
   await trustedClick(cdp, sessionId, stablePointExpression(entry.link), entry.label);
   await expectUrl(cdp, sessionId, entry.expected, `${entry.label} destination`);
 
-  const actual = await evaluate(cdp, sessionId, `location.pathname + location.search + location.hash`);
+  const actual = await evaluate(
+    cdp,
+    sessionId,
+    `location.pathname + location.search + location.hash`
+  );
   assert.equal(actual, `${entry.expected.pathname}${entry.expected.search}${entry.expected.hash}`);
-  if (entry.expected.pathname !== '/') assert.notEqual(actual, '/', `${entry.label}: fell back to Home`);
+  if (entry.expected.pathname !== '/')
+    assert.notEqual(actual, '/', `${entry.label}: fell back to Home`);
   if (entry.expected.hash) {
-    assert.equal(
-      await evaluate(
-        cdp,
-        sessionId,
-        `Boolean(document.getElementById(decodeURIComponent(location.hash.slice(1))))`,
-      ),
-      true,
-      `${entry.label}: hash target missing`,
+    const targetId = decodeURIComponent(entry.expected.hash.slice(1));
+    await waitExpression(
+      cdp,
+      sessionId,
+      `Boolean(document.getElementById(${JSON.stringify(targetId)}))`,
+      `${entry.label}: hash target ready`,
+      8_000
     );
   }
 }
@@ -270,7 +285,9 @@ async function auditRoute(cdp, sessionId, route) {
     const expected = new URL(link.absolute);
     const http = expected.protocol === 'http:' || expected.protocol === 'https:';
     const internal =
-      http && expected.origin === origin && !link.download &&
+      http &&
+      expected.origin === origin &&
+      !link.download &&
       (!link.target || link.target === '_self');
 
     if (!internal) {
@@ -309,10 +326,13 @@ async function auditRoute(cdp, sessionId, route) {
     const representatives = [
       internalEntries.find(({ expected }) => expected.pathname === '/'),
       internalEntries.find(({ expected }) => expected.pathname === '/research'),
-      internalEntries.find(({ expected }) => expected.pathname === '/posts' && Boolean(expected.hash)),
+      internalEntries.find(
+        ({ expected }) => expected.pathname === '/posts' && Boolean(expected.hash)
+      ),
       internalEntries.find(({ expected }) => expected.pathname.startsWith('/posts/tag/')),
       internalEntries.find(
-        ({ expected }) => expected.pathname.startsWith('/posts/') && !expected.pathname.startsWith('/posts/tag/'),
+        ({ expected }) =>
+          expected.pathname.startsWith('/posts/') && !expected.pathname.startsWith('/posts/tag/')
       ),
     ].filter(Boolean);
 
@@ -324,7 +344,10 @@ async function auditRoute(cdp, sessionId, route) {
       seen.add(key);
       unique.push(entry);
     }
-    assert.ok(unique.length >= 4, `/posts: too few representative trusted targets: ${unique.length}`);
+    assert.ok(
+      unique.length >= 4,
+      `/posts: too few representative trusted targets: ${unique.length}`
+    );
 
     for (const entry of unique) {
       await validateClickedDestination(cdp, sessionId, route, entry);
@@ -332,12 +355,14 @@ async function auditRoute(cdp, sessionId, route) {
     }
 
     console.log(
-      `browser-smoke: PASS ${route} link integrity (${probed} HEAD targets; ${clicked} representative trusted clicks)`,
+      `browser-smoke: PASS ${route} link integrity (${probed} HEAD targets; ${clicked} representative trusted clicks)`
     );
     return clicked;
   }
 
-  console.log(`browser-smoke: PASS ${route} stable trusted-link routing (${clicked} internal clicks)`);
+  console.log(
+    `browser-smoke: PASS ${route} stable trusted-link routing (${clicked} internal clicks)`
+  );
   return clicked;
 }
 
@@ -361,30 +386,38 @@ async function auditSearch(cdp, sessionId) {
     cdp,
     sessionId,
     selectorPoint(`document.querySelector('button[aria-label="Search"]')`),
-    'Search button',
+    'Search button'
   );
   await waitExpression(
     cdp,
     sessionId,
     `Boolean(document.querySelector('input[placeholder^="Search post"]'))`,
-    'search dialog open',
+    'search dialog open'
   );
   assert.equal(await evaluate(cdp, sessionId, `location.pathname`), '/');
 
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' }, sessionId);
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape' }, sessionId);
+  await cdp.send(
+    'Input.dispatchKeyEvent',
+    { type: 'keyDown', key: 'Escape', code: 'Escape' },
+    sessionId
+  );
+  await cdp.send(
+    'Input.dispatchKeyEvent',
+    { type: 'keyUp', key: 'Escape', code: 'Escape' },
+    sessionId
+  );
   await waitExpression(
     cdp,
     sessionId,
     `!document.querySelector('input[placeholder^="Search post"]')`,
-    'search dialog Escape close',
+    'search dialog Escape close'
   );
 
   await trustedClick(
     cdp,
     sessionId,
     selectorPoint(`document.querySelector('button[aria-label="Search"]')`),
-    'Search button reopen',
+    'Search button reopen'
   );
   const sample = await evaluate(
     cdp,
@@ -392,16 +425,19 @@ async function auditSearch(cdp, sessionId) {
     `fetch('/api/search.json').then((response) => response.json()).then((items) => ({
       id: items[0].id,
       title: items[0].data.title,
-    }))`,
+    }))`
   );
   assert.ok(sample?.id && sample?.title, 'search API returned no auditable item');
   await waitExpression(
     cdp,
     sessionId,
     `Boolean(document.querySelector('input[placeholder^="Search post"]'))`,
-    'search dialog reopen',
+    'search dialog reopen'
   );
-  await evaluate(cdp, sessionId, `(() => {
+  await evaluate(
+    cdp,
+    sessionId,
+    `(() => {
     const input = document.querySelector('input[placeholder^="Search post"]');
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
     setter.call(input, ${JSON.stringify(sample.title)});
@@ -410,14 +446,15 @@ async function auditSearch(cdp, sessionId) {
       inputType: 'insertText',
       data: ${JSON.stringify(sample.title)},
     }));
-  })()`);
+  })()`
+  );
 
   const href = `/posts/${sample.id}`;
   await trustedClick(
     cdp,
     sessionId,
     selectorPoint(`document.querySelector(${JSON.stringify(`a[href="${href}"]`)})`),
-    'Search result',
+    'Search result'
   );
   await expectUrl(cdp, sessionId, new URL(href, BASE), 'search result destination');
   assert.notEqual(await evaluate(cdp, sessionId, `location.pathname`), '/');
@@ -431,27 +468,27 @@ async function auditTheme(cdp, sessionId) {
       cdp,
       sessionId,
       selectorPoint(`document.querySelector('button[aria-label="Theme Menu"]')`),
-      `Theme menu ${name}`,
+      `Theme menu ${name}`
     );
     await trustedClick(
       cdp,
       sessionId,
       selectorPoint(
         `[...document.querySelectorAll('button')]
-          .find((button) => button.textContent.trim() === ${JSON.stringify(name)})`,
+          .find((button) => button.textContent.trim() === ${JSON.stringify(name)})`
       ),
-      `Theme ${name}`,
+      `Theme ${name}`
     );
     await waitExpression(
       cdp,
       sessionId,
       `localStorage.getItem('theme') === ${JSON.stringify(name.toLowerCase())}`,
-      `theme ${name}`,
+      `theme ${name}`
     );
     assert.equal(await evaluate(cdp, sessionId, `location.pathname`), '/about');
     assert.equal(
       await evaluate(cdp, sessionId, `document.documentElement.classList.contains('dark')`),
-      name === 'Dark',
+      name === 'Dark'
     );
   }
   console.log('browser-smoke: PASS Theme trusted clicks preserve About route');
@@ -475,17 +512,27 @@ async function auditAboutFont(cdp, sessionId) {
         overflow: document.documentElement.scrollWidth > innerWidth + 1,
       };
     })`,
-    'About typography metrics',
+    'About typography metrics'
   );
   const [titleFamily, contentFamily, paragraphFamily, headingFamily] = metrics.families;
-  assert.equal(titleFamily, headingFamily, `editorial fonts diverged: ${metrics.families.join(' | ')}`);
-  assert.equal(contentFamily, paragraphFamily, `reading fonts diverged: ${metrics.families.join(' | ')}`);
+  assert.equal(
+    titleFamily,
+    headingFamily,
+    `editorial fonts diverged: ${metrics.families.join(' | ')}`
+  );
+  assert.equal(
+    contentFamily,
+    paragraphFamily,
+    `reading fonts diverged: ${metrics.families.join(' | ')}`
+  );
   assert.notEqual(titleFamily, contentFamily, `editorial/reading fonts collapsed: ${titleFamily}`);
   assert.match(titleFamily, /Iowan Old Style|Noto Serif KR|Nanum Myeongjo|Georgia/i);
   assert.match(contentFamily, /Noto Sans KR|Apple SD Gothic Neo|Malgun Gothic/i);
   assert.ok(metrics.weight >= 700);
   assert.equal(metrics.overflow, false);
-  console.log(`browser-smoke: PASS About editorial/reading typography (${titleFamily} | ${contentFamily})`);
+  console.log(
+    `browser-smoke: PASS About editorial/reading typography (${titleFamily} | ${contentFamily})`
+  );
 }
 
 export async function auditInteractions(cdp, sessionId) {
