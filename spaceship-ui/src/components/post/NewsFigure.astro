@@ -9,10 +9,11 @@ interface Props {
   lang?: 'ko' | 'en';
 }
 const { media, priority = false, compact = false, lang = 'ko' } = Astro.props;
+const original = catalogue[media];
+if (!original) throw new Error(`Unknown NEWS media: ${media}`);
 const localized = lang === 'en' ? (englishCaptions as Record<string, Partial<(typeof catalogue)[keyof typeof catalogue]>>)[media] : undefined;
 if (lang === 'en' && !localized) throw new Error(`Missing English media metadata: ${media}`);
-const item = { ...catalogue[media], ...localized };
-if (!item) throw new Error(`Unknown NEWS media: ${media}`);
+const item = { ...original, ...localized };
 ---
 
 <figure class:list={['news-figure', compact && 'news-figure--compact']} data-news-figure={media}>
