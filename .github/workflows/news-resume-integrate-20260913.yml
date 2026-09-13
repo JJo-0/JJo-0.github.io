@@ -1,0 +1,98 @@
+name: Integrate recovered NEWS with current main 20260913
+on:
+  push:
+    branches: [content/news-depth-english-20260912]
+    paths: [.github/workflows/news-resume-integrate-20260913.yml]
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: content/news-depth-english-20260912
+          fetch-depth: 0
+      - name: Preserve concurrent work and remove completed transport
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess,json,hashlib
+          def git(*args,check=True):return subprocess.run(['git',*args],check=check,text=True,capture_output=True)
+          git('config','user.name','JJo Editorial Recovery');git('config','user.email','76779256+JJo-0@users.noreply.github.com')
+          git('fetch','--no-tags','origin','main')
+          base='5c07acd69fe8d569ed5c7cea9895794ff8400973'
+          current=git('rev-parse','origin/main').stdout.strip()
+          assert current=='c51e6a797f865a40a572f89c7273f6bbac022684','Concurrent main changed: inspect rather than overwrite'
+          base_package=json.loads(git('show',base+':spaceship-ui/package.json').stdout)
+          main_package=json.loads(git('show','origin/main:spaceship-ui/package.json').stdout)
+          own_package=json.loads(Path('spaceship-ui/package.json').read_text())
+          expected={'spaceship-ui/ops/blog-harness/blogger/2026-09-09-navier-stokes-easy.md','spaceship-ui/package.json','spaceship-ui/scripts/blogger-equation-contract.mjs','spaceship-ui/scripts/browser-interaction-audits-v4.mjs','spaceship-ui/scripts/render-blogger-post.mjs'}
+          assert set(git('diff','--name-only',base,'origin/main').stdout.splitlines())==expected
+          result=git('merge','--no-commit','--no-ff','origin/main',check=False)
+          conflicts=git('diff','--name-only','--diff-filter=U').stdout.splitlines()
+          assert not(set(conflicts)-{'spaceship-ui/package.json'}),result.stdout+result.stderr
+          # Preserve independent changes to script values; never replace concurrent source globally.
+          for key,value in main_package['scripts'].items():
+              if base_package['scripts'].get(key)==value:continue
+              if key=='content:check':
+                  assert value==base_package['scripts'][key]+' && pnpm blogger:equation-check'
+                  assert 'blogger:equation-check' not in own_package['scripts'][key]
+                  own_package['scripts'][key]+=' && pnpm blogger:equation-check'
+              else:
+                  assert key not in own_package['scripts'] or own_package['scripts'][key]==value,key
+                  own_package['scripts'][key]=value
+          Path('spaceship-ui/package.json').write_text(json.dumps(own_package,indent=2)+'\n')
+          git('add','spaceship-ui/package.json')
+          assert not git('diff','--name-only','--diff-filter=U').stdout.strip()
+          for name in expected-{'spaceship-ui/package.json'}:
+              assert Path(name).read_bytes()==subprocess.check_output(['git','show','origin/main:'+name]),name
+          git('commit','-m','merge: preserve concurrent Blogger equation and browser fixes (#112)')
+          temporary=[]
+          for path in git('ls-files','.github').stdout.splitlines():
+              if path.startswith('.github/news-depth-transfer-20260913/') or path in ['.github/news-depth-source-list.json','.github/workflows/news-depth-snapshot-20260912.yml','.github/workflows/news-depth-sources-20260912.yml','.github/workflows/news-resume-checkpoint-20260913.yml','.github/workflows/news-resume-apply-20260913.yml','.github/workflows/news-resume-integrate-20260913.yml']:
+                  temporary.append(path)
+          assert len(temporary)==20,len(temporary)
+          git('rm','--',*temporary)
+          ledger=Path('spaceship-ui/docs/operations/NEWS_I18N_RESUME.md')
+          ledger.write_text('''# NEWS / English resume ledger
+
+Updated 2026-09-13. Tracking: #112. Full English scope: #10.
+
+## Current checkpoint
+
+The interrupted editorial patch has been restored as real source files on `content/news-depth-english-20260912`. Source checkpoint followed by seven original-image checkpoint: `24372183fb283409681a62909fb3470b6818e53d`. Restore Actions run `34737963227` succeeded. Partial compressed transport is no longer needed.
+
+Original editorial base: `5c07acd69fe8d569ed5c7cea9895794ff8400973`. Concurrent main `c51e6a797f865a40a572f89c7273f6bbac022684` was merged; its four non-overlapping files and Blogger equation script/check were preserved. Temporary acquisition and transport files were removed after source restoration.
+
+## Resume procedure
+
+1. Read #112's latest comments and the PR linked there; inspect the actual latest branch/main heads.
+2. Read `../2026-09-13-english-and-news-depth.md`, the depth/source manifests and `site/translations.json`.
+3. Run full CI. Fix only evidenced failures; keep Korean routes, old equations, image attribution and concurrent Blogger checks.
+4. Record final head, each failing/passing run, review findings and remaining blockers here or in #112 before stopping.
+5. Merge only reviewed, green code. Check deployed pages and language metadata separately from build success.
+
+## Checked / pending
+
+- [x] Restore 76 text files and seven checksum-pinned original figures.
+- [x] Verify original partial/suffix/full diff and each original PDF/output image SHA256.
+- [x] Local translation-contract: four paired translations.
+- [x] Local news-depth-contract: twenty 7,000–10,000-character Korean NEWS articles.
+- [x] Local taxonomy and canonical manifest checks: 96 posts.
+- [x] Preserve concurrent main changes and remove temporary acquisition/transport.
+- [ ] Inspect full translation meaning and original-source caveats, not just structural parity.
+- [ ] Full PR lint/type/build/rendered/content/browser checks.
+- [ ] Resolve review findings, merge and verify deployment.
+
+## Boundaries
+
+This batch translates four September 11–12 NEWS articles, not the entire archive. AI Consciousness I–III, interactive English experiences, the remaining archive and Search Console indexing stay open in #10. Twenty NEWS articles were short; other longer/legacy posts are not blindly padded or truncated. No Blogger publishing, advertising activation, external analytics account changes or unrelated issue closure is part of this batch.
+
+The source/translation/depth hashes and rights receipts in the repository are persistent. Earlier research artifacts may expire; do not make production behavior depend on those downloads. Full third-party PDFs are not republished.
+''')
+          git('add',str(ledger))
+          git('commit','-m','docs: checkpoint restored source and retire temporary transport (#112)')
+          git('push','origin','HEAD:content/news-depth-english-20260912')
+          print('Source checkpoint',git('rev-parse','HEAD').stdout)
