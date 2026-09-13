@@ -1,0 +1,96 @@
+name: Restore NEWS and English sources 20260913
+on:
+  push:
+    branches: [content/news-depth-english-20260912]
+    paths: [.github/workflows/news-resume-apply-20260913.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: content/news-depth-english-20260912
+          fetch-depth: 0
+      - name: Decode validated transport as data and restore source files
+        shell: python
+        run: |
+          from pathlib import Path
+          import base64,lzma,hashlib,re,json,subprocess
+          directory=Path('.github/news-depth-transfer-20260913')
+          old=''.join((directory/f'part-{i:02d}.b64').read_text().strip() for i in range(10))
+          partial=lzma.LZMADecompressor().decompress(base64.b64decode(old,validate=True),max_length=3000000)
+          assert hashlib.sha256(partial).hexdigest()=='7a5d1ac86ba47cf0353d6de308f387245768bf28d63bbb1899a7ec9da6290fc2','Old transport mismatch'
+          prefix=partial[:453647]
+          assert hashlib.sha256(prefix).hexdigest()=='6ceed27e16bb3cc940a8c24c940ed59c0e1149825cb87bbfa4bb510070ec7d86'
+          tail=base64.b64decode(''.join((directory/f'tail-{i:02d}.b64').read_text().strip() for i in range(4)),validate=True)
+          assert hashlib.sha256(tail).hexdigest()=='9e110f5ddafc841fd387ae8705ff1e584db72d8c9825951992b14523a17b1340','Recovery suffix mismatch'
+          raw=prefix+lzma.decompress(tail)
+          assert hashlib.sha256(raw).hexdigest()=='579a2cbe2b7145d0151605a2c57a7ae482acff7fb7a841ca758008be222874be','Full recovered patch mismatch'
+          text=raw.decode('utf-8')
+          text,count=re.subn(r'(?<!\n)(--- (?:a/|/dev/null))',r'\n\\ No newline at end of file\n\1',text)
+          assert count==4
+          if not text.endswith('\n'):text+='\n\\ No newline at end of file\n'
+          paths=re.findall(r'^\+\+\+ b/(.+)$',text,re.M)
+          assert len(paths)==76 and len(set(paths))==76
+          for path in paths:
+              assert '..' not in Path(path).parts and not Path(path).is_absolute()
+              assert path.startswith(('spaceship-ui/src/','spaceship-ui/site/','spaceship-ui/scripts/','spaceship-ui/docs/')) or path in ('spaceship-ui/package.json','spaceship-ui/astro.config.mjs','scripts/normalize_tags_current.py','THIRD_PARTY_NOTICES.md'),path
+          patch=Path('/tmp/recovered-news.diff');patch.write_text(text)
+          subprocess.run(['git','apply','--check',str(patch)],check=True)
+          subprocess.run(['git','apply',str(patch)],check=True)
+          receipt={'baseCommit':'5c07acd69fe8d569ed5c7cea9895794ff8400973','recoveredDiffSha256':hashlib.sha256(raw).hexdigest(),'files':{p:hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in paths},'status':'source-restored; full CI pending'}
+          Path('spaceship-ui/docs/operations/news-recovery-source-hashes.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n')
+          subprocess.run(['git','add','--',*paths,'spaceship-ui/docs/operations/news-recovery-source-hashes.json'],check=True)
+          subprocess.run(['git','-c','user.name=JJo Editorial Recovery','-c','user.email=76779256+JJo-0@users.noreply.github.com','commit','-m','content: recover twenty expanded NEWS articles and four English translations (#112)'],check=True)
+          subprocess.run(['git','push','origin','HEAD:content/news-depth-english-20260912'],check=True)
+      - name: Install deterministic image readers
+        run: python -m pip install --quiet PyMuPDF==1.26.7 Pillow==12.3.0 requests
+      - name: Restore original figures from checksum-pinned research artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          from pathlib import Path
+          import os,requests,hashlib,zipfile,io,json,subprocess
+          import pymupdf
+          from PIL import Image
+          url='https://api.github.com/repos/JJo-0/JJo-0.github.io/actions/artifacts/10299037001/zip'
+          response=requests.get(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'},timeout=120)
+          response.raise_for_status();data=response.content
+          assert len(data)<140000000
+          assert hashlib.sha256(data).hexdigest()=='4ac1e7f6e284faa3a9a479f6b0079eab4e7f169078024b0b0b58564598ea825e','Research archive mismatch'
+          archive=zipfile.ZipFile(io.BytesIO(data))
+          pdfs={hashlib.sha256(archive.read(n)).hexdigest():n for n in archive.namelist() if n.endswith('.pdf')}
+          root=Path('spaceship-ui/site/assets')
+          rows=json.loads((root/'assets/posts/news-depth-20260913/provenance.json').read_text())
+          assert len(rows)==7
+          files=[]
+          for row in rows:
+              source=archive.read(pdfs[row['sourcePdfSha256']]);assert source.startswith(b'%PDF-')
+              doc=pymupdf.open(stream=source,filetype='pdf')
+              pix=doc[row['page']-1].get_pixmap(matrix=pymupdf.Matrix(2.25,2.25),clip=pymupdf.Rect(*row['cropPdfPoints']),alpha=False)
+              assert (pix.width,pix.height)==(row['width'],row['height'])
+              target=root/row['src'].lstrip('/');assert target.parent==root/'assets/posts/news-depth-20260913'
+              Image.frombytes('RGB',(pix.width,pix.height),pix.samples).save(target,format='WEBP',lossless=True,quality=80,method=6)
+              assert hashlib.sha256(target.read_bytes()).hexdigest()==row['sha256'],str(target)
+              files.append(str(target));print('Verified original figure',target)
+          subprocess.run(['git','add','--',*files],check=True)
+          subprocess.run(['git','-c','user.name=JJo Editorial Recovery','-c','user.email=76779256+JJo-0@users.noreply.github.com','commit','-m','media: recover seven exact original figures with verified source and output hashes (#112)'],check=True)
+          subprocess.run(['git','push','origin','HEAD:content/news-depth-english-20260912'],check=True)
+      - name: Export resumable source state
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/news-restored"
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/news-restored/repository.tar.gz"
+          git rev-parse HEAD > "$RUNNER_TEMP/news-restored/head.txt"
+          git show --stat --oneline HEAD > "$RUNNER_TEMP/news-restored/last-commit.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: news-restored-source-20260913
+          path: ${{ runner.temp }}/news-restored
+          retention-days: 14
