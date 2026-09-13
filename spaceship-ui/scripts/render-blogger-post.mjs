@@ -40,6 +40,17 @@ function prepareImages(source) {
     if (!/^https:\/\//.test(src))
       throw new Error(`Blogger images must use absolute https URLs: ${src}`);
     let prepared = tag.replace(sourceMatch[0], `src=${sourceMatch[1]}${src}${sourceMatch[1]}`);
+    const responsiveStyle =
+      'display:block;width:100%;max-width:100%;height:auto;box-sizing:border-box;';
+    const styleMatch = prepared.match(/\bstyle=(['"])(.*?)\1/i);
+    if (styleMatch) {
+      prepared = prepared.replace(
+        styleMatch[0],
+        `style=${styleMatch[1]}${responsiveStyle}${styleMatch[2]}${styleMatch[1]}`
+      );
+    } else {
+      prepared = prepared.replace(/\s*\/?>$/, ` style="${responsiveStyle}">`);
+    }
     if (!/\bloading=/i.test(prepared)) prepared = prepared.replace(/\s*\/?>$/, ' loading="lazy">');
     if (!/\bdecoding=/i.test(prepared))
       prepared = prepared.replace(/\s*\/?>$/, ' decoding="async">');
@@ -49,6 +60,21 @@ function prepareImages(source) {
   if (count < minimumImages)
     throw new Error(`Blogger requires at least ${minimumImages} inline images; got ${count}.`);
   return { html, count };
+}
+
+function validateEquationCards(source) {
+  const cards = source.match(/<div\b[^>]*data-blogger-equation=(['"])[^'"]+\1[^>]*>/gi) ?? [];
+  for (const card of cards) {
+    if (!/\brole=(['"])figure\1/i.test(card))
+      throw new Error('Every Blogger equation card needs role="figure".');
+    if (!/\baria-label=(['"])[^'"]+\1/i.test(card))
+      throw new Error('Every Blogger equation card needs a non-empty aria-label.');
+  }
+
+  const unrenderedLatex = /(?:\$\$|\\\[|\\\]|\\begin\{|\\end\{|\\frac\{|\\partial\b|\\nabla\b)/;
+  if (unrenderedLatex.test(source))
+    throw new Error('Blogger HTML contains unrendered LaTeX. Use a responsive equation card.');
+  return cards.length;
 }
 
 const raw = fs.readFileSync(input, 'utf8');
@@ -73,6 +99,7 @@ const rendered = String(
     .use(rehypeStringify)
     .process(body)
 );
+const equationCount = validateEquationCards(rendered);
 const prepared = prepareImages(rendered);
 const readerText = prepared.html
   .replace(/<[^>]+>/g, ' ')
@@ -84,5 +111,6 @@ if (readerText.length < 1500 || readerText.length > 2500)
 const html =
   `<!-- 권장 제목: ${title}\n권장 라벨: ${labels.join(', ')}\n-->\n` +
   `<!-- Blogger inline images: ${prepared.count} -->\n` +
+  `<!-- Blogger equation cards: ${equationCount} -->\n` +
   `<div class="article-body" lang="ko">\n${prepared.html}\n</div>\n`;
 fs.writeFileSync(output, html, 'utf8');

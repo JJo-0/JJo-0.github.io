@@ -243,14 +243,13 @@ async function validateClickedDestination(cdp, sessionId, route, entry) {
   assert.equal(actual, `${entry.expected.pathname}${entry.expected.search}${entry.expected.hash}`);
   if (entry.expected.pathname !== '/') assert.notEqual(actual, '/', `${entry.label}: fell back to Home`);
   if (entry.expected.hash) {
-    assert.equal(
-      await evaluate(
-        cdp,
-        sessionId,
-        `Boolean(document.getElementById(decodeURIComponent(location.hash.slice(1))))`,
-      ),
-      true,
-      `${entry.label}: hash target missing`,
+    const targetId = decodeURIComponent(entry.expected.hash.slice(1));
+    await waitExpression(
+      cdp,
+      sessionId,
+      `Boolean(document.getElementById(${JSON.stringify(targetId)}))`,
+      `${entry.label}: hash target ready`,
+      8_000,
     );
   }
 }
