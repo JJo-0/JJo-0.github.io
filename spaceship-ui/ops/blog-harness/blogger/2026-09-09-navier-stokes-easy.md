@@ -17,16 +17,17 @@ Navier–Stokes 방정식은 물과 공기의 흐름을 설명하는 식입니�
 
 <div data-blogger-equation="navier-stokes" role="figure" aria-label="외력이 있는 비압축성 Navier–Stokes 운동량 방정식과 비압축 조건" style="box-sizing:border-box;width:100%;margin:1.8rem 0;padding:clamp(16px,4vw,28px);overflow:hidden;border:1px solid #cfc8b8;border-radius:12px;background:#f8f4ea;color:#1d211c;">
   <p style="margin:0 0 14px;font-weight:800;line-height:1.45;">방정식은 흐름을 쓰지만, 모든 해의 매끄러움까지 보장하지는 않습니다.</p>
-  <div aria-label="운동량 방정식" style="box-sizing:border-box;width:100%;padding:16px 12px;overflow-x:auto;border-radius:10px;background:#255985;color:#fff;text-align:center;white-space:nowrap;font-family:Georgia,'Times New Roman',serif;font-size:clamp(17px,4.3vw,28px);line-height:1.5;">
-    &#8706;u/&#8706;t + (u&#183;&#8711;)u = &minus;&#8711;p + &nu;&#916;u + f
+  <div aria-label="운동량 방정식" style="box-sizing:border-box;width:100%;padding:16px 10px;overflow:hidden;border-radius:10px;background:#255985;color:#fff;text-align:center;font-family:Georgia,'Times New Roman',serif;font-size:clamp(17px,4.3vw,28px);line-height:1.5;">
+    <span style="display:block;">&#8706;u/&#8706;t + (u&#183;&#8711;)u</span>
+    <span style="display:block;">= &minus;&#8711;p + &nu;&#916;u + f</span>
   </div>
   <p style="margin:10px 0 18px;text-align:center;font-size:clamp(15px,3.8vw,21px);line-height:1.5;"><strong>비압축 조건:</strong> &#8711;&#183;u = 0</p>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;">
-    <div style="padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>시간 변화</strong><br><span aria-label="partial u over partial t">&#8706;u/&#8706;t</span></div>
-    <div style="padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>흐름의 자기 이동</strong><br>(u&#183;&#8711;)u</div>
-    <div style="padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>압력의 밀기</strong><br>&minus;&#8711;p</div>
-    <div style="padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>점성의 완화</strong><br>&nu;&#916;u<br><small>&nu;는 그리스 문자 뉴</small></div>
-    <div style="padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>바깥의 힘</strong><br>f</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+    <div style="box-sizing:border-box;flex:1 1 108px;padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>시간 변화</strong><br><span aria-label="partial u over partial t">&#8706;u/&#8706;t</span></div>
+    <div style="box-sizing:border-box;flex:1 1 108px;padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>흐름의 자기 이동</strong><br>(u&#183;&#8711;)u</div>
+    <div style="box-sizing:border-box;flex:1 1 108px;padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>압력의 밀기</strong><br>&minus;&#8711;p</div>
+    <div style="box-sizing:border-box;flex:1 1 108px;padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>점성의 완화</strong><br>&nu;&#916;u<br><small>&nu;는 그리스 문자 뉴</small></div>
+    <div style="box-sizing:border-box;flex:1 1 108px;padding:10px 8px;border-radius:9px;background:#d9eaf7;text-align:center;"><strong>바깥의 힘</strong><br>f</div>
   </div>
   <p style="margin:16px 0 0;padding:12px;border-radius:9px;background:#315e51;color:#fff;text-align:center;line-height:1.55;"><strong>정칙성 질문</strong><br>3차원에서 유한 에너지 해가 항상 매끄러운가, 아니면 유한 시간에 특이점이 생길 수 있는가?</p>
 </div>

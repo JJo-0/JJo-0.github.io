@@ -23,6 +23,9 @@ try {
   assert.match(html, /∂u\/∂t/);
   assert.match(html, /νΔu/);
   assert.match(html, /ν는 그리스 문자 뉴/);
+  assert.match(html, /∂u\/∂t \+ \(u·∇\)u<\/span>/);
+  assert.match(html, /= −∇p \+ νΔu \+ f<\/span>/);
+  assert.doesNotMatch(html, /white-space:nowrap/);
   assert.doesNotMatch(html, /navier-equation-map-v2\.svg/);
   assert.doesNotMatch(html, /(?:\$\$|\\\[|\\begin\{|\\frac\{)/);
 
