@@ -1,18 +1,22 @@
 ---
 import catalogue from '../../../site/news-media.json';
+import englishCaptions from '../../../site/news-media-en.json';
 
 interface Props {
   media: keyof typeof catalogue;
   priority?: boolean;
   compact?: boolean;
+  lang?: 'ko' | 'en';
 }
-const { media, priority = false, compact = false } = Astro.props;
-const item = catalogue[media];
+const { media, priority = false, compact = false, lang = 'ko' } = Astro.props;
+const localized = lang === 'en' ? (englishCaptions as Record<string, Partial<(typeof catalogue)[keyof typeof catalogue]>>)[media] : undefined;
+if (lang === 'en' && !localized) throw new Error(`Missing English media metadata: ${media}`);
+const item = { ...catalogue[media], ...localized };
 if (!item) throw new Error(`Unknown NEWS media: ${media}`);
 ---
 
 <figure class:list={['news-figure', compact && 'news-figure--compact']} data-news-figure={media}>
-  <a class="news-figure__image" href={item.src} target="_blank" rel="noopener noreferrer" aria-label={`${item.alt} — 원본 크게 보기`}>
+  <a class="news-figure__image" href={item.src} target="_blank" rel="noopener noreferrer" aria-label={`${item.alt} — ${lang === "en" ? "Open full image" : "원본 크게 보기"}`}>
     <img
       src={item.src}
       alt={item.alt}
@@ -28,7 +32,7 @@ if (!item) throw new Error(`Unknown NEWS media: ${media}`);
     <strong>{item.kind}</strong>
     {!compact && <span class="news-figure__caption">{item.caption}</span>}
     <span class="news-figure__credit">
-      {item.credit} · <a href={item.source} target="_blank" rel="noopener noreferrer">출처</a> ·
+      {item.credit} · <a href={item.source} target="_blank" rel="noopener noreferrer">{lang === 'en' ? 'Source' : '출처'}</a> ·
       <a href={item.rights} target="_blank" rel="noopener noreferrer">{item.license}</a>
       {!compact && <> · {item.changes}</>}
     </span>

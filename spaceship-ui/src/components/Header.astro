@@ -13,9 +13,10 @@ interface NavLink {
 interface Props {
   pageLang?: string;
   englishPath?: string;
+  koreanPath?: string;
 }
 
-const { pageLang = SITE.lang, englishPath } = Astro.props;
+const { pageLang = SITE.lang, englishPath, koreanPath } = Astro.props;
 const isKoreanPage = pageLang.toLowerCase().startsWith('ko');
 const showEnglishLink = isKoreanPage && typeof englishPath === 'string' && englishPath.length > 0;
 const currentPath = Astro.url.pathname;
@@ -35,7 +36,12 @@ const [projects, appearances, currentPost] = await Promise.all([
 
 const currentPostIsNews = Boolean(currentPost?.data.tags.includes('frontier-one'));
 
-const navLinks: NavLink[] = [
+const navLinks: NavLink[] = !isKoreanPage ? [
+  { name: 'Home', href: '/en/' },
+  { name: 'News', href: '/en/news/' },
+  { name: 'Articles', href: '/en/posts/' },
+  { name: 'About', href: '/en/about/' },
+] : [
   { name: 'Research', href: '/research' },
   { name: 'Writing', href: '/posts' },
   { name: 'News', href: '/news' },
@@ -50,7 +56,9 @@ const navLinks: NavLink[] = [
 
 const isActive = (href: string) => {
   if (currentPostIsNews) return href === '/news';
-  return currentPath === href || currentPath.startsWith(`${href}/`);
+  const normalized = href.replace(/\/$/, '') || '/';
+  if (normalized === '/en') return currentPath === '/en' || currentPath === '/en/';
+  return currentPath === normalized || currentPath.startsWith(`${normalized}/`);
 };
 
 const navClass = (href: string) => [
@@ -66,7 +74,7 @@ const navClass = (href: string) => [
   <div data-header-inner class="px-2 sm:px-2 lg:px-3">
     <div class="flex items-center justify-between gap-2 sm:gap-3">
       <a
-        href="/"
+        href={isKoreanPage ? "/" : "/en/"}
         aria-label={`${SITE.author} home`}
         data-site-brand
         class="site-brand shrink-0 whitespace-nowrap text-foreground no-underline hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
@@ -104,7 +112,8 @@ const navClass = (href: string) => [
             </a>
           )
         }
-        <Search client:load />
+        {!isKoreanPage && koreanPath && <a href={koreanPath} hreflang="ko-KR" class="language-header-switch" aria-label="Read this page in Korean">KO</a>}
+        <Search client:load lang={pageLang} />
         <ThemeToggle />
       </div>
     </div>

@@ -34,6 +34,7 @@ const postSchema = z
         order: z.number(),
       })
       .optional(),
+    translationKey: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
     translatedPosts: z.record(z.string(), z.string()).optional(), // lang -> slug mapping
   })
   .superRefine((post, context) => {
