@@ -12,6 +12,13 @@ export async function auditNewsMedia(cdp, sessionId) {
   const sourceFigurePosts = new Map(sep11.entries.map((row) => [row.slug, row]));
   const sourceCards = sep11.entries.map((row) => ({slug: row.slug, ...media[row.mediaIds[0]]}));
   const coverOnly = new Set(covers.entries.filter((r) => !r.legacyVisualSuite).map((r) => r.slug));
+  // Most legacy NEWS explainers pair one source figure with two NewsDiagram
+  // components. JustGRPO instead uses two credited source PNGs plus two
+  // clearly labelled educational SVGs rendered through NewsFigure so every
+  // visual receives the same source, licence and caption treatment.
+  const visualPolicies = new Map([
+    ['2026-09-14-justgrpo-diffusion-reasoning-news', { minFigures: 4, minDiagrams: 0 }],
+  ]);
   // Media registration does not publish a post. Validate source state first,
   // then require published images and reject draft listing/route exposure.
   const draftSlugs = new Set();
@@ -72,8 +79,9 @@ export async function auditNewsMedia(cdp, sessionId) {
     }
     for (const [id, item] of publishedMedia) {
       const declaredSource = sourceFigurePosts.get(item.slug);
-      const minFigures = declaredSource ? declaredSource.mediaIds.length : (coverOnly.has(item.slug) ? 1 : 3);
-      const minDiagrams = declaredSource ? 0 : (coverOnly.has(item.slug) ? 0 : 2);
+      const visualPolicy = visualPolicies.get(item.slug);
+      const minFigures = visualPolicy?.minFigures ?? (declaredSource ? declaredSource.mediaIds.length : (coverOnly.has(item.slug) ? 1 : 3));
+      const minDiagrams = visualPolicy?.minDiagrams ?? (declaredSource ? 0 : (coverOnly.has(item.slug) ? 0 : 2));
       const route = `/posts/${item.slug}/`;
       const response = await fetch(new URL(route, BASE));
       assert.equal(response.status, 200, `Published route ${route}`);
