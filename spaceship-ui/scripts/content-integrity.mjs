@@ -9,6 +9,16 @@ const HTML_BLOCK_START = /^(?:<!--[\s\S]*?-->\s*)*<(?:article|aside|blockquote|c
 const EXPECTED_LEGACY_REDIRECTS = 45;
 const EXPECTED_MODERN_AI_FORMULA_CARDS = 238;
 const FRAGILE_IMAGE_HOSTS = /(?:^|\.)(?:google\.com|googleusercontent\.com|bing\.com|duckduckgo\.com|daumcdn\.net|kakaocdn\.net)$/i;
+const d4rtSourceMedia = JSON.parse(fs.readFileSync(path.join(root, 'site/assets/assets/posts/d4rt-20260914/provenance.json'), 'utf8'));
+
+function isDocumentedOfficialImage(relative, url, html) {
+  return relative === 'posts/2026-09-14-d4rt-dynamic-4d-vision-news/index.html'
+    && html.includes('data-official-media="d4rt-sintel"')
+    && d4rtSourceMedia.externalMedia.some((item) => item.url === url.href
+      && item.delivery === 'remote-embed'
+      && item.credit === 'Google DeepMind'
+      && html.includes(item.source));
+}
 
 function filesUnder(dir, predicate = () => true) {
   if (!fs.existsSync(dir)) return [];
@@ -135,7 +145,7 @@ for (const file of filesUnder(dist, (p) => p.endsWith('.html'))) {
   for (const match of html.matchAll(/<img\b[^>]*\bsrc=(['"])(https?:\/\/.*?)\1/gi)) {
     try {
       const url = new URL(decodeHtml(match[2]));
-      if (FRAGILE_IMAGE_HOSTS.test(url.hostname)) issues.push(`${relative}: fragile image hotlink remains in built HTML: ${url.href}`);
+      if (FRAGILE_IMAGE_HOSTS.test(url.hostname) && !isDocumentedOfficialImage(relative, url, html)) issues.push(`${relative}: fragile image hotlink remains in built HTML: ${url.href}`);
     } catch { /* ignored */ }
   }
 
