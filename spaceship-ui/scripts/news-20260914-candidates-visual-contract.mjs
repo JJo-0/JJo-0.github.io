@@ -58,7 +58,20 @@ for (const entry of cases) {
   }
 
   assert(post.includes(entry.source), `${entry.slug}: primary source link required`);
-  assert.match(post, /별도 자유 이용 허락을 확인하지 못/, `${entry.slug}: must explain why source figures are linked rather than copied`);
+  if (entry.slug.includes('d4rt')) {
+    assert.match(post, /<video controls playsinline preload="metadata"/);
+    assert.match(post, /data-official-media="d4rt-sintel"/);
+    assert.match(post, /Google DeepMind/);
+    assert.match(post, /영상 직접 열기/);
+    assert.equal(ledger.externalMedia.length, 2);
+    for (const item of ledger.externalMedia) {
+      assert(post.includes(item.url), 'Official media must match its source record');
+      assert.equal(item.delivery, 'remote-embed');
+      assert.equal(item.credit, 'Google DeepMind');
+    }
+  } else {
+    assert.match(post, /별도 자유 이용 허락을 확인하지 못/);
+  }
   const prose = post
     .slice(frontmatter[0].length)
     .replace(/^import .*;\s*$/gm, '')
