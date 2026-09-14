@@ -134,6 +134,14 @@ POST_TAXONOMY.update(
             'ai-machine-learning', 'diffusion-language-models', 'research-report',
             ('frontier-one', 'diffusion-language-models', 'reinforcement-learning', 'reasoning', 'open-source'),
         ),
+        '2026-09-14-fors-diffusion-sampling-news.mdx': Taxonomy(
+            'ai-machine-learning', 'diffusion-models', 'research-report',
+            ('frontier-candidate', 'diffusion-models', 'sampling-theory', 'mathematics'),
+        ),
+        '2026-09-14-d4rt-dynamic-4d-vision-news.mdx': Taxonomy(
+            'ai-machine-learning', 'computer-vision', 'research-report',
+            ('frontier-candidate', 'computer-vision', 'robotics', '3d-vision', 'world-models'),
+        ),
     }
 )
 

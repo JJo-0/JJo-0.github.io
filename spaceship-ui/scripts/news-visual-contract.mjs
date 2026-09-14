@@ -46,3 +46,4 @@ await import('./news-cover-contract.mjs');
 await import('./news-sep11-release-contract.mjs');
 
 await import('./news-justgrpo-visual-contract.mjs');
+await import('./news-20260914-candidates-visual-contract.mjs');
