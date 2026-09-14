@@ -130,6 +130,10 @@ POST_TAXONOMY.update(
             'finance-industry', 'lithium-sulfur-batteries', 'research-report',
             ('frontier-one', 'energy-storage', 'lithium-sulfur-batteries'),
         ),
+        '2026-09-14-justgrpo-diffusion-reasoning-news.mdx': Taxonomy(
+            'ai-machine-learning', 'diffusion-language-models', 'research-report',
+            ('frontier-one', 'diffusion-language-models', 'reinforcement-learning', 'reasoning', 'open-source'),
+        ),
     }
 )
 
