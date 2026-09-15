@@ -145,5 +145,13 @@ POST_TAXONOMY.update(
     }
 )
 
+POST_TAXONOMY.update(
+    {
+        '2026-09-15-mspa-fpba-nanopore-news.mdx': Taxonomy('research-methods-tools', 'nanopore-sensing', 'paper-review', ('frontier-one', 'nanopore-sensing')),
+        '2026-09-15-apoe-stratified-alzheimer-news.mdx': Taxonomy('health-lifestyle', 'neurogenetics', 'paper-review', ('frontier-candidate', 'alzheimers-disease', 'apoe', 'genome-wide-association')),
+        '2026-09-15-mos2-snn-in-logic-news.mdx': Taxonomy('finance-industry', 'neuromorphic-computing', 'paper-review', ('frontier-candidate', 'semiconductor', 'neuromorphic-computing')),
+    }
+)
+
 if __name__ == "__main__":
     raise SystemExit(main())
