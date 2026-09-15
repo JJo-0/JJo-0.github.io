@@ -81,6 +81,8 @@ for (const [index, [slug, key, year, selection]] of expected.entries()) {
 }
 assert.equal(edition.reserve[0].sourceDate, '2026-09-11');
 assert.equal(edition.reserve[0].status, 'reserve-in-top1-section8');
+assert.equal(edition.reserve[0].source, "https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2026");
+assert(!read('../site/content/posts/2026-09-15-mspa-fpba-nanopore-news.mdx').includes("https://www.fda.gov/drugs/news-events-human-drugs/fda-approves-first-therapy-target-muscle-loss-spinal-muscular-atrophy"), 'Do not republish the failed FDA announcement URL as a reader citation');
 assert(read('../site/content/posts/2026-09-15-mspa-fpba-nanopore-news.mdx').includes('Isembyld'));
 assert.match(read('../site/content/posts/2026-09-15-apoe-stratified-alzheimer-news.mdx'), /상호작용 P값은 1\.62×10⁻⁶/);
 assert.match(read('../site/content/posts/2026-09-15-mos2-snn-in-logic-news.mdx'), /저자에게 요청하면 제공/);
