@@ -75,8 +75,11 @@ async function dashboardInteractions(cdp, sessionId, order) {
   } else if (order === 2) {
     const chronology = await evaluate(cdp, sessionId, inFrame(`w.switchTab('tab-chronology');return d.getElementById('tab-chronology').textContent;`));
     for (const text of ['51 CE 5월 ~ 52 CE 4월','비문 문구','연대 계산 산식','사도행전 18장 적용','티베리우스','칼리굴라','클라우디우스','네로']) assert(chronology.includes(text), `Restored chronology card: ${text}`);
-    const result = await evaluate(cdp, sessionId, inFrame(`w.switchTab('tab-matrix');const input=d.getElementById('matrixSearch'),select=d.getElementById('gradeFilter');select.value='D';w.filterMatrix();const gradeD=d.querySelectorAll('#matrixTableBody tr').length;select.value='ALL';input.value='갈리오';w.filterMatrix();const rows=d.querySelectorAll('#matrixTableBody tr');rows[0].focus();return {gradeD,count:rows.length,claim:rows[0].textContent};`));
+    const result = await evaluate(cdp, sessionId, inFrame(`w.switchTab('tab-matrix');const input=d.getElementById('matrixSearch'),select=d.getElementById('gradeFilter');select.value='D';w.filterMatrix();const gradeD=d.querySelectorAll('#matrixTableBody tr').length;select.value='ALL';input.value='갈리오';w.filterMatrix();const rows=d.querySelectorAll('#matrixTableBody tr');return {gradeD,count:rows.length,claim:rows[0].textContent};`));
     assert.equal(result.gradeD,2); assert.equal(result.count,1); assert(result.claim.includes('갈리오'));
+    // Filtering replaces rows; wait for the source's observer to install native keyboard access.
+    await waitExpression(cdp, sessionId, inFrame(`return d.querySelector('#matrixTableBody tr')?.dataset.keyboard==='1';`), 'Filtered case row keyboard ready');
+    assert(await evaluate(cdp, sessionId, inFrame(`const row=d.querySelector('#matrixTableBody tr');row.scrollIntoView({block:'center',behavior:'instant'});row.focus();return d.activeElement===row;`)), 'Filtered row receives keyboard focus');
     await pressKey(cdp, sessionId, 'Enter', 13, '\r');
     await waitExpression(cdp, sessionId, inFrame(`return !d.getElementById('caseModal').classList.contains('hidden') && d.getElementById('modalTitle').textContent.includes('갈리오');`), 'Keyboard opens filtered Gallio case');
     await pressKey(cdp, sessionId, 'Escape', 27);
