@@ -9,8 +9,10 @@ export async function auditNewsMedia(cdp, sessionId) {
   const covers = JSON.parse(fs.readFileSync(new URL('../site/news-covers-20260912.json', import.meta.url), 'utf8'));
   assert.equal(covers.entries.length, 19);
   const sep11 = JSON.parse(fs.readFileSync(new URL('../site/news-sep11-release.json', import.meta.url), 'utf8'));
-  const sourceFigurePosts = new Map(sep11.entries.map((row) => [row.slug, row]));
-  const sourceCards = sep11.entries.map((row) => ({slug: row.slug, ...media[row.mediaIds[0]]}));
+  const sep15 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260915.json', import.meta.url), 'utf8'));
+  const declaredEntries = [...sep11.entries, ...sep15.entries];
+  const sourceFigurePosts = new Map(declaredEntries.map((row) => [row.slug, row]));
+  const sourceCards = declaredEntries.map((row) => ({slug: row.slug, ...media[row.mediaIds[0]]}));
   const coverOnly = new Set(covers.entries.filter((r) => !r.legacyVisualSuite).map((r) => r.slug));
   // Most legacy NEWS explainers pair one source figure with two NewsDiagram
   // components. JustGRPO instead uses two credited source PNGs plus two
@@ -148,6 +150,32 @@ export async function auditNewsMedia(cdp, sessionId) {
       if (declaredSource) {
         const ids = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('article [data-news-figure]')).map((el) => el.getAttribute('data-news-figure'))`);
         assert.deepEqual(ids, declaredSource.mediaIds, 'All declared original figures must appear exactly once in order');
+      }
+      const todayEntry = sep15.entries.find((row) => row.slug === item.slug);
+      if (todayEntry) {
+        const details = await evaluate(cdp, sessionId, `(() => {
+          const figures = [...document.querySelectorAll('article [data-news-figure]')];
+          const heading = document.querySelector('article h2');
+          return {
+            firstBeforeHeading: Boolean(heading && (figures[0].compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING)),
+            media: figures.map((figure) => {
+              const img = figure.querySelector('img');
+              return { id: figure.getAttribute('data-news-figure'), src: img.getAttribute('src'),
+                width: img.naturalWidth, height: img.naturalHeight,
+                kind: figure.querySelector('figcaption strong')?.textContent || '' };
+            })
+          };
+        })()`);
+        assert(details.firstBeforeHeading, `${item.slug}: representative image must precede explanatory sections`);
+        assert.deepEqual(details.media.map((row) => row.id), todayEntry.mediaIds);
+        for (const row of details.media) {
+          const original = media[row.id];
+          assert.equal(row.src, original.src);
+          assert.equal(row.width, original.width);
+          assert.equal(row.height, original.height);
+          assert.equal(row.kind, original.kind);
+        }
+        console.log(`news-sep15-qa: PASS ${item.slug} original decode, order, captions and ${size.width}px layout`);
       }
       results.push(result);
       console.log('news-media-qa: PASS ' + JSON.stringify(result));

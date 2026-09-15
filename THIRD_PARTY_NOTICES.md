@@ -56,3 +56,14 @@ These third-party images are not relicensed under the repository MIT license. Se
 - `cover-deepwonder3d` — Yujia Chen 외 · Nature Methods · 2026 · Figure 1; 원저작권 유지 · 해설용 Figure 인용; https://www.nature.com/articles/s41592-026-03215-6
 - `cover-imec-nbtin` — ©imec · 2026 · Figure 1; imec 보도·발표용 사진 이용 조건; https://www.imec-int.com/en/press/imec-advances-scalable-superconducting-technology-world-first-nbtin-circuits-and-30nm
 - `cover-rentosertib-aging` — Alex Zhavoronkov 외 · Nature Biotechnology · 2026 · Figure 1; CC BY 4.0; https://www.nature.com/articles/s41587-026-03286-y
+
+
+## September 15, 2026 NEWS background research figures
+
+The six files under `spaceship-ui/site/assets/assets/posts/news-20260915/` retain their original authors' copyright and are reused under CC BY 4.0. Their individual original URLs, source and output hashes, captions and resizing information are in `provenance.json`. They are background figures, not the September 2026 papers' result images. No panels, axis labels or data have been removed; images are proportionally resized and converted to WebP.
+
+- Fan et al. (2024), *Nanopore analysis of cis-diols in fruits*, Nature Communications, Figures 1–2; DOI 10.1038/s41467-024-46303-x.
+- Bellenguez et al. (2022), *New insights into the genetic etiology of Alzheimer’s disease and related dementias*, Nature Genetics, Figures 1–2; DOI 10.1038/s41588-022-01024-z.
+- Bhattacharjee et al. (2020), *Emulating synaptic response in n- and p-channel MoS2 transistors by utilizing charge trapping dynamics*, Scientific Reports, Figures 1–2; DOI 10.1038/s41598-020-68793-7.
+
+License: https://creativecommons.org/licenses/by/4.0/ . Captions identify these figures as 2024, 2022 and 2020 background respectively. The 2026 papers' images were inspected privately but are not reproduced in this batch; the nanopore article has a standard publisher copyright notice and the APOE/MoS2 articles specify CC BY-NC-ND 4.0.
