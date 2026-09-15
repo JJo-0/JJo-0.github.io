@@ -12,6 +12,7 @@ import { auditMobileMotion } from './browser-mobile-motion-audit.mjs';
 import { auditRenderer } from './browser-renderer-audit-v2.mjs';
 import { auditInteractions } from './browser-interaction-audits-v4.mjs';
 import { auditNewsMedia } from './browser-news-media-audit.mjs';
+import { auditTranslations } from './browser-translation-audit.mjs';
 import { auditActsStudies } from './browser-acts-study-audit.mjs';
 
 async function closeAuditTarget(cdp, target) {
@@ -86,6 +87,7 @@ async function main() {
     // article routes in both preview CI and the deployed Pages smoke run.
     newsTarget = await attach(cdp);
     await auditNewsMedia(cdp, newsTarget.sessionId);
+    await auditTranslations(cdp, newsTarget.sessionId);
     await closeAuditTarget(cdp, newsTarget);
     newsTarget = null;
 

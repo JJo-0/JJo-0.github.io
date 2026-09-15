@@ -145,5 +145,12 @@ POST_TAXONOMY.update(
     }
 )
 
+POST_TAXONOMY.update({
+        'en-human-embryo-base-editing-safety.mdx': Taxonomy('health-lifestyle', 'genome-editing', 'paper-review', ('frontier-one', 'genome-editing')),
+        'en-high-na-euv-large-photomasks.mdx': Taxonomy('finance-industry', 'semiconductor-lithography', 'research-report', ('frontier-one', 'semiconductor-lithography')),
+        'en-solid-state-electrolyte-thin-films.mdx': Taxonomy('finance-industry', 'solid-state-batteries', 'paper-review', ('frontier-one', 'solid-state-batteries')),
+        'en-lithium-sulfur-three-electron-battery.mdx': Taxonomy('finance-industry', 'lithium-sulfur-batteries', 'research-report', ('frontier-one', 'energy-storage', 'lithium-sulfur-batteries')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -34,6 +34,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function includeInSitemap(page) {
   const pathname = new URL(page).pathname;
 
+  if (pathname === '/en/404/' || pathname === '/en/404') return false;
   if (isLegacyPathname(pathname)) return false;
   if (!SITE.publicSections.projects && pathname.startsWith('/projects')) return false;
   if (!SITE.publicSections.appearances && pathname.startsWith('/appearances')) return false;

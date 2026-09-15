@@ -1,22 +1,12 @@
 <script lang="ts">
-  import { getLangFlag } from '@/lib/utils/lang';
-
   export let translations: Record<string, string>;
+  export let currentLang = 'ko';
 </script>
-
-<div
-  class="flex flex-wrap items-center gap-2 mb-6 p-3 bg-secondary/30 rounded-lg border border-border/50"
->
-  <span class="text-xs font-bold uppercase tracking-widest text-muted-foreground mr-1">
-    Available in:
-  </span>
-  {#each Object.entries(translations) as [lang, slug] (lang)}
-    <a
-      href={`/posts/${slug}`}
-      class="inline-flex items-center gap-1.5 px-2 py-1 round text-xs font-bold uppercase tracking-wide bg-background text-foreground hover:text-primary border border-border transition-colors no-underline"
-    >
-      <span class="text-sm leading-none">{getLangFlag(lang)}</span>
-      {lang.toUpperCase()}
+<nav aria-label={currentLang.startsWith('en') ? 'Article languages' : '이 글의 언어판'} class="flex flex-wrap items-center gap-2 mb-6 p-3 bg-secondary/30 rounded-lg border border-border/50" data-language-selector>
+  <span class="text-xs font-bold text-muted-foreground mr-1">{currentLang.startsWith('en') ? 'Read in:' : '다른 언어로 읽기:'}</span>
+  {#each Object.entries(translations) as [lang, href] (lang)}
+    <a {href} hreflang={lang} lang={lang} class="px-3 py-1 text-sm font-bold bg-background text-foreground hover:text-primary border border-border rounded no-underline">
+      {lang.startsWith('en') ? 'English' : '한국어'}
     </a>
   {/each}
-</div>
+</nav>

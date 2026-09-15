@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { uiState } from '@/lib/ui.svelte';
 
+  let { lang = 'ko' }: { lang?: string } = $props();
   let SearchDialog = $state<any>(null);
 
   $effect(() => {
@@ -53,5 +54,5 @@
 </button>
 
 {#if uiState.isSearchOpen && SearchDialog}
-  <SearchDialog />
+  <SearchDialog {lang} />
 {/if}

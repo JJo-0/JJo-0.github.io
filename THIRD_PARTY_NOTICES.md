@@ -56,3 +56,9 @@ These third-party images are not relicensed under the repository MIT license. Se
 - `cover-deepwonder3d` — Yujia Chen 외 · Nature Methods · 2026 · Figure 1; 원저작권 유지 · 해설용 Figure 인용; https://www.nature.com/articles/s41592-026-03215-6
 - `cover-imec-nbtin` — ©imec · 2026 · Figure 1; imec 보도·발표용 사진 이용 조건; https://www.imec-int.com/en/press/imec-advances-scalable-superconducting-technology-world-first-nbtin-circuits-and-30nm
 - `cover-rentosertib-aging` — Alex Zhavoronkov 외 · Nature Biotechnology · 2026 · Figure 1; CC BY 4.0; https://www.nature.com/articles/s41587-026-03286-y
+
+## Additional NEWS source figures — 2026-09-13
+
+Seven complete figures with original captions are stored in `spaceship-ui/site/assets/assets/posts/news-depth-20260913/`. `provenance.json` gives each source URL, PDF SHA-256, page and bounding rectangle, resulting dimensions, image SHA-256, original authors and license. Figure panels, axes and values were not rewritten; extraction and lossless WebP conversion are documented. CLEAR-EC/HugCL/MnTe/DLCatalysis/CHORUS retain CC BY-NC-ND 4.0; solar-blind/GLUD1 retain the terms recorded from their articles. These scientific figures are not relicensed as repository code; commercial/advertising reuse requires a separate rights decision.
+
+The two `sulfur-*-en.svg` files are English-label editions of this blog's own educational plots. Their geometry and illustrative data are preserved; they are not measurements from the research paper. `site/news-media-en.json` preserves attribution, license and change descriptions for the existing four translated articles' media.

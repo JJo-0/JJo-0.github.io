@@ -91,8 +91,11 @@ forbidText(
   'src/components/Header.astro',
   "ThemeToggle from '@/components/ThemeToggle.svelte'"
 );
-requireText(headerSource, 'src/components/Header.astro', '<Search client:load />');
-forbidText(headerSource, 'src/components/Header.astro', '<Search client:idle />');
+// Language is passed to the same eagerly hydrated trigger, not a new search island.
+requireText(headerSource, 'src/components/Header.astro', '<Search client:load lang={pageLang} />');
+if (/<Search\b[^>]*\bclient:(?:idle|visible|media|only)\b/.test(headerSource)) {
+  issues.push('src/components/Header.astro: Search trigger must hydrate at load time in every locale');
+}
 
 requireText(runtimeSource, 'src/lib/experience/renderer-runtime.ts', 'requestIdleCallback');
 requireText(runtimeSource, 'src/lib/experience/renderer-runtime.ts', "rootMargin: '0px'");

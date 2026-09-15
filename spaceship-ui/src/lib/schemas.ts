@@ -1,17 +1,17 @@
 import { SITE } from '@/config';
 
-export function getWebSiteSchema(url: string) {
+export function getWebSiteSchema(url: string, lang = SITE.lang) {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: SITE.title,
-    description: SITE.desc,
+    description: lang.startsWith('en') ? 'Research notes on robotics, AI, computer vision, and science by Jiho Park.' : SITE.desc,
     url: url,
     author: {
       '@type': 'Person',
       name: SITE.author,
     },
-    inLanguage: SITE.lang,
+    inLanguage: lang,
   };
 }
 
@@ -23,6 +23,7 @@ export function getBlogPostingSchema(data: {
   lang?: string;
   image?: string;
   tags?: string[];
+  updatedDate?: Date;
 }) {
   return {
     '@context': 'https://schema.org',
@@ -30,7 +31,7 @@ export function getBlogPostingSchema(data: {
     headline: data.title,
     description: data.description,
     datePublished: data.pubDate.toISOString(),
-    dateModified: data.pubDate.toISOString(),
+    dateModified: (data.updatedDate || data.pubDate).toISOString(),
     author: {
       '@type': 'Person',
       name: SITE.author,
