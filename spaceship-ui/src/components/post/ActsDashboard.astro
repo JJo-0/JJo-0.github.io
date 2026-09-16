@@ -1,0 +1,80 @@
+---
+import series from '@/data/acts-series.json';
+interface Props { order: number; }
+const { order } = Astro.props;
+const entry = series.entries.find((item) => item.order === order);
+if (!entry || ![1, 2, 3].includes(order)) throw new Error(`Unknown Acts dashboard: ${order}`);
+const src = `/assets/interactive/acts-overview-${order}.html`;
+const next = series.entries.find((item) => item.order === order + 1);
+---
+<jjo-acts-dashboard class="not-prose" data-acts-dashboard={order} data-acts-reader={entry.slug}>
+  <div class="dashboard-toolbar">
+    <a href={src} target="_blank" rel="noopener" data-astro-reload>대시보드 전체 화면 ↗</a>
+    <a href="/bible">전체 학습 순서</a>
+    {next && <a href={`/posts/${next.slug}`}>다음 {next.order}편 →</a>}
+  </div>
+  <iframe data-acts-frame src={src} title={entry.sourceTitle} loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe>
+  <details data-acts-original class="dashboard-original">
+    <summary>원문·출처 펼쳐보기</summary>
+    <p><a data-acts-source href={entry.source} target="_blank" rel="noopener noreferrer">Gemini 공유 원문 ↗</a></p>
+    <p>제공된 대시보드의 본문·데이터·시각화를 보존하고 블로그 색상과 글꼴을 적용했습니다. 도표 값은 원자료의 값이며 별도의 실측·동료심사 결과를 뜻하지 않습니다.</p>
+  </details>
+  <noscript><p><a href={src}>대시보드 별도 페이지 열기</a> — 탭·검색·차트는 JavaScript를 사용합니다.</p></noscript>
+</jjo-acts-dashboard>
+<script>
+  class ActsDashboardElement extends HTMLElement {
+    private controller?: AbortController;
+    private observer?: MutationObserver;
+    connectedCallback() {
+      this.controller?.abort();
+      this.observer?.disconnect();
+      this.controller = new AbortController();
+      const frame = this.querySelector<HTMLIFrameElement>('[data-acts-frame]');
+      if (!frame) return;
+      const synchronize = () => {
+        const doc = frame.contentDocument;
+        if (!doc?.body || doc.URL === 'about:blank') return;
+        const site = getComputedStyle(document.documentElement);
+        const pairs: Record<string, string> = {
+          '--jjo-paper': '--color-background', '--jjo-ink': '--color-foreground',
+          '--jjo-card': '--color-card', '--jjo-green': '--color-primary',
+          '--jjo-on-green': '--color-primary-foreground', '--jjo-muted': '--color-muted-foreground',
+          '--jjo-secondary': '--color-secondary', '--jjo-border': '--color-border',
+          '--jjo-focus': '--color-ring', '--jjo-editorial': '--font-editorial',
+          '--jjo-reading': '--font-reading', '--jjo-mono': '--font-mono',
+        };
+        for (const [target, source] of Object.entries(pairs)) {
+          const value = site.getPropertyValue(source).trim();
+          if (value) doc.documentElement.style.setProperty(target, value);
+        }
+        doc.documentElement.classList.toggle('dark', document.documentElement.classList.contains('dark'));
+        // Only standalone preview chrome is hidden; every source content panel remains intact.
+        if (!doc.getElementById('acts-embed-chrome')) {
+          const style = doc.createElement('style'); style.id = 'acts-embed-chrome';
+          style.textContent = '.jjo-controls,.source-credit{display:none!important}@media(max-width:319px){#sec-concept .font-mono{overflow-x:auto}}';
+          doc.head.append(style);
+        }
+        this.dataset.ready = 'true';
+      };
+      frame.addEventListener('load', synchronize, { signal: this.controller.signal });
+      this.observer = new MutationObserver(synchronize);
+      this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+      synchronize();
+    }
+    disconnectedCallback() { this.controller?.abort(); this.observer?.disconnect(); }
+  }
+  if (!customElements.get('jjo-acts-dashboard')) customElements.define('jjo-acts-dashboard', ActsDashboardElement);
+</script>
+<style>
+  jjo-acts-dashboard { display:block; width:100%; min-width:0; color:var(--color-foreground); background:var(--color-card); font-family:var(--font-reading); }
+  .dashboard-toolbar { display:flex; flex-wrap:wrap; gap:.75rem 1.25rem; padding:.85rem 1rem; border:1px solid var(--color-border); font-size:.85rem; }
+  a { color:var(--color-primary); text-decoration:underline; text-underline-offset:.2em; }
+  iframe { display:block; width:100%; height:88svh; min-height:640px; max-height:1200px; border:1px solid var(--color-border); border-top:0; background:var(--color-background); content-visibility:visible!important; }
+  .dashboard-original { padding:.75rem 1rem; border:1px solid var(--color-border); border-top:0; font-size:.85rem; line-height:1.7; }
+  summary { cursor:pointer; font-weight:600; }
+  p { margin:.6rem 0; }
+  :is(a,summary):focus-visible { outline:2px solid var(--color-ring); outline-offset:4px; }
+  :global(.article-layout:has([data-acts-dashboard]) > .w-52) { display:none; }
+  :global(.article-prose:has([data-acts-dashboard])) { max-width:none; }
+  @media(max-width:639px) { iframe { min-height:640px; height:90svh; } }
+</style>

@@ -130,6 +130,34 @@ POST_TAXONOMY.update(
             'finance-industry', 'lithium-sulfur-batteries', 'research-report',
             ('frontier-one', 'energy-storage', 'lithium-sulfur-batteries'),
         ),
+        '2026-09-14-justgrpo-diffusion-reasoning-news.mdx': Taxonomy(
+            'ai-machine-learning', 'diffusion-language-models', 'research-report',
+            ('frontier-one', 'diffusion-language-models', 'reinforcement-learning', 'reasoning', 'open-source'),
+        ),
+        '2026-09-14-fors-diffusion-sampling-news.mdx': Taxonomy(
+            'ai-machine-learning', 'diffusion-models', 'research-report',
+            ('frontier-candidate', 'diffusion-models', 'sampling-theory', 'mathematics'),
+        ),
+        '2026-09-14-d4rt-dynamic-4d-vision-news.mdx': Taxonomy(
+            'ai-machine-learning', 'computer-vision', 'research-report',
+            ('frontier-candidate', 'computer-vision', 'robotics', '3d-vision', 'world-models'),
+        ),
+    }
+)
+
+POST_TAXONOMY.update(
+    {
+        '2026-09-15-mspa-fpba-nanopore-news.mdx': Taxonomy('research-methods-tools', 'nanopore-sensing', 'paper-review', ('frontier-one', 'nanopore-sensing')),
+        '2026-09-15-apoe-stratified-alzheimer-news.mdx': Taxonomy('health-lifestyle', 'neurogenetics', 'paper-review', ('frontier-candidate', 'alzheimers-disease', 'apoe', 'genome-wide-association')),
+        '2026-09-15-mos2-snn-in-logic-news.mdx': Taxonomy('finance-industry', 'neuromorphic-computing', 'paper-review', ('frontier-candidate', 'semiconductor', 'neuromorphic-computing')),
+    }
+)
+
+POST_TAXONOMY.update(
+    {
+        '2026-09-16-seawater-hydrogen-water-news.mdx': Taxonomy('finance-industry', 'hydrogen-energy', "paper-review", ('frontier-one', 'hydrogen-energy')),
+        '2026-09-16-onprem-medical-agent-news.mdx': Taxonomy('health-lifestyle', 'clinical-ai', "paper-review", ('frontier-candidate', 'clinical-ai')),
+        '2026-09-16-oect-swelling-mapping-news.mdx': Taxonomy('finance-industry', 'organic-bioelectronics', "paper-review", ('frontier-candidate', 'organic-bioelectronics')),
     }
 )
 

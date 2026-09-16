@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { groupMediaByPost } from './news-media-visit-plan.mjs';
 import { BASE, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
 export async function auditNewsMedia(cdp, sessionId) {
@@ -9,9 +10,21 @@ export async function auditNewsMedia(cdp, sessionId) {
   const covers = JSON.parse(fs.readFileSync(new URL('../site/news-covers-20260912.json', import.meta.url), 'utf8'));
   assert.equal(covers.entries.length, 19);
   const sep11 = JSON.parse(fs.readFileSync(new URL('../site/news-sep11-release.json', import.meta.url), 'utf8'));
-  const sourceFigurePosts = new Map(sep11.entries.map((row) => [row.slug, row]));
-  const sourceCards = sep11.entries.map((row) => ({slug: row.slug, ...media[row.mediaIds[0]]}));
+  const sep15 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260915.json', import.meta.url), 'utf8'));
+  const sep16 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260916.json', import.meta.url), 'utf8'));
+  const declaredEntries = [...sep11.entries, ...sep15.entries, ...sep16.entries];
+  const sourceFigurePosts = new Map(declaredEntries.map((row) => [row.slug, row]));
+  const sourceCards = declaredEntries.map((row) => ({slug: row.slug, ...media[row.mediaIds[0]]}));
   const coverOnly = new Set(covers.entries.filter((r) => !r.legacyVisualSuite).map((r) => r.slug));
+  // Most legacy NEWS explainers pair one source figure with two NewsDiagram
+  // components. JustGRPO instead uses two credited source PNGs plus two
+  // clearly labelled educational SVGs rendered through NewsFigure so every
+  // visual receives the same source, licence and caption treatment.
+  const visualPolicies = new Map([
+    ['2026-09-14-justgrpo-diffusion-reasoning-news', { minFigures: 4, minDiagrams: 0 }],
+    ['2026-09-14-fors-diffusion-sampling-news', { minFigures: 2, minDiagrams: 0 }],
+    ['2026-09-14-d4rt-dynamic-4d-vision-news', { minFigures: 2, minDiagrams: 0 }],
+  ]);
   // Media registration does not publish a post. Validate source state first,
   // then require published images and reject draft listing/route exposure.
   const draftSlugs = new Set();
@@ -37,6 +50,8 @@ export async function auditNewsMedia(cdp, sessionId) {
     { width: 1440, height: 1000, reduced: true },
   ];
   const results = [];
+  const publishedPosts = groupMediaByPost(publishedMedia);
+  let checkedMedia = 0;
   for (const size of sizes) {
     await viewport(cdp, sessionId, size);
     await navigate(cdp, sessionId, '/news');
@@ -70,20 +85,25 @@ export async function auditNewsMedia(cdp, sessionId) {
       assert.equal(card.src, row.src); assert.equal(card.width, row.width); assert.equal(card.height, row.height);
       console.log(`news-cover-qa: PASS ${row.slug} at ${size.width}px`);
     }
-    for (const [id, item] of publishedMedia) {
+    for (const [, registeredMedia] of publishedPosts) {
+      const [, item] = registeredMedia[0];
       const declaredSource = sourceFigurePosts.get(item.slug);
-      const minFigures = declaredSource ? declaredSource.mediaIds.length : (coverOnly.has(item.slug) ? 1 : 3);
-      const minDiagrams = declaredSource ? 0 : (coverOnly.has(item.slug) ? 0 : 2);
+      const visualPolicy = visualPolicies.get(item.slug);
+      const minFigures = visualPolicy?.minFigures ?? (declaredSource ? declaredSource.mediaIds.length : (coverOnly.has(item.slug) ? 1 : 3));
+      const minDiagrams = visualPolicy?.minDiagrams ?? (declaredSource ? 0 : (coverOnly.has(item.slug) ? 0 : 2));
       const route = `/posts/${item.slug}/`;
       const response = await fetch(new URL(route, BASE));
       assert.equal(response.status, 200, `Published route ${route}`);
       await navigate(cdp, sessionId, route);
-      await waitExpression(
-        cdp,
-        sessionId,
-        `Boolean(document.querySelector('article [data-news-figure="${id}"] img'))`,
-        `inline image ${item.slug}`
-      );
+      // One navigation per article; every registered figure is still required.
+      for (const [id] of registeredMedia) {
+        await waitExpression(
+          cdp,
+          sessionId,
+          `document.querySelectorAll('article [data-news-figure="${id}"] img').length === 1`,
+          `inline image ${item.slug}: ${id}`
+        );
+      }
       await waitExpression(
         cdp,
         sessionId,
@@ -135,13 +155,62 @@ export async function auditNewsMedia(cdp, sessionId) {
           result.newsActive,
         JSON.stringify(result)
       );
+      const registeredDetails = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('article [data-news-figure]')).map((figure) => {
+        const img = figure.querySelector('img');
+        return { id: figure.getAttribute('data-news-figure'), src: img?.getAttribute('src'),
+          width: img?.naturalWidth, height: img?.naturalHeight,
+          declaredWidth: Number(img?.getAttribute('width')), declaredHeight: Number(img?.getAttribute('height')) };
+      })`);
+      for (const [id, expected] of registeredMedia) {
+        const matches = registeredDetails.filter((figure) => figure.id === id);
+        assert.equal(matches.length, 1, `${item.slug}: exactly one registered figure ${id}`);
+        assert.equal(matches[0].src, expected.src);
+        assert.equal(matches[0].declaredWidth, expected.width);
+        assert.equal(matches[0].declaredHeight, expected.height);
+        // Pixel equality applies to pinned local rasters. SVGs scale from
+        // viewBox/point units; remote servers may return other renditions.
+        if (expected.src.startsWith('/') && /\.(?:png|jpe?g|webp|gif|avif)$/i.test(expected.src)) {
+          assert.equal(matches[0].width, expected.width);
+          assert.equal(matches[0].height, expected.height);
+        }
+        assert(matches[0].width > 0 && matches[0].height > 0, `${id}: undecoded image`);
+        checkedMedia += 1;
+      }
       if (declaredSource) {
         const ids = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('article [data-news-figure]')).map((el) => el.getAttribute('data-news-figure'))`);
         assert.deepEqual(ids, declaredSource.mediaIds, 'All declared original figures must appear exactly once in order');
+      }
+      const todayEntry = [...sep15.entries, ...sep16.entries].find((row) => row.slug === item.slug);
+      if (todayEntry) {
+        const details = await evaluate(cdp, sessionId, `(() => {
+          const figures = [...document.querySelectorAll('article [data-news-figure]')];
+          const heading = document.querySelector('article h2');
+          return {
+            firstBeforeHeading: Boolean(heading && (figures[0].compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING)),
+            media: figures.map((figure) => {
+              const img = figure.querySelector('img');
+              return { id: figure.getAttribute('data-news-figure'), src: img.getAttribute('src'),
+                width: img.naturalWidth, height: img.naturalHeight,
+                kind: figure.querySelector('figcaption strong')?.textContent || '' };
+            })
+          };
+        })()`);
+        assert(details.firstBeforeHeading, `${item.slug}: representative image must precede explanatory sections`);
+        assert.deepEqual(details.media.map((row) => row.id), todayEntry.mediaIds);
+        for (const row of details.media) {
+          const original = media[row.id];
+          assert.equal(row.src, original.src);
+          assert.equal(row.width, original.width);
+          assert.equal(row.height, original.height);
+          assert.equal(row.kind, original.kind);
+        }
+        console.log(`news-sep15-qa: PASS ${item.slug} original decode, order, captions and ${size.width}px layout`);
       }
       results.push(result);
       console.log('news-media-qa: PASS ' + JSON.stringify(result));
     }
   }
-  console.log(`news-media-qa: PASS ${results.length} live image/viewport checks and ${draftSlugs.size} draft-exclusion case(s) on ${BASE}`);
+  assert.equal(results.length, publishedPosts.size * sizes.length, 'Every published article and viewport must be checked');
+  assert.equal(checkedMedia, publishedMedia.length * sizes.length, 'Every registered media ID and viewport must be checked');
+  console.log(`news-media-qa: PASS ${checkedMedia} registered image/viewport checks in ${results.length} article visits and ${draftSlugs.size} draft-exclusion case(s) on ${BASE}`);
 }

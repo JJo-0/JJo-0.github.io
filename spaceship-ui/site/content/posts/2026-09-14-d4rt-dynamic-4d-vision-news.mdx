@@ -1,0 +1,128 @@
+---
+title: "동영상 한 편에서 움직이는 3D를 읽는 AI"
+description: "CVPR 2026 Best Paper D4RT를 통해 4D 재구성, 깊이·추적·카메라 자세, query 기반 인식이 무엇이며 무엇을 아직 증명하지 않았는지 처음부터 설명한다."
+pubDate: 2026-09-14
+updatedDate: 2026-09-14
+slug: 2026-09-14-d4rt-dynamic-4d-vision-news
+category: ai-machine-learning
+subcategory: computer-vision
+type: research-report
+tags:
+  - frontier-candidate
+  - computer-vision
+  - robotics
+  - 3d-vision
+  - world-models
+researchFeatured: false
+featured: false
+draft: false
+lang: ko
+---
+
+import NewsFigure from "@/components/post/NewsFigure.astro";
+
+<NewsFigure media="d4rt-video-query" priority />
+
+## 1. 후보 레이더: 동영상은 평면인데, 로봇은 입체와 시간을 알아야 한다
+
+휴대폰으로 누군가 공을 던지는 영상을 찍으면 화면에는 매 순간 2차원 픽셀만 남는다. 그러나 공이 카메라 쪽으로 다가오는지, 사람이 뒤로 가려졌는지, 카메라가 움직인 것인지 사람이 움직인 것인지는 픽셀 한 장만 보고 바로 알기 어렵다. 로봇이 사람을 피해 움직이거나 AR 안경이 책상 위에 가상 물체를 고정하려면, 장면의 모양뿐 아니라 <strong>시간에 따라 무엇이 어디로 움직이는지</strong>까지 추정해야 한다.
+
+CVPR 2026 Best Paper로 선정된 D4RT는 이 문제를 하나의 질문 형태로 묶는다.[1] 이름은 <em>Dynamic 4D Reconstruction and Tracking</em>의 줄임말이다. 3D는 가로·세로·깊이, 4D는 여기에 시간을 더한 것이다. D4RT는 동영상 전체를 한 번 읽은 뒤 “이 프레임의 이 픽셀은, 다른 시각과 다른 카메라 관점에서 3차원 어디에 있는가?”라고 질의한다. 같은 인터페이스로 깊이, 물체·점의 궤적, 점구름, 카메라 자세를 얻으려는 접근이다.[2]
+
+한 문장으로 말하면 <strong>D4RT는 동영상을 보고 장면 전체를 한 번 압축한 뒤, 필요한 공간·시간 좌표만 물어보는 4D 인식 모델</strong>이다. 이것은 동영상을 이해하고 대화하는 AI도, 물리 법칙을 스스로 배운 세계 모델도 아니다. 공식 연구진이 보여 준 것은 단일 동영상에서 geometry와 motion을 함께 복원·추적하는 모델과 그 벤치마크 결과다.[2][3]
+
+## 2. 3D와 4D: ‘입체 사진’ 다음에 무엇이 더 필요한가
+
+3D 재구성은 사진이나 여러 장의 이미지에서 물체의 입체 모양, 카메라 위치, 각 점까지의 거리를 추정하는 작업이다. 정지한 방을 여러 각도에서 촬영했다면 벽·의자·책상이 어디에 있는지 점구름(point cloud)처럼 복원할 수 있다. 깊이(depth)는 카메라에서 각 픽셀까지 얼마나 떨어져 있는지를 나타낸 값이다.
+
+하지만 동영상에는 두 종류의 움직임이 섞인다. 카메라를 들고 걸으면 배경 전체가 화면에서 움직인다. 동시에 사람이 손을 흔들면 사람의 손도 따로 움직인다. 멀리 있던 사람이 기둥 뒤로 잠시 가려졌다가 다시 나타날 수도 있다. 이때 화면 속 픽셀이 옮겨 갔다고 해서 모두 물체 자체의 움직임은 아니다. <strong>카메라의 이동, 고정 배경의 기하, 물체의 독립된 움직임</strong>을 분리해야 한다.
+
+<details>
+  <summary><strong>처음 보는 용어를 짧게 정리하면</strong></summary>
+
+  - <strong>깊이(depth)</strong>: 화면의 각 점이 카메라에서 얼마나 떨어져 있는지에 대한 추정이다.
+  - <strong>추적(tracking)</strong>: 첫 프레임의 특정 점이 시간이 지나 다른 프레임에서 어디에 해당하는지 이어 보는 일이다.
+  - <strong>점구름(point cloud)</strong>: 표면을 많은 3차원 점으로 표현한 자료다. 매끈한 CAD 모델과는 다를 수 있다.
+  - <strong>카메라 자세(pose)</strong>: 카메라가 어디에 있고 어느 방향을 보는지를 나타내는 위치·회전 정보다.
+  - <strong>가림(occlusion)</strong>: 물체가 다른 물체 뒤로 가거나 화면 밖으로 나가서 잠시 보이지 않는 상태다.
+</details>
+
+기존 시스템은 이 일을 여러 조각으로 나누는 경우가 많다. 한 모델은 깊이를, 다른 모델은 점의 이동을, 또 다른 과정은 카메라 자세를 추정한다. 그 결과를 마지막에 맞추는 과정은 느리고, 각 모델의 오차가 서로 충돌할 수 있다. 예를 들어 카메라가 움직였다고 보는 모델과 사람이 움직였다고 보는 모델이 같은 픽셀을 다르게 설명하면, 뒤에서 일관성을 맞추기 위한 추가 최적화가 필요하다.[3]
+
+D4RT의 출발점은 “출력마다 다른 해석기를 붙여야 하는가”라는 질문이다. 모든 결과를 바로 한 장의 완성된 3D 지도처럼 만들기보다, 동영상의 공통 표현을 만든 후 필요한 답만 질의하자는 쪽이다.
+
+## 3. D4RT가 던지는 하나의 질문
+
+<figure data-official-media="d4rt-mechanism" style="margin: 1.5rem 0;">
+  <video controls playsinline preload="metadata" poster="https://jjo-0.github.io/assets/posts/d4rt-20260914/video-query.svg" aria-label="D4RT의 영상 입력과 시공간 질의 구조를 설명하는 Google DeepMind 공식 영상" style="display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #fff; border-radius: 12px;">
+    <source src="https://storage.googleapis.com/gdm-deepmind-com-prod-public/media/media/D4RT_blog_figure-1-light.mp4#t=0.1" type="video/mp4" />
+    <a href="https://storage.googleapis.com/gdm-deepmind-com-prod-public/media/media/D4RT_blog_figure-1-light.mp4#t=0.1">공식 설명 영상 열기</a>
+  </video>
+  <figcaption>Google DeepMind 공식 작동 원리 영상. 영상을 읽는 인코더가 공통 장면 표현을 만들고, 디코더가 선택한 픽셀의 위치를 시각·카메라 관점에 맞춰 답하는 흐름을 살펴보자. <a href="https://deepmind.google/blog/d4rt-teaching-ai-to-see-the-world-in-four-dimensions/">출처와 전체 설명</a> · <a href="https://storage.googleapis.com/gdm-deepmind-com-prod-public/media/media/D4RT_blog_figure-1-light.mp4#t=0.1">영상 직접 열기</a></figcaption>
+</figure>
+
+<NewsFigure media="d4rt-four-dimensions" />
+
+공식 설명은 D4RT의 핵심 질의를 다음과 같이 요약한다. <strong>“동영상의 특정 픽셀이, 선택한 카메라에서 본 임의의 시각에 3D 공간 어디에 있는가?”</strong>[3] 이 질문에는 출발 픽셀, 출발 시각, 목표 시각, 목표 카메라 관점이 들어간다. 입력을 바꾸면 같은 모델이 여러 다른 출력을 낼 수 있다.
+
+예를 들어 한 점을 여러 시각에 반복 질의하면 3D 궤적이 나온다. 시간을 고정하고 화면의 많은 점을 질의하면 한 순간의 점구름이나 깊이 지도가 나온다. 한 순간을 여러 카메라 관점에서 맞춰 보면 카메라 궤적을 추정할 수 있다. 즉 D4RT는 ‘깊이 모델’, ‘추적 모델’, ‘자세 모델’을 같은 수준의 별도 제품으로 붙인 것이 아니라, 공통된 4D 좌표 질의의 다른 사용법으로 다룬다.[3]
+
+이 표현이 중요한 이유는 계산량이다. 모든 프레임의 모든 픽셀을 매번 무거운 해석기로 다시 풀 필요 없이, 필요할 때 필요한 점을 물을 수 있다. 논문과 DeepMind 설명은 먼저 동영상을 전역 장면 표현으로 인코딩하고, 가벼운 decoder가 독립적인 질의를 병렬 처리한다고 설명한다.[2][3] ‘독립적’이라는 말은 한 질의가 다른 질의의 출력을 순서대로 기다리지 않아도 된다는 뜻이다. 현대 가속기는 같은 종류의 계산을 많이 묶어 처리하는 데 유리하므로, 이 구조가 속도 측면의 근거가 된다.
+
+다만 질의가 독립적이라고 해서 결과가 언제나 물리적으로 완벽하게 연결된다는 뜻은 아니다. 모델은 공유된 표현을 바탕으로 각 답을 예측한다. 멀리 가려진 손의 실제 궤적이나 보이지 않는 물체의 뒷면처럼 영상에 없는 정보는 학습한 패턴과 문맥으로 추정해야 한다. 이것이 4D 복원이 여전히 어려운 이유다.
+
+## 4. 한 동영상이 모델 안에서 지나가는 경로
+
+첫 단계는 <strong>encoder</strong>다. encoder는 여러 프레임을 읽어 색·윤곽선뿐 아니라 장면의 공간 구조와 시간 변화에 관한 압축 표현을 만든다. ‘압축’은 MP4 파일처럼 저장 용량만 줄인다는 뜻이 아니다. 이후 질문에 필요한 패턴을 내부 숫자 벡터에 담는다는 뜻이다. D4RT는 이 표현을 전역(global) 장면 표현으로 사용한다.[2]
+
+둘째는 <strong>query</strong>다. 사용자가 모든 것을 한꺼번에 요구하는 대신, 어느 점을 어느 시각에 어느 관점에서 알고 싶은지 지정한다. 로봇 팔이 컵의 가장자리 한 점이 다음 0.5초 뒤 어디에 있을지 알고 싶다면 그 점들을 질의할 수 있고, AR 시스템이 방 전체의 깊이를 원한다면 많은 픽셀을 한꺼번에 질의할 수 있다. 같은 구조가 적은 수의 정밀한 질문과 많은 수의 넓은 질문을 모두 받도록 설계된 것이다.
+
+셋째는 <strong>decoder</strong>다. decoder는 장면 표현과 질의를 받아 3D 위치나 관련 좌표를 답한다. 여러 specialized decoder를 둔 구조와 달리 하나의 질의 인터페이스에 맞춘 decoder를 쓰는 것이 논문의 구조적 주장이다.[2] 이 때문에 D4RT라는 이름의 성과를 ‘새로운 카메라 센서’나 ‘LiDAR 대체품’이라고 부르면 부정확하다. 입력은 보통 동영상이고, 출력은 학습된 모델의 기하·움직임 추정이다.
+
+이 과정은 사람이 장면을 완벽히 이해하는 방식과도 다르다. 사람은 물체의 의미, 목적, 충돌 위험, 다음 행동을 추론할 수 있다. D4RT가 보인 것은 점·깊이·카메라를 일관되게 다루는 시각 표현이다. 컵을 보고 마실 수 있다고 이해하거나, 사람이 무엇을 하려는지 언어로 설명하는 능력은 별도의 인식·계획 모델과 검증이 필요하다.
+
+## 5. 결과 표는 무엇을 보여 주고, 무엇을 숨기나
+
+<figure data-official-media="d4rt-sintel" style="margin: 1.5rem 0;">
+  <a href="https://lh3.googleusercontent.com/XpEVj8v4dIrVaUtViFeyGyY4fyRUMnvpIcP9jheHwWS17VhKk5eGNoHWQNoXzRKIOxHxNj3kU0AlD-8kDE-gxHOeM_dwSa2CZbxTMWoQAtMUy0Mxcwc=w1440-h810-n-nu-rw-lo"><img src="https://lh3.googleusercontent.com/XpEVj8v4dIrVaUtViFeyGyY4fyRUMnvpIcP9jheHwWS17VhKk5eGNoHWQNoXzRKIOxHxNj3kU0AlD-8kDE-gxHOeM_dwSa2CZbxTMWoQAtMUy0Mxcwc=w1440-h810-n-nu-rw-lo" width="1440" height="810" loading="lazy" alt="MPI Sintel 점구름 재구성 비교: 3D Fidelity는 MapAnything 0.282, VGGT 0.420, MegaSaM 0.469, SpatialTrackerV2 0.625, π3 0.861, D4RT 1.091. 높을수록 좋다." style="display: block; width: 100%; height: auto; background: #fff; border-radius: 12px;" /></a>
+  <figcaption>Google DeepMind의 MPI Sintel 점구름 재구성 비교. 세로축은 정확도 백분율이 아니라 <em>2 − L1 오차</em>로 정의한 3D Fidelity다. 막대가 높으면 이 평가에서 복원한 3D 위치의 오차가 작다는 뜻이며, 1.091을 109.1% 정확도로 읽으면 안 된다. <a href="https://deepmind.google/blog/d4rt-teaching-ai-to-see-the-world-in-four-dimensions/">출처와 평가 설명</a> · 이미지를 누르면 원본 확대.</figcaption>
+</figure>
+
+DeepMind의 공식 설명은 D4RT가 여러 4D 과제에서 기존 방법보다 18배에서 300배 빠르다고 소개한다.[3] 예시로 한 TPU 칩에서 1분 길이 동영상을 약 5초에 처리했고, 비교 대상 중 일부는 같은 작업에 최대 10분이 걸릴 수 있다고 적었다. 이 숫자는 관심을 끄는 지표지만, ‘모든 스마트폰·모든 로봇·모든 입력 길이에서 120배 빠르다’는 의미는 아니다. 하드웨어, 해상도, 질의 개수, 비교 방법, 전처리와 후처리 포함 여부에 따라 시간이 달라진다.
+
+정확도도 하나의 숫자로 합칠 수 없다. 공식 블로그가 제시한 MPI Sintel 점구름 재구성의 3D fidelity 예에서는 D4RT가 1.091, 비교 모델 π3가 0.861, SpatialTrackerV2가 0.625로 소개된다.[3] Aria Digital Twin의 point tracking 예에서는 D4RT 1.904, SpatialTrackerV2 1.762, CoTracker3+VGGT 1.264가 제시된다. 카메라 자세 RE10k에서는 pose AUC 0.835로 비교 목록의 가장 높다고 소개한다.[3]
+
+수치를 읽을 때 세 가지를 기억해야 한다. 첫째, 서로 다른 벤치마크의 점수는 직접 합산할 수 없다. Sintel의 1.091과 RE10k의 0.835는 같은 단위가 아니다. 둘째, 벤치마크에서의 상위 점수는 안전한 로봇 동작을 보증하지 않는다. 추정 오차가 작아도 제어가 늦거나 센서가 흔들리면 실제 행동은 실패할 수 있다. 셋째, 공식 블로그와 논문 저자가 제시한 비교는 중요한 1차 근거이지만, 독립 팀의 재현과 다양한 실제 환경 검증을 대신하지는 않는다.
+
+CVPR Best Paper 선정은 이 연구의 아이디어와 실험이 동료 심사 커뮤니티에서 높게 평가됐다는 강한 신호다.[1] 하지만 상은 제품 인증서가 아니다. 이 글이 D4RT를 후보로 다루는 이유도 여기에 있다. 하나의 질의 인터페이스로 여러 4D 과제를 통합한 설계는 중요하지만, 실제 배포의 강건성·비용·안전성은 별도로 검증해야 한다.
+
+## 6. 로봇·AR에 연결하려면 중간 단계가 더 있다
+
+로봇은 사람과 물체가 움직이는 공간에서 충돌 없이 행동해야 한다. D4RT가 제공할 수 있는 것은 그 중 <strong>공간 인식</strong>의 일부다. 사람이 잠시 가려져도 어디로 움직였을지, 카메라가 흔들려도 물체 자체는 어디에 있는지, 테이블 표면이 어느 정도 떨어져 있는지를 추정하면 경로 계획이나 잡기 계획의 입력이 좋아질 수 있다.[3]
+
+그러나 인식이 곧 행동은 아니다. 로봇이 컵을 잡으려면 물체 분할, 물성 추정, 손·집게의 힘 제어, 충돌 검사, 센서 지연 대응, 실패 시 정지가 더 필요하다. 4D 재구성 모델이 한 프레임에서 작은 깊이 오차를 내면, 단순 시각 벤치마크에서는 통과하더라도 좁은 틈으로 팔을 넣는 작업에는 충분하지 않을 수 있다. 로봇에 쓰려면 카메라 종류·조명·가림·motion blur·추론 지연까지 포함한 폐루프 시험이 필요하다.
+
+AR도 같다. 가상 화살표를 실제 바닥에 붙여 보이려면 카메라 자세와 깊이가 안정적이어야 한다. 하지만 사람의 손이 화면을 가리거나 실내 조명이 바뀌고 빠르게 고개를 돌릴 때도 표시가 튀지 않아야 한다. D4RT의 query 구조가 넓은 scene reconstruction과 적은 수의 핵심 점 추적을 모두 효율적으로 하게 만든다는 점은 매력적이다. 그렇지만 안경의 배터리·발열·개인정보·온디바이스 지연까지 해결했다는 발표는 아니다.
+
+## 7. 세계 모델이라는 단어를 조심해서 쓰는 이유
+
+4D 재구성은 이른바 ‘world model’로 가는 한 구성요소로 자주 소개된다. 움직이는 세계의 geometry와 motion을 일관되게 표현해야 미래 행동을 예측하거나 가상 환경에서 계획할 수 있기 때문이다. DeepMind도 D4RT가 카메라 움직임·물체 움직임·정적 geometry를 분리하는 방향에서 물리적 현실을 표현하는 AI에 한 걸음이라고 설명한다.[3]
+
+하지만 월드 모델이라는 말은 너무 넓다. 어떤 시스템이 세계 모델이라 불리려면 보통 관측하지 않은 미래에 대한 예측, 행동을 했을 때의 결과, 물리적 인과관계, 불확실성, 장기 기억 같은 요소까지 논의해야 한다. D4RT 논문이 직접 다룬 핵심은 동영상에서의 dynamic reconstruction and tracking이다.[2] 미래를 여러 시나리오로 시뮬레이션하거나 로봇 행동을 최적화했다는 것을 보여 준 연구는 아니다.
+
+따라서 가장 정확한 표현은 이렇다. <strong>D4RT는 ‘세계 모델을 완성한 AI’가 아니라, 움직이는 2D 동영상에서 일관된 3D+시간 표현을 얻는 병목을 단일 질의 구조로 다룬 컴퓨터 비전 연구</strong>다. 이 표현은 성과를 작게 만들지 않는다. 오히려 무엇이 실제로 검증됐고 무엇이 다음 연구의 몫인지 선명하게 만든다.
+
+## 8. 다음에 봐야 할 검증 포인트
+
+첫째, 연구자가 공개한 체크포인트·학습 코드·데이터 생성 세부 사항이 얼마나 제공되는지 봐야 한다. 프로젝트 페이지와 기술 보고서는 존재하지만, 이 글을 작성한 시점에 공식 프로젝트에서 바로 실행 가능한 전체 학습·추론 코드 배포를 확인하지 못했다.[2] 독립 재현의 범위가 넓어질수록 강한 주장도 더 단단해진다.
+
+둘째, 분포 밖 환경이다. 벤치마크의 합성 장면, 정리된 실내·실외 영상에서 잘 되더라도 어두운 공장, 반사 유리, 비·눈, 여러 사람이 얽힌 가림, 센서 rolling shutter에서 같은 성능이 유지되는지는 별도 질문이다. 셋째, 실제 latency다. 엔코더를 한 번 돌리는 비용과 질의 수가 늘어날 때의 총 시간, 메모리, 전력, 안전 정지까지 통합 측정해야 한다.
+
+마지막으로, 결과의 사용 책임이다. 3D 위치와 camera pose는 사람을 피해 움직이는 기계나 실제 공간에 정보를 겹쳐 보이는 시스템의 입력이 될 수 있다. 그래서 평균 점수만이 아니라 실패 사례, 불확실성 표시, 감지하지 못한 가림, 인간 검토·안전 제어와의 연결을 공개하는 것이 중요하다. 좋은 비전 모델은 더 많은 것을 ‘보는’ 모델이 아니라, 모르는 상황에서 무엇을 하지 않을지도 알 수 있는 시스템과 결합될 때 실제 가치가 생긴다.
+
+## 9. 출처와 시각 자료
+
+1. [D4RT 공식 프로젝트](https://d4rt-paper.github.io/) — CVPR 2026 Best Paper 표기, 저자·논문·인터랙티브 데모.
+2. Zhang 외, [Efficiently Reconstructing Dynamic Scenes One D4RT at a Time](https://arxiv.org/abs/2512.08924), CVPR 2026 — 모델의 unified query 구조와 평가 범위.
+3. Google DeepMind, [D4RT: Teaching AI to see the world in four dimensions](https://deepmind.google/blog/d4rt-teaching-ai-to-see-the-world-in-four-dimensions/), 2026-01-22 — 공식 성능 사례·속도 설명·활용 가능성.
+4. 작동 원리 영상과 MPI Sintel 차트의 출처는 Google DeepMind이며 공식 서버에서 연결해 표시한다. 두 한국어 설명 도식은 JJo가 직접 제작했다.
