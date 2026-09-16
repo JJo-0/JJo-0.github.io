@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { groupMediaByPost } from './news-media-visit-plan.mjs';
 import { BASE, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
 export async function auditNewsMedia(cdp, sessionId) {
@@ -49,6 +50,8 @@ export async function auditNewsMedia(cdp, sessionId) {
     { width: 1440, height: 1000, reduced: true },
   ];
   const results = [];
+  const publishedPosts = groupMediaByPost(publishedMedia);
+  let checkedMedia = 0;
   for (const size of sizes) {
     await viewport(cdp, sessionId, size);
     await navigate(cdp, sessionId, '/news');
@@ -82,7 +85,8 @@ export async function auditNewsMedia(cdp, sessionId) {
       assert.equal(card.src, row.src); assert.equal(card.width, row.width); assert.equal(card.height, row.height);
       console.log(`news-cover-qa: PASS ${row.slug} at ${size.width}px`);
     }
-    for (const [id, item] of publishedMedia) {
+    for (const [, registeredMedia] of publishedPosts) {
+      const [, item] = registeredMedia[0];
       const declaredSource = sourceFigurePosts.get(item.slug);
       const visualPolicy = visualPolicies.get(item.slug);
       const minFigures = visualPolicy?.minFigures ?? (declaredSource ? declaredSource.mediaIds.length : (coverOnly.has(item.slug) ? 1 : 3));
@@ -91,12 +95,15 @@ export async function auditNewsMedia(cdp, sessionId) {
       const response = await fetch(new URL(route, BASE));
       assert.equal(response.status, 200, `Published route ${route}`);
       await navigate(cdp, sessionId, route);
-      await waitExpression(
-        cdp,
-        sessionId,
-        `Boolean(document.querySelector('article [data-news-figure="${id}"] img'))`,
-        `inline image ${item.slug}`
-      );
+      // One navigation per article; every registered figure is still required.
+      for (const [id] of registeredMedia) {
+        await waitExpression(
+          cdp,
+          sessionId,
+          `document.querySelectorAll('article [data-news-figure="${id}"] img').length === 1`,
+          `inline image ${item.slug}: ${id}`
+        );
+      }
       await waitExpression(
         cdp,
         sessionId,
@@ -148,6 +155,19 @@ export async function auditNewsMedia(cdp, sessionId) {
           result.newsActive,
         JSON.stringify(result)
       );
+      const registeredDetails = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('article [data-news-figure]')).map((figure) => {
+        const img = figure.querySelector('img');
+        return { id: figure.getAttribute('data-news-figure'), src: img?.getAttribute('src'),
+          width: img?.naturalWidth, height: img?.naturalHeight };
+      })`);
+      for (const [id, expected] of registeredMedia) {
+        const matches = registeredDetails.filter((figure) => figure.id === id);
+        assert.equal(matches.length, 1, `${item.slug}: exactly one registered figure ${id}`);
+        assert.equal(matches[0].src, expected.src);
+        assert.equal(matches[0].width, expected.width);
+        assert.equal(matches[0].height, expected.height);
+        checkedMedia += 1;
+      }
       if (declaredSource) {
         const ids = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('article [data-news-figure]')).map((el) => el.getAttribute('data-news-figure'))`);
         assert.deepEqual(ids, declaredSource.mediaIds, 'All declared original figures must appear exactly once in order');
@@ -182,5 +202,7 @@ export async function auditNewsMedia(cdp, sessionId) {
       console.log('news-media-qa: PASS ' + JSON.stringify(result));
     }
   }
-  console.log(`news-media-qa: PASS ${results.length} live image/viewport checks and ${draftSlugs.size} draft-exclusion case(s) on ${BASE}`);
+  assert.equal(results.length, publishedPosts.size * sizes.length, 'Every published article and viewport must be checked');
+  assert.equal(checkedMedia, publishedMedia.length * sizes.length, 'Every registered media ID and viewport must be checked');
+  console.log(`news-media-qa: PASS ${checkedMedia} registered image/viewport checks in ${results.length} article visits and ${draftSlugs.size} draft-exclusion case(s) on ${BASE}`);
 }
