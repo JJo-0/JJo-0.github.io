@@ -158,14 +158,22 @@ export async function auditNewsMedia(cdp, sessionId) {
       const registeredDetails = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('article [data-news-figure]')).map((figure) => {
         const img = figure.querySelector('img');
         return { id: figure.getAttribute('data-news-figure'), src: img?.getAttribute('src'),
-          width: img?.naturalWidth, height: img?.naturalHeight };
+          width: img?.naturalWidth, height: img?.naturalHeight,
+          declaredWidth: Number(img?.getAttribute('width')), declaredHeight: Number(img?.getAttribute('height')) };
       })`);
       for (const [id, expected] of registeredMedia) {
         const matches = registeredDetails.filter((figure) => figure.id === id);
         assert.equal(matches.length, 1, `${item.slug}: exactly one registered figure ${id}`);
         assert.equal(matches[0].src, expected.src);
-        assert.equal(matches[0].width, expected.width);
-        assert.equal(matches[0].height, expected.height);
+        assert.equal(matches[0].declaredWidth, expected.width);
+        assert.equal(matches[0].declaredHeight, expected.height);
+        // Local files are checksum-pinned; remote media servers may return a
+        // different intrinsic rendition while retaining the declared layout.
+        if (expected.src.startsWith('/')) {
+          assert.equal(matches[0].width, expected.width);
+          assert.equal(matches[0].height, expected.height);
+        }
+        assert(matches[0].width > 0 && matches[0].height > 0, `${id}: undecoded image`);
         checkedMedia += 1;
       }
       if (declaredSource) {
