@@ -1,0 +1,70 @@
+name: NEWS source-link recheck
+on:
+  push:
+    branches: [audit/news-citations-20260916]
+    paths: [.github/workflows/news-citation-recheck.yml]
+permissions:
+  contents: read
+jobs:
+  recheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 995304cdbf317e323f630e5517e3549e4c069def
+          persist-credentials: false
+      - name: Check source identities without treating refusal as absence
+        shell: python
+        run: |
+          import concurrent.futures,datetime,hashlib,json,pathlib,re,urllib.request,urllib.error,urllib.parse
+          urls=[
+          'https://www.fda.gov/drugs/news-events-human-drugs/fda-approves-first-therapy-target-muscle-loss-spinal-muscular-atrophy',
+          'https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2026',
+          'https://www.fda.gov/drugs/news-events-human-drugs/notable-approvals-drugs',
+          'https://www.fda.gov/about-fda/accelerating-rare-disease-cures-arc-program/rare-disease-drug-approvals',
+          'https://www.energy.gov/science/doe-explainsbatteries',
+          'https://doi.org/10.7910/DVN/DJEYKO',
+          'https://doi.org/10.1056/NEJMoa2012971',
+          'https://doi.org/10.1182/blood.2021013626',
+          'https://doi.org/10.1182/blood.2022016867',
+          'https://goldbook.iupac.org/terms/view/O04365',
+          'https://jjo-0.blogspot.com/2026/09/navierstokes-ai.html',
+          'https://news.stanford.edu/stories/2026/09/sustainable-hydrogen-production-heating-method',
+          'https://openai.com/index/introducing-codex/',
+          'https://openai.com/index/navier-stokes-solution/',
+          'https://openai.com/index/pacing-model-development-cyber-capabilities/',
+          'https://openai.com/index/research-acceleration-view-inside-openai/',
+          'https://openai.com/index/safety-overview-gpt-6-astra/',
+          'https://openai.com/ko-KR/index/safety-overview-gpt-6-astra/',
+          'https://openai.com/policies/terms-of-use/',
+          'https://www.nejm.org/doi/abs/10.1056/NEJMoa2602804',
+          'https://www.science.org/doi/10.1126/science.aed4911',
+          'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000078/nvda-20260902.htm',
+          'https://blog.icml.cc/2026/07/05/announcing-the-icml-2026-awards/'
+          ]
+          out=pathlib.Path('link-recheck');out.mkdir()
+          def safe(u):
+              p=urllib.parse.urlsplit(u);return urllib.parse.urlunsplit((p.scheme,p.netloc,p.path,'',p.fragment))
+          def probe(url):
+              row={'url':url,'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'method':'GET without Range'}
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; JJo-NEWS-link-audit/1.0)'})
+                  with urllib.request.urlopen(req,timeout=25) as r:
+                      data=r.read(262144);text=data.decode('utf-8','replace');title=re.search(r'<title[^>]*>(.*?)</title>',text,re.S|re.I)
+                      row.update(status=r.status,finalUrl=safe(r.url),contentType=r.headers.get('content-type',''),title=re.sub('<[^>]+>','',title[1]).strip() if title else None,prefixBytes=len(data),sha256Prefix=hashlib.sha256(data).hexdigest())
+                      row['state']='restricted' if re.search(r'<title[^>]*>[^<]*(?:Just a moment|Access Denied|Robot|Security Check)|abuse-detection|/sorry/',text+' '+r.url,re.I) else ('inconclusive' if r.status==202 else 'responded')
+                      if 'fda.gov' in url or 'icml.cc' in url:
+                          path=hashlib.sha256(url.encode()).hexdigest()[:16]+'.html';(out/path).write_bytes(data);row['evidenceFile']=path
+              except urllib.error.HTTPError as e:
+                  row.update(status=e.code,finalUrl=safe(e.url),state='restricted' if e.code in (401,403,429) or re.search('abuse-detection|/sorry/',e.url) else 'http-error')
+              except Exception as e:row.update(status=None,state='unavailable',errorType=type(e).__name__)
+              print(row['state'],row['status'],url)
+              return row
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:rows=list(pool.map(probe,urls))
+          (out/'recheck.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: news-source-link-recheck
+          path: link-recheck/
+          retention-days: 14
