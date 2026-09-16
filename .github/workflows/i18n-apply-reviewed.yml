@@ -1,0 +1,62 @@
+name: Apply reviewed English source
+on:
+  push:
+    branches: [content/news-depth-english-20260912]
+    paths: [.github/workflows/i18n-apply-reviewed.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate complete source package and apply exact manifest
+        env:
+          SOURCE_URL: 'https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-c9d0-8206-8d43-84a53cd3095a/raw?se=2026-09-16T12%3A18%3A02Z&sp=r&sv=2026-02-06&sr=b&scid=2315bbaa-b06b-509e-b6cf-fed515cd7ff4&skoid=03727f49-62d3-42ac-8350-1c0e6559d238&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-16T01%3A21%3A44Z&ske=2026-09-17T01%3A21%3A44Z&sks=b&skv=2026-02-06&sig=8Zeo4pTdqIrkWQJEz6kP/BF5W2ACQVVct0L6nA0jqdY%3D'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request, os, io, zipfile, hashlib, json, pathlib, subprocess
+          expected='92751aafba7ff8d1c8b4c6ee568cdb147ecf5c389d4b43ef377a2ced3861ecd9'
+          data=urllib.request.urlopen(os.environ['SOURCE_URL'],timeout=60).read()
+          assert hashlib.sha256(data).hexdigest()==expected, 'package digest mismatch'
+          z=zipfile.ZipFile(io.BytesIO(data)); manifest=json.loads(z.read('MANIFEST.json'))
+          parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
+          assert parent==manifest['base']=='9b2fdf51585dd5e8582240c6ef3f9ebf551cb022', 'unexpected branch update'
+          rows=manifest['files']; assert len(rows)==32
+          assert len({r['path'] for r in rows})==len(rows)
+          assert set(z.namelist())=={'MANIFEST.json'}|{r['path'] for r in rows if not r.get('delete')}
+          deletions={'.github/workflows/i18n-resume-probe.yml','.github/workflows/i18n-validation-kit.yml'}
+          for row in rows:
+              name=row['path']; path=pathlib.PurePosixPath(name)
+              assert not path.is_absolute() and '..' not in path.parts and name==str(path)
+              if row.get('delete'):
+                  assert name in deletions; continue
+              assert name.startswith('spaceship-ui/') or name=='scripts/normalize_tags_current.py'
+              assert not any(p in path.parts for p in ('.git','node_modules','dist','.env'))
+              content=z.read(name); assert len(content)==row['size']
+              assert hashlib.sha256(content).hexdigest()==row['sha256'], name
+              content.decode('utf-8')
+          for row in rows:
+              p=pathlib.Path(row['path'])
+              if row.get('delete'): p.unlink()
+              else:
+                  p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(z.read(row['path']))
+          pathlib.Path('.github/workflows/i18n-apply-reviewed.yml').unlink()
+          print('PACKAGE PASS: 30 actual UTF-8 source files, two previous helper deletions; no archive dependency in production')
+          PY
+          node spaceship-ui/scripts/translation-contract.mjs
+          python3 scripts/normalize_tags_current.py --check
+          git diff --check
+          git add -A
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(i18n): translate consciousness I–III, interactive experiences and nine original diagrams'
+          git push origin HEAD:refs/heads/i18n/consciousness-20260916
+          printf 'SOURCE_HEAD='
+          git rev-parse HEAD
