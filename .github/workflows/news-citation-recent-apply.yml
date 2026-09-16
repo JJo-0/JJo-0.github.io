@@ -1,0 +1,89 @@
+name: Apply and verify recent NEWS citations
+on:
+  push:
+    branches: [fix/news-citations-recent-20260916]
+    paths: [.github/workflows/news-citation-recent-apply.yml]
+permissions:
+  contents: write
+jobs:
+  apply-and-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+      - name: Apply only the second source batch and commit its exact tree
+        working-directory: .
+        run: |
+          test "$GITHUB_REF" = refs/heads/fix/news-citations-recent-20260916
+          python3 scripts/repair_news_citations_20260916.py recent
+          git rm .github/workflows/news-citation-recent-apply.yml
+          git add spaceship-ui/site/content/posts spaceship-ui/site/news-citation-repair-20260916.json spaceship-ui/site/news-edition-20260915.json spaceship-ui/site/news-edition-20260916.json spaceship-ui/scripts/news-20260915-contract.mjs
+          git diff --cached --check
+          git config user.name 'JJo Citation Repair'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git commit -m 'fix: link recent NEWS citations and complete the all-NEWS zero-bare-marker gate (#123)'
+          git push origin HEAD:refs/heads/fix/news-citations-recent-20260916
+          mkdir -p spaceship-ui/citation-audit
+          git rev-parse HEAD > spaceship-ui/citation-audit/tested-head.txt
+          git diff 8122adab8fce71472b373d87f8312b9e1d729a34 HEAD > spaceship-ui/citation-audit/recent.patch
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Taxonomy contract
+        run: pnpm taxonomy:check
+      - name: Lint
+        run: pnpm lint
+      - name: Type check
+        run: pnpm check
+      - name: SEO metadata check
+        run: pnpm seo:check
+      - name: Reader-first publishing harness
+        run: pnpm blog:harness:check
+      - name: Build
+        run: pnpm build
+      - name: Content integrity check
+        run: pnpm content:check
+      - name: Full NEWS citation static receipt
+        if: always()
+        run: python3 scripts/news-citation-contract.py --report citation-audit/static.json
+      - name: NEWS citation link browser check
+        run: pnpm exec node scripts/browser-news-citation-audit.mjs 2>&1 | tee citation-audit/citation-browser.log
+      - name: Original full browser smoke matrix
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs 2>&1 | tee citation-audit/full-browser.log
+      - name: Capture changed source and rendered review files
+        if: always()
+        working-directory: .
+        run: |
+          mkdir -p spaceship-ui/citation-audit/source
+          git diff --name-only 995304cdbf317e323f630e5517e3549e4c069def HEAD | while IFS= read -r path; do test ! -f "$path" || { mkdir -p "spaceship-ui/citation-audit/source/$(dirname "$path")"; cp "$path" "spaceship-ui/citation-audit/source/$path"; }; done
+          python3 - <<'PY'
+          import json,pathlib,shutil
+          ui=pathlib.Path('spaceship-ui');out=ui/'citation-audit/rendered';out.mkdir(exist_ok=True)
+          ledger=json.loads((ui/'site/news-citation-repair-20260916.json').read_text())
+          for row in ledger['repairs']:
+              p=ui/'dist/posts'/row['slug']/'index.html'
+              if p.exists():shutil.copyfile(p,out/(row['slug']+'.html'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: news-citations-complete-review
+          path: spaceship-ui/citation-audit/
+          retention-days: 14
