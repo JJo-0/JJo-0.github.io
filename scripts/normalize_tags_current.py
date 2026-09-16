@@ -153,5 +153,13 @@ POST_TAXONOMY.update(
     }
 )
 
+POST_TAXONOMY.update(
+    {
+        '2026-09-16-seawater-hydrogen-water-news.mdx': Taxonomy('finance-industry', 'hydrogen-energy', "paper-review", ('frontier-one', 'hydrogen-energy')),
+        '2026-09-16-onprem-medical-agent-news.mdx': Taxonomy('health-lifestyle', 'clinical-ai', "paper-review", ('frontier-candidate', 'clinical-ai')),
+        '2026-09-16-oect-swelling-mapping-news.mdx': Taxonomy('finance-industry', 'organic-bioelectronics', "paper-review", ('frontier-candidate', 'organic-bioelectronics')),
+    }
+)
+
 if __name__ == "__main__":
     raise SystemExit(main())

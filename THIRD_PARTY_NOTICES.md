@@ -67,3 +67,17 @@ The six files under `spaceship-ui/site/assets/assets/posts/news-20260915/` retai
 - Bhattacharjee et al. (2020), *Emulating synaptic response in n- and p-channel MoS2 transistors by utilizing charge trapping dynamics*, Scientific Reports, Figures 1–2; DOI 10.1038/s41598-020-68793-7.
 
 License: https://creativecommons.org/licenses/by/4.0/ . Captions identify these figures as 2024, 2022 and 2020 background respectively. The 2026 papers' images were inspected privately but are not reproduced in this batch; the nanopore article has a standard publisher copyright notice and the APOE/MoS2 articles specify CC BY-NC-ND 4.0.
+
+
+## September 16, 2026 NEWS figures
+
+Six complete figures are locally hosted under `spaceship-ui/site/assets/assets/posts/news-20260916/`. All are CC BY 4.0. Proportional resizing and WebP conversion only; source/output SHA256 and exact original image URLs are in `provenance.json`.
+
+- `/assets/posts/news-20260916/hydrogen-fig1.webp`: Cassol et al. (2026-07-07), https://www.nature.com/articles/s41467-026-74854-8/figures/1. Role: related-research-background. 관련 연구 원본 · 2026년 7월 배경자료. License: https://creativecommons.org/licenses/by/4.0/.
+- `/assets/posts/news-20260916/hydrogen-fig2.webp`: Cassol et al. (2026-07-07), https://www.nature.com/articles/s41467-026-74854-8/figures/2. Role: related-research-background. 관련 연구 원본 · 2026년 7월 배경자료. License: https://creativecommons.org/licenses/by/4.0/.
+- `/assets/posts/news-20260916/medical-fig6.webp`: Zhang et al. (2026-09-15), https://www.nature.com/articles/s41591-026-04609-x/figures/6. Role: reviewed-paper-original. 이번 논문 원본 · 2026년 9월 15일. License: https://creativecommons.org/licenses/by/4.0/.
+- `/assets/posts/news-20260916/medical-fig2.webp`: Zhang et al. (2026-09-15), https://www.nature.com/articles/s41591-026-04609-x/figures/2. Role: reviewed-paper-original. 이번 논문 원본 · 2026년 9월 15일. License: https://creativecommons.org/licenses/by/4.0/.
+- `/assets/posts/news-20260916/oect-fig2.webp`: Kim et al. (2024-09-01), https://www.nature.com/articles/s41467-024-51883-9/figures/2. Role: related-research-background. 관련 연구 원본 · 2024년 배경자료. License: https://creativecommons.org/licenses/by/4.0/.
+- `/assets/posts/news-20260916/oect-fig1.webp`: Kim et al. (2024-09-01), https://www.nature.com/articles/s41467-024-51883-9/figures/1. Role: related-research-background. 관련 연구 원본 · 2024년 배경자료. License: https://creativecommons.org/licenses/by/4.0/.
+
+The July hydrogen and 2024 OECT figures are background from different papers, not the September 2026 target experiments. The two medical figures are from the reviewed September 15 paper. Its third-party Flaticon Figure 1 is excluded. Restricted current hydrogen/OECT figures and complete PDFs are not republished; readers are directed to the publishers. No repository MIT license overrides third-party rights.
