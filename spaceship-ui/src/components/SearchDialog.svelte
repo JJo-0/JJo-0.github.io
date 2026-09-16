@@ -2,8 +2,11 @@
   import { onMount } from 'svelte';
   import { uiState } from '@/lib/ui.svelte';
 
+  let { lang = 'ko' }: { lang?: string } = $props();
   interface Post {
     id: string;
+    url: string;
+    lang: string;
     data: {
       title: string;
       description: string;
@@ -40,18 +43,24 @@
   onMount(() => {
     window.addEventListener('keydown', handleKeydown);
 
-    (async () => {
-      try {
-        const res = await fetch('/api/search.json');
-        if (res.ok) {
-          posts = await res.json();
-        }
-      } catch (err) {
-        console.error('Failed to load search index:', err);
-      }
-    })();
+
 
     return () => window.removeEventListener('keydown', handleKeydown);
+  });
+
+  $effect(() => {
+    const endpoint = lang.startsWith('en') ? '/en/api/search.json' : '/api/search.json';
+    const controller = new AbortController();
+    posts = []; query = '';
+    (async () => {
+      try {
+        const res = await fetch(endpoint, { signal: controller.signal });
+        if (res.ok) posts = await res.json();
+      } catch (error) {
+        if (!controller.signal.aborted) console.error('Failed to load search index:', error);
+      }
+    })();
+    return () => controller.abort();
   });
 </script>
 
@@ -108,7 +117,7 @@
         <div class="space-y-1">
           {#each filteredPosts as post (post.id)}
             <a
-              href={`/posts/${post.id}`}
+              href={post.url}
               class="block p-4 sm:p-5 rounded-xl hover:bg-accent transition-all no-underline group"
               onclick={() => uiState.closeSearch()}
             >

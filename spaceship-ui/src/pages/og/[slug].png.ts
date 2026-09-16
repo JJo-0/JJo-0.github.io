@@ -9,7 +9,7 @@ import { resolveSeriesPostTitle } from '@/lib/modern-ai-series';
 import { getOgBoldFont } from '@/lib/og-font';
 
 export async function getStaticPaths() {
-  const posts = await getPublishedPosts();
+  const posts = await getPublishedPosts('all');
   return posts.map((post: CollectionEntry<'posts'>) => ({
     params: { slug: getPostSlug(post) },
     props: { post },

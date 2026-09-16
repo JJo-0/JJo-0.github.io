@@ -1,5 +1,6 @@
 ---
 import Layout from '@/layouts/Layout.astro';
+import { postPath, postAlternates } from '@/lib/i18n';
 import '@/styles/code-blocks.css';
 import { render, type CollectionEntry } from 'astro:content';
 import { formatDate } from '@/lib/utils/date';
@@ -31,7 +32,7 @@ const post = Astro.props as Props;
 const { Content, headings } = await render(post);
 
 const effectiveSlug = getPostSlug(post);
-const canonicalPostUrl = new URL(Astro.url.pathname, Astro.site).toString();
+const canonicalPostUrl = new URL(postPath(post), Astro.site).toString();
 const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
 const postTransitionName = `post-title-${effectiveSlug.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 const isModernAiSeries = post.data.series?.id === 'modern-artificial-intelligence';
@@ -58,6 +59,7 @@ const schemas = [
     title: displayTitle,
     description: effectiveDescription,
     pubDate: post.data.pubDate,
+    updatedDate: post.data.updatedDate,
     url: canonicalPostUrl,
     lang: post.data.lang,
     image: new URL(`/og/${effectiveSlug}.png`, Astro.site).toString(),
@@ -68,13 +70,9 @@ const schemas = [
     { name: displayTitle, url: canonicalPostUrl },
   ]),
 ];
-const languageAlternates = Object.fromEntries(
-  Object.entries(post.data.translatedPosts ?? {}).map(([alternateLang, slug]) => [
-    alternateLang,
-    `/posts/${slug}`,
-  ])
-);
-languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
+// post.data.translatedPosts is resolved against the real published collection.
+const languageAlternates = postAlternates(post, await getPublishedPosts('all'));
+const translationLinks = Object.fromEntries(Object.entries(languageAlternates).filter(([lang]) => lang !== 'x-default' && !lang.startsWith('ko')));
 ---
 
 <Layout
@@ -86,6 +84,7 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
   schema={schemas}
   usesChart={post.data.usesChart}
   languageAlternates={languageAlternates}
+  canonicalPath={postPath(post)}
 >
   <Breadcrumbs
     items={[
@@ -160,7 +159,7 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
           )
         }
 
-        {post.data.translatedPosts && <LanguageSelector translations={post.data.translatedPosts} />}
+        {post.data.translatedPosts && <LanguageSelector translations={translationLinks} currentLang="ko" />}
       </div>
 
       <ContentNotice category={post.data.category} />

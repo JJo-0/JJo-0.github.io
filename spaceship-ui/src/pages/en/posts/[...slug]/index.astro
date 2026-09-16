@@ -1,0 +1,54 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import '@/styles/code-blocks.css';
+import { render, type CollectionEntry } from 'astro:content';
+import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { postPath, postAlternates } from '@/lib/i18n';
+import { getBlogPostingSchema, getBreadcrumbSchema } from '@/lib/schemas';
+import LanguageSelector from '@/components/LanguageSelector.svelte';
+import TableOfContents from '@/components/TableOfContents.svelte';
+import SocialShare from '@/components/SocialShare.svelte';
+import Comments from '@/components/Comments.svelte';
+export async function getStaticPaths() {
+  return (await getPublishedPosts('en')).map((post) => ({params:{slug:getPostSlug(post)},props:{post}}));
+}
+interface Props { post: CollectionEntry<'posts'>; }
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+const path = postPath(post);
+const url = new URL(path, Astro.site).toString();
+const alternates = postAlternates(post, await getPublishedPosts('all'));
+const translationLinks = Object.fromEntries(Object.entries(alternates).filter(([lang]) => lang !== 'en' && lang !== 'x-default'));
+const schema = [getBlogPostingSchema({title:post.data.title,description:post.data.description,pubDate:post.data.pubDate,updatedDate:post.data.updatedDate,url,lang:'en',tags:post.data.tags,image:new URL(`/og/${getPostSlug(post)}.png`,Astro.site).toString()}),
+  getBreadcrumbSchema([{name:'English News',url:new URL('/en/news/',Astro.site).toString()},{name:post.data.title,url}])];
+const fieldNotice = post.data.category === 'health-lifestyle' ? 'This is general research information, not diagnosis, treatment or individual medical advice.' :
+  post.data.category === 'finance-industry' ? 'This is research and industry analysis, not investment advice. Laboratory results, company plans and production outcomes are distinguished.' :
+  'Code, models and experiments apply only to the stated conditions. Independent validation is needed before deployment.';
+---
+<Layout title={post.data.title} description={post.data.description} lang="en" ogType="article" ogImage={`/og/${getPostSlug(post)}.png`} {schema} canonicalPath={path} languageAlternates={alternates} adsEnabled={false}>
+  <nav aria-label="Breadcrumb"><a href="/en/">English</a> / <a href="/en/news/">News</a></nav>
+  <div class="article-layout lg:flex lg:gap-12" data-post-page-slug={getPostSlug(post)}>
+    <div class="flex-1 min-w-0">
+      <header class="english-article-header">
+        <p><time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toISOString().slice(0,10)}</time>{post.data.updatedDate && <> · Updated <time datetime={post.data.updatedDate.toISOString()}>{post.data.updatedDate.toISOString().slice(0,10)}</time></>}</p>
+        <h1>{post.data.title}</h1><p class="english-deck">{post.data.description}</p>
+        <LanguageSelector translations={translationLinks} currentLang="en" />
+      </header>
+      <aside class="english-notice"><strong>Before using this article</strong><p>Personal research and learning notes. Read the source dates and conditions alongside every result. {fieldNotice}</p></aside>
+      <article class="article-prose prose max-w-none mt-12 mb-16"><Content /></article>
+      <aside><a href="/en/news/">Explore more English explainers</a> · <a href="/en/rss.xml">English RSS</a></aside>
+      <SocialShare client:visible {url} />
+      {post.data.showComments !== false && <Comments client:visible lang="en" />}
+    </div>
+    <div class="hidden lg:block w-52 flex-shrink-0"><TableOfContents client:idle {headings} /></div>
+  </div>
+  <script>import '@/scripts/code-block-runtime.js';</script>
+</Layout>
+<style is:global>
+.english-article-header{border-top:1px solid var(--color-border);padding-top:2.5rem;margin-top:1.5rem}
+.english-article-header h1{font-family:var(--font-editorial);font-size:clamp(2.2rem,5vw,3.7rem);font-weight:700;line-height:1.08;max-width:54rem;margin:1rem 0;overflow-wrap:anywhere}
+.english-deck{font-size:1.2rem;line-height:1.65;max-width:49rem;margin-bottom:1.5rem;color:var(--color-muted-foreground)}
+.english-notice{max-width:49rem;padding:1.2rem;border:1px solid var(--color-border);border-radius:.6rem;line-height:1.8}
+html[lang="en"] .article-prose{max-width:49rem;line-height:1.9;overflow-wrap:break-word}
+html[lang="en"] .article-prose h2,html[lang="en"] .article-prose h3{line-height:1.3;word-break:normal}
+</style>

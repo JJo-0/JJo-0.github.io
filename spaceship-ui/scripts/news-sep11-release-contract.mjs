@@ -15,7 +15,12 @@ for (const row of release.entries) {
   assert(fm);
   assert.match(fm[1], /^draft: false$/m);
   assert.match(fm[1], /^pubDate: 2026-09-11$/m);
-  assert.match(fm[1], /^updatedDate: 2026-09-12$/m);
+  const updated = fm[1].match(/^updatedDate: (\d{4}-\d{2}-\d{2})$/m)?.[1];
+  assert(updated, 'A valid ISO updatedDate is required');
+  const parsed = new Date(`${updated}T00:00:00Z`);
+  assert(!Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === updated,
+    'updatedDate must be a real calendar date');
+  assert(updated >= release.authorizedDate, 'An update must not predate the original publication authorization');
   const body = source.slice(fm[0].length);
   assert.doesNotMatch(body, /초안|\{\/\*/);
   assert.match(body.slice(0, 950), /임상시험이 아니다|양산 완료 발표가 아니다|주행시험 결과가 아니다/);

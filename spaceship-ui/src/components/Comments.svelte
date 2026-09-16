@@ -3,6 +3,7 @@
   import { SITE } from '@/config';
   import { theme } from '@/lib/theme.svelte';
 
+  let { lang = SITE.comments.lang }: { lang?: string } = $props();
   const config = SITE.comments;
 
   let giscusContainer = $state<HTMLDivElement | null>(null);
@@ -73,7 +74,7 @@
     script.setAttribute('data-emit-metadata', config.emitMetadata ? '1' : '0');
     script.setAttribute('data-input-position', config.inputPosition);
     script.setAttribute('data-theme', giscusTheme);
-    script.setAttribute('data-lang', config.lang);
+    script.setAttribute('data-lang', lang);
     script.setAttribute('data-loading', 'lazy');
     script.crossOrigin = 'anonymous';
     script.async = true;

@@ -8,8 +8,8 @@ import { getCollection, type CollectionEntry } from 'astro:content';
  * - Draft posts (draft: true) are hidden
  * - Posts with pubDate > today are hidden
  */
-export async function getPublishedPosts(): Promise<CollectionEntry<'posts'>[]> {
-  const posts = await getCollection('posts');
+export async function getPublishedPosts(locale: 'ko' | 'en' | 'all' = 'ko'): Promise<CollectionEntry<'posts'>[]> {
+  const posts = (await getCollection('posts')).filter((post) => locale === 'all' || (post.data.lang.toLowerCase().startsWith('en') ? 'en' : 'ko') === locale);
 
   // In development, show all posts including drafts and future-dated ones
   if (import.meta.env.DEV) {

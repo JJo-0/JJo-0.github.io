@@ -1,0 +1,63 @@
+name: I18n pinned integration
+on:
+  push:
+    branches: [content/news-depth-english-20260912]
+    paths: [.github/workflows/i18n-resume-probe.yml]
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge exact reviewed main; refuse any unexpected conflict
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-commit --no-ff 995304cdbf317e323f630e5517e3549e4c069def || true
+          python3 - <<'PY'
+          import pathlib, subprocess, re
+          main='995304cdbf317e323f630e5517e3549e4c069def'
+          base='c51e6a797f865a40a572f89c7273f6bbac022684'
+          def git(*args): return subprocess.check_output(['git',*args],text=True).strip()
+          conflicts=git('diff','--name-only','--diff-filter=U').splitlines()
+          assert conflicts==['THIRD_PARTY_NOTICES.md'], conflicts
+          p=pathlib.Path(conflicts[0]); t=p.read_text()
+          matches=list(re.finditer(r'(?ms)^<<<<<<< HEAD\n(.*?)^=======\n(.*?)^>>>>>>> '+main+r'\n',t))
+          assert len(matches)==1
+          a,b=matches[0].group(1,2)
+          assert a.startswith('## Additional NEWS source figures — 2026-09-13\n')
+          assert b.lstrip().startswith('## September 15, 2026 NEWS background research figures\n')
+          assert '## September 16, 2026 NEWS figures' in b
+          p.write_text(t[:matches[0].start()]+a+'\n'+b+t[matches[0].end():])
+          subprocess.run(['git','add',str(p)],check=True)
+          assert not git('diff','--name-only','--diff-filter=U')
+          main_changed=set(git('diff','--name-only',base,main).splitlines())
+          pr_changed=set(git('diff','--name-only',base,'HEAD').splitlines())
+          for ref,names in [(main,main_changed-pr_changed),('HEAD',pr_changed-main_changed)]:
+              for name in names:
+                  expected=git('rev-parse',ref+':'+name)
+                  actual=git('hash-object',name)
+                  assert actual==expected, (name,ref,'unexpected content loss')
+          print('PRESERVATION PASS',len(main_changed-pr_changed),'main-only files;',len(pr_changed-main_changed),'PR-only files')
+          print('OVERLAP',sorted(main_changed & pr_changed))
+          PY
+          git diff --cached --check
+          git commit -m 'merge: retain September 14–16 main updates in English localization PR #113'
+          git push origin HEAD:refs/heads/i18n/integrated-20260916
+          printf 'INTEGRATION_HEAD='
+          git rev-parse HEAD
+      - name: Export integrated source snapshot
+        run: |
+          mkdir -p /tmp/i18n-source
+          git archive HEAD | tar -x -C /tmp/i18n-source
+          git bundle create /tmp/i18n-source/review-history.bundle HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i18n-integrated-source
+          path: /tmp/i18n-source
+          include-hidden-files: true
+          retention-days: 7
