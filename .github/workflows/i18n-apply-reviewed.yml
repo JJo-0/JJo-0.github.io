@@ -17,7 +17,7 @@ jobs:
           node-version: 22
       - name: Validate complete source package and apply exact manifest
         env:
-          SOURCE_URL: 'https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-c9d0-8206-8d43-84a53cd3095a/raw?se=2026-09-16T12%3A18%3A02Z&sp=r&sv=2026-02-06&sr=b&scid=2315bbaa-b06b-509e-b6cf-fed515cd7ff4&skoid=03727f49-62d3-42ac-8350-1c0e6559d238&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-16T01%3A21%3A44Z&ske=2026-09-17T01%3A21%3A44Z&sks=b&skv=2026-02-06&sig=8Zeo4pTdqIrkWQJEz6kP/BF5W2ACQVVct0L6nA0jqdY%3D'
+          SOURCE_URL: 'https://sdmntprcentralus.oaiusercontent.com/files/00000000-b8d4-81f5-baec-556e765404db/raw?se=2026-09-16T12%3A25%3A20Z&sp=r&sv=2026-02-06&sr=b&scid=f8a334af-e858-5a9a-8878-ed6fc21e1fe9&skoid=03727f49-62d3-42ac-8350-1c0e6559d238&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-16T00%3A00%3A40Z&ske=2026-09-17T00%3A00%3A40Z&sks=b&skv=2026-02-06&sig=TB7K84MEc3mthdVKf%2BQznonYUsIbUK0ECMC7LuA0e/M%3D'
         shell: bash
         run: |
           python3 - <<'PY'
@@ -27,7 +27,10 @@ jobs:
           assert hashlib.sha256(data).hexdigest()==expected, 'package digest mismatch'
           z=zipfile.ZipFile(io.BytesIO(data)); manifest=json.loads(z.read('MANIFEST.json'))
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
-          assert parent==manifest['base']=='9b2fdf51585dd5e8582240c6ef3f9ebf551cb022', 'unexpected branch update'
+          assert parent=='ce429fb5f404596424a8dbd368dd9a26bff123ec', 'unexpected branch update'
+          assert manifest['base']=='9b2fdf51585dd5e8582240c6ef3f9ebf551cb022'
+          changed=subprocess.check_output(['git','diff','--name-only',manifest['base'],'HEAD'],text=True).splitlines()
+          assert changed==['.github/workflows/i18n-apply-reviewed.yml'], changed
           rows=manifest['files']; assert len(rows)==32
           assert len({r['path'] for r in rows})==len(rows)
           assert set(z.namelist())=={'MANIFEST.json'}|{r['path'] for r in rows if not r.get('delete')}
