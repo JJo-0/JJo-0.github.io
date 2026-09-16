@@ -1,0 +1,40 @@
+name: I18n validation kit
+on:
+  push:
+    branches: [content/news-depth-english-20260912]
+    paths: [.github/workflows/i18n-validation-kit.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned dependencies and export source
+        shell: bash
+        run: |
+          cd spaceship-ui
+          pnpm install --frozen-lockfile
+          mkdir -p /tmp/i18n-kit
+          tar -czf /tmp/i18n-kit/node_modules.tar.gz node_modules
+          cd ..
+          git archive HEAD | gzip > /tmp/i18n-kit/source.tar.gz
+          git bundle create /tmp/i18n-kit/history.bundle HEAD
+          cd /tmp/i18n-kit
+          npm pack pnpm@10.19.0
+          sha256sum *.gz *.tgz history.bundle > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i18n-offline-validation-kit
+          path: /tmp/i18n-kit
+          compression-level: 0
+          retention-days: 2
