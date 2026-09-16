@@ -33,7 +33,7 @@ jobs:
           python3 spaceship-ui/scripts/news-citation-contract.test.py
           node --check spaceship-ui/scripts/browser-news-citation-audit.mjs
           python3 - <<'PY'
-          import collections,json,pathlib,urllib.parse
+          import json,pathlib,urllib.parse
           baseline=json.loads(pathlib.Path('../citation-baseline/external-links.json').read_text())
           recheck=json.loads(pathlib.Path('../citation-recheck/recheck.json').read_text())
           def sanitize(row):
@@ -57,56 +57,53 @@ jobs:
           summary='''# NEWS citation repair, 2026-09-16
 
           Production baseline: `995304cdbf317e323f630e5517e3549e4c069def`.
-          Built `/news` roster: 37 articles; 16 articles had 356 unlinked numeric markers
-          (including bibliography labels). The first batch repairs 7 older articles;
-          the stacked second batch repairs 9 recent articles. User approval is required
-          before either PR is merged. No Blogger payload or account is changed.
+          Built NEWS roster: 37 articles; 16 articles had 356 unlinked numeric markers,
+          including bibliography labels. Batch 1 repairs 7 older articles; batch 2
+          repairs 9 recent articles. Both PRs require user approval before merging.
+          No Blogger account or payload changes are included.
 
-          Body numbers link to unique same-document source records; source records
-          retain original descriptive links and point to HTTPS primary destinations.
-          Group punctuation and scientific prose remain unchanged. The only prose edits
-          are two explicit FDA source-access notes, deferred to batch 2. Source restoration
-          and original SHA256 checks prevent hidden claim changes. Existing source seals
-          are refreshed only for these link changes; image and Blogger hashes stay fixed.
+          Body numbers link to unique source records; source records link to HTTPS
+          primary destinations. Group punctuation and scientific prose remain intact.
+          Only two FDA access notes change in batch 2. Reversing links and those two
+          notes must reproduce the original source SHA256. Image/Blogger seals stay fixed.
 
-          External audit: all 157 originally authored external article URLs were requested;
-          23 no-Range rechecks included 4 additional FDA lookup destinations. Detailed
-          receipts are in `NEWS_CITATION_HTTP_20260916.json`. `responded` means an HTTP
-          response, not access to subscription full text or independent research validation.
-          Empty Harvard Dataverse 202 responses remain inconclusive. OpenAI/NEJM/ASH,
-          FDA abuse-detection and other 403 results remain restrictions, not deleted URLs.
-          DOE and the existing Blogger cross-link responded on recheck. Nothing is
-          replaced with an unrelated search result just to obtain a green HTTP status.
+          All 157 originally authored external URLs were requested. Twenty-three
+          no-Range rechecks included four additional FDA lookup destinations.
+          See NEWS_CITATION_HTTP_20260916.json for dated results. An HTTP response
+          does not imply subscription full-text access or scientific verification.
+          Empty Dataverse 202 is inconclusive; abuse-detection and 403 are restrictions.
+          DOE and Blogger responded on recheck. No unrelated substitute is introduced.
+          FDA's exact official announcement was identified through web reading but
+          GitHub GET still hit abuse detection followed by 404; both facts are disclosed.
+          FORS now targets the exact ICML awards article rather than its year index.
+          Sulfide reference 1 targets the actual paper rather than the topic index.
 
-          FDA's exact named announcement was identified through official web reading,
-          but GitHub GET still redirected to abuse detection and 404. Batch 2 supplies
-          the correct official URL with this environment-dependent limitation disclosed.
-          FORS's year-index citation is narrowed to the observed exact ICML awards article.
-          Sulfide's reference number targets the actual Nature paper, not its topic index.
-
-          Existing complete browser matrix and its 240-second hard limit remain unchanged.
-          New source/HTML mutation tests and an additive citation browser suite cover
-          touch/mouse, unique destinations, Back, native Enter with scripting disabled,
-          fixed-header visibility, and light/dark link styling at 390px and 1440px.
-          Test run/PR receipts will be added to issue #123 after actual execution; this
-          document does not claim unrun tests or public deployment have succeeded.
+          The original complete browser suite and 240-second guard are unchanged.
+          Additive static/mutation and native touch/mouse/keyboard/Back tests are
+          provided. Actual test and PR receipts are tracked on issue #123. This
+          source document does not claim tests or public deployment already succeeded.
           '''
           (doc/'NEWS_CITATION_REPAIR_20260916.md').write_text('\n'.join(line[10:] if line.startswith('          ') else line for line in summary.splitlines())+'\n')
           PY
-      - name: Commit feature-branch patch only and remove this one-time workflow
+      - name: Commit content patch only
         run: |
+          # The runner token is not permitted to update existing workflows.
+          # These two intended additive gates are applied separately by the
+          # already-authorized GitHub connector, before the PR is opened.
+          git restore .github/workflows/blog-ci.yml .github/workflows/blog-pages-deploy.yml
           git rm .github/workflows/news-citation-apply.yml
-          git add .github/workflows/blog-ci.yml .github/workflows/blog-pages-deploy.yml spaceship-ui/site/content/posts spaceship-ui/site/news-citation-repair-20260916.json spaceship-ui/site/news-covers-20260912.json spaceship-ui/scripts/news-visual-contract.mjs spaceship-ui/src/styles/global.css spaceship-ui/docs/post-authoring.md spaceship-ui/docs/operations/NEWS_CITATION_HTTP_20260916.json spaceship-ui/docs/operations/NEWS_CITATION_REPAIR_20260916.md
+          git add spaceship-ui/site/content/posts spaceship-ui/site/news-citation-repair-20260916.json spaceship-ui/site/news-covers-20260912.json spaceship-ui/scripts/news-visual-contract.mjs spaceship-ui/src/styles/global.css spaceship-ui/docs/post-authoring.md spaceship-ui/docs/operations/NEWS_CITATION_HTTP_20260916.json spaceship-ui/docs/operations/NEWS_CITATION_REPAIR_20260916.md
           git config user.name 'JJo Citation Repair'
           git config user.email '76779256+JJo-0@users.noreply.github.com'
           git diff --cached --check
           git commit -m 'fix: link older NEWS citations to exact source records without changing prose (#123)'
-          git push origin HEAD:refs/heads/fix/news-citations-older-20260916
           mkdir -p citation-packet/files
           git rev-parse HEAD > citation-packet/head.txt
           git diff 995304cdbf317e323f630e5517e3549e4c069def HEAD > citation-packet/changes.patch
           git diff --name-only 995304cdbf317e323f630e5517e3549e4c069def HEAD | while IFS= read -r path; do test ! -f "$path" || { mkdir -p "citation-packet/files/$(dirname "$path")"; cp "$path" "citation-packet/files/$path"; }; done
+          git push origin HEAD:refs/heads/fix/news-citations-older-20260916
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: news-citations-older-source
           path: citation-packet/
