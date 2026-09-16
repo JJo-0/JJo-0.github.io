@@ -167,9 +167,9 @@ export async function auditNewsMedia(cdp, sessionId) {
         assert.equal(matches[0].src, expected.src);
         assert.equal(matches[0].declaredWidth, expected.width);
         assert.equal(matches[0].declaredHeight, expected.height);
-        // Local files are checksum-pinned; remote media servers may return a
-        // different intrinsic rendition while retaining the declared layout.
-        if (expected.src.startsWith('/')) {
+        // Pixel equality applies to pinned local rasters. SVGs scale from
+        // viewBox/point units; remote servers may return other renditions.
+        if (expected.src.startsWith('/') && /\.(?:png|jpe?g|webp|gif|avif)$/i.test(expected.src)) {
           assert.equal(matches[0].width, expected.width);
           assert.equal(matches[0].height, expected.height);
         }
