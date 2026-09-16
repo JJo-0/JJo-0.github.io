@@ -1,0 +1,41 @@
+name: Finalize September 16 NEWS sources
+on:
+  push:
+    branches: [content/news-20260916-hydrogen-candidates]
+    paths: [.github/workflows/news-20260916-finalize.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: content/news-20260916-hydrogen-candidates
+      - name: Validate authored content and preserve source receipts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/news_sep16_finalize.py
+      - name: Export public working source for resumable review
+        if: always()
+        shell: python
+        run: |
+          import subprocess,tarfile,os
+          from pathlib import Path
+          out=Path(os.environ['RUNNER_TEMP'])/'news-sep16-final';out.mkdir()
+          names=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard'],text=True).splitlines()
+          with tarfile.open(out/'repository.tar.gz','w:gz') as t:
+              for name in sorted(set(names)):
+                  p=Path(name)
+                  assert not p.is_absolute() and '..' not in p.parts and '.git' not in p.parts
+                  if p.is_file():t.add(p,arcname=name,recursive=False)
+          (out/'head.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          (out/'status.txt').write_text(subprocess.check_output(['git','status','--short'],text=True))
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: news-sep16-final-source
+          path: ${{ runner.temp }}/news-sep16-final
+          retention-days: 14
