@@ -1,0 +1,90 @@
+name: Apply reviewed original VI VIII figures
+on:
+  push:
+    branches: [content/modern-ai-vi-fcn-unet-20260917]
+    paths: [.github/workflows/modern-ai-originals-apply.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  materialize:
+    if: github.ref == 'refs/heads/content/modern-ai-vi-fcn-unet-20260917'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/modern-ai-vi-fcn-unet-20260917
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install PyMuPDF==1.26.7 Pillow==11.3.0
+      - name: Retrieve the inspected artifact, not changing paper URLs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          gh api repos/JJo-0/JJo-0.github.io/actions/artifacts/10487791374/zip > "$RUNNER_TEMP/figure-evidence.zip"
+      - name: Apply exact source patch and materialize hash-checked original pixels
+        run: |
+          python - <<'PY'
+          import base64,bz2,hashlib,json,os,subprocess,zipfile
+          from pathlib import Path
+          import fitz
+          from PIL import Image
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          transfer=Path('.github/modern-ai-transfer')
+          chunks=[(transfer/f'{i}.b64').read_text() for i in range(1,6)]
+          # Correct one transport transcription byte; both the complete encoded
+          # message and decompressed source patch must still match reviewed hashes.
+          assert len(chunks[2])==12001 and chunks[2].count('IDTAG5GvQU')==1
+          chunks[2]=chunks[2].replace('IDTAG5GvQU','IDTAG5vQU')
+          encoded=''.join(chunks).encode()
+          assert sha(encoded)=='ff21f5ef7189198dc125d8c51575fd0ef448d8f743b01bb3274ec0d3fca65cd2'
+          patch=bz2.decompress(base64.b64decode(encoded,validate=True))
+          assert len(patch)==148474 and sha(patch)=='6721a1f12f0b498530bb5920853fe60962cc4779d6e37c1a8b86f1c1b32dec28'
+          allow=['.github/workflows/modern-ai-continuation.yml','spaceship-ui/docs/operations/MODERN_AI_678_CONTINUATION.md','spaceship-ui/scripts/browser-modern-ai-continuation.mjs','spaceship-ui/scripts/modern-ai-continuation-audit.mjs','spaceship-ui/scripts/verify-modern-ai-continuation.py','spaceship-ui/site/assets/assets/posts/modern-ai-continuation/figures.json',*[f'spaceship-ui/site/content/posts/modern-artificial-intelligence-{n}.mdx' for n in [6,7,8]],'spaceship-ui/src/components/post/PaperReadingFigure.astro']
+          baseline={6:'5ad8fdbf0746ffea30b3d66d707dfb8f2d2bae8f560af8519a5171a67207d85e',7:'019043e76b6de2d5247d4c8e008663667932d1af38da5bfe97fb79007a4bdb50',8:'4f89ebff149462aceeb15734c017856d6b434cd1f048bd09ab18b634a617f4f1'}
+          for n,digest in baseline.items():assert sha(Path(f'spaceship-ui/site/content/posts/modern-artificial-intelligence-{n}.mdx').read_bytes())==digest
+          pp=Path(os.environ['RUNNER_TEMP'])/'reviewed.patch';pp.write_bytes(patch)
+          stats=subprocess.check_output(['git','apply','--numstat',str(pp)],text=True)
+          assert sorted(line.split('\t')[2] for line in stats.splitlines())==sorted(allow)
+          subprocess.run(['git','apply','--check',str(pp)],check=True)
+          subprocess.run(['git','apply',str(pp)],check=True)
+          zp=Path(os.environ['RUNNER_TEMP'])/'figure-evidence.zip'
+          assert sha(zp.read_bytes())=='56afcd59ab801694c4731e4c6dbfa99835b9a8baf64570b00bca399c1f2ab575'
+          ar=Path('spaceship-ui/site/assets/assets/posts/modern-ai-continuation')
+          manifest=json.loads((ar/'figures.json').read_text())
+          with zipfile.ZipFile(zp) as z:
+              assert len(manifest['figures'])==7
+              for row in manifest['figures']:
+                  if row['mode']=='image':
+                      data=z.read(row['id']+'.png');assert sha(data)==row['source_sha256'];(ar/row['file']).write_bytes(data)
+                  else:
+                      pdf=z.read(row['id']+'-source.pdf');assert sha(pdf)==row['source_sha256']
+                      doc=fitz.open(stream=pdf,filetype='pdf');page=doc[row['page']-1]
+                      x0,y0,x1,y1=row['crop_normalized'];w,h=page.rect.width,page.rect.height
+                      clip=fitz.Rect(x0*w,y0*h,x1*w,y1*h)
+                      page.get_pixmap(matrix=fitz.Matrix(6,6),clip=clip,alpha=False).save(ar/row['file'])
+                  data=(ar/row['file']).read_bytes();assert sha(data)==row['sha256']
+                  with Image.open(ar/row['file']) as im: assert [im.width,im.height]==[row['width'],row['height']]
+                  assert row['local_visual_review']['image_sha256']==row['sha256']
+                  allow.append(str(ar/row['file']))
+          # Remove only the explicitly temporary transfer/acquisition files.
+          temps=['.github/workflows/modern-ai-originals-acquire.yml','.github/workflows/modern-ai-originals-apply.yml',*[f'.github/modern-ai-transfer/{i}.b64' for i in range(1,6)]]
+          for name in temps:Path(name).unlink()
+          subprocess.run(['git','add','--',*allow,*temps],check=True)
+          changed=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          assert set(changed)==set(allow+temps)
+          subprocess.run(['python','scripts/verify-modern-ai-continuation.py'],cwd='spaceship-ui',check=True)
+          subprocess.run(['git','diff','--cached','--check'],check=True)
+          print('PASS: reviewed source patch, 7 exact original figures, retained baseline and narrow staged file set')
+          PY
+      - name: Publish candidate changes to the existing feature branch only
+        run: |
+          git config user.name 'Park Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git commit -m 'content: integrate VI–VIII explainers with seven verified original paper figures'
+          git push origin HEAD:refs/heads/content/modern-ai-vi-fcn-unet-20260917
+          git rev-parse HEAD
