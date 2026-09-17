@@ -3,8 +3,8 @@ import series from '@/data/acts-series.json';
 interface Props { order: number; }
 const { order } = Astro.props;
 const entry = series.entries.find((item) => item.order === order);
-if (!entry || ![1, 2, 3].includes(order)) throw new Error(`Unknown Acts dashboard: ${order}`);
-const src = `/assets/interactive/acts-overview-${order}.html`;
+if (!entry) throw new Error(`Unknown Acts dashboard: ${order}`);
+const src = `/assets/interactive/${entry.slug}.html`;
 const next = series.entries.find((item) => item.order === order + 1);
 ---
 <jjo-acts-dashboard class="not-prose" data-acts-dashboard={order} data-acts-reader={entry.slug}>
@@ -17,7 +17,7 @@ const next = series.entries.find((item) => item.order === order + 1);
   <details data-acts-original class="dashboard-original">
     <summary>원문·출처 펼쳐보기</summary>
     <p><a data-acts-source href={entry.source} target="_blank" rel="noopener noreferrer">Gemini 공유 원문 ↗</a></p>
-    <p>제공된 대시보드의 본문·데이터·시각화를 보존하고 블로그 색상과 글꼴을 적용했습니다. 도표 값은 원자료의 값이며 별도의 실측·동료심사 결과를 뜻하지 않습니다.</p>
+    <p>제공된 대시보드의 본문·데이터·시각화를 보존하고 각 원본의 글꼴과 구성을 살려 블로그에 연결했습니다. 도표 값은 원자료의 값이며 별도의 실측·동료심사 결과를 뜻하지 않습니다.</p>
   </details>
   <noscript><p><a href={src}>대시보드 별도 페이지 열기</a> — 탭·검색·차트는 JavaScript를 사용합니다.</p></noscript>
 </jjo-acts-dashboard>
@@ -40,8 +40,7 @@ const next = series.entries.find((item) => item.order === order + 1);
           '--jjo-card': '--color-card', '--jjo-green': '--color-primary',
           '--jjo-on-green': '--color-primary-foreground', '--jjo-muted': '--color-muted-foreground',
           '--jjo-secondary': '--color-secondary', '--jjo-border': '--color-border',
-          '--jjo-focus': '--color-ring', '--jjo-editorial': '--font-editorial',
-          '--jjo-reading': '--font-reading', '--jjo-mono': '--font-mono',
+          '--jjo-focus': '--color-ring',
         };
         for (const [target, source] of Object.entries(pairs)) {
           const value = site.getPropertyValue(source).trim();
@@ -51,7 +50,7 @@ const next = series.entries.find((item) => item.order === order + 1);
         // Only standalone preview chrome is hidden; every source content panel remains intact.
         if (!doc.getElementById('acts-embed-chrome')) {
           const style = doc.createElement('style'); style.id = 'acts-embed-chrome';
-          style.textContent = '.jjo-controls,.source-credit{display:none!important}@media(max-width:319px){#sec-concept .font-mono{overflow-x:auto}}';
+          style.textContent = '.jjo-controls,.source-credit,.acts-native-tools,.acts-native-source{display:none!important}@media(max-width:319px){#sec-concept .font-mono{overflow-x:auto}}';
           doc.head.append(style);
         }
         this.dataset.ready = 'true';

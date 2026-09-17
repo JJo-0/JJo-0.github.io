@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사도행전 1:1–5 서문 심층 연구 인터랙티브 대시보드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #FDFBF7;
+            color: #1E293B;
+        }
+        .serif-font {
+            font-family: 'Noto Serif KR', serif;
+        }
+        
+        /* Strict Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 380px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 340px;
+            }
+        }
+        
+        .tab-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .tab-btn.active {
+            border-bottom: 3px solid #B45309;
+            color: #78350F;
+            font-weight: 700;
+            background-color: #FEF3C7;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #F3F0E6;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #D6CEBE;
+            border-radius: 3px;
+        }
+        .greek-text {
+            font-family: 'Times New Roman', Times, serif;
+            letter-spacing: 0.02em;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- Chosen Palette: Warm Academic Neutral (Background #FDFBF7, Card #F4F0EA, Primary Accent #B45309 Amber-700, Secondary Accent #1E293B Slate-800, Crimson #991B1B) -->
+<!-- Application Structure Plan: 
+     The SPA synthesizes all 16 core research sections (A-P) into an intuitive, 7-tab thematic information architecture designed for scholarly analysis:
+     1. Executive Summary & Dashboard: High-level findings, programmatic thesis interactive flowchart, key metric summary.
+     2. 헬라어 구문 & 20어휘집 (Greek Exegesis & Glossary): Interactive 5-verse syntactic clause viewer + Filterable 20-word Greek morphology & theological glossary + Grammatical category chart.
+     3. 본문비평 (Textual Criticism Apparatus): Interactive apparatus comparing NA28 vs Western Text (Codex Bezae) with confidence breakdown charts.
+     4. 병행구문 & 고대 서문 (Parallel & Secondary Preface): Comparative explorer for Luke 1/24 vs Acts 1 and ancient multi-scroll secondary prefaces (Polybius, Josephus, Philo, Diodorus).
+     5. 구성사 모델 & 연대기 (Composition History & 40-Day Chronology): Interactive comparison of 5 Luke-Acts composition models & 4 chronology hypotheses.
+     6. 신학적 지평 (Theology Matrix): 7-Stage "Kingdom of God" Inclusio Explorer in Acts + "Promise of the Father" OT/2nd Temple Source Matrix + Water/Spirit Baptism Models.
+     7. 학술 논쟁 & Claim Matrix: 15+ Scholar Debate Matrix + Filterable Claim-Evidence-Counterevidence Verification Matrix.
+     Rationale: Prioritizes active exploration of complex historical-grammatical data rather than passive linear text reading. -->
+<!-- Visualization & Content Choices:
+     - Programmatic Thesis Flow: Interactive step-card flow showing "Jesus Began" -> "Holy Spirit / Church Continues".
+     - Greek Glossary: Dynamic search + POS filter + detail expansion cards + Chart.js Part-of-Speech breakdown.
+     - Textual Apparatus: Interactive table + confidence meter chart using Chart.js.
+     - Kingdom of God Inclusio: Dynamic 7-stage narrative step chart (Chart.js) + clickable chapter nodes updating detail views.
+     - Scholarly Matrix: Dynamic topic filters with interactive confidence badges.
+     - NO SVG Graphics or Mermaid JS used. All visual indicators use styled HTML/CSS and Unicode glyphs (📜, ⚖️, 🔍, 🏛️, 🕊️, 💡, ▶). -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- Navigation Header -->
+    <header class="bg-stone-900 text-stone-100 shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between border-b border-amber-900/50">
+            <div class="flex items-center space-x-3 mb-2 md:mb-0">
+                <span class="text-2xl">📜</span>
+                <div>
+                    <h1 class="text-xl font-bold serif-font text-amber-400 leading-tight">사도행전 1:1–5 서문 심층 연구</h1>
+                    <p class="text-xs text-stone-400">Acts 1:1–5 Historical-Grammatical & Compositional Research SPA</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 text-xs text-stone-300 bg-stone-800 px-3 py-1.5 rounded-lg border border-stone-700">
+                <span>학술 가설:</span>
+                <span class="text-amber-300 font-semibold">프로그램적 2차 서문 (Programmatic Secondary Preface)</span>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="bg-stone-800 text-stone-300 overflow-x-auto custom-scrollbar">
+            <div class="max-w-7xl mx-auto flex space-x-1 px-4 min-w-max">
+                <button onclick="switchTab('tab-summary')" id="btn-tab-summary" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-md hover:bg-stone-700 active">📊 요약 & 프로그램</button>
+                <button onclick="switchTab('tab-greek')" id="btn-tab-greek" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-md hover:bg-stone-700">🏛️ 헬라어 구문 & 어휘집</button>
+                <button onclick="switchTab('tab-textual')" id="btn-tab-textual" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-md hover:bg-stone-700">⚖️ 본문비평 (Apparatus)</button>
+                <button onclick="switchTab('tab-parallel')" id="btn-tab-parallel" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-md hover:bg-stone-700">📖 누가-행전 병행 & 서문</button>
+                <button onclick="switchTab('tab-composition')" id="btn-tab-composition" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-md hover:bg-stone-700">🧩 구성사 & 40일 연대기</button>
+                <button onclick="switchTab('tab-theology')" id="btn-tab-theology" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-md hover:bg-stone-700">🕊️ 신학 지도 (하나님 나라·성령)</button>
+                <button onclick="switchTab('tab-claims')" id="btn-tab-claims" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-md hover:bg-stone-700">🎓 학술 논쟁 & Claim Matrix</button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+
+        <!-- ==================== TAB 1: EXECUTIVE SUMMARY & PROGRAMMATIC PRELUDE ==================== -->
+        <section id="tab-summary" class="tab-content space-y-6">
+            <!-- Section Introductory Paragraph -->
+            <div class="bg-amber-50/80 border-l-4 border-amber-600 p-4 rounded-r-lg shadow-sm">
+                <h2 class="text-lg font-bold text-amber-900 serif-font mb-1">연구 요약 및 핵심 과제 서론</h2>
+                <p class="text-sm text-stone-700 leading-relaxed">
+                    본 연구 대시보드는 사도행전 1:1–5 코이네 헬라어 본문의 역사적·문법적 주해, 본문비평, 고대 지중해 세계의 수사학적 문헌 관습, 제2성전기 유대교 배경 및 최신 구성사(Composition History) 이론을 통합적으로 분석합니다. 사도행전의 첫 다섯 구절은 단순한 과거 복음서의 요약이 아니라, 누가복음과 사도행전을 신학적으로 연결하며 전체 내러티브를 통제하는 **프로그램적 서문(Programmatic Preface)**입니다.
+                </p>
+            </div>
+
+            <!-- Key Insight Metric Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex flex-col justify-between hover:border-amber-500 transition-all">
+                    <div>
+                        <div class="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">문학적 장르</div>
+                        <div class="text-xl font-bold text-stone-900 serif-font">2차 서문 (Secondary Preface)</div>
+                        <p class="text-xs text-stone-600 mt-2">고대 다권 저작(multi-scroll work) 관습에 따라 1권을 회고하고 2권의 확장을 선언함.</p>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-stone-100 text-right text-xs font-bold text-amber-800">폴리비오스/요세푸스 병행</div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex flex-col justify-between hover:border-amber-500 transition-all">
+                    <div>
+                        <div class="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">기독론적 핵심 동사</div>
+                        <div class="text-xl font-bold text-stone-900 serif-font">ἤρξατο (시작하셨다)</div>
+                        <p class="text-xs text-stone-600 mt-2">복음서는 예수의 지상 사역의 '시작'이며, 행전은 성령을 통한 사역의 '지속'임을 암시.</p>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-stone-100 text-right text-xs font-bold text-amber-800">행 1:1 기독론 연속성</div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex flex-col justify-between hover:border-amber-500 transition-all">
+                    <div>
+                        <div class="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">수사학적 증언 용어</div>
+                        <div class="text-xl font-bold text-stone-900 serif-font">τεκμήριον (확실한 증거)</div>
+                        <p class="text-xs text-stone-600 mt-2">아리스토텔레스 수사학의 반박 불가능한 논리적 증표로 역사적 부활의 무결성 보증.</p>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-stone-100 text-right text-xs font-bold text-amber-800">신약성경 단식 용례 (Hapax)</div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex flex-col justify-between hover:border-amber-500 transition-all">
+                    <div>
+                        <div class="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">구속사적 능력 수여</div>
+                        <div class="text-xl font-bold text-stone-900 serif-font">성령 세례 (Spirit Baptism)</div>
+                        <p class="text-xs text-stone-600 mt-2">단순 회심/입문을 넘어 땅끝 선교를 위해 부여되는 예언자적 권능(Empowerment).</p>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-stone-100 text-right text-xs font-bold text-amber-800">요엘 2장 / 행 1:8 연계</div>
+                </div>
+            </div>
+
+            <!-- Programmatic Flowchart Card -->
+            <div class="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
+                <h3 class="text-base font-bold text-stone-900 serif-font mb-4 flex items-center">
+                    <span class="mr-2">🔄</span> 사도행전 1:1–5의 프로그램적 서사 구조 (Programmatic Flow)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-3 text-center">
+                    <div class="bg-stone-50 p-3 rounded-lg border border-stone-200 flex flex-col justify-center">
+                        <span class="text-xs font-bold text-amber-700 mb-1">1. 회고</span>
+                        <span class="text-xs font-semibold text-stone-800">첫 번째 책 (λόγος)</span>
+                        <span class="text-[10px] text-stone-500 mt-1">누가복음 요약</span>
+                    </div>
+                    <div class="hidden md:flex items-center justify-center text-stone-400 font-bold">▶</div>
+                    <div class="bg-stone-50 p-3 rounded-lg border border-stone-200 flex flex-col justify-center">
+                        <span class="text-xs font-bold text-amber-700 mb-1">2. 시작과 계속</span>
+                        <span class="text-xs font-semibold text-stone-800">행하고 가르침 (ἤρξατο)</span>
+                        <span class="text-[10px] text-stone-500 mt-1">예수의 지상 사역</span>
+                    </div>
+                    <div class="hidden md:flex items-center justify-center text-stone-400 font-bold">▶</div>
+                    <div class="bg-stone-50 p-3 rounded-lg border border-stone-200 flex flex-col justify-center">
+                        <span class="text-xs font-bold text-amber-700 mb-1">3. 확실한 증거</span>
+                        <span class="text-xs font-semibold text-stone-800">부활 & 40일 (τεκμήριον)</span>
+                        <span class="text-[10px] text-stone-500 mt-1">역사적 확증</span>
+                    </div>
+                    <div class="hidden md:flex items-center justify-center text-stone-400 font-bold">▶</div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-3 text-center mt-3">
+                    <div class="bg-stone-50 p-3 rounded-lg border border-stone-200 flex flex-col justify-center">
+                        <span class="text-xs font-bold text-amber-700 mb-1">4. 주제 대강</span>
+                        <span class="text-xs font-semibold text-stone-800">하나님 나라 (βασιλεία)</span>
+                        <span class="text-[10px] text-stone-500 mt-1">종말론적 재교육</span>
+                    </div>
+                    <div class="hidden md:flex items-center justify-center text-stone-400 font-bold">▶</div>
+                    <div class="bg-stone-50 p-3 rounded-lg border border-stone-200 flex flex-col justify-center">
+                        <span class="text-xs font-bold text-amber-700 mb-1">5. 구속사적 집결</span>
+                        <span class="text-xs font-semibold text-stone-800">예루살렘 대기</span>
+                        <span class="text-[10px] text-stone-500 mt-1">시온 순례 성취</span>
+                    </div>
+                    <div class="hidden md:flex items-center justify-center text-stone-400 font-bold">▶</div>
+                    <div class="bg-amber-100 p-3 rounded-lg border border-amber-300 flex flex-col justify-center">
+                        <span class="text-xs font-bold text-amber-900 mb-1">6. 최종 동력</span>
+                        <span class="text-xs font-semibold text-amber-950">성령 세례 약속</span>
+                        <span class="text-[10px] text-amber-800 mt-1">우주적 선교 발대</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overview Section Text -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-3">
+                    <h3 class="text-base font-bold text-stone-900 serif-font border-b border-stone-200 pb-2">📌 구문론 및 수사학적 관습 요약</h3>
+                    <p class="text-xs text-stone-700 leading-relaxed">
+                        구문론적으로 행 1:1은 <span class="font-bold text-amber-800">μὲν solitarium</span>(짝을 이루는 δέ가 생략된 멘 구조)을 사용하여 복음서 회고에서 사도행전의 역사 서술로 내러티브가 단절 없이 이행됨을 수사학적으로 보여줍니다. 또한 데오빌로(Theophilus) 호칭에서 눅 1:3의 경칭 'κράτιστε(각하)'가 생략된 것은 저자와 후원자 간의 친밀해진 관계나 실존적 엘리트 개종자 독자층을 반영하는 고대 문헌 헌사 관례(Loveday Alexander)에 완벽히 부합합니다.
+                    </p>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-3">
+                    <h3 class="text-base font-bold text-stone-900 serif-font border-b border-stone-200 pb-2">🕊️ 신학적 & 선교적 전파 패러다임</h3>
+                    <p class="text-xs text-stone-700 leading-relaxed">
+                        부활 후 40일간 전파된 <span class="font-bold text-amber-800">'하나님 나라(βασιλεία τοῦ θεοῦ)'</span>는 제2성전기 유대교의 영토적 회복 대망을 우주적 선교로 재편하는 핵심 축입니다. 예루살렘 체류 명령은 이사야와 미가서의 종말론적 시온 순례 전통을 성취하며, '아버지의 약속'으로 성취될 성령 세례는 선교적 사명 완수를 위한 예언자적 권능 부여로 작용합니다.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: GREEK EXEGESIS & GLOSSARY ==================== -->
+        <section id="tab-greek" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/80 border-l-4 border-amber-600 p-4 rounded-r-lg shadow-sm">
+                <h2 class="text-lg font-bold text-amber-900 serif-font mb-1">코이네 헬라어 구문 구조 & 20 핵심 어휘집</h2>
+                <p class="text-sm text-stone-700 leading-relaxed">
+                    사도행전 1:1–5 NA28 본문의 구문적 종속 관계와 형태론 분석을 제공합니다. 구문 트리를 클릭하면 각 절의 세부 주해를 확인할 수 있으며, 아래 어휘집에서 품사별 검색 및 필터링이 가능합니다.
+                </p>
+            </div>
+
+            <!-- Verse Clause Interactive Tree Viewer -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h3 class="text-base font-bold text-stone-900 serif-font mb-3 flex items-center">
+                    <span class="mr-2">🔎</span> Acts 1:1–5 구문 단위 분석 (클릭하여 주해 확인)
+                </h3>
+                <div class="space-y-2 text-xs">
+                    <div onclick="showSyntaxDetail(1)" class="p-3 bg-stone-50 hover:bg-amber-100/50 rounded-lg border border-stone-200 cursor-pointer transition-all">
+                        <span class="font-bold text-amber-800">[1:1]</span> <span class="greek-text font-serif text-sm">Τὸν μὲν πρῶτον λόγον ἐποιησάμην περὶ πάντων, ὦ Θεόφιλε, ὧν ἤρξατο ὁ Ἰησοῦς ποιεῖν τε καὶ διδάσκειν,</span>
+                        <div class="text-stone-600 mt-1">"첫 번째 책은 내 아는 바 데오빌로여, 예수께서 행하시며 가르치시기를 시작하신 모든 것에 대하여 작성하였거니와..."</div>
+                    </div>
+                    <div onclick="showSyntaxDetail(2)" class="p-3 bg-stone-50 hover:bg-amber-100/50 rounded-lg border border-stone-200 cursor-pointer transition-all">
+                        <span class="font-bold text-amber-800">[1:2]</span> <span class="greek-text font-serif text-sm">ἄχρι ἧς ἡμέρας ἐντειλάμενος τοῖς ἀποστόλοις διὰ πνεύματος ἁγίου οὓς ἐξελέξατο ἀνελήμφθη·</span>
+                        <div class="text-stone-600 mt-1">"그가 택하신 사도들에게 성령으로 명하시고 올려지신 그 날까지라."</div>
+                    </div>
+                    <div onclick="showSyntaxDetail(3)" class="p-3 bg-stone-50 hover:bg-amber-100/50 rounded-lg border border-stone-200 cursor-pointer transition-all">
+                        <span class="font-bold text-amber-800">[1:3]</span> <span class="greek-text font-serif text-sm">οἷς καὶ παρέστησεν ἑαυτὸν ζῶντα μετὰ τὸ παθεῖν αὐτὸν ἐν πολλοῖς τεκμηρίοις, δι’ ἡμερῶν τεσσεράκοντα ὀπτανόμενος αὐτοῖς καὶ λέγων τὰ περὶ τῆς βασιλείας τοῦ θεοῦ·</span>
+                        <div class="text-stone-600 mt-1">"그가 고난 받으신 후에 또한 그들에게 확실한 많은 증거로 친히 살아 계심을 나타내사 40일 동안 그들에게 보이시며 하나님 나라의 일을 말씀하시니라."</div>
+                    </div>
+                    <div onclick="showSyntaxDetail(4)" class="p-3 bg-stone-50 hover:bg-amber-100/50 rounded-lg border border-stone-200 cursor-pointer transition-all">
+                        <span class="font-bold text-amber-800">[1:4]</span> <span class="greek-text font-serif text-sm">καὶ συναλιζόμενος παρήγγειλεν αὐτοῖς ἀπὸ Ἱεροσολύμων μὴ χωρίζεσθαι, ἀλλὰ περιμένειν τὴν ἐπαγγελίαν τοῦ πατρός ἣν ἠκούσατέ μου·</span>
+                        <div class="text-stone-600 mt-1">"사도와 함께 모이사 그들에게 분부하여 이르시되 예루살렘을 떠나지 말고 내게서 들은 바 아버지의 약속하신 것을 기다리라."</div>
+                    </div>
+                    <div onclick="showSyntaxDetail(5)" class="p-3 bg-stone-50 hover:bg-amber-100/50 rounded-lg border border-stone-200 cursor-pointer transition-all">
+                        <span class="font-bold text-amber-800">[1:5]</span> <span class="greek-text font-serif text-sm">ὅτι Ἰωάννης μὲν ἐβάπτισεν ὕδατι, ὑμεῖς δὲ ἐν πνεύματι βαπτισθήσεσθε ἁγίῳ οὐ μετὰ πολλὰς ταύτας ἡμέρας.</span>
+                        <div class="text-stone-600 mt-1">"요한은 물로 세례를 베풀었으나 너희는 몇 날이 못되어 성령으로 세례를 받으리라 하셨느니라."</div>
+                    </div>
+                </div>
+
+                <!-- Syntax Dynamic Detail Card -->
+                <div id="syntax-detail-box" class="mt-4 p-4 bg-amber-50 border border-amber-300 rounded-lg text-xs text-stone-800 hidden">
+                    <span id="syntax-detail-title" class="font-bold text-amber-900 text-sm block mb-1">절을 클릭하십시오</span>
+                    <p id="syntax-detail-text" class="leading-relaxed">구문 분석 설명이 여기에 표시됩니다.</p>
+                </div>
+            </div>
+
+            <!-- Glossary Controls & Grid Section -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+                    <h3 class="text-base font-bold text-stone-900 serif-font">📚 헬라어 핵심어 20개 어휘집 (Glossary)</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="text" id="glossary-search" oninput="filterGlossary()" placeholder="헬라어/한글/의미 검색..." class="px-3 py-1.5 border border-stone-300 rounded-md text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">
+                        <select id="glossary-pos-filter" onchange="filterGlossary()" class="px-3 py-1.5 border border-stone-300 rounded-md text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">
+                            <option value="ALL">전체 품사</option>
+                            <option value="명사">명사 (Noun)</option>
+                            <option value="동사">동사 (Verb)</option>
+                            <option value="형용사">형용사 (Adjective)</option>
+                            <option value="전치사">전치사 (Preposition)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Glossary Visual Chart & Cards Container -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- POS Chart Container -->
+                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 flex flex-col justify-center items-center">
+                        <h4 class="text-xs font-bold text-stone-700 mb-2">핵심 20 어휘 품사 분포</h4>
+                        <div class="chart-container">
+                            <canvas id="glossaryPosChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Glossary Cards Grid (Scrollable) -->
+                    <div class="lg:col-span-2 space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1" id="glossary-list">
+                        <!-- Glossary items injected via JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 3: TEXTUAL CRITICISM APPARATUS ==================== -->
+        <section id="tab-textual" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/80 border-l-4 border-amber-600 p-4 rounded-r-lg shadow-sm">
+                <h2 class="text-lg font-bold text-amber-900 serif-font mb-1">본문비평 Apparatus 분석 (NA28 vs Western Text)</h2>
+                <p class="text-sm text-stone-700 leading-relaxed">
+                    사도행전 1:1–5의 주요 이문(Variants) 분석표입니다. 특히 베자 사본(Codex Bezae, D)으로 대표되는 서방 본문(Western text)의 의도적 윤문 및 사명 강조 확장을 비판적으로 검토합니다.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Apparatus Table -->
+                <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-stone-200 shadow-sm overflow-x-auto">
+                    <h3 class="text-base font-bold text-stone-900 serif-font mb-3">📋 주요 이문(Variant) Apparatus 분석표</h3>
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-stone-100 border-b border-stone-300 text-stone-800">
+                                <th class="p-2 font-bold">구절</th>
+                                <th class="p-2 font-bold">Variant (이문)</th>
+                                <th class="p-2 font-bold">External Evidence (외부 증거)</th>
+                                <th class="p-2 font-bold">주해적 중요성 & NA28 신뢰도</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apparatus-tbody" class="divide-y divide-stone-200">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Textual Confidence Chart Container -->
+                <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-stone-900 serif-font mb-2">📊 이문별 NA28 재구성 신뢰도</h3>
+                        <p class="text-xs text-stone-600 mb-4">비판적 본문비평에 근거한 NA28 독법의 학술적 채택 신뢰도 평가 점수입니다.</p>
+                        <div class="chart-container">
+                            <canvas id="textualConfidenceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs text-stone-700">
+                        <span class="font-bold text-amber-800">💡 서방 본문 특징:</span> 베자 사본(D)은 사도들의 선교적 사명("복음 전파를 명령하셨다")을 보다 구체적으로 신학적 윤문/가필하는 경향을 보여줍니다.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 4: LUKE-ACTS PARALLEL & SECONDARY PREFACE ==================== -->
+        <section id="tab-parallel" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/80 border-l-4 border-amber-600 p-4 rounded-r-lg shadow-sm">
+                <h2 class="text-lg font-bold text-amber-900 serif-font mb-1">누가복음-사도행전 병행 분석 & 고대 2차 서문 관습</h2>
+                <p class="text-sm text-stone-700 leading-relaxed">
+                    누가복음 24장과 사도행전 1장을 연결하는 문학적 경첩(Hinge) 구조와 헬레니즘 저자들의 다권 문헌(multi-scroll works) 2차 서문(Secondary Preface) 관습을 comparative 방식으로 탐색합니다.
+                </p>
+            </div>
+
+            <!-- Parallel Motif Table -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm overflow-x-auto">
+                <h3 class="text-base font-bold text-stone-900 serif-font mb-3">📖 Luke 1 / 24 장과 Acts 1 장 신학적 모티프 병행표</h3>
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-stone-800 text-amber-300">
+                            <th class="p-2.5 font-bold">신학적 모티프</th>
+                            <th class="p-2.5 font-bold">누가복음 (Luke)</th>
+                            <th class="p-2.5 font-bold">사도행전 (Acts)</th>
+                            <th class="p-2.5 font-bold">서사적 기능 & 연속성 평가</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-200 text-stone-800">
+                        <tr class="hover:bg-amber-50/50">
+                            <td class="p-2.5 font-bold text-amber-900">저작 목적 & 수신자</td>
+                            <td class="p-2.5">눅 1:1–4 (근원부터 살핌, 각하 데오빌로)</td>
+                            <td class="p-2.5">행 1:1–2 (먼저 쓴 글은... 데오빌로여)</td>
+                            <td class="p-2.5 text-stone-600">2차 서문 회고를 통해 복음서 사역을 도약대로 삼아 우주적 확장을 선포함.</td>
+                        </tr>
+                        <tr class="hover:bg-amber-50/50">
+                            <td class="p-2.5 font-bold text-amber-900">부활 현현 & 입증</td>
+                            <td class="p-2.5">눅 24:36–43 (손과 발, 생선을 잡수심)</td>
+                            <td class="p-2.5">행 1:3–4 (확실한 증거, 40일간 보이심)</td>
+                            <td class="p-2.5 text-stone-600">체감적 부활 증명(눅)을 역사학적 확실성(τεκμήριον) 언어로 격상.</td>
+                        </tr>
+                        <tr class="hover:bg-amber-50/50">
+                            <td class="p-2.5 font-bold text-amber-900">가르침의 주제</td>
+                            <td class="p-2.5">눅 24:44–48 (모세, 선지자 성취 해설)</td>
+                            <td class="p-2.5">행 1:3 (하나님 나라의 일을 말씀함)</td>
+                            <td class="p-2.5 text-stone-600">메시아적 성취를 종말론적 '하나님 나라' 도래로 요약.</td>
+                        </tr>
+                        <tr class="hover:bg-amber-50/50">
+                            <td class="p-2.5 font-bold text-amber-900">대기 장소</td>
+                            <td class="p-2.5">눅 24:49 (위로부터 능력이 입혀질 때까지)</td>
+                            <td class="p-2.5">행 1:4 (예루살렘을 떠나지 말라)</td>
+                            <td class="p-2.5 text-stone-600">예루살렘을 선교적 출발점이자 성령의 강림소로 확정.</td>
+                        </tr>
+                        <tr class="hover:bg-amber-50/50">
+                            <td class="p-2.5 font-bold text-amber-900">승천 사건의 묘사</td>
+                            <td class="p-2.5">눅 24:50–53 (축복하며 하늘로 올려짐)</td>
+                            <td class="p-2.5">행 1:9–11 (구름이 가림, 재림 예고)</td>
+                            <td class="p-2.5 text-stone-600">눅은 예배/찬양의 종결로, 행전은 재림 대망과 세상 선교의 서론으로 초점 재조정.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Ancient Secondary Prefaces Comparative Cards -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-3">
+                <h3 class="text-base font-bold text-stone-900 serif-font">🏛️ 고대 다권 문헌(Multi-Scroll Works) Secondary Preface 비교</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                    <div class="p-3 bg-stone-50 rounded-lg border border-stone-200">
+                        <div class="font-bold text-amber-800 text-sm mb-1">폴리비오스 (Polybius)</div>
+                        <div class="text-stone-500 mb-2">《히스토리아이 (Histories)》</div>
+                        <p class="text-stone-700">이전 권의 내용을 요약하며, 다음 서술할 사건의 역사적 중요성과 당위성을 강조. 행 1:1 "첫 번째 책에서 다룬 것은"과 완벽히 구조적으로 조응함.</p>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg border border-stone-200">
+                        <div class="font-bold text-amber-800 text-sm mb-1">디오도루스 시쿨루스</div>
+                        <div class="text-stone-500 mb-2">《비블리오테카 히스토리카》</div>
+                        <p class="text-stone-700">17권 서두에서 알렉산드로스의 예비적 업적(16권)을 요약하고 아시아 정복을 선언. 개인 업적 후 세계적 확장을 다루는 거시적 문학 구조 병행.</p>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg border border-stone-200">
+                        <div class="font-bold text-amber-800 text-sm mb-1">요세푸스 (Josephus)</div>
+                        <div class="text-stone-500 mb-2">《아피온 반박문 (Ag. Apion)》</div>
+                        <p class="text-stone-700">1권 논지를 환기하고 2권에서 정면 반박으로 이행. 동일한 후원자(에파프로디투스) 호칭을 유지함. 누가가 데오빌로를 재호명하는 것과 동일함.</p>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg border border-stone-200">
+                        <div class="font-bold text-amber-800 text-sm mb-1">필론 (Philo)</div>
+                        <div class="text-stone-500 mb-2">《모세의 생애 (De Vita Moysis)》</div>
+                        <p class="text-stone-700">1권(연대기적 전기) 마감 후 2권(주제별 입법자 전개) 이행 전 중간 서문 삽입. 전기(bios)에서 역사(historia)로의 유연한 장르 전환 증명.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 5: COMPOSITION MODELS & CHRONOLOGY ==================== -->
+        <section id="tab-composition" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/80 border-l-4 border-amber-600 p-4 rounded-r-lg shadow-sm">
+                <h2 class="text-lg font-bold text-amber-900 serif-font mb-1">누가-사도행전 구성사 모델 & 40일 연대기 가설</h2>
+                <p class="text-sm text-stone-700 leading-relaxed">
+                    누가복음과 사도행전의 통일성 및 이질성을 설명하는 5가지 구성 모델(Composition Models)과 눅 24장(당일 승천) vs 행 1장(40일 체류) 사이의 연대기적 긴장을 해명하는 학설을 비교합니다.
+                </p>
+            </div>
+
+            <!-- Composition Models Interactive Switcher -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                    <h3 class="text-base font-bold text-stone-900 serif-font mb-3">🧩 구성사 모델 학학 지형</h3>
+                    <div class="space-y-2 text-xs" id="model-buttons">
+                        <!-- Injected by JS -->
+                    </div>
+                    <div class="chart-container mt-4">
+                        <canvas id="compositionChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-stone-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div id="model-detail-title" class="text-lg font-bold text-amber-900 serif-font border-b border-stone-200 pb-2 mb-3">
+                            모델을 선택하십시오
+                        </div>
+                        <div id="model-detail-body" class="text-xs text-stone-700 space-y-3 leading-relaxed">
+                            좌측 버튼을 클릭하면 학설 세부 논거, 증거, 학자 및 비판적 평가가 표시됩니다.
+                        </div>
+                    </div>
+                    <div id="model-detail-footer" class="mt-4 p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs text-amber-900 font-semibold">
+                        학학적 지지율 및 최신 동향
+                    </div>
+                </div>
+            </div>
+
+            <!-- 40-Day Chronology Hypotheses Table -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm overflow-x-auto">
+                <h3 class="text-base font-bold text-stone-900 serif-font mb-3">⏳ 40일 및 승천 Chronology 가설 비교</h3>
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-stone-800 text-amber-300">
+                            <th class="p-2.5 font-bold">가설 (Hypothesis)</th>
+                            <th class="p-2.5 font-bold">논리 구조 및 신학적 특징</th>
+                            <th class="p-2.5 font-bold">본문 근거</th>
+                            <th class="p-2.5 font-bold">평가 및 신뢰도</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-200 text-stone-800">
+                        <tr class="hover:bg-amber-50">
+                            <td class="p-2.5 font-bold text-amber-900">문학적 압축 (Telescoping)</td>
+                            <td class="p-2.5">눅 24장은 신학적 극대화를 위해 하루 안에 사건을 압축했으며, 행 1장이 역사적 실체 기간을 풀어 설명함.</td>
+                            <td class="p-2.5">고대 서사 문학의 극적 효과를 위한 상용 기법</td>
+                            <td class="p-2.5 font-bold text-emerald-700">높음 (가장 유력)</td>
+                        </tr>
+                        <tr class="hover:bg-amber-50">
+                            <td class="p-2.5 font-bold text-amber-900">승천 후 지상 현현 가설</td>
+                            <td class="p-2.5">부활 당일 이미 승천하였고, 40일은 하늘에서 간헐적으로 지상에 내려와 보이신 기간임.</td>
+                            <td class="p-2.5">행 1:3 '보이시며(optanomenos)' 수동태 분사의 천상적 신현성</td>
+                            <td class="p-2.5 font-bold text-rose-700">낮음 (행 1:9 단일 승천과 충돌)</td>
+                        </tr>
+                        <tr class="hover:bg-amber-50">
+                            <td class="p-2.5 font-bold text-amber-900">실제적 긴장 (Unresolved)</td>
+                            <td class="p-2.5">저자가 두 책 저술 사이의 시차로 인해 신학적 관점이 변하여 연대기를 서로 다르게 설정함.</td>
+                            <td class="p-2.5">Model B, C 시간차 이론과 결합 (Marguerat)</td>
+                            <td class="p-2.5 font-bold text-amber-700">중간</td>
+                        </tr>
+                        <tr class="hover:bg-amber-50">
+                            <td class="p-2.5 font-bold text-amber-900">40일 상징 (Theological Symbol)</td>
+                            <td class="p-2.5">문자적 시간이 아닌 모세, 엘리야 등 구속사적 계시 수여의 거룩한 기간을 뜻하는 신학적 메타포.</td>
+                            <td class="p-2.5">출 24장, 왕상 19장, 눅 4장의 40 모티프</td>
+                            <td class="p-2.5 font-bold text-emerald-700">중간-높음</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 6: THEOLOGY MATRIX ==================== -->
+        <section id="tab-theology" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/80 border-l-4 border-amber-600 p-4 rounded-r-lg shadow-sm">
+                <h2 class="text-lg font-bold text-amber-900 serif-font mb-1">하나님 나라 Inclusio & 성령 세례 구속사 Matrix</h2>
+                <p class="text-sm text-stone-700 leading-relaxed">
+                    사도행전 첫머리(1:3)와 끝(28:31)을 잇는 '하나님 나라(βασιλεία τοῦ θεοῦ)'의 거대한 수미쌍관(Inclusio) 구조와 '아버지의 약속'으로 대변되는 성령 세례의 구약·제2성전기 배경을 분석합니다.
+                </p>
+            </div>
+
+            <!-- Kingdom of God Interactive Inclusio Map -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-4">
+                <h3 class="text-base font-bold text-stone-900 serif-font">🗺️ 사도행전 내 '하나님 나라(βασιλεία)' 7단계 지리·선교적 확장 지도</h3>
+                
+                <div class="chart-container">
+                    <canvas id="kingdomProgressionChart"></canvas>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 text-center text-xs" id="kingdom-nodes">
+                    <!-- Injected by JS -->
+                </div>
+
+                <div id="kingdom-node-detail" class="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-stone-800">
+                    <span class="font-bold text-amber-900">노드를 클릭하십시오:</span> 사도행전 내 하나님 나라 선포의 구체적 맥락과 선교적 경계 허물어짐의 의미가 표시됩니다.
+                </div>
+            </div>
+
+            <!-- Promise of the Father Source Matrix & Baptism Comparison -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- OT Matrix -->
+                <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-3">
+                    <h3 class="text-base font-bold text-stone-900 serif-font border-b border-stone-200 pb-2">📜 '아버지의 약속' 구약/제2성전기 배경 Matrix</h3>
+                    <div class="space-y-2 text-xs">
+                        <div class="p-2.5 bg-stone-50 rounded border border-stone-200">
+                            <span class="font-bold text-amber-800">요엘 2:28–32 (Joel):</span> <span class="text-emerald-700 font-bold">[1차 핵심 배경]</span> "내 영을 만민에게 부어 주리니". 행 2장 오순절 베드로 설교에서 직접 인용. 예언적 선포 권능.
+                        </div>
+                        <div class="p-2.5 bg-stone-50 rounded border border-stone-200">
+                            <span class="font-bold text-amber-800">이사야 32:15 & 44:3:</span> "위에서부터 영을 부어 주시리니". 눅 24:49 '위로부터의 능력'과 직접적 언어적 조응.
+                        </div>
+                        <div class="p-2.5 bg-stone-50 rounded border border-stone-200">
+                            <span class="font-bold text-amber-800">에스겔 36:26-27 & 37:14:</span> 마른 뼈에 생기(ruach)가 들어감. 국가적 회복 및 새 언약적 거룩한 공동체 재건.
+                        </div>
+                        <div class="p-2.5 bg-stone-50 rounded border border-stone-200">
+                            <span class="font-bold text-amber-800">솔로몬의 시편 17, 18편:</span> 제2성전기 유대교 메시아 대망. 성령을 통해 메시아가 이스라엘 정치적 통치를 회복할 기대 (행 1:6 질문의 직접적 배경).
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spirit Baptism Interpretive Models -->
+                <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-3">
+                    <h3 class="text-base font-bold text-stone-900 serif-font border-b border-stone-200 pb-2">🕊️ 물세례 vs 성령세례 주해적 모델 (행 1:5)</h3>
+                    <div class="space-y-2.5 text-xs">
+                        <div class="p-3 bg-stone-50 rounded-lg border-l-4 border-amber-600">
+                            <div class="font-bold text-stone-900 mb-1">1. 선교 사명을 위한 능력 부여 (Empowerment Model)</div>
+                            <p class="text-stone-600">누가 특유의 예언자적 성령론. 단순 구원론적 중생을 넘어 험난한 이방 선교를 완수하기 위한 능동적 권능 수여. (최신 학계 지지)</p>
+                        </div>
+                        <div class="p-3 bg-stone-50 rounded-lg border-l-4 border-stone-400">
+                            <div class="font-bold text-stone-900 mb-1">2. 종말론적 이스라엘 회복 언약 모델 (Max Turner)</div>
+                            <p class="text-stone-600">개인적 영적 체험을 넘어 종말론적 새 이스라엘 열두 지파를 창조하는 집단적·언약적 대사건.</p>
+                        </div>
+                        <div class="p-3 bg-stone-50 rounded-lg border-l-4 border-stone-300">
+                            <div class="font-bold text-stone-900 mb-1">3. 회심/입문 성령 수여 (사크라멘트적 이해)</div>
+                            <p class="text-stone-600">바울 서신(고전 12:13)의 중생 개념을 역투사한 전통적 견해. 제자들이 이미 믿는 자라는 점에서 한계 존재.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 7: SCHOLARLY DEBATES & CLAIM MATRIX ==================== -->
+        <section id="tab-claims" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/80 border-l-4 border-amber-600 p-4 rounded-r-lg shadow-sm">
+                <h2 class="text-lg font-bold text-amber-900 serif-font mb-1">학자별 주요 주장 비교 & Claim–Evidence–Confidence Matrix</h2>
+                <p class="text-sm text-stone-700 leading-relaxed">
+                    사도행전 서문 연구를 대표하는 시니어 신약학자들의 상반된 주장, 본문 논거 및 학학적 반론을 필터링 가능한 검증 매트릭스로 제공합니다.
+                </p>
+            </div>
+
+            <!-- Scholar Stance Grid -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-3">
+                <h3 class="text-base font-bold text-stone-900 serif-font">🎓 주요 학자(Scholars) 핵심 주장 및 반론 Grid</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                    <div class="p-3 bg-stone-50 rounded-lg border border-stone-200 flex flex-col justify-between">
+                        <div>
+                            <div class="font-bold text-amber-800 text-sm">Loveday Alexander</div>
+                            <div class="text-[11px] text-stone-500 mb-2">서문 기술 매뉴얼설</div>
+                            <p class="text-stone-700">눅/행 서문은 고전 역사서보다 헬레니즘 의학/기계학 기술 매뉴얼 서문과 유사함.</p>
+                        </div>
+                        <div class="mt-2 text-[10px] text-rose-800 font-semibold">반론: 기술서엔 행전의 장대한 역사신학적 내러티브가 부재함 (Pervo).</div>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg border border-stone-200 flex flex-col justify-between">
+                        <div>
+                            <div class="font-bold text-amber-800 text-sm">Patricia Walters</div>
+                            <div class="text-[11px] text-stone-500 mb-2">이중 저자설 (Dual Author)</div>
+                            <p class="text-stone-700">컴퓨터 통계 분석(Stylometry) 결과 눅과 행 사이에 접속사/전치사 빈도 불일치 발견.</p>
+                        </div>
+                        <div class="mt-2 text-[10px] text-rose-800 font-semibold">반론: 표본 크기 부족 및 전기에서 역사로의 장르 변화 간과.</div>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg border border-stone-200 flex flex-col justify-between">
+                        <div>
+                            <div class="font-bold text-amber-800 text-sm">Gregory E. Sterling</div>
+                            <div class="text-[11px] text-stone-500 mb-2">2차 서문 시차설 (2025/2026)</div>
+                            <p class="text-stone-700">행 1:1-2는 다권 문헌의 전형적 2차 서문이며 두 책 출판 시점에 실제 상당한 시간차 존재.</p>
+                        </div>
+                        <div class="mt-2 text-[10px] text-emerald-800 font-semibold">평가: 문학적 통일성과 내용적 긴장을 조화시키는 가장 유력한 타협안.</div>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg border border-stone-200 flex flex-col justify-between">
+                        <div>
+                            <div class="font-bold text-amber-800 text-sm">Daniel Marguerat</div>
+                            <div class="text-[11px] text-stone-500 mb-2">40일 수사적 시간설</div>
+                            <p class="text-stone-700">40일(행 1:3)은 문자적 연대가 아니라 시내산/호렙산 계시 수여의 신학적 수사임.</p>
+                        </div>
+                        <div class="mt-2 text-[10px] text-stone-600 font-semibold">평가: 1세기 독자는 상징과 실제 연대기를 함께 읽어냄.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Claim Verification Filterable Matrix -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+                    <h3 class="text-base font-bold text-stone-900 serif-font">⚖️ Claim–Evidence–Counterevidence–Confidence Matrix</h3>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-stone-600">주제 필터:</span>
+                        <select id="claim-filter" onchange="filterClaims()" class="px-3 py-1.5 border border-stone-300 rounded-md text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">
+                            <option value="ALL">전체 쟁점</option>
+                            <option value="PREFACE">서문 성격 / 데오빌로</option>
+                            <option value="PNEUMA">성령 세례 / 약속</option>
+                            <option value="VERB">συναλιζόμενος 번역</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-stone-800 text-amber-300">
+                                <th class="p-2.5 font-bold">쟁점 (Core Question)</th>
+                                <th class="p-2.5 font-bold">Claim (결론적 주장)</th>
+                                <th class="p-2.5 font-bold">Evidence (본문/문헌 증거)</th>
+                                <th class="p-2.5 font-bold">Counterevidence (반론)</th>
+                                <th class="p-2.5 font-bold">Confidence (신뢰도)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="claim-tbody" class="divide-y divide-stone-200 text-stone-800">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-stone-900 text-stone-400 text-xs py-6 border-t border-stone-800 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3">
+            <div>
+                <span class="font-bold text-amber-400">사도행전 1:1–5 서문 심층 연구 SPA</span> | Based on SBL 2nd Edition Reference Guidelines & NA28 Critical Text
+            </div>
+            <div class="text-stone-500">
+                Single-Page Interactive Academic Visualizer
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Data & Logic Block -->
+    <script>
+        // Data Structures
+        const glossaryData = [
+            { id: 1, greek: "λόγος", translit: "logos", pos: "명사", morph: "남성 단수 대격", meaning: "책, 논설 (scroll/book)", desc: "고대 헬레니즘 저술 관습에서 하나의 두루마리(scroll)를 지칭하는 전문 용어." },
+            { id: 2, greek: "πρῶτος", translit: "prōtos", pos: "형용사", morph: "남성 단수 대격", meaning: "첫 번째의", desc: "비교급(proteros)을 대체하여 사용된 최상급 표현으로 누가복음을 지칭." },
+            { id: 3, greek: "ποιέω", translit: "poieō", pos: "동사", morph: "1단수 부정과거 중간태", meaning: "만들다, 작성하다", desc: "저술 행위를 지칭하며 역사가로서의 주체적 서술 개입을 나타냄." },
+            { id: 4, greek: "Θεόφιλος", translit: "Theophilos", pos: "명사", morph: "남성 단수 호격", meaning: "데오빌로 (하나님을 사랑하는 자)", desc: "문헌 수신자이자 후원자(patron) 혹은 실존적 엘리트 개종자." },
+            { id: 5, greek: "ἄρχω", translit: "archō", pos: "동사", morph: "3단수 부정과거 중간태", meaning: "시작하다 (ērxato)", desc: "예수의 사역이 복음서에서 '시작'되었고 행전에서 '계속'됨을 알리는 프로그램적 동사." },
+            { id: 6, greek: "διδάσκω", translit: "didaskō", pos: "동사", morph: "현재 능동태 부정사", meaning: "가르치다", desc: "기적과 구원 사역(행위)에 동반되는 예수의 권위 있는 교훈의 지속성." },
+            { id: 7, greek: "ἄχρι", translit: "achri", pos: "전치사", morph: "속격 지배", meaning: "~까지", desc: "서사의 시간적 종점(terminus ad quem)을 설정하여 두 권의 경계를 설정." },
+            { id: 8, greek: "ἐντέλλω", translit: "entellō", pos: "동사", morph: "남성 단수 부정과거 분사", meaning: "명령하다, 지시하다", desc: "승천 전 예수의 유언적 지상 대명령에 수여된 신적 권위." },
+            { id: 9, greek: "ἐκλέγω", translit: "eklegō", pos: "동사", morph: "3단수 부정과거 중간태", meaning: "선택하다", desc: "열두 사도를 택한 예수의 주권적 행위(눅 6장)를 회고." },
+            { id: 10, greek: "ἀναλαμβάνω", translit: "analambanō", pos: "동사", morph: "3단수 부정과거 수동태", meaning: "취해지다, 올려지다", desc: "신적 수동태로서 하나님에 의해 이루어진 승천 사건의 객관성 확증." },
+            { id: 11, greek: "παρίστημι", translit: "paristēmi", pos: "동사", morph: "3단수 부정과거 능동태", meaning: "곁에 두다, 나타내다", desc: "부활 현현의 확실성을 증언하는 법정적·역사적 전시 행위." },
+            { id: 12, greek: "πάσχω", translit: "paschō", pos: "동사", morph: "부정과거 능동태 부정사", meaning: "고난받다", desc: "십자가 죽음을 신학적으로 포장한 누가의 고난 기독론 완곡어법." },
+            { id: 13, greek: "τεκμήριον", translit: "tekmērion", pos: "명사", morph: "중성 복수 여격", meaning: "결정적 증거 (irrefutable proof)", desc: "아리스토텔레스 수사학에서 유래한 단어로 논박할 수 없는 가장 강력한 증표." },
+            { id: 14, greek: "ὀπτάνω", translit: "optanō", pos: "동사", morph: "현재 중간/수동 분사", meaning: "보이시다", desc: "신성한 존재가 자신을 계시하는 신현(Theophany) 맥락의 시각적 출현." },
+            { id: 15, greek: "βασιλεία", translit: "basileia", pos: "명사", morph: "여성 단수 속격", meaning: "나라, 통치", desc: "구약의 대망을 성취하는 종말론적 하나님의 통치로 사도행전 전체 메시지." },
+            { id: 16, greek: "συναλιζόμενος", translit: "synalizomenos", pos: "동사", morph: "현재 중간/수동 분사", meaning: "함께 모이다/식사하다", desc: "부활체와의 친교(식사 공동체)와 선교적 결속을 암시하는 중의적 어휘." },
+            { id: 17, greek: "παραγγέλλω", translit: "parangellō", pos: "동사", morph: "3단수 부정과거 능동태", meaning: "명령하다", desc: "사령관이나 권위자가 하달하는 군사적, 공적 지시의 뉘앙스." },
+            { id: 18, greek: "χωρίζω", translit: "chōrizō", pos: "동사", morph: "현재 수동/중간 부정사", meaning: "분리되다, 떠나다", desc: "예루살렘이라는 구원사적 중심지에서의 이탈을 금지하는 강한 명령." },
+            { id: 19, greek: "ἐπαγγελία", translit: "epangelia", pos: "명사", morph: "여성 단수 대격", meaning: "약속", desc: "구약 선지자들이 예언한 종말론적 성령 강림의 총체적 실체." },
+            { id: 20, greek: "βαπτίζω", translit: "baptizō", pos: "동사", morph: "2복수 미래 수동태", meaning: "세례를 받다", desc: "요한의 물세례를 능가하는 새 언약적, 선교적 권능 부여로서의 성령 세례." }
+        ];
+
+        const syntaxDetails = {
+            1: "<b>[1:1 주해]</b> 불변사 μὲν이 사용되었으나 대응하는 δέ가 명시되지 않는 고립된 'μὲν solitarium' 구조입니다. 이는 서사가 단절되지 않고 복음서 회고에서 사도행전의 본격적 역사 서술로 물 흐르듯 연결됨을 수사학적으로 보여줍니다. ἤρξατο(시작하셨다)는 단순 관용구가 아니라 복음서가 예수 사역의 '시작'이며 행전이 '지속'이라는 기독론적 선언입니다.",
+            2: "<b>[1:2 주해]</b> 'διὰ πνεύματος ἁγίου(성령을 통하여)' 전치사구의 수식 위치가 핵심 논쟁입니다. 가장 타당한 해석은 분사 'ἐντειλάμενος(명령하시고)'를 수식하여 예수의 지상대명령이 인간적 부탁이 아닌 성령의 권능 안에서 선포된 신적 위임장임을 천명하는 것입니다.",
+            3: "<b>[1:3 주해]</b> 신약성경에 단 한 번 등장하는 'τεκμήριον(테크메리온)'은 아리스토텔레스 수사학에서 논박 불가능한 결정적 증거를 뜻합니다. 누가는 고대 역사가들의 목격자 증언(autopsia) 기법을 차용하여 부활의 실제성을 변증합니다. '40일'은 신성한 계시 수여의 성경적 기간입니다.",
+            4: "<b>[1:4 주해]</b> 'συναλιζόμενος'는 어원상 '함께 모이다'이지만 라틴 번역 전통은 '함께 소금을 먹다(식사하다)'로 번역했습니다. 눅 24:41-43의 구운 생선을 드신 서사와 연결되어 부활체와의 감각적 친교 공동체를 암시합니다. 예루살렘 체류 명령은 종말론적 시온 순례 전통의 성취입니다.",
+            5: "<b>[1:5 주해]</b> 세례 요한의 '물(ὕδατι)'과 예수의 '성령(πνεύματι ἁγίῳ)'이 극명한 대조(μὲν... δὲ)를 이룹니다. 동사 'βαπτισθήσεσθε'는 신적 수동태로, 성령 세례는 개인적 회심을 넘어 이방 선교 완수를 위한 '예언자적 권능 부여(prophetic empowerment)'입니다."
+        };
+
+        const apparatusData = [
+            { verse: "1:2", variant: "ἀνελήμφθη 위치 변경 및 추가: 'kai ekeleuse keryssein to euangelion'", ext: "Codex Bezae (D), Old Latin (h)", notes: "서방 본문의 전형적 확장으로 예수의 마지막 명령이 구체적으로 '복음 전파'였음을 윤문함.", confidence: 95 },
+            { verse: "1:2", variant: "dia pneumatos hagiou 생략 또는 위치 변형", ext: "Codex Ephraemi (C), Augustine 인용", notes: "성령 수식어의 구문적 모호성을 제거하려는 필사자의 개입.", confidence: 88 },
+            { verse: "1:4", variant: "συναυλιζόμενος (synaulizomenos: 함께 유숙하다)", ext: "Minuscules 33, Byzantine, Eusebius", notes: "어근이 aulé(뜰)로 바뀌어 '밤을 지내다'로 의미가 명확해짐. 발음 혼동(itacism) 유발.", confidence: 92 },
+            { verse: "1:5", variant: "en pneumati hagiō 전치사 어순 변이", ext: "Papyrus 74, Uncials", notes: "요한의 물과 예수의 성령 대조를 문체적으로 극대화하기 위한 필사자의 심미적 수정.", confidence: 98 }
+        ];
+
+        const compositionModels = [
+            { id: "A", name: "Model A: 본래적 단일 저작 기획 (Cadbury)", desc: "두 권은 처음부터 하나의 거대한 세트(Luke-Acts)로 치밀하게 기획됨.", evidence: "언어학적 연속성, 신학적 병행, 예루살렘 중심 구속사, 데오빌로 헌사.", critique: "현대의 '단일 책' 개념을 고대의 분절된 두루마리 출판 환경에 과도하게 투사함.", status: "전통적 유력" },
+            { id: "B", name: "Model B: 복음서 유통 후 사도행전 후속 집필", desc: "누가복음이 독립 유통된 후, 속편의 필요성에 의해 사도행전이 나중에 저술됨.", evidence: "눅 24장과 행 1장의 승천 연대기 충돌(당일 vs 40일). 사본 전승의 분리.", critique: "1:1 회고가 저술 사이의 실제 '시간차'를 반영한다고 설명 가능.", status: "강한 지지" },
+            { id: "C", name: "Model C: 단일 저자, 시간·상황 차이 인정 (Sterling 2025)", desc: "저자는 같으나 저술 상황과 시기가 크게 달라 통일성과 이질성이 공존함.", evidence: "필론, 요세푸스의 다권 저술 관행 분석. 바울 전승 수집 시차.", critique: "문학적 통일성과 내용적 긴장을 완벽히 조화시키는 가장 유력한 현 학계 모델.", status: "최신 학계 유력 (2025/2026)" },
+            { id: "D", name: "Model D: 과도한 통일성 평준화 거부 (Parsons, Pervo)", desc: "'누가-사도행전' 통일성은 근대의 발명품이며 문학적 차이를 분리해야 함.", evidence: "두 책의 현저한 수사학적, 장르적 차이. 2세기 교부들의 개별 인용.", critique: "2차 서론(행 1:1)을 통해 연결을 시도한 저자 자신의 의도까지 부정하기 어려움.", status: "비판적 신학" },
+            { id: "E", name: "Model E: 통계적 이중 저자설 (Patricia Walters)", desc: "누가복음과 사도행전의 문체 빈도 통계상 저자가 아예 상이함.", evidence: "문장 접속사, 전치사 빈도 등의 컴퓨터 통계 분석(Stylometry).", critique: "표본 크기 문제 및 전기(bios)에서 역사(historia)로의 장르 변화 시 발생하는 문체 변화 간과.", status: "소수 견해" }
+        ];
+
+        const kingdomNodes = [
+            { ch: "1:3", title: "부활 후 40일 교육", context: "예수 → 사도", desc: "이스라엘의 정치적 메시아주의를 뛰어넘어 종말론적 신적 통치로 재해석하는 토대." },
+            { ch: "1:6", title: "이스라엘 회복 질문", context: "사도 → 예수", desc: "솔로몬의 시편 17편에 기반한 유대 민족주의적 대망. 예수에 의해 선교적 지평으로 교정됨." },
+            { ch: "8:12", title: "사마리아 전파", context: "빌립 → 사마리아인", desc: "이방 선교의 첫 돌파구. 예루살렘을 넘어 하나님 나라 경계가 우주적으로 허물어짐." },
+            { ch: "14:22", title: "환난과 하나님 나라", context: "바울 → 이방 신자들", desc: "하나님 나라에 들어가려면 많은 환난을 겪어야 함. 교회가 박해를 인내하는 궁극적 동력." },
+            { ch: "19:8", title: "에베소 회당 강론", context: "바울 → 에베소 유대인", desc: "3개월간 강론하며 예수가 구약 선지자들이 약속한 통치의 실현임을 논증." },
+            { ch: "20:25", title: "밀레도 회고", context: "바울 → 에베소 장로", desc: "바울 사역 전체를 '하나님 나라를 전파한 것'으로 최종 요약." },
+            { ch: "28:31", title: "로마 최종 선포 (Inclusio)", context: "바울 → 로마 전체", desc: "담대하게 거침없이(akōlytōs) 로마 심장부에서 하나님 나라 선포. 수미쌍관의 장엄한 완성." }
+        ];
+
+        const claimMatrixData = [
+            { q: "행 1:1-5는 단순 서론인가, 프로그램적 서문인가?", claim: "프로그램적(Programmatic) 서문", ev: "'시작하신(ἤρξα토)'의 신학적 뉘앙스, 2차 서문 관습, 하나님 나라와 성령 세례 전면 배치.", counter: "단순한 문맥 연결용 요약문이라는 고전적 이해.", conf: "매우 높음", cat: "PREFACE" },
+            { q: "데오빌로는 상징적 가상 인물인가?", claim: "실제 후원자 또는 구체적 개종자", ev: "고대 문헌 헌사 관습. 눅 1:3의 '크라티스테(각하)'라는 실존적 경칭 사용.", counter: "이름 뜻('하나님을 사랑하는 자')에 매몰된 영해.", conf: "높음", cat: "PREFACE" },
+            { q: "성령 세례(1:5)의 1차적 성격은 중생인가?", claim: "선교 사명을 위한 권능 부여 (Empowerment)", ev: "바울 서신과 구분되는 누가 고유의 요엘서 인용 및 눅 24:49 '위로부터의 능력' 병행.", counter: "사크라멘트적 중생을 뜻한다는 교의학적 역투사.", conf: "높음", cat: "PNEUMA" },
+            { q: "συναλιζόμενος(1:4)의 정확한 번역은?", claim: "함께 머물며 친교/식사하다", ev: "눅 24장 41-43절 생선을 드신 서사, 초기 교부 시대의 소금(식사) 결부 전통.", counter: "현대 언어학적 어원론 (단순 군집 의미 halizō 파생).", conf: "중간-높음", cat: "VERB" }
+        ];
+
+        // Global Chart References
+        let glossaryChart, textualChart, compositionChartObj, kingdomChart;
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById('btn-' + tabId).classList.add('active');
+
+            // Re-render charts on display
+            if (tabId === 'tab-greek' && !glossaryChart) initGlossaryChart();
+            if (tabId === 'tab-textual' && !textualChart) initTextualChart();
+            if (tabId === 'tab-composition' && !compositionChartObj) initCompositionChart();
+            if (tabId === 'tab-theology' && !kingdomChart) initKingdomChart();
+        }
+
+        // Render Glossary
+        function renderGlossary(items) {
+            const container = document.getElementById('glossary-list');
+            container.innerHTML = '';
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "p-3 bg-stone-50 hover:bg-amber-100/40 rounded-lg border border-stone-200 transition-all text-xs";
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-1">
+                        <div>
+                            <span class="font-bold text-amber-900 text-sm greek-text">${item.greek}</span>
+                            <span class="text-stone-500 text-[11px] ml-1">(${item.translit})</span>
+                        </div>
+                        <span class="px-2 py-0.5 bg-stone-200 text-stone-700 rounded text-[10px] font-semibold">${item.pos}</span>
+                    </div>
+                    <div class="text-amber-800 font-semibold mb-1">${item.meaning} <span class="text-stone-400 font-normal">| ${item.morph}</span></div>
+                    <p class="text-stone-600 text-[11px] leading-relaxed">${item.desc}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterGlossary() {
+            const query = document.getElementById('glossary-search').value.toLowerCase();
+            const pos = document.getElementById('glossary-pos-filter').value;
+
+            const filtered = glossaryData.filter(item => {
+                const matchesQuery = item.greek.toLowerCase().includes(query) || 
+                                     item.translit.toLowerCase().includes(query) || 
+                                     item.meaning.toLowerCase().includes(query) ||
+                                     item.desc.toLowerCase().includes(query);
+                const matchesPos = (pos === 'ALL') || (item.pos === pos);
+                return matchesQuery && matchesPos;
+            });
+            renderGlossary(filtered);
+        }
+
+        function showSyntaxDetail(verse) {
+            const box = document.getElementById('syntax-detail-box');
+            const title = document.getElementById('syntax-detail-title');
+            const text = document.getElementById('syntax-detail-text');
+
+            title.innerHTML = `사도행전 1:${verse} 상세 주해`;
+            text.innerHTML = syntaxDetails[verse];
+            box.classList.remove('hidden');
+        }
+
+        // Render Textual Criticism Apparatus
+        function renderApparatus() {
+            const tbody = document.getElementById('apparatus-tbody');
+            tbody.innerHTML = '';
+            apparatusData.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-amber-50/50";
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-amber-900">${item.verse}</td>
+                    <td class="p-2 font-semibold text-stone-900 greek-text">${item.variant}</td>
+                    <td class="p-2 text-stone-600">${item.ext}</td>
+                    <td class="p-2 text-stone-700">${item.notes} <span class="font-bold text-amber-800">(신뢰도: ${item.confidence}%)</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Render Composition Models Switcher
+        function renderCompositionModels() {
+            const container = document.getElementById('model-buttons');
+            container.innerHTML = '';
+            compositionModels.forEach((m, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-2.5 rounded-lg border text-xs font-semibold transition-all ${idx === 2 ? 'bg-amber-100 border-amber-400 text-amber-950' : 'bg-stone-50 border-stone-200 text-stone-800 hover:bg-stone-100'}`;
+                btn.onclick = () => selectCompositionModel(m, btn);
+                btn.innerHTML = `<span class="font-bold text-amber-800">[${m.id}]</span> ${m.name}`;
+                container.appendChild(btn);
+            });
+            // Default select Model C
+            selectCompositionModel(compositionModels[2]);
+        }
+
+        function selectCompositionModel(m, btnElement) {
+            if (btnElement) {
+                document.querySelectorAll('#model-buttons button').forEach(b => {
+                    b.className = "w-full text-left p-2.5 rounded-lg border text-xs font-semibold transition-all bg-stone-50 border-stone-200 text-stone-800 hover:bg-stone-100";
+                });
+                btnElement.className = "w-full text-left p-2.5 rounded-lg border text-xs font-semibold transition-all bg-amber-100 border-amber-400 text-amber-950";
+            }
+            document.getElementById('model-detail-title').innerText = m.name;
+            document.getElementById('model-detail-body').innerHTML = `
+                <p><b>모델 핵심 설명:</b> ${m.desc}</p>
+                <p class="text-emerald-800"><b>주요 긍정 논거 (Evidence):</b> ${m.evidence}</p>
+                <p class="text-rose-800"><b>비판 및 한계 (Critique):</b> ${m.critique}</p>
+            `;
+            document.getElementById('model-detail-footer').innerText = `학학적 평가 상태: ${m.status}`;
+        }
+
+        // Render Kingdom Nodes
+        function renderKingdomNodes() {
+            const container = document.getElementById('kingdom-nodes');
+            container.innerHTML = '';
+            kingdomNodes.forEach((node, idx) => {
+                const div = document.createElement('div');
+                div.className = "p-2 bg-stone-50 hover:bg-amber-100/60 rounded border border-stone-200 cursor-pointer transition-all flex flex-col justify-between";
+                div.onclick = () => {
+                    document.getElementById('kingdom-node-detail').innerHTML = `
+                        <span class="font-bold text-amber-900 text-sm">사도행전 ${node.ch} - ${node.title} (${node.context})</span>
+                        <p class="mt-1 leading-relaxed">${node.desc}</p>
+                    `;
+                };
+                div.innerHTML = `
+                    <div class="font-bold text-amber-900">${node.ch}</div>
+                    <div class="text-[10px] text-stone-700 truncate">${node.title}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Render Claims Table
+        function renderClaims(items) {
+            const tbody = document.getElementById('claim-tbody');
+            tbody.innerHTML = '';
+            items.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-amber-50/50";
+                tr.innerHTML = `
+                    <td class="p-2.5 font-bold text-stone-900">${item.q}</td>
+                    <td class="p-2.5 font-bold text-amber-900">${item.claim}</td>
+                    <td class="p-2.5 text-stone-700">${item.ev}</td>
+                    <td class="p-2.5 text-stone-500">${item.counter}</td>
+                    <td class="p-2.5 font-semibold text-emerald-800">${item.conf}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterClaims() {
+            const cat = document.getElementById('claim-filter').value;
+            if (cat === 'ALL') {
+                renderClaims(claimMatrixData);
+            } else {
+                renderClaims(claimMatrixData.filter(c => c.cat === cat));
+            }
+        }
+
+        // Chart Initializations
+        function initGlossaryChart() {
+            const ctx = document.getElementById('glossaryPosChart').getContext('2d');
+            const posCounts = { '명사': 7, '동사': 10, '형용사': 1, '전치사': 2 };
+
+            glossaryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(posCounts),
+                    datasets: [{
+                        data: Object.values(posCounts),
+                        backgroundColor: ['#B45309', '#1E293B', '#D97706', '#78350F'],
+                        borderWidth: 2,
+                        borderColor: '#FDFBF7'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function initTextualChart() {
+            const ctx = document.getElementById('textualConfidenceChart').getContext('2d');
+            textualChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['1:2 (복음전파 확장)', '1:2 (성령 수식)', '1:4 (synaulizomenos)', '1:5 (어순 변이)'],
+                    datasets: [{
+                        label: 'NA28 독법 신뢰도 (%)',
+                        data: [95, 88, 92, 98],
+                        backgroundColor: '#B45309',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { min: 70, max: 100, ticks: { font: { size: 10 } } },
+                        x: { ticks: { font: { size: 9 } } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function initCompositionChart() {
+            const ctx = document.getElementById('compositionChart').getContext('2d');
+            compositionChartObj = new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Model A (단일)', 'Model B (후속)', 'Model C (시차)', 'Model D (분리)', 'Model E (이중)'],
+                    datasets: [{
+                        data: [75, 80, 95, 55, 35],
+                        backgroundColor: [
+                            'rgba(180, 83, 9, 0.7)',
+                            'rgba(30, 41, 59, 0.7)',
+                            'rgba(217, 119, 6, 0.8)',
+                            'rgba(120, 53, 15, 0.6)',
+                            'rgba(153, 27, 27, 0.6)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        r: { ticks: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function initKingdomChart() {
+            const ctx = document.getElementById('kingdomProgressionChart').getContext('2d');
+            kingdomChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['행 1:3', '행 1:6', '행 8:12', '행 14:22', '행 19:8', '행 20:25', '행 28:31'],
+                    datasets: [{
+                        label: '우주적 선교 지평 확장도',
+                        data: [1, 2, 4, 5, 6, 6.5, 8],
+                        borderColor: '#B45309',
+                        backgroundColor: 'rgba(180, 83, 9, 0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: '#1E293B'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            display: false
+                        },
+                        x: {
+                            ticks: { font: { size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '선교 확장 단계: ' + kingdomNodes[context.dataIndex].title;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // On DOM Loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            renderGlossary(glossaryData);
+            renderApparatus();
+            renderCompositionModels();
+            renderKingdomNodes();
+            renderClaims(claimMatrixData);
+        });
+    </script>
+</body>
+</html>
