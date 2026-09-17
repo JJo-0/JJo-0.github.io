@@ -29,7 +29,7 @@ async function pointer(sessionId, selector, mobile) {
 }
 
 async function assertDestination(sessionId, number) {
-  await waitExpression(cdp, sessionId, `location.hash === '#news-ref-${number}'`, `native fragment ${number}`);
+  await waitExpression(cdp, sessionId, `location.pathname.startsWith('/posts/') && location.hash === '#news-ref-${number}'`, `native fragment ${number}`);
   await waitExpression(cdp, sessionId, `(() => {
     const target = document.getElementById('news-ref-${number}');
     const r = target?.getBoundingClientRect();
@@ -107,9 +107,10 @@ try {
   console.error('news-citation-browser: FAIL', error?.stack || error);
   process.exitCode = 1;
 } finally {
-  clearTimeout(hardStop);
   cdp?.close();
   await stopChild(chrome?.child, 'SIGKILL');
   await stopChild(preview, 'SIGTERM');
   removeProfile(chrome?.profile);
+  clearTimeout(hardStop);
+  process.exit(process.exitCode || 0);
 }
