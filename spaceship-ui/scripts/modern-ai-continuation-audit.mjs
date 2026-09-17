@@ -13,6 +13,12 @@ for (const [part, figures] of Object.entries(expected)) {
   const source = fs.readFileSync(path.join(root, `site/content/posts/modern-artificial-intelligence-${part}.mdx`), 'utf8');
   assert.deepEqual([...source.matchAll(/<PaperReadingFigure figure="([^"]+)"/g)].map(m => m[1]), figures);
   assert(!/<(?:script|style)\b/i.test(source));
+  if (part === '7') {
+    // These are prose characters, not JavaScript expressions or JSX tags.
+    // Entity escaping preserves the displayed notation in actual MDX builds.
+    assert(source.includes('q(x_&#123;t−1&#125;|xt,x0)'));
+    assert(source.includes('reverse dt&lt;0'));
+  }
   const ledger = JSON.parse(fs.readFileSync(path.join(root, `src/data/modern-ai-part${part}/formula-ledger.json`), 'utf8'));
   for (const f of ledger.formulas) {
     assert.equal(source.split(`modernAiFormula(${part}, '${f.id}')`).length - 1, 1);
