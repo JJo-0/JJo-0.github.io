@@ -44,7 +44,7 @@ async function pointer(selector, mobile) {
     throw new Error('Citation geometry did not stabilize before trusted input');
   })()`);
   lastPointer = {selector,mobile,...point};
-  assert.equal(point.resolvedPath.replace(/\/+$/, ''), point.currentPath.replace(/\/+$/, ''), 'Native fragment must resolve to the same article');
+  assert.equal(point.resolvedPath, point.currentPath, 'Native fragment must resolve to the exact same article path');
   assert(point.ready && point.stableSamples >= 3, `Citation is not stably hit-testable: ${selector}`);
   if (mobile) {
     await cdp.send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[{x:point.x,y:point.y}]}, sessionId);
@@ -71,7 +71,9 @@ try {
   preview = await startPreview();
   chrome = await startChrome();
   cdp = await Cdp.connect(chrome.url);
-  ({sessionId} = await attach(cdp));
+  // Native citations must use the real document URL, aligned with its <base>.
+  // Keep the default URL normalization unchanged for the existing core matrix.
+  ({sessionId} = await attach(cdp, {normalizeHistoryPath:false}));
   for (const width of [390, 1440]) {
     activeWidth = width;
     await viewport(cdp, sessionId, {width,height:1000,mobile:width===390,touch:width===390,reduced:true});
