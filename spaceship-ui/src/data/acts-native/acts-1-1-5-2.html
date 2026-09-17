@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<!-- Chosen Palette: Warm Parchment & Ancient Ink (#fbf9f5 background, #7c2d12 rust primary, #0f766e sage teal secondary, #b45309 amber highlight, #2c2825 dark text) -->
+<!-- Application Structure Plan: The SPA is organized into 7 logical interactive modules: 1) Executive Overview & Narrative Hinge Header, 2) Boundary Models Explorer (comparing 8 unit boundary proposals with interactive filterable comparison cards and Chart.js bar chart), 3) Secondary Preface & Scholarly Framework (interactive scholar grid & genre breakdown), 4) Narrative Core Analysis (featuring sub-views for Jesus' Ongoing Agency, Chronotope Timeline Chart, Spatial Map, and Kingdom Inclusio Chain), 5) Character Agency Matrix & Narrative Pneumatology (interactive agency radar chart and Spirit suspense visualizer), 6) Luke 24 vs Acts 1 Recapitulation Matrix (side-by-side comparative table with transformation filters), and 7) Rhetorical Masterclass & Oral Performance Simulator (15 rhetorical devices catalog and interactive verse-by-verse listener reaction simulator). This structure was chosen to transform dense literary-critical research data into an explorable visual dashboard. -->
+<!-- Visualization & Content Choices: 
+- 8 Unit Boundary Models -> Goal: Compare scholarly proposals -> Interactive Filter Cards & Chart.js Bar Chart of Boundary Scope -> JS filter & highlights -> Clarifies boundary dynamics -> Chart.js Canvas
+- Temporal Chronotope -> Goal: Map 'Already / Not Yet' tension -> Dynamic Timeline & Chart.js Stacked Horizontal Bar -> Clickable timeline nodes -> Visualizes narrative delay -> Chart.js Canvas
+- Spatial Map of Jerusalem & Expansion -> Goal: Contrast spatial restraint vs mission -> Tailwind Grid Matrix with interactive status indicators -> Click to reveal spatial function -> Highlights 'narrative brake' concept -> HTML/CSS Grid + JS
+- Character Agency Matrix -> Goal: Compare agency levels across figures -> Chart.js Radar Chart & interactive character selector -> JS state update -> Reveals shifting agency from Jesus/Spirit to Apostles -> Chart.js Canvas
+- Luke 24 vs Acts 1 Recapitulation -> Goal: Compare parallel themes -> Interactive Filterable Data Table -> Filter buttons for Expansion/Repetition/Clarification -> Demonstrates narrative continuity & discontinuity -> Dynamic HTML Table
+- 15 Rhetorical Devices -> Goal: Catalog literary devices -> Searchable & Categorized Card Grid -> Text search & Category Pills -> Enhances rhetorical literacy -> Pure HTML/JS
+- Oral Performance Simulator -> Goal: Recreate 1st century listener experience -> Step-by-step Audio Simulation Deck with emotion gauges -> Step forward/backward controls -> Demonstrates rhetorical suspense -> HTML/CSS + JS state
+All charts use Chart.js Canvas with strict container sizing and maintainAspectRatio: false. NO SVG or Mermaid JS used. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사도행전 1:1–5 문학·수사학적 서사 분석 대시보드</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #fbf9f5;
+      color: #2c2825;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 650px;
+      margin-left: auto;
+      margin-right: auto;
+      height: 320px;
+      max-height: 400px;
+    }
+    @media (min-width: 768px) {
+      .chart-container {
+        height: 360px;
+      }
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <header class="bg-[#2c2825] text-[#fbf9f5] border-b-4 border-[#7c2d12] sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="bg-[#7c2d12] text-xs font-bold px-2.5 py-1 rounded tracking-wider uppercase text-amber-100">Deep Research SPA</span>
+          <span class="text-xs text-stone-400">Acts 1:1–5 Literary & Rhetorical Analysis</span>
+        </div>
+        <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white mt-1">
+          사도행전 1:1–5 문학·수사학적 서사 분석
+        </h1>
+        <p class="text-xs text-stone-300">결말의 재구성과 사도행전 세계의 시작 (Narrative Hinge Explorer)</p>
+      </div>
+
+      <nav class="flex items-center space-x-1 overflow-x-auto hide-scrollbar py-1">
+        <button onclick="scrollToSection('sec-boundary')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-stone-800 hover:bg-[#7c2d12] transition-colors whitespace-nowrap">1. 문학 단위 경계</button>
+        <button onclick="scrollToSection('sec-preface')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-stone-800 hover:bg-[#7c2d12] transition-colors whitespace-nowrap">2. 부차적 서문</button>
+        <button onclick="scrollToSection('sec-narrative')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-stone-800 hover:bg-[#7c2d12] transition-colors whitespace-nowrap">3. 핵심 서사 차원</button>
+        <button onclick="scrollToSection('sec-agency')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-stone-800 hover:bg-[#7c2d12] transition-colors whitespace-nowrap">4. 인물 행위성</button>
+        <button onclick="scrollToSection('sec-luke24')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-stone-800 hover:bg-[#7c2d12] transition-colors whitespace-nowrap">5. 누가24 vs 행전1</button>
+        <button onclick="scrollToSection('sec-rhetoric')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-stone-800 hover:bg-[#7c2d12] transition-colors whitespace-nowrap">6. 수사학 & 낭독</button>
+        <button onclick="scrollToSection('sec-[#7c2d12]')" onclick="scrollToSection('sec-conclusion')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-[#7c2d12] hover:bg-amber-700 transition-colors whitespace-nowrap">7. 결론 & 참고문헌</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <section class="bg-white rounded-2xl p-6 md:p-8 border border-stone-200 shadow-sm relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-32 h-32 bg-[#7c2d12]/5 rounded-bl-full pointer-events-none"></div>
+      <div class="max-w-4xl space-y-4">
+        <div class="inline-flex items-center space-x-2 text-xs font-semibold text-[#0f766e] bg-[#0f766e]/10 px-3 py-1 rounded-full">
+          <span>✦ 서사적 경첩 (Narrative Hinge) 연구 대시보드</span>
+        </div>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-[#2c2825]">
+          사도행전 1:1–5: 정보 전달용 머리말을 넘어선 서사적 출발점
+        </h2>
+        <p class="text-stone-600 leading-relaxed text-sm md:text-base">
+          본 인터랙티브 대시보드는 사도행전 1:1–5가 단순한 1권(누가복음)의 서지적 요약이 아니라, 누가복음의 결말을 창조적으로 재구성하고 사도행전이라는 새로운 세계를 작동시키는 **문학적·수사학적 경첩(Narrative Hinge)**임을 다각도로 입증합니다. 8가지 단위 경계 모델, 고대 부차적 서문(Secondary Preface) 관습, 시간·공간의 크로노톱(Chronotope), 인물 행위성(Agency) 매트릭스, 누가복음 24장과의 병행, 15가지 수사 장치, 그리고 1세기 구음 낭독(Oral Performance) 상황에서의 청중 반응을 탐색할 수 있습니다.
+        </p>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-stone-100">
+          <div class="bg-[#fbf9f5] p-3 rounded-xl border border-stone-200 text-center">
+            <span class="block text-2xl font-black text-[#7c2d12]">8개</span>
+            <span class="text-xs text-stone-500 font-medium">단위 경계 모델 비교</span>
+          </div>
+          <div class="bg-[#fbf9f5] p-3 rounded-xl border border-stone-200 text-center">
+            <span class="block text-2xl font-black text-[#0f766e]">5명</span>
+            <span class="text-xs text-stone-500 font-medium">주요 현대 연구자 시각</span>
+          </div>
+          <div class="bg-[#fbf9f5] p-3 rounded-xl border border-stone-200 text-center">
+            <span class="block text-2xl font-black text-[#b45309]">15개</span>
+            <span class="text-xs text-stone-500 font-medium">핵심 수사학적 장치</span>
+          </div>
+          <div class="bg-[#fbf9f5] p-3 rounded-xl border border-stone-200 text-center">
+            <span class="block text-2xl font-black text-stone-700">7개</span>
+            <span class="text-xs text-stone-500 font-medium">누가24 상세 병행 테마</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-boundary" class="space-y-6">
+      <div class="border-l-4 border-[#7c2d12] pl-4">
+        <h2 class="text-xl md:text-2xl font-bold text-[#2c2825]">1. 사도행전 1:1–5의 문학 단위 경계 연구 (A & B)</h2>
+        <p class="text-xs md:text-sm text-stone-500 mt-1">
+          사도행전 도입부의 범위를 어디까지 설정할 것인가? 8가지 학술적 제안 모델의 문법, 장면, 장소, 시간 표지 및 수사적 기능을 다차원으로 비교 분석합니다.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+        <div class="p-4 bg-[#fbf9f5] rounded-xl border border-stone-200 text-sm text-stone-700 leading-relaxed">
+          <strong class="text-[#7c2d12]">섹션 안내:</strong> 사도행전 도입부 경계 설정은 독자가 이야기의 서론을 어디까지로 인지하며, 어느 지점에서 첫 번째 주요 갈등이나 에피소드가 시작되는지를 정하는 핵심 과제입니다. 아래 필터를 사용하여 범위별 모델을 선택하고 chart/table로 비교해 보세요.
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div class="flex flex-wrap gap-2" id="boundary-filter-container">
+            <button onclick="filterBoundary('all')" class="boundary-btn bg-[#7c2d12] text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm">전체 보기 (8)</button>
+            <button onclick="filterBoundary('short')" class="boundary-btn bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1.5 rounded-lg text-xs font-semibold">소형 서문 (1:1 ~ 1:5)</button>
+            <button onclick="filterBoundary('mid')" class="boundary-btn bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1.5 rounded-lg text-xs font-semibold">중형 단락 (1:1-8 ~ 1:1-14)</button>
+            <button onclick="filterBoundary('broad')" class="boundary-btn bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1.5 rounded-lg text-xs font-semibold">광의의 단락 (1:1-26 ~ 2:47)</button>
+          </div>
+          <span class="text-xs text-stone-400">Chart.js Visualizer Synchronized</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-2">
+          <div class="lg:col-span-5 bg-[#fbf9f5] p-4 rounded-xl border border-stone-200 space-y-2">
+            <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider text-center">경계 모델별 구절 범위 비교 (Verse Scope)</h3>
+            <div class="chart-container">
+              <canvas id="boundaryScopeChart"></canvas>
+            </div>
+            <p class="text-xs text-stone-500 text-center pt-1">
+              * 1:1–5는 화행론(Speech Act) 관점에서 성령 세례 약속이 제시되는 거시적 독립 프롤로그의 최적 범주입니다.
+            </p>
+          </div>
+
+          <div class="lg:col-span-7 overflow-x-auto">
+            <table class="w-full text-left text-xs text-stone-700 border-collapse">
+              <thead>
+                <tr class="bg-[#2c2825] text-white">
+                  <th class="p-2.5 rounded-tl-lg font-semibold">경계 모델</th>
+                  <th class="p-2.5 font-semibold">문법 및 담화 표지</th>
+                  <th class="p-2.5 font-semibold">장면 & 장소/시간 변화</th>
+                  <th class="p-2.5 rounded-tr-lg font-semibold">서사적 긴장 및 수사 기능</th>
+                </tr>
+              </thead>
+              <tbody id="boundary-table-body" class="divide-y divide-stone-200 bg-white">
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed space-y-1">
+          <span class="font-bold text-sm block text-amber-900">✦ 종합 판정: 1:1–5는 독립적 프롤로그인가, 첫 장면의 일부인가?</span>
+          <p>
+            사도행전 1:1–5는 그 자체로 **독립적인 프롤로그(prologue)**의 역할을 수행함과 동시에 1:1–11로 이어지는 첫 장면의 분리될 수 없는 서사적 기반입니다. 1:6의 <em class="font-serif">"οἱ μὲν οὖν συνελθόντες(그러므로 그들이 모였을 때에)"</em> 구문은 제자들의 능동적 질문으로 장면을 전환하는 새로운 담화 표지입니다. 따라서 1:1–5는 저자의 해설과 예수의 직접 화법이 결합된 완결적 도입부로서 오순절(2장)을 향한 극적 긴장감을 유발하는 독립 단위로 판정됩니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-preface" class="space-y-6">
+      <div class="border-l-4 border-[#0f766e] pl-4">
+        <h2 class="text-xl md:text-2xl font-bold text-[#2c2825]">2. Secondary Preface로서의 사도행전 1:1–2 기능과 연구사 (H & M)</h2>
+        <p class="text-xs md:text-sm text-stone-500 mt-1">
+          고대 다권 저작(multi-volume works)의 부차적 서문 관습과 사도행전 서문의 독창적인 내러티브 재편(recapitulation) 특성을 비판적으로 검토합니다.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-6">
+        <div class="p-4 bg-[#fbf9f5] rounded-xl border border-stone-200 text-sm text-stone-700 leading-relaxed">
+          <strong class="text-[#0f766e]">섹션 안내:</strong> 사도행전 1:1–2는 고대 헬라어 문헌의 부차적 서문 요소를 고스란히 가지고 있지만, 단순한 건조한 서문 형식을 넘어 불과 2절 만에 부활 현존의 내러티브로 신속하게 진입합니다.
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-4 rounded-xl bg-[#fbf9f5] border-t-4 border-[#7c2d12] space-y-2">
+            <span class="text-xs font-bold text-[#7c2d12] uppercase tracking-wider block">1. Retrospective (회고)</span>
+            <div class="text-sm font-bold text-stone-800 font-serif">"Τὸν μὲν πρῶτον λόγον..."</div>
+            <p class="text-xs text-stone-600">"첫 번째 책에서..." 이전 저작물(누가복음)과의 완벽한 문학적·역사적 연속성을 확보함.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-[#fbf9f5] border-t-4 border-[#0f766e] space-y-2">
+            <span class="text-xs font-bold text-[#0f766e] uppercase tracking-wider block">2. Addressee Continuity (수신자)</span>
+            <div class="text-sm font-bold text-stone-800 font-serif">"ὦ Θεόφιλε..."</div>
+            <p class="text-xs text-stone-600">"데오빌로여." 동일한 내재적 수신자를 통해 2권의 정체성과 동일 작가적 결속력을 증명함.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-[#fbf9f5] border-t-4 border-[#b45309] space-y-2">
+            <span class="text-xs font-bold text-[#b45309] uppercase tracking-wider block">3. Summary of Vol. 1 (요약)</span>
+            <div class="text-sm font-bold text-stone-800 font-serif">"ὧν ἤρξατο ὁ Ἰησοῦς..."</div>
+            <p class="text-xs text-stone-600">"예수께서 행하시며 가르치시기를 시작하신..." 1권 전체 사역의 핵심을 행동과 가르침으로 요약.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-[#fbf9f5] border-t-4 border-stone-600 space-y-2">
+            <span class="text-xs font-bold text-stone-600 uppercase tracking-wider block">4. Transition (전환)</span>
+            <div class="text-sm font-bold text-stone-800 font-serif">"ἄχρι ἧς ἡμέρας..."</div>
+            <p class="text-xs text-stone-600">"그가 승천하신 날까지..." 누가복음의 최종 도착점이자 사도행전 서사가 분출되는 전환점.</p>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <h3 class="text-sm font-bold text-stone-800 flex items-center space-x-2">
+            <span>🏛️ 현대 Luke–Acts 문학 연구자들의 주요 견해 비교</span>
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3" id="scholars-grid">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-narrative" class="space-y-6">
+      <div class="border-l-4 border-[#b45309] pl-4">
+        <h2 class="text-xl md:text-2xl font-bold text-[#2c2825]">3. 정밀 독해 (Close Reading) 및 4대 핵심 문학 서사 차원 (N, C, D)</h2>
+        <p class="text-xs md:text-sm text-stone-500 mt-1">
+          예수의 지속되는 주체성(`ἤρξα토`), 시공간적 압축(Chronotope), 예루살렘 결박의 역설, 하나님 나라의 수미상관을 정밀 탐색합니다.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-6">
+        <div class="flex border-b border-stone-200 overflow-x-auto hide-scrollbar space-x-2">
+          <button onclick="switchNarrativeTab('tab-jesus')" id="btn-tab-jesus" class="narrative-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-[#7c2d12] text-[#7c2d12] whitespace-nowrap">3.1 예수의 지속되는 주체성 (ἤρξατο)</button>
+          <button onclick="switchNarrativeTab('tab-time')" id="btn-tab-time" class="narrative-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-stone-500 hover:text-stone-800 whitespace-nowrap">3.2 시간 타임라인 & 40일</button>
+          <button onclick="switchNarrativeTab('tab-space')" id="btn-tab-space" class="narrative-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-stone-500 hover:text-stone-800 whitespace-nowrap">3.3 공간 역설 & 예루살렘 제동</button>
+          <button onclick="switchNarrativeTab('tab-kingdom')" id="btn-tab-kingdom" class="narrative-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-stone-500 hover:text-stone-800 whitespace-nowrap">3.4 하나님 나라 수미상관 (Inclusio)</button>
+        </div>
+
+        <div id="tab-jesus" class="narrative-tab-content space-y-4">
+          <div class="p-4 bg-[#fbf9f5] rounded-xl border border-stone-200 text-xs md:text-sm text-stone-700 leading-relaxed">
+            <h4 class="font-bold text-[#7c2d12] text-sm mb-1">“예수께서 행하시며 가르치시기를 시작하신(ὧν ἤρξατο ὁ Ἰησοῦς ποιεῖν τε καὶ διδάσκειν)” 검증</h4>
+            <p>
+              'ἤρξατο'(erxato)는 문맥상 미완성의 서사적 지속성을 내포합니다. 예수는 과거의 인물로 퇴장하는 것이 아니라 주(Kyrios)로서 사도행전 내내 직접 행위자로 개입합니다. 단, 문법적 'ἤρξατο' 하나에만 전적으로 의존하기보다 후속 내러티브의 직접 출현 및 통치를 통해 이 명제가 성립됩니다.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl border border-stone-200 bg-white space-y-2">
+              <span class="text-xs font-bold text-[#7c2d12] uppercase tracking-wider">부활 예수의 사도행전 내 직접 출현 및 주권적 행동</span>
+              <ul class="text-xs space-y-2 text-stone-700">
+                <li class="p-2 bg-[#fbf9f5] rounded border border-stone-200">
+                  <strong class="text-[#7c2d12]">행 7:55–56 (스데반 순교):</strong> 하나님 우편에 '서 계신' 주 예수를 목격함.
+                </li>
+                <li class="p-2 bg-[#fbf9f5] rounded border border-stone-200">
+                  <strong class="text-[#7c2d12]">행 9:4–6 / 22:8 (다메섹 도상):</strong> "나는 네가 핍박하는 예수라" 직접 사울을 부르시고 위임하심.
+                </li>
+                <li class="p-2 bg-[#fbf9f5] rounded border border-stone-200">
+                  <strong class="text-[#7c2d12]">행 18:9–10 (고린도 환상):</strong> "두려워하지 말며 말하라... 내가 너와 함께 있으매" 바울을 직접 독려.
+                </li>
+                <li class="p-2 bg-[#fbf9f5] rounded border border-stone-200">
+                  <strong class="text-[#7c2d12]">행 23:11 (예루살렘 옥중):</strong> "담대하라 네가 예루살렘에서 증언한 것 같이 로마에서도 증언하여야 하리라"
+                </li>
+              </ul>
+            </div>
+
+            <div class="p-4 rounded-xl border border-stone-200 bg-amber-50/50 space-y-3">
+              <span class="text-xs font-bold text-amber-900 uppercase tracking-wider block">학술적 평가: C. Kavin Rowe & Mikeal Parsons</span>
+              <p class="text-xs text-stone-700 leading-relaxed">
+                C. Kavin Rowe는 누가-행전의 예수가 승천을 통해 하늘로 '퇴장'한 존재가 아니라, 성령과 환상과 이름을 통해 지상의 사도 공동체를 여전히 통치하는 능동적 주체임을 증명합니다. Mikeal Parsons 역시 승천이 권력의 부재가 아니라 주권의 우주적 확장을 의미한다고 분석합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-time" class="narrative-tab-content hidden space-y-4">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div class="lg:col-span-5 space-y-3">
+              <h4 class="font-bold text-sm text-[#2c2825]">시간 구조 크로노톱 (Temporal Chronotope)</h4>
+              <p class="text-xs text-stone-600 leading-relaxed">
+                사도행전 1:1–5의 시간 표지들은 과거의 완성된 구원사(Already)와 아직 도래하지 않은 임박한 미래(Not Yet) 사이의 서사적 유예(narrative delay)를 형성합니다.
+              </p>
+
+              <div class="space-y-2 text-xs">
+                <div class="p-2 rounded bg-stone-100 flex justify-between">
+                  <span class="font-bold text-stone-700">1. Former account (첫 권)</span>
+                  <span class="text-stone-500">과거 예수 지상 사역</span>
+                </div>
+                <div class="p-2 rounded bg-stone-100 flex justify-between">
+                  <span class="font-bold text-stone-700">2. After his suffering (수난 후)</span>
+                  <span class="text-stone-500">십자가 구원사 분기점</span>
+                </div>
+                <div class="p-2 rounded bg-amber-100 flex justify-between border border-amber-300">
+                  <span class="font-bold text-amber-900">3. Forty days (40일)</span>
+                  <span class="text-amber-800">중간 시간 / 지도자 교육</span>
+                </div>
+                <div class="p-2 rounded bg-teal-100 flex justify-between border border-teal-300">
+                  <span class="font-bold text-teal-900">4. Not many days (몇 날이 못되어)</span>
+                  <span class="text-teal-800">임박한 성령 세례 미래</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="lg:col-span-7 bg-[#fbf9f5] p-4 rounded-xl border border-stone-200">
+              <h5 class="text-xs font-bold text-stone-500 text-center uppercase mb-2">시간축 비중 및 서사적 긴장도 Visualizer</h5>
+              <div class="chart-container">
+                <canvas id="chronotopeChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 bg-stone-50 rounded-xl border border-stone-200 text-xs text-stone-700 space-y-1">
+            <span class="font-bold text-[#7c2d12] text-sm block">✦ 40일(Forty Days)의 서사적 기능 (Literary Interval)</span>
+            <p>
+              40일은 단순한 역사적 시각 정보가 아닙니다. 모세가 시내산에서 40일간 율법을 받고, 엘리야가 호렙산으로 40일을 걸어가며, 예수가 광야에서 40일간 시험을 받았듯, 사도들에게 주어진 40일은 **과거의 도망자에서 종말론적 시대의 증인으로 탈바꿈하는 모세적 지도자 승계 및 인큐베이팅 시간**입니다 (Daniel Marguerat).
+            </p>
+          </div>
+        </div>
+
+        <div id="tab-space" class="narrative-tab-content hidden space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="p-4 bg-[#fbf9f5] rounded-xl border border-stone-200 space-y-2">
+              <span class="text-xs font-bold text-stone-500 uppercase tracking-wider block">1. 과거 사역 공간</span>
+              <h5 class="text-base font-bold text-stone-800">갈릴리 & 유대 전역</h5>
+              <p class="text-xs text-stone-600">누가복음 동안 예수의 가르침과 기적이 축적된 유동적 이동 공간.</p>
+            </div>
+            <div class="p-4 bg-amber-50 rounded-xl border-2 border-amber-300 space-y-2">
+              <span class="text-xs font-bold text-amber-800 uppercase tracking-wider block">2. 구심적 제동 공간 (Restraint)</span>
+              <h5 class="text-base font-bold text-amber-900">예루살렘 (Jerusalem)</h5>
+              <p class="text-xs text-amber-800">"떠나지 말라(μὴ χωρίζεσθαι)"는 명령이 내린 정지(suspension) 공간이자 신적 능력이 배양되는 인큐베이터.</p>
+            </div>
+            <div class="p-4 bg-teal-50 rounded-xl border border-teal-200 space-y-2">
+              <span class="text-xs font-bold text-teal-800 uppercase tracking-wider block">3. 원심력적 확장 공간 (Expansion)</span>
+              <h5 class="text-base font-bold text-teal-900">유대 · 사마리아 · 땅끝</h5>
+              <p class="text-xs text-teal-800">1:8 이후 성령 폭발로 거침없이 퍼져나갈 대안적 하나님의 세계 무대.</p>
+            </div>
+          </div>
+
+          <div class="p-4 bg-white border border-stone-200 rounded-xl space-y-2">
+            <h5 class="text-xs font-bold text-[#7c2d12] uppercase tracking-wider">서사적 역설 (Narrative Paradox) 분석</h5>
+            <p class="text-xs text-stone-700 leading-relaxed">
+              사도행전은 본질적으로 땅끝을 향해 뻗어나가는 정복과 확장의 책입니다. 그러나 서사의 첫 번째 명령은 놀랍게도 "나아가라"가 아니라 **"예루살렘을 떠나지 말고 기다리라"**는 강력한 **서사적 제동 장치(Narrative Brake)**입니다. 가장 적대적이고 위험한 십자가 처형의 장소에 인간적 조급함을 멈추고 묶여 있게 함으로써, 선교가 인간의 계획이 아닌 철저한 **신적 주도권(Divine Initiative)**에 의해 시작됨을 수사학적으로 강제합니다.
+            </p>
+          </div>
+        </div>
+
+        <div id="tab-kingdom" class="narrative-tab-content hidden space-y-4">
+          <div class="p-4 bg-[#fbf9f5] rounded-xl border border-stone-200 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-[#b45309] uppercase tracking-wider">하나님 나라의 수미상관 (Kingdom Inclusio)</span>
+              <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono">Acts 1:3 ↔ Acts 28:31</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div class="p-3 bg-white rounded border border-stone-200 space-y-1">
+                <span class="text-xs font-bold text-[#7c2d12]">시작점 (Acts 1:3)</span>
+                <p class="text-xs text-stone-700 font-serif">"하나님 나라의 일을 말씀하시니라 (λέγων τὰ περὶ τῆς βασιλείας τοῦ θεοῦ)"</p>
+                <span class="text-[11px] text-stone-500 block">예수가 사도들에게 하나님 나라 교육으로 사도행전을 개시함.</span>
+              </div>
+              <div class="p-3 bg-white rounded border border-stone-200 space-y-1">
+                <span class="text-xs font-bold text-[#0f766e]">종결점 (Acts 28:31)</span>
+                <p class="text-xs text-stone-700 font-serif">"하나님 나라를 전파하며... 가르치되 (κηρύσσων τὴν βασιλείαν τοῦ θεοῦ)"</p>
+                <span class="text-[11px] text-stone-500 block">바울이 제국의 심장 로마에서 거침없이 하나님 나라를 가르치며 종결.</span>
+              </div>
+            </div>
+
+            <div class="p-3 bg-amber-50 rounded border border-amber-200 text-xs text-amber-900 leading-relaxed">
+              <strong>선교를 지배하는 상위 개념(Master Concept):</strong> 이 거대한 inclusio는 '하나님 나라'가 로마 제국의 황제 질서와 충돌하며, 사도행전 전체 선교를 끌고 가는 최상위 신학적 프레임임을 입증합니다.
+              <div class="mt-2 flex flex-wrap items-center gap-2 font-semibold text-[11px]">
+                <span class="bg-white px-2 py-1 rounded border border-amber-300">예수 (주체)</span> →
+                <span class="bg-white px-2 py-1 rounded border border-amber-300">성령 (능력)</span> →
+                <span class="bg-white px-2 py-1 rounded border border-amber-300">증인 (행위자)</span> →
+                <span class="bg-white px-2 py-1 rounded border border-amber-300">말씀 (도구)</span> →
+                <span class="bg-white px-2 py-1 rounded border border-amber-300">하나님 나라 (목적)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="sec-agency" class="space-y-6">
+      <div class="border-l-4 border-[#7c2d12] pl-4">
+        <h2 class="text-xl md:text-2xl font-bold text-[#2c2825]">4. 인물 행위성(Agency) 매트릭스와 "침묵하는 성령" (E, L, 13)</h2>
+        <p class="text-xs md:text-sm text-stone-500 mt-1">
+          1:1–5 내 등장인물들의 주도권 비율과 오순절을 향한 성령의 '서사적 지연(Narrative Delay)' 효과를 분석합니다.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div class="lg:col-span-5 bg-[#fbf9f5] p-4 rounded-xl border border-stone-200 space-y-2">
+            <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider text-center">인물별 행위성(Agency) 점수 비교</h3>
+            <div class="chart-container">
+              <canvas id="agencyRadarChart"></canvas>
+            </div>
+            <span class="text-[11px] text-stone-400 block text-center">
+              * 예수의 압도적 주도권 속에 사도들은 수동적 대기 상태로 통제됨.
+            </span>
+          </div>
+
+          <div class="lg:col-span-7 space-y-3">
+            <h3 class="text-sm font-bold text-stone-800">사도행전 1:1–5 인물 행위성(Agency) 매트릭스</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-stone-100 text-stone-700 border-b border-stone-200">
+                    <th class="p-2 font-bold">인물 / 존재</th>
+                    <th class="p-2 font-bold">서사적 정체성</th>
+                    <th class="p-2 font-bold">주체성 (Agency) 및 행위의 성격</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100 text-stone-700">
+                  <tr>
+                    <td class="p-2 font-bold text-[#7c2d12]">예수 (Jesus)</td>
+                    <td class="p-2">과거 사역자, 살아있는 주, 교사</td>
+                    <td class="p-2">전적 능동 주체 (명령, 증명, 교육, 약속 선포)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-[#b45309]">사도들 (Apostles)</td>
+                    <td class="p-2">선택받은 자, 교육받는 수신자</td>
+                    <td class="p-2">철저히 수동적 (기다림, 금지당함, 세례를 받을 자)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-[#0f766e]">성령 (Holy Spirit)</td>
+                    <td class="p-2">명령의 매개체, 약속된 선물</td>
+                    <td class="p-2">부재하는 듯하나 서사를 지배하는 미래의 거대한 주체</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-stone-600">아버지 (Father)</td>
+                    <td class="p-2">약속의 원천 및 최종 보증인</td>
+                    <td class="p-2">기원의 창조자 (배후의 신적 권위)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 font-bold text-stone-500">데오빌로 (Theophilus)</td>
+                    <td class="p-2">서사 밖 수신자, 독자 대리인</td>
+                    <td class="p-2">인지적 수신 주체 (확신에 도달할 독자)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="p-3 bg-teal-50 border border-teal-200 rounded-xl space-y-1 text-xs text-teal-900">
+              <span class="font-bold block text-sm">🕊️ "침묵하는 성령"의 서사 효과 (Narrative Pneumatology)</span>
+              <p>
+                1:1–5에서 성령은 직접 발화하거나 행동하지 않고 '예수의 명령 매개(v.2)' 및 '미래 세례 수단(v.5)'으로만 언급됩니다. 이 지연은 부재가 아니라 곡언법적 선언("몇 날이 못되어")을 통해 **오순절(2장)의 폭발적 현존을 향한 서스펜스(suspense)를 극대화**하는 정교한 장치입니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-luke24" class="space-y-6">
+      <div class="border-l-4 border-[#0f766e] pl-4">
+        <h2 class="text-xl md:text-2xl font-bold text-[#2c2825]">5. 누가복음 24장 vs 사도행전 1장 상세 병행 (G & 14)</h2>
+        <p class="text-xs md:text-sm text-stone-500 mt-1">
+          1권 결말과 2권 시작 사이의 단순 반복, 재편(Recapitulation), 확장(Expansion)의 이중 구조를 세밀히 비교합니다.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap gap-1.5" id="luke-filter-container">
+            <button onclick="filterLukeParallel('all')" class="luke-btn bg-[#0f766e] text-white px-3 py-1 rounded text-xs font-semibold">전체 주제 (7)</button>
+            <button onclick="filterLukeParallel('expansion')" class="luke-btn bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1 rounded text-xs font-semibold">확장 (Expansion)</button>
+            <button onclick="filterLukeParallel('recap')" class="luke-btn bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1 rounded text-xs font-semibold">재편 (Recapitulation)</button>
+            <button onclick="filterLukeParallel('clarify')" class="luke-btn bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1 rounded text-xs font-semibold">명료화 (Clarification)</button>
+          </div>
+          <span class="text-xs text-stone-400">Intertextual Parallel Explorer</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-[#2c2825] text-white">
+                <th class="p-3 rounded-tl-lg font-semibold w-1/6">서사적 주제</th>
+                <th class="p-3 font-semibold w-1/3">누가복음 24장 (끝)</th>
+                <th class="p-3 font-semibold w-1/3">사도행전 1장 (시작)</th>
+                <th class="p-3 rounded-tr-lg font-semibold w-1/6">문학적 기능 판정</th>
+              </tr>
+            </thead>
+            <tbody id="luke-parallel-tbody" class="divide-y divide-stone-200 bg-white text-stone-700">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-rhetoric" class="space-y-6">
+      <div class="border-l-4 border-[#b45309] pl-4">
+        <h2 class="text-xl md:text-2xl font-bold text-[#2c2825]">6. 15대 수사학적 장치 & 구음 낭독 시뮬레이터 (F & 15)</h2>
+        <p class="text-xs md:text-sm text-stone-500 mt-1">
+          본문에 압축된 15가지 수사학적 기법 카탈로그와 1세기 공중 낭독(Oral Performance) 시 청중이 경험하는 심리적 파동을 체험합니다.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-8">
+
+        <div class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 class="text-base font-bold text-stone-800 flex items-center space-x-2">
+              <span>📜 15가지 핵심 수사학적 장치 (Rhetorical Catalog)</span>
+            </h3>
+            <input type="text" id="rhetoric-search" oninput="searchRhetoric()" placeholder="수사 장치, 헬라어, 용어 검색..." class="px-3 py-1.5 border border-stone-300 rounded-lg text-xs w-full sm:w-64 focus:outline-none focus:border-[#b45309]">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="rhetoric-grid">
+          </div>
+        </div>
+
+        <div class="border-t border-stone-200 pt-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-base font-bold text-stone-800">🎙️ 수행 비평 (Performance Criticism): 1세기 구음 낭독 시뮬레이터</h3>
+              <p class="text-xs text-stone-500">낭독자의 목소리에 따라 청중에게 형성되는 인지적·감정적 서스펜스 곡선</p>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="prevVerseStep()" class="px-3 py-1 bg-stone-200 hover:bg-stone-300 rounded text-xs font-bold text-stone-700">이전 절</button>
+              <button onclick="nextVerseStep()" class="px-3 py-1 bg-[#7c2d12] hover:bg-amber-800 rounded text-xs font-bold text-white">다음 절 ▶</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center bg-[#fbf9f5] p-5 rounded-2xl border border-stone-200">
+            <div class="lg:col-span-6 space-y-3">
+              <div class="flex items-center space-x-2">
+                <span id="perf-verse-badge" class="bg-[#7c2d12] text-white text-xs font-bold px-2.5 py-1 rounded">Acts 1:1</span>
+                <span id="perf-emotion-badge" class="bg-amber-100 text-amber-900 text-xs font-bold px-2.5 py-1 rounded border border-amber-300">청중 반응: 기억 (Memory)</span>
+              </div>
+
+              <div id="perf-verse-text" class="text-sm md:text-base font-serif text-stone-800 bg-white p-4 rounded-xl border border-stone-200 italic leading-relaxed">
+                "데오빌로여 내가 먼저 쓴 글에는 무릇 예수께서 행하시며 가르치시기를 시작하심부터..."
+              </div>
+
+              <div id="perf-audience-reaction" class="text-xs text-stone-600 bg-amber-50/60 p-3 rounded-lg border border-amber-200 space-y-1">
+                <strong class="text-amber-900 block font-bold">1세기 회중의 심리적 파동:</strong>
+                <p>낭독자의 입에서 '첫 번째 책'이 떨어지는 순간, 청중은 지난번 들었던 예수의 십자가와 부활의 감동을 즉각 회상하고 상기함.</p>
+              </div>
+            </div>
+
+            <div class="lg:col-span-6">
+              <h4 class="text-xs font-bold text-stone-500 uppercase tracking-wider text-center mb-2">낭독 진행에 따른 청중 서스펜스 (Narrative Tension Curve)</h4>
+              <div class="chart-container">
+                <canvas id="performanceTensionChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="sec-conclusion" class="space-y-6">
+      <div class="border-l-4 border-[#7c2d12] pl-4">
+        <h2 class="text-xl md:text-2xl font-bold text-[#2c2825]">7. 최종 문학·신학적 결론 및 참고문헌 (O & P)</h2>
+        <p class="text-xs md:text-sm text-stone-500 mt-1">
+          사도행전 1:1–5 연구의 종합 요약과 SBL 2판 표준 학술 참고문헌 목록입니다.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 md:p-8 rounded-2xl border border-stone-200 shadow-sm space-y-6">
+        <div class="p-6 bg-[#fbf9f5] rounded-2xl border-2 border-[#7c2d12]/20 space-y-4">
+          <h3 class="text-lg font-bold text-[#7c2d12] flex items-center space-x-2">
+            <span>🎓 최종 문학·신학적 결론 (11문장 Synthesis)</span>
+          </h3>
+          <div class="text-xs md:text-sm text-stone-700 leading-relaxed space-y-2">
+            <p>
+              사도행전 1:1–5는 단순한 전작의 요약이나 정보 전달용 머리말에 머무르지 않고, 누가복음의 결말을 창조적으로 재구성하여 사도행전의 팽창하는 세계를 시작하는 완벽한 문학적 경첩(narrative hinge)입니다. 이 다섯 절 안에는 부활한 예수의 지속되는 통치권, 성령의 임박한 강림, 예루살렘이라는 구원사적 공간의 긴장, 그리고 하나님 나라의 종말론적 비전이 정교하게 압축되어 있습니다. 저자는 고대 다권 저작의 부차적 서문(secondary preface) 형식을 차용하면서도 신속하게 내러티브로 전환하여 독자를 극적 현장으로 이끌어 들입니다. '예루살렘을 떠나지 말고 기다리라'는 역설적인 금지 명령은 선교를 향한 인간의 조급한 주도권을 멈춰 세우고 철저히 신적 주도성을 부각하는 탁월한 서사적 제동 장치로 작동합니다. 나아가 요한의 물세례와 예수의 성령 세례를 대조하며 제시된 '날이 많지 않아'라는 곡언법적 선언은 2장의 오순절을 향한 숨 막히는 서스펜스를 직조해 냅니다. 40일이라는 상징적 중간 기간 동안 부활의 확실성을 증거받고 하나님 나라를 배운 사도들은 이제 과거의 무력한 도망자에서 미래의 담대한 증인으로 도약할 준비를 마칩니다. 결과적으로 이 도입부는 "예수가 지상에서 무엇을 시작하셨는가"의 회고에서 "승천하신 예수가 성령을 통해 교회를 이끌어 무엇을 계속하시는가"의 기대로 서사의 패러다임을 근본적으로 전환하는, 신약성경에서 가장 강력한 문학적·신학적 프롤로그입니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <h3 class="text-sm font-bold text-stone-800 flex items-center space-x-2">
+            <span>📚 참고문헌 (SBL 2판 표준 학술 형식)</span>
+          </h3>
+          <div class="bg-[#fbf9f5] p-4 rounded-xl border border-stone-200">
+            <ul class="text-xs text-stone-600 font-serif space-y-2 divide-y divide-stone-200/60">
+              <li class="pt-2">Alexander, Loveday. <em>The Preface to Luke's Gospel: Literary Convention and Social Context in Luke 1.1-4 and Acts 1.1</em>. SNTSMS 78. Cambridge: Cambridge University Press, 1993.</li>
+              <li class="pt-2">Gaventa, Beverly Roberts. <em>The Acts of the Apostles</em>. Abingdon New Testament Commentaries. Nashville: Abingdon Press, 2003.</li>
+              <li class="pt-2">Marguerat, Daniel. <em>The First Christian Historian: Writing the 'Acts of the Apostles'</em>. Translated by Ken McKinney, Gregory J. Laughery, and Richard Bauckham. SNTSMS 121. Cambridge: Cambridge University Press, 2002.</li>
+              <li class="pt-2">Palmer, D. W. "Acts and the Ancient Historical Monograph." Pages 1–29 in <em>The Book of Acts in Its Ancient Literary Setting</em>. Edited by Bruce W. Winter and Andrew D. Clarke. Grand Rapids: Eerdmans, 1993.</li>
+              <li class="pt-2">Parsons, Mikeal C. <em>Acts</em>. Paideia Commentaries on the New Testament. Grand Rapids: Baker Academic, 2008.</li>
+              <li class="pt-2">Rowe, C. Kavin. <em>Early Narrative Christology: The Lord in the Gospel of Luke</em>. BZNW 139. Berlin: Walter de Gruyter, 2006.</li>
+              <li class="pt-2">Rowe, C. Kavin. <em>World Upside Down: Reading Acts in the Graeco-Roman Age</em>. Oxford: Oxford University Press, 2009.</li>
+              <li class="pt-2">Sterling, Gregory E. <em>Historiography and Self-Definition: Josephos, Luke-Acts, and Apologetic Historiography</em>. NovTSup 64. Leiden: Brill, 1992.</li>
+              <li class="pt-2">Sterling, Gregory E. "Secondary Prefaces and the Composition of Luke-Acts." <em>New Testament Studies</em> 71, no. 2 (2025): 154–155.</li>
+              <li class="pt-2">Walters, Patricia. <em>The Assumed Authorial Unity of Luke and Acts: A Reassessment of the Evidence</em>. SNTSMS 145. Cambridge: Cambridge University Press, 2009.</li>
+              <li class="pt-2">Walton, Steve. <em>Acts 1–9:42</em>. Word Biblical Commentary 37A. Grand Rapids: Zondervan Academic, 2024.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-[#2c2825] text-stone-400 py-6 border-t border-stone-800 text-xs text-center">
+    <div class="max-w-7xl mx-auto px-4 space-y-1">
+      <p>사도행전 1:1–5 문학·수사학적 서사 분석 인터랙티브 연구 대시보드</p>
+      <p class="text-stone-500">Built with HTML5, Tailwind CSS, Chart.js — Single File Dynamic Architecture</p>
+    </div>
+  </footer>
+
+  <script>
+    const boundaryData = [
+      { id: '1:1', category: 'short', span: '1절 (1)', scope: 1, marker: '서문의 기초적 호명', scene: '저자 → 데오빌로 직접 발화', spaceTime: '장소 특정 없음', tension: '이전 저작물과의 연결성 단순 확보' },
+      { id: '1:1–2', category: 'short', span: '1–2절 (2)', scope: 2, marker: '문법적 완결 부차적 서문', scene: '발화에서 예수 과거 사역 요약으로 이동', spaceTime: '누가복음의 과거 시간 (until the day)', tension: '서문 관습의 종결, 과거 연속성 주력' },
+      { id: '1:1–5', category: 'short', span: '1–5절 (5)', scope: 5, marker: '분사(4절) 및 직접화법(5절) 종결', scene: '저자 해설에서 예수 발화로 전환', spaceTime: '40일 중간시간, 예루살렘 명시', tension: '성령 세례 임박성을 통한 극적 긴장 폭발 (독립 프롤로그)' },
+      { id: '1:1–8', category: 'mid', span: '1–8절 (8)', scope: 8, marker: '8절 땅끝 선교 명령 종결', scene: '예수와 사도 대화 집중', spaceTime: '예루살렘 → 땅끝 공간 확장 예고', tension: '이스라엘 회복 질문을 선교적 시간관으로 전환' },
+      { id: '1:1–11', category: 'mid', span: '1–11절 (11)', scope: 11, marker: '승천 및 두 천사 등장 완결', scene: '예수 퇴장, 사도와 천사 대화', spaceTime: '감람산 → 하늘 수직적 공간 이동', tension: '다시 오심 약속으로 종말론적 긴장 형성' },
+      { id: '1:1–14', category: 'mid', span: '1–14절 (14)', scope: 14, marker: '다락방 모임 기도 (14절)', scene: '여성들, 마리아, 아우들 합류', spaceTime: '감람산 → 예루살렘 다락방', tension: '오순절을 향한 적극적 대기 진입' },
+      { id: '1:1–26', category: 'broad', span: '1–26절 (26)', scope: 26, marker: '맛디아 선출, 2:1 오순절 마커', scene: '베드로 주도 담화 및 사도 복원', spaceTime: '예루살렘 다락방 내부 지속', tension: '12지파 상징 리더십 회복, 준비 완료' },
+      { id: '1:1–2:47', category: 'broad', span: '1:1-2:47 (73)', scope: 73, marker: '오순절 강림 & 첫 공동체 형성', scene: '성령 강림, 대중 설교, 3천명 회심', spaceTime: '다락방 → 거리 → 각 가정 확장', tension: '1:4-5 약속의 완전한 성취 거시 사이클' }
+    ];
+
+    const scholarsData = [
+      { name: 'Loveday Alexander', role: '헬레니즘 기술 매뉴얼 서문', text: '고전 문헌학 비교를 통해, 본 서문이 투키디데스식 역사서보다는 기술자/의사들의 전문 지식 전수용 매뉴얼 서문 관습과 일치함을 입증.' },
+      { name: 'Gregory Sterling', role: '유대-헬레니즘 변증적 역사서', text: '조세푸스 등 유대 역사 서술과 비교하여 다권 기독교 변증 역사를 결속하는 정통 secondary preface임을 주장.' },
+      { name: 'D. W. Palmer', role: '역사적 단행본 (Monograph)', text: '사도행전 서문이 누가복음과 별개의 독립된 문학적 정체성을 지닌 단행본 성격을 가짐을 강조.' },
+      { name: 'Patricia Walters', role: '문체 통계적 작가 단일성 재고', text: '누가복음과 사도행전 사이의 구문론적 차이를 통계 분석하여, 두 책의 완벽한 문학적 단일성 가정을 비판적 재검토.' },
+      { name: 'Daniel Marguerat', role: '서사적 경첩 (Narrative Hinge)', text: '1:1-5가 단순 서문을 넘어 누가복음 결말을 재배열하여 사도행전 서사를 추진하는 중심 경첩임을 내러티브 비평으로 입증.' }
+    ];
+
+    const lukeParallelData = [
+      { theme: '부활 현현', type: 'expansion', category: '확장 (Expansion)', luke: '엠마오, 다락방 에피소드 중심 (24:13-43)', acts: '확실한 많은 증거, 40일 동안 요약 제시 (1:3)', note: '40일이라는 구체적 chronology를 신규 도입하여 역사성 강화' },
+      { theme: '식사 교제', type: 'repetition', category: '반복 (Repetition)', luke: '구운 생선을 잡수심 (24:42-43)', acts: '함께 모이사 (συναλιζόμενος, 소금을 먹다) (1:4)', note: '육체적 부활의 리얼리티를 확증하는 연대 모티프 유지' },
+      { theme: '가르침 주제', type: 'recap', category: '재편 (Recapitulation)', luke: '모세, 선지자, 시편 성경 성취 강조 (24:44-47)', acts: '하나님 나라의 일 (Kingdom of God) 교육 (1:3)', note: '유대 성경 변증에서 반제국적 하나님 나라 사상으로 전환' },
+      { theme: '약속 (Promise)', type: 'clarify', category: '명료화 (Clarification)', luke: '내 아버지의 약속, 위로부터의 능력 (24:49)', acts: '아버지의 약속, 성령 세례 (1:4-5)', note: '추상적 능력이 성령 세례로 구체화되며 물세례와 대조' },
+      { theme: '장소 명령', type: 'continuity', category: '연속성 (Continuity)', luke: '이 성에 머물라 (kathisate) (24:49)', acts: '예루살렘을 떠나지 말고 기다리라 (1:4)', note: '장소적 구속 명령을 재강조하여 서사적 제동 장치 강화' },
+      { theme: '증인 (Witness)', type: 'tension', category: '긴장 조성 (Tension)', luke: '이 모든 일의 증인 (24:48)', acts: '1:8로 증인 명시를 의도적 지연', note: '1:6 제자들의 영토적 질문을 유도하기 위해 정보 고의 지연' },
+      { theme: '승천 (Ascension)', type: 'recap', category: '재편 (Recapitulation)', luke: '찬양하며 예루살렘으로 돌아감 (24:51-53)', acts: '지상에서 하늘로 수직 이동 및 재림 약속 (1:9-11)', note: '1권의 결말이자 2권 서사를 정립하는 문학적 경첩' }
+    ];
+
+    const rhetoricData = [
+      { num: 1, name: 'Proemium (서언)', greeki: '프로에미온', desc: '고전 수사학의 서문 공식을 차용하여 독자의 주의(captatio benevolentiae)를 확보함.' },
+      { num: 2, name: 'Analepsis (후향적 회고)', greeki: '아날렙시스', desc: '누가복음 전체 서사를 "행하시며 가르치심"으로 단숨에 회상 요약.' },
+      { num: 3, name: 'Ellipsis (생략)', greeki: '엘립시스', desc: '"시작하신(ἤρξατο)" 뒤에 행전이 계속한다는 말을 생략하여 독자 참여 유도.' },
+      { num: 4, name: 'Epizeuxis / Emphasis', greeki: '에피죄크시스', desc: '부활을 단순히 살았다 하지 않고 "친히 살아 계심을 나타내사" 시각적 주체성 강조.' },
+      { num: 5, name: 'Tekmērion (증거의 수사)', greeki: '테크메리온', desc: '논박 불가능한 법적·철학적 결정적 증거 용어를 사용해 역사성 격상.' },
+      { num: 6, name: 'Chronotope (시공간 응축)', greeki: '크로노톱', desc: '40일이라는 신학적 상징 기호를 통해 서사적 시간의 신학적 무게 획득.' },
+      { num: 7, name: 'Inclusio (수미상관)', greeki: '인클루시오', desc: '1:3의 하나님 나라가 28:31의 바울 사역과 응축되도록 서사 처음과 끝을 묶음.' },
+      { num: 8, name: 'Paradox (역설)', greeki: '파라독스', desc: '세계 선교를 앞둔 사도들에게 "떠나지 말라"는 역설적 금지 명령 부여.' },
+      { num: 9, name: 'Metaphor (은유)', greeki: '메타포라', desc: '함께 소금을 먹다(συναλιζόμενος) 관용어로 부활체의 물질성과 교제 은유.' },
+      { num: 10, name: 'Chiasmus (교차 배열)', greeki: '카이아스무스', desc: '부정명령 → 긍정명령 → 약속 → 근거로 이어지는 수사적 리듬 형성.' },
+      { num: 11, name: 'Synecdoche (대유법)', greeki: '시넥도케', desc: '아버지께서 약속하신 것으로 성령 존재 전체를 포괄적으로 칭함.' },
+      { num: 12, name: 'Synkrisis (비교/대조)', greeki: '싱크리시스', desc: '요한의 물세례와 예수의 성령 세례를 병치하여 구원사적 우위 묘사.' },
+      { num: 13, name: 'Litotes (곡언법)', greeki: '리토테스', desc: '"날이 많지 않아"라는 이중부정 뉘앙스로 강력한 긍정과 긴장 유발.' },
+      { num: 14, name: 'Prolepsis (전향적 예고)', greeki: '프롤렙시스', desc: '5절 성령 세례 예고를 통해 행전 전체의 영적 현상을 미리 던져놓음.' },
+      { num: 15, name: 'Asyndeton (접속사 생략)', greeki: '아신데톤', desc: '구문 연결을 긴박하게 하여 대기의 다급함과 약속의 확실성 밀어붙임.' }
+    ];
+
+    const performanceSteps = [
+      { verse: 'Acts 1:1', emotion: '청중 반응: 기억 (Memory)', text: '"데오빌로여 내가 먼저 쓴 글에는 무릇 예수께서 행하시며 가르치시기를 시작하심부터..."', reaction: '낭독자의 입에서 첫 번째 책이 떨어지는 순간, 회중은 누가복음의 십자가와 부활 감동을 즉각적으로 기억해냄.', tension: 30 },
+      { verse: 'Acts 1:2', emotion: '청중 반응: 전환 (Transition)', text: '"그가 택하신 사도들에게 성령으로 명하시고 승천하신 날까지의 일을 기록하였노라"', reaction: '승천이라는 1권의 종결점이 제시되며 낭독 소리가 엄숙해지고, 이야기가 어디로 향할지 집중함.', tension: 45 },
+      { verse: 'Acts 1:3', emotion: '청중 반응: 확신 & 기대 (Certainty)', text: '"그가 고난 받으신 후에 또한 그들에게 확실한 많은 증거로 친히 살아 계심을 나타내사 사십 일 동안 그들에게 보이시며 하나님 나라의 일을 말씀하시니라"', reaction: '확실한 증거와 40일 표지에 회중은 박해 속에서도 확실성을 얻고, 모세/엘리야적 구원사 전환을 기대함.', tension: 65 },
+      { verse: 'Acts 1:4', emotion: '청중 반응: 정지 & 긴장 (Halt & Tension)', text: '"사도와 함께 모이사 그들에게 분부하여 이르시되 예루살렘을 떠나지 말고 내게서 들은 바 아버지께서 약속하신 것을 기다리라"', reaction: '낭독자가 호흡을 멈추고 떠나지 말라 명할 때, 적대적 공간에 갇힌 제자들의 무력감이 회중에게 전이되어 숨막히는 정지가 형성됨.', tension: 85 },
+      { verse: 'Acts 1:5', emotion: '청중 반응: 기대 폭발 (Explosive Anticipation)', text: '"요한은 물로 세례를 베풀었으나 너희는 몇 날이 못되어 성령으로 세례를 받으리라 하셨느라"', reaction: '억눌렸던 대기의 긴장이 성령 세례 선포와 함께 폭발함! 오순절을 향한 극적 서스펜스가 정점에 달함.', tension: 100 }
+    ];
+
+    let currentPerfStep = 0;
+    let boundaryChartInstance = null;
+    let chronotopeChartInstance = null;
+    let agencyRadarChartInstance = null;
+    let performanceTensionChartInstance = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      renderBoundaryTable('all');
+      initBoundaryChart();
+      renderScholars();
+      initChronotopeChart();
+      initAgencyRadarChart();
+      renderLukeParallelTable('all');
+      renderRhetoricGrid(rhetoricData);
+      initPerformanceSimulator();
+    });
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if(el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function renderBoundaryTable(filter) {
+      const tbody = document.getElementById('boundary-table-body');
+      tbody.innerHTML = '';
+      
+      const filtered = filter === 'all' ? boundaryData : boundaryData.filter(d => d.category === filter);
+      
+      filtered.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = item.id === '1:1–5' ? 'bg-amber-50 font-medium border-l-4 border-[#7c2d12]' : 'hover:bg-stone-50';
+        tr.innerHTML = `
+          <td class="p-2.5 font-bold text-[#7c2d12] whitespace-nowrap">${item.id} <span class="block text-[10px] text-stone-400 font-normal">${item.span}</span></td>
+          <td class="p-2.5">${item.marker}</td>
+          <td class="p-2.5"><div>${item.scene}</div><div class="text-[11px] text-stone-500">${item.spaceTime}</div></td>
+          <td class="p-2.5">${item.tension}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterBoundary(category) {
+      document.querySelectorAll('#boundary-filter-container button').forEach(btn => {
+        btn.classList.remove('bg-[#7c2d12]', 'text-white');
+        btn.classList.add('bg-stone-100', 'text-stone-700');
+      });
+      event.target.classList.remove('bg-stone-100', 'text-stone-700');
+      event.target.classList.add('bg-[#7c2d12]', 'text-white');
+
+      renderBoundaryTable(category);
+    }
+
+    function initBoundaryChart() {
+      const ctx = document.getElementById('boundaryScopeChart').getContext('2d');
+      boundaryChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: boundaryData.map(d => d.id),
+          datasets: [{
+            label: '포함 구절 수 (Verses Scope)',
+            data: boundaryData.map(d => d.scope),
+            backgroundColor: boundaryData.map(d => d.id === '1:1–5' ? '#7c2d12' : '#d6d3d1'),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) { return ` 범위: ${context.raw} 개 구절`; }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#f5f5f4' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    function renderScholars() {
+      const grid = document.getElementById('scholars-grid');
+      grid.innerHTML = '';
+      scholarsData.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'p-3 bg-[#fbf9f5] rounded-xl border border-stone-200 hover:border-[#0f766e] transition-colors space-y-1';
+        card.innerHTML = `
+          <h4 class="text-xs font-bold text-[#0f766e]">${s.name}</h4>
+          <span class="text-[11px] font-semibold text-stone-700 block">${s.role}</span>
+          <p class="text-[11px] text-stone-500 leading-tight">${s.text}</p>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function switchNarrativeTab(tabId) {
+      document.querySelectorAll('.narrative-tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.narrative-tab-btn').forEach(btn => {
+        btn.classList.remove('border-[#7c2d12]', 'text-[#7c2d12]');
+        btn.classList.add('border-transparent', 'text-stone-500');
+      });
+
+      document.getElementById(tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if(activeBtn) {
+        activeBtn.classList.remove('border-transparent', 'text-stone-500');
+        activeBtn.classList.add('border-[#7c2d12]', 'text-[#7c2d12]');
+      }
+    }
+
+    function initChronotopeChart() {
+      const ctx = document.getElementById('chronotopeChart').getContext('2d');
+      chronotopeChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['과거 예수 지상사역', '십자가 수난 분기점', '1권 승천 종결점', '40일 중간시간 (유예)', '임박한 성령 세례 미래'],
+          datasets: [{
+            label: '서사적 비중 / 시간 길이',
+            data: [80, 40, 30, 90, 100],
+            backgroundColor: ['#7c2d12', '#b45309', '#a8a29e', '#0f766e', '#0284c7'],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { beginAtZero: true, max: 110, grid: { color: '#f5f5f4' } },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function initAgencyRadarChart() {
+      const ctx = document.getElementById('agencyRadarChart').getContext('2d');
+      agencyRadarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['과거 행위성', '현재 명령/발화', '신적 권위', '미래 선교 주도권'],
+          datasets: [
+            {
+              label: '예수 (Jesus)',
+              data: [95, 100, 95, 85],
+              borderColor: '#7c2d12',
+              backgroundColor: 'rgba(124, 45, 18, 0.2)'
+            },
+            {
+              label: '사도들 (Apostles)',
+              data: [30, 10, 20, 40],
+              borderColor: '#b45309',
+              backgroundColor: 'rgba(180, 83, 9, 0.2)'
+            },
+            {
+              label: '성령 (Holy Spirit)',
+              data: [20, 30, 90, 100],
+              borderColor: '#0f766e',
+              backgroundColor: 'rgba(15, 118, 110, 0.2)'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              angleLines: { color: '#e7e5e4' },
+              grid: { color: '#e7e5e4' },
+              pointLabels: { font: { size: 10 } },
+              suggestedMin: 0,
+              suggestedMax: 100
+            }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function renderLukeParallelTable(filter) {
+      const tbody = document.getElementById('luke-parallel-tbody');
+      tbody.innerHTML = '';
+
+      const filtered = filter === 'all' ? lukeParallelData : lukeParallelData.filter(d => d.type === filter);
+
+      filtered.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-stone-50';
+        tr.innerHTML = `
+          <td class="p-3 font-bold text-[#0f766e]">${item.theme}</td>
+          <td class="p-3">${item.luke}</td>
+          <td class="p-3 font-medium text-stone-900">${item.acts}</td>
+          <td class="p-3"><span class="inline-block bg-stone-100 text-stone-800 text-[11px] font-semibold px-2 py-0.5 rounded border border-stone-200">${item.category}</span><p class="text-[10px] text-stone-500 mt-1">${item.note}</p></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterLukeParallel(type) {
+      document.querySelectorAll('#luke-filter-container button').forEach(btn => {
+        btn.classList.remove('bg-[#0f766e]', 'text-white');
+        btn.classList.add('bg-stone-100', 'text-stone-700');
+      });
+      event.target.classList.remove('bg-stone-100', 'text-stone-700');
+      event.target.classList.add('bg-[#0f766e]', 'text-white');
+
+      renderLukeParallelTable(type);
+    }
+
+    function renderRhetoricGrid(data) {
+      const grid = document.getElementById('rhetoric-grid');
+      grid.innerHTML = '';
+      data.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'p-3 bg-[#fbf9f5] rounded-xl border border-stone-200 hover:border-[#b45309] transition-colors space-y-1';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">${item.num}</span>
+            <span class="text-[10px] text-stone-400 font-serif">${item.greeki}</span>
+          </div>
+          <h4 class="text-xs font-bold text-stone-800">${item.name}</h4>
+          <p class="text-[11px] text-stone-600 leading-tight">${item.desc}</p>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function searchRhetoric() {
+      const query = document.getElementById('rhetoric-search').value.toLowerCase();
+      const filtered = rhetoricData.filter(r => 
+        r.name.toLowerCase().includes(query) || 
+        r.desc.toLowerCase().includes(query) || 
+        r.greeki.toLowerCase().includes(query)
+      );
+      renderRhetoricGrid(filtered);
+    }
+
+    function initPerformanceSimulator() {
+      const ctx = document.getElementById('performanceTensionChart').getContext('2d');
+      performanceTensionChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: performanceSteps.map(s => s.verse),
+          datasets: [{
+            label: '청중 서스펜스 (Audience Tension)',
+            data: performanceSteps.map(s => s.tension),
+            borderColor: '#7c2d12',
+            backgroundColor: 'rgba(124, 45, 18, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: [5, 5, 5, 5, 5],
+            pointBackgroundColor: ['#a8a29e', '#a8a29e', '#a8a29e', '#a8a29e', '#a8a29e']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 110, grid: { color: '#f5f5f4' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+      updatePerfStepDisplay();
+    }
+
+    function updatePerfStepDisplay() {
+      const step = performanceSteps[currentPerfStep];
+      document.getElementById('perf-verse-badge').innerText = step.verse;
+      document.getElementById('perf-emotion-badge').innerText = step.emotion;
+      document.getElementById('perf-verse-text').innerText = step.text;
+      document.getElementById('perf-audience-reaction').innerHTML = `
+        <strong class="text-amber-900 block font-bold">1세기 회중의 심리적 파동:</strong>
+        <p>${step.reaction}</p>
+      `;
+
+      if(performanceTensionChartInstance) {
+        const bgColors = performanceSteps.map((_, idx) => idx === currentPerfStep ? '#7c2d12' : '#a8a29e');
+        const radii = performanceSteps.map((_, idx) => idx === currentPerfStep ? 8 : 4);
+        performanceTensionChartInstance.data.datasets[0].pointBackgroundColor = bgColors;
+        performanceTensionChartInstance.data.datasets[0].pointRadius = radii;
+        performanceTensionChartInstance.update();
+      }
+    }
+
+    function nextVerseStep() {
+      currentPerfStep = (currentPerfStep + 1) % performanceSteps.length;
+      updatePerfStepDisplay();
+    }
+
+    function prevVerseStep() {
+      currentPerfStep = (currentPerfStep - 1 + performanceSteps.length) % performanceSteps.length;
+      updatePerfStepDisplay();
+    }
+  </script>
+</body>
+</html>

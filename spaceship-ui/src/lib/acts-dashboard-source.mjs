@@ -1,3 +1,4 @@
+import { applyOriginalOverviewFonts, getNativeActsHtml } from './acts-native-source.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -33,7 +34,8 @@ export function loadActsDashboards(directory = path.resolve('src/data/acts-dashb
 let cached;
 /** @param {number} order */
 export function getActsDashboardHtml(order) {
+  if (Number.isInteger(order) && order >= 4 && order <= 9) return getNativeActsHtml(order);
   if (![1, 2, 3].includes(order)) throw new Error(`Unknown Acts dashboard: ${order}`);
   cached ??= loadActsDashboards();
-  return cached[`acts-overview-${order}.html`];
+  return applyOriginalOverviewFonts(cached[`acts-overview-${order}.html`], order);
 }

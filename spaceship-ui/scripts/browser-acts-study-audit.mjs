@@ -1,3 +1,4 @@
+import { auditNativeActsInteractions, auditActsTypography } from './browser-acts-native-audit.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -37,7 +38,7 @@ async function originalToggle(cdp, sessionId, entry) {
 }
 async function waitDashboard(cdp, sessionId) {
   await evaluate(cdp, sessionId, `document.querySelector('[data-acts-frame]').scrollIntoView({block:'center',behavior:'instant'})`);
-  await waitExpression(cdp, sessionId, `document.querySelector('jjo-acts-dashboard')?.dataset.ready==='true' && document.querySelector('[data-acts-frame]')?.contentDocument?.querySelectorAll('canvas[data-chart-engine]').length>0`, 'Restored dashboard and charts initialize');
+  await waitExpression(cdp, sessionId, `document.querySelector('jjo-acts-dashboard')?.dataset.ready==='true' && (document.querySelector('[data-acts-frame]')?.contentDocument?.documentElement?.dataset.nativeReady==='true'||document.querySelector('[data-acts-frame]')?.contentDocument?.querySelectorAll('canvas[data-chart-engine]').length>0)`, 'Restored dashboard and charts initialize');
 }
 async function chartCheck(cdp, sessionId, order) {
   const expectedCount = order === 1 ? 1 : 2;
@@ -99,11 +100,12 @@ async function dashboardInteractions(cdp, sessionId, order) {
     assert.deepEqual(result,{graduate:true,point:true,points:10,filtered:3,all:9,scholars:1,empty:0,opened:true,questions:14,herm:true});
   }
   await chartCheck(cdp, sessionId, order);
+  await auditActsTypography(cdp, sessionId, order);
 }
 
 export async function auditActsStudies(cdp, sessionId) {
-  assert.equal(series.entries.length, 6);
-  assert.deepEqual(series.entries.map(entry=>entry.order), [1,2,3,4,5,6]);
+  assert.equal(series.entries.length, 9);
+  assert.deepEqual(series.entries.map(entry=>entry.order), [1,2,3,4,5,6,7,8,9]);
   for (const entry of series.entries) {
     const source = fs.readFileSync(new URL(`../site/content/posts/${entry.slug}.mdx`, import.meta.url), 'utf8');
     const response = await fetch(new URL(`/posts/${entry.slug}`, BASE), {cache:'no-store'});
@@ -114,22 +116,17 @@ export async function auditActsStudies(cdp, sessionId) {
     assert(!html.includes('cdn.jsdelivr.net/npm/chart.js'), 'Chart runtime must remain inside dashboard document, not the site shell');
     const original = html.match(/<details[^>]*data-acts-original[^>]*>/)?.[0];
     assert(original && !/\sopen(?:\s|=|>)/.test(original), 'Original closed by default');
-    if (entry.order <= 3) {
-      assert(source.includes('ActsDashboard'));
-      assert(!html.includes('원자료의 비율 표기와 편집 범위'), 'Superseded editorial essay removed');
-      const route=`/assets/interactive/${entry.slug}.html`;
-      assert(html.includes(route) && html.includes('data-acts-frame'));
-      const asset=await fetch(new URL(route,BASE),{cache:'no-store'});
-      assert.equal(asset.status,200);
-      const restored=await asset.text();
-      assert(restored.length>20000);
-      assert.equal(digest(restored),digest(getActsDashboardHtml(entry.order)), 'Public HTML is the entire approved snapshot, byte for byte');
-      assert(!restored.includes('src="https://cdn.tailwindcss.com'));
-      console.log(`acts-source: PASS ${asset.url} SHA256=${digest(restored)}`);
-    } else {
-      assert(source.length>4000, 'Substantive passage article unchanged');
-      assert(html.includes('data-study-row'), 'Passage SSR table data');
-    }
+    assert(source.includes('ActsDashboard'));
+    assert(!html.includes('원자료의 비율 표기와 편집 범위'));
+    const route=`/assets/interactive/${entry.slug}.html`;
+    assert(html.includes(route) && html.includes('data-acts-frame'));
+    const asset=await fetch(new URL(route,BASE),{cache:'no-store'});
+    assert.equal(asset.status,200);
+    const restored=await asset.text();
+    assert(restored.length>20000);
+    assert.equal(digest(restored),digest(getActsDashboardHtml(entry.order)), 'Public HTML matches deterministic source adapter');
+    assert(!restored.includes('src="https://cdn.tailwindcss.com'));
+    console.log(`acts-source: PASS ${asset.url} SHA256=${digest(restored)}`);
     console.log(`acts-route: PASS HTTP ${response.status} ${response.url}`);
   }
   for (const size of sizes) {
@@ -140,8 +137,7 @@ export async function auditActsStudies(cdp, sessionId) {
     }
     for (const entry of series.entries) {
       await navigate(cdp,sessionId,`/posts/${entry.slug}`);
-      if(entry.order<=3) await waitDashboard(cdp,sessionId);
-      else await waitExpression(cdp,sessionId,`Boolean(document.querySelector('[data-study-tools]:not([hidden])'))`,'Passage controls initialize');
+      await waitDashboard(cdp,sessionId);
       await originalToggle(cdp,sessionId,entry);
       for(const dark of [false,true]) {
         await evaluate(cdp,sessionId,`document.documentElement.classList.toggle('dark',${dark})`);
@@ -151,16 +147,12 @@ export async function auditActsStudies(cdp, sessionId) {
           assert.deepEqual(state,{outer:false,inner:false,theme:true},`${entry.slug} width=${size.width} dark=${dark}`);
           await dashboardInteractions(cdp,sessionId,entry.order);
         } else {
-          const state=await evaluate(cdp,sessionId,`(() => {const r=document.querySelector('[data-acts-reader]'),p=document.createElement('span');p.style.backgroundColor='var(--color-card)';r.append(p);const theme=getComputedStyle(r).backgroundColor===getComputedStyle(p).backgroundColor;p.remove();return {overflow:document.documentElement.scrollWidth>innerWidth+2,theme,tables:document.querySelectorAll('[data-study-table]').length};})()`);
-          assert.equal(state.overflow,false);assert.equal(state.theme,true);assert(state.tables>=1);
+          await waitExpression(cdp,sessionId,inFrame(`return d.documentElement.classList.contains('dark')===${dark};`),'Theme reaches native source');
+          assert.equal(await evaluate(cdp,sessionId,`document.documentElement.scrollWidth>innerWidth+2`),false);
+          await auditNativeActsInteractions(cdp,sessionId,entry.order);
+          if(dark) assert.equal(await evaluate(cdp,sessionId,inFrame(`return w.getComputedStyle(d.body).backgroundColor;`)),'rgb(28, 33, 29)');
         }
         assert.equal(await evaluate(cdp,sessionId,`document.querySelector('[data-acts-original]').open`),false);
-      }
-      if(entry.order>3) {
-        await evaluate(cdp,sessionId,`(()=>{const i=document.querySelector('[data-study-query]');i.value='___no-match-acts___';i.dispatchEvent(new Event('input',{bubbles:true}));})()`);
-        assert.equal(await evaluate(cdp,sessionId,`document.querySelector('jjo-study-table').querySelectorAll('[data-study-row]:not([hidden])').length`),0);
-        await evaluate(cdp,sessionId,`document.querySelector('[data-study-reset]').click()`);
-        assert(await evaluate(cdp,sessionId,`document.querySelector('jjo-study-table').querySelectorAll('[data-study-row]:not([hidden])').length>0`));
       }
       console.log(`acts-reader: PASS ${entry.slug} width=${size.width} light/dark keyboard source and interactions`);
     }
@@ -169,9 +161,11 @@ export async function auditActsStudies(cdp, sessionId) {
   await evaluate(cdp,sessionId,`document.querySelector('a[href="/posts/acts-overview-2"]').click()`);
   await waitExpression(cdp,sessionId,`location.pathname.split('/').filter(Boolean).join('/')==='posts/acts-overview-2'&&Boolean(document.querySelector('[data-acts-frame]'))`,'Astro navigation reaches next dashboard');
   await waitDashboard(cdp,sessionId);await dashboardInteractions(cdp,sessionId,2);
-  // Also retain a client-navigation regression for the original passage table custom element.
+  // Also retain a client-navigation regression for the original passage dashboard.
   await navigate(cdp,sessionId,'/posts/acts-1-1-5-1');
   await evaluate(cdp,sessionId,`document.querySelector('a[href="/posts/acts-1-1-5-2"]').click()`);
-  await waitExpression(cdp,sessionId,`location.pathname.split('/').filter(Boolean).join('/')==='posts/acts-1-1-5-2'&&Boolean(document.querySelector('[data-study-tools]:not([hidden])'))`,'Astro navigation initializes passage tables');
-  console.log('acts-study-qa: PASS 3 lossless original dashboards + 3 passage articles, five charts, ordered shelves, three viewports x two themes, native originals, modals, filters and client navigation');
+  await waitExpression(cdp,sessionId,`location.pathname.split('/').filter(Boolean).join('/')==='posts/acts-1-1-5-2'&&Boolean(document.querySelector('[data-acts-frame]'))`,'Astro navigation initializes original passage dashboard');
+  await waitDashboard(cdp,sessionId);
+  await auditNativeActsInteractions(cdp,sessionId,5);
+  console.log('acts-study-qa: PASS 9 original dashboards, 22 charts with original source values and fonts, ordered shelves, three viewports x two themes, native originals, modals, filters and client navigation');
 }

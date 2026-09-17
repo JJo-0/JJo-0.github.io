@@ -121,6 +121,9 @@ POST_TAXONOMY.update(
         'acts-1-1-5-1.mdx': Taxonomy('biblical-studies', 'acts-1-1-5', 'interactive-guide', ('acts', 'biblical-studies', 'greek-exegesis', 'textual-criticism')),
         'acts-1-1-5-2.mdx': Taxonomy('biblical-studies', 'acts-1-1-5', 'interactive-guide', ('acts', 'biblical-studies', 'narrative-criticism', 'rhetoric')),
         'acts-1-1-5-3.mdx': Taxonomy('biblical-studies', 'acts-1-1-5', 'interactive-guide', ('acts', 'biblical-studies', 'pneumatology', 'reception-history')),
+        'acts-1-6-14-1.mdx': Taxonomy('biblical-studies', 'acts-1-6-14', 'interactive-guide', ('acts', 'biblical-studies', 'greek-exegesis', 'textual-criticism')),
+        'acts-1-6-14-2.mdx': Taxonomy('biblical-studies', 'acts-1-6-14', 'interactive-guide', ('acts', 'biblical-studies', 'narrative-criticism', 'rhetoric')),
+        'acts-1-6-14-3.mdx': Taxonomy('biblical-studies', 'acts-1-6-14', 'interactive-guide', ('acts', 'biblical-studies', 'pneumatology', 'reception-history')),
     }
 )
 
