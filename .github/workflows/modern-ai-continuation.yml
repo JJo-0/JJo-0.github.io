@@ -1,0 +1,68 @@
+name: Modern AI VI VIII continuation
+on:
+  pull_request:
+    branches: [main]
+    paths: ['spaceship-ui/**', '.github/workflows/modern-ai-continuation.yml']
+  push:
+    branches: [main]
+    paths: ['spaceship-ui/**', '.github/workflows/modern-ai-continuation.yml']
+permissions:
+  contents: read
+concurrency:
+  group: modern-ai-continuation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  content-calculations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies and Korean browser fonts
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Numerical examples and eight mutation controls
+        run: python scripts/verify-modern-ai-continuation.py --report continuation-results.json
+      - name: Exact local figure bytes and KaTeX syntax
+        run: node scripts/modern-ai-continuation-audit.mjs
+      - run: pnpm build
+      - name: Rendered article figure coverage
+        run: node scripts/modern-ai-continuation-audit.mjs
+      - name: Original image reading and native full-size links
+        timeout-minutes: 4
+        run: node scripts/browser-modern-ai-continuation.mjs
+      - name: Preserve exact candidate pages and numerical evidence
+        if: always()
+        run: |
+          mkdir -p continuation-review
+          git rev-parse HEAD > continuation-review/tested-head.txt
+          cp continuation-results.json continuation-review/ 2>/dev/null || true
+          cp site/assets/assets/posts/modern-ai-continuation/figures.json continuation-review/
+          for n in 6 7 8; do
+            cp site/content/posts/modern-artificial-intelligence-$n.mdx continuation-review/part-$n.mdx
+            if test -f dist/posts/2026-08-25-modern-artificial-intelligence-$n/index.html; then
+              cp dist/posts/2026-08-25-modern-artificial-intelligence-$n/index.html continuation-review/part-$n.html
+            fi
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: modern-ai-continuation-${{ github.run_id }}
+          path: spaceship-ui/continuation-review/
+          retention-days: 14
