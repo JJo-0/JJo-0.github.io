@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          persist-credentials: true
+          fetch-depth: 0
       - name: Acquire attributed photographs and bounded benchmark data
         run: |
           python -m pip install --quiet requests beautifulsoup4 Pillow
@@ -41,19 +41,21 @@ jobs:
           rows=[]
           for row in photographs:
               raw,final=get(row['source']);soup=BeautifulSoup(raw,'html.parser');text=soup.get_text(' ',strip=True)
+              (out/(row['id']+'.html')).write_bytes(raw)
               if 'commons.wikimedia.org' in row['source']:
                   assert any(row['rights'].replace('https:','').rstrip('/') in a.get('href','').replace('https:','').replace('http:','').rstrip('/') for a in soup.select('a[href]')),row['id']
                   a=soup.select_one('.fullImageLink a');assert a
                   image_url=urljoin(row['source'],a['href']);assert urlparse(image_url).hostname=='upload.wikimedia.org'
               else:
                   assert 'public domain' in text.lower() and 'NIAID' in text
-                  meta=soup.select_one('meta[property="og:image"]');assert meta
-                  image_url=urljoin(row['source'],meta['content'])
+                  images=[urljoin(row['source'],i.get('src','')) for i in soup.select('img')]
+                  image_url=next((u for u in images if '9a9ab56d-6070-41b5-8d95-7a4ab204af8f' in u),None)
+                  assert image_url,'Identified NIAID image not found'
               data,_=get(image_url);im=Image.open(io.BytesIO(data));im.load();assert im.width>=400
               im=im.convert('RGB');im.thumbnail((1800,1800),Image.Resampling.LANCZOS)
               path=root/(row['id']+'.webp');im.save(path,'WEBP',quality=90,method=6)
               row.update(originalImageUrl=image_url,sourcePageSha256=hashlib.sha256(raw).hexdigest(),originalImageSha256=hashlib.sha256(data).hexdigest(),sha256=hashlib.sha256(path.read_bytes()).hexdigest(),width=im.width,height=im.height,src='/assets/posts/news-20260917/'+path.name,changes='Proportional resize and WebP conversion; no content cropping or alteration.')
-              rows.append(row);(out/(row['id']+'.html')).write_bytes(raw);(out/path.name).write_bytes(path.read_bytes())
+              rows.append(row);(out/path.name).write_bytes(path.read_bytes())
           (root/'provenance.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n');(out/'provenance.json').write_bytes((root/'provenance.json').read_bytes())
           csv_url='https://raw.githubusercontent.com/mlcommons/inference_results_v6.1/main/summary.csv'
           data,final=get(csv_url);(out/'mlperf-summary.csv').write_bytes(data)
@@ -65,7 +67,10 @@ jobs:
           records=Path('spaceship-ui/site/news-mlperf-20260917.json');records.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n')
           subprocess.run(['git','add','--',str(root),str(records)],check=True)
           subprocess.run(['git','-c','user.name=JJo Editorial','-c','user.email=76779256+JJo-0@users.noreply.github.com','commit','-m','media: store three rights-checked background photos and exact MLPerf comparison rows (#126)'],check=True)
+          subprocess.run(['git','fetch','origin','content/news-20260917-rubin-bio'],check=True)
+          subprocess.run(['git','-c','user.name=JJo Editorial','-c','user.email=76779256+JJo-0@users.noreply.github.com','rebase','FETCH_HEAD'],check=True)
           subprocess.run(['git','push','origin','HEAD:refs/heads/content/news-20260917-rubin-bio'],check=True)
+          print('Evidence head',subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip())
           print(json.dumps(receipt,ensure_ascii=False,indent=2))
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
