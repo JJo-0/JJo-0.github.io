@@ -104,6 +104,9 @@ def unlinked_markers(article):
 
 def audit_html(text, expected=None):
     tree = Document(text).root
+    bases = [n.attrs.get("href", "") for n in tree.walk() if n.tag == "base"]
+    if bases:
+        assert len(bases) == 1 and bases[0].startswith("/posts/") and len(bases[0]) > 7, "article fragment base must not target site root"
     articles = [n for n in tree.walk() if n.tag == 'article']
     assert len(articles) == 1, f'expected one article, found {len(articles)}'
     article = articles[0]
