@@ -9,7 +9,7 @@ const currentEdition = JSON.parse(fs.readFileSync(new URL('../site/news-edition-
 const citationRows = [...ledger.repairs, ...currentEdition.entries];
 const newSlugs = new Set(currentEdition.entries.map((row) => row.slug));
 const results = [];
-let preview, chrome, cdp, sessionId, activeSlug, activeWidth, lastPointer;
+let preview, chrome, cdp, sessionId, activeSlug, activeWidth, lastPointer, lastKeyboard;
 fs.mkdirSync('citation-audit', {recursive:true});
 
 async function screenshot(name) {
@@ -53,6 +53,29 @@ async function pointer(selector, mobile) {
     await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:point.x,y:point.y,button:'none',pointerType:'mouse'}, sessionId);
     await cdp.send('Input.dispatchMouseEvent', {type:'mousePressed',x:point.x,y:point.y,button:'left',buttons:1,clickCount:1,pointerType:'mouse'}, sessionId);
     await cdp.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:point.x,y:point.y,button:'left',buttons:0,clickCount:1,pointerType:'mouse'}, sessionId);
+  }
+}
+async function nativeEnter(selector) {
+  lastKeyboard = {selector};
+  await cdp.send('Page.bringToFront', {}, sessionId);
+  await cdp.send('Emulation.setScriptExecutionDisabled', {value:true}, sessionId);
+  lastKeyboard.scriptDisabled = true;
+  try {
+    // Use the browser DOM agent, not page JavaScript, to establish and verify
+    // focus after scripting is disabled. The only activation is one Enter key.
+    await cdp.send('DOM.enable', {}, sessionId);
+    const {root} = await cdp.send('DOM.getDocument', {depth:0}, sessionId);
+    const {nodeId} = await cdp.send('DOM.querySelector', {nodeId:root.nodeId,selector}, sessionId);
+    lastKeyboard.nodeId = nodeId;
+    assert(nodeId > 0, 'Native keyboard citation target must exist');
+    await cdp.send('DOM.focus', {nodeId}, sessionId);
+    const focused = await cdp.send('DOM.querySelector', {nodeId:root.nodeId,selector:':focus'}, sessionId);
+    lastKeyboard.focusedNodeId = focused.nodeId;
+    assert.equal(focused.nodeId, nodeId, 'The intended citation must own native keyboard focus');
+    await cdp.send('Input.dispatchKeyEvent', {type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13}, sessionId);
+    await cdp.send('Input.dispatchKeyEvent', {type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13}, sessionId);
+  } finally {
+    await cdp.send('Emulation.setScriptExecutionDisabled', {value:false}, sessionId);
   }
 }
 async function assertDestination(number) {
@@ -116,11 +139,7 @@ try {
       }
       // Native Enter-key activation must also work with page scripting disabled.
       const number = Object.keys(row.citationCounts)[0];
-      await evaluate(cdp, sessionId, `document.querySelector('article a[data-news-citation="${number}"]').focus()`);
-      await cdp.send('Emulation.setScriptExecutionDisabled', {value:true}, sessionId);
-      await cdp.send('Input.dispatchKeyEvent', {type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13}, sessionId);
-      await cdp.send('Input.dispatchKeyEvent', {type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13}, sessionId);
-      await cdp.send('Emulation.setScriptExecutionDisabled', {value:false}, sessionId);
+      await nativeEnter(`article a[data-news-citation="${number}"]`);
       await assertDestination(number);
       for (const dark of [false,true]) {
         await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark', ${dark})`);
@@ -147,7 +166,7 @@ try {
     try {
       await cdp.send('Emulation.setScriptExecutionDisabled', {value:false}, sessionId);
       const page = await evaluate(cdp, sessionId, `({url:location.href,title:document.title,base:document.baseURI,header:document.querySelector('header')?.getBoundingClientRect().toJSON(),references:[...document.querySelectorAll('[data-news-reference]')].map(a=>({id:a.id,rect:a.getBoundingClientRect().toJSON()}))})`);
-      fs.writeFileSync('citation-audit/failure.json', JSON.stringify({slug:activeSlug,width:activeWidth,error:String(error),lastPointer,page,completed:results},null,2));
+      fs.writeFileSync('citation-audit/failure.json', JSON.stringify({slug:activeSlug,width:activeWidth,error:String(error),lastPointer,lastKeyboard,page,completed:results},null,2));
       await screenshot('failure');
     } catch (diagnosticError) { console.error('news-citation-browser: diagnostic failed', String(diagnosticError)); }
   }
