@@ -1,0 +1,76 @@
+name: September 17 NEWS images and benchmark rows
+on:
+  push:
+    branches: [content/news-20260917-rubin-bio]
+    paths: [.github/workflows/news-20260917-evidence-assets.yml]
+permissions:
+  contents: write
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: true
+      - name: Acquire attributed photographs and bounded benchmark data
+        run: |
+          python -m pip install --quiet requests beautifulsoup4 Pillow
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urljoin,urlparse
+          import requests,hashlib,json,io,csv,os,subprocess
+          from bs4 import BeautifulSoup
+          from PIL import Image
+          root=Path('spaceship-ui/site/assets/assets/posts/news-20260917');root.mkdir(parents=True,exist_ok=True)
+          out=Path(os.environ['RUNNER_TEMP'])/'news17-evidence';out.mkdir()
+          session=requests.Session();session.headers['User-Agent']='JJo Research Blog source and media verification'
+          def get(url):
+              p=urlparse(url);assert p.scheme=='https' and not p.username and not p.password
+              with session.get(url,stream=True,timeout=45) as r:
+                  r.raise_for_status();data=b''
+                  for chunk in r.iter_content(65536):
+                      data+=chunk
+                      assert len(data)<25000000
+                  return data,r.url
+          photographs=[
+            {'id':'rubin-rack-background','source':'https://commons.wikimedia.org/wiki/File:ORNL_Launches_Summit_Supercomputer_(31430046567).jpg','license':'CC BY 2.0','rights':'https://creativecommons.org/licenses/by/2.0/','credit':'Genevieve Martin / Oak Ridge National Laboratory','role':'2018 Summit rack photograph; not Vera Rubin or its benchmark system'},
+            {'id':'ms-ebv-micrograph','source':'https://www.eurekalert.org/multimedia/963089','license':'Public domain','rights':'https://www.eurekalert.org/multimedia/963089','credit':'NIAID','role':'NIAID electron microscopy of three Epstein-Barr virions; background, not the 2026 study specimen'},
+            {'id':'hemophilia-aav-micrograph','source':'https://commons.wikimedia.org/wiki/File:AAVs_by_electron_microscopy.jpg','license':'CC BY-SA 4.0','rights':'https://creativecommons.org/licenses/by-sa/4.0/','credit':'Graham Beards','role':'2019 micrograph: large adenovirus particles surrounded by smaller AAV particles; not BBM-H901 trial material'}
+          ]
+          rows=[]
+          for row in photographs:
+              raw,final=get(row['source']);soup=BeautifulSoup(raw,'html.parser');text=soup.get_text(' ',strip=True)
+              if 'commons.wikimedia.org' in row['source']:
+                  assert any(row['rights'].replace('https:','').rstrip('/') in a.get('href','').replace('https:','').replace('http:','').rstrip('/') for a in soup.select('a[href]')),row['id']
+                  a=soup.select_one('.fullImageLink a');assert a
+                  image_url=urljoin(row['source'],a['href']);assert urlparse(image_url).hostname=='upload.wikimedia.org'
+              else:
+                  assert 'public domain' in text.lower() and 'NIAID' in text
+                  meta=soup.select_one('meta[property="og:image"]');assert meta
+                  image_url=urljoin(row['source'],meta['content'])
+              data,_=get(image_url);im=Image.open(io.BytesIO(data));im.load();assert im.width>=400
+              im=im.convert('RGB');im.thumbnail((1800,1800),Image.Resampling.LANCZOS)
+              path=root/(row['id']+'.webp');im.save(path,'WEBP',quality=90,method=6)
+              row.update(originalImageUrl=image_url,sourcePageSha256=hashlib.sha256(raw).hexdigest(),originalImageSha256=hashlib.sha256(data).hexdigest(),sha256=hashlib.sha256(path.read_bytes()).hexdigest(),width=im.width,height=im.height,src='/assets/posts/news-20260917/'+path.name,changes='Proportional resize and WebP conversion; no content cropping or alteration.')
+              rows.append(row);(out/(row['id']+'.html')).write_bytes(raw);(out/path.name).write_bytes(path.read_bytes())
+          (root/'provenance.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n');(out/'provenance.json').write_bytes((root/'provenance.json').read_bytes())
+          csv_url='https://raw.githubusercontent.com/mlcommons/inference_results_v6.1/main/summary.csv'
+          data,final=get(csv_url);(out/'mlperf-summary.csv').write_bytes(data)
+          parsed=list(csv.DictReader(io.StringIO(data.decode('utf-8-sig'))))
+          selected=[r for r in parsed if '6.1-0106' in str(r) or '6.1-0074' in str(r)]
+          assert selected,'Expected NVIDIA submissions not found'
+          receipt={'source':csv_url,'checkedAt':'2026-09-17','sha256':hashlib.sha256(data).hexdigest(),'rowCount':len(parsed),'columns':list(parsed[0]),'selectedRows':selected}
+          (out/'mlperf-selected.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n')
+          records=Path('spaceship-ui/site/news-mlperf-20260917.json');records.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n')
+          subprocess.run(['git','add','--',str(root),str(records)],check=True)
+          subprocess.run(['git','-c','user.name=JJo Editorial','-c','user.email=76779256+JJo-0@users.noreply.github.com','commit','-m','media: store three rights-checked background photos and exact MLPerf comparison rows (#126)'],check=True)
+          subprocess.run(['git','push','origin','HEAD:refs/heads/content/news-20260917-rubin-bio'],check=True)
+          print(json.dumps(receipt,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: news17-images-and-mlperf
+          path: ${{ runner.temp }}/news17-evidence
+          retention-days: 14
