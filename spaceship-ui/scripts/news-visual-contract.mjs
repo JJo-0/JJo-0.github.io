@@ -1,3 +1,5 @@
+import './news-20260917-contract.mjs';
+import './news-prose-policy.test.mjs';
 import './news-20260916-contract.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -52,3 +54,8 @@ await import('./news-20260914-candidates-visual-contract.mjs');
 await import("./news-20260915-contract.mjs");
 
 await import('./news-media-visit-plan.test.mjs');
+
+// Check the rendered NEWS roster, not only source strings.
+const { execFileSync } = await import('node:child_process');
+execFileSync('python3', [new URL('./news-citation-contract.test.py', import.meta.url).pathname], { stdio: 'inherit' });
+execFileSync('python3', [new URL('./news-citation-contract.py', import.meta.url).pathname], { stdio: 'inherit' });

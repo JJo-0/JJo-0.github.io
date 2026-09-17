@@ -221,7 +221,7 @@ export async function stopChild(child, signal = 'SIGTERM') {
   if (child.exitCode === null) child.kill('SIGKILL');
 }
 
-export async function attach(cdp) {
+export async function attach(cdp, { normalizeHistoryPath = true } = {}) {
   const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
   await cdp.send('Target.activateTarget', { targetId });
@@ -252,6 +252,8 @@ export async function attach(cdp) {
         // Keep the network response untouched, then normalize only the smoke
         // browser's history URL so route assertions stay identical to preview.
         const normalizeSmokePath = () => {
+          // Native-fragment audits must keep the browser URL aligned with <base>.
+          if (!${JSON.stringify(normalizeHistoryPath)}) return;
           try {
             if (location.pathname !== '/' && /\\/+$/u.test(location.pathname)) {
               const normalizedPath = location.pathname.replace(/\\/+$/u, '') || '/';

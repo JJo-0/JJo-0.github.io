@@ -27,9 +27,9 @@ import NewsFigure from "@/components/post/NewsFigure.astro";
 
 이미지 생성 모델이 그림을 만들 때는 보통 거친 노이즈에서 시작해 여러 번 조금씩 정리한다. 이 반복을 <strong>샘플링(sampling)</strong>이라고 부른다. 한 번 정리할 때마다 모델을 실행해야 하므로, 반복 횟수는 속도와 비용에 직접 연결된다. 그래서 “같은 품질을 더 적은 단계로 만들 수 있는가”는 확산 모델 연구에서 오래된 질문이다.
 
-2026년 ICML Outstanding Paper로 선정된 <em>High-accuracy sampling for diffusion models and log-concave distributions</em>는 이 질문에 이론적인 답을 제시한다.[1] 논문이 보이는 핵심은, 목표 오차를 아주 작게 만들고 싶을 때 필요한 score 함수 평가 횟수가 기존의 다항식적 증가 대신 <strong>오차의 역수에 대한 로그의 다항식</strong> 정도로 늘어날 수 있다는 것이다. 이름은 길지만 직관은 간단하다. 정밀도를 열 배, 백 배 더 올리고 싶을 때 계산량이 폭발하는 문제를 수학적으로 다시 설계해 보자는 연구다.
+2026년 ICML Outstanding Paper로 선정된 <em>High-accuracy sampling for diffusion models and log-concave distributions</em>는 이 질문에 이론적인 답을 제시한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a> 논문이 보이는 핵심은, 목표 오차를 아주 작게 만들고 싶을 때 필요한 score 함수 평가 횟수가 기존의 다항식적 증가 대신 <strong>오차의 역수에 대한 로그의 다항식</strong> 정도로 늘어날 수 있다는 것이다. 이름은 길지만 직관은 간단하다. 정밀도를 열 배, 백 배 더 올리고 싶을 때 계산량이 폭발하는 문제를 수학적으로 다시 설계해 보자는 연구다.
 
-그러나 이 문장을 “이제 어떤 이미지 생성 서비스도 즉시 수백 배 빨라진다”로 바꾸면 틀린다. 이 논문은 특정 Stable Diffusion 버전이나 동영상 생성 제품의 실제 처리 시간을 비교한 벤치마크가 아니다. 이론은 매우 정확한 <strong>score 추정치</strong>를 쓸 수 있다는 조건에서 단계 수의 상한을 논한다.[2] 실제 서비스에서는 모델이 그만큼 정확한 score를 내는지, 한 단계 자체가 얼마나 비싼지, 메모리·해상도·안전 필터·후처리가 얼마나 걸리는지가 따로 남는다.
+그러나 이 문장을 “이제 어떤 이미지 생성 서비스도 즉시 수백 배 빨라진다”로 바꾸면 틀린다. 이 논문은 특정 Stable Diffusion 버전이나 동영상 생성 제품의 실제 처리 시간을 비교한 벤치마크가 아니다. 이론은 매우 정확한 <strong>score 추정치</strong>를 쓸 수 있다는 조건에서 단계 수의 상한을 논한다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a> 실제 서비스에서는 모델이 그만큼 정확한 score를 내는지, 한 단계 자체가 얼마나 비싼지, 메모리·해상도·안전 필터·후처리가 얼마나 걸리는지가 따로 남는다.
 
 그래서 이 글의 한 문장 결론은 다음과 같다. <strong>FORS는 확산 모델을 당장 더 빠르게 만든 상용 솔버라기보다, 높은 정확도를 요구할 때 ‘score만 보고도 단계 수를 크게 줄일 수 있는가’라는 이론적 장벽을 낮춘 연구다.</strong> 먼저 확산 모델이 무엇을 반복하는지부터 보자.
 
@@ -58,13 +58,13 @@ import NewsFigure from "@/components/post/NewsFigure.astro";
 
 ## 3. 왜 정확도를 높일수록 일이 어려워지나
 
-목표 오차를 δ라고 쓰자. δ가 0.1이면 대략적인 근접을, 0.001이면 훨씬 더 엄격한 근접을 요구하는 상황으로 생각할 수 있다. 값이 작을수록 요구가 높다. 기존의 이산화(discretization) 기반 접근에서는 이 목표를 더 엄격하게 만들 때 필요한 단계 수가 1/δ의 다항식처럼 커질 수 있다. δ를 줄일수록 계산량이 빠르게 불어나는 이유다.[1]
+목표 오차를 δ라고 쓰자. δ가 0.1이면 대략적인 근접을, 0.001이면 훨씬 더 엄격한 근접을 요구하는 상황으로 생각할 수 있다. 값이 작을수록 요구가 높다. 기존의 이산화(discretization) 기반 접근에서는 이 목표를 더 엄격하게 만들 때 필요한 단계 수가 1/δ의 다항식처럼 커질 수 있다. δ를 줄일수록 계산량이 빠르게 불어나는 이유다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
 
 다만 그림의 두 선을 실제 GPU 시간 그래프로 읽으면 안 된다. 왼쪽의 ‘다항식’과 오른쪽의 ‘polylog’는 <strong>오차 허용치를 줄일 때의 이론적 성장 양식</strong>을 비교한 교육용 도식이다. 상수항, 차원, 모델 한 번 실행하는 시간은 그려져 있지 않다. 어떤 실제 모델에서는 상수항이 너무 커서 이론상 유리한 방법이 더 느릴 수도 있다. 알고리즘 이론에서 흔히 일어나는 일이다.
 
-그렇다고 연구가 말장난인 것은 아니다. 정확도 목표가 매우 높은 과제에서는 성장률 자체가 중요한 제약이 된다. 예를 들어 시뮬레이션, 통계적 샘플링, 물리·과학 계산처럼 분포의 꼬리나 작은 차이까지 보존해야 하는 상황에서는 ‘대충 비슷한 이미지’를 얻는 것보다 엄격한 오차 보장이 중요할 수 있다. 이 논문은 확산 생성만이 아니라 <strong>로그 오목(log-concave)</strong> 분포의 샘플링에도 결과를 연결한다.[2]
+그렇다고 연구가 말장난인 것은 아니다. 정확도 목표가 매우 높은 과제에서는 성장률 자체가 중요한 제약이 된다. 예를 들어 시뮬레이션, 통계적 샘플링, 물리·과학 계산처럼 분포의 꼬리나 작은 차이까지 보존해야 하는 상황에서는 ‘대충 비슷한 이미지’를 얻는 것보다 엄격한 오차 보장이 중요할 수 있다. 이 논문은 확산 생성만이 아니라 <strong>로그 오목(log-concave)</strong> 분포의 샘플링에도 결과를 연결한다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a>
 
-여기서 “지수적 개선”이라는 표현도 조심해서 읽어야 한다. ICML 소개와 논문은 1/δ에 대해 다항식으로 자라던 의존성이 polylog(1/δ)로 바뀐다는 의미에서 exponential improvement라고 설명한다.[1][2] 이것은 같은 데이터·같은 모델·같은 컴퓨터에서 무조건 처리 시간이 몇 배가 된다는 실험 수치가 아니다. <strong>오차 목표를 극단적으로 낮출 때 계산 복잡도가 어떻게 변하는가</strong>에 대한 비교다.
+여기서 “지수적 개선”이라는 표현도 조심해서 읽어야 한다. ICML 소개와 논문은 1/δ에 대해 다항식으로 자라던 의존성이 polylog(1/δ)로 바뀐다는 의미에서 exponential improvement라고 설명한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a> 이것은 같은 데이터·같은 모델·같은 컴퓨터에서 무조건 처리 시간이 몇 배가 된다는 실험 수치가 아니다. <strong>오차 목표를 극단적으로 낮출 때 계산 복잡도가 어떻게 변하는가</strong>에 대한 비교다.
 
 ## 4. FORS: 함수값을 보지 않고도 ‘채택할지 말지’를 결정하는 방법
 
@@ -72,7 +72,7 @@ import NewsFigure from "@/components/post/NewsFigure.astro";
 
 보통 이 판단에는 분포의 <strong>밀도값</strong>이 도움이 된다. 그러나 확산 모델에서 쉽게 얻는 것은 밀도 그 자체가 아니라 그 변화 방향인 score인 경우가 많다. 지도에서 고도 숫자는 없고 경사 방향 화살표만 있는 것에 비유할 수 있다. 화살표만으로 “이 지점이 얼마나 높은가”를 정확히 재기는 어렵다. 그래서 기존의 고정확도 rejection sampling 기법을 score 모델에 그대로 가져오기 힘들었다.
 
-FORS는 이 틈을 겨냥한다. score 또는 log-density의 gradient 같은 <strong>1차 정보(first-order information)</strong>만 질의해서, 밀도값을 직접 평가하는 rejection sampling을 흉내 내는 메타 알고리즘을 만든다.[1] 논문에서 중요한 단어는 ‘흉내’다. 밀도를 갑자기 알아내는 것이 아니라, 여러 번의 1차 질의를 조합해 받아들임 확률을 구현할 수 있음을 보인다.
+FORS는 이 틈을 겨냥한다. score 또는 log-density의 gradient 같은 <strong>1차 정보(first-order information)</strong>만 질의해서, 밀도값을 직접 평가하는 rejection sampling을 흉내 내는 메타 알고리즘을 만든다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a> 논문에서 중요한 단어는 ‘흉내’다. 밀도를 갑자기 알아내는 것이 아니라, 여러 번의 1차 질의를 조합해 받아들임 확률을 구현할 수 있음을 보인다.
 
 <NewsFigure media="fors-oracle-map" />
 
@@ -80,23 +80,23 @@ FORS는 이 틈을 겨냥한다. score 또는 log-density의 gradient 같은 <st
 
 ## 5. 논문이 실제로 보장하는 조건과 결과
 
-논문은 δ 오차를 얻기 위해 score 추정치가 대략 <Math tex={String.raw`\widetilde O(\delta)`} /> 수준으로 정확해야 한다는 조건을 둔다.[2] 물결표가 붙은 O 표기는 로그처럼 비교적 천천히 변하는 요인을 감춘다는 뜻이다. 핵심은 목표 오차를 더 작게 정할수록 score 추정 자체도 더 정밀해야 한다는 점이다. 샘플링 단계만 마법처럼 쉬워지고, 모델의 근사 오차가 사라지는 것은 아니다.
+논문은 δ 오차를 얻기 위해 score 추정치가 대략 <Math tex={String.raw`\widetilde O(\delta)`} /> 수준으로 정확해야 한다는 조건을 둔다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a> 물결표가 붙은 O 표기는 로그처럼 비교적 천천히 변하는 요인을 감춘다는 뜻이다. 핵심은 목표 오차를 더 작게 정할수록 score 추정 자체도 더 정밀해야 한다는 점이다. 샘플링 단계만 마법처럼 쉬워지고, 모델의 근사 오차가 사라지는 것은 아니다.
 
-그 조건 아래 논문은 최소한의 데이터 가정에서 차원 d에 대해 <Math tex={String.raw`\widetilde O(d\,\mathrm{polylog}(1/\delta))`} /> 형태의 복잡도를 제시한다. 데이터가 사실상 낮은 차원 구조를 갖는다는 조건에서는 내재 차원 d<sub>★</sub>가 등장하고, 비균일 Lipschitz 조건에서는 더 정교한 의존성을 논한다.[2] 이 기호는 독자가 외울 대상이 아니다. 높은 차원의 이미지 공간에서도 ‘화소 개수만’ 보는 것이 아니라 데이터의 실제 구조를 반영해 분석하려 했다는 표지로 읽으면 된다.
+그 조건 아래 논문은 최소한의 데이터 가정에서 차원 d에 대해 <Math tex={String.raw`\widetilde O(d\,\mathrm{polylog}(1/\delta))`} /> 형태의 복잡도를 제시한다. 데이터가 사실상 낮은 차원 구조를 갖는다는 조건에서는 내재 차원 d<sub>★</sub>가 등장하고, 비균일 Lipschitz 조건에서는 더 정교한 의존성을 논한다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a> 이 기호는 독자가 외울 대상이 아니다. 높은 차원의 이미지 공간에서도 ‘화소 개수만’ 보는 것이 아니라 데이터의 실제 구조를 반영해 분석하려 했다는 표지로 읽으면 된다.
 
-또 다른 결과는 로그 오목 분포다. 한 봉우리 주변으로 확률이 모이고, 중간에 불규칙한 다중 봉우리가 없는 분포를 생각하면 된다. 이런 분포는 통계·최적화에서 자주 등장한다. 논문은 일반 로그 오목 분포에 대해서도 gradient 평가만으로 polylog(1/δ) 복잡도를 얻는 첫 결과라고 주장한다.[2] 이미지·영상의 실제 데이터 분포가 자동으로 로그 오목이라는 뜻은 아니다. 이 부분은 확산 모델과 별개로, 1차 정보 기반 샘플링 이론의 범위를 넓힌 기여다.
+또 다른 결과는 로그 오목 분포다. 한 봉우리 주변으로 확률이 모이고, 중간에 불규칙한 다중 봉우리가 없는 분포를 생각하면 된다. 이런 분포는 통계·최적화에서 자주 등장한다. 논문은 일반 로그 오목 분포에 대해서도 gradient 평가만으로 polylog(1/δ) 복잡도를 얻는 첫 결과라고 주장한다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a> 이미지·영상의 실제 데이터 분포가 자동으로 로그 오목이라는 뜻은 아니다. 이 부분은 확산 모델과 별개로, 1차 정보 기반 샘플링 이론의 범위를 넓힌 기여다.
 
-ICML이 이 연구를 Outstanding Paper로 선정한 이유도 제품 데모가 화려해서라기보다, score-based sampling의 장기 질문을 풀었다는 이론적 의미에 있다. 공식 소개는 score 함수 평가만으로 ε-error를 polylog(1/ε) 단계에서 얻을 수 있는지의 문제를 정면으로 다룬다고 설명한다.[1] 이 점 때문에 이 글에서는 ‘후보’로 다루되, 이미지 생성 서비스 비교 기사처럼 포장하지 않는다.
+ICML이 이 연구를 Outstanding Paper로 선정한 이유도 제품 데모가 화려해서라기보다, score-based sampling의 장기 질문을 풀었다는 이론적 의미에 있다. 공식 소개는 score 함수 평가만으로 ε-error를 polylog(1/ε) 단계에서 얻을 수 있는지의 문제를 정면으로 다룬다고 설명한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a> 이 점 때문에 이 글에서는 ‘후보’로 다루되, 이미지 생성 서비스 비교 기사처럼 포장하지 않는다.
 
 ## 6. 이 연구가 아직 제품에 답하지 않는 질문
 
-첫째, <strong>실제 score 모델의 정확도</strong>다. 논문의 보장은 δ에 비례할 만큼 정확한 L² score 추정치를 전제로 한다. 대형 이미지 모델의 score 네트워크가 특정 해상도·프롬프트·데이터 분포에서 그 조건을 만족하는지, 또 그 정확도를 얻는 학습 비용이 얼마나 되는지는 별도 문제다.[2]
+첫째, <strong>실제 score 모델의 정확도</strong>다. 논문의 보장은 δ에 비례할 만큼 정확한 L² score 추정치를 전제로 한다. 대형 이미지 모델의 score 네트워크가 특정 해상도·프롬프트·데이터 분포에서 그 조건을 만족하는지, 또 그 정확도를 얻는 학습 비용이 얼마나 되는지는 별도 문제다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a>
 
 둘째, <strong>한 단계의 비용</strong>이다. 단계 수가 적어도 FORS의 한 단계가 여러 score 질의나 추가 계산을 요구한다면 벽시계 시간은 기대만큼 줄지 않을 수 있다. 논문은 목표 오차에 대한 oracle complexity를 다루며, 소비자 GPU에서 20-step sampler보다 빠르다는 end-to-end 실험을 제시하는 글은 아니다. 따라서 ‘NFE가 줄어든다’와 ‘사용자 대기 시간이 줄어든다’를 같은 문장으로 쓰지 않았다.
 
 셋째, <strong>정확도의 의미</strong>다. 논문의 δ-error는 분포 거리의 수학적 정의와 연결된다. 사람이 특정 스타일을 더 좋아하는지, 텍스트 프롬프트를 더 잘 따르는지, 손가락이 덜 깨지는지처럼 제품에서 보는 지표는 별도의 평가가 필요하다. 좋은 샘플링 이론은 이 문제들의 필요조건일 수 있지만 충분조건은 아니다.
 
-넷째, <strong>재현의 상태</strong>다. arXiv 논문은 공개되어 있지만 이 페이지에서 확인 가능한 공식 코드·체크포인트·대규모 이미지 모델 실험 패키지는 보이지 않는다.[2] 이는 이론 논문에 흠이라는 뜻이 아니라, 독자가 다음 단계를 판단할 때 알아야 할 경계다. 수학 증명 검증, 구현, 실제 확산 모델 통합은 서로 다른 작업이다.
+넷째, <strong>재현의 상태</strong>다. arXiv 논문은 공개되어 있지만 이 페이지에서 확인 가능한 공식 코드·체크포인트·대규모 이미지 모델 실험 패키지는 보이지 않는다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a> 이는 이론 논문에 흠이라는 뜻이 아니라, 독자가 다음 단계를 판단할 때 알아야 할 경계다. 수학 증명 검증, 구현, 실제 확산 모델 통합은 서로 다른 작업이다.
 
 ## 7. 그렇다면 누가 다음을 확인해야 하나
 
@@ -108,6 +108,6 @@ ICML이 이 연구를 Outstanding Paper로 선정한 이유도 제품 데모가 
 
 ## 8. 출처와 시각 자료
 
-1. [ICML 2026 공식 Awards 소개](https://blog.icml.cc/2026/) — FORS의 문제 설정과 Outstanding Paper 선정 맥락.
-2. Chen, Chewi, Daskalakis, Rakhlin, [High-accuracy sampling for diffusion models and log-concave distributions](https://arxiv.org/abs/2602.01338), arXiv:2602.01338v2, 2026-04-27 — 가정·복잡도·로그 오목 분포 결과.
+1. <a id="news-ref-1" href="https://blog.icml.cc/2026/07/05/announcing-the-icml-2026-awards/" data-news-reference="1" target="_blank" rel="noopener noreferrer">ICML 2026 공식 Awards 소개</a> — FORS의 문제 설정과 Outstanding Paper 선정 맥락.
+2. Chen, Chewi, Daskalakis, Rakhlin, <a id="news-ref-2" href="https://arxiv.org/abs/2602.01338" data-news-reference="2" target="_blank" rel="noopener noreferrer">High-accuracy sampling for diffusion models and log-concave distributions</a>, arXiv:2602.01338v2, 2026-04-27 — 가정·복잡도·로그 오목 분포 결과.
 3. 본문의 두 도식은 JJo가 논문의 문제 설정을 설명하려고 직접 제작했다. 논문의 Figure를 복제하지 않았으며, 수치 축·실측 속도·실제 제품 결과를 주장하지 않는다. arXiv 배포 라이선스는 [비독점 배포 허락](https://arxiv.org/licenses/nonexclusive-distrib/1.0/license.html)으로 확인되며, 원문 그림의 별도 자유 이용 허락을 확인하지 못해 재배포하지 않았다.

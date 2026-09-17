@@ -37,56 +37,87 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.19.0
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: spaceship-ui/pnpm-lock.yaml
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
+      - name: Install Korean browser fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
       - name: Taxonomy contract
         run: pnpm taxonomy:check
-
       - name: Lint
         run: pnpm lint
-
       - name: Type check
         run: pnpm check
-
       - name: SEO metadata check
         run: pnpm seo:check
-
       - name: Reader-first publishing harness
         run: pnpm blog:harness:check
-
       - name: Build
         run: pnpm build
-
       - name: Content integrity check
-        run: pnpm content:check
-
+        shell: bash
+        run: |
+          mkdir -p citation-audit
+          pnpm content:check 2>&1 | tee citation-audit/content-check.log
       - name: Browser smoke matrix
         timeout-minutes: 10
         # Semantically identical to `pnpm browser:smoke`, but the exit guard is
         # scoped to this Node process instead of leaking through NODE_OPTIONS.
-        # `workflow_dispatch.inputs.base_url` is deliberately normalized into an
-        # ordinary environment variable instead of being interpolated inside
-        # any shell script body.
+        # Preserve the existing complete matrix and its 240-second guard.
+        # Untrusted workflow input is passed as an ordinary environment value.
         env:
           JJO_SMOKE_REQUIRE_GPU: '0'
           JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
-        run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+        shell: bash
+        run: |
+          mkdir -p citation-audit
+          pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs 2>&1 | tee citation-audit/full-browser.log
+      - name: NEWS citation link browser check
+        timeout-minutes: 4
+        env:
+          JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
+        shell: bash
+        run: |
+          mkdir -p citation-audit
+          pnpm exec node scripts/browser-news-citation-audit.mjs 2>&1 | tee citation-audit/citation-browser.log
+      - name: Record complete static citation evidence
+        if: always()
+        run: python3 scripts/news-citation-contract.py --report citation-audit/static.json
+      - name: Preserve exact tested source and candidate renders
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,shutil,subprocess
+          out=Path('citation-audit');out.mkdir(exist_ok=True)
+          (out/'tested-head.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          manifest=Path('site/news-edition-20260917.json')
+          if manifest.exists():
+              shutil.copyfile(manifest,out/manifest.name)
+              for row in json.loads(manifest.read_text())['entries']:
+                  slug=row['slug']
+                  for p in [Path('site/content/posts')/(slug+'.mdx'),Path('dist/posts')/slug/'index.html']:
+                      if p.exists():shutil.copyfile(p,out/(slug+p.suffix))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: news-citation-review-${{ github.run_id }}
+          path: spaceship-ui/citation-audit/
+          retention-days: 14

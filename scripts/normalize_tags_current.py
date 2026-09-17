@@ -161,5 +161,12 @@ POST_TAXONOMY.update(
     }
 )
 
+
+POST_TAXONOMY.update({
+    '2026-09-17-vera-rubin-mlperf-news.mdx': Taxonomy('ai-machine-learning', 'ai-compute-hardware', 'research-report', ('frontier-one', 'ai-infrastructure')),
+    '2026-09-17-ms-ebv-prerelapse-news.mdx': Taxonomy('health-lifestyle', 'neuroimmunology', 'paper-review', ('frontier-candidate', 'neuroimmunology')),
+    '2026-09-17-adolescent-hemophilia-b-news.mdx': Taxonomy('health-lifestyle', 'gene-therapy', 'paper-review', ('frontier-candidate', 'gene-therapy')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

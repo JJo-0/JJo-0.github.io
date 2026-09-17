@@ -81,3 +81,10 @@ Six complete figures are locally hosted under `spaceship-ui/site/assets/assets/p
 - `/assets/posts/news-20260916/oect-fig1.webp`: Kim et al. (2024-09-01), https://www.nature.com/articles/s41467-024-51883-9/figures/1. Role: related-research-background. 관련 연구 원본 · 2024년 배경자료. License: https://creativecommons.org/licenses/by/4.0/.
 
 The July hydrogen and 2024 OECT figures are background from different papers, not the September 2026 target experiments. The two medical figures are from the reviewed September 15 paper. Its third-party Flaticon Figure 1 is excluded. Restricted current hydrogen/OECT figures and complete PDFs are not republished; readers are directed to the publishers. No repository MIT license overrides third-party rights.
+
+
+## September 17, 2026 NEWS background photographs
+
+- rubin-rack-background: Genevieve Martin / Oak Ridge National Laboratory; CC BY 2.0; https://commons.wikimedia.org/wiki/File:ORNL_Launches_Summit_Supercomputer_(31430046567).jpg; https://creativecommons.org/licenses/by/2.0/. 2018 Summit rack photograph; not Vera Rubin or its benchmark system. Proportional resize and WebP conversion only.
+- ms-ebv-micrograph: NIAID; Public domain; https://www.eurekalert.org/multimedia/963089; https://www.eurekalert.org/multimedia/963089. NIAID electron microscopy of three Epstein-Barr virions; background, not the 2026 study specimen. Proportional resize and WebP conversion only.
+- hemophilia-aav-micrograph: Graham Beards; CC BY-SA 4.0; https://commons.wikimedia.org/wiki/File:AAVs_by_electron_microscopy.jpg; https://creativecommons.org/licenses/by-sa/4.0/. 2019 micrograph: large adenovirus particles surrounded by smaller AAV particles; not BBM-H901 trial material. Proportional resize and WebP conversion only.
