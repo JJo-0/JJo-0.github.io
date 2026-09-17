@@ -9,7 +9,7 @@ const currentEdition = JSON.parse(fs.readFileSync(new URL('../site/news-edition-
 const citationRows = [...ledger.repairs, ...currentEdition.entries];
 const newSlugs = new Set(currentEdition.entries.map((row) => row.slug));
 const results = [];
-let preview, chrome, cdp, sessionId, activeSlug, activeWidth;
+let preview, chrome, cdp, sessionId, activeSlug, activeWidth, lastPointer;
 fs.mkdirSync('citation-audit', {recursive:true});
 
 async function screenshot(name) {
@@ -17,24 +17,42 @@ async function screenshot(name) {
   fs.writeFileSync(`citation-audit/${name}.png`, Buffer.from(data, 'base64'));
 }
 async function pointer(selector, mobile) {
-  const point = await evaluate(cdp, sessionId, `(() => {
+  // Back restores scroll asynchronously. A pre-paint point can hit the following
+  // image instead of a small citation. Observe stable geometry, never retry a
+  // failed click or synthesize HTMLElement.click()/location.hash navigation.
+  const point = await evaluate(cdp, sessionId, `(async () => {
+    await document.fonts.ready;
     const a = document.querySelector(${JSON.stringify(selector)});
     if (!a) throw new Error('Missing citation activation target');
-    a.scrollIntoView({block:'center', behavior:'instant'});
-    const r = a.getBoundingClientRect();
-    const x = r.left + r.width / 2, y = r.top + r.height / 2;
-    const hit = document.elementFromPoint(x, y);
-    return {x,y,ready:r.width > 0 && r.height > 0 && (hit === a || a.contains(hit)),
-      resolvedPath:new URL(a.href).pathname,currentPath:location.pathname};
+    const started = performance.now();
+    let previous = null, stable = 0;
+    while (performance.now() - started < 2500) {
+      a.scrollIntoView({block:'center', behavior:'instant'});
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const r = a.getBoundingClientRect();
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      const ready = a.isConnected && r.width > 0 && r.height > 0 && (hit === a || a.contains(hit));
+      const current = {x,y,scrollY,documentHeight:document.documentElement.scrollHeight};
+      const unchanged = previous && Object.keys(current).every(k=>Math.abs(current[k]-previous[k]) < 0.5);
+      stable = ready && unchanged ? stable + 1 : 0;
+      if (stable >= 2) return {...current,ready,stableSamples:stable+1,
+        resolvedPath:new URL(a.href).pathname,currentPath:location.pathname,html:a.outerHTML};
+      previous = current;
+    }
+    throw new Error('Citation geometry did not stabilize before trusted input');
   })()`);
+  lastPointer = {selector,mobile,...point};
   assert.equal(point.resolvedPath.replace(/\/+$/, ''), point.currentPath.replace(/\/+$/, ''), 'Native fragment must resolve to the same article');
-  assert(point.ready, `Citation is not hit-testable: ${selector}`);
+  assert(point.ready && point.stableSamples >= 3, `Citation is not stably hit-testable: ${selector}`);
   if (mobile) {
     await cdp.send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[{x:point.x,y:point.y}]}, sessionId);
     await cdp.send('Input.dispatchTouchEvent', {type:'touchEnd',touchPoints:[]}, sessionId);
   } else {
-    await cdp.send('Input.dispatchMouseEvent', {type:'mousePressed',x:point.x,y:point.y,button:'left',clickCount:1}, sessionId);
-    await cdp.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:point.x,y:point.y,button:'left',clickCount:1}, sessionId);
+    await cdp.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:point.x,y:point.y,button:'none',pointerType:'mouse'}, sessionId);
+    await cdp.send('Input.dispatchMouseEvent', {type:'mousePressed',x:point.x,y:point.y,button:'left',buttons:1,clickCount:1,pointerType:'mouse'}, sessionId);
+    await cdp.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:point.x,y:point.y,button:'left',buttons:0,clickCount:1,pointerType:'mouse'}, sessionId);
   }
 }
 async function assertDestination(number) {
@@ -91,7 +109,8 @@ try {
         await pointer(`article a[data-news-citation="${number}"]`, width===390);
         await assertDestination(number);
         await cdp.send('Page.navigateToHistoryEntry', {entryId:previousId}, sessionId);
-        await waitExpression(cdp, sessionId, `location.hash === ${JSON.stringify(oldHash)}`, 'browser Back to citation document');
+        await waitExpression(cdp, sessionId, `document.readyState === 'complete' && location.hash === ${JSON.stringify(oldHash)} && document.querySelector('article a[data-news-citation]') !== null`, 'browser Back to citation document');
+        await evaluate(cdp, sessionId, `new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
       }
       // Native Enter-key activation must also work with page scripting disabled.
       const number = Object.keys(row.citationCounts)[0];
@@ -126,7 +145,7 @@ try {
     try {
       await cdp.send('Emulation.setScriptExecutionDisabled', {value:false}, sessionId);
       const page = await evaluate(cdp, sessionId, `({url:location.href,title:document.title,base:document.baseURI,header:document.querySelector('header')?.getBoundingClientRect().toJSON(),references:[...document.querySelectorAll('[data-news-reference]')].map(a=>({id:a.id,rect:a.getBoundingClientRect().toJSON()}))})`);
-      fs.writeFileSync('citation-audit/failure.json', JSON.stringify({slug:activeSlug,width:activeWidth,error:String(error),page,completed:results},null,2));
+      fs.writeFileSync('citation-audit/failure.json', JSON.stringify({slug:activeSlug,width:activeWidth,error:String(error),lastPointer,page,completed:results},null,2));
       await screenshot('failure');
     } catch (diagnosticError) { console.error('news-citation-browser: diagnostic failed', String(diagnosticError)); }
   }
