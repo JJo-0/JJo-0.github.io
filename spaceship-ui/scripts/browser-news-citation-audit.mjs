@@ -38,7 +38,9 @@ async function pointer(selector, mobile) {
   }
 }
 async function assertDestination(number) {
-  await waitExpression(cdp, sessionId, `location.pathname.replace(/\/+$/, '') === ${JSON.stringify('/posts/' + activeSlug)} && location.hash === '#news-ref-${number}'`, `native fragment ${number} on ${activeSlug}`);
+  const path = '/posts/' + activeSlug;
+  const expression = `(${JSON.stringify([path, path + '/'])}.includes(location.pathname)) && location.hash === '#news-ref-${number}'`;
+  await waitExpression(cdp, sessionId, expression, `native fragment ${number} on ${activeSlug}`);
   await waitExpression(cdp, sessionId, `(() => {
     const target = document.getElementById('news-ref-${number}');
     const r = target?.getBoundingClientRect();
