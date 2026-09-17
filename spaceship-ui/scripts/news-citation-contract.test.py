@@ -30,6 +30,11 @@ class CitationContract(unittest.TestCase):
     def test_adjacent_grouped_qualified_and_code(self):
         self.assertEqual(audit.audit_html(self.page, self.expected)['citations'], 6)
 
+    def test_root_base_cannot_send_citations_to_home(self):
+        with self.assertRaisesRegex(AssertionError, "fragment base"):
+            audit.audit_html('<base href="/">' + self.page, self.expected)
+        audit.audit_html('<base href="/posts/example/">' + self.page, self.expected)
+
     def test_bare_marker_is_failure(self):
         with self.assertRaisesRegex(AssertionError, 'unlinked'):
             audit.audit_html(self.page.replace(link(1), '[1]', 1), self.expected)
