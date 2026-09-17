@@ -1,0 +1,49 @@
+name: Finalize September 17 NEWS sources
+on:
+  push:
+    branches: [content/news-20260917-rubin-bio]
+    paths: [.github/workflows/news17-finalize-sources.yml]
+permissions:
+  contents: write
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: content/news-20260917-rubin-bio
+          fetch-depth: 0
+      - name: Verify and commit only this edition on the feature branch
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 -m py_compile scripts/finalize_news_20260917.py
+          python3 scripts/finalize_news_20260917.py
+          node spaceship-ui/scripts/news-20260917-contract.mjs
+          python3 spaceship-ui/scripts/news-citation-contract.test.py
+          git diff --check
+          git rm .github/workflows/news-20260917-source-review.yml .github/workflows/news-20260917-evidence-assets.yml .github/workflows/news-citation-browser-diagnose.yml .github/workflows/news17-restore-media-and-fragments.yml .github/workflows/news17-finalize-sources.yml
+          git add THIRD_PARTY_NOTICES.md scripts/normalize_tags_current.py spaceship-ui/site/content/posts/2026-09-17-*.mdx spaceship-ui/site/news-media.json spaceship-ui/site/news-edition-20260917.json spaceship-ui/scripts/browser-news-media-audit.mjs spaceship-ui/scripts/browser-news-citation-audit.mjs spaceship-ui/scripts/news-citation-contract.py spaceship-ui/scripts/news-visual-contract.mjs spaceship-ui/ops/blog-harness/blogger/2026-09-17 spaceship-ui/docs/operations/NEWS_20260917_RESUME.md
+          git diff --cached --check
+          git config user.name 'JJo Editorial'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git commit -m 'content: complete all three September 17 candidates with 7000+ prose, images and working citations (#126)'
+          git push origin HEAD:refs/heads/content/news-20260917-rubin-bio
+          mkdir -p "$RUNNER_TEMP/news17-completed"
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/news17-completed/source.tar.gz"
+          git rev-parse HEAD > "$RUNNER_TEMP/news17-completed/head.txt"
+          git diff 995304cdbf317e323f630e5517e3549e4c069def HEAD > "$RUNNER_TEMP/news17-completed/review.patch"
+          cp spaceship-ui/site/news-edition-20260917.json "$RUNNER_TEMP/news17-completed/edition.json"
+      - name: Export finalization failure context without claiming a completed push
+        if: failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/news17-completed"
+          git status --short > "$RUNNER_TEMP/news17-completed/failed-worktree-status.txt"
+          git diff > "$RUNNER_TEMP/news17-completed/failed-worktree.patch"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: news17-completed-source
+          path: ${{ runner.temp }}/news17-completed
+          retention-days: 14
