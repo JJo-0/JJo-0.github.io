@@ -1,3 +1,4 @@
+import './news-prose-policy.test.mjs';
 import './news-20260916-contract.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

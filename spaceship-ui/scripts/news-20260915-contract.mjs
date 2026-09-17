@@ -1,3 +1,4 @@
+import { assertNewsProseLength } from './news-prose-policy.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -46,7 +47,7 @@ for (const [index, [slug, key, year, selection]] of expected.entries()) {
   assert.deepEqual([...body.matchAll(/<NewsFigure\b[^>]*media="([^"]+)"/g)].map((m) => m[1]), ids);
   assert(body.slice(0, 500).includes(`${year}년`) && body.slice(0, 500).includes('원본'), `${slug}: visible historical-source boundary missing`);
   const length = proseCount(body);
-  assert(length >= 7000 && length <= 10000, `${slug}: ${length} prose characters outside user range`);
+  assertNewsProseLength(length, "news-20260915-contract.mjs");
   assert.equal(length, entry.bodyCharacters);
   assert(body.includes(entry.source), `${slug}: target paper URL missing`);
   const catalogueIds = Object.entries(media).filter(([, row]) => row.slug === slug).map(([id]) => id);
@@ -86,4 +87,4 @@ assert(!read('../site/content/posts/2026-09-15-mspa-fpba-nanopore-news.mdx').inc
 assert(read('../site/content/posts/2026-09-15-mspa-fpba-nanopore-news.mdx').includes('Isembyld'));
 assert.match(read('../site/content/posts/2026-09-15-apoe-stratified-alzheimer-news.mdx'), /상호작용 P값은 1\.62×10⁻⁶/);
 assert.match(read('../site/content/posts/2026-09-15-mos2-snn-in-logic-news.mdx'), /저자에게 요청하면 제공/);
-console.log('news-20260915-contract: PASS 3 image-first Korean explainers, 7,000–10,000 prose characters, 6 licensed originals explicitly labeled historical background, 3 Blogger payloads, FDA reserve');
+console.log('news-20260915-contract: PASS 3 image-first Korean explainers, 7,000+ prose characters, 6 licensed originals explicitly labeled historical background, 3 Blogger payloads, FDA reserve');

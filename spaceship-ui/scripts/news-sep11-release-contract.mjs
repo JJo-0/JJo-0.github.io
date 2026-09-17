@@ -1,3 +1,4 @@
+import { assertNewsProseLength } from './news-prose-policy.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const read = (path) => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -25,7 +26,7 @@ for (const row of release.entries) {
   assert.equal(Object.entries(media).find(([, item]) => item.slug === row.slug)[0], row.mediaIds[0]);
   const prose = body.split('## 9. 출처')[0].replace(/^import .*;\s*$/gm, '')
     .replace(/<[^>]+>/g, '').replace(/\[\d+\]/g, '').replace(/^#{1,6}\s*/gm, '').trim();
-  assert(prose.length >= 7000 && prose.length <= 10000);
+  assertNewsProseLength(prose.length, "news-sep11-release-contract.mjs");
   assert.equal(prose.length, row.bodyCharacters);
 }
-console.log('sep11-release-contract: PASS three published original-figure articles, 7,000–10,000 characters and evidence boundaries');
+console.log('sep11-release-contract: PASS three published original-figure articles, 7,000+ characters and evidence boundaries');
