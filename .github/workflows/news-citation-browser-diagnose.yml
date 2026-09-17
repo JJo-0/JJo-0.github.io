@@ -1,0 +1,53 @@
+name: Diagnose NEWS citation navigation
+on:
+  push:
+    branches: [content/news-20260917-rubin-bio]
+    paths: [.github/workflows/news-citation-browser-diagnose.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile && pnpm build
+      - name: Capture actual page after first citation activation
+        run: |
+          mkdir -p citation-diagnostic
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {Cdp,startChrome,startPreview,attach,viewport,navigate,evaluate,sleep,stopChild} from './scripts/browser-smoke-harness.mjs';
+          const timer=setTimeout(()=>process.exit(2),60000);let cdp,chrome,preview;
+          try {
+            preview=await startPreview();chrome=await startChrome();cdp=await Cdp.connect(chrome.url);
+            const {sessionId}=await attach(cdp);await viewport(cdp,sessionId,{width:390,height:1000,mobile:true,touch:true,reduced:true});
+            await navigate(cdp,sessionId,'/posts/2026-09-05-aml-paradigm-news/');
+            const snapshot=()=>evaluate(cdp,sessionId,`({url:location.href,ready:document.readyState,refs:[...document.querySelectorAll('[data-news-reference]')].map(a=>({id:a.id,rect:a.getBoundingClientRect().toJSON()})),title:document.title,header:document.querySelector('header')?.getBoundingClientRect().toJSON(),text:document.body.innerText.slice(0,200)})`);
+            console.log('BEFORE',JSON.stringify(await snapshot()));
+            const point=await evaluate(cdp,sessionId,`(()=>{const a=document.querySelector('a[data-news-citation="1"]');a.scrollIntoView({block:'center',behavior:'instant'});const r=a.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,html:a.outerHTML};})()`);
+            console.log('CLICK',JSON.stringify(point));
+            await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:point.x,y:point.y}]},sessionId);
+            await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]},sessionId);
+            for(let i=0;i<5;i++){await sleep(400);console.log('AFTER',i,JSON.stringify(await snapshot()));}
+            fs.writeFileSync('citation-diagnostic/page.html',await evaluate(cdp,sessionId,'document.documentElement.outerHTML'));
+            const {data}=await cdp.send('Page.captureScreenshot',{format:'png'},sessionId);fs.writeFileSync('citation-diagnostic/page.png',Buffer.from(data,'base64'));
+          } finally { cdp?.close();await stopChild(chrome?.child,'SIGKILL');await stopChild(preview,'SIGKILL');clearTimeout(timer);process.exit(0); }
+          JS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: citation-navigation-diagnostic
+          path: spaceship-ui/citation-diagnostic
+          retention-days: 14
