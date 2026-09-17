@@ -7,6 +7,8 @@ const hardStop = setTimeout(() => { console.error('news-citation-browser: FAIL h
 const ledger = JSON.parse(fs.readFileSync(new URL('../site/news-citation-repair-20260916.json', import.meta.url), 'utf8'));
 let preview, chrome, cdp;
 const results = [];
+const currentEdition = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260917.json', import.meta.url), 'utf8'));
+const citationRows = [...ledger.repairs, ...currentEdition.entries];
 
 async function pointer(sessionId, selector, mobile) {
   const point = await evaluate(cdp, sessionId, `(() => {
@@ -50,7 +52,7 @@ try {
     await navigate(cdp, sessionId, '/news/');
     const roster = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('[data-news-card]')).map(n=>n.getAttribute('data-news-card'))`);
     assert(roster.length >= ledger.newsBaselineCount && new Set(roster).size === roster.length);
-    for (const row of ledger.repairs) {
+    for (const row of citationRows) {
       assert(roster.includes(row.slug));
       if (row.state === 'pending') continue; // Static gate pins the nine original recent sources in the partial first PR.
       await navigate(cdp, sessionId, `/posts/${row.slug}/`);
@@ -99,7 +101,7 @@ try {
       console.log('news-citation-browser: PASS ' + JSON.stringify(results.at(-1)));
     }
   }
-  assert.equal(results.length, ledger.repairs.filter(r=>r.state==='linked').length * 2);
+  assert.equal(results.length, citationRows.filter(r=>r.state==='linked').length * 2);
   fs.mkdirSync('citation-audit', {recursive:true});
   fs.writeFileSync('citation-audit/browser.json', JSON.stringify({base:BASE,stage:ledger.stage,results},null,2));
   console.log(`news-citation-browser: ${ledger.stage === 'complete' ? 'PASS' : 'PARTIAL'} ${results.length} article/viewport checks; every cited target activated; original full smoke untouched`);

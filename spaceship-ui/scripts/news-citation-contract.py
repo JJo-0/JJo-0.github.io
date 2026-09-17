@@ -178,6 +178,9 @@ def run(dist, report=None):
     slugs = [n.attrs['data-news-card'] for n in listing.walk() if 'data-news-card' in n.attrs]
     assert slugs and len(slugs) == len(set(slugs)), 'empty or duplicate NEWS roster'
     assert set(repairs) <= set(slugs), 'repaired article missing from actual NEWS roster'
+    additions = json.loads((UI / 'site/news-edition-20260917.json').read_text())['entries']
+    additions = {r['slug']: r for r in additions}
+    assert set(additions) <= set(slugs), 'new candidate missing from NEWS roster'
     rows = []
     for slug in slugs:
         assert re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug), 'unsafe NEWS route'
@@ -188,7 +191,7 @@ def run(dist, report=None):
                 assert sha256(source.encode()).hexdigest() == expected['linkedSha256'], f'{slug}: reviewed link source changed'
                 source = restored_source(source, expected)
             assert sha256(source.encode()).hexdigest() == expected['baselineSha256'], f'{slug}: non-link source change'
-        result = audit_html((dist / 'posts' / slug / 'index.html').read_text(), expected)
+        result = audit_html((dist / 'posts' / slug / 'index.html').read_text(), expected or additions.get(slug))
         rows.append({'slug': slug, 'state': 'pending' if slug in pending else 'checked', **result})
     result = {'stage': ledger['stage'], 'newsPosts': len(rows), 'pendingPosts': len(pending),
               'bareMarkers': sum(r['bareMarkers'] for r in rows), 'citations': sum(r['citations'] for r in rows),
