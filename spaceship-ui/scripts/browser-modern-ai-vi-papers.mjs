@@ -59,7 +59,9 @@ try {
       console.log('vi-papers-browser: PASS ' + JSON.stringify(results.at(-1)));
     }
   }
+  assert.deepEqual(results.map(({ width, theme }) => [width, theme]), [[390, 'light'], [390, 'dark'], [1440, 'light'], [1440, 'dark']]);
   fs.writeFileSync(`${out}/browser.json`, JSON.stringify({ base: BASE, results }, null, 2));
+  console.log('vi-papers-browser: PASS complete four-case reading matrix');
 } catch (error) {
   console.error('vi-papers-browser: FAIL', error);
   process.exitCode = 1;
@@ -70,4 +72,7 @@ try {
   await stopChild(preview, 'SIGTERM');
   removeProfile(chrome?.profile);
   clearTimeout(deadline);
+  // Child-process pipes must not keep a completed or failed audit alive.
+  // All assertions and synchronous evidence writes have finished before exit.
+  process.exit(process.exitCode || 0);
 }
