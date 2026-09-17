@@ -71,17 +71,21 @@ jobs:
                   with Image.open(ar/row['file']) as im: assert [im.width,im.height]==[row['width'],row['height']]
                   assert row['local_visual_review']['image_sha256']==row['sha256']
                   allow.append(str(ar/row['file']))
-          # Remove only the explicitly temporary transfer/acquisition files.
-          temps=['.github/workflows/modern-ai-originals-acquire.yml','.github/workflows/modern-ai-originals-apply.yml',*[f'.github/modern-ai-transfer/{i}.b64' for i in range(1,6)]]
-          for name in temps:Path(name).unlink()
-          subprocess.run(['git','add','--',*allow,*temps],check=True)
+          # GITHUB_TOKEN has contents permission, not workflows permission.
+          # Commit only content/assets here. The authorized connector manages
+          # CI workflow creation and temporary-file removal separately.
+          workflow='.github/workflows/modern-ai-continuation.yml'
+          Path(workflow).unlink()
+          allow.remove(workflow)
+          assert len(allow)==16 and all(p.startswith('spaceship-ui/') for p in allow)
+          subprocess.run(['git','add','--',*allow],check=True)
           changed=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
-          assert set(changed)==set(allow+temps)
+          assert set(changed)==set(allow)
           subprocess.run(['python','scripts/verify-modern-ai-continuation.py'],cwd='spaceship-ui',check=True)
           subprocess.run(['git','diff','--cached','--check'],check=True)
-          print('PASS: reviewed source patch, 7 exact original figures, retained baseline and narrow staged file set')
+          print('PASS: reviewed source patch, 7 exact original figures, retained baseline and 16 content-only staged files')
           PY
-      - name: Publish candidate changes to the existing feature branch only
+      - name: Publish candidate content to the existing feature branch only
         run: |
           git config user.name 'Park Jiho'
           git config user.email '76779256+JJo-0@users.noreply.github.com'
