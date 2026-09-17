@@ -1,0 +1,78 @@
+name: NEWS September 17 source review
+on:
+  push:
+    branches: [content/news-20260917-rubin-bio]
+    paths: [.github/workflows/news-20260917-source-review.yml]
+permissions:
+  contents: read
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Read bounded official documents as data
+        run: |
+          python -m pip install --quiet requests beautifulsoup4 pymupdf
+          mkdir -p "$RUNNER_TEMP/news-20260917-sources"
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/news-20260917-sources/source.tar.gz"
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urljoin,urlparse
+          from concurrent.futures import ThreadPoolExecutor
+          import os,json,hashlib,requests,pymupdf
+          from bs4 import BeautifulSoup
+          out=Path(os.environ['RUNNER_TEMP'])/'news-20260917-sources'
+          urls={
+          'mlcommons':'https://mlcommons.org/2026/09/mlperf-inference-v6-1-results/',
+          'mlcommons-results':'https://mlcommons.org/benchmarks/inference-datacenter/',
+          'rubin':'https://blogs.nvidia.com/blog/vera-rubin-nvl72-mlperf-inference/',
+          'rubin-production':'https://nvidianews.nvidia.com/news/vera-rubin-full-production-agentic-ai-factory',
+          'rubin-media':'https://nvidianews.nvidia.com/multimedia',
+          'ms-ebv':'https://www.nature.com/articles/s41591-026-04665-3',
+          'hemophilia':'https://www.nature.com/articles/s41591-026-04636-8',
+          'ebv-photo':'https://www.nih.gov/news-events/news-releases/epstein-barr-virus-protein-can-switch-risk-genes-autoimmune-diseases',
+          'aav-photo':'https://commons.wikimedia.org/wiki/File:AAVs_by_electron_microscopy.jpg',
+          'hemophilia-cdc':'https://www.cdc.gov/hemophilia/about/index.html',
+          'trial':'https://clinicaltrials.gov/study/NCT05709288'
+          }
+          allowed={urlparse(u).hostname for u in urls.values()}|{'media.springernature.com','static-content.springer-cdn.com','blogs.nvidia.com','images.nvidia.com','www.nvidia.com','upload.wikimedia.org'}
+          def get(url):
+              assert urlparse(url).scheme=='https' and urlparse(url).hostname in allowed
+              r=requests.get(url,timeout=40,headers={'User-Agent':'JJo Research Blog public-source verification'})
+              assert len(r.content)<60000000
+              return r
+          def one(item):
+              key,url=item;folder=out/key;folder.mkdir();rows=[]
+              try:
+                  r=get(url);rows.append({'url':url,'status':r.status_code,'finalUrl':r.url,'sha256':hashlib.sha256(r.content).hexdigest(),'bytes':len(r.content)})
+                  if r.status_code!=200:return key,rows
+                  (folder/'source.html').write_bytes(r.content);soup=BeautifulSoup(r.content,'html.parser')
+                  links=[{'text':a.get_text(' ',strip=True),'url':urljoin(url,a['href'])} for a in soup.select('a[href]')]
+                  images=[{'alt':a.get('alt',''),'src':urljoin(url,a.get('src','')),'srcset':a.get('srcset','')} for a in soup.select('img')]
+                  (folder/'links.json').write_text(json.dumps({'links':links,'images':images},ensure_ascii=False,indent=2))
+                  for a in soup(['script','style','nav','footer']):a.decompose()
+                  main=soup.find('article') or soup.find('main') or soup
+                  (folder/'source.txt').write_text(main.get_text('\n',strip=True))
+                  if key in ('ms-ebv','hemophilia'):
+                      candidates=list(dict.fromkeys(a['url'] for a in links if '.pdf' in a['url'] and urlparse(a['url']).hostname in allowed))[:3]
+                      for i,pdf in enumerate(candidates):
+                          p=get(pdf);entry={'url':pdf,'status':p.status_code,'sha256':hashlib.sha256(p.content).hexdigest(),'file':f'document-{i}.pdf'};rows.append(entry)
+                          if p.status_code==200 and p.content.startswith(b'%PDF-'):
+                              (folder/entry['file']).write_bytes(p.content)
+                              with pymupdf.open(stream=p.content,filetype='pdf') as doc:text='\n'.join(f'PAGE {i+1}\n'+pg.get_text() for i,pg in enumerate(doc))
+                              (folder/f'document-{i}.txt').write_text(text)
+              except Exception as e:rows.append({'errorType':type(e).__name__,'url':url})
+              return key,rows
+          with ThreadPoolExecutor(max_workers=4) as pool:receipts=dict(pool.map(one,urls.items()))
+          (out/'receipts.json').write_text(json.dumps(receipts,ensure_ascii=False,indent=2))
+          for key,rows in receipts.items():print(key,[(r.get('status'),r.get('bytes'),r.get('errorType')) for r in rows])
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: news-20260917-primary-sources
+          path: ${{ runner.temp }}/news-20260917-sources
+          retention-days: 14
