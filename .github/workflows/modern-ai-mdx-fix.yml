@@ -1,0 +1,40 @@
+name: Escape reviewed MDX inequality
+on:
+  push:
+    branches: [content/modern-ai-vi-fcn-unet-20260917]
+    paths: [.github/workflows/modern-ai-mdx-fix.yml]
+permissions:
+  contents: write
+jobs:
+  source-fix:
+    if: github.ref == 'refs/heads/content/modern-ai-vi-fcn-unet-20260917'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/modern-ai-vi-fcn-unet-20260917
+      - name: Escape one prose inequality without altering the displayed mathematics
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 - <<'PY'
+          import hashlib,subprocess
+          from pathlib import Path
+          p=Path('spaceship-ui/site/content/posts/modern-artificial-intelligence-7.mdx')
+          raw=p.read_bytes()
+          assert hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='d086a39e0e13d2843e8f891608fec1049a69d1b3'
+          text=raw.decode();assert text.count('reverse dt<0')==1
+          fixed=text.replace('reverse dt<0','reverse dt&lt;0')
+          assert fixed.replace('reverse dt&lt;0','reverse dt<0')==text
+          p.write_text(fixed)
+          subprocess.run(['python3','scripts/verify-modern-ai-continuation.py'],cwd='spaceship-ui',check=True)
+          subprocess.run(['git','add','--',str(p)],check=True)
+          assert subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()==[str(p)]
+          subprocess.run(['git','diff','--cached','--check'],check=True)
+          PY
+      - name: Push only the single owning source file
+        run: |
+          git config user.name 'Park Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git commit -m 'fix: preserve reverse-time inequality as text rather than an MDX tag'
+          git push origin HEAD:refs/heads/content/modern-ai-vi-fcn-unet-20260917
