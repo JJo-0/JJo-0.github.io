@@ -1,0 +1,61 @@
+name: Modern AI VI source review
+on:
+  push:
+    branches: [content/modern-ai-vi-fcn-unet-20260917]
+    paths: [.github/workflows/modern-ai-vi-source-review.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install PyMuPDF==1.26.4 Pillow==11.3.0
+      - name: Acquire exact paper versions and selected review pages
+        run: |
+          python - <<'PY'
+          import hashlib,json,subprocess,time,urllib.request,zipfile
+          from pathlib import Path
+          import fitz
+          out=Path('vi-evidence');out.mkdir()
+          sources=[('fcn','https://arxiv.org/pdf/1411.4038v2',[2,5]),('unet','https://arxiv.org/pdf/1505.04597v1',[1,4])]
+          receipts=[]
+          for key,url,pages in sources:
+              for attempt in range(3):
+                  try:
+                      with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 scholarly-source-review'}),timeout=60) as r:
+                          data=r.read()
+                      assert data.startswith(b'%PDF-')
+                      break
+                  except Exception:
+                      if attempt==2:raise
+                      time.sleep(3)
+              doc=fitz.open(stream=data,filetype='pdf')
+              receipts.append({'id':key,'url':url,'pdfSha256':hashlib.sha256(data).hexdigest(),'pages':len(doc)})
+              for index in pages:
+                  page=doc[index]
+                  page.get_pixmap(matrix=fitz.Matrix(1.5,1.5),alpha=False).save(out/f'{key}-page-{index+1}.png')
+                  (out/f'{key}-page-{index+1}.json').write_text(json.dumps({'rect':list(page.rect),'blocks':page.get_text('blocks')},ensure_ascii=False,indent=2))
+              (out/f'{key}-text.txt').write_text('\n'.join(p.get_text() for p in doc))
+          (out/'sources.json').write_text(json.dumps(receipts,indent=2))
+          # Public repository source only; never archive credentials or the Git directory.
+          tracked=subprocess.check_output(['git','ls-files','-z']).decode().split('\0')
+          with zipfile.ZipFile(out/'repository-text.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in tracked:
+                  p=Path(name)
+                  if p.is_file() and p.suffix in {'.mdx','.md','.mjs','.js','.ts','.astro','.svelte','.json','.yml','.yaml','.css','.py'}:
+                      z.write(p,name)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: modern-ai-vi-source-evidence
+          path: vi-evidence/
+          retention-days: 3
+          if-no-files-found: error
