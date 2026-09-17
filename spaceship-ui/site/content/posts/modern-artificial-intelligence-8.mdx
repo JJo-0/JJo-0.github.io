@@ -23,6 +23,7 @@ series:
 ---
 
 import PaperReadingFigure from '@/components/post/PaperReadingFigure.astro';
+import AdditionalPaperFigure from '@/components/post/AdditionalPaperFigure.astro';
 import ModernAiConceptVisual from '@/components/post/ModernAiConceptVisual.astro';
 import ModernAiSourceEquation from '@/components/post/ModernAiSourceEquation.astro';
 import Math from '@/components/post/Math.astro';
@@ -120,6 +121,11 @@ Projection head·증강·batch의 영향을 보는 짧은 ablation과 최종 100
 
 Barlow Twins의 핵심은 두 view 표현의 cross-correlation matrix를 identity 쪽으로 만든다는 것이다. 원문 Figure 1의 두 encoder 경로가 만나는 지점은 class score나 instance similarity 표가 아니라 feature 간 상관 행렬이다. [Barlow Twins, `2103.03230v3`, Figure 1 및 §2](https://arxiv.org/html/2103.03230v3)
 
+<AdditionalPaperFigure figure="barlow-twins-fig-1" alt="Barlow Twins 원논문 Figure 1. 같은 batch의 두 증강 view가 공유 encoder와 projector를 지나고, feature 간 교차상관 C를 단위행렬 I에 가깝게 학습하는 구조.">
+오른쪽 두 행렬은 경험적 cross-correlation C와 목표 identity I다. 축은 이미지 ID가 아니라 feature dimension이므로 N×N instance 비교표로 읽지 않는다. 대각은 같은 차원의 view 간 일치, 비대각은 차원 간 중복을 다룬다. 두 경로는 BYOL의 서로 다른 online·EMA target이 아니라 같은 network를 적용한 view들이며, downstream representation과 projection도 구별한다.
+</AdditionalPaperFigure>
+
+
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-005')} />
 
 Batch를 B, projection 차원을 D라고 하면 두 표현은 B×D이고 correlation은 <strong>D×D</strong>다. 평균을 뺀 각 feature를 batch 축의 제곱합으로 정규화해 C_ij를 계산한다. 대각 항은 같은 feature가 view 간 일치하게 하고, 비대각 항은 feature 중복을 줄이려는 목적이다.
@@ -134,6 +140,11 @@ Batch를 B, projection 차원을 D라고 하면 두 표현은 B×D이고 correla
 
 원본 Figure 2에서 online 경로는 encoder→projector→predictor, target 경로는 encoder→projector다. target representation에는 stop-gradient가 있고, target parameter는 online parameter의 EMA로 갱신한다. 서로 다른 증강 view의 역할을 바꾼 손실도 더한다. [BYOL, `2006.07733v3`, Figure 2 및 §3](https://arxiv.org/html/2006.07733v3)
 
+<AdditionalPaperFigure figure="byol-fig-2" alt="BYOL 원논문 Figure 2. 위쪽 online encoder·projector·predictor와 아래쪽 target encoder·projector, stop-gradient 기호 및 similarity loss를 표시한 비대칭 구조.">
+위쪽 prediction은 qθ(zθ), 아래쪽 target은 sg(z′ξ)다. 아래 경로의 sg는 그 방향 역전파를 끊는 표시이지 target parameter를 영원히 고정한다는 뜻이 아니다. EMA 갱신은 아래 식으로 따로 확인한다. 그림에는 한 방향만 그려져 있으며 대칭 손실은 두 view의 역할을 바꾸어 계산한다. 학습 후 representation으로 남기는 것은 online encoder의 yθ다.
+</AdditionalPaperFigure>
+
+
 정규화한 prediction u와 target v의 제곱거리는 다음처럼 cosine과 연결된다. 이 식의 등식은 u와 v가 단위벡터일 때 성립한다.
 
 <Math display tex={String.raw`\|u-v\|_2^2=2-2u^\top v,\qquad \xi\leftarrow m\xi+(1-m)\theta`} />
@@ -142,7 +153,7 @@ Batch를 B, projection 차원을 D라고 하면 두 표현은 B×D이고 correla
 
 target을 optimizer parameter에 같이 넣으면 원래 stop-gradient 구조가 달라진다. 반대로 target을 영원히 고정하면 EMA 모델과도 다르다. 원문은 collapse 가능한 objective라도 실제 제안 구성에서는 유용한 학습을 관찰하고 bootstrapping·predictor 등의 ablation을 검토한다. <strong>EMA 하나만 있으면 어떤 모델도 collapse하지 않는다는 증명으로 확대하지 않는다.</strong> 원문의 ResNet-50 linear evaluation 74.3%도 데이터·학습 길이·평가 조건이 다른 다른 논문 숫자와 단독 모듈 기여로 빼지 않는다.
 
-이번 절은 두 원본 구조도의 읽는 지점과 loss·gradient 경로를 보강했다. 원본 그림 발췌 파일과 모든 ablation 수치의 전사까지 완료한 것은 아니며, 위 링크에서 Figure 1/2를 직접 대조하는 범위가 남는다.
+두 원본 구조도를 본문에 발췌해 loss·gradient 경로와 연결했다. 다만 구조도 자체가 collapse 방지를 모든 설정에서 보장하는 증명이나 ablation 결과표는 아니다. 모든 ablation 수치의 전사와 독립 학습 실험을 수행한 것은 아니다.
 
 ## 8.6 memory bank와 MoCo
 
@@ -153,9 +164,19 @@ target을 optimizer parameter에 같이 넣으면 원래 stop-gradient 구조가
 
 ### 원본 Figure 1을 queue의 수명으로 읽기
 
-[MoCo 원본 Figure 1과 Figure 2](https://arxiv.org/html/1911.05722v3#S1)에서 query, 이번 batch의 positive key, queue 안의 과거 key를 구분한다. 들어오는 key가 enqueue되고 오래된 key가 dequeue된다. <strong>queue에 저장하는 것은 원본 이미지가 아니라 계산한 key embedding</strong>이다. 그림의 queue를 단순한 이미지 재생 버퍼로 해석하면 메모리와 gradient 구조를 잘못 계산한다. 이번 묶음에는 원본 도판의 별도 발췌 파일 대신 출처 링크와 기존 개념도를 유지했다.
+<AdditionalPaperFigure figure="moco-fig-1" alt="MoCo 원논문 Figure 1. query encoder의 q와 momentum encoder가 만드는 dictionary keys를 similarity·contrastive loss로 연결하고 key queue를 표시한다.">
+왼쪽 q를 오른쪽 encoded keys의 dictionary와 비교한다. queue가 유지하는 것은 key embedding이며, 새 mini-batch를 넣고 오래된 것을 빼는 수명 규칙은 본문으로 확인한다. 같은 점수 계산에 쓰이더라도 query의 gradient 학습과 key encoder의 momentum update는 다른 갱신이다. 이 overview는 queue의 모든 시간별 상태를 열거한 그림은 아니다.
+</AdditionalPaperFigure>
+
+
+[MoCo 원본 Figure 1과 Figure 2](https://arxiv.org/html/1911.05722v3#S1)에서 query, 이번 batch의 positive key, queue 안의 과거 key를 구분한다. 들어오는 key가 enqueue되고 오래된 key가 dequeue된다. <strong>queue에 저장하는 것은 원본 이미지가 아니라 계산한 key embedding</strong>이다. 그림의 queue를 단순한 이미지 재생 버퍼로 해석하면 메모리와 gradient 구조를 잘못 계산한다. 아래 Figure 1의 전체 흐름과 Figure 2의 gradient 비교를 함께 읽는다.
 
 Query encoder는 gradient로 학습하고 key encoder는 느린 EMA 갱신을 사용한다. 과거 key embedding을 매번 최신 encoder로 다시 계산하는 것도 아니다. 그래서 “완전히 같은 encoder가 만든 key만 있다”보다 “encoder 변화가 완만하도록 해서 key들 사이의 불일치를 줄인다”가 정확한 설명이다.
+
+<AdditionalPaperFigure figure="moco-fig-2" alt="MoCo 원논문 Figure 2. end-to-end, memory bank, MoCo의 세 방식에서 query·key 생성과 gradient 유무를 나란히 비교한다.">
+(a)는 두 encoder를 역전파로 갱신하고, (b)는 저장된 key를 memory bank에서 뽑으며, (c)는 새 key를 momentum encoder로 만든다. 원문 캡션은 queue가 이 Figure 2에는 그려지지 않았다고 명시한다. 없는 queue 화살표를 상상해 읽지 말고 Figure 1·본문과 연결한다. 세 구조의 개념 비교이지 이 그림 하나가 성능 격차의 수치 근거는 아니다.
+</AdditionalPaperFigure>
+
 
 해설용으로 query Q가 B×d, positive K+가 B×d, queue가 K×d이면 positive score는 B×1이고 negative score는 B×K다. 합친 logits는 <strong>B×(1+K)</strong>다. positive를 첫 열에 놓는 구현에서는 target index가 전부 0이지만, 이는 저장 순서에 따른 구현 convention이다.
 
@@ -185,6 +206,11 @@ MoCo의 shuffling BN은 batch statistics를 통한 shortcut을 줄이기 위한 
 
 DeepCluster는 현재 feature를 clustering하고, 얻은 cluster assignment를 pseudo-label로 삼아 encoder를 학습하는 과정을 번갈아 수행한다. 원본 overview에서는 feature 추출→clustering→pseudo-label 학습이라는 반복을 읽는다. [DeepCluster, `1807.05520v2`, §3](https://arxiv.org/html/1807.05520v2)
 
+<AdditionalPaperFigure figure="deepcluster-fig-1" alt="DeepCluster 원논문 Figure 1. 입력 영상에서 ConvNet 특징을 추출해 clustering하고, cluster pseudo-label을 classification 학습 목표로 다시 사용하는 반복 구조.">
+오른쪽 아래 clustering의 결과가 위 classification의 pseudo-label이 되고, 분류 학습의 역전파가 ConvNet을 갱신한다. cluster assignment를 만드는 단계와 고정한 pseudo-label로 학습하는 단계를 나누어 보자. 이 그림은 clustering의 이산 label 선택 전체를 하나의 미분 가능한 층으로 처리한다는 뜻이 아니며, cluster 번호가 의미 class 이름으로 고정된 것도 아니다.
+</AdditionalPaperFigure>
+
+
 단순화한 k-means 단계는 아래와 같다. encoder가 고정된 동안 centroid와 assignment를 찾고, 다음 단계에서 assignment를 학습 목표로 사용하는 식으로 두 문제를 구분한다.
 
 <Math display tex={String.raw`\min_{C,\,a_i}\sum_i\|f_\theta(x_i)-c_{a_i}\|^2,\qquad a_i\in\{1,\ldots,K\}`} />
@@ -198,6 +224,11 @@ DeepCluster는 현재 feature를 clustering하고, 얻은 cluster assignment를 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-008')} />
 
 SwAV는 prototype에 대한 assignment를 서로 다른 view 사이에서 교환해 예측한다. 모든 instance pair의 negative를 직접 비교하는 것과 다르다. 원본 Figure 1에서 두 view의 예측과 assignment가 서로 엇갈려 supervision을 제공하는 흐름을 따라간다. [SwAV, `2006.09882v5`, §3](https://arxiv.org/html/2006.09882v5)
+
+<AdditionalPaperFigure figure="swav-fig-1" alt="SwAV 원논문 Figure 1. 왼쪽 instance feature 직접 대조와 오른쪽 공유 prototypes에서 얻은 code를 다른 view가 예측하는 swapped-assignment 방식을 비교한다.">
+오른쪽의 C는 prototypes, q1·q2는 각 view의 code다. 한 view에서 얻은 code를 다른 view의 prediction에 주는 교차 감독이 핵심이며, 왼쪽처럼 두 feature의 similarity만 직접 높이는 연산으로 줄일 수 없다. assignment를 구하는 제약과 prediction의 cross entropy를 구분해야 아래의 Q 질량 정규화 식이 왜 필요한지 이해할 수 있다.
+</AdditionalPaperFigure>
+
 
 D차원 embedding N개와 K개 prototype이면 prediction matrix는 N×K다. balanced assignment를 계산하는 과정의 정규화된 질량행렬을 Q∈R^(K×N)로 두면 다음 같은 marginal 제약을 사용한다. sample별 확률로 쓸 때에는 Q의 각 열을 N배 해 열 합이 1이 되게 만드는 convention을 구분한다.
 

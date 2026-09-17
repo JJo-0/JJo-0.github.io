@@ -41,17 +41,25 @@ jobs:
         run: python scripts/verify-modern-ai-continuation.py --report continuation-results.json
       - name: Exact local figure bytes and KaTeX syntax
         run: node scripts/modern-ai-continuation-audit.mjs
+      - name: Additional paper source and image checks
+        run: node scripts/modern-ai-additional-papers-audit.mjs
       - run: pnpm build
       - name: Rendered article figure coverage
         run: node scripts/modern-ai-continuation-audit.mjs
       - name: Original image reading and native full-size links
         timeout-minutes: 4
         run: node scripts/browser-modern-ai-continuation.mjs
+      - name: Additional paper rendered source checks
+        run: node scripts/modern-ai-additional-papers-audit.mjs
+      - name: Additional original figures and trusted full-size links
+        timeout-minutes: 4
+        run: node scripts/browser-modern-ai-additional-papers.mjs
       - name: Preserve exact candidate pages and numerical evidence
         if: always()
         run: |
           mkdir -p continuation-review
           git rev-parse HEAD > continuation-review/tested-head.txt
+          cp site/assets/assets/posts/modern-ai-additional-papers/figures.json continuation-review/additional-figures.json
           cp continuation-results.json continuation-review/ 2>/dev/null || true
           cp site/assets/assets/posts/modern-ai-continuation/figures.json continuation-review/
           for n in 6 7 8; do
