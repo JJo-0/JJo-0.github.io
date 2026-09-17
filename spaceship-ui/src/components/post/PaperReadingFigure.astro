@@ -1,0 +1,37 @@
+---
+import manifest from '../../../site/assets/assets/posts/modern-ai-continuation/figures.json';
+interface Props { figure: string; alt: string; }
+const { figure, alt } = Astro.props;
+const record = manifest.figures.find((row) => row.id === figure);
+if (!record || !alt?.trim()) throw new Error(`Unknown paper reading figure / empty alt: ${figure}`);
+if (record.status !== 'ACQUIRED' || record.local_visual_review.status !== 'REVIEWED' || record.local_visual_review.image_sha256 !== record.sha256) {
+  throw new Error(`Paper figure has not been acquired and visually checked: ${figure}`);
+}
+const src = `/assets/posts/modern-ai-continuation/${record.file}`;
+const label = `${record.paper} Figure ${record.figure}`;
+---
+<figure class="reading-figure" data-reading-figure={figure} data-source-version={record.version}>
+  <a class="reading-image" href={src} target="_blank" rel="noopener noreferrer" aria-label={`${label} 크게 보기`}>
+    <img src={src} alt={alt} width={record.width} height={record.height} loading="lazy" decoding="async" />
+  </a>
+  <figcaption>
+    <strong>{label}.</strong> <slot />
+    <span class="reading-credit">{record.authors} · {record.version} ·
+      <a href={record.source} target="_blank" rel="noopener noreferrer">원논문</a> ·
+      <a href={record.origin_figure_link} target="_blank" rel="noopener noreferrer">원문 속 그림</a> ·
+      <a href={src} target="_blank" rel="noopener noreferrer">크게 보기</a>
+    </span>
+    <span class="reading-rights">원논문 도판 발췌. {record.mode === 'image' ? '원문 PNG 파일을 그대로 사용했다.' : '원문 PDF에서 도판 영역만 잘라 고해상도로 렌더링했다.'} 한국어 해설은 별도 작성. 원권리자의 권리가 유지되며 블로그 코드의 MIT 라이선스가 도판의 재배포 허락을 뜻하지 않는다.</span>
+  </figcaption>
+</figure>
+<style>
+  .reading-figure { max-width: 100%; margin: 2rem 0; min-width: 0; }
+  .reading-image { display: block; padding: .8rem; border: 1px solid var(--color-border); border-radius: .5rem; background: white; }
+  .reading-image:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+  img { display: block; width: 100%; max-width: 100%; height: auto; filter: none; margin: 0; }
+  [data-reading-figure="vae-fig-1"] img { max-width: 360px; margin-inline: auto; }
+  figcaption { line-height: 1.7; margin-top: .65rem; overflow-wrap: anywhere; }
+  .reading-credit, .reading-rights { display: block; margin-top: .4rem; }
+  .reading-credit a { text-decoration: underline; text-underline-offset: .18em; }
+  .reading-rights { font-size: .8em; color: var(--color-muted-foreground); }
+</style>

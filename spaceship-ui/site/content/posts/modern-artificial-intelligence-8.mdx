@@ -2,7 +2,7 @@
 title: '현대 인공지능 VIII — 대조 표현학습: InfoNCE·SimCLR·BYOL·CLIP'
 description: '양성·음성 쌍, InfoNCE, augmentation, memory bank, SimCLR·BYOL과 이미지-언어 CLIP을 연결한다.'
 pubDate: 2026-08-25
-updatedDate: 2026-08-25
+updatedDate: 2026-09-17
 category: ai-machine-learning
 subcategory: representation-learning
 type: study-note
@@ -22,121 +22,252 @@ series:
   order: 8
 ---
 
+import PaperReadingFigure from '@/components/post/PaperReadingFigure.astro';
 import ModernAiConceptVisual from '@/components/post/ModernAiConceptVisual.astro';
 import ModernAiSourceEquation from '@/components/post/ModernAiSourceEquation.astro';
+import Math from '@/components/post/Math.astro';
 import { modernAiFormula } from '@/lib/modern-ai-parts6-8';
 
-대조 표현학습은 label을 직접 예측하는 대신 **무엇을 같게 보고 무엇을 다르게 볼지**를 설계한다. 같은 대상의 두 view는 가깝게, 다른 sample은 멀게 배치하면 embedding 자체가 분류·검색·검출에 재사용되는 특징이 된다. 핵심은 loss 하나가 아니라 positive 정의, augmentation, negative 구성, encoder 갱신 방식의 조합이다.
+대조 표현학습은 <strong>무엇을 같은 대상으로 묶고, 무엇을 비교 대상으로 둘지</strong>를 설계한다. 손실의 이름만 같아도 positive의 정의, 후보 수, gradient가 흐르는 경로와 평가 방식이 달라지면 다른 학습이다. 이 글은 CPC·SimCLR·MoCo·CLIP의 연산과 계산을 중심으로, BYOL·Barlow Twins·clustering·SupCon의 차이를 연결한다. 작은 행렬과 숫자는 별도의 해설 예제이고 논문 실험 결과와 구분한다.
 
 ## 8.1 metric learning에서 contrastive learning으로
 
-contrastive loss는 pair의 거리와 같은지 다른지를 함께 본다. triplet loss는 anchor (a), positive (p), negative (n) 사이에 margin (m)을 요구한다.
+거리 기반 학습은 정답 class logit만 맞히는 대신 표현 사이의 관계를 제약한다. triplet은 anchor a, positive p, negative n의 상대 거리를 비교한다.
 
 <ModernAiConceptVisual kind="contrastive-objective" />
-
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-001')} />
 
-쉬운 negative는 loss에 거의 기여하지 않고, 너무 어려운 negative는 label noise나 false negative일 수 있다. lifted structured loss와 N-pair loss는 한 triplet만 보지 않고 batch 안의 여러 비교를 동시에 사용해 이 문제를 완화한다.
+<strong>계산 예제.</strong> 제곱거리가 positive=0.2, negative=0.3이고 margin=0.5라면 hinge loss는 `max(0,0.2−0.3+0.5)=0.4`다. negative 거리가 1.0이면 loss=0이다. 이미 충분히 멀어진 negative에서는 이 triplet이 gradient를 주지 않는다는 뜻이다. “더 어려운 negative만 고르면 된다”도 일반 해답은 아니다. 실제 같은 의미의 다른 sample을 negative로 선택했다면 그 어려움은 좋은 감독 신호가 아닐 수 있다.
+
+여기서 다루는 triplet 예와 이후 InfoNCE는 같은 식이 아니다. 전자는 margin 위반을, 후자는 후보 중 positive를 찾는 정규화된 점수 문제를 사용한다. 원래 논문마다 positive와 negative의 sampling 규칙을 함께 기록해야 한다.
 
 ## 8.2 InfoNCE: 올바른 쌍을 고르는 분류 문제
 
-[Contrastive Predictive Coding](https://arxiv.org/abs/1807.03748)에서 널리 알려진 InfoNCE는 positive score가 batch 또는 dictionary의 모든 후보 중 가장 크도록 softmax cross entropy를 사용한다.
+CPC는 encoder로 입력을 표현하고, context로부터 미래 등의 관련된 latent를 구별하도록 학습한다. 원본 Figure 1에서는 입력 인코딩, context를 모으는 autoregressive 경로, 미래 표현에 점수를 주는 경로를 구분한다. <strong>[CPC 원문 Figure 1 및 §2, `1807.03748v2`](https://arxiv.org/html/1807.03748v2)</strong>을 기준으로 읽으며, 이 개요 그림을 이미지 두 장의 증강만 사용하는 SimCLR 도식과 같은 것으로 소개하지 않는다.
 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-002')} />
 
-temperature `τ`는 similarity 분포의 날카로움을 조절한다. 너무 작으면 소수 hard example의 gradient가 과도해지고, 너무 크면 positive와 negative의 구분이 흐려진다. `N`개의 후보를 쓸 때 InfoNCE는 mutual information의 lower bound와 연결된다.
+후보 집합에 positive 하나와 negative들이 있고, 점수를 s라고 쓰면 손실을 다음처럼 읽을 수 있다. 아래는 일반적인 softmax 표기로 풀어 쓴 식이다.
+
+<Math display tex={String.raw`\ell=-s_++\log\sum_{j\in\mathcal C}\exp(s_j)`} />
+
+<strong>Positive는 분자뿐 아니라 분모에도 들어간다.</strong> 분모가 “negative들만의 합”이라고 설명하면 확률과 cross entropy의 의미가 달라진다. 모든 후보 점수가 같고 후보가 N개라면 positive 확률은 1/N, 손실은 log N이다. 후보가 네 개면 약 <strong>1.386294 nats</strong>다.
 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-003')} />
 
-다만 “모든 다른 이미지가 negative”라는 가정은 같은 class의 서로 다른 샘플을 밀어내는 false-negative 문제를 만든다. debiased objective, hard-negative sampling, supervised positives는 이 가정의 오류를 서로 다른 방식으로 다룬다.
+Mutual information lower bound와 연결할 때 N은 해당 유도에서 <strong>positive를 포함한 전체 후보 수</strong>다. negative를 marginal에서 뽑는 등 유도의 sampling 조건도 필요하다. 아무 hard-negative mining으로 바꾼 뒤 원래 MI bound를 그대로 적용하지 않는다. log N이 bound의 표현 범위를 제한한다는 사실은 “N을 늘리면 실제 의미 정보가 반드시 늘어난다”는 보장이 아니다. CPC의 실험은 여러 데이터 영역에서 얻은 representation의 유용성을 평가하며, 생성 이미지의 FID를 평가한 논문으로 바꾸어 소개하지 않는다. [CPC, §2.3 및 실험](https://arxiv.org/html/1807.03748v2)
+
+<strong>구현에서의 점검.</strong> `exp`를 먼저 전부 계산하면 큰 logit에서 overflow할 수 있으므로 log-sum-exp를 쓴다. temperature를 적용한 score인지 원래 cosine인지 구분한다. 미니배치가 작아 유효 negative가 사라지거나, 동일 데이터가 여러 rank에 중복돼 false negative가 늘어나는 경우도 별도 점검한다.
 
 ## 8.3 augmentation이 곧 학습할 invariance다
 
-같은 이미지에서 random crop, color jitter, grayscale, blur를 적용한 두 view를 positive로 두면 모델은 그 변화에 불변인 특징을 학습한다. 따라서 augmentation은 단순한 regularization이 아니라 **semantic equivalence를 정의하는 규칙**이다.
+같은 이미지에서 두 view를 만들면 두 view 사이에서 무엇을 지워도 “같다”고 볼지를 선택한다. 이는 단순한 데이터 수 증가가 아니다. crop·color distortion·blur가 어떤 downstream 정보를 제거할 수 있는지 생각해야 한다. [SimCLR, §3](https://arxiv.org/html/2002.05709v3)
 
-- crop이 지나치게 강하면 서로 다른 object patch가 positive가 될 수 있다.
-- color를 과하게 제거하면 색이 중요한 downstream task에 불리하다.
-- mixup·CutMix는 label interpolation 또는 spatial composition을 추가하지만, instance identity 기반 contrastive pair와 충돌할 수 있다.
-- UDA처럼 prediction consistency를 쓰는 방법은 augmentation 뒤에도 output이 같아야 한다고 요구한다.
+<strong>사고 예제.</strong> 하나의 영상에 고양이와 자동차가 함께 있는데 두 crop이 각각 다른 물체만 남겼다면 instance 기준 positive는 만들어졌지만 두 view의 의미가 같다는 가정은 약해진다. 반대로 색이 중요한 불량 판정 과제에서 강한 색 제거를 사용하면 필요한 단서까지 버리게 만들 수 있다. 이는 데이터와 목적에 대한 설계 추론이며, 해당 논문에서 이 특정 산업 데이터를 실험한 결과가 아니다.
+
+따라서 증강 범위, positive 생성 규칙, 학습에 사용한 정보와 downstream 목표를 같이 적는다. 어떤 증강이 표준 benchmark에서 좋았다고 모든 센서·의료·산업 영상에 같은 설정을 무비판적으로 적용하지 않는다.
 
 ## 8.4 SimCLR: 단순하지만 batch와 증강에 민감한 기준선
 
-[SimCLR](https://arxiv.org/abs/2002.05709)은 별도 memory bank 없이 큰 batch의 다른 view를 negative로 사용한다. encoder (f) 뒤의 projection head (g)에서 contrastive loss를 계산하고, downstream task에는 projection 전 representation을 쓴다.
+SimCLR은 동일 이미지의 두 증강 view를 positive로 사용하고, batch 안의 다른 view들을 비교 대상으로 삼는다. 원본 framework 그림에서 augmentation t, encoder f, projection head g를 각각 구분해야 한다. [Chen 등, `2002.05709v3`, §2, Figure 2](https://arxiv.org/html/2002.05709v3)
 
 <ModernAiConceptVisual kind="simclr" />
+<PaperReadingFigure figure="simclr-fig-2" alt="SimCLR 원논문 Figure 2. 이미지 x에서 두 증강 view를 만들고 encoder f와 projection head g를 지나 z끼리 일치시키며 h를 downstream representation으로 사용한다.">
+하나의 x에서 갈라지는 t와 t′는 독립적으로 뽑은 증강이다. f와 g는 서로 다른 역할이며 두 branch의 f는 가중치를 공유한다. 위쪽 z에서 학습하는 목적과 가운데 h를 downstream에 사용하는 선택을 구분한다.
+</PaperReadingFigure>
+
+### N개 이미지, 2N개 view, 2N−1개 후보
 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-004')} />
 
-핵심 관찰은 세 가지다. 강한 augmentation 조합이 중요하고, nonlinear projection head가 representation 품질을 높이며, 더 큰 batch와 긴 학습이 유리하다. 이 장점은 동시에 계산·memory 비용이라는 약점이 된다.
+위 식은 cosine similarity다. 이를 loss에 넣으면 다음 NT-Xent 형태가 된다. `j(i)`는 anchor i의 positive index다.
+
+<Math display tex={String.raw`\ell_{i,j}=-\log\frac{\exp(s_{i,j}/\tau)}{\sum_{k=1}^{2N}\mathbf1[k\ne i]\exp(s_{i,k}/\tau)},\qquad \mathcal L=\frac1{2N}\sum_{i=1}^{2N}\ell_{i,j(i)}`} />
+
+이미지 N개에서 view를 두 개씩 만들면 2N개의 embedding이 된다. anchor 자기 자신만 제외하므로 분모에는 <strong>2N−1개 후보</strong>가 남는다. 이 중 하나가 positive이며 negative는 <strong>2N−2개</strong>다. 대칭으로 두 방향 모두 학습하므로 anchor 수는 2N이다.
+
+N=2라면 view를 `[a1,a2,b1,b2]`로 놓자. a1의 positive는 a2, negative는 b1·b2다. a1 자신을 제외한 분모에 a2가 들어간다. 저장 순서를 `[a1,b1,a2,b2]`로 바꾸면 positive index도 바뀐다. “정답 index는 언제나 옆 칸”이라는 코드는 augmentation concatenation 순서에 따라 틀릴 수 있다.
+
+해설용 shape 예에서 ResNet-50의 pooled h는 `[2N,2048]`, projection z는 `[2N,128]`이다. 정규화한 z와 zᵀ를 곱하면 `[2N,2N]` similarity matrix다. projection head는 학습을 위한 비교 공간을 만들고, 논문의 linear evaluation에는 h를 사용한다. [SimCLR, §2, §4](https://arxiv.org/html/2002.05709v3)
+
+### Temperature를 숫자로 확인하기
+
+anchor에서 positive의 cosine이 1, 두 negative의 cosine이 0과 −1이라고 가정하자. τ=0.5라면 logits는 `[2,0,−2]`가 된다.
+
+<Math display tex={String.raw`\ell=\log(e^2+1+e^{-2})-2\approx0.142932`} />
+
+τ=1이면 loss는 약 <strong>0.407606</strong>이다. 이 구성에서는 temperature를 낮추면 이미 가장 높은 positive에 확률이 더 몰린다. 그러나 positive보다 높은 false negative가 있으면 그 잘못된 비교도 더 세게 강조할 수 있다. 이 계산만으로 작은 τ가 항상 좋은 representation을 만든다고 결론낼 수 없다.
+
+점수를 temperature로 나누기 전의 similarity를 s_j라고 하면 아래 도함수가 나온다. cosine 정규화 이전 embedding까지 미분하려면 normalization의 chain rule도 추가로 필요하다.
+
+<Math display tex={String.raw`\frac{\partial\ell}{\partial s_j}=\frac{\operatorname{softmax}(s/\tau)_j-\mathbf1[j=+]}{\tau}`} />
+
+<strong>메모리 예제.</strong> N=4096이면 8192×8192 matrix의 원소는 <strong>67108864개</strong>, float32 한 장은 <strong>256 MiB</strong>다. gradient·encoder activation·optimizer 상태를 제외한 값이다. 이것을 전체 training GPU memory라고 쓰면 안 된다. blockwise 계산 등으로 구현 비용을 바꿀 수 있어도 loss의 후보 집합이 유지되는지 별도로 확인해야 한다.
+
+### 논문의 좋은 점수는 어떤 모델과 평가에서 나온 것인가
+
+Table 6의 ImageNet linear evaluation에서 일반 ResNet-50은 <strong>69.3% top-1</strong>, ResNet-50(4×)은 <strong>76.5%</strong>다. 둘을 같은 크기의 backbone 결과처럼 표기하지 않는다. 여기서는 encoder를 고정하고 <strong>label로 linear classifier를 학습</strong>하므로, CLIP의 zero-shot과도 다른 평가다. [SimCLR, Table 6, PDF 7쪽](https://arxiv.org/pdf/2002.05709v3#page=7)
+
+Projection head·증강·batch의 영향을 보는 짧은 ablation과 최종 1000-epoch 결과도 구분한다. contrastive matching accuracy가 높다는 사실만으로 downstream top-1이 더 높지 않을 수 있다는 점도 원문의 temperature·normalization 비교에서 드러난다. 비교표에는 최소한 backbone 폭, 학습 epoch, batch, 표현 h/z, 평가 protocol을 기록한다.
 
 ## 8.5 negative 없이 collapse를 피할 수 있는가
 
-모든 입력이 같은 embedding으로 가면 positive similarity는 완벽해 보이지만 아무 정보도 남지 않는다. Barlow Twins와 BYOL은 명시적 negative 없이 이 collapse를 막는 서로 다른 장치를 보여준다.
+모든 입력이 같은 벡터로 가면 positive끼리 가깝다는 조건만으로는 정보가 남지 않을 수 있다. BYOL과 Barlow Twins는 이 문제에 다른 학습 구조를 사용한다. <strong>명시적인 negative가 없다는 공통점이 같은 수학적 objective를 뜻하지는 않는다.</strong>
 
 <ModernAiConceptVisual kind="noncontrastive" />
 
-[Barlow Twins](https://arxiv.org/abs/2103.03230)은 두 view embedding의 cross-correlation matrix (C)가 identity에 가까워지게 한다. 대각은 같은 feature의 일치를, 비대각은 feature 사이 redundancy 제거를 담당한다.
+### Barlow Twins: 표본 간 N×N이 아니라 feature 간 D×D
+
+Barlow Twins의 핵심은 두 view 표현의 cross-correlation matrix를 identity 쪽으로 만든다는 것이다. 원문 Figure 1의 두 encoder 경로가 만나는 지점은 class score나 instance similarity 표가 아니라 feature 간 상관 행렬이다. [Barlow Twins, `2103.03230v3`, Figure 1 및 §2](https://arxiv.org/html/2103.03230v3)
 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-005')} />
 
-[BYOL](https://arxiv.org/abs/2006.07733)은 online network의 prediction이 momentum target network의 representation을 맞추게 한다. target 쪽에는 stop-gradient를 적용한다.
+Batch를 B, projection 차원을 D라고 하면 두 표현은 B×D이고 correlation은 <strong>D×D</strong>다. 평균을 뺀 각 feature를 batch 축의 제곱합으로 정규화해 C_ij를 계산한다. 대각 항은 같은 feature가 view 간 일치하게 하고, 비대각 항은 feature 중복을 줄이려는 목적이다.
+
+<strong>계산 예제.</strong> `C=[[1,0.2],[0.2,1]]`, λ=0.005이면 diagonal cost=0, off-diagonal cost=`0.005×(0.04+0.04)=0.0004`다. i,j와 j,i를 둘 다 합산하는 정의에서 0.0002라고 쓰면 절반을 빠뜨린 것이다. C가 모두 0이면 diagonal cost는 D다. 다만 상수 feature의 분산이 0일 때 normalization 자체가 정의되지 않으므로 실제 구현의 ε 처리와 연결해 설명해야 한다.
+
+논문의 평가와 ablation은 invariance 항·redundancy 항·projection 등의 효과를 검토한다. 이 loss의 모양만으로 모든 batch와 optimization에서 collapse가 절대 불가능하다는 일반 정리가 증명된 것은 아니다. 작은 batch의 상관 추정 품질과 zero-variance 처리는 구현에서 별도 시험한다.
+
+### BYOL: target을 optimizer로 같이 움직이지 않는다
 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-006')} />
 
-predictor의 비대칭, stop-gradient, target network의 느린 갱신, normalization이 함께 작동한다. “negative가 없으므로 자동으로 안전하다”가 아니라 collapse를 막는 구조적 비대칭이 무엇인지 확인해야 한다.
+원본 Figure 2에서 online 경로는 encoder→projector→predictor, target 경로는 encoder→projector다. target representation에는 stop-gradient가 있고, target parameter는 online parameter의 EMA로 갱신한다. 서로 다른 증강 view의 역할을 바꾼 손실도 더한다. [BYOL, `2006.07733v3`, Figure 2 및 §3](https://arxiv.org/html/2006.07733v3)
+
+정규화한 prediction u와 target v의 제곱거리는 다음처럼 cosine과 연결된다. 이 식의 등식은 u와 v가 단위벡터일 때 성립한다.
+
+<Math display tex={String.raw`\|u-v\|_2^2=2-2u^\top v,\qquad \xi\leftarrow m\xi+(1-m)\theta`} />
+
+<strong>계산 예제.</strong> cosine=0.8이면 한 방향 loss=0.4다. 반대 방향 cosine=0.6이면 loss=0.8이어서 두 방향 합은 <strong>1.2</strong>, 평균 convention이면 <strong>0.6</strong>이다. “두 방향”과 “loss reduction”을 구분한다. target의 이전 값이 0, online 값이 2, m=0.9이면 새 target은 <strong>0.2</strong>다. 이는 설명용 scalar 예이며 논문의 전체 parameter가 하나의 숫자라는 뜻이 아니다.
+
+target을 optimizer parameter에 같이 넣으면 원래 stop-gradient 구조가 달라진다. 반대로 target을 영원히 고정하면 EMA 모델과도 다르다. 원문은 collapse 가능한 objective라도 실제 제안 구성에서는 유용한 학습을 관찰하고 bootstrapping·predictor 등의 ablation을 검토한다. <strong>EMA 하나만 있으면 어떤 모델도 collapse하지 않는다는 증명으로 확대하지 않는다.</strong> 원문의 ResNet-50 linear evaluation 74.3%도 데이터·학습 길이·평가 조건이 다른 다른 논문 숫자와 단독 모듈 기여로 빼지 않는다.
+
+이번 절은 두 원본 구조도의 읽는 지점과 loss·gradient 경로를 보강했다. 원본 그림 발췌 파일과 모든 ablation 수치의 전사까지 완료한 것은 아니며, 위 링크에서 Figure 1/2를 직접 대조하는 범위가 남는다.
 
 ## 8.6 memory bank와 MoCo
 
-large batch 없이 많은 negative를 쓰려면 과거 embedding을 저장할 수 있다. 하지만 encoder가 빠르게 바뀌면 오래된 key와 현재 query가 서로 다른 표현 공간에 놓인다.
+현재 batch의 view만 쓰면 비교 후보 수가 batch 크기에 묶인다. 과거 key를 저장하면 후보는 늘릴 수 있지만 encoder가 급격히 변할 때 오래된 key와 현재 query가 서로 다른 표현에 놓일 수 있다. MoCo는 <strong>큰 dictionary와 시간에 따른 일관성</strong>을 함께 다루려는 설계다. [He 등, `1911.05722v3`, §3](https://arxiv.org/html/1911.05722v3)
 
 <ModernAiConceptVisual kind="moco" />
-
-[MoCo](https://arxiv.org/abs/1911.05722)는 key encoder를 query encoder의 exponential moving average로 갱신해 dictionary의 일관성을 높인다.
-
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-007')} />
 
-queue는 batch size와 dictionary size를 분리한다. instance discrimination의 memory bank보다 key가 더 최근이고, SimCLR보다 작은 batch에서도 큰 negative set을 유지할 수 있다.
+### 원본 Figure 1을 queue의 수명으로 읽기
+
+[MoCo 원본 Figure 1과 Figure 2](https://arxiv.org/html/1911.05722v3#S1)에서 query, 이번 batch의 positive key, queue 안의 과거 key를 구분한다. 들어오는 key가 enqueue되고 오래된 key가 dequeue된다. <strong>queue에 저장하는 것은 원본 이미지가 아니라 계산한 key embedding</strong>이다. 그림의 queue를 단순한 이미지 재생 버퍼로 해석하면 메모리와 gradient 구조를 잘못 계산한다. 이번 묶음에는 원본 도판의 별도 발췌 파일 대신 출처 링크와 기존 개념도를 유지했다.
+
+Query encoder는 gradient로 학습하고 key encoder는 느린 EMA 갱신을 사용한다. 과거 key embedding을 매번 최신 encoder로 다시 계산하는 것도 아니다. 그래서 “완전히 같은 encoder가 만든 key만 있다”보다 “encoder 변화가 완만하도록 해서 key들 사이의 불일치를 줄인다”가 정확한 설명이다.
+
+해설용으로 query Q가 B×d, positive K+가 B×d, queue가 K×d이면 positive score는 B×1이고 negative score는 B×K다. 합친 logits는 <strong>B×(1+K)</strong>다. positive를 첫 열에 놓는 구현에서는 target index가 전부 0이지만, 이는 저장 순서에 따른 구현 convention이다.
+
+<Math display tex={String.raw`\ell_q=-\log\frac{\exp(q^\top k^+/\tau)}{\exp(q^\top k^+/\tau)+\sum_{j=1}^{K}\exp(q^\top k_j/\tau)}`} />
+
+### Queue 길이와 EMA의 기억 길이는 다르다
+
+<strong>계산 예제.</strong> K=65536, batch=256의 전역 key를 매 step 넣으면 queue 한 바퀴는 <strong>256 step</strong>이다. 반면 m=0.999인 EMA에서 이전 parameter의 가중치가 절반이 되는 step 수는 다음과 같다.
+
+<Math display tex={String.raw`n_{1/2}=\frac{\log(1/2)}{\log(m)}\approx692.8\quad(m=0.999)`} />
+
+256과 약 693은 서로 다른 메모리다. 하나는 저장된 embedding이 언제 교체되는지, 다른 하나는 parameter EMA에서 과거 상태의 영향이 얼마나 오래 남는지다. epoch 수로 바꾸려면 dataset 크기와 전역 batch를 추가로 알아야 한다.
+
+m이 1이면 key encoder가 갱신되지 않고, m=0이면 query를 즉시 따라간다. 어느 극단이 좋을지는 학습 조건에 달려 있다. 원문은 dictionary 크기와 momentum에 관한 ablation을 통해 설계를 검토한다. 다른 MoCo 버전의 projection head·증강 변경을 섞어 “원형 MoCo”라고 쓰지 않는다.
+
+### 구현 순서가 loss를 바꾸는 경우
+
+원형 연산을 따라 구현할 때는 현재 query와 positive를 계산하고, <strong>이번 loss에서 사용할 과거 queue의 snapshot</strong>을 정한 뒤 score를 만든다. 새 key를 먼저 queue에 넣어 같은 positive가 negative 열에 다시 들어가면 분모의 의미가 달라질 수 있다. query의 gradient, no-grad key 계산, EMA timing, enqueue timing, distributed all-gather 뒤 global key 수를 명시한다.
+
+MoCo의 shuffling BN은 batch statistics를 통한 shortcut을 줄이기 위한 장치다. 정답 pair를 무작위로 바꾸는 알고리즘이 아니며, key sample 순서를 다시 맞추는 단계가 필요하다. 오래된 queue의 tensor를 optimizer가 업데이트하는 parameter로 착각하지 않는다.
+
+<strong>실험을 읽는 기준.</strong> MoCo는 frozen-feature linear classification뿐 아니라 detection·segmentation으로의 transfer를 평가했다. 좋은 linear top-1과 좋은 detector fine-tuning 결과는 같은 목표가 아니다. supervised pretraining과 비교할 때도 detector 구조, fine-tuning schedule과 초기 정규화 설정을 맞춘 표를 읽어야 한다. 이번 보강은 원리와 ablation의 질문을 설명하는 데 집중했고, detector별 표 전체의 수치 재전사나 실험 재현은 하지 않았다. [MoCo, §4.1–4.2](https://arxiv.org/html/1911.05722v3#S4)
 
 ## 8.7 feature clustering: DeepCluster와 SwAV
 
-[DeepCluster](https://arxiv.org/abs/1807.05520)는 feature를 clustering해 얻은 pseudo-label로 encoder를 다시 학습하는 과정을 반복한다. collapse를 막기 위해 빈 cluster와 한 cluster 쏠림을 관리해야 한다.
+### DeepCluster: 현재 표현에서 만든 label로 다음 표현을 학습하기
 
-[SwAV](https://arxiv.org/abs/2006.09882)는 서로 다른 view의 cluster assignment를 교환해 예측한다. 모든 pairwise negative를 직접 비교하는 대신 prototype assignment를 일치시킨다.
+DeepCluster는 현재 feature를 clustering하고, 얻은 cluster assignment를 pseudo-label로 삼아 encoder를 학습하는 과정을 번갈아 수행한다. 원본 overview에서는 feature 추출→clustering→pseudo-label 학습이라는 반복을 읽는다. [DeepCluster, `1807.05520v2`, §3](https://arxiv.org/html/1807.05520v2)
+
+단순화한 k-means 단계는 아래와 같다. encoder가 고정된 동안 centroid와 assignment를 찾고, 다음 단계에서 assignment를 학습 목표로 사용하는 식으로 두 문제를 구분한다.
+
+<Math display tex={String.raw`\min_{C,\,a_i}\sum_i\|f_\theta(x_i)-c_{a_i}\|^2,\qquad a_i\in\{1,\ldots,K\}`} />
+
+<strong>계산 예제.</strong> 1차원 feature `[0,0.2,3,3.2]`를 두 cluster로 나누면 centroid는 0.1과 3.1이다. 어느 cluster를 ID 0 또는 1로 부르는지는 바뀌어도 partition 자체는 같다. 다음 clustering에서 ID가 바뀌었는데 이전 classifier의 class 의미가 그대로라고 가정하면 안 된다. 한 cluster 쏠림과 빈 cluster를 처리하는 규칙도 필요하다.
+
+실험은 clustering으로 얻은 표현의 downstream 전이와 설계 선택을 평가한다. pseudo-label이 실제 의미 class와 항상 일대일이라고 입증한 것은 아니다. 이번에는 알고리즘과 붕괴 위험을 설명했으며 논문의 개별 downstream 수치표를 모두 재구성하지는 않았다.
+
+### SwAV: 한 view의 assignment로 다른 view의 prototype prediction을 학습
 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-008')} />
 
-이 계열은 instance를 무조건 서로 밀어내기보다 dataset에 반복되는 prototype을 표현에 담는다.
+SwAV는 prototype에 대한 assignment를 서로 다른 view 사이에서 교환해 예측한다. 모든 instance pair의 negative를 직접 비교하는 것과 다르다. 원본 Figure 1에서 두 view의 예측과 assignment가 서로 엇갈려 supervision을 제공하는 흐름을 따라간다. [SwAV, `2006.09882v5`, §3](https://arxiv.org/html/2006.09882v5)
+
+D차원 embedding N개와 K개 prototype이면 prediction matrix는 N×K다. balanced assignment를 계산하는 과정의 정규화된 질량행렬을 Q∈R^(K×N)로 두면 다음 같은 marginal 제약을 사용한다. sample별 확률로 쓸 때에는 Q의 각 열을 N배 해 열 합이 1이 되게 만드는 convention을 구분한다.
+
+<Math display tex={String.raw`Q\mathbf1_N=\tfrac1K\mathbf1_K,\qquad Q^\top\mathbf1_K=\tfrac1N\mathbf1_N`} />
+
+<strong>계산 예제.</strong> K=N=2에서 Q가 diagonal 원소 0.5, 나머지 0이면 총 질량은 1이고 두 제약을 만족한다. Q 자체의 각 열 합은 0.5이지 1이 아니다. 반면 `2Q`는 각 표본의 one-hot assignment가 된다. 이 둘을 혼동하면 cross entropy weight가 batch 수에 따라 잘못 변한다.
+
+두 view A,B의 assignment를 qA,qB, prediction을 pA,pB라고 하면 한 쌍의 swapped loss는 아래와 같다. 본문의 기호를 재정리한 표현이다.
+
+<Math display tex={String.raw`\ell=H(q_A,p_B)+H(q_B,p_A)`} />
+
+이 균형 제약은 prototype 사용을 조절하는 학습 장치이지 실제 세계의 class 빈도가 균등하다는 증거가 아니다. 원문은 online clustering·multi-crop 등의 설정을 실험한다. 모든 향상을 “negative가 없어서”라고 한 가지 원인으로 돌리지 않는다. 여기서는 핵심 objective와 질량 보존을 보강했고 Sinkhorn의 수치 안정성과 전체 ablation은 추가 심화 대상이다.
 
 ## 8.8 label이 일부 있다면: supervised contrastive learning
 
-supervised contrastive learning(SupCon)은 anchor와 같은 class의 모든 sample을 positive set (P(i))로 사용한다. 한 개의 정답 logit만 키우는 cross entropy와 달리 class 내부를 모으고 class 사이를 분리하는 representation objective다.
+SupCon에서는 anchor와 같은 class인 sample들을 positive 집합으로 사용한다. label이 없는데도 진짜 같은 class를 자동으로 알 수 있다는 가정이 아니다. [SupCon, `2004.11362v5`, §3](https://arxiv.org/html/2004.11362v5)
 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-009')} />
 
-[SupCon 원 논문](https://arxiv.org/abs/2004.11362)은 여러 positive를 안정적으로 활용하는 형태를 제시한다. 하지만 class 안의 multi-modal structure까지 한 점으로 압축하면 fine-grained variation을 잃을 수 있으므로 downstream 목적과 맞춰야 한다.
+원문의 주요 형태에서는 positive별 <strong>log 확률의 평균</strong>을 사용한다. positive의 확률들을 먼저 평균내고 log를 취하는 것과 다르다. 분모의 비교 집합에서는 anchor만 제외하며 다른 positives는 남는다.
+
+<strong>계산 예제.</strong> 두 positive의 softmax 확률이 0.2와 0.6이라고 하자. negative log의 평균은 <strong>1.060132</strong>, 평균 확률의 negative log는 <strong>0.916291</strong>이다. 한 positive만 매우 높고 다른 positive가 낮을 때 두 목적은 다른 벌점을 준다.
+
+<Math display tex={String.raw`-\tfrac12(\log0.2+\log0.6)\ne-\log\bigl((0.2+0.6)/2\bigr)`} />
+
+Label이 일부만 있는 batch에서 유효 positive가 없는 anchor를 어떻게 처리할지도 정해야 한다. 분모가 0인 집합 크기로 나누지 않도록 하고, distributed batch에서는 positive mask와 sample ordering을 맞춘다. 논문의 결과는 supervised representation 학습의 효용을 보여 주지만 class 내부의 모든 다양성을 없애는 것이 언제나 최선이라는 뜻은 아니다. 여기서는 objective 비교까지 보강했으며 모든 backbone별 최고 점수표를 새로 전사하지 않았다.
 
 ## 8.9 CLIP: positive를 image–text pair로 확장
 
-[CLIP](https://arxiv.org/abs/2103.00020)은 image encoder와 text encoder를 함께 학습한다. batch의 `N`개 image와 `N`개 caption으로 `N × N` similarity matrix를 만들고, 맞는 쌍이 있는 대각을 양방향 cross entropy로 키운다.
+CLIP은 같은 이미지의 두 증강만이 아니라 이미지와 text의 짝을 학습한다. 학습 뒤에는 label 설명을 text encoder에 넣어 이미지와 비교한다. <strong>이미지 설명 문장을 생성하는 autoregressive decoder와는 다른 연산</strong>이다. 참고 버전은 Radford 등 `2103.00020v1`이다. [CLIP, §2, Figure 1](https://arxiv.org/html/2103.00020v1)
 
 <ModernAiConceptVisual kind="clip" />
+<PaperReadingFigure figure="clip-fig-1" alt="CLIP 원논문 Figure 1. 이미지와 text encoder의 N×N 대조 학습, label 문장으로 classifier를 만드는 단계, 새 영상의 zero-shot 비교 단계를 나란히 나타낸다.">
+왼쪽 큰 표는 학습용 image–text similarity matrix다. 대각의 짝이 supervision이다. 오른쪽 위는 label text로 classifier의 비교 벡터를 만드는 과정이고, 오른쪽 아래는 새 영상과 그 벡터들의 비교다. 학습 batch의 captions와 추론 시 class prompts를 혼동하지 않는다.
+</PaperReadingFigure>
+
+### 두 encoder와 양방향 cross entropy
 
 <ModernAiSourceEquation part={8} {...modernAiFormula(8, 'MAI-P8-010')} />
 
-학습 뒤에는 class 이름을 prompt로 바꾸어 text embedding을 만들고 image와 가장 가까운 prompt를 고르는 zero-shot classifier로 쓸 수 있다. 자연어가 label space를 유연하게 만들지만, web-scale image–text data의 bias와 중복, caption quality도 표현에 그대로 들어온다. zero-shot 성능은 prompt wording과 dataset shift에도 민감하다.
+같은 차원으로 투영하고 정규화한 image embedding I, text embedding T가 각각 N×D라면 logits는 N×N이다. 학습 가능한 log scale을 t라고 쓰면 아래처럼 나타낼 수 있다. t를 그대로 temperature라고 부르지 않는다. `exp(t)`는 inverse temperature 역할의 logit scale이다.
+
+<Math display tex={String.raw`S=e^tIT^\top,\qquad\mathcal L=\tfrac12\left[\operatorname{CE}(S,\operatorname{diag})+\operatorname{CE}(S^\top,\operatorname{diag})\right]`} />
+
+행에서는 각 이미지의 정답 text를, 열에서는 각 text의 정답 이미지를 찾는다. 두 방향의 평균을 쓰는 convention이다. SimCLR처럼 대각을 self-similarity라 생각해 지우면 안 된다. <strong>CLIP 대각은 정답 image–text pair</strong>다. 행마다 N개 후보 중 하나가 positive이므로 negatives는 N−1개다.
+
+<strong>계산 예제.</strong> 두 쌍의 logits를 `[[2,0],[0,2]]`로 두면 각 방향의 loss는 `log(1+exp(−2))≈0.126928`이다. 두 방향 평균도 같은 값이다. 대각을 mask하면 학습할 정답을 삭제하게 된다. 이 예의 logit 2는 설명용 값이며 실제 pretrained CLIP의 temperature를 주장하는 숫자가 아니다.
+
+### Zero-shot classifier의 shape를 다시 따라가기
+
+추론할 이미지 B개와 후보 class K개가 있으면 image feature는 B×D, label prompt feature는 K×D다. 둘을 곱한 결과는 <strong>B×K</strong>다. 학습 batch N과 test-time class 수 K는 같을 필요가 없다. class 이름을 문장 template에 넣는 이유와 여러 prompt를 평균할 때 정규화하는 위치도 명시한다.
+
+예를 들어 text 후보가 dog와 cat뿐인 분류에서 dog score가 높은 것과, dog·cat·wolf·fox·bear를 함께 둔 분류에서 dog 확률이 높은 것은 같은 조건이 아니다. softmax 확률은 후보 집합에 의존한다. “가장 비슷한 문장”을 찾는 점수와 절대적으로 보정된 인식 신뢰도는 구분한다.
+
+<strong>논문이 검토한 것과 검토하지 않은 것.</strong> CLIP은 대규모 image–text pretraining과 여러 downstream 데이터셋의 zero-shot·linear-probe 등을 비교했다. zero-shot은 해당 target task의 학습 label로 classifier를 fitting하지 않는 protocol을 뜻하지, 사전학습 데이터·자연어 supervision·bias가 없다는 뜻이 아니다. 원문은 prompt engineering과 dataset shift의 영향도 다룬다. [CLIP, §3](https://arxiv.org/html/2103.00020v1#S3)
+
+SimCLR linear-probe top-1과 CLIP zero-shot top-1을 놓고 “표현 품질만의 차이”라고 단정하지 않는다. supervised head의 유무, pretraining 데이터, backbone, image resolution, text prompt가 함께 달라진다. 새로운 task에서 prompt를 test set에 반복 맞추었다면 zero-shot이라는 말만으로 평가 독립성이 유지되지 않는다. 이것은 평가 설계상의 주의이며 원문이 모든 실제 배포에서 calibration을 보장했다는 주장이 아니다.
 
 ## 8.10 방법을 고르는 기준
 
-| 상황                                      | 우선 볼 방법      | 주의점                        |
-| ----------------------------------------- | ----------------- | ----------------------------- |
-| 큰 batch와 강한 augmentation을 쓸 수 있음 | SimCLR            | false negative, batch 비용    |
-| 작은 batch에서 큰 dictionary가 필요함     | MoCo              | momentum·queue staleness      |
-| 명시적 negative를 피하고 싶음             | BYOL·Barlow Twins | collapse 방지 장치            |
-| prototype 구조를 학습하고 싶음            | DeepCluster·SwAV  | cluster imbalance             |
-| label 일부를 representation에 반영        | SupCon            | class 내부 다양성             |
-| image–text zero-shot transfer             | CLIP              | data bias, prompt sensitivity |
+| 상황 | 우선 볼 방법 | 핵심 검증 질문 |
+|---|---|---|
+| 한 batch의 두 view를 대조 | SimCLR | positive 포함 분모, self mask, h/z 구분이 맞는가 |
+| 작은 batch와 큰 dictionary | MoCo | queue 수명, EMA timing, key의 gradient가 맞는가 |
+| explicit negative를 피함 | BYOL·Barlow Twins | target 갱신·stop-gradient·correlation 축이 맞는가 |
+| 반복되는 prototype 학습 | DeepCluster·SwAV | assignment의 의미·균형·질량 정규화가 맞는가 |
+| label을 positives에 반영 | SupCon | positives 평균을 log 밖에서 하는가, 빈 집합 처리는 무엇인가 |
+| image–text zero-shot 비교 | CLIP | 대각을 정답으로 두는가, task label fitting과 구분하는가 |
 
-대조학습을 비교할 때 loss 이름만 보면 안 된다. **positive를 어떻게 만들었는지, negative 또는 collapse 방지 신호가 무엇인지, dictionary가 얼마나 크고 일관적인지, downstream에서 어느 representation을 쓰는지**를 함께 봐야 한다.
+이 표는 새 benchmark 순위가 아니라 읽기와 구현의 점검표다. 논문별로 positive/negative 정의, 저장하는 tensor, gradient 경로, loss의 합·평균, pretraining과 downstream의 데이터 사용을 적으면 같은 “대조학습” 이름 뒤에 숨어 있는 실제 차이가 보인다.
 
 {/* source-content:P8-C001 */}
 {/* source-content:P8-C002 */}
