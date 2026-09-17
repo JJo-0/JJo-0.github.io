@@ -5,57 +5,65 @@ on:
     paths: [.github/workflows/modern-ai-vi-source-review.yml]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  evidence:
+  figures:
+    if: github.ref == 'refs/heads/content/modern-ai-vi-fcn-unet-20260917'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          ref: content/modern-ai-vi-fcn-unet-20260917
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: python -m pip install PyMuPDF==1.26.4 Pillow==11.3.0
-      - name: Acquire exact paper versions and selected review pages
+      - name: Render selected figures only from hash-pinned PDFs
         run: |
           python - <<'PY'
-          import hashlib,json,subprocess,time,urllib.request,zipfile
+          import hashlib,io,json,time,urllib.request
           from pathlib import Path
           import fitz
-          out=Path('vi-evidence');out.mkdir()
-          sources=[('fcn','https://arxiv.org/pdf/1411.4038v2',[2,5]),('unet','https://arxiv.org/pdf/1505.04597v1',[1,4])]
-          receipts=[]
-          for key,url,pages in sources:
+          from PIL import Image
+          out=Path('spaceship-ui/site/assets/assets/posts/modern-ai-vi-papers');out.mkdir(parents=True,exist_ok=True)
+          sources=[
+            ('fcn','1411.4038v2','2015-03-08','a81b80808c2b9342fd2a3d9d0373db5aa81d83bd05c32cbb8cc7cc5596530d35','Jonathan Long, Evan Shelhamer, Trevor Darrell',[(2,3,[307,70,550,199]),(3,6,[46,526,550,644]),(4,6,[48,70,298,174])]),
+            ('unet','1505.04597v1','2015-05-18','a3172b2124f38e260dc2c7ed968d87c31bc94dbc19a42a7ab3dcbd7534319c44','Olaf Ronneberger, Philipp Fischer, Thomas Brox',[(1,2,[130,109,485,348]),(3,5,[130,107,485,198])])
+          ]
+          entries=[]
+          for key,version,date,pdfsha,authors,figures in sources:
+              url='https://arxiv.org/pdf/'+version
               for attempt in range(3):
                   try:
-                      with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 scholarly-source-review'}),timeout=60) as r:
-                          data=r.read()
-                      assert data.startswith(b'%PDF-')
+                      with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 scholarly-source-review'}),timeout=60) as response:data=response.read()
+                      assert data.startswith(b'%PDF-') and hashlib.sha256(data).hexdigest()==pdfsha,'Exact source identity changed'
                       break
                   except Exception:
                       if attempt==2:raise
                       time.sleep(3)
               doc=fitz.open(stream=data,filetype='pdf')
-              receipts.append({'id':key,'url':url,'pdfSha256':hashlib.sha256(data).hexdigest(),'pages':len(doc)})
-              for index in pages:
-                  page=doc[index]
-                  page.get_pixmap(matrix=fitz.Matrix(1.5,1.5),alpha=False).save(out/f'{key}-page-{index+1}.png')
-                  (out/f'{key}-page-{index+1}.json').write_text(json.dumps({'rect':list(page.rect),'blocks':page.get_text('blocks')},ensure_ascii=False,indent=2))
-              (out/f'{key}-text.txt').write_text('\n'.join(p.get_text() for p in doc))
-          (out/'sources.json').write_text(json.dumps(receipts,indent=2))
-          # Public repository source only; never archive credentials or the Git directory.
-          tracked=subprocess.check_output(['git','ls-files','-z']).decode().split('\0')
-          with zipfile.ZipFile(out/'repository-text.zip','w',zipfile.ZIP_DEFLATED) as z:
-              for name in tracked:
-                  p=Path(name)
-                  if p.is_file() and p.suffix in {'.mdx','.md','.mjs','.js','.ts','.astro','.svelte','.json','.yml','.yaml','.css','.py'}:
-                      z.write(p,name)
+              for number,page,rect in figures:
+                  name=f'{key}-figure-{number}.webp'
+                  pix=doc[page-1].get_pixmap(matrix=fitz.Matrix(3,3),clip=fitz.Rect(rect),alpha=False)
+                  image=Image.open(io.BytesIO(pix.tobytes('png')))
+                  image.save(out/name,'WEBP',lossless=True,method=6)
+                  entries.append({'id':f'{key}-fig-{number}','file':name,'paper':key,'version':version,'sourceDate':date,'figure':number,'pdfPage':page,'source':'https://arxiv.org/html/'+version,'pdfSource':url,'authors':authors,'sourceLicense':'arXiv.org perpetual non-exclusive license','rights':'Copyright retained by the original rights holders. Selected figure excerpt for accompanying scholarly commentary; not offered under the repository MIT license or a Creative Commons grant. No express republication permission is claimed.','changes':'Figure region cropped from the exact-version PDF; rasterized at 3 pixels per point and losslessly encoded as WebP. Original figure content and colors are not redrawn. Original caption replaced by separately authored Korean commentary.','cropPoints':rect,'pdfSha256':pdfsha,'sha256':hashlib.sha256((out/name).read_bytes()).hexdigest(),'width':image.width,'height':image.height})
+          (out/'provenance.json').write_text(json.dumps({'checkedOn':'2026-09-17','scope':'Five selected original figure excerpts, not complete papers. Technical and rights review remain distinct.','figures':entries},ensure_ascii=False,indent=2)+'\n')
+          assert len(entries)==5
           PY
+      - name: Commit only these figure assets to the isolated branch
+        run: |
+          git config user.name 'Park Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git add -- spaceship-ui/site/assets/assets/posts/modern-ai-vi-papers/
+          git diff --cached --stat
+          test "$(git diff --cached --name-only | wc -l)" -eq 6
+          git -c core.hooksPath=/dev/null commit -m 'content: add five source-pinned FCN and U-Net figure excerpts for detailed commentary'
+          git push origin HEAD:refs/heads/content/modern-ai-vi-fcn-unet-20260917
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: modern-ai-vi-source-evidence
-          path: vi-evidence/
-          retention-days: 3
+          name: modern-ai-vi-figure-excerpts
+          path: spaceship-ui/site/assets/assets/posts/modern-ai-vi-papers/
+          retention-days: 7
           if-no-files-found: error
