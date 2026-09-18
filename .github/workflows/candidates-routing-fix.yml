@@ -1,0 +1,55 @@
+name: Candidate canonical routing bytes
+on:
+  push:
+    branches: [ops/news-candidates-evidence-20260918]
+    paths: [.github/workflows/candidates-routing-fix.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cec3670f7c8110af8e31a28a4a51f35b7b82ffd0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install brotli==1.1.0
+      - name: Apply data-only verified deltas and store immutable blobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64,brotli,hashlib,json,os,subprocess,urllib.request
+          from pathlib import Path,PurePosixPath
+          api='https://api.github.com/repos/JJo-0/JJo-0.github.io'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','User-Agent':'canonical-route-verifier','Content-Type':'application/json'}
+          def req(route,body=None):
+              request=urllib.request.Request(api+route,data=None if body is None else json.dumps(body).encode(),headers=headers)
+              with urllib.request.urlopen(request,timeout=60) as r:return json.load(r)
+          def sha(data):return hashlib.sha256(data).hexdigest()
+          blob=req('/git/blobs/755599db4770da55ee7c4ef352d75a419e344b67')
+          raw=brotli.decompress(base64.b64decode(blob['content']))
+          assert len(raw)==8749 and sha(raw)=='55a80be4996b13b0a4072e72263e460f1f21042b413a27edb5684b58e15479ae'
+          packet=json.loads(raw)
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==packet['base']
+          out=Path('routing-fix');out.mkdir();rows=[]
+          for row in packet['files']:
+              path=PurePosixPath(row['path']);assert not path.is_absolute() and '..' not in path.parts and str(path).startswith('spaceship-ui/')
+              p=Path(path);assert sha(p.read_bytes())==row['baseSha256']
+              data=row['diff'].encode();subprocess.run(['git','apply','--check','-'],input=data,check=True);subprocess.run(['git','apply','-'],input=data,check=True)
+              data=p.read_bytes();assert sha(data)==row['sha256']
+              result=req('/git/blobs',{'encoding':'base64','content':base64.b64encode(data).decode()});assert result['sha']==row['gitSha']
+              rows.append({k:row[k] for k in ['path','sha256','gitSha']})
+              target=out/'files'/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
+          (out/'blobs.json').write_text(json.dumps({'base':packet['base'],'files':rows},indent=2))
+          print('PASS',len(rows),'verified metadata/test files; no branch changes')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: candidates-canonical-routing
+          path: routing-fix/
+          retention-days: 14
