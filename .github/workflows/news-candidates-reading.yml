@@ -49,9 +49,14 @@ jobs:
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk
           test -n "$(fc-list :lang=ko family)"
       - name: Source, original images, calculations and mutations
-        run: node scripts/news-candidates-20260918-contract.mjs
+        run: |
+          node scripts/news-candidates-20260918-contract.mjs
+          test ! -e candidates-review/static.json
+          JJO_CANDIDATE_REPORT=candidates-review/static.json node scripts/news-candidates-20260918-contract.mjs
       - run: pnpm build
       - name: Rendered originals, math and ad-free reading boundary
+        env:
+          JJO_CANDIDATE_REPORT: candidates-review/static.json
         run: node scripts/news-candidates-20260918-contract.mjs
       - name: Four articles native reading matrix
         timeout-minutes: 6
@@ -77,7 +82,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: candidates-reading-${{ github.run_id }}
+          name: candidates-reading-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: spaceship-ui/candidates-review/
           retention-days: 14
           if-no-files-found: error

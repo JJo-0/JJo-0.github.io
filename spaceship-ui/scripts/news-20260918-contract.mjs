@@ -49,6 +49,7 @@ function checkArticle(s, c = calculations) {
   });
   assert.deepEqual(refs,manifest.references);
   assert(s.includes('<Paper2AgentNumbers />'));
+  assert(s.includes('<Paper2AgentComparison>'), 'Comparison table uses its scoped reading styles');
   assert.deepEqual([...c.matchAll(/<details data-p2a-equation="([^"]+)"/g)].map(m=>m[1]),['papers','tools','accuracy']);
   for (const tex of [...(s+'\n'+c).matchAll(/tex=\{String\.raw`([^`]+)`\}/g)].map(m=>m[1])) katex.renderToString(tex,{throwOnError:true,strict:'error',trust:false});
   for (const term of [String.raw`\frac{74}{100}`,String.raw`\frac{593}{599}`,String.raw`91.2\%-80.3\%`, '분자 74', '분모 100', '분자 593', '분모 599','퍼센트포인트']) assert(c.includes(term),term);

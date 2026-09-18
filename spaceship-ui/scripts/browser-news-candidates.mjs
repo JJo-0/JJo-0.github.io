@@ -81,6 +81,9 @@ try{
     const mobile=width===390;activeCase={slug:edition.slug,width,theme:dark?'dark':'light'};
     await viewport(cdp,sessionId,{width,height:1000,mobile,touch:mobile,reduced:true});
     await navigate(cdp,sessionId,'/news/');
+    const expectedOrder=['2026-09-18-paper2agent-news',...catalogue.entries.map(entry=>entry.slug)];
+    const actualOrder=await js(`Array.from(document.querySelectorAll('[data-news-card]')).map(card=>card.getAttribute('data-news-card')).filter(slug=>${JSON.stringify(expectedOrder)}.includes(slug))`);
+    assert.deepEqual(actualOrder,expectedOrder,'Existing Top 1 then candidates in editorial order');
     assert.equal(await js(`document.querySelectorAll('[data-news-card="${edition.slug}"]').length`),1);
     await navigate(cdp,sessionId,route);
     await js(`document.documentElement.classList.toggle('dark',${dark})`);

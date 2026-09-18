@@ -239,6 +239,26 @@ jobs:
         timeout-minutes: 6
         run: node scripts/browser-news-candidates.mjs
 
+      - name: Live Paper2Agent comparison and reading
+        timeout-minutes: 4
+        run: node scripts/browser-paper2agent.mjs
+
+      - name: Preserve live candidate reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: candidates-live-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: spaceship-ui/candidates-review/
+          retention-days: 14
+
+      - name: Preserve live Paper2Agent feedback evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: paper2agent-feedback-live-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: spaceship-ui/paper2agent-review/
+          retention-days: 14
+
       - name: Publish Pages live-smoke status
         if: always()
         env:
@@ -279,10 +299,3 @@ jobs:
           console.log(`pages-live: published ${state} for ${process.env.GITHUB_SHA}`);
           NODE
 
-      - name: Preserve live candidate reading evidence
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: candidates-live-${{ github.run_id }}
-          path: spaceship-ui/candidates-review/
-          retention-days: 14

@@ -102,6 +102,9 @@ try{
     ]);
     assert(!await js(`document.querySelector('article').textContent.includes('편집 주석:')`));
     await js(`document.querySelector('[data-p2a-comparison]').scrollIntoView({block:'center',behavior:'instant'})`);
+    const tableLayout=await js(`(()=>{const region=document.querySelector('.p2a-comparison-table');const table=region?.querySelector('table');return {exists:!!table,viewport:region?.clientWidth,content:region?.scrollWidth,columns:table?.querySelectorAll('thead th').length,focusable:region?.tabIndex===0};})()`);
+    assert(tableLayout.exists&&tableLayout.columns===5&&tableLayout.focusable);
+    if(width===1440)assert(tableLayout.content<=tableLayout.viewport+2,'All five comparison columns fit the desktop article width');
     await shot(`comparison-${width}-${dark?'dark':'light'}`);
     for(const name of ['papers','tools','accuracy']){
       const selector=`[data-p2a-equation="${name}"] > summary`;

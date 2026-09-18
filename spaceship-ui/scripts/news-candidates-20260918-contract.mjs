@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import { createHash } from 'node:crypto';
 import katex from 'katex';
 import { assertNewsProseLength } from './news-prose-policy.mjs';
@@ -94,6 +95,12 @@ for(const [name,key,oldText,replacement] of mutationCases){const s=get(key),bad=
 assert(get('panxeon').includes('1,757명'));assert(get('panxeon').includes('SEER'));assert(get('panxeon').includes('모형 추정'));
 assert(get('delphy').includes('유전적 사전분포'));assert(get('delphy').includes('96-vCPU'));
 assert.deepEqual(original.map(r=>r.id),edition.mediaIds);
+function checkNewsOrder(registry) {
+  assert.deepEqual([registry['paper2agent-overview'].order,...edition.entries.map(entry=>registry[entry.mediaIds[0]].order)],[1,2,3,4,5],'Top article precedes the four candidates deterministically');
+}
+checkNewsOrder(media);
+const wrongOrder=structuredClone(media);wrongOrder[edition.entries[0].mediaIds[0]].order=1;
+assert.throws(()=>checkNewsOrder(wrongOrder),undefined,'Candidate cannot tie the established Top 1');
 for(const row of original){
  const item=media[row.id];assert(item);for(const field of ['slug','src','kind','alt','caption','credit','source','license','rights','changes','width','height','sha256','order'])assert.deepEqual(item[field],row[field],`${row.id}: ${field}`);
  const data=fs.readFileSync(new URL('site/assets'+row.src,root));assert.equal(hash(data),row.sha256);assert.equal(data.length,row.bytes);
@@ -136,6 +143,10 @@ if(fs.existsSync(new URL('dist/',root))){
   assert(!listing.includes(`2026-09-18-${entry.slug}`),'No duplicated-date routes');
  }
 }
-const report={articles:edition.entries.map(e=>({slug:e.slug,characters:e.bodyCharacters})),figures:8,explanations:11,mathExpressions:mathCount,numerical,mutations:mutationCases.map(([name])=>({name,rejected:true})),scope:'Authored explanations, file identity and rendered contracts; not an independent reproduction of paper experiments or a blanket rights grant.'};
-fs.mkdirSync('candidates-review',{recursive:true});fs.writeFileSync('candidates-review/static.json',JSON.stringify(report,null,2));
-console.log(`candidate-news: PASS four articles; ${mathCount} math expressions; 11 specific explanations; 8 verified original figures; 20 calculations; ${mutationCases.length} rejected mutations`);
+const releaseWorkflow=read('../.github/workflows/blog-pages-deploy.yml');
+assert(releaseWorkflow.lastIndexOf('Publish Pages live-smoke status')>releaseWorkflow.lastIndexOf('uses: actions/upload-artifact@'),'Publish status after preserving all live evidence');
+for(const prefix of ['candidates-live-','paper2agent-feedback-live-'])assert(releaseWorkflow.includes(prefix+'${{ github.run_id }}-attempt-${{ github.run_attempt }}'),'Live evidence distinguishes run attempts');
+const report={articles:edition.entries.map(e=>({slug:e.slug,characters:e.bodyCharacters})),figures:8,explanations:11,mathExpressions:mathCount,numerical,mutations:[...mutationCases.map(([name])=>({name,rejected:true})),{name:'candidate ties Top 1',rejected:true}],scope:'Authored explanations, file identity and rendered contracts; not an independent reproduction of paper experiments or a blanket rights grant.'};
+const reportPath=process.env.JJO_CANDIDATE_REPORT;
+if(reportPath){fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath,JSON.stringify(report,null,2));}
+console.log(`candidate-news: PASS four articles; ${mathCount} math expressions; 11 specific explanations; 8 verified original figures; 20 calculations; ${report.mutations.length} rejected mutations`);
