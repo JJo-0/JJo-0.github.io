@@ -118,7 +118,10 @@ function canonical(value){
   if(value && typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));
   return value;
 }
-const preserved = Object.fromEntries(Object.entries(media).filter(([id])=>!edition.mediaIds.includes(id)));
+assert.equal(oldMedia.ids.length, oldMedia.entries);
+assert.equal(new Set(oldMedia.ids).size, oldMedia.entries);
+for (const id of oldMedia.ids) assert(Object.hasOwn(media, id), `Missing historic media ${id}`);
+const preserved = Object.fromEntries(oldMedia.ids.map(id => [id, media[id]]));
 assert.equal(Object.keys(preserved).length,oldMedia.entries);
 assert.equal(hash(JSON.stringify(canonical(preserved))),oldMedia.canonicalSha256,'All previous NEWS media values remain unchanged');
 for(const entry of edition.entries){

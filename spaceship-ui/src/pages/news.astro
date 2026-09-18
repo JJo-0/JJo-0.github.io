@@ -1,4 +1,5 @@
 ---
+import { formatDateKey } from '@/lib/utils/date';
 import Layout from '@/layouts/Layout.astro';
 import NewsListItem from '@/components/NewsListItem.astro';
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
@@ -17,7 +18,7 @@ const newsPosts = (await getPublishedPosts())
   .filter((post) => post.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate'))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() ||
     (mediaOrder.get(getPostSlug(a)) ?? 1000) - (mediaOrder.get(getPostSlug(b)) ?? 1000));
-const dates = [...new Set(newsPosts.map((post) => post.data.pubDate.toISOString().slice(0, 10)))];
+const dates = [...new Set(newsPosts.map((post) => formatDateKey(post.data.pubDate, post.data.publicationTimeZone)))];
 const schema = getBreadcrumbSchema([{ name: 'News', url: new URL('/news', Astro.site).toString() }]);
 ---
 <Layout title="News" description="AI·바이오·에너지·반도체 연구를 기초 개념과 수식, 원문 그림으로 읽는 Frontier One." schema={schema} lang="ko" adsEnabled={false}>
@@ -30,7 +31,7 @@ const schema = getBreadcrumbSchema([{ name: 'News', url: new URL('/news', Astro.
     {dates.map((date) => (
       <section class="news-date" data-news-date={date} aria-labelledby={`date-${date}`}>
         <h2 id={`date-${date}`}><time datetime={date}>{date.replaceAll('-', '.')}</time></h2>
-        <div>{newsPosts.filter((post) => post.data.pubDate.toISOString().slice(0, 10) === date).map((post) => (
+        <div>{newsPosts.filter((post) => formatDateKey(post.data.pubDate, post.data.publicationTimeZone) === date).map((post) => (
           <NewsListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />
         ))}</div>
       </section>

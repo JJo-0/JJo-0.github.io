@@ -11,6 +11,7 @@ const postSchema = z
     title: z.string(),
     description: z.string(),
     pubDate: z.date(),
+    publicationTimeZone: z.enum(['UTC', 'Asia/Seoul']).default('UTC'),
     slug: z.string().optional(),
     updatedDate: z.date().optional(),
     category: z.enum(POST_CATEGORIES),
