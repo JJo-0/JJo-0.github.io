@@ -171,5 +171,9 @@ POST_TAXONOMY.update({
     '2026-09-17-adolescent-hemophilia-b-news.mdx': Taxonomy('health-lifestyle', 'gene-therapy', 'paper-review', ('frontier-candidate', 'gene-therapy')),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-18-paper2agent-news.mdx': Taxonomy('ai-machine-learning', 'ai-agents-for-science', 'paper-review', ('frontier-one', 'ai-for-science')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
