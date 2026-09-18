@@ -1,0 +1,48 @@
+name: Candidate supplementary evidence
+on:
+  push:
+    branches: [ops/news-candidates-evidence-20260918]
+    paths: [.github/workflows/candidates-supplement.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests PyMuPDF
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          from concurrent.futures import ThreadPoolExecutor
+          import requests,json,hashlib,fitz
+          out=Path('candidate-supplement');out.mkdir()
+          urls={'muscle-accepted':'https://www.nature.com/articles/s41467-026-77664-0_reference.pdf','photonics-supplement':'https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-11000-w/MediaObjects/41586_2026_11000_MOESM1_ESM.pdf','delphy-supplement':'https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-11012-6/MediaObjects/41586_2026_11012_MOESM1_ESM.pdf','panxeon-code-record':'https://zenodo.org/api/records/15041773'}
+          def get(task):
+              key,url=task
+              try:
+                  r=requests.get(url,timeout=60);b=r.content
+                  record={'key':key,'url':url,'finalUrl':r.url,'status':r.status_code,'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b)}
+                  if b.startswith(b'%PDF-'):
+                      (out/(key+'.pdf')).write_bytes(b);doc=fitz.open(stream=b,filetype='pdf')
+                      (out/(key+'.txt')).write_text('\n'.join(p.get_text() for p in doc));record['pages']=len(doc)
+                      if key=='muscle-accepted':
+                          for i in range(len(doc)):
+                              text=doc[i].get_text()
+                              if 'Figure' in text or 'Fig.' in text:
+                                  doc[i].get_pixmap(matrix=fitz.Matrix(1.3,1.3),alpha=False).save(out/f'{key}-page-{i+1}.png')
+                  else:(out/(key+'.txt')).write_bytes(b)
+                  return record
+              except Exception as e:return {'key':key,'url':url,'error':str(e)}
+          (out/'receipts.json').write_text(json.dumps(list(ThreadPoolExecutor(4).map(get,urls.items())),indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: candidates-supplementary-evidence
+          path: candidate-supplement/
+          retention-days: 7
+          if-no-files-found: error
