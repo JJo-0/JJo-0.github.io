@@ -1,0 +1,85 @@
+name: Paper2Agent verified text
+on:
+  push:
+    branches: [ops/paper2agent-evidence-20260918]
+    paths: [.github/workflows/paper2agent-text.yml]
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 39aa52e4da969149f335ebee158c5a2835be8c74
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify data and create immutable blobs without changing branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64,hashlib,json,os,urllib.request,zlib
+          from pathlib import Path
+          out=Path('paper2agent-text');out.mkdir()
+          api='https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'}
+          chunks=[('b8dd4920d1d61a754269b51ad1da604ed26108d9','4077302558744d685696f9a866c3f8a08cf5f0a4'),('d3aa2f0dfd93f98ed1e9323b80d0d01364fb6cbe','d3aa2f0dfd93f98ed1e9323b80d0d01364fb6cbe'),('6a4f9e8ec42796841db53c0bd17eb1e4326a11f8','6a4f9e8ec42796841db53c0bd17eb1e4326a11f8'),('0d39a803ab55b97a1ae9d218bbd18c64385eca4d','0d39a803ab55b97a1ae9d218bbd18c64385eca4d')]
+          def blobhash(data):return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+          parts=[]
+          for index,(remote,expected) in enumerate(chunks):
+              with urllib.request.urlopen(urllib.request.Request(api+'/'+remote,headers=headers),timeout=30) as response:row=json.load(response)
+              data=base64.b64decode(row['content'])
+              assert blobhash(data)==remote
+              if index==0:
+                  text=data.decode()
+                  for old,new in [('1SquYefeh9dAYF','1SquYefeh9AYF'),('Ja+fWBaSitt','Ja+fWBZitt'),('LfQyubg2u684c','LfQyubg2u30c'),('bPetzZZ1v','bPetzZ1v')]:
+                      assert text.count(old)==1,(old,text.count(old))
+                      text=text.replace(old,new)
+                  data=text.encode()
+              (out/f'{index}.txt').write_bytes(data)
+              print(index,len(data),blobhash(data),expected)
+              assert blobhash(data)==expected,'Transfer identity mismatch; no source files will be published'
+              parts.append(data)
+          compressed=base64.b64decode(b''.join(parts),validate=True)
+          assert hashlib.sha256(compressed).hexdigest()=='64de502050bee007ca8c2d3bc314e671944a2639e15623209d194d6205da7216'
+          payload=json.loads(zlib.decompress(compressed))
+          assert payload['base']=='39aa52e4da969149f335ebee158c5a2835be8c74'
+          allowed={'.github/workflows/paper2agent-reading.yml','spaceship-ui/site/content/posts/2026-09-18-paper2agent-news.mdx','spaceship-ui/site/news-media.json','spaceship-ui/site/news-edition-20260918.json','spaceship-ui/site/assets/assets/posts/news-20260918/provenance.json','spaceship-ui/src/components/post/Paper2AgentNumbers.astro','spaceship-ui/ops/blog-harness/blogger/2026-09-18/paper2agent.html','spaceship-ui/scripts/news-20260918-contract.mjs','spaceship-ui/scripts/news-visual-contract.mjs','spaceship-ui/scripts/browser-paper2agent.mjs','spaceship-ui/docs/operations/PAPER2AGENT_NEWS_20260918.md'}
+          assert {r['path'] for r in payload['files']}==allowed and len(payload['files'])==11
+          verified=[]
+          for row in payload['files']:
+              p=Path(row['path'])
+              if 'appendJson' in row:
+                  assert row['path']=='spaceship-ui/site/news-media.json'
+                  original=json.loads(p.read_text());addition=row['appendJson']
+                  assert set(addition)=={'paper2agent-overview','paper2agent-scanpy'} and not set(addition).intersection(original)
+                  original.update(addition);text=json.dumps(original,ensure_ascii=False,indent=2)+'\n'
+              elif 'prepend' in row:
+                  assert row['path']=='spaceship-ui/scripts/news-visual-contract.mjs' and row['prepend']=="import './news-20260918-contract.mjs';\n"
+                  text=row['prepend']+p.read_text()
+              else:text=row['text']
+              data=text.encode()
+              assert hashlib.sha256(data).hexdigest()==row['sha256'],row['path']
+              assert blobhash(data)==row['blob'],row['path']
+              target=out/'files'/p;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
+              verified.append((row,data))
+          records=[]
+          for row,data in verified:
+              request=urllib.request.Request(api,headers=headers,data=json.dumps({'content':base64.b64encode(data).decode(),'encoding':'base64'}).encode(),method='POST')
+              with urllib.request.urlopen(request,timeout=30) as response:result=json.load(response)
+              assert result['sha']==row['blob']
+              records.append({'path':row['path'],'blob':result['sha'],'sha256':row['sha256'],'bytes':len(data)})
+          (out/'blobs.json').write_text(json.dumps(records,indent=2))
+          print('PASS: 11 final source files verified; no commit/tree/ref or PR update performed')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: paper2agent-final-text
+          path: paper2agent-text/
+          retention-days: 7
+          if-no-files-found: error
