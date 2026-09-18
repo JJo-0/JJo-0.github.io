@@ -1,0 +1,85 @@
+name: Wet lab source review
+on:
+  push:
+    branches: [ops/wetlab-source-20260919]
+    paths: [.github/workflows/wetlab-source-prepare.yml]
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 1737c902d9ebed1c9b52cd10e0099c3f244534e8
+          persist-credentials: false
+      - name: Gather public sources without executing their content
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, re, shutil, subprocess, urllib.request
+          from html.parser import HTMLParser
+          from urllib.parse import urljoin, urlparse
+          out=pathlib.Path('wetlab-evidence');out.mkdir()
+          sources={
+            'mhs':'https://www.anthropic.com/news/model-hardware-standard-research-preview',
+            'science':'https://www.anthropic.com/news/claude-science-ai-workbench',
+            'lsvp':'https://www.anthropic.com/news/life-sciences-verification-program',
+            'reuters':'https://www.reuters.com/world/anthropic-quietly-sets-up-biology-lab-it-ramps-ai-drug-program-2026-09-18/',
+            'novo':'https://www.globenewswire.com/news-release/2026/09/16/3363106/0/en/novo-and-anthropic-will-collaborate-to-advance-drug-discovery-with-claude.html'
+          }
+          class Parser(HTMLParser):
+            def __init__(self):super().__init__();self.text=[];self.images=[];self.skip=0
+            def handle_starttag(self,tag,attrs):
+              a=dict(attrs)
+              if tag in ['script','style']:self.skip+=1
+              if tag=='img':self.images.append(a)
+              if tag in ['p','h1','h2','h3','li','figure']:self.text.append('\n')
+            def handle_endtag(self,tag):
+              if tag in ['script','style']:self.skip=max(0,self.skip-1)
+            def handle_data(self,data):
+              if not self.skip:self.text.append(data)
+          records=[]
+          for name,url in sources.items():
+            row={'id':name,'url':url}
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; academic-source-review)'})
+              with urllib.request.urlopen(req,timeout=40) as r:data=r.read(12_000_000);row.update(status=r.status,finalUrl=r.url,contentType=r.headers.get('Content-Type'))
+              (out/(name+'.html')).write_bytes(data);p=Parser();p.feed(data.decode('utf8','replace'))
+              text=''.join(p.text);(out/(name+'.txt')).write_text(text)
+              row.update(sha256=hashlib.sha256(data).hexdigest(),textCharacters=len(text),images=p.images)
+              if name=='mhs':
+                (out/'mhs-images.json').write_text(json.dumps(p.images,ensure_ascii=False,indent=2))
+                allowed={'www.anthropic.com','anthropic.com','cdn.sanity.io','images.ctfassets.net'}
+                for i,img in enumerate(p.images):
+                  src=urljoin(url,img.get('src',''))
+                  if urlparse(src).hostname not in allowed:continue
+                  try:
+                    with urllib.request.urlopen(urllib.request.Request(src,headers={'User-Agent':'Mozilla/5.0'}),timeout=25) as r:blob=r.read(10_000_000);kind=r.headers.get('Content-Type','')
+                    if not kind.startswith('image/'):continue
+                    ext={'image/png':'.png','image/webp':'.webp','image/jpeg':'.jpg','image/svg+xml':'.svg'}.get(kind.split(';')[0],'.bin')
+                    f=out/'mhs-images'/(str(i)+ext);f.parent.mkdir(exist_ok=True);f.write_bytes(blob)
+                    img.update(local=f.relative_to(out).as_posix(),sha256=hashlib.sha256(blob).hexdigest(),bytes=len(blob),sourceUrl=src)
+                  except Exception as e:img['fetchError']=str(e)
+                (out/'mhs-images.json').write_text(json.dumps(p.images,ensure_ascii=False,indent=2))
+            except Exception as e:row['error']=str(e)
+            records.append(row)
+          (out/'sources.json').write_text(json.dumps(records,ensure_ascii=False,indent=2))
+          paths=subprocess.check_output(['git','ls-files'],text=True).splitlines()
+          for path in paths:
+            f=pathlib.Path(path)
+            if f.suffix not in ['.md','.mdx','.astro','.ts','.mjs','.json','.yml','.yaml','.css']:continue
+            if f.stat().st_size>2_000_000:continue
+            if any(x in path for x in ['pnpm-lock.yaml','site/content/posts/','ops/blog-harness/runs/']):continue
+            target=out/'repo'/path;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(f,target)
+          (out/'repo-paths.txt').write_text('\n'.join(paths))
+          print(json.dumps([{k:v for k,v in r.items() if k!='images'} for r in records],ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: wetlab-source-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: wetlab-evidence/
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: true
