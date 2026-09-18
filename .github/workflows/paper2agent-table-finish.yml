@@ -65,12 +65,12 @@ jobs:
           manifest['postSha256']=hashlib.sha256(text.encode()).hexdigest()
           changes[path]=json.dumps(manifest,ensure_ascii=False,indent=2)+'\n'
           path='spaceship-ui/scripts/browser-paper2agent.mjs'; text=Path(path).read_text()
-          needle="              await shot(`comparison-${width}-${dark?'dark':'light'}`);"
+          needle="    await shot(`comparison-${width}-${dark?'dark':'light'}`);"
           assert text.count(needle)==1,repr(needle)
-          text=text.replace(needle,"""              const tableLayout=await js(`(()=>{const region=document.querySelector('.p2a-comparison-table');const table=region?.querySelector('table');return {exists:!!table,viewport:region?.clientWidth,content:region?.scrollWidth,columns:table?.querySelectorAll('thead th').length,focusable:region?.tabIndex===0};})()`);
-                        assert(tableLayout.exists&&tableLayout.columns===5&&tableLayout.focusable);
-                        if(width===1440)assert(tableLayout.content<=tableLayout.viewport+2,'All five comparison columns fit the desktop article width');
-          """+needle,1)
+          insertion="    const tableLayout=await js(`(()=>{const region=document.querySelector('.p2a-comparison-table');const table=region?.querySelector('table');return {exists:!!table,viewport:region?.clientWidth,content:region?.scrollWidth,columns:table?.querySelectorAll('thead th').length,focusable:region?.tabIndex===0};})()`);\n"
+          insertion+="    assert(tableLayout.exists&&tableLayout.columns===5&&tableLayout.focusable);\n"
+          insertion+="    if(width===1440)assert(tableLayout.content<=tableLayout.viewport+2,'All five comparison columns fit the desktop article width');\n"
+          text=text.replace(needle,insertion+needle,1)
           changes[path]=text
           path='spaceship-ui/scripts/news-20260918-contract.mjs';text=Path(path).read_text()
           needle="  assert(s.includes('<Paper2AgentNumbers />'));";assert text.count(needle)==1
