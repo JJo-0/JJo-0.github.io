@@ -1,0 +1,164 @@
+name: Prepare Paper2Agent reader feedback
+on:
+  push:
+    branches: [ops/news-publication-finish-20260918]
+    paths: [.github/workflows/paper2agent-feedback-prepare.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4960aad6f89b5a33035e55c19db7cab8d65fd834
+          persist-credentials: false
+      - name: Prepare reviewed article, metadata and additive checks only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,re,subprocess,urllib.request
+          from pathlib import Path
+          base='4960aad6f89b5a33035e55c19db7cab8d65fd834'
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==base
+          def cite(n):
+              return f'<a href="#news-ref-{n}" data-news-citation="{n}" aria-label="참고문헌 {n}로 이동" data-astro-reload>[{n}]</a>'
+          roles='''### AlphaGenome, AlphaGenome 에이전트, Biomni는 무엇을 맡는가
+
+          <strong>AlphaGenome은 DNA 서열을 입력받아 유전자 조절 활동을 예측하는 Google DeepMind의 모델</strong>이다. 유전자 발현은 유전자가 얼마나 사용되는지, 스플라이싱은 RNA 조각이 어떻게 이어지는지, 염색질 접근성은 조절 단백질이 DNA에 접근하기 쉬운지를 살펴보는 출력이다. 기준 서열과 변이가 있는 서열의 예측을 비교하면, 작은 염기 변화가 어느 조직의 어떤 신호를 바꿀 가능성이 있는지 조사할 수 있다. 공식 모델은 최대 약 100만 염기쌍의 문맥을 읽으며 여러 종류의 출력을 함께 제공한다.[C5]
+
+          <strong>AlphaGenome 에이전트는 이 예측 모델을 연구자의 질문에 맞게 사용하는 실행 계층</strong>이다. Paper2Agent의 MCP 도구를 대화형 에이전트에 연결해, 질문을 실행과 해석으로 옮긴다.[C1]
+
+          <strong>Biomni는 여러 생의학 분야의 작업을 계획하고 실행하는 범용 연구 에이전트</strong>다. 질문에 필요한 도구·데이터베이스·소프트웨어를 찾아 계획을 세우고 코드를 실행하는 구조를 갖는다. 공식 프로젝트는 변이 해석, 단일세포 분석, 약물 특성 예측 등을 사용 사례로 제시한다. 따라서 이번 비교는 하나의 방법에 맞춰 준비한 에이전트와 폭넓은 도구 환경을 사용하는 에이전트가 같은 유전체 질문을 어떻게 해결하는지 묻는다.[C6]
+
+          | 이름 | 담당하는 일 | 입력에서 출력으로 이어지는 관계 |
+          |---|---|---|
+          | AlphaGenome 모델 | 유전체 신호 예측 | DNA 서열·변이·조직 조건 → 예측 신호와 변이 효과 |
+          | AlphaGenome MCP | 분석 기능의 호출 인터페이스 | 정의된 인자 → 점수 계산·조직 탐색·시각화 함수 실행 |
+          | Paper2Agent의 AlphaGenome 에이전트 | 논문별 도구를 사용하는 분석 | 자연어 질문 → MCP 호출 → 결과와 설명 |
+          | Biomni | 범용 생의학 분석 | 연구 질문 → 관련 자원 탐색·계획·코드 실행 |
+
+          이 역할 구분에서 비교의 초점이 드러난다. 같은 예측 모델을 사용할 수 있어도, 적절한 입력을 구성하고 결과를 끝까지 연결하는 과정은 에이전트의 도구 준비 방식에 따라 달라질 수 있다. 생물학적 예측 능력과 그 모델을 올바르게 사용하는 능력을 나누어 읽으면 아래 실험의 의미가 선명해진다.
+          '''
+          case='''### AlphaGenome 사례: 변이 입력을 분석 결과까지 연결하기
+
+          AlphaGenome용 도구 22개는 모두 자동 검증됐고, 최초 구축에 약 45분·14달러가 들었다. `score_variant_effect()`는 변이의 효과를 계산하고, `visualize_variant_effects()`는 선택한 출력의 변화를 그림으로 보여 준다.[C1]
+
+          실행 흐름을 이해하기 위한 요청으로 “이 변이가 간 조직의 유전자 발현과 접근성에 어떤 변화를 줄지 비교해 줘”를 생각해 보자. 에이전트는 먼저 염색체·위치·기준 염기·대체 염기와 주변 서열 구간을 입력으로 정리한다. 이어 간 조직에 해당하는 항목과 RNA·접근성 출력을 선택한다. 모델이 돌려준 기준 서열과 변이 서열의 신호를 비교하고, 수치와 그림을 묶어 설명한다. 여기서 예측한 변화는 어떤 후속 실험을 검토할지 정하는 근거가 된다.[C5]
+
+          이렇게 단계별로 읽으면 자동화의 결과물도 구체적이다. 사용자는 유전체 API의 객체를 직접 만들기보다 연구 질문을 전달하고, 에이전트는 필요한 인자를 채워 실행한다. 같은 구조가 단일세포 데이터에서는 어떻게 쓰이는지 다음 Scanpy 그림으로 이어서 보자.
+
+          ### Scanpy 사례: 여러 전처리 도구를 순서대로 연결하기
+          '''
+          comparison='''### AlphaGenome 분석에서 세 가지 실행 방식을 비교하다
+
+          2026년 논문의 주 평가 모델은 Sonnet 4였다. Paper2Agent는 MCP 도구 정의와 질문만 제공받았다. Claude + Repo는 저장소에서 코드를 작성·실행했고, API 기반 Biomni에는 저장소와 API 키를 안내했다. 같은 AlphaGenome 질문을 세 방식으로 풀었다.[C1]
+
+          <section data-p2a-comparison aria-label="AlphaGenome 에이전트 비교 결과">
+
+          | 질문 유형 | 질문 수 | Paper2Agent | Claude + Repo | Biomni |
+          |---|---:|---:|---:|---:|
+          | 튜토리얼 기반 | 15 | 98.7±1.3% | 82.7±3.4% | 37.3±4.0% |
+          | 새로운 입력·요청 | 15 | 100.0±0.0% | 78.7±4.4% | 56.0±3.4% |
+          | 개방형 연구 질문 | 30 | 82.7±2.4% | 56.7±2.3% | 72.2±2.2% |
+
+          </section>
+
+          <small>원문 AlphaGenome 사례·Figure 2. 5회 독립 실행의 평균±평균의 표준오차(s.e.m.). 전문가 2명, 평가자 일치율 96.7%.[C1]</small>
+
+          앞의 두 유형은 재현과 새로운 입력에의 적용을, 개방형 질문은 계획·도구 조합·생물학적 종합을 시험한다. <strong>새 질의 100%와 개방형 82.7%는 서로 다른 과제의 결과다.</strong>[C1]
+
+          표를 비교하는 한 가지 방법은 질문 유형을 고정하고 가로로 읽는 것이다. 예를 들어 개방형 행에서는 세 시스템 모두 같은 종류의 복합 분석을 평가받는다. 세로로 읽으면 준비된 도구를 호출하는 문제에서 분석을 계획하고 종합하는 문제로 넘어갈 때 점수가 어떻게 달라지는지 보인다. 이 비교가 보여 주는 것은 해당 과제와 설정에서의 수행 능력이며, 모든 생의학 문제의 순위표로 확대할 수는 없다.
+
+          아래의 100편·300문항 평가는 별도의 규모 평가다. 여기에서는 비용 때문에 Biomni를 제외하고 Claude + Repo와 비교했다.[C1]
+          '''
+          for name in ['roles','case','comparison']:
+              value=locals()[name]
+              for n in [1,5,6]: value=value.replace(f'[C{n}]',cite(n))
+              locals()[name]=value
+          path='spaceship-ui/site/content/posts/2026-09-18-paper2agent-news.mdx'
+          old=Path(path).read_text()
+          assert hashlib.sha256(old.encode()).hexdigest()=='c30f3c81ef0fbfe256c677359c17c8b9862e801fff0f97d2a684ff92609e848c'
+          text=old
+          start=text.index('### 도구 하나가 작을수록 항상 좋은 것은 아니다')
+          end=text.index('## 4.',start)
+          text=text[:start]+roles+'\n'+text[end:]
+          needle='### 셋째, 통과한 도구를 실제 질문에 연결한다\n\n';assert text.count(needle)==1
+          text=text.replace(needle,needle+case+'\n',1)
+          needle='## 5. 핵심 실험: 숫자마다 분모가 다르다\n\n';assert text.count(needle)==1
+          text=text.replace(needle,'## 5. 핵심 실험: 준비한 도구가 실제 분석을 바꾸었는가\n\n'+comparison+'\n',1)
+          text,count=re.subn(r'\n<small>편집 주석:[\s\S]*?</small>\s*$','\n',text);assert count==1
+          text+='\n<a id="news-ref-5" href="https://www.nature.com/articles/s41586-025-10014-0" data-news-reference="5" target="_blank" rel="noopener noreferrer">[5]</a> Avsec, Ž. 외, <em>Advancing regulatory variant effect prediction with AlphaGenome</em>, Nature, 2026. AlphaGenome의 입력과 유전체 신호 예측. <a href="https://github.com/google-deepmind/alphagenome" target="_blank" rel="noopener noreferrer">저자 제공 API·입출력 예제</a>.\n'
+          text+='\n<a id="news-ref-6" href="https://github.com/snap-stanford/Biomni" data-news-reference="6" target="_blank" rel="noopener noreferrer">[6]</a> Biomni 공식 저장소, <em>A General-Purpose Biomedical AI Agent</em>. 자원 검색·계획·코드 실행 구조. <a href="https://biomni.stanford.edu/" target="_blank" rel="noopener noreferrer">프로젝트와 사용 사례</a>.\n'
+          text=text.replace('description: "Paper2Agent는 논문·코드·데이터를 검증된 MCP 도구로 연결한다. 원본 구조도와 Scanpy 사례로 실행 과정을 살펴보고, 74/100과 593/599가 측정한 대상, 질문 성능·비용·실패의 의미를 풀어본다."','description: "AlphaGenome 모델과 논문별 에이전트, 범용 Biomni의 역할을 구분하고 실제 비교 결과를 읽는다. Paper2Agent의 도구 준비·검증, Scanpy 사례, 규모 평가와 비용을 연결한다."')
+          text=text.replace('pubDate: 2026-09-18\n','pubDate: 2026-09-18\nupdatedDate: 2026-09-18\n',1)
+          assert hashlib.sha256(text.encode()).hexdigest()=='33b1ce026b36da82a79345ae2dbfede8e7aef7c12f37d41f111b6468487cdb65','Must match the locally reviewed article byte-for-byte'
+          changes={path:text}
+          def prose(s):
+              s=re.sub(r'^---\n[\s\S]*?\n---\s*','',s).split('## 9.')[0]
+              s=re.sub(r'^import .*;\s*$','',s,flags=re.M);s=re.sub(r'<Math\b[\s\S]*?/>','',s)
+              s=re.sub(r'<[^>]+>','',s);s=re.sub(r'\[([^\]]+)\]\([^)]*\)',r'\1',s)
+              s=re.sub(r'\[\d+(?:,\d+)*\]','',s);s=re.sub(r'[*#|`>]+','',s)
+              return re.sub(r'\s+',' ',s).strip()
+          manifest_path='spaceship-ui/site/news-edition-20260918.json'
+          manifest=json.loads(Path(manifest_path).read_text());assert len(prose(old))==manifest['bodyCharacters']
+          manifest['postSha256']=hashlib.sha256(text.encode()).hexdigest();manifest['bodyCharacters']=len(prose(text))
+          manifest['citationCounts']={str(n):text.count(f'data-news-citation="{n}"') for n in range(1,7)}
+          manifest['references'] += [{'number':5,'url':'https://www.nature.com/articles/s41586-025-10014-0'},{'number':6,'url':'https://github.com/snap-stanford/Biomni'}]
+          changes[manifest_path]=json.dumps(manifest,ensure_ascii=False,indent=2)+'\n'
+          path='spaceship-ui/scripts/news-20260918-contract.mjs';script=Path(path).read_text()
+          def once(s,a,b):
+              assert s.count(a)==1,a
+              return s.replace(a,b,1)
+          script=once(script,'  const counts = {};','''  assert(!s.includes('편집 주석:') && !s.includes('원고 선정안의 96/100'), 'Removed reader-facing editorial note');
+            for (const term of ['DNA 서열을 입력받아 유전자 조절 활동', 'Biomni는 여러 생의학 분야', 'MCP 도구 정의와 질문만', 'API 기반 Biomni', '별도의 규모 평가', '표준오차(s.e.m.)']) assert(s.includes(term), term);
+            const comparison = s.match(/<section data-p2a-comparison[^>]*>([\\s\\S]*?)<\\/section>/)?.[1];
+            assert(comparison, 'Specific agent comparison table');
+            const expectedRows = [
+              ['튜토리얼 기반','15','98.7±1.3%','82.7±3.4%','37.3±4.0%'],
+              ['새로운 입력·요청','15','100.0±0.0%','78.7±4.4%','56.0±3.4%'],
+              ['개방형 연구 질문','30','82.7±2.4%','56.7±2.3%','72.2±2.2%'],
+            ];
+            const actualRows = comparison.split('\\n').filter(line => /^\\| (튜토리얼|새로운|개방형)/.test(line)).map(line => line.split('|').slice(1,-1).map(cell => cell.trim()));
+            assert.deepEqual(actualRows, expectedRows, 'Benchmark labels, question counts and all method results');
+            const counts = {};''')
+          script=once(script,'const mutants=[','''const mutants=[
+            ['wrong Biomni score',s=>s.replace('37.3±4.0%','73.3±4.0%')],
+            ['missing agent definition',s=>s.replace('Biomni는 여러 생의학 분야','Biomni라는 이름만 표시')],
+            ['editorial note returns',s=>s+'\\n편집 주석: 원고 선정안의 96/100'],''')
+          script=once(script,'if (fs.existsSync(rendered)) {',"if (fs.existsSync(new URL('../dist/',import.meta.url))) {\n  assert(fs.existsSync(rendered), 'Published Paper2Agent route must be built');")
+          script=once(script,"  assert(!html.includes('katex-error'));", "  assert(html.includes('data-p2a-comparison') && html.includes('37.3±4.0%') && html.includes('72.2±2.2%'));\n  assert(!html.includes('편집 주석:'));\n  assert(!html.includes('katex-error'));")
+          script=once(script,'six mutation controls','${mutants.length + 2} mutation controls; AlphaGenome/Biomni roles and three benchmark rows')
+          changes[path]=script
+          path='spaceship-ui/scripts/browser-paper2agent.mjs';script=Path(path).read_text()
+          script=once(script,"    for(const name of ['papers','tools','accuracy']){",'''    const comparisonRows=await js(`Array.from(document.querySelectorAll('[data-p2a-comparison] tbody tr')).map(row=>Array.from(row.querySelectorAll('td')).map(cell=>cell.textContent.trim()))`);
+              assert.deepEqual(comparisonRows,[
+                ['튜토리얼 기반','15','98.7±1.3%','82.7±3.4%','37.3±4.0%'],
+                ['새로운 입력·요청','15','100.0±0.0%','78.7±4.4%','56.0±3.4%'],
+                ['개방형 연구 질문','30','82.7±2.4%','56.7±2.3%','72.2±2.2%'],
+              ]);
+              assert(!await js(`document.querySelector('article').textContent.includes('편집 주석:')`));
+              await js(`document.querySelector('[data-p2a-comparison]').scrollIntoView({block:'center',behavior:'instant'})`);
+              await shot(`comparison-${width}-${dark?'dark':'light'}`);
+              for(const name of ['papers','tools','accuracy']){''')
+          script=once(script,'sourcePointerActivations:4,sourceKeyboardActivations:4,sourceBackChecks:8','sourcePointerActivations:edition.references.length,sourceKeyboardActivations:edition.references.length,sourceBackChecks:edition.references.length*2,comparisonRows:comparisonRows.length,editorialNoteAbsent:true')
+          changes[path]=script
+          out=Path('paper-feedback');out.mkdir();records=[]
+          assert len(changes)==4
+          for name,text in changes.items():
+              data=text.encode();dest=out/'files'/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data)
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=json.dumps({'content':base64.b64encode(data).decode(),'encoding':'base64'}).encode(),method='POST',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'})
+              with urllib.request.urlopen(req,timeout=30) as response:result=json.load(response)
+              sha=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest();assert result['sha']==sha
+              records.append({'path':name,'sha':sha,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+          (out/'blobs.json').write_text(json.dumps({'base':base,'files':records},indent=2)+'\n')
+          print(json.dumps(records,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: paper2agent-reader-feedback
+          path: paper-feedback/
+          retention-days: 7
+          if-no-files-found: error
