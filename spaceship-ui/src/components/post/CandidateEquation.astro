@@ -1,0 +1,73 @@
+---
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+
+interface Props {
+  id: string;
+  title: string;
+  tex: string;
+}
+
+const { id, title, tex } = Astro.props;
+if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || !title.trim() || !tex.trim()) {
+  throw new Error('CandidateEquation requires a stable ID, a question and a formula.');
+}
+if (!Astro.slots.has('default')) {
+  throw new Error(`CandidateEquation ${id}: write the actual explanation in the article.`);
+}
+const equation = katex.renderToString(tex, {
+  displayMode: true,
+  throwOnError: true,
+  strict: 'error',
+  trust: false,
+  output: 'htmlAndMathml',
+});
+---
+
+<details class="candidate-equation" data-candidate-equation={id}>
+  <summary aria-controls={`${id}-explanation`}>
+    <span class="candidate-equation__question">{title}</span>
+    <span class="candidate-equation__math" set:html={equation} />
+    <span class="candidate-equation__hint">기호·연산·계산 과정 펼치기</span>
+  </summary>
+  <div id={`${id}-explanation`} class="candidate-equation__explanation">
+    <slot />
+  </div>
+</details>
+
+<style>
+  .candidate-equation {
+    min-width: 0;
+    max-width: 100%;
+    margin: 1.7rem 0;
+    border: 1px solid var(--color-border);
+    border-radius: .55rem;
+    background: var(--color-card);
+  }
+  summary { padding: 1rem; cursor: pointer; list-style-position: inside; }
+  summary:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 4px; }
+  .candidate-equation__question { font-weight: 700; }
+  .candidate-equation__math {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: .7rem .1rem;
+    color: var(--color-foreground);
+  }
+  .candidate-equation__math :global(.katex-display) { margin: .35rem 0; }
+  .candidate-equation__hint { display: block; color: var(--color-primary); font-size: .85em; }
+  details[open] .candidate-equation__hint { visibility: hidden; height: 0; }
+  .candidate-equation__explanation {
+    border-top: 1px solid var(--color-border);
+    padding: .2rem 1rem 1rem;
+    line-height: 1.85;
+    overflow-wrap: anywhere;
+  }
+  .candidate-equation__explanation :global(p:last-child) { margin-bottom: .2rem; }
+  @media (max-width: 640px) {
+    summary { padding: .85rem; }
+    .candidate-equation__explanation { padding: .2rem .85rem .85rem; }
+  }
+</style>
