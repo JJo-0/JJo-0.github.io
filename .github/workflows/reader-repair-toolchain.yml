@@ -1,0 +1,39 @@
+name: Reader repair toolchain
+on:
+  push:
+    branches: [ops/reader-repair-20260918]
+    paths: [.github/workflows/reader-repair-toolchain.yml]
+permissions:
+  contents: read
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: d1131666542853a24ef686af1dcfce1c6ba0959c
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact locked build dependencies
+        working-directory: spaceship-ui
+        run: pnpm install --frozen-lockfile
+      - name: Prepare CLI and local-only build toolchain
+        run: |
+          npm install --prefix /tmp/reader-pnpm pnpm@10.19.0 --ignore-scripts
+          mkdir reader-toolchain
+          cp -a /tmp/reader-pnpm/node_modules/pnpm reader-toolchain/pnpm
+          tar -czf reader-toolchain/dependencies.tgz -C spaceship-ui node_modules
+          git rev-parse HEAD > reader-toolchain/base-head.txt
+          sha256sum spaceship-ui/pnpm-lock.yaml > reader-toolchain/lock-sha256.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: isolated-reader-toolchain
+          path: reader-toolchain/
+          retention-days: 1
+          if-no-files-found: error
