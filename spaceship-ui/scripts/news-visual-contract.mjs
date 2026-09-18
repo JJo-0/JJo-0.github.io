@@ -1,3 +1,4 @@
+import './news-20260918-contract.mjs';
 import './news-20260917-contract.mjs';
 import './news-prose-policy.test.mjs';
 import './news-20260916-contract.mjs';

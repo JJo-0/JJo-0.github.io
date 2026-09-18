@@ -1,0 +1,83 @@
+name: Paper2Agent article reading
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/site/content/posts/2026-09-18-paper2agent-news.mdx'
+      - 'spaceship-ui/site/news-edition-20260918.json'
+      - 'spaceship-ui/site/news-media.json'
+      - 'spaceship-ui/site/assets/assets/posts/news-20260918/**'
+      - 'spaceship-ui/src/components/post/Paper2AgentNumbers.astro'
+      - 'spaceship-ui/scripts/*paper2agent*'
+      - 'spaceship-ui/scripts/news-20260918-contract.mjs'
+      - '.github/workflows/paper2agent-reading.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - '.github/workflows/paper2agent-reading.yml'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Optional deployed site base URL'
+        required: false
+        default: ''
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: paper2agent-reading-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Install dependencies and Korean fonts
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Source, original pixels, denominators and citations
+        run: node scripts/news-20260918-contract.mjs
+      - run: pnpm build
+      - name: Rendered content checks
+        run: node scripts/news-20260918-contract.mjs
+      - name: Native images, equation explanations and citations
+        timeout-minutes: 4
+        env:
+          JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
+        run: node scripts/browser-paper2agent.mjs
+      - name: Preserve tested source and rendering
+        if: always()
+        run: |
+          mkdir -p paper2agent-review
+          git rev-parse HEAD > paper2agent-review/tested-head.txt
+          cp site/content/posts/2026-09-18-paper2agent-news.mdx paper2agent-review/article.mdx
+          cp site/news-edition-20260918.json paper2agent-review/edition.json
+          cp site/assets/assets/posts/news-20260918/provenance.json paper2agent-review/provenance.json
+          if test -f dist/posts/2026-09-18-paper2agent-news/index.html; then
+            cp dist/posts/2026-09-18-paper2agent-news/index.html paper2agent-review/article.html
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: paper2agent-reading-${{ github.run_id }}
+          path: spaceship-ui/paper2agent-review/
+          retention-days: 14
+          if-no-files-found: error
