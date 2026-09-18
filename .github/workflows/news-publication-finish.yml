@@ -1,0 +1,74 @@
+name: Prepare candidate route repairs
+on:
+  push:
+    branches: [ops/news-publication-finish-20260918]
+    paths: [.github/workflows/news-publication-finish.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cec3670f7c8110af8e31a28a4a51f35b7b82ffd0
+          persist-credentials: false
+      - name: Prepare six reviewed files and immutable Git blobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess,urllib.request
+          from pathlib import Path
+          base='cec3670f7c8110af8e31a28a4a51f35b7b82ffd0'
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==base
+          manifest_path=Path('spaceship-ui/site/news-candidates-20260918.json')
+          manifest=json.loads(manifest_path.read_text())
+          out=Path('route-repair'); out.mkdir()
+          changes={}
+          for entry in manifest['entries']:
+              path=Path('spaceship-ui/site/content/posts')/(entry['slug']+'.mdx')
+              data=path.read_bytes()
+              assert hashlib.sha256(data).hexdigest()==entry['sha256']
+              old=data.decode(); front=old.split('---',2)[1]
+              assert '\nslug:' not in front
+              needle='pubDate: 2026-09-18\n'
+              assert old.count(needle)==1
+              text=old.replace(needle,needle+'slug: '+entry['slug']+'\n',1)
+              assert text.split('---',2)[2]==old.split('---',2)[2], 'Prose changed'
+              entry['sha256']=hashlib.sha256(text.encode()).hexdigest()
+              changes[str(path)]=text
+          changes[str(manifest_path)]=json.dumps(manifest,ensure_ascii=False,indent=2)+'\n'
+          path='spaceship-ui/scripts/news-candidates-20260918-contract.mjs'
+          text=Path(path).read_text()
+          def replace_once(old,new):
+              global text
+              assert text.count(old)==1,old
+              text=text.replace(old,new,1)
+          replace_once("  assert.match(s, /^lang: ko$/m);", "  assert.equal(s.match(/^slug: (.+)$/m)?.[1], entry.slug, 'Explicit public route must match the release manifest');\n  assert.match(s, /^lang: ko$/m);")
+          replace_once("const mutationCases=[", "const mutationCases=[\n ['wrong public route','delphy','slug: 2026-09-18-delphy-outbreak-phylogenetics-news','slug: 2026-09-18-2026-09-18-delphy-outbreak-phylogenetics-news'],")
+          replace_once(" if(fs.existsSync(render)){", " if(fs.existsSync(new URL('dist/',root))){\n  assert(fs.existsSync(render), `Missing required built candidate route: ${entry.slug}`);")
+          replace_once("if(fs.existsSync(news))assert(!fs.readFileSync(news,'utf8').includes('google-adsense-account'),'Card reading surface without ad initialization');", "if(fs.existsSync(new URL('dist/',root))){\n assert(fs.existsSync(news),'Built NEWS index must exist');\n const listing=fs.readFileSync(news,'utf8');\n assert(!listing.includes('google-adsense-account'),'Card reading surface without ad initialization');\n for(const entry of edition.entries){\n  assert.equal(listing.split(`data-news-card=\"${entry.slug}\"`).length-1,1,`Exactly one NEWS card for ${entry.slug}`);\n  assert(listing.includes(`/posts/${entry.slug}`),`NEWS link for ${entry.slug}`);\n  assert(!listing.includes(`2026-09-18-${entry.slug}`),'No duplicated-date routes');\n }\n}")
+          replace_once('20 calculations; 8 rejected mutations','20 calculations; ${mutationCases.length} rejected mutations')
+          changes[path]=text
+          assert len(changes)==6
+          records=[]
+          for name,text in changes.items():
+              data=text.encode()
+              dest=out/'files'/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data)
+              payload=json.dumps({'content':base64.b64encode(data).decode(),'encoding':'base64'}).encode()
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=payload,method='POST',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'})
+              with urllib.request.urlopen(req,timeout=30) as response: result=json.load(response)
+              expected=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+              assert result['sha']==expected
+              records.append({'path':name,'sha':expected,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+          (out/'blobs.json').write_text(json.dumps({'base':base,'files':records},indent=2)+'\n')
+          print(json.dumps(records,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: candidate-route-repair
+          path: route-repair/
+          retention-days: 7
+          if-no-files-found: error
