@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Cdp, BASE, attach, evaluate, navigate, viewport, waitExpression, poll, startPreview, startChrome, stopChild, removeProfile } from './browser-smoke-harness.mjs';
-const edition=JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260918.json',import.meta.url),'utf8'));
+const catalogue=JSON.parse(fs.readFileSync(new URL('../site/news-candidates-20260918.json',import.meta.url),'utf8'));
+let edition,route;
 const media=JSON.parse(fs.readFileSync(new URL('../site/news-media.json',import.meta.url),'utf8'));
-const route=`/posts/${edition.slug}/`;
-const out='paper2agent-review';fs.mkdirSync(out,{recursive:true});
+
+const out='candidates-review';fs.mkdirSync(out,{recursive:true});
 const results=[];let cdp,sessionId,preview,chrome,activeCase,lastAction;
-const deadline=setTimeout(()=>{console.error('paper2agent-browser: FAIL hard timeout');process.exit(1);},180_000);
+const deadline=setTimeout(()=>{console.error('candidates-browser: FAIL hard timeout');process.exit(1);},240_000);
 const js=(expression)=>evaluate(cdp,sessionId,expression);
 const wait=(expression,label)=>waitExpression(cdp,sessionId,expression,label);
 async function shot(name){const {data}=await cdp.send('Page.captureScreenshot',{format:'png'},sessionId);fs.writeFileSync(`${out}/${name}.png`,Buffer.from(data,'base64'));}
@@ -75,10 +76,14 @@ async function fullSize(id,mobile){
 try{
   preview=await startPreview();chrome=await startChrome();cdp=await Cdp.connect(chrome.url);
   ({sessionId}=await attach(cdp,{normalizeHistoryPath:false}));
-  for(const width of [390,1440])for(const dark of [false,true]){
-    const mobile=width===390;activeCase={width,theme:dark?'dark':'light'};
+  for (edition of catalogue.entries) for(const width of [390,1440])for(const dark of [false,true]){
+    route=`/posts/${edition.slug}/`;
+    const mobile=width===390;activeCase={slug:edition.slug,width,theme:dark?'dark':'light'};
     await viewport(cdp,sessionId,{width,height:1000,mobile,touch:mobile,reduced:true});
     await navigate(cdp,sessionId,'/news/');
+    const expectedOrder=['2026-09-18-paper2agent-news',...catalogue.entries.map(entry=>entry.slug)];
+    const actualOrder=await js(`Array.from(document.querySelectorAll('[data-news-card]')).map(card=>card.getAttribute('data-news-card')).filter(slug=>${JSON.stringify(expectedOrder)}.includes(slug))`);
+    assert.deepEqual(actualOrder,expectedOrder,'Existing Top 1 then candidates in editorial order');
     assert.equal(await js(`document.querySelectorAll('[data-news-card="${edition.slug}"]').length`),1);
     await navigate(cdp,sessionId,route);
     await js(`document.documentElement.classList.toggle('dark',${dark})`);
@@ -88,52 +93,43 @@ try{
     for(const id of edition.mediaIds){
       await js(`document.querySelector('[data-news-figure="${id}"]').scrollIntoView({block:'center',behavior:'instant'})`);
       await wait(`(()=>{const i=document.querySelector('[data-news-figure="${id}"] img');return i?.complete&&i.naturalWidth>0;})()`,'original figure decoded');
-      const actual=await js(`(()=>{const f=document.querySelector('[data-news-figure="${id}"]'),i=f.querySelector('img'),r=i.getBoundingClientRect();return {w:i.naturalWidth,h:i.naturalHeight,src:i.getAttribute('src'),href:f.querySelector('a').getAttribute('href'),alt:i.alt,caption:f.querySelector('figcaption').textContent,filter:getComputedStyle(i).filter,visible:r.width>200&&r.height>80};})()`);
+      const actual=await js(`(()=>{const f=document.querySelector('[data-news-figure="${id}"]'),i=f.querySelector('img'),r=i.getBoundingClientRect();return {w:i.naturalWidth,h:i.naturalHeight,src:i.getAttribute('src'),href:f.querySelector('a').getAttribute('href'),alt:i.alt,caption:f.querySelector('figcaption').textContent,filter:getComputedStyle(i).filter,visible:r.width>200&&r.height>35};})()`);
       assert.equal(actual.w,media[id].width);assert.equal(actual.h,media[id].height);assert.equal(actual.src,media[id].src);assert.equal(actual.href,actual.src);
-      assert(actual.visible&&actual.alt.length>30&&actual.caption.includes('CC BY 4.0'));assert.equal(actual.filter,'none');
+      assert(actual.visible&&actual.alt.length>30&&actual.caption.includes(media[id].license));assert.equal(actual.filter,'none');
       await fullSize(id,mobile);
-      if(id==='paper2agent-scanpy')await shot(`scanpy-${width}-${dark?'dark':'light'}`);
+      // Opening an image in a new tab must not navigate the article itself.
+      assert.equal(await js('location.pathname'),route);
+      if(id===edition.mediaIds[1])await shot(`${edition.key}-figure-${width}-${dark?'dark':'light'}`);
     }
-    const comparisonRows=await js(`Array.from(document.querySelectorAll('[data-p2a-comparison] tbody tr')).map(row=>Array.from(row.querySelectorAll('td')).map(cell=>cell.textContent.trim()))`);
-    assert.deepEqual(comparisonRows,[
-      ['튜토리얼 기반','15','98.7±1.3%','82.7±3.4%','37.3±4.0%'],
-      ['새로운 입력·요청','15','100.0±0.0%','78.7±4.4%','56.0±3.4%'],
-      ['개방형 연구 질문','30','82.7±2.4%','56.7±2.3%','72.2±2.2%'],
-    ]);
-    assert(!await js(`document.querySelector('article').textContent.includes('편집 주석:')`));
-    await js(`document.querySelector('[data-p2a-comparison]').scrollIntoView({block:'center',behavior:'instant'})`);
-    const tableLayout=await js(`(()=>{const region=document.querySelector('.p2a-comparison-table');const table=region?.querySelector('table');return {exists:!!table,viewport:region?.clientWidth,content:region?.scrollWidth,columns:table?.querySelectorAll('thead th').length,focusable:region?.tabIndex===0};})()`);
-    assert(tableLayout.exists&&tableLayout.columns===5&&tableLayout.focusable);
-    if(width===1440)assert(tableLayout.content<=tableLayout.viewport+2,'All five comparison columns fit the desktop article width');
-    await shot(`comparison-${width}-${dark?'dark':'light'}`);
-    for(const name of ['papers','tools','accuracy']){
-      const selector=`[data-p2a-equation="${name}"] > summary`;
+    for(const name of edition.equations){
+      const selector=`[data-candidate-equation="${name}"] > summary`;
       await pointer(selector,mobile);
-      await wait(`document.querySelector('[data-p2a-equation="${name}"]').open`,'pointer opens explanation');
-      const body=await js(`document.querySelector('[data-p2a-equation="${name}"] .explanation').textContent`);
+      await wait(`document.querySelector('[data-candidate-equation="${name}"]').open`,'pointer opens explanation');
+      const body=await js(`document.querySelector('[data-candidate-equation="${name}"] .candidate-equation__explanation').textContent`);
       assert(body.length>170&&!body.includes('수식의 역할과 기호만 확인'));
-      if(name==='papers')await shot(`equation-${width}-${dark?'dark':'light'}`);
-      await enter(selector);await wait(`!document.querySelector('[data-p2a-equation="${name}"]').open`,'Enter closes explanation');
-      await enter(selector);await wait(`document.querySelector('[data-p2a-equation="${name}"]').open`,'Enter opens explanation with scripts disabled');
-      await enter(selector);await wait(`!document.querySelector('[data-p2a-equation="${name}"]').open`,'Enter restores closed explanation');
+      if(name===edition.equations[0])await shot(`${edition.key}-equation-${width}-${dark?'dark':'light'}`);
+      await enter(selector);await wait(`!document.querySelector('[data-candidate-equation="${name}"]').open`,'Enter closes explanation');
+      await enter(selector);await wait(`document.querySelector('[data-candidate-equation="${name}"]').open`,'Enter opens explanation with scripts disabled');
+      await enter(selector);await wait(`!document.querySelector('[data-candidate-equation="${name}"]').open`,'Enter restores closed explanation');
     }
-    for(const reference of edition.references){
-      const n=reference.number,selector=`article a[data-news-citation="${n}"]`;
+    const referenceNumbers=Object.keys(edition.citationCounts).filter(n=>edition.citationCounts[n]>0);
+    for(const n of referenceNumbers){
+      const selector=`article a[data-news-citation="${n}"]`;
       const before=await historyEntry();
       const same=await js(`new URL(document.querySelector(${JSON.stringify(selector)}).href).pathname===location.pathname`);assert(same);
       await pointer(selector,mobile);await assertReference(n);await back(before);
       await enter(selector);await assertReference(n);await back(before);
     }
-    const final=await js(`(()=>{const s=document.querySelector('article small');return {overflow:document.documentElement.scrollWidth>innerWidth+2,katexErrors:document.querySelectorAll('article .katex-error').length,citations:document.querySelectorAll('article [data-news-citation]').length,details:document.querySelectorAll('article [data-p2a-equation]').length,notesSmall:!!s&&parseFloat(getComputedStyle(s).fontSize)<parseFloat(getComputedStyle(s.parentElement).fontSize)};})()`);
-    assert(!final.overflow&&final.katexErrors===0&&final.details===3&&final.notesSmall);
+    const final=await js(`(()=>{const s=document.querySelector('article small');return {overflow:document.documentElement.scrollWidth>innerWidth+2,katexErrors:document.querySelectorAll('article .katex-error').length,citations:document.querySelectorAll('article [data-news-citation]').length,details:document.querySelectorAll('article [data-candidate-equation]').length,notesSmall:!!s&&parseFloat(getComputedStyle(s).fontSize)<parseFloat(getComputedStyle(s.parentElement).fontSize)};})()`);
+    assert(!final.overflow&&final.katexErrors===0&&final.details===edition.equations.length&&final.notesSmall);
     assert.equal(final.citations,Object.values(edition.citationCounts).reduce((a,b)=>a+b,0));
-    await js('scrollTo({top:0,behavior:"instant"})');await shot(`opening-${width}-${dark?'dark':'light'}`);
-    results.push({...activeCase,originals:2,originalPointerActivations:2,equationPointerActivations:3,equationKeyboardActivations:9,sourcePointerActivations:edition.references.length,sourceKeyboardActivations:edition.references.length,sourceBackChecks:edition.references.length*2,comparisonRows:comparisonRows.length,editorialNoteAbsent:true,notesSmall:true});
-    console.log('paper2agent-browser: PASS '+JSON.stringify(results.at(-1)));
+    await js('scrollTo({top:0,behavior:"instant"})');await shot(`${edition.key}-opening-${width}-${dark?'dark':'light'}`);
+    results.push({...activeCase,originals:2,originalPointerActivations:2,equationPointerActivations:edition.equations.length,equationKeyboardActivations:edition.equations.length*3,sourcePointerActivations:referenceNumbers.length,sourceKeyboardActivations:referenceNumbers.length,sourceBackChecks:referenceNumbers.length*2,notesSmall:true});
+    console.log('candidates-browser: PASS '+JSON.stringify(results.at(-1)));
   }
-  assert.equal(results.length,4);fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,slug:edition.slug,results},null,2));
+  assert.equal(results.length,catalogue.entries.length*4);fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,results},null,2));
 }catch(error){
-  process.exitCode=1;console.error('paper2agent-browser: FAIL',error);
+  process.exitCode=1;console.error('candidates-browser: FAIL',error);
   fs.writeFileSync(`${out}/failure.json`,JSON.stringify({activeCase,lastAction,error:String(error),completed:results},null,2));
   if(cdp&&sessionId)try{await cdp.send('Emulation.setScriptExecutionDisabled',{value:false},sessionId);await shot('failure');}catch{}
 }finally{cdp?.close();await stopChild(chrome?.child,'SIGKILL');await stopChild(preview,'SIGTERM');removeProfile(chrome?.profile);clearTimeout(deadline);process.exit(process.exitCode||0);}

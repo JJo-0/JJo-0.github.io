@@ -175,5 +175,12 @@ POST_TAXONOMY.update({
     '2026-09-18-paper2agent-news.mdx': Taxonomy('ai-machine-learning', 'ai-agents-for-science', 'paper-review', ('frontier-one', 'ai-for-science')),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-18-delphy-outbreak-phylogenetics-news.mdx': Taxonomy('research-methods-tools', 'bayesian-phylogenetics', 'paper-review', ('frontier-candidate', 'bayesian-phylogenetics')),
+    '2026-09-18-panxeon-pancreatic-liquid-biopsy-news.mdx': Taxonomy('health-lifestyle', 'cancer-early-detection', 'paper-review', ('frontier-candidate', 'cancer-early-detection')),
+    '2026-09-18-nanomembrane-photonic-integration-news.mdx': Taxonomy('finance-industry', 'integrated-photonics', 'paper-review', ('frontier-candidate', 'integrated-photonics')),
+    '2026-09-18-soft-muscle-spectral-control-news.mdx': Taxonomy('robotics-embedded', 'soft-robotics-control', 'paper-review', ('frontier-candidate', 'soft-robotics-control')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

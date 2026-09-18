@@ -28,6 +28,17 @@ function checkArticle(s, c = calculations) {
   assert.deepEqual([...s.matchAll(/<NewsFigure media="([^"]+)"/g)].map(m=>m[1]), manifest.mediaIds);
   assert(s.includes('이 26편은 앞선 100편 중 변환에 실패한 26편과 다른 집합이다.'));
   for (const term of ['100편 중 74편', '599개 중 593개', '91.2±1.6%', '80.3±2.3%', '86.3±1.1%', 'bioRxiv 13편과 Nature 13편', '42개 실행 과제', '최초 서버 구축 비용', '사람 연구자가 발현 변화 서명 간 상관분석을 선택']) assert(s.includes(term), term);
+  assert(!s.includes('편집 주석:') && !s.includes('원고 선정안의 96/100'), 'Removed reader-facing editorial note');
+  for (const term of ['DNA 서열을 입력받아 유전자 조절 활동', 'Biomni는 여러 생의학 분야', 'MCP 도구 정의와 질문만', 'API 기반 Biomni', '별도의 규모 평가', '표준오차(s.e.m.)']) assert(s.includes(term), term);
+  const comparison = s.match(/<section data-p2a-comparison[^>]*>([\s\S]*?)<\/section>/)?.[1];
+  assert(comparison, 'Specific agent comparison table');
+  const expectedRows = [
+    ['튜토리얼 기반','15','98.7±1.3%','82.7±3.4%','37.3±4.0%'],
+    ['새로운 입력·요청','15','100.0±0.0%','78.7±4.4%','56.0±3.4%'],
+    ['개방형 연구 질문','30','82.7±2.4%','56.7±2.3%','72.2±2.2%'],
+  ];
+  const actualRows = comparison.split('\n').filter(line => /^\| (튜토리얼|새로운|개방형)/.test(line)).map(line => line.split('|').slice(1,-1).map(cell => cell.trim()));
+  assert.deepEqual(actualRows, expectedRows, 'Benchmark labels, question counts and all method results');
   const counts = {};
   for (const m of s.matchAll(/<a href="#news-ref-(\d+)" data-news-citation="(\d+)" aria-label="[^"]+" data-astro-reload>\[(\d+)\]<\/a>/g)) {
     assert.equal(m[1],m[2]); assert.equal(m[2],m[3]); counts[m[1]]=(counts[m[1]]||0)+1;
@@ -38,6 +49,7 @@ function checkArticle(s, c = calculations) {
   });
   assert.deepEqual(refs,manifest.references);
   assert(s.includes('<Paper2AgentNumbers />'));
+  assert(s.includes('<Paper2AgentComparison>'), 'Comparison table uses its scoped reading styles');
   assert.deepEqual([...c.matchAll(/<details data-p2a-equation="([^"]+)"/g)].map(m=>m[1]),['papers','tools','accuracy']);
   for (const tex of [...(s+'\n'+c).matchAll(/tex=\{String\.raw`([^`]+)`\}/g)].map(m=>m[1])) katex.renderToString(tex,{throwOnError:true,strict:'error',trust:false});
   for (const term of [String.raw`\frac{74}{100}`,String.raw`\frac{593}{599}`,String.raw`91.2\%-80.3\%`, '분자 74', '분모 100', '분자 593', '분모 599','퍼센트포인트']) assert(c.includes(term),term);
@@ -59,6 +71,9 @@ function checkArticle(s, c = calculations) {
 }
 checkArticle(source);
 const mutants=[
+  ['wrong Biomni score',s=>s.replace('37.3±4.0%','73.3±4.0%')],
+  ['missing agent definition',s=>s.replace('Biomni는 여러 생의학 분야','Biomni라는 이름만 표시')],
+  ['editorial note returns',s=>s+'\n편집 주석: 원고 선정안의 96/100'],
   ['missing source link',s=>s.replace('href="#news-ref-1"','href="#news-ref-99"')],
   ['cohort conflation',s=>s.replace('이 26편은 앞선 100편 중 변환에 실패한 26편과 다른 집합이다.','이 26편은 실패한 논문을 그대로 재사용했다.')],
   ['missing original',s=>s.replace('media="paper2agent-scanpy"','media="wrong-figure"')],
@@ -88,10 +103,13 @@ assert(!/<script\b|<form\b|\son\w+\s*=/i.test(blogger));
 assert(blogger.includes(`https://jjo-0.github.io/posts/${manifest.slug}/`));
 assert(blogger.includes('이 26편은 앞의 변환 실패 26편과 다른 논문 집합'));
 const rendered = new URL(`../dist/posts/${manifest.slug}/index.html`,import.meta.url);
-if (fs.existsSync(rendered)) {
+if (fs.existsSync(new URL('../dist/',import.meta.url))) {
+  assert(fs.existsSync(rendered), 'Published Paper2Agent route must be built');
   const html=fs.readFileSync(rendered,'utf8');
   assert.deepEqual([...html.matchAll(/data-news-figure="([^"]+)"/g)].map(m=>m[1]),manifest.mediaIds);
   assert.deepEqual([...html.matchAll(/data-p2a-equation="([^"]+)"/g)].map(m=>m[1]),['papers','tools','accuracy']);
+  assert(html.includes('data-p2a-comparison') && html.includes('37.3±4.0%') && html.includes('72.2±2.2%'));
+  assert(!html.includes('편집 주석:'));
   assert(!html.includes('katex-error'));assert(html.includes('분자 593'));
 }
-console.log(`news18: PASS ${manifest.bodyCharacters} visible prose characters; two pixel-preserving originals; distinct cohorts; three specific equation explanations; six mutation controls`);
+console.log(`news18: PASS ${manifest.bodyCharacters} visible prose characters; two pixel-preserving originals; distinct cohorts; three specific equation explanations; ${mutants.length + 2} mutation controls; AlphaGenome/Biomni roles and three benchmark rows`);
