@@ -1,0 +1,115 @@
+name: Prepare publication review fixes
+on:
+  push:
+    branches: [ops/news-publication-finish-20260918]
+    paths: [.github/workflows/publication-review-finish.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9485aaa4ee93e81118e2882739381346bbb87665
+          persist-credentials: false
+      - name: Apply reviewed table and release-evidence corrections without moving refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess,urllib.request
+          from pathlib import Path
+          base='9485aaa4ee93e81118e2882739381346bbb87665'
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==base
+          api='https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'}
+          prepared={
+            'spaceship-ui/src/components/post/Paper2AgentComparison.astro':'78db9d4af237705261f1e91c6b49a90f97211835',
+            'spaceship-ui/site/content/posts/2026-09-18-paper2agent-news.mdx':'cfebed3a2a0d52943d01f82a3cd1a2fa54965b71',
+            'spaceship-ui/site/news-edition-20260918.json':'08e4ce7bf6f8f92334907d12a94117aab0c46343',
+            'spaceship-ui/scripts/browser-paper2agent.mjs':'c5025f9dc39b44be98eaf4729082c93e01c00e9a',
+            'spaceship-ui/scripts/news-20260918-contract.mjs':'516069d7b70131d2f63c67002df7cdcea58ad2b3',
+            '.github/workflows/blog-pages-deploy.yml':'048a505a70864b501693f014645597bbd5ad4cd1',
+          }
+          changes={}
+          def gitsha(data):return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+          for name,sha in prepared.items():
+              with urllib.request.urlopen(urllib.request.Request(api+'/'+sha,headers=headers),timeout=30) as response:obj=json.load(response)
+              assert obj['encoding']=='base64'
+              data=base64.b64decode(obj['content']);assert gitsha(data)==sha
+              changes[name]=data.decode()
+          def read(name):return changes[name] if name in changes else Path(name).read_text()
+          def once(s,old,new):
+              assert s.count(old)==1,repr(old)
+              return s.replace(old,new,1)
+          def dumps(value):return json.dumps(value,ensure_ascii=False,indent=2)+'\n'
+          catalogue=json.loads(read('spaceship-ui/site/news-candidates-20260918.json'))
+          media_path='spaceship-ui/site/news-media.json';media=json.loads(read(media_path))
+          provenance_path='spaceship-ui/site/assets/assets/posts/news-20260918-candidates/provenance.json';provenance=json.loads(read(provenance_path))
+          for rank,entry in enumerate(catalogue['entries'],start=2):
+              for id in entry['mediaIds']:
+                  assert media[id]['order']==rank-1
+                  media[id]['order']=rank
+                  row=next(row for row in provenance if row['id']==id)
+                  assert row['order']==rank-1;row['order']=rank
+          changes[media_path]=dumps(media);changes[provenance_path]=dumps(provenance)
+          path='spaceship-ui/scripts/news-candidates-20260918-contract.mjs';s=read(path)
+          s=once(s,"import fs from 'node:fs';","import fs from 'node:fs';\nimport path from 'node:path';")
+          s=once(s,"assert.deepEqual(original.map(r=>r.id),edition.mediaIds);", """assert.deepEqual(original.map(r=>r.id),edition.mediaIds);
+          function checkNewsOrder(registry) {
+            assert.deepEqual([registry['paper2agent-overview'].order,...edition.entries.map(entry=>registry[entry.mediaIds[0]].order)],[1,2,3,4,5],'Top article precedes the four candidates deterministically');
+          }
+          checkNewsOrder(media);
+          const wrongOrder=structuredClone(media);wrongOrder[edition.entries[0].mediaIds[0]].order=1;
+          assert.throws(()=>checkNewsOrder(wrongOrder),undefined,'Candidate cannot tie the established Top 1');""")
+          s=once(s,"mutations:mutationCases.map(([name])=>({name,rejected:true}))", "mutations:[...mutationCases.map(([name])=>({name,rejected:true})),{name:'candidate ties Top 1',rejected:true}]")
+          s=once(s,"fs.mkdirSync('candidates-review',{recursive:true});fs.writeFileSync('candidates-review/static.json',JSON.stringify(report,null,2));", "const reportPath=process.env.JJO_CANDIDATE_REPORT;\nif(reportPath){fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath,JSON.stringify(report,null,2));}")
+          s=once(s,'${mutationCases.length} rejected mutations','${report.mutations.length} rejected mutations')
+          # Keep the commit status after both evidence uploads, and make reruns preserve rather than collide with previous evidence.
+          deploy_path='.github/workflows/blog-pages-deploy.yml';deploy=read(deploy_path)
+          status_at=deploy.index('      - name: Publish Pages live-smoke status')
+          upload_at=deploy.index('      - name: Preserve live candidate reading evidence',status_at)
+          status=deploy[status_at:upload_at]
+          deploy=deploy[:status_at]+deploy[upload_at:].rstrip()+'\n\n'+status
+          deploy=once(deploy,'name: candidates-live-${{ github.run_id }}','name: candidates-live-${{ github.run_id }}-attempt-${{ github.run_attempt }}')
+          deploy=once(deploy,'name: paper2agent-feedback-live-${{ github.run_id }}','name: paper2agent-feedback-live-${{ github.run_id }}-attempt-${{ github.run_attempt }}')
+          changes[deploy_path]=deploy
+          s=once(s,"const report={articles:","""const releaseWorkflow=read('../.github/workflows/blog-pages-deploy.yml');
+          assert(releaseWorkflow.lastIndexOf('Publish Pages live-smoke status')>releaseWorkflow.lastIndexOf('uses: actions/upload-artifact@'),'Publish status after preserving all live evidence');
+          for(const prefix of ['candidates-live-','paper2agent-feedback-live-'])assert(releaseWorkflow.includes(prefix+'${{ github.run_id }}-attempt-${{ github.run_attempt }}'),'Live evidence distinguishes run attempts');
+          const report={articles:""")
+          changes[path]=s
+          path='spaceship-ui/scripts/browser-news-candidates.mjs';s=read(path)
+          needle="    await navigate(cdp,sessionId,'/news/');"
+          s=once(s,needle,needle+"\n    const expectedOrder=['2026-09-18-paper2agent-news',...catalogue.entries.map(entry=>entry.slug)];\n    const actualOrder=await js(`Array.from(document.querySelectorAll('[data-news-card]')).map(card=>card.getAttribute('data-news-card')).filter(slug=>${JSON.stringify(expectedOrder)}.includes(slug))`);\n    assert.deepEqual(actualOrder,expectedOrder,'Existing Top 1 then candidates in editorial order');")
+          changes[path]=s
+          path='.github/workflows/news-candidates-reading.yml';s=read(path)
+          s=once(s,'      - name: Source, original images, calculations and mutations\n        run: node scripts/news-candidates-20260918-contract.mjs','      - name: Source, original images, calculations and mutations\n        run: |\n          node scripts/news-candidates-20260918-contract.mjs\n          test ! -e candidates-review/static.json\n          JJO_CANDIDATE_REPORT=candidates-review/static.json node scripts/news-candidates-20260918-contract.mjs')
+          s=once(s,'      - name: Rendered originals, math and ad-free reading boundary\n        run:', '      - name: Rendered originals, math and ad-free reading boundary\n        env:\n          JJO_CANDIDATE_REPORT: candidates-review/static.json\n        run:')
+          s=once(s,'name: candidates-reading-${{ github.run_id }}','name: candidates-reading-${{ github.run_id }}-attempt-${{ github.run_attempt }}')
+          changes[path]=s
+          path='.github/workflows/paper2agent-reading.yml';s=read(path)
+          s=once(s,"      - 'spaceship-ui/src/components/post/Paper2AgentNumbers.astro'", "      - 'spaceship-ui/src/components/post/Paper2AgentNumbers.astro'\n      - 'spaceship-ui/src/components/post/Paper2AgentComparison.astro'")
+          s=once(s,'name: paper2agent-reading-${{ github.run_id }}','name: paper2agent-reading-${{ github.run_id }}-attempt-${{ github.run_attempt }}')
+          changes[path]=s
+          assert len(changes)==12
+          out=Path('review-finish');out.mkdir();records=[]
+          for name,text in changes.items():
+              data=text.encode();dest=out/'files'/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data)
+              if name.endswith('.mjs'):subprocess.run(['node','--check',str(dest)],check=True)
+              req=urllib.request.Request(api,data=json.dumps({'content':base64.b64encode(data).decode(),'encoding':'base64'}).encode(),method='POST',headers=headers)
+              with urllib.request.urlopen(req,timeout=30) as response:obj=json.load(response)
+              sha=gitsha(data);assert obj['sha']==sha
+              records.append({'path':name,'sha':sha,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+          (out/'blobs.json').write_text(dumps({'base':base,'files':records}))
+          print(dumps(records))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: publication-review-finish
+          path: review-finish/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
