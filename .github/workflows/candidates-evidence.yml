@@ -1,0 +1,79 @@
+name: Candidate primary-source evidence
+on:
+  push:
+    branches: [ops/news-candidates-evidence-20260918]
+    paths: [.github/workflows/candidates-evidence.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: 1354c5763eed00a85f0a8ca50130bd2776d2d456
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests beautifulsoup4 PyMuPDF Pillow
+      - name: Collect public sources and selected figure assets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from concurrent.futures import ThreadPoolExecutor
+          import requests,json,hashlib,subprocess,re,zipfile
+          from bs4 import BeautifulSoup
+          import fitz
+          out=Path('candidate-evidence');out.mkdir()
+          papers={'delphy':'s41586-026-11012-6','panxeon':'s41591-026-04625-x','photonics':'s41586-026-11000-w','muscle':'s41467-026-77664-0'}
+          tasks=[]
+          for key,pid in papers.items():
+              tasks += [(key+'-article','https://www.nature.com/articles/'+pid),(key+'-pdf','https://www.nature.com/articles/'+pid+'.pdf')]
+              for num in ([1,4] if key in ('delphy','panxeon') else [1,2]):
+                  tasks.append((f'{key}-figure-{num}',f'https://www.nature.com/articles/{pid}/figures/{num}'))
+          tasks += [('muscle-arxiv-html','https://arxiv.org/html/2601.03247v1'),('muscle-arxiv-pdf','https://arxiv.org/pdf/2601.03247v1'),('panxeon-trial','https://clinicaltrials.gov/api/v2/studies/NCT06388967')]
+          def fetch(task):
+              key,url=task
+              try:
+                  r=requests.get(url,timeout=45,headers={'User-Agent':'Mozilla/5.0 scholarly-article-review'})
+                  data=r.content
+                  record={'key':key,'url':url,'finalUrl':r.url,'status':r.status_code,'type':r.headers.get('Content-Type'),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+                  if data.startswith(b'%PDF-'):
+                      (out/(key+'.pdf')).write_bytes(data)
+                      doc=fitz.open(stream=data,filetype='pdf')
+                      (out/(key+'.txt')).write_text('\n'.join(p.get_text() for p in doc))
+                      record['pages']=len(doc)
+                      for i in range(min(10,len(doc))):
+                          if 'Fig.' in doc[i].get_text() or 'Figure' in doc[i].get_text():
+                              doc[i].get_pixmap(matrix=fitz.Matrix(1.3,1.3),alpha=False).save(out/f'{key}-page-{i+1}.png')
+                  else:
+                      (out/(key+'.html')).write_bytes(data)
+                      soup=BeautifulSoup(data,'html.parser')
+                      (out/(key+'.txt')).write_text(soup.get_text('\n',strip=True))
+                      record['images']=[{'src':x.get('src'),'alt':x.get('alt')} for x in soup.select('img')]
+                      record['pdfs']=[a.get('href') for a in soup.select('a[href]') if '.pdf' in a.get('href','')]
+                      if '-figure-' in key:
+                          for i,img in enumerate(soup.select('img')):
+                              src=img.get('src','')
+                              if 'springernature' in src and ('_Fig' in src or '_fig' in src):
+                                  src='https:'+src if src.startswith('//') else src
+                                  ir=requests.get(src,timeout=35)
+                                  if ir.ok and ir.headers.get('Content-Type','').startswith('image/'):
+                                      (out/(key+f'-image-{i}.png')).write_bytes(ir.content)
+                                      record.setdefault('downloadedImages',[]).append({'file':key+f'-image-{i}.png','url':src,'sha256':hashlib.sha256(ir.content).hexdigest()})
+                  return record
+              except Exception as e:return {'key':key,'url':url,'error':str(e)}
+          records=list(ThreadPoolExecutor(6).map(fetch,tasks))
+          (out/'receipts.json').write_text(json.dumps(records,indent=2,ensure_ascii=False))
+          subprocess.run(['git','archive','--format=zip','-o',str(out/'baseline.zip'),'HEAD'],check=True)
+          for r in records:print(r['key'],r.get('status'),r.get('bytes'),r.get('error',''))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: candidates-primary-evidence
+          path: candidate-evidence/
+          retention-days: 7
+          if-no-files-found: error
