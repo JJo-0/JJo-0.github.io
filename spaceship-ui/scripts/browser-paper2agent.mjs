@@ -94,6 +94,15 @@ try{
       await fullSize(id,mobile);
       if(id==='paper2agent-scanpy')await shot(`scanpy-${width}-${dark?'dark':'light'}`);
     }
+    const comparisonRows=await js(`Array.from(document.querySelectorAll('[data-p2a-comparison] tbody tr')).map(row=>Array.from(row.querySelectorAll('td')).map(cell=>cell.textContent.trim()))`);
+    assert.deepEqual(comparisonRows,[
+      ['튜토리얼 기반','15','98.7±1.3%','82.7±3.4%','37.3±4.0%'],
+      ['새로운 입력·요청','15','100.0±0.0%','78.7±4.4%','56.0±3.4%'],
+      ['개방형 연구 질문','30','82.7±2.4%','56.7±2.3%','72.2±2.2%'],
+    ]);
+    assert(!await js(`document.querySelector('article').textContent.includes('편집 주석:')`));
+    await js(`document.querySelector('[data-p2a-comparison]').scrollIntoView({block:'center',behavior:'instant'})`);
+    await shot(`comparison-${width}-${dark?'dark':'light'}`);
     for(const name of ['papers','tools','accuracy']){
       const selector=`[data-p2a-equation="${name}"] > summary`;
       await pointer(selector,mobile);
@@ -116,7 +125,7 @@ try{
     assert(!final.overflow&&final.katexErrors===0&&final.details===3&&final.notesSmall);
     assert.equal(final.citations,Object.values(edition.citationCounts).reduce((a,b)=>a+b,0));
     await js('scrollTo({top:0,behavior:"instant"})');await shot(`opening-${width}-${dark?'dark':'light'}`);
-    results.push({...activeCase,originals:2,originalPointerActivations:2,equationPointerActivations:3,equationKeyboardActivations:9,sourcePointerActivations:4,sourceKeyboardActivations:4,sourceBackChecks:8,notesSmall:true});
+    results.push({...activeCase,originals:2,originalPointerActivations:2,equationPointerActivations:3,equationKeyboardActivations:9,sourcePointerActivations:edition.references.length,sourceKeyboardActivations:edition.references.length,sourceBackChecks:edition.references.length*2,comparisonRows:comparisonRows.length,editorialNoteAbsent:true,notesSmall:true});
     console.log('paper2agent-browser: PASS '+JSON.stringify(results.at(-1)));
   }
   assert.equal(results.length,4);fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,slug:edition.slug,results},null,2));

@@ -1,7 +1,8 @@
 ---
 title: "논문이 실행 가능한 AI 에이전트가 됐다"
-description: "Paper2Agent는 논문·코드·데이터를 검증된 MCP 도구로 연결한다. 원본 구조도와 Scanpy 사례로 실행 과정을 살펴보고, 74/100과 593/599가 측정한 대상, 질문 성능·비용·실패의 의미를 풀어본다."
+description: "AlphaGenome 모델과 논문별 에이전트, 범용 Biomni의 역할을 구분하고 실제 비교 결과를 읽는다. Paper2Agent의 도구 준비·검증, Scanpy 사례, 규모 평가와 비용을 연결한다."
 pubDate: 2026-09-18
+updatedDate: 2026-09-18
 category: ai-machine-learning
 subcategory: ai-agents-for-science
 type: paper-review
@@ -64,11 +65,22 @@ MCP는 에이전트와 외부 시스템이 도구 및 정보를 주고받는 방
 
 Binder나 CodeOcean처럼 실행 환경을 제공하는 방식도 이 과정의 중요한 기반이다. 환경이 준비돼 있으면 사용자는 설치 문제를 덜 겪는다. Paper2Agent는 여기에 자연어 요청을 실행 기능으로 연결하는 계층을 더한다. 무엇이 설치되어 있는가, 무엇을 호출할 수 있는가, 어떤 요청에 그 호출이 적합한가를 각각 다루는 셈이다. 에이전트가 사용하는 실행 계층이 분명할수록 사람도 그 결정을 검토할 수 있다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
 
-### 도구 하나가 작을수록 항상 좋은 것은 아니다
+### AlphaGenome, AlphaGenome 에이전트, Biomni는 무엇을 맡는가
 
-도구 경계를 정할 때에는 논문의 작업 흐름을 고려해야 한다. 함수 하나를 노출할지, 여러 함수를 묶어 하나의 분석 단계로 만들지에 따라 사용자가 관리할 인자와 중간 파일이 달라진다. 너무 넓은 도구는 어느 단계에서 결과가 바뀌었는지 확인하기 어렵고, 너무 작은 도구는 올바른 호출 순서를 조합하는 부담을 남긴다. 이 문단은 구조를 읽기 위한 설계 관점이다. 구체적인 경계는 해당 논문의 튜토리얼과 입출력에 따라 검토해야 한다.
+<strong>AlphaGenome은 DNA 서열을 입력받아 유전자 조절 활동을 예측하는 Google DeepMind의 모델</strong>이다. 유전자 발현은 유전자가 얼마나 사용되는지, 스플라이싱은 RNA 조각이 어떻게 이어지는지, 염색질 접근성은 조절 단백질이 DNA에 접근하기 쉬운지를 살펴보는 출력이다. 기준 서열과 변이가 있는 서열의 예측을 비교하면, 작은 염기 변화가 어느 조직의 어떤 신호를 바꿀 가능성이 있는지 조사할 수 있다. 공식 모델은 최대 약 100만 염기쌍의 문맥을 읽으며 여러 종류의 출력을 함께 제공한다.<a href="#news-ref-5" data-news-citation="5" aria-label="참고문헌 5로 이동" data-astro-reload>[5]</a>
 
-예를 들어 “파일을 열기”와 “군집 결과를 저장하기” 사이에는 품질 관리, 정규화, 차원 축소 등 여러 단계가 있을 수 있다. 좋은 도구 설명은 함수 이름뿐 아니라 필요한 입력, 만들어지는 결과, 선행 조건을 알려 준다. 도구화된 논문의 재사용성을 평가하려면 함수 개수만 세기보다 사용자가 실제 분석 경로를 끝까지 수행할 수 있는지 봐야 한다.
+<strong>AlphaGenome 에이전트는 이 예측 모델을 연구자의 질문에 맞게 사용하는 실행 계층</strong>이다. Paper2Agent의 MCP 도구를 대화형 에이전트에 연결해, 질문을 실행과 해석으로 옮긴다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+<strong>Biomni는 여러 생의학 분야의 작업을 계획하고 실행하는 범용 연구 에이전트</strong>다. 질문에 필요한 도구·데이터베이스·소프트웨어를 찾아 계획을 세우고 코드를 실행하는 구조를 갖는다. 공식 프로젝트는 변이 해석, 단일세포 분석, 약물 특성 예측 등을 사용 사례로 제시한다. 따라서 이번 비교는 하나의 방법에 맞춰 준비한 에이전트와 폭넓은 도구 환경을 사용하는 에이전트가 같은 유전체 질문을 어떻게 해결하는지 묻는다.<a href="#news-ref-6" data-news-citation="6" aria-label="참고문헌 6로 이동" data-astro-reload>[6]</a>
+
+| 이름 | 담당하는 일 | 입력에서 출력으로 이어지는 관계 |
+|---|---|---|
+| AlphaGenome 모델 | 유전체 신호 예측 | DNA 서열·변이·조직 조건 → 예측 신호와 변이 효과 |
+| AlphaGenome MCP | 분석 기능의 호출 인터페이스 | 정의된 인자 → 점수 계산·조직 탐색·시각화 함수 실행 |
+| Paper2Agent의 AlphaGenome 에이전트 | 논문별 도구를 사용하는 분석 | 자연어 질문 → MCP 호출 → 결과와 설명 |
+| Biomni | 범용 생의학 분석 | 연구 질문 → 관련 자원 탐색·계획·코드 실행 |
+
+이 역할 구분에서 비교의 초점이 드러난다. 같은 예측 모델을 사용할 수 있어도, 적절한 입력을 구성하고 결과를 끝까지 연결하는 과정은 에이전트의 도구 준비 방식에 따라 달라질 수 있다. 생물학적 예측 능력과 그 모델을 올바르게 사용하는 능력을 나누어 읽으면 아래 실험의 의미가 선명해진다.
 
 ## 4. 새 방법을 세 단계로 따라가기
 
@@ -88,6 +100,16 @@ Paper2Agent는 여러 역할의 에이전트를 조정해 원고와 저장소, �
 
 ### 셋째, 통과한 도구를 실제 질문에 연결한다
 
+### AlphaGenome 사례: 변이 입력을 분석 결과까지 연결하기
+
+AlphaGenome용 도구 22개는 모두 자동 검증됐고, 최초 구축에 약 45분·14달러가 들었다. `score_variant_effect()`는 변이의 효과를 계산하고, `visualize_variant_effects()`는 선택한 출력의 변화를 그림으로 보여 준다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+실행 흐름을 이해하기 위한 요청으로 “이 변이가 간 조직의 유전자 발현과 접근성에 어떤 변화를 줄지 비교해 줘”를 생각해 보자. 에이전트는 먼저 염색체·위치·기준 염기·대체 염기와 주변 서열 구간을 입력으로 정리한다. 이어 간 조직에 해당하는 항목과 RNA·접근성 출력을 선택한다. 모델이 돌려준 기준 서열과 변이 서열의 신호를 비교하고, 수치와 그림을 묶어 설명한다. 여기서 예측한 변화는 어떤 후속 실험을 검토할지 정하는 근거가 된다.<a href="#news-ref-5" data-news-citation="5" aria-label="참고문헌 5로 이동" data-astro-reload>[5]</a>
+
+이렇게 단계별로 읽으면 자동화의 결과물도 구체적이다. 사용자는 유전체 API의 객체를 직접 만들기보다 연구 질문을 전달하고, 에이전트는 필요한 인자를 채워 실행한다. 같은 구조가 단일세포 데이터에서는 어떻게 쓰이는지 다음 Scanpy 그림으로 이어서 보자.
+
+### Scanpy 사례: 여러 전처리 도구를 순서대로 연결하기
+
 <NewsFigure media="paper2agent-scanpy" />
 
 위 Scanpy 예제의 A에서는 단일세포 데이터의 품질 관리와 군집화 같은 기능이 주황색 도구로 묶인다. 사용자가 데이터 파일과 요청을 주면 에이전트가 해당 기능을 호출해 결과를 돌려준다. B는 여러 도구를 이어 사용하는 지침과 실행 결과를 보여 준다. C의 왼쪽은 에이전트 결과, 오른쪽은 사람이 같은 입력으로 수행한 결과다. 변동성이 높은 유전자, UMAP 좌표에 표현한 세포 분포, 유전자 발현을 이용한 세포 유형 해석을 나란히 비교한다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a>
@@ -96,7 +118,29 @@ Paper2Agent는 여러 역할의 에이전트를 조정해 원고와 저장소, �
 
 공식 저장소의 현재 안내는 Paper2Agent skill에 논문·관련 파일·선택적 코드 저장소와 출력 디렉터리를 전달하는 방식이다. 생성된 서버를 연결할 때에는 결과물의 USAGE.md에서 시험한 환경, 실행 진입점과 필요한 환경변수를 확인하게 되어 있다. 따라서 프로젝트 소개 그림의 간편한 대화 경험 뒤에는 준비된 실행 환경과 도구 계약이 존재한다. API 키와 민감 데이터의 처리는 실행 환경에서 별도로 관리해야 한다.<a href="#news-ref-3" data-news-citation="3" aria-label="참고문헌 3로 이동" data-astro-reload>[3]</a>
 
-## 5. 핵심 실험: 숫자마다 분모가 다르다
+## 5. 핵심 실험: 준비한 도구가 실제 분석을 바꾸었는가
+
+### AlphaGenome 분석에서 세 가지 실행 방식을 비교하다
+
+2026년 논문의 주 평가 모델은 Sonnet 4였다. Paper2Agent는 MCP 도구 정의와 질문만 제공받았다. Claude + Repo는 저장소에서 코드를 작성·실행했고, API 기반 Biomni에는 저장소와 API 키를 안내했다. 같은 AlphaGenome 질문을 세 방식으로 풀었다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+<section data-p2a-comparison aria-label="AlphaGenome 에이전트 비교 결과">
+
+| 질문 유형 | 질문 수 | Paper2Agent | Claude + Repo | Biomni |
+|---|---:|---:|---:|---:|
+| 튜토리얼 기반 | 15 | 98.7±1.3% | 82.7±3.4% | 37.3±4.0% |
+| 새로운 입력·요청 | 15 | 100.0±0.0% | 78.7±4.4% | 56.0±3.4% |
+| 개방형 연구 질문 | 30 | 82.7±2.4% | 56.7±2.3% | 72.2±2.2% |
+
+</section>
+
+<small>원문 AlphaGenome 사례·Figure 2. 5회 독립 실행의 평균±평균의 표준오차(s.e.m.). 전문가 2명, 평가자 일치율 96.7%.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a></small>
+
+앞의 두 유형은 재현과 새로운 입력에의 적용을, 개방형 질문은 계획·도구 조합·생물학적 종합을 시험한다. <strong>새 질의 100%와 개방형 82.7%는 서로 다른 과제의 결과다.</strong><a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+표를 비교하는 한 가지 방법은 질문 유형을 고정하고 가로로 읽는 것이다. 예를 들어 개방형 행에서는 세 시스템 모두 같은 종류의 복합 분석을 평가받는다. 세로로 읽으면 준비된 도구를 호출하는 문제에서 분석을 계획하고 종합하는 문제로 넘어갈 때 점수가 어떻게 달라지는지 보인다. 이 비교가 보여 주는 것은 해당 과제와 설정에서의 수행 능력이며, 모든 생의학 문제의 순위표로 확대할 수는 없다.
+
+아래의 100편·300문항 평가는 별도의 규모 평가다. 여기에서는 비용 때문에 Biomni를 제외하고 Claude + Repo와 비교했다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
 
 ### 논문 변환, 도구 검사, 질문 응답을 나누어 보기
 
@@ -190,4 +234,7 @@ Paper2Agent는 여러 역할의 에이전트를 조정해 원고와 저장소, �
 
 <a id="news-ref-4" href="https://modelcontextprotocol.io/docs/2026-07-28/learn/server-concepts" data-news-reference="4" target="_blank" rel="noopener noreferrer">[4]</a> Model Context Protocol 공식 문서, <em>Understanding MCP servers</em>, 2026-07-28 문서 버전. Tools·Resources·Prompts의 역할.
 
-<small>편집 주석: 원고 선정안의 96/100은 블로그의 편집 점수다. 본문은 원자료의 결과와 별도 계산·설계 시나리오를 구분했다. 출판사 원문은 공개 검색으로 제공된 본문·Methods 구절과 첨부 원고를 대조했으며, 자동 다운로드의 HTTP 200 응답은 자바스크립트 확인 페이지여서 원문 취득으로 처리하지 않았다. 원 논문의 학습·실험을 별도로 재실행한 것은 아니다. 대표 도판의 저작자와 변환 기록은 그림 아래에 표시했다.</small>
+
+<a id="news-ref-5" href="https://www.nature.com/articles/s41586-025-10014-0" data-news-reference="5" target="_blank" rel="noopener noreferrer">[5]</a> Avsec, Ž. 외, <em>Advancing regulatory variant effect prediction with AlphaGenome</em>, Nature, 2026. AlphaGenome의 입력과 유전체 신호 예측. <a href="https://github.com/google-deepmind/alphagenome" target="_blank" rel="noopener noreferrer">저자 제공 API·입출력 예제</a>.
+
+<a id="news-ref-6" href="https://github.com/snap-stanford/Biomni" data-news-reference="6" target="_blank" rel="noopener noreferrer">[6]</a> Biomni 공식 저장소, <em>A General-Purpose Biomedical AI Agent</em>. 자원 검색·계획·코드 실행 구조. <a href="https://biomni.stanford.edu/" target="_blank" rel="noopener noreferrer">프로젝트와 사용 사례</a>.
