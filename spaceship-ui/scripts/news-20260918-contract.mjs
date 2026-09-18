@@ -41,6 +41,17 @@ function checkArticle(s, c = calculations) {
   assert.deepEqual([...c.matchAll(/<details data-p2a-equation="([^"]+)"/g)].map(m=>m[1]),['papers','tools','accuracy']);
   for (const tex of [...(s+'\n'+c).matchAll(/tex=\{String\.raw`([^`]+)`\}/g)].map(m=>m[1])) katex.renderToString(tex,{throwOnError:true,strict:'error',trust:false});
   for (const term of [String.raw`\frac{74}{100}`,String.raw`\frac{593}{599}`,String.raw`91.2\%-80.3\%`, '분자 74', '분모 100', '분자 593', '분모 599','퍼센트포인트']) assert(c.includes(term),term);
+  // Bind every displayed occurrence, not just the presence of one correct copy.
+  // The tool rate appears in both the collapsed summary and the explanation.
+  const expectedSummaries = [
+    String.raw`r_{\mathrm{paper}}=\frac{74}{100}\times100\%=74\%`,
+    String.raw`r_{\mathrm{tool}}=\frac{593}{599}\times100\%\approx99.0\%`,
+    String.raw`\Delta a=91.2\%-80.3\%=10.9\;\mathrm{pp}`,
+  ];
+  const summaries = [...c.matchAll(/<summary>([\s\S]*?)<\/summary>/g)].map(m =>
+    [...m[1].matchAll(/tex=\{String\.raw`([^`]+)`\}/g)].map(t => t[1]));
+  assert.deepEqual(summaries, expectedSummaries.map(tex => [tex]), 'Each collapsed formula must retain its actual operands and signs');
+  assert.equal(c.split(String.raw`\frac{593}{599}`).length - 1, 2, 'Both copies of the tool denominator');
   assert(Math.abs(593/599*100-98.9983305509182)<1e-10);
   assert.equal((91.2-80.3).toFixed(1),'10.9');
   assert.equal(((91.2-80.3)/80.3*100).toFixed(1),'13.6');
