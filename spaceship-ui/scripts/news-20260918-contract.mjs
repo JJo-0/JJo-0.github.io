@@ -19,7 +19,7 @@ function proseLength(s) {
 }
 function checkArticle(s, c = calculations) {
   assert.match(s, /^draft: false$/m); assert.match(s, /^pubDate: 2026-09-18$/m);
-  assert.match(s, /^lang: ko$/m); assert.match(s, /  - frontier-one\n/);
+  assert.match(s, /^lang: ko$/m); assert.match(s, / {2}- frontier-one\n/);
   assert(s.includes('  - ai-for-science\n'));
   assert.deepEqual([...s.matchAll(/^## (\d)\. /gm)].map(m => Number(m[1])), [1,2,3,4,5,6,7,8,9]);
   assertNewsProseLength(proseLength(s), manifest.slug);
