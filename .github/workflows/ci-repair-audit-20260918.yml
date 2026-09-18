@@ -1,0 +1,49 @@
+name: CI repair audit 20260918
+on:
+  push:
+    branches: [ops/ci-repair-audit-20260918]
+    paths: [.github/workflows/ci-repair-audit-20260918.yml]
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  issues: read
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Preserve reviewed source and PR evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ci-repair-evidence
+          python3 - <<'PY'
+          import subprocess,tarfile,pathlib
+          with tarfile.open('/tmp/ci-repair-evidence/source.tar.gz','w:gz') as archive:
+              for name in subprocess.check_output(['git','ls-files'],text=True).splitlines():
+                  p=pathlib.Path(name)
+                  if p.suffix.lower() in {'.png','.jpg','.jpeg','.webp','.gif','.pdf','.woff','.woff2','.ttf','.otf','.zip','.br','.mp4'}: continue
+                  if p.is_file(): archive.add(p,arcname=name)
+          PY
+          gh api repos/JJo-0/JJo-0.github.io/git/ref/heads/main > /tmp/ci-repair-evidence/main.json
+          gh run list --branch main --limit 10 --json databaseId,headSha,status,conclusion,workflowName > /tmp/ci-repair-evidence/runs.json
+          for number in 80 113 129; do
+            gh pr view "$number" --json number,title,body,headRefName,headRefOid,baseRefName,baseRefOid,isDraft,mergeable,mergeStateStatus,reviews,comments,statusCheckRollup > "/tmp/ci-repair-evidence/pr-$number.json"
+            gh pr diff "$number" > "/tmp/ci-repair-evidence/pr-$number.diff"
+            git fetch origin "refs/pull/$number/head:refs/remotes/audit/pr-$number"
+            git merge-tree --write-tree origin/main "refs/remotes/audit/pr-$number" > "/tmp/ci-repair-evidence/pr-$number-merge-tree.txt" || test "$?" = 1
+          done
+          gh run view 35247300513 --log-failed > /tmp/ci-repair-evidence/failed-step.log
+          git rev-parse HEAD > /tmp/ci-repair-evidence/collector-head.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ci-repair-evidence
+          path: /tmp/ci-repair-evidence
+          retention-days: 7
