@@ -1,0 +1,71 @@
+name: Stage wet-lab publication
+on:
+  push:
+    branches: [ops/wetlab-source-20260919]
+    paths:
+      - .github/workflows/wetlab-stage.yml
+      - .github/scripts/prepare-wetlab.py
+permissions:
+  contents: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: operations
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 1737c902d9ebed1c9b52cd10e0099c3f244534e8
+          path: checkout
+          persist-credentials: false
+      - name: Prepare deterministic publication files
+        run: python3 operations/.github/scripts/prepare-wetlab.py
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: checkout/spaceship-ui/pnpm-lock.yaml
+      - name: Dependency lock and source validation
+        working-directory: checkout/spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          node scripts/news-wetlab-20260919-contract.mjs
+      - name: Build and verify rendered article
+        working-directory: checkout/spaceship-ui
+        env:
+          JJO_WETLAB_REPORT: ../../wetlab-release/static.json
+        run: |
+          pnpm build > ../../wetlab-release/build.log 2>&1
+          node scripts/news-wetlab-20260919-contract.mjs
+          cp dist/posts/2026-09-19-anthropic-wet-lab-mhs-news/index.html ../../wetlab-release/article.html
+      - name: Create immutable blobs after validation, no branch writes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import pathlib,json,hashlib,base64,os,urllib.request
+          root=pathlib.Path('wetlab-release');rows=json.loads((root/'files-map.json').read_text())
+          for r in rows:
+              b=(root/'files'/r['path']).read_bytes()
+              assert hashlib.sha256(b).hexdigest()==r['sha256']
+              assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==r['sha']
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=json.dumps({'content':base64.b64encode(b).decode(),'encoding':'base64'}).encode(),method='POST',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'})
+              with urllib.request.urlopen(req,timeout=30) as resp:answer=json.load(resp)
+              assert answer['sha']==r['sha']
+          (root/'validated-blobs.json').write_text(json.dumps({'base':'1737c902d9ebed1c9b52cd10e0099c3f244534e8','files':rows},indent=2)+'\n')
+          print('Verified '+str(len(rows))+' immutable file blobs; no refs updated')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: wetlab-staged-${{ github.run_id }}-${{ github.run_attempt }}
+          path: wetlab-release/
+          retention-days: 14
+          include-hidden-files: true
+          if-no-files-found: error
