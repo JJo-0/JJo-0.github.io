@@ -22,6 +22,7 @@ export function candidateProse(s) {
 const forbidden = /이 수식이 본문에서 정의하거나|수식의 역할과 기호만 확인|범용 계산 절차|source-link-only|도판 파일과 전재 권리 검토는 미완료|원본 파일이 아직 포함/;
 function checkArticle(s, entry, digest = true) {
   assert.match(s, /^draft: false$/m); assert.match(s, /^pubDate: 2026-09-18$/m);
+  assert.equal(s.match(/^slug: (.+)$/m)?.[1], entry.slug, 'Explicit public route must match the release manifest');
   assert.match(s, /^lang: ko$/m); assert(s.includes('  - frontier-candidate\n'));
   assert(!forbidden.test(s)); assert(!/<(?:script|style)\b|<img\b[^>]+src="https?:/i.test(s));
   assert.deepEqual([...s.matchAll(/^## (\d)\. /gm)].map(m => +m[1]), [1,2,3,4,5,6,7,8,9]);
@@ -79,6 +80,7 @@ calc('RMS temporal patterns',Math.sqrt(16/4),2,'soft-muscles','RMS는 2');
 calc('RMS relative PI improvement',(7.63-2.38)/7.63*100,68.8,'soft-muscles','68.8',.05);
 calc('RMS relative FF improvement',(3.63-2.38)/3.63*100,34.4,'soft-muscles','34.4',.05);
 const mutationCases=[
+ ['wrong public route','delphy','slug: 2026-09-18-delphy-outbreak-phylogenetics-news','slug: 2026-09-18-2026-09-18-delphy-outbreak-phylogenetics-news'],
  ['missing figure','delphy','media="delphy-emat"','media="missing"'],
  ['wrong publication date','delphy','pubDate: 2026-09-18','pubDate: 2025-09-18'],
  ['PPV denominator','panxeon',String.raw`Se\,\pi+FPR\,(1-\pi)`,String.raw`Se\,\pi-FPR\,(1-\pi)`],
@@ -115,7 +117,8 @@ assert.equal(hash(JSON.stringify(canonical(preserved))),oldMedia.canonicalSha256
 for(const entry of edition.entries){
  assert.deepEqual(Object.entries(media).filter(([,r])=>r.slug===entry.slug).map(([id])=>id),entry.mediaIds);
  const render=new URL(`dist/posts/${entry.slug}/index.html`,root);
- if(fs.existsSync(render)){
+ if(fs.existsSync(new URL('dist/',root))){
+  assert(fs.existsSync(render), `Missing required built candidate route: ${entry.slug}`);
   const html=fs.readFileSync(render,'utf8');assert(!html.includes('katex-error'));
   assert.deepEqual([...html.matchAll(/data-news-figure="([^"]+)"/g)].map(m=>m[1]),entry.mediaIds);
   assert.deepEqual([...html.matchAll(/data-candidate-equation="([^"]+)"/g)].map(m=>m[1]),entry.equations);
@@ -123,7 +126,16 @@ for(const entry of edition.entries){
  }
 }
 const news=new URL('dist/news/index.html',root);
-if(fs.existsSync(news))assert(!fs.readFileSync(news,'utf8').includes('google-adsense-account'),'Card reading surface without ad initialization');
+if(fs.existsSync(new URL('dist/',root))){
+ assert(fs.existsSync(news),'Built NEWS index must exist');
+ const listing=fs.readFileSync(news,'utf8');
+ assert(!listing.includes('google-adsense-account'),'Card reading surface without ad initialization');
+ for(const entry of edition.entries){
+  assert.equal(listing.split(`data-news-card="${entry.slug}"`).length-1,1,`Exactly one NEWS card for ${entry.slug}`);
+  assert(listing.includes(`/posts/${entry.slug}`),`NEWS link for ${entry.slug}`);
+  assert(!listing.includes(`2026-09-18-${entry.slug}`),'No duplicated-date routes');
+ }
+}
 const report={articles:edition.entries.map(e=>({slug:e.slug,characters:e.bodyCharacters})),figures:8,explanations:11,mathExpressions:mathCount,numerical,mutations:mutationCases.map(([name])=>({name,rejected:true})),scope:'Authored explanations, file identity and rendered contracts; not an independent reproduction of paper experiments or a blanket rights grant.'};
 fs.mkdirSync('candidates-review',{recursive:true});fs.writeFileSync('candidates-review/static.json',JSON.stringify(report,null,2));
-console.log(`candidate-news: PASS four articles; ${mathCount} math expressions; 11 specific explanations; 8 verified original figures; 20 calculations; 8 rejected mutations`);
+console.log(`candidate-news: PASS four articles; ${mathCount} math expressions; 11 specific explanations; 8 verified original figures; 20 calculations; ${mutationCases.length} rejected mutations`);
