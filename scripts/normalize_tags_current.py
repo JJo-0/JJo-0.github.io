@@ -189,5 +189,11 @@ POST_TAXONOMY.update({
     ),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-19-dual-neural-progenitors-news.mdx': Taxonomy('health-lifestyle', 'neural-development', 'paper-review', ('frontier-candidate', 'neural-development')),
+    '2026-09-19-phosphate-molecular-walker-news.mdx': Taxonomy('research-methods-tools', 'molecular-machines', 'paper-review', ('frontier-candidate', 'molecular-machines')),
+    '2026-09-19-whisker-tactile-flight-news.mdx': Taxonomy('robotics-embedded', 'tactile-flight', 'paper-review', ('frontier-candidate', 'tactile-flight')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
