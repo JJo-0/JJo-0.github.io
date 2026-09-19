@@ -182,5 +182,12 @@ POST_TAXONOMY.update({
     '2026-09-18-soft-muscle-spectral-control-news.mdx': Taxonomy('robotics-embedded', 'soft-robotics-control', 'paper-review', ('frontier-candidate', 'soft-robotics-control')),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-19-anthropic-wet-lab-mhs-news.mdx': Taxonomy(
+        'ai-machine-learning', 'autonomous-labs', 'research-report',
+        ('frontier-one', 'ai-for-science'),
+    ),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

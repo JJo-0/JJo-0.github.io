@@ -1,3 +1,4 @@
+import './news-wetlab-20260919-contract.mjs';
 import './news-candidates-20260918-contract.mjs';
 import './news-20260918-contract.mjs';
 import './news-20260917-contract.mjs';

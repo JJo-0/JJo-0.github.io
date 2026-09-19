@@ -15,7 +15,8 @@ export async function auditNewsMedia(cdp, sessionId) {
   const sep17 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260917.json', import.meta.url), 'utf8'));
   const sep18 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260918.json', import.meta.url), 'utf8'));
   const candidates18 = JSON.parse(fs.readFileSync(new URL('../site/news-candidates-20260918.json', import.meta.url), 'utf8'));
-  const declaredEntries = [...sep11.entries, ...sep15.entries, ...sep16.entries, ...sep17.entries, sep18, ...candidates18.entries];
+  const wetlab19 = JSON.parse(fs.readFileSync(new URL('../site/news-wetlab-20260919.json', import.meta.url), 'utf8'));
+  const declaredEntries = [...sep11.entries, ...sep15.entries, ...sep16.entries, ...sep17.entries, sep18, ...candidates18.entries, ...wetlab19.entries];
   const sourceFigurePosts = new Map(declaredEntries.map((row) => [row.slug, row]));
   const sourceCards = declaredEntries.map((row) => ({slug: row.slug, ...media[row.mediaIds[0]]}));
   const coverOnly = new Set(covers.entries.filter((r) => !r.legacyVisualSuite).map((r) => r.slug));
@@ -183,7 +184,7 @@ export async function auditNewsMedia(cdp, sessionId) {
         const ids = await evaluate(cdp, sessionId, `Array.from(document.querySelectorAll('article [data-news-figure]')).map((el) => el.getAttribute('data-news-figure'))`);
         assert.deepEqual(ids, declaredSource.mediaIds, 'All declared original figures must appear exactly once in order');
       }
-      const todayEntry = [...sep15.entries, ...sep16.entries, ...sep17.entries, sep18, ...candidates18.entries].find((row) => row.slug === item.slug);
+      const todayEntry = [...sep15.entries, ...sep16.entries, ...sep17.entries, sep18, ...candidates18.entries, ...wetlab19.entries].find((row) => row.slug === item.slug);
       if (todayEntry) {
         const details = await evaluate(cdp, sessionId, `(() => {
           const figures = [...document.querySelectorAll('article [data-news-figure]')];
