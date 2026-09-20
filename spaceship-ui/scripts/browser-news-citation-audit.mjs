@@ -17,6 +17,7 @@ async function screenshot(name) {
   fs.writeFileSync(`citation-audit/${name}.png`, Buffer.from(data, 'base64'));
 }
 async function pointer(selector, mobile) {
+  lastPointer = {selector,mobile,phase:'positioning'};
   // Back restores scroll asynchronously. A pre-paint point can hit the following
   // image instead of a small citation. Observe stable geometry, never retry a
   // failed click or synthesize HTMLElement.click()/location.hash navigation.
@@ -24,10 +25,13 @@ async function pointer(selector, mobile) {
     await document.fonts.ready;
     const a = document.querySelector(${JSON.stringify(selector)});
     if (!a) throw new Error('Missing citation activation target');
+    // Align once. Repeated scrollIntoView calls can perturb the scroll anchor
+    // while content-visibility layout is settling after browser Back.
+    a.scrollIntoView({block:'center', behavior:'instant'});
     const started = performance.now();
     let previous = null, stable = 0;
+    const observations = [];
     while (performance.now() - started < 2500) {
-      a.scrollIntoView({block:'center', behavior:'instant'});
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       await new Promise(resolve => setTimeout(resolve, 50));
       const r = a.getBoundingClientRect();
@@ -35,13 +39,14 @@ async function pointer(selector, mobile) {
       const hit = document.elementFromPoint(x, y);
       const ready = a.isConnected && r.width > 0 && r.height > 0 && (hit === a || a.contains(hit));
       const current = {x,y,scrollY,documentHeight:document.documentElement.scrollHeight};
+      observations.push({...current,ready});
       const unchanged = previous && Object.keys(current).every(k=>Math.abs(current[k]-previous[k]) < 0.5);
       stable = ready && unchanged ? stable + 1 : 0;
       if (stable >= 2) return {...current,ready,stableSamples:stable+1,
         resolvedPath:new URL(a.href).pathname,currentPath:location.pathname,html:a.outerHTML};
       previous = current;
     }
-    throw new Error('Citation geometry did not stabilize before trusted input');
+    throw new Error('Citation geometry did not stabilize before trusted input: ' + JSON.stringify(observations.slice(-4)));
   })()`);
   lastPointer = {selector,mobile,...point};
   assert.equal(point.resolvedPath, point.currentPath, 'Native fragment must resolve to the exact same article path');
