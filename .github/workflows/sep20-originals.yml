@@ -1,0 +1,57 @@
+name: Sep20 original figures
+on:
+  push:
+    branches: [ops/sep20-source-review]
+    paths: [.github/workflows/sep20-originals.yml]
+permissions:
+  contents: write
+jobs:
+  originals:
+    if: github.ref == 'refs/heads/ops/sep20-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.5 Pillow==11.3.0
+      - name: Preserve original figure bytes and emit immutable blob identities
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64,hashlib,io,json,os,concurrent.futures
+          from pathlib import Path
+          import requests
+          from PIL import Image
+          out=Path('originals');out.mkdir()
+          base='https://media.springernature.com/full/springer-static/image/'
+          items=[]
+          for key,doi,stem,figures in [('elpr','s41586-026-11042-0','41586_2026_11042',[1,4,5]),('xeno','s41586-026-11032-2','41586_2026_11032',[2,3,4]),('hydrogen','s41560-026-02126-2','41560_2026_2126',[1,6])]:
+              for number in figures:items.append((f'{key}-fig-{number}.png',base+f'art%3A10.1038%2F{doi}/MediaObjects/{stem}_Fig{number}_HTML.png'))
+          for key,name in [('speed','b5ed53a2cb9d20cf369be85a586c1b4d1c171c47-2048x1318'),('quality','7ff86777678b41a6e8852ffbade8737923dd80d3-2048x1323'),('collapse','783de4f90edb45cdc1ace96c1fcee7694e7b8c26-2048x680')]:items.append((f'bioopt-{key}.jpg','https://www-cdn.anthropic.com/images/4zrzovbb/website/'+name+'.jpg'))
+          def acquire(item):
+              name,url=item
+              response=requests.get(url,headers={'User-Agent':'Mozilla/5.0'},timeout=(15,90));response.raise_for_status();data=response.content
+              assert 1000<len(data)<30000000
+              image=Image.open(io.BytesIO(data));image.load();assert image.format in {'PNG','JPEG'}
+              assert image.width>600 and image.height>200
+              (out/name).write_bytes(data)
+              record={'file':name,'url':url,'format':image.format,'width':image.width,'height':image.height,'sha256':hashlib.sha256(data).hexdigest(),'gitBlobSha':hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()}
+              image.thumbnail((1600,1800));image.convert('RGB').save(out/(Path(name).stem+'-review.jpg'),quality=92)
+              # Store immutable objects only. No ref, branch, or PR is modified.
+              result=requests.post('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'},json={'content':base64.b64encode(data).decode(),'encoding':'base64'},timeout=90)
+              result.raise_for_status();assert result.json()['sha']==record['gitBlobSha']
+              return record
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:records=list(pool.map(acquire,items))
+          assert len(records)==11
+          (out/'manifest.json').write_text(json.dumps({'date':'2026-09-20','figures':records},ensure_ascii=False,indent=2))
+          print(json.dumps(records,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep20-original-figures
+          path: originals/
+          retention-days: 7
+          if-no-files-found: error
