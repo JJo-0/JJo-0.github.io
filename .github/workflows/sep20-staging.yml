@@ -1,0 +1,147 @@
+name: Sep20 staged publication review
+on:
+  push:
+    branches: [ops/sep20-source-review]
+    paths: [.github/workflows/sep20-staging.yml]
+permissions:
+  contents: write
+jobs:
+  staging:
+    if: github.ref == 'refs/heads/ops/sep20-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: d4e17041840748ecf493e619ed8eb9e1ba6b0833
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Apply hash-pinned authored payload and original images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,lzma,os,subprocess,urllib.request,concurrent.futures
+          from pathlib import Path,PurePosixPath
+          api='https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs/'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          def blob(sha):
+              with urllib.request.urlopen(urllib.request.Request(api+sha,headers=headers),timeout=90) as r:j=json.load(r)
+              assert j['encoding']=='base64'
+              data=base64.b64decode(j['content']);assert hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()==sha
+              return data
+          pieces=['7574cedc4cddf7a4b1680258b3a40c2afbf2d0ad','a4befeed876a817b45383e765656e6b054285ed5','6e71a51e9fb80adaf8718ad89fe2550ba8fcd2ce','e7ac30f84342815aaefb3f8c636b7d4120f56eaa','5a6ac0af3c168a8f06f9e508da78b23f728c5ea3','3762f7212eac7938a7ba0a0afb591476716e56c2']
+          encoded=b''.join(blob(sha) for sha in pieces)
+          raw=lzma.decompress(base64.b64decode(encoded,validate=True),memlimit=256000000)
+          assert hashlib.sha256(raw).hexdigest()=='efffffa790acacda5d0e08fc9ae49b879a42eb086136f4877cf39ce1047355ed'
+          payload=json.loads(raw);assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==payload['base']
+          def safe(name):
+              p=PurePosixPath(name)
+              assert not p.is_absolute() and '..' not in p.parts
+              assert name.startswith('spaceship-ui/') or name in {'.github/workflows/blog-pages-deploy.yml','.github/workflows/sep20-reading.yml'}
+              return Path(name)
+          for name,data in payload['new'].items():
+              p=safe(name);assert not p.exists(),name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(data)
+          for name,diff in payload['patches'].items():
+              p=safe(name);assert hashlib.sha256(p.read_bytes()).hexdigest()==payload['before'][name]
+              subprocess.run(['git','apply','--check','-'],input=diff,text=True,check=True)
+              subprocess.run(['git','apply','-'],input=diff,text=True,check=True)
+          for name,digest in payload['expected'].items():assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==digest,name
+          edition=json.loads(Path('spaceship-ui/site/news-edition-20260920.json').read_text())
+          p=Path('scripts/normalize_tags_current.py');source=p.read_text();anchor='if __name__ == "__main__":'
+          assert source.count(anchor)==1
+          lines=['POST_TAXONOMY.update({']
+          for entry in edition['entries']:
+              name=entry['slug']+'.mdx';assert name not in source;t=entry['taxonomy']
+              lines.append(f"    {name!r}: Taxonomy({t['category']!r}, {t['subcategory']!r}, {t['type']!r}, {tuple(t['tags'])!r}),")
+          lines.append('})\n\n');p.write_text(source.replace(anchor,'\n'.join(lines)+anchor))
+          images=json.loads(Path('spaceship-ui/site/assets/assets/posts/news-20260920/provenance.json').read_text())
+          def materialize(row):
+              name='spaceship-ui/site/assets'+row['src'];p=safe(name);assert not p.exists();data=blob(row['blobSha'])
+              assert len(data)==row['bytes'] and hashlib.sha256(data).hexdigest()==row['sha256']
+              p.write_bytes(data);return name
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:asset_names=list(pool.map(materialize,images))
+          names=list(payload['expected'])+['scripts/normalize_tags_current.py']+asset_names
+          Path('staging-evidence').mkdir();Path('staging-evidence/paths.json').write_text(json.dumps(names,indent=2))
+          Path('staging-evidence/payload-sha256.txt').write_text(hashlib.sha256(raw).hexdigest())
+          print('Authored text files:',len(payload['expected']),'originals:',len(images),'taxonomy entries:',len(edition['entries']))
+          PY
+      - name: Dependencies and real Korean glyphs
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Source numerical and provenance contract
+        working-directory: spaceship-ui
+        run: node scripts/news-edition-20260920-contract.mjs
+      - name: Taxonomy, lint, type and metadata
+        working-directory: spaceship-ui
+        run: |
+          pnpm taxonomy:check
+          pnpm lint
+          pnpm check
+          pnpm seo:check
+      - name: Build and complete content checks
+        working-directory: spaceship-ui
+        run: |
+          pnpm build
+          pnpm content:check
+          node scripts/news-edition-20260920-contract.mjs
+      - name: Native article matrix
+        working-directory: spaceship-ui
+        timeout-minutes: 6
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        run: node scripts/browser-sep20.mjs
+      - name: Store verified immutable source blobs only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request
+          from pathlib import Path
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'}
+          entries=[]
+          for name in json.loads(Path('staging-evidence/paths.json').read_text()):
+              data=Path(name).read_bytes();sha=hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()
+              if not name.endswith(('.png','.jpg')):
+                  req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers=headers,data=json.dumps({'encoding':'base64','content':base64.b64encode(data).decode()}).encode(),method='POST')
+                  with urllib.request.urlopen(req,timeout=90) as response:assert json.load(response)['sha']==sha
+              entries.append({'path':name,'mode':'100644','type':'blob','sha':sha})
+          Path('staging-evidence/tree-elements.json').write_text(json.dumps(entries,indent=2))
+          print(json.dumps(entries,indent=2))
+          PY
+      - name: Preserve staging article evidence without fonts or complete papers
+        if: always()
+        run: |
+          mkdir -p staging-evidence/reading staging-evidence/source
+          if test -d spaceship-ui/sep20-review; then cp -R spaceship-ui/sep20-review/. staging-evidence/reading/; fi
+          python3 - <<'PY'
+          import json,shutil,subprocess
+          from pathlib import Path
+          manifest=Path('staging-evidence/paths.json')
+          if manifest.exists():
+              for name in json.loads(manifest.read_text()):
+                  if name.endswith(('.png','.jpg')):continue
+                  p=Path(name);q=Path('staging-evidence/source')/name;q.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,q)
+          for p in Path('spaceship-ui/site/content/posts').glob('2026-09-20*.mdx'):
+              html=Path('spaceship-ui/dist/posts')/p.stem/'index.html'
+              if html.exists():shutil.copyfile(html,Path('staging-evidence')/(p.stem+'.html'))
+          Path('staging-evidence/checkout-base.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep20-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: staging-evidence/
+          retention-days: 7
+          if-no-files-found: error
