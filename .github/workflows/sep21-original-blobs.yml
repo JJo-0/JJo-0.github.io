@@ -1,0 +1,56 @@
+name: Sep21 immutable originals
+on:
+  push:
+    branches: [ops/sep21-source-review]
+    paths: [.github/workflows/sep21-original-blobs.yml]
+permissions:
+  contents: write
+jobs:
+  blobs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install requests==2.32.5 Pillow==11.3.0
+      - name: Verify originals and store immutable Git objects
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64,hashlib,io,json,os,requests
+          from pathlib import Path
+          from PIL import Image
+          items=[
+            ('msvd-fig-2.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-76272-2/MediaObjects/41467_2026_76272_Fig2_HTML.png','7100b41e435f68cf9da0ee32fd6ff3d53cb29ca1041caec9b17e690c3035916b',2000,2175,'MSVD','Figure 2'),
+            ('msvd-fig-4.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-76272-2/MediaObjects/41467_2026_76272_Fig4_HTML.png','1d488883dc1d9920ee4d1dbb0a844a1d75e53cc77667c93349b941f37c47cfce',2000,1326,'MSVD','Figure 4'),
+            ('msvd-fig-7.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-76272-2/MediaObjects/41467_2026_76272_Fig7_HTML.png','21f029cfa4a7b9174c6cb2246c1ff06b6711f0a0e7f73b161e2362a070614eae',2000,803,'MSVD','Figure 7'),
+            ('fiber-fig-1.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-77550-9/MediaObjects/41467_2026_77550_Fig1_HTML.png','872a365fa0ce83571e9f887b151e5850a237b7b3bfbe814243a72906909b1687',1749,1633,'Fiber HSI','Figure 1'),
+            ('fiber-fig-2.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-77550-9/MediaObjects/41467_2026_77550_Fig2_HTML.png','0d4f1933b79f7388b1211cc3ccb48bc7afde76677cb8ed3f776500b385f00b39',1964,1080,'Fiber HSI','Figure 2'),
+            ('fiber-fig-4.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-77550-9/MediaObjects/41467_2026_77550_Fig4_HTML.png','50fde7ae365ef4f0efc6c4a3be64294c129d0607eb4d4315baebdb40485e6ad6',1500,882,'Fiber HSI','Figure 4'),
+            ('erled-fig-1.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-77851-z/MediaObjects/41467_2026_77851_Fig1_HTML.png','c61291f131127f6168afef8c7e961b9b3ce3165c454373710716a3b045ba692b',1987,1059,'Er LED','Figure 1'),
+            ('erled-fig-2.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-77851-z/MediaObjects/41467_2026_77851_Fig2_HTML.png','17d710c7286b97a5a5681d5c6ff991bdc941e306313fe32b23ffbb92bc8c53e2',1963,1450,'Er LED','Figure 2'),
+            ('erled-fig-5.png','https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-77851-z/MediaObjects/41467_2026_77851_Fig5_HTML.png','60344a51c3f8100337274ec8df956300dd2ca3c6fe50b42d737275a200a939cc',1995,1068,'Er LED','Figure 5'),
+          ]
+          out=Path('sep21-originals');out.mkdir()
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0 scholarly-source-review'
+          records=[]
+          api='https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          for name,url,sha,w,h,paper,figure in items:
+            r=s.get(url,timeout=(15,90));r.raise_for_status();data=r.content
+            assert hashlib.sha256(data).hexdigest()==sha
+            im=Image.open(io.BytesIO(data));im.load();assert (im.width,im.height)==(w,h)
+            gitsha=hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()
+            g=requests.post(api,headers=headers,json={'encoding':'base64','content':base64.b64encode(data).decode()},timeout=90);g.raise_for_status();assert g.json()['sha']==gitsha
+            (out/name).write_bytes(data)
+            t=im.copy();t.thumbnail((1400,1600));t.convert('RGB').save(out/(name[:-4]+'-review.jpg'),quality=91)
+            records.append({'file':name,'url':url,'paper':paper,'figure':figure,'sha256':sha,'blobSha':gitsha,'bytes':len(data),'width':w,'height':h,'license':'CC BY-NC-ND 4.0','sourceByteIdentical':True})
+          (out/'provenance.json').write_text(json.dumps(records,ensure_ascii=False,indent=2))
+          print(json.dumps(records,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep21-immutable-originals
+          path: sep21-originals/
+          retention-days: 7
