@@ -54,12 +54,16 @@ jobs:
               subprocess.run(['git','apply','--check','-'],input=diff,text=True,check=True)
               subprocess.run(['git','apply','-'],input=diff,text=True,check=True)
           for name,digest in payload['expected'].items():assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==digest,name
-          # Follow-up visual repair: only line-break two long formulas and add
-          # a fail-closed equation/tag geometry assertion. No test is removed.
+          # Line-break long formulas and keep the number/geometry gate strict.
           layout=blob('7220c917375bbdf63372935845d2c993549f09a7')
           assert hashlib.sha256(layout).hexdigest()=='c11eb56db4b3a9890ba74c1b1fffc00923bddd925b1230e4ba8b6c1a5bb8a698'
           subprocess.run(['git','apply','--check','-'],input=layout,check=True)
           subprocess.run(['git','apply','-'],input=layout,check=True)
+          # Bind to classes in the actual rendered HTML, not unprefixed names.
+          selector=blob('c4e6160c91741c12a5b463bd3276dcb8d7defd62')
+          assert hashlib.sha256(selector).hexdigest()=='c735e3646ccadaccbdd37eaba1c0ceb8fdfcb7912717dc0de184499e526d7bc0'
+          subprocess.run(['git','apply','--check','-'],input=selector,check=True)
+          subprocess.run(['git','apply','-'],input=selector,check=True)
           edition=json.loads(Path('spaceship-ui/site/news-edition-20260920.json').read_text())
           p=Path('scripts/normalize_tags_current.py');source=p.read_text();anchor='if __name__ == "__main__":'
           assert source.count(anchor)==1
@@ -78,6 +82,7 @@ jobs:
           Path('staging-evidence').mkdir();Path('staging-evidence/paths.json').write_text(json.dumps(names,indent=2))
           Path('staging-evidence/payload-sha256.txt').write_text(hashlib.sha256(raw).hexdigest())
           Path('staging-evidence/layout.patch').write_bytes(layout)
+          Path('staging-evidence/tag-selector.patch').write_bytes(selector)
           print('Authored text files:',len(payload['expected']),'originals:',len(images),'taxonomy entries:',len(edition['entries']))
           PY
       - name: Dependencies and real Korean glyphs
