@@ -1,0 +1,102 @@
+name: Sep20 primary source review
+on:
+  push:
+    branches: [ops/sep20-source-review]
+    paths: [.github/workflows/sep20-source-review.yml]
+permissions:
+  contents: read
+jobs:
+  source-review:
+    if: github.ref == 'refs/heads/ops/sep20-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: d4e17041840748ecf493e619ed8eb9e1ba6b0833
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.5 beautifulsoup4==4.13.5 PyMuPDF==1.26.4 Pillow==11.3.0
+      - name: Capture primary texts, figures and exact repository source
+        run: |
+          python - <<'PY'
+          import hashlib,json,subprocess,zipfile,concurrent.futures
+          from pathlib import Path
+          from urllib.parse import urljoin,urlparse
+          import requests,fitz
+          from bs4 import BeautifulSoup
+          from PIL import Image
+          out=Path('sep20-evidence');out.mkdir()
+          sources={
+            'elpr':'https://www.nature.com/articles/s41586-026-11042-0',
+            'xeno':'https://www.nature.com/articles/s41586-026-11032-2',
+            'hydrogen':'https://www.nature.com/articles/s41560-026-02126-2',
+            'bioopt':'https://www.anthropic.com/research/claude-uplifts-biomolecular-modeling'
+          }
+          def get(url,kind):
+              response=requests.get(url,headers={'User-Agent':'Mozilla/5.0 (scholarly-source-review)'},timeout=(15,55));response.raise_for_status()
+              data=response.content
+              if kind=='pdf':assert data.startswith(b'%PDF-'),'Expected PDF, not challenge HTML'
+              assert len(data)<40000000,'Evidence resource too large'
+              return data
+          def capture(item):
+              key,url=item;root=out/key;root.mkdir();receipt={'url':url,'resources':[],'errors':[]}
+              def save(name,link,kind):
+                  try:
+                      data=get(link,kind);(root/name).write_bytes(data)
+                      receipt['resources'].append({'file':name,'url':link,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+                      return data
+                  except Exception as e:receipt['errors'].append({'url':link,'error':str(e)});return None
+              html=save('article.html',url,'html')
+              if html:
+                  soup=BeautifulSoup(html,'html.parser');main=soup.select_one('article') or soup.select_one('main') or soup
+                  (root/'article.txt').write_text(main.get_text('\n',strip=True))
+                  links=[{'text':a.get_text(' ',strip=True),'url':urljoin(url,a.get('href',''))} for a in main.select('a[href]')]
+                  (root/'links.json').write_text(json.dumps(links,ensure_ascii=False,indent=2))
+                  figures=[]
+                  for i,f in enumerate(main.select('figure')):
+                      images=[{'src':urljoin(url,im.get('src','')),'srcset':im.get('srcset',''),'alt':im.get('alt','')} for im in f.select('img')]
+                      figures.append({'index':i,'id':f.get('id',''),'text':f.get_text(' ',strip=True),'images':images,'links':[urljoin(url,a['href']) for a in f.select('a[href]')]})
+                  # Anthropic may not wrap image elements in semantic figures.
+                  (root/'figures.json').write_text(json.dumps({'figures':figures,'images':[{'src':urljoin(url,im.get('src','')),'alt':im.get('alt','')} for im in main.select('img')]},ensure_ascii=False,indent=2))
+                  if key!='bioopt':
+                      for fig in figures:
+                          if not fig['id'].startswith('Fig') or not fig['images']:continue
+                          link=fig['images'][0]['src'];name=fig['id'].lower()+'.png'
+                          # The unresized PNG is directly linked by Nature figure metadata.
+                          if 'media.springernature.com' in link and '/lw' in link:
+                              suffix=link.split('/springer-static/',1)[-1]
+                              if suffix.startswith('image/'):
+                                  link='https://media.springernature.com/full/springer-static/'+suffix
+                          data=save(name,link,'image')
+                          if data:
+                              try:
+                                  image=Image.open(root/name);image.thumbnail((1500,1500));image.convert('RGB').save(root/(fig['id'].lower()+'-review.jpg'),quality=90)
+                              except Exception as e:receipt['errors'].append({'file':name,'error':str(e)})
+                  pdf_links=[r for r in links if '.pdf' in r['url'] and ('Supplementary Information' in r['text'] or 'technical report' in r['text'].lower())]
+                  for j,r in enumerate(pdf_links[:2]):save(f'supplement-{j+1}.pdf',r['url'],'pdf')
+              if key!='bioopt':save('paper.pdf',url+'.pdf','pdf')
+              for p in root.glob('*.pdf'):
+                  try:
+                      doc=fitz.open(p);(root/(p.stem+'-text.txt')).write_text('\n'.join(page.get_text() for page in doc))
+                      if p.stem=='paper':
+                          for i in range(min(len(doc),8)):doc[i].get_pixmap(matrix=fitz.Matrix(1.5,1.5),alpha=False).save(root/f'page-{i+1}.png')
+                  except Exception as e:receipt['errors'].append({'file':p.name,'error':str(e)})
+              (root/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2))
+              print(key,json.dumps(receipt))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:list(pool.map(capture,sources.items()))
+          with zipfile.ZipFile(out/'repository.zip','w',zipfile.ZIP_DEFLATED) as archive:
+              for name in subprocess.check_output(['git','ls-files','-z']).decode().split('\0'):
+                  p=Path(name)
+                  if p.is_file() and (name.startswith('spaceship-ui/') or name.startswith('.github/') or name in {'CONTENT_POLICY.md','AGENTS.md','scripts/normalize_tags.py'}):archive.write(p,name)
+          (out/'base.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep20-source-evidence
+          path: sep20-evidence/
+          retention-days: 3
+          if-no-files-found: error
