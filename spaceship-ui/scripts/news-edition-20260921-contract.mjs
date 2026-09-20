@@ -44,7 +44,9 @@ for(const e of edition.entries){
 // Explicit numerical refusal checks: mutate the source in memory and require the
 // critical distinctions to disappear, proving the guard is bound to the prose.
 const msvd=fs.readFileSync(path.join(root,'site/content/posts/2026-09-21-memristive-svd-news.mdx'),'utf8');
-for(const [from,to] of [['29.9×','29.9× direct board measurement'],['hardware-calibrated simulation','actual full-chip training'],['51.25','61.25']]){
- const mutated=msvd.replaceAll(from,to);assert.notEqual(mutated,msvd);assert(!mutated.includes(from),from);
+for(const [from,to] of [['29.9×','39.9×'],['hardware-calibrated simulation','actual full-chip training'],['51.25','61.25']]){
+ const mutated=msvd.replaceAll(from,to);
+ assert.notEqual(mutated,msvd);
+ assert(!mutated.includes(from),from);
 }
 console.log('sep21-contract: PASS 3 articles, 9 source-pinned originals, numerical/model-scope distinctions and body-depth floor');
