@@ -26,7 +26,7 @@ const checks={
   '실제 1024×128 chip의 full LLM fine-tuning이 아니라'
  ],
  fiber:['±60°','400–700 nm','disordered-dispersion encoder','sparsity-constrained','pending patent application 10202602600Y','임상 진단 성능 시험은 아니다'],
- erled:['PLQY를 47%','peak EQE는 **3.26%**','Cr³⁺ broadband sensitization','1.54 μm','wafer-scale CMOS process integration','competing interests가 없다고 선언']
+ erled:['PLQY를 47%','peak EQE는 <strong>3.26%</strong>','Cr³⁺ broadband sensitization','1.54 μm','wafer-scale CMOS process integration','competing interests가 없다고 선언']
 };
 for(const e of edition.entries){
  const p=path.join(root,'site/content/posts',e.slug+'.mdx');const src=fs.readFileSync(p,'utf8');
