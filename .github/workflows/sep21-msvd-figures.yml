@@ -1,0 +1,38 @@
+name: Sep21 MSVD figures
+on:
+  push:
+    branches: [ops/sep21-source-review]
+    paths: [.github/workflows/sep21-msvd-figures.yml]
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install requests==2.32.5 Pillow==11.3.0
+      - name: Acquire selected original figures
+        run: |
+          python - <<'PY'
+          import requests,io,json,hashlib
+          from pathlib import Path
+          from PIL import Image
+          out=Path('msvd');out.mkdir()
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0'
+          records=[]
+          for n in [2,4,7]:
+            url=f'https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-026-76272-2/MediaObjects/41467_2026_76272_Fig{n}_HTML.png'
+            r=s.get(url,timeout=(15,60));r.raise_for_status();data=r.content
+            im=Image.open(io.BytesIO(data));im.load()
+            name=f'fig-{n}.png';(out/name).write_bytes(data)
+            t=im.copy();t.thumbnail((1600,1800));t.convert('RGB').save(out/f'fig-{n}-review.jpg',quality=92)
+            records.append({'figure':n,'url':url,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'width':im.width,'height':im.height,'format':im.format})
+          (out/'manifest.json').write_text(json.dumps(records,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep21-msvd-figures
+          path: msvd/
+          retention-days: 5
