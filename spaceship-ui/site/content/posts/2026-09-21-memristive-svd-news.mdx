@@ -30,11 +30,11 @@ SVD(Singular Value Decomposition)는 행렬을 중요한 방향과 크기로 분
 
 데이터 행렬 <Math tex="X" />가 있으면 SVD는 이를 왼쪽 singular vector, singular value, 오른쪽 singular vector로 나눈다. 행이 표본, 열이 feature라고 생각하면 오른쪽 singular vector는 feature 공간에서 중요한 방향을, singular value는 그 방향이 설명하는 크기를 나타낸다. 상위 몇 개 성분만 남기면 원래 행렬의 중요한 구조를 더 작은 표현으로 근사할 수 있다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
 
-<CandidateEquation id="msvd-svd" title="SVD의 세 행렬은 각각 무엇을 뜻할까?" tex={"X=USV^{T}\\tag{1}"}>
+<CandidateEquation id="msvd-svd" title="SVD의 세 행렬은 각각 무엇을 뜻할까?" tex={String.raw`X=USV^{T}\\tag{1}`}>
 
 <Math tex="X\in\mathbb{R}^{M\times N}" />는 원 데이터다. <Math tex="U" />의 열은 left singular vector(LSV), <Math tex="V" />의 열은 right singular vector(RSV), <Math tex="S" />의 대각 성분은 singular value다. 전치 기호 <Math tex="V^T" />는 오른쪽 방향들을 원 데이터의 열 축과 맞춰 다시 조합하기 위해 붙는다.
 
-가장 큰 singular value 하나만 남기면 <Math tex={"X\approx s_1u_1v_1^T"} />가 된다. 이것은 숫자 하나만 남기는 압축이 아니라, <Math tex="u_1" />이 행 방향 패턴, <Math tex="v_1" />이 열 방향 패턴, <Math tex="s_1" />이 두 패턴의 크기를 결정하는 rank-1 행렬을 만든다는 뜻이다. 두 번째 성분까지 쓰면 첫 성분이 설명하지 못한 구조를 하나 더 더한다.
+가장 큰 singular value 하나만 남기면 <Math tex={String.raw`X\approx s_1u_1v_1^T`} />가 된다. 이것은 숫자 하나만 남기는 압축이 아니라, <Math tex="u_1" />이 행 방향 패턴, <Math tex="v_1" />이 열 방향 패턴, <Math tex="s_1" />이 두 패턴의 크기를 결정하는 rank-1 행렬을 만든다는 뜻이다. 두 번째 성분까지 쓰면 첫 성분이 설명하지 못한 구조를 하나 더 더한다.
 
 행렬을 분해한 뒤 상위 성분만 저장하면 이미지 압축, PCA, biomedical signal feature extraction, low-rank adaptation 같은 작업에서 계산량과 저장량을 줄일 수 있다. 하지만 하드웨어가 singular vector를 정확히 못 찾으면 작은 오차가 뒤 rank로 갈수록 남는다.
 
@@ -89,7 +89,7 @@ COVID-19 주간 입원 데이터는 104×51 행렬로 구성됐다. Figure 4d–
 
 GPU 대비 headline은 더 주의해서 읽어야 한다. 연구진의 32 nm architecture evaluation에서 MSVD energy는 13.40 μJ, GPU 쪽 estimate는 400 μJ이며, 이를 나누면 약 29.9가 된다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
 
-<CandidateEquation id="msvd-energy" title="29.9× energy efficiency는 어떤 두 값을 나눈 것일까?" tex={"R_E=\frac{400\,\mu\mathrm{J}}{13.40\,\mu\mathrm{J}}\approx29.9\tag{2}"}>
+<CandidateEquation id="msvd-energy" title="29.9× energy efficiency는 어떤 두 값을 나눈 것일까?" tex={String.raw`R_E=\frac{400\,\mu\mathrm{J}}{13.40\,\mu\mathrm{J}}\approx29.9\tag{2}`}>
 
 분자 400 μJ는 논문이 비교에 사용한 GPU 측 에너지 estimate이고, 분모 13.40 μJ는 32 nm로 평가한 memristor architecture의 SVD energy다. 같은 에너지 단위이므로 나누면 단위가 사라지고 “한 작업에 필요한 에너지가 몇 배 차이 나는가”라는 무차원 비율이 된다.
 
@@ -107,7 +107,7 @@ Figure 7은 가장 흥미롭고 가장 오해하기 쉬운 결과다. a는 LLaMA
 
 그러나 이 실험은 Figure 7 제목부터 <strong>simulated MSVD initialization</strong>이다. 연구진은 hardware-calibrated simulation에 memristor variation을 넣고 LLaMA 3.2 1B와 3B의 rank-4 decomposition을 모델링했다. 3B GSM8K에서 vanilla adaptation 46.40, MSVD-based PiSSA 51.25, software PiSSA 51.40이 나왔다. MSVD simulation이 software SVD 기반 initialization에 매우 근접했다는 의미는 있지만 3B model의 전체 weight를 1024×128 실칩에 올려 fine-tuning했다는 뜻은 아니다. 따라서 이것은 실제 1024×128 chip의 full LLM fine-tuning이 아니라, 실제 device variation을 반영한 hardware-calibrated simulation이다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
 
-<CandidateEquation id="msvd-llm" title="51.25는 46.40보다 얼마나 오른 것인가?" tex={"\Delta=51.25-46.40=4.85\ \mathrm{points}\tag{3}"}>
+<CandidateEquation id="msvd-llm" title="51.25는 46.40보다 얼마나 오른 것인가?" tex={String.raw`\Delta=51.25-46.40=4.85\ \mathrm{points}\tag{3}`}>
 
 두 benchmark score는 같은 GSM8K 평가의 percentage-point scale이므로 절대 차이는 뺄셈으로 구한다. 51.25에서 46.40을 빼면 4.85 points다. “10.45% 개선”은 이 4.85를 baseline 46.40으로 다시 나눈 상대 변화다.
 
