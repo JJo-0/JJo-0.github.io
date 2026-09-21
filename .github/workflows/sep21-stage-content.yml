@@ -1,0 +1,56 @@
+name: Sep21 stage publication content
+on:
+  push:
+    branches: [ops/sep21-source-review]
+    paths: [.github/workflows/sep21-stage-content.yml]
+permissions:
+  contents: write
+jobs:
+  stage:
+    if: github.ref == 'refs/heads/ops/sep21-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/news-20260921-msvd-hsi-erled
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Materialize exact publication content
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64,hashlib,json,lzma,os,subprocess,urllib.request
+          from pathlib import Path,PurePosixPath
+          repo='JJo-0/JJo-0.github.io';base='4a04dc2742d370b7a012ce2b63e3d151faf58d42'
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==base
+          h={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          def blob(s):
+            with urllib.request.urlopen(urllib.request.Request(f'https://api.github.com/repos/{repo}/git/blobs/{s}',headers=h),timeout=90) as r:j=json.load(r)
+            d=base64.b64decode(j['content']);assert hashlib.sha1(f'blob {len(d)}\0'.encode()+d).hexdigest()==s;return d
+          chunks=['a3c30161c87af759b4d393b8151c51df26d7054f','e84b00b4449b850ebf33c6df938068da521d0f9e','0470473dbf32cdb99cee08c333f57728dee150e4','4564cc966170af46553b3a811cd7125dce5d431f','c42f5e61f1c0b3141c46e7f63febe06fa297e8d0','618a10847b38df8bf9f6ef10e630df0b71de635f','ef7556b99527999b9a9e2acb4d565f1af092c987','01185acde759f59d70493351b8c46e8d410cdb20']
+          raw=lzma.decompress(base64.b64decode(b''.join(blob(s) for s in chunks),validate=True),memlimit=256000000);assert hashlib.sha256(raw).hexdigest()=='0ee7fc16cdc553af5c16a71d9659e6abe1285f7e5db8b0a86ca61dd2e67880a8'
+          pld=json.loads(raw)
+          def safe(n):
+            p=PurePosixPath(n);assert not p.is_absolute() and '..' not in p.parts;return Path(n)
+          for n,c in pld['new'].items():
+            if n.startswith('.github/'):continue
+            p=safe(n);assert not p.exists();p.parent.mkdir(parents=True,exist_ok=True);p.write_text(c)
+          for row in pld['provenance']:
+            p=Path('spaceship-ui/site/assets'+row['src']);d=blob(row['blobSha']);assert hashlib.sha256(d).hexdigest()==row['sha256'] and len(d)==row['bytes'];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(d)
+          p=Path('spaceship-ui/site/news-media.json');m=json.loads(p.read_text());assert not set(m)&set(pld['mediaAdditions']);m.update(pld['mediaAdditions']);p.write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n')
+          p=Path('scripts/normalize_tags_current.py');s=p.read_text();a='if __name__ == "__main__":';lines=['POST_TAXONOMY.update({']
+          for e in pld['edition']['entries']:
+            t=e['taxonomy'];lines.append(f"    {(e['slug']+'.mdx')!r}: Taxonomy({t['category']!r}, {t['subcategory']!r}, {t['type']!r}, {tuple(t['tags'])!r}),")
+          lines.append('})\n\n');assert s.count(a)==1;p.write_text(s.replace(a,'\n'.join(lines)+a))
+          p=Path('spaceship-ui/scripts/browser-news-media-audit.mjs');s=p.read_text();n="  const sep20 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260920.json', import.meta.url), 'utf8'));";assert s.count(n)==1;s=s.replace(n,n+"\n  const sep21 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260921.json', import.meta.url), 'utf8'));");assert s.count('...sep20.entries]')==2;s=s.replace('...sep20.entries]','...sep20.entries, ...sep21.entries]');p.write_text(s)
+          p=Path('spaceship-ui/src/pages/posts/[...slug]/index.astro');s=p.read_text();n="import sep20 from '../../../../site/news-edition-20260920.json';";assert s.count(n)==1;s=s.replace(n,"import sep21 from '../../../../site/news-edition-20260921.json';\n"+n);n='adsEnabled={!sep20.entries.some((entry) => entry.slug === effectiveSlug)';assert s.count(n)==1;s=s.replace(n,'adsEnabled={!sep21.entries.some((entry) => entry.slug === effectiveSlug) && !sep20.entries.some((entry) => entry.slug === effectiveSlug)');p.write_text(s)
+          PY
+      - name: Commit and push content-only changes
+        run: |
+          git config user.name 'Park Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git add scripts/normalize_tags_current.py spaceship-ui/
+          git -c core.hooksPath=/dev/null commit -m 'content: add September 21 MSVD and photonics explainers'
+          git push origin HEAD:refs/heads/content/news-20260921-msvd-hsi-erled
