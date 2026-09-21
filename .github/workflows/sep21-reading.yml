@@ -1,0 +1,64 @@
+name: September 21 reading
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - '.github/workflows/sep21-reading.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - '.github/workflows/sep21-reading.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sep21-reading-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.19.0}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Install dependencies and Korean fonts
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Source and numerical contract
+        run: node scripts/news-edition-20260921-contract.mjs
+      - name: Build
+        run: pnpm build
+      - name: Rendered contract
+        run: node scripts/news-edition-20260921-contract.mjs
+      - name: Mobile and desktop reading matrix
+        timeout-minutes: 6
+        env: {JJO_SMOKE_REQUIRE_GPU: '0'}
+        run: node scripts/browser-sep21.mjs
+      - name: Preserve review evidence
+        if: always()
+        run: |
+          mkdir -p sep21-review
+          git rev-parse HEAD > sep21-review/tested-head.txt
+          cp site/news-edition-20260921.json sep21-review/
+          cp site/assets/assets/posts/news-20260921/provenance.json sep21-review/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep21-reading-${{ github.run_id }}
+          path: spaceship-ui/sep21-review/
+          retention-days: 14
+          if-no-files-found: error
