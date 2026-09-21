@@ -55,6 +55,15 @@ jobs:
           git rev-parse HEAD > sep21-review/tested-head.txt
           cp site/news-edition-20260921.json sep21-review/
           cp site/assets/assets/posts/news-20260921/provenance.json sep21-review/
+          python3 - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          for row in json.loads(Path('site/news-edition-20260921.json').read_text())['entries']:
+              p=Path('site/content/posts')/(row['slug']+'.mdx')
+              shutil.copyfile(p,Path('sep21-review')/p.name)
+              p=Path('dist/posts')/row['slug']/'index.html'
+              if p.exists():shutil.copyfile(p,Path('sep21-review')/(row['slug']+'.html'))
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
