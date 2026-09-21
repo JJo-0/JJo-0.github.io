@@ -202,5 +202,11 @@ POST_TAXONOMY.update({
     '2026-09-20-hydrogen-spatial-demand-policy-news.mdx': Taxonomy('finance-industry', 'hydrogen-policy', 'paper-review', ('frontier-candidate', 'hydrogen-policy')),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-21-memristive-svd-news.mdx': Taxonomy('finance-industry', 'memristive-computing', 'paper-review', ('frontier-one', 'compute-in-memory')),
+    '2026-09-21-single-fiber-hyperspectral-news.mdx': Taxonomy('research-methods-tools', 'hyperspectral-imaging', 'paper-review', ('frontier-candidate', 'hyperspectral-imaging')),
+    '2026-09-21-erbium-1540nm-led-news.mdx': Taxonomy('finance-industry', 'near-infrared-optoelectronics', 'paper-review', ('frontier-candidate', 'integrated-photonics')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
