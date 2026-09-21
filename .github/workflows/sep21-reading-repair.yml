@@ -1,0 +1,138 @@
+name: Sep21 full-paper reading repair
+on:
+  push:
+    branches: [ops/sep21-source-review]
+    paths: [.github/workflows/sep21-reading-repair.yml]
+permissions:
+  contents: write
+jobs:
+  review:
+    if: github.ref == 'refs/heads/ops/sep21-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: baf6feb1e3a000e7bed99798af2c73f5d1724668
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Apply identity-bound full-paper revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,lzma,os,subprocess,urllib.request
+          from pathlib import Path,PurePosixPath
+          out=Path('repair-review');out.mkdir()
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          def blob(sha):
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs/'+sha,headers=headers)
+              with urllib.request.urlopen(req,timeout=90) as r:j=json.load(r)
+              assert j['encoding']=='base64';data=base64.b64decode(j['content'])
+              assert hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()==sha
+              return data
+          shas=['378ae0269020424db319e44ee90fd3e8206aa15f','aa2d6018f2563617867981dcd22e37cccfeed7d4','5ec1111ac25f71757f6d7105590cb0f117c45708','bc863bee64532ae23830b28398dae3ca5b97f923']
+          raw=lzma.decompress(base64.b64decode(b''.join(blob(s) for s in shas),validate=True),memlimit=256000000)
+          digest=hashlib.sha256(raw).hexdigest();assert digest=='9c7201b3c111e1522bc3291d445ed2c90bb615f377be4ae01750538cfe784014'
+          payload=json.loads(raw)
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==payload['base']
+          assert len(payload['files'])==11
+          for name,row in payload['files'].items():
+              p=PurePosixPath(name);assert not p.is_absolute() and '..' not in p.parts
+              assert name.startswith('spaceship-ui/') or name=='.github/workflows/sep21-reading.yml'
+              p=Path(name)
+              if row['before'] is None:assert not p.exists()
+              else:assert hashlib.sha256(p.read_bytes()).hexdigest()==row['before'],name
+              if 'content' in row:p.parent.mkdir(parents=True,exist_ok=True);p.write_text(row['content'])
+              else:
+                  subprocess.run(['git','apply','--check','-'],input=row['patch'],text=True,check=True)
+                  subprocess.run(['git','apply','-'],input=row['patch'],text=True,check=True)
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==row['after'],name
+          # The actual Figure 2c colorbar labels the s-polarized field E_y.
+          # Correct only that symbol after the final visual source comparison.
+          p=Path('spaceship-ui/site/content/posts/2026-09-21-single-fiber-hyperspectral-news.mdx')
+          s=p.read_text();assert s.count('E_z')==1;s=s.replace('E_z','E_y');p.write_text(s)
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='0d9206f2fa343aa429c96e07a87c0dacd40cd6acc721cb0ebc0449f5fa3b3124'
+          p=Path('spaceship-ui/site/news-edition-20260921.json');j=json.loads(p.read_text())
+          next(e for e in j['entries'] if e['key']=='fiber')['sha256']=hashlib.sha256(s.encode()).hexdigest()
+          p.write_text(json.dumps(j,ensure_ascii=False,indent=2)+'\n')
+          (out/'paths.json').write_text(json.dumps(list(payload['files']),indent=2))
+          (out/'payload-receipt.json').write_text(json.dumps({'base':payload['base'],'sha256':digest,'parts':shas,'visualCorrection':'Figure 2c E_z -> E_y'},indent=2))
+          PY
+      - name: Dependencies and Korean fonts
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Source arithmetic, derivatives and mutation controls
+        working-directory: spaceship-ui
+        run: node scripts/news-edition-20260921-contract.mjs 2>&1 | tee ../repair-review/source.log
+      - name: Existing taxonomy, lint, type, SEO and publishing checks
+        working-directory: spaceship-ui
+        run: |
+          pnpm taxonomy:check 2>&1 | tee ../repair-review/taxonomy.log
+          pnpm lint 2>&1 | tee ../repair-review/lint.log
+          pnpm check 2>&1 | tee ../repair-review/type.log
+          pnpm seo:check 2>&1 | tee ../repair-review/seo.log
+          pnpm blog:harness:check 2>&1 | tee ../repair-review/harness.log
+      - name: Build and all existing content contracts
+        working-directory: spaceship-ui
+        run: |
+          pnpm build 2>&1 | tee ../repair-review/build.log
+          pnpm content:check 2>&1 | tee ../repair-review/content.log
+          node scripts/news-edition-20260921-contract.mjs 2>&1 | tee ../repair-review/rendered.log
+      - name: All three articles with native input and real equations
+        working-directory: spaceship-ui
+        timeout-minutes: 6
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        run: node scripts/browser-sep21.mjs 2>&1 | tee ../repair-review/browser.log
+      - name: Store tested immutable blobs without moving any branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request
+          from pathlib import Path
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'}
+          rows=[]
+          for name in json.loads(Path('repair-review/paths.json').read_text()):
+              data=Path(name).read_bytes();sha=hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers=headers,data=json.dumps({'encoding':'base64','content':base64.b64encode(data).decode()}).encode(),method='POST')
+              with urllib.request.urlopen(req,timeout=90) as r:assert json.load(r)['sha']==sha
+              rows.append({'path':name,'mode':'100644','type':'blob','sha':sha})
+          Path('repair-review/tree-elements.json').write_text(json.dumps(rows,indent=2));print(json.dumps(rows,indent=2))
+          PY
+      - name: Preserve exact source, rendering and diagnostics
+        if: always()
+        run: |
+          mkdir -p repair-review/source repair-review/reading
+          if test -d spaceship-ui/sep21-review; then cp -R spaceship-ui/sep21-review/. repair-review/reading/; fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,shutil,subprocess
+          p=Path('repair-review/paths.json')
+          if p.exists():
+              for name in json.loads(p.read_text()):
+                  p=Path(name);q=Path('repair-review/source')/name;q.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,q)
+          for p in Path('spaceship-ui/site/content/posts').glob('2026-09-21*.mdx'):
+              h=Path('spaceship-ui/dist/posts')/p.stem/'index.html'
+              if h.exists():shutil.copyfile(h,Path('repair-review')/(p.stem+'.html'))
+          Path('repair-review/checkout-head.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep21-full-paper-repair-${{ github.run_id }}-${{ github.run_attempt }}
+          path: repair-review/
+          retention-days: 7
+          if-no-files-found: error
