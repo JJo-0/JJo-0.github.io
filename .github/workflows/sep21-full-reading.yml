@@ -1,0 +1,71 @@
+name: Sep21 full reading evidence
+on:
+  push:
+    branches: [ops/sep21-source-review]
+    paths: [.github/workflows/sep21-full-reading.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: baf6feb1e3a000e7bed99798af2c73f5d1724668
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.32.5 beautifulsoup4==4.13.5 PyMuPDF==1.26.4
+      - name: Linked full papers and exact source archive
+        run: |
+          python - <<'PY'
+          import requests,fitz,json,hashlib,subprocess,zipfile,concurrent.futures
+          from pathlib import Path
+          from urllib.parse import urljoin
+          from bs4 import BeautifulSoup
+          out=Path('full-reading');out.mkdir()
+          def run(item):
+              key,doi=item;root=out/key;root.mkdir();s=requests.Session();s.headers['User-Agent']='Mozilla/5.0'
+              page='https://www.nature.com/articles/'+doi
+              records=[];links=[]
+              try:
+                  r=s.get(page+'?error=cookies_not_supported',timeout=40);r.raise_for_status();soup=BeautifulSoup(r.content,'html.parser')
+                  (root/'page.html').write_bytes(r.content)
+                  for a in soup.select('a[href]'):
+                      h=urljoin(page,a['href']);t=a.get_text(' ',strip=True)
+                      if '.pdf' in h:links.append({'url':h,'text':t})
+                  for meta in soup.select('meta[name="citation_pdf_url"]'):links.append({'url':meta['content'],'text':'citation_pdf_url'})
+              except Exception as e:records.append({'stage':'page','error':str(e)})
+              (root/'links.json').write_text(json.dumps(links,indent=2))
+              urls=list(dict.fromkeys([x['url'] for x in links if 'reference.pdf' in x['url'] or x['text'] in ['Download PDF','citation_pdf_url']]+[page+'_reference.pdf',page+'.pdf','https://link.springer.com/content/pdf/10.1038/'+doi+'.pdf']))
+              def acquire(name,url):
+                  try:
+                      r=s.get(url,timeout=(15,55));r.raise_for_status();data=r.content
+                      if not data.startswith(b'%PDF-'):raise ValueError('Non-PDF response: '+r.headers.get('content-type',''))
+                      d=fitz.open(stream=data,filetype='pdf');(root/(name+'.pdf')).write_bytes(data)
+                      (root/(name+'.txt')).write_text('\n'.join(f'\n--- PDF PAGE {i+1} ---\n'+p.get_text() for i,p in enumerate(d)))
+                      if name=='paper':
+                          for i,p in enumerate(d):p.get_pixmap(matrix=fitz.Matrix(1.6,1.6),alpha=False).save(root/f'page-{i+1}.png')
+                      records.append({'name':name,'url':url,'sha256':hashlib.sha256(data).hexdigest(),'pages':len(d),'ok':True});return True
+                  except Exception as e:records.append({'name':name,'url':url,'error':str(e),'ok':False});return False
+              for url in urls:
+                  if acquire('paper',url):break
+              supp=next((x['url'] for x in links if 'MOESM1_ESM.pdf' in x['url']),None)
+              if supp:acquire('supplement',supp)
+              (root/'receipts.json').write_text(json.dumps(records,indent=2));print(key,json.dumps(records))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as p:list(p.map(run,[('msvd','s41467-026-76272-2'),('fiber','s41467-026-77550-9'),('erled','s41467-026-77851-z')]))
+          with zipfile.ZipFile(out/'repo.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in subprocess.check_output(['git','ls-files','-z']).decode().split('\0'):
+                  p=Path(name)
+                  if p.is_file() and (name.startswith('spaceship-ui/') or name.startswith('scripts/') or name.startswith('.github/') or name in ['AGENTS.md','CONTENT_POLICY.md']):z.write(p,name)
+          (out/'head.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep21-full-reading-evidence
+          path: full-reading/
+          retention-days: 3
+          if-no-files-found: error
