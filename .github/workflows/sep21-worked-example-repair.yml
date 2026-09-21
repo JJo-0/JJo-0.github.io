@@ -1,0 +1,84 @@
+name: Sep21 worked-example repair
+on:
+  push:
+    branches: [ops/sep21-source-review]
+    paths: [.github/workflows/sep21-worked-example-repair.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/news-20260921-msvd-hsi-erled
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Bind exact starting head and add explicit examples
+        run: |
+          test "$(git rev-parse HEAD)" = "46a770dee44ee12899177cb069bc9a848568b1a1"
+          python3 - <<'PY'
+          from pathlib import Path
+          repls={
+          'spaceship-ui/site/content/posts/2026-09-21-memristive-svd-news.mdx':[
+          ('앞의 <Math tex={String.raw`X=\\operatorname{diag}(3,1)`} />에서 두 성분이 같은 방향으로 시작하면,','예를 들어, 앞의 <Math tex={String.raw`X=\\operatorname{diag}(3,1)`} />에서 두 성분이 같은 방향으로 시작하면,'),
+          ('비율이 <Math tex={String.raw`29.9`} />면 비교 기준의 약','예를 들어 비율이 <Math tex={String.raw`29.9`} />면 비교 기준의 약')],
+          'spaceship-ui/site/content/posts/2026-09-21-single-fiber-hyperspectral-news.mdx':[
+          ('공개 2D 데모는 −60°부터 +60°까지 1° 간격을 사용한다.','예를 들어 공개 2D 데모는 −60°부터 +60°까지 1° 간격을 사용한다.')],
+          'spaceship-ui/site/content/posts/2026-09-21-erbium-1540nm-led-news.mdx':[
+          ('1.54 μm를 넣으면 약 0.805 eV다.','예를 들어 1.54 μm를 넣으면 약 0.805 eV다.')]
+          }
+          for name,items in repls.items():
+              p=Path(name);s=p.read_text()
+              for old,new in items:
+                  assert s.count(old)==1,(name,old,s.count(old))
+                  s=s.replace(old,new)
+              p.write_text(s)
+          PY
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const editionPath='spaceship-ui/site/news-edition-20260921.json';
+          const edition=JSON.parse(fs.readFileSync(editionPath,'utf8'));
+          function bodyText(source){return source.split('---').slice(2).join('---').split(/^## 9\. /m)[0]
+            .replace(/^import .*?;\s*/gm,'').replace(/<Math\b[\s\S]*?\/>/g,'').replace(/<CandidateEquation\b[^\n]+>/g,'')
+            .replace(/<[^>]*>/g,' ').replace(/\[\d+\]/g,'').replace(/[*#|`>]+/g,'').replace(/\s+/g,' ').trim();}
+          for(const e of edition.entries){
+            const file=`spaceship-ui/site/content/posts/${e.slug}.mdx`;
+            const s=fs.readFileSync(file,'utf8');
+            e.sha256=crypto.createHash('sha256').update(s).digest('hex');
+            e.bodyCharacters=bodyText(s).length;
+          }
+          fs.writeFileSync(editionPath,JSON.stringify(edition,null,2)+'\n');
+          NODE
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.19.0}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Dependencies and Korean fonts
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Exact source and site checks
+        working-directory: spaceship-ui
+        run: |
+          node scripts/news-edition-20260921-contract.mjs
+          pnpm lint
+          pnpm check
+          pnpm build
+          pnpm content:check
+          node scripts/news-edition-20260921-contract.mjs
+          node scripts/browser-sep21.mjs
+      - name: Commit exact passing repair
+        run: |
+          git config user.name "Park Jiho"
+          git config user.email "76779256+JJo-0@users.noreply.github.com"
+          git add spaceship-ui/site/content/posts/2026-09-21-memristive-svd-news.mdx                   spaceship-ui/site/content/posts/2026-09-21-single-fiber-hyperspectral-news.mdx                   spaceship-ui/site/content/posts/2026-09-21-erbium-1540nm-led-news.mdx                   spaceship-ui/site/news-edition-20260921.json
+          git diff --cached --check
+          git commit -m "fix: make every Sep21 equation lesson include a concrete example"
+          git push origin HEAD:content/news-20260921-msvd-hsi-erled
