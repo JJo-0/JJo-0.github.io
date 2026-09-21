@@ -1,0 +1,35 @@
+name: Sep21 PDF review
+on:
+  push:
+    branches: [ops/sep21-source-review]
+    paths: [.github/workflows/sep21-pdf-review.yml]
+permissions:
+  contents: read
+jobs:
+  pdf:
+    if: github.ref == 'refs/heads/ops/sep21-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install requests==2.32.5 PyMuPDF==1.26.4
+      - run: |
+          python - <<'PY'
+          import requests,fitz,hashlib,json
+          from pathlib import Path
+          out=Path('pdf-review');out.mkdir()
+          urls={'fiber':'https://www.nature.com/articles/s41467-026-77550-9.pdf','erled':'https://www.nature.com/articles/s41467-026-77851-z.pdf'}
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0 scholarly-source-review'
+          for key,url in urls.items():
+            r=s.get(url,timeout=(15,90));r.raise_for_status();data=r.content
+            assert data.startswith(b'%PDF-'), (key,r.headers.get('content-type'),data[:30])
+            doc=fitz.open(stream=data,filetype='pdf')
+            (out/f'{key}.txt').write_text('\n'.join(p.get_text() for p in doc))
+            (out/f'{key}-receipt.json').write_text(json.dumps({'url':url,'sha256':hashlib.sha256(data).hexdigest(),'pages':len(doc),'bytes':len(data)},indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep21-pdf-review
+          path: pdf-review/
+          retention-days: 5
