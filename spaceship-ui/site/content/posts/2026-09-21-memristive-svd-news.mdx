@@ -1,0 +1,143 @@
+---
+title: '메모리 안에서 SVD를 계산하기 시작했다'
+description: 'Nature Communications의 MSVD는 실제 130 nm 멤리스터 칩에서 반복 SVD를 구현했다. 29.9배 효율과 19배 속도가 어디까지 실칩이고 어디부터 모델링인지 분리해 읽는다.'
+pubDate: 2026-09-21T00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+category: finance-industry
+subcategory: memristive-computing
+type: paper-review
+tags:
+  - frontier-one
+  - compute-in-memory
+slug: 2026-09-21-memristive-svd-news
+researchFeatured: false
+draft: false
+lang: ko
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import Math from '@/components/post/Math.astro';
+
+<NewsFigure media="msvd-fig-2" priority />
+
+멤리스터(memristor) 기반 compute-in-memory(CIM)는 행렬–벡터 곱을 메모리 안에서 병렬로 수행할 수 있다는 점 때문에 오래전부터 AI 가속기의 후보였다. 그러나 “한 번의 matrix–vector multiplication(MVM)을 빠르게 계산한다”와 “그 MVM을 수십·수백 번 반복하며 앞 단계의 오차를 다음 단계로 넘기는 알고리즘 전체를 안정적으로 계산한다”는 것은 다른 문제다. 2026년 9월 20일 Nature Communications에 게재된 **Memristive singular value decomposition**은 그 차이를 SVD(Singular Value Decomposition)로 직접 시험했다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+<small>이 글은 2026년 9월 20일 Version of Record와 공개 Supplementary Information·코드 저장소를 기준으로 읽었다. 논문의 실험을 독립적으로 재실행한 글은 아니다. 아래에서 130 nm 실칩 결과, 32 nm architecture evaluation, LLaMA simulation을 따로 표시한다.</small>
+
+## 1. 한 문장 결론
+
+이번 연구의 핵심은 멤리스터가 행렬곱 하나를 빠르게 계산했다는 것이 아니다. <strong>power iteration → 정규화 → 이미 찾은 singular component의 deflation → 다음 component 계산</strong>이라는 반복 구조를 실제 130 nm 1024×128 1T1R memristor array에서 실행하고, 반복할수록 커지는 아날로그 오차를 DPM과 VPR이라는 선택적 정밀도 구조로 억제했다는 데 있다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+성능 수치는 반드시 층을 나누어 읽어야 한다. 이미지 재구성의 31.0 dB PSNR·0.940 SSIM, COVID-19 입원 데이터 재구성의 correlation 0.999는 실제 memristor system의 응용 결과다. 반면 A100 대비 29.9× energy efficiency와 19.0× normalized speed는 검증된 memristor architecture를 32 nm node에서 평가한 모델 비교가 중심이고, LLaMA 3.2의 PiSSA 초기화 실험 역시 memristor variation을 포함한 simulation이다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+## 2. SVD가 왜 멤리스터에게 더 어려운가
+
+SVD는 데이터 행렬 <Math tex="X" />를 서로 직교하는 왼쪽 singular vector, singular value, 오른쪽 singular vector로 분해한다. 이미지라면 큰 밝기 행렬을 몇 개의 중요한 패턴으로 요약할 수 있고, 시계열에서는 여러 변수의 공통 변동을 낮은 rank로 표현할 수 있다. PCA, 압축, 노이즈 제거, recommendation, scientific computing, low-rank adaptation이 이 구조와 연결된다.
+
+<CandidateEquation id="msvd-svd" title="SVD의 세 행렬은 각각 무엇을 들고 있나?" tex={String.raw`X=U\Sigma V^{\mathsf T}\tag{1}`}>
+
+<Math tex="X" />는 분해할 데이터 행렬이다. <Math tex="U" />의 열은 왼쪽 singular vector, <Math tex="V" />의 열은 오른쪽 singular vector이고, <Math tex="\Sigma" />의 대각선에는 singular value가 큰 값부터 놓인다. 전치 <Math tex={String.raw`V^{\mathsf T}`} />는 오른쪽 basis를 다시 데이터 좌표와 결합시키기 위해 방향을 바꾸는 연산이다.
+
+rank 1 근사만 쓴다면 <Math tex={String.raw`X\approx \sigma_1u_1v_1^{\mathsf T}`} />처럼 가장 강한 한 성분으로 원행렬을 설명한다. rank를 늘리면 다음 singular component를 차례로 더한다. 중요한 점은 각 vector가 독립적인 숫자 목록이 아니라 **앞서 얻은 component와 직교하도록 유지돼야 하는 방향**이라는 것이다.
+
+멤리스터에서 어려운 지점은 분해 공식 그 자체보다 이 vector를 반복 계산하는 과정이다. conductance variation 때문에 한 번의 MVM에 작은 오차가 들어가면 그 vector를 다음 iteration의 입력으로 다시 사용하면서 방향이 조금씩 틀어질 수 있다.
+
+</CandidateEquation>
+
+전통적인 power iteration은 한 방향을 반복해서 행렬에 곱해 dominant direction으로 수렴시킨다. 첫 singular component를 얻은 다음에는 이미 설명한 부분을 행렬에서 빼고 다시 같은 과정을 수행한다. 따라서 앞의 component를 조금 잘못 구하면 다음 residual 자체가 잘못된다. 이런 구조에서는 작은 오차가 단순히 한 번의 출력에서 끝나지 않는다.
+
+<CandidateEquation id="msvd-deflation" title="deflation에서 앞 단계 오차가 다음 rank로 넘어가는 이유는?" tex={String.raw`X_{k+1}=X_k-\sigma_k u_kv_k^{\mathsf T}\tag{2}`}>
+
+<Math tex={String.raw`X_k`} />는 k번째 component를 찾기 전의 residual matrix다. <Math tex={String.raw`\sigma_k u_kv_k^{\mathsf T}`} />는 이번에 찾아낸 rank-1 component다. 빼는 이유는 이미 설명한 방향을 제거해 다음 iteration이 새로운 방향을 찾게 하기 위해서다.
+
+문제는 <Math tex="u_k" />, <Math tex="v_k" />, <Math tex="\sigma_k" />에 오차가 있으면 제거해야 할 성분과 실제로 뺀 성분이 달라진다는 것이다. 그 차이가 <Math tex={String.raw`X_{k+1}`} />에 남고 다음 vector 계산의 입력이 된다. 그래서 논문은 SVD에서 아날로그 오차를 “한 번의 MVM 정확도”보다 **iteration drift와 deflation residual**의 문제로 본다.
+
+해설용 숫자로 실제 component가 10인데 9.8만 제거하면 0.2가 residual에 남는다. 다음 rank의 진짜 신호가 0.5라면 0.2는 이미 무시하기 어려운 크기다. rank가 커질수록 이런 residual이 뒤 성분을 왜곡할 수 있다.
+
+</CandidateEquation>
+
+## 3. Figure 2: SREA는 어디에 정밀도를 더 쓰는가
+
+<NewsFigure media="msvd-fig-2" />
+
+Figure 2a의 위쪽 루프가 MSVD의 핵심 계산이다. 입력 vector를 data matrix를 저장한 memristor subarray와 이미 구한 RSV(right singular vector)를 저장한 subarray에 보낸다. 첫 번째 경로는 power iteration을 진행하고, 두 번째 경로는 이전 component가 현재 결과에 얼마나 섞였는지 계산해 제거한다. 오른쪽의 normalization과 convergence check를 통과할 때까지 이 루프를 반복한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+SREA(Selective Representation Enhanced Architecture)는 모든 값을 무조건 높은 정밀도로 저장하는 구조가 아니다. Figure 2d의 DPM(Dual-Precision Mapping)은 수의 **상위 비트와 하위 비트가 오차에 기여하는 방식이 다르다**는 점을 이용한다. 상위 비트가 흔들리면 값 전체가 크게 틀어지므로 더 안정적인 representation을 사용하고, 하위 비트는 더 미세한 quantization을 담당한다. 정밀도가 필요한 곳에 device 자원을 집중하는 전략이다.
+
+Figure 2e의 VPR(Vector Processing Refinement)은 vector 자체를 겨냥한다. 논문은 deflation에 다시 사용되는 RSV가 특히 중요한 persistent state라는 점을 이용해 더 높은 input precision을 쓰고, 같은 vector element를 여러 cell에 중복 배치해 읽은 뒤 평균내는 방식으로 device variation을 줄인다. 여러 noisy estimate를 평균하면 서로 독립적인 성분의 분산이 줄어드는 통계적 원리를 hardware mapping에 사용한 것이다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+아래 Figure 2f는 실제 1024×128 array가 들어간 chip photograph이고, 2g는 반복 read cycle의 안정성을, 2h는 device conductance variation의 분포를 보여준다. 즉 Figure 2는 알고리즘 그림만 있는 것이 아니라 **어떤 오차를 줄이려 했고, 실제 device가 어느 정도 흔들리는지**를 한 장에서 연결한다.
+
+## 4. 실제 hardware는 어디까지인가
+
+연구진은 130 nm 공정으로 1024×128 one-transistor-one-resistor(1T1R) memristor array와 CMOS peripheral circuit을 제작했다. 각 cell의 memristor는 TiN/TaOₓ/HfO₂/TiN stack을 사용한다. FPGA controller가 칩과 연결돼 mapping·입력·읽기·iteration을 제어한다.<a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a><a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+이 실칩의 의미는 “GPU 전체를 대체하는 완성형 accelerator”와는 다르다. ADC, driver, controller, 데이터 준비가 필요하고, 논문의 대규모 시스템 효율 비교에는 architecture model이 개입한다. 하지만 반복 SVD가 device variation을 포함한 물리 array에서 실제로 수렴하고, 응용 결과가 software SVD에 가까운 수준으로 유지된다는 증거는 실물 hardware에서 얻었다.
+
+논문은 IRIS data에서 SREA를 켠 MSVD가 SREA가 없는 경우보다 singular-value 평균 정확도를 최대 약 13배 개선한다고 보고한다. 이 숫자는 “모든 dataset에서 13배”가 아니라 특정 오차 조건과 비교 기준에서 얻은 최대 개선이다. SREA의 역할을 보여주는 ablation으로 읽는 것이 적절하다.
+
+## 5. Figure 4: 숫자가 아니라 복원 결과를 본다
+
+<NewsFigure media="msvd-fig-4" />
+
+Figure 4a는 낮은 rank를 사용해 이미지를 다시 만드는 과정을 보여준다. software SVD, SREA 없는 MSVD, SREA를 쓴 MSVD를 나란히 두고 scaling coefficient가 커질 때 reconstruction이 어떻게 무너지는지 비교한다. Figure 4b의 PSNR과 4c의 SSIM은 그 차이를 숫자로 요약한다. SREA를 쓴 경우 최대 PSNR 31.0 dB, SSIM 0.940을 보고했고, SREA가 없는 MSVD보다 각각 최대 4.8 dB와 0.114 개선됐다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+PSNR 31 dB가 곧 “사람이 차이를 볼 수 없다”는 뜻은 아니다. PSNR은 pixel error를 로그 스케일로 바꾼 값이고, SSIM은 구조적 유사성을 별도로 본다. 둘이 함께 높은 이유를 확인하려면 원본·복원 이미지와 error map을 같이 봐야 한다.
+
+Figure 4d–f는 COVID-19 hospital-admission 시계열을 low-rank component로 재구성한다. 앞쪽 두 rank에서는 software ground truth와 correlation coefficient 0.999, 세 번째 rank에서는 0.995가 보고된다. 이 수치는 감염병 예측의 임상 정확도가 아니라 **저차원 SVD component를 얼마나 비슷하게 재구성했는가**의 상관이다.
+
+<CandidateTable id="msvd-evidence" label="MSVD 결과를 실칩·모델링·시뮬레이션으로 분리">
+
+| 결과 | 무엇을 사용했나 | 이 숫자가 말하는 범위 |
+|---|---|---|
+| 31.0 dB PSNR / 0.940 SSIM | 실제 memristor MSVD 응용 | 이미지 low-rank reconstruction |
+| COVID rank 1·2 corr. 0.999 | 실제 memristor MSVD 응용 | software SVD component와의 유사도 |
+| SREA energy −48.5%, speed +48.1% | architecture·operation 평가 | SREA 없는 MSVD 대비 개선 |
+| A100 대비 29.9× energy efficiency | 검증된 32 nm memristor architecture model | 동일 수치연산 기준의 모델 비교 |
+| A100 대비 19.0× normalized speed | 32 nm model, area-normalized metric | wall-clock training time과 다름 |
+| LLaMA 3.2-3B GSM8K 51.25 | memristor noise를 포함한 MSVD simulation | 실칩에 전체 LLM을 올린 결과가 아님 |
+| LLM 41.6× energy / 23.1× speed | 32 nm system model | 실물 130 nm board 직접 계측치가 아님 |
+
+</CandidateTable>
+
+## 6. 29.9배를 실제 전력계 숫자로 읽으면 안 되는 이유
+
+논문의 Methods는 verified design과 XPESim을 사용해 memristor array와 peripheral circuit의 energy를 평가한다. EMG workload에서 singular vector solving에 필요한 연산량을 맞춰 A100과 비교했을 때 GPU 쪽 400 μJ, 모델링한 MSVD 쪽 13.40 μJ를 사용해 29.9× energy-efficiency advantage를 계산한다. 같은 절은 130 nm 조건으로 환산해도 약 10× advantage가 남는다고 별도로 적는다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+<CandidateEquation id="msvd-energy" title="29.9× energy advantage는 어떻게 나온 비율인가?" tex={String.raw`R_E=\frac{E_{\mathrm{GPU}}}{E_{\mathrm{MSVD}}}=\frac{400\,\mu\mathrm{J}}{13.40\,\mu\mathrm{J}}\approx29.9\tag{3}`}>
+
+분자 <Math tex={String.raw`E_{\mathrm{GPU}}`} />와 분모 <Math tex={String.raw`E_{\mathrm{MSVD}}`} />는 같은 solving workload에 대해 논문이 비교에 사용한 에너지다. GPU energy를 MSVD energy로 나누므로 값이 1보다 크면 MSVD 쪽이 같은 계산을 더 적은 에너지로 수행한다는 뜻이 된다.
+
+그러나 이 식의 13.40 μJ는 130 nm 보드의 콘센트에 전력계를 달아 직접 측정한 end-to-end joule이 아니다. 논문이 검증한 memristor architecture를 32 nm 조건에서 평가한 모델 결과다. 따라서 비율 계산은 정확하지만, **무엇을 측정한 숫자인지**를 바꾸어 말하면 안 된다.
+
+normalized speed 19.0×도 같은 주의가 필요하다. 논문은 computing time뿐 아니라 chip area를 포함한 normalized metric을 사용한다. 이를 “LLM 학습 wall-clock이 19배 짧다”로 옮기면 다른 물리량이 된다.
+
+</CandidateEquation>
+
+## 7. Figure 7: LLM 결과는 무엇을 실제로 보여줬나
+
+<NewsFigure media="msvd-fig-7" />
+
+Figure 7a–b는 LoRA와 PiSSA의 차이를 먼저 그린다. LoRA는 low-rank adapter를 새로 붙여 학습하고, PiSSA는 pretrained weight의 중요한 singular component를 low-rank trainable part로 초기화한다. 즉 SVD 자체가 low-rank adaptation의 시작점에 들어간다.
+
+논문은 LLaMA 3.2-1B와 3B에 MSVD-based PiSSA initialization을 simulation했다. 3B의 GSM8K에서는 vanilla adaptation 46.40, MSVD-based PiSSA 51.25, software PiSSA 51.40을 보고한다. MSVD noise를 포함한 initialization이 software SVD 결과에 매우 가깝다는 것이 핵심이다. 1B에서도 24.11 → 26.41로 개선됐다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+그렇다고 LLaMA 3.2-3B 전체 weight를 1024×128 실칩에 올리고 end-to-end fine-tuning했다는 뜻은 아니다. Figure 7의 대규모 LLM 부분은 memristor characteristics를 반영한 simulation이고, 41.6× energy efficiency와 23.1× speed advantage도 32 nm system model의 비교다. 이 구분이 논문의 가장 중요한 제한 중 하나다.
+
+## 8. 무엇이 달라질 수 있고, 다음에는 무엇을 봐야 하나
+
+이번 결과가 중요한 이유는 memristor CIM의 대상 알고리즘이 fixed-weight neural inference를 넘어가기 때문이다. SVD는 <strong>iteration, convergence criterion, persistent vector state, deflation, update</strong>가 필요한 numerical linear algebra다. 이런 구조를 안정적으로 다룰 수 있다면 PCA, denoising, compression, recommendation, personalized edge learning 같은 분야에도 같은 설계 철학을 확장할 수 있다.
+
+특히 incremental MSVD는 이미 저장한 singular vector를 유지하면서 새 사용자 데이터를 추가한다. 모든 과거 데이터를 다시 remap하지 않는다는 점은 wearable sensor와 지속 학습 환경에 매력적이다. 다만 device endurance, write cost, drift, ADC와 controller overhead가 장기 동작에서 어떻게 누적되는지는 별도의 full-system 검증이 필요하다.
+
+다음 트리거는 배율 숫자보다 범위를 넓히는 실험이다. 첫째, 130 nm가 아닌 advanced-node integrated system에서 실제 board-level joule과 wall-clock을 직접 재는가. 둘째, 여러 array를 묶어 큰 rank와 큰 matrix를 계산할 때 정밀도가 유지되는가. 셋째, ADC·DAC·write-verify·controller·data movement까지 포함한 end-to-end energy가 공개되는가. 넷째, LLaMA급 decomposition을 simulation이 아닌 물리 memristor array에서 수행하는가. 마지막으로 여러 fabrication lot과 온도·시간 drift에서 같은 convergence가 재현되는가를 봐야 한다. 공개 코드·데이터는 논문 저장소에서 후속 재현의 출발점으로 제공된다.<a href="#news-ref-3" data-news-citation="3" aria-label="참고문헌 3로 이동" data-astro-reload>[3]</a>
+
+그 단계가 확인되면 MSVD의 의미는 “SVD 전용 demo”를 넘어 **일반적인 iterative linear-algebra accelerator**라는 더 큰 범주로 이동할 수 있다.
+
+## 9. 출처
+
+1. <a id="news-ref-1" data-news-reference="1" href="https://www.nature.com/articles/s41467-026-76272-2" target="_blank" rel="noopener noreferrer">Ding, C. et al., “Memristive singular value decomposition,” Nature Communications 17, 8006 (2026), published 20 September 2026.</a>
+2. <a id="news-ref-2" data-news-reference="2" href="https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-026-76272-2/MediaObjects/41467_2026_76272_MOESM1_ESM.pdf" target="_blank" rel="noopener noreferrer">Supplementary Information, same article.</a>
+3. <a id="news-ref-3" data-news-reference="3" href="https://github.com/Dchenc12/memristive_svd" target="_blank" rel="noopener noreferrer">Public code and data repository, Dchenc12/memristive_svd.</a>
