@@ -88,6 +88,17 @@ try{
     await js('document.fonts.ready.then(()=>true)');
     assert(await js(`Array.from(document.querySelectorAll('time')).some(t=>t.dateTime==='2026-09-21T15:00:00.000Z'&&t.textContent.includes('Sep 22, 2026'))`),'Correct publication instant and Korean date');
     assert(!(await js(`!!document.querySelector('[data-adsense-deferred],meta[name="google-adsense-account"]')`)),'No advertising on quoted scholarly figures');
+    const beginnerSummary='[data-beginner-guide] > summary';
+    assert.equal(await js(`document.querySelectorAll('[data-beginner-guide]').length`),1,'Exactly one beginner visual guide');
+    assert(await js(`document.querySelector('[data-beginner-guide]').textContent.length>500`),'Beginner guide has substantial explanation');
+    assert(await js(`!!document.querySelector('[data-beginner-guide] [data-news-figure="${edition.mediaIds[0]}"]')`),'First original figure lives inside beginner guide');
+    await pointer(beginnerSummary,mobile);
+    await wait(`document.querySelector('[data-beginner-guide]').open`,'pointer opens beginner guide');
+    await enter(beginnerSummary);
+    await wait(`!document.querySelector('[data-beginner-guide]').open`,'Enter closes beginner guide');
+    await enter(beginnerSummary);
+    await wait(`document.querySelector('[data-beginner-guide]').open`,'Enter reopens beginner guide');
+    if(width===390&&!dark)await shot(`${edition.key}-beginner-guide-390-light`);
     // Decode every locally hosted figure before history tests; delayed image
     // layout must not invalidate the native citation hit-test coordinates.
     for(const id of edition.mediaIds){
@@ -143,7 +154,7 @@ try{
     assert(!final.overflow&&final.katexErrors===0&&final.details===edition.equations.length&&final.notesSmall);
     assert.equal(final.citations,Object.values(edition.citationCounts).reduce((a,b)=>a+b,0));
     await js('scrollTo({top:0,behavior:"instant"})');await shot(`${edition.key}-opening-${width}-${dark?'dark':'light'}`);
-    results.push({...activeCase,originals:edition.mediaIds.length,originalPointerActivations:edition.mediaIds.length,equationPointerActivations:edition.equations.length,equationKeyboardActivations:edition.equations.length*3,sourcePointerActivations:referenceNumbers.length,sourceKeyboardActivations:referenceNumbers.length,sourceBackChecks:referenceNumbers.length*2,notesSmall:true});
+    results.push({...activeCase,beginnerGuidePointerActivations:1,beginnerGuideKeyboardActivations:2,originals:edition.mediaIds.length,originalPointerActivations:edition.mediaIds.length,equationPointerActivations:edition.equations.length,equationKeyboardActivations:edition.equations.length*3,sourcePointerActivations:referenceNumbers.length,sourceKeyboardActivations:referenceNumbers.length,sourceBackChecks:referenceNumbers.length*2,notesSmall:true});
     console.log('sep22-browser: PASS '+JSON.stringify(results.at(-1)));
   }
   assert.equal(results.length,catalogue.entries.length*4);fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,results},null,2));
