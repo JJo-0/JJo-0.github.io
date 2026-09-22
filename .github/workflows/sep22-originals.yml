@@ -1,0 +1,48 @@
+name: Sep22 original figure review
+on:
+  push:
+    branches: [ops/sep22-source-review]
+    paths: [.github/workflows/sep22-originals.yml]
+permissions:
+  contents: write
+jobs:
+  figures:
+    if: github.ref == 'refs/heads/ops/sep22-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install requests==2.32.5 Pillow==11.3.0
+      - name: Preserve figure bytes as immutable objects only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64,hashlib,io,json,os,concurrent.futures
+          from pathlib import Path
+          import requests
+          from PIL import Image
+          out=Path('originals');out.mkdir()
+          sets=[('mos2','s41467-026-77186-9','41467_2026_77186',[1,2,3,5]),('treg','s41590-026-02655-8','41590_2026_2655',[3,5,8]),('phage','s41591-026-04654-6','41591_2026_4654',[1,2])]
+          items=[(key,doi,stem,n) for key,doi,stem,nums in sets for n in nums]
+          def acquire(item):
+              key,doi,stem,n=item
+              url=f'https://media.springernature.com/full/springer-static/image/art%3A10.1038%2F{doi}/MediaObjects/{stem}_Fig{n}_HTML.png'
+              r=requests.get(url,timeout=(15,90));r.raise_for_status();data=r.content
+              image=Image.open(io.BytesIO(data));image.load();assert image.format=='PNG' and image.width>400
+              name=f'{key}-fig-{n}.png';(out/name).write_bytes(data)
+              row={'id':f'sep22-{key}-fig-{n}','file':name,'url':url,'width':image.width,'height':image.height,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+              response=requests.post('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'},json={'encoding':'base64','content':base64.b64encode(data).decode()},timeout=90)
+              response.raise_for_status();row['blobSha']=response.json()['sha'];assert row['blobSha']==hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()
+              image.thumbnail((1600,1800));image.convert('RGB').save(out/(name[:-4]+'-review.jpg'),quality=92)
+              return row
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:rows=list(pool.map(acquire,items))
+          (out/'manifest.json').write_text(json.dumps(rows,indent=2));print(json.dumps(rows,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep22-originals
+          path: originals/
+          retention-days: 7
+          if-no-files-found: error
