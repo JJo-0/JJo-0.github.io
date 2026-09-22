@@ -1,0 +1,84 @@
+name: Sep22 cohort-source distinction
+on:
+  push:
+    branches: [ops/sep22-source-review]
+    paths: [.github/workflows/sep22-cohort-note.yml]
+permissions:
+  contents: write
+jobs:
+  correction:
+    if: github.ref == 'refs/heads/ops/sep22-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: a3b059d74494dccd572003a321cac9563efdff75
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.19.0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Preserve paper text and flag the plotted sample discrepancy
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('spaceship-ui')
+          p=root/'site/content/posts/2026-09-22-mos2-sub5nm-transistors-news.mdx';s=p.read_text()
+          replacements=[
+            ('138개 소자의 분포, 공기 틈과 접촉부 게이팅','소자별 SS 통계, 공기 틈과 접촉부 게이팅'),
+            ('| 서로 다른 138개 소자 | SS 중앙값 92 mV/dec, 표준편차 약 10 mV/dec | 대표 소자 외에도 성능이 반복되는가 |','| 본문의 SS 요약 통계 | SS 중앙값 92 mV/dec, 표준편차 약 10 mV/dec | 대표 소자와 집단 요약의 차이는 무엇인가 |'),
+            ('138개 소자를 실제로 측정했다는 점은 중요하다. 통계가 없는 단일 소자 기록으로 소개하면 근거를 과소평가한다. 반대로 138개 결과만으로 웨이퍼 전체의 모든 소자가 동작하는 수율을 계산할 수도 없다. 수율에는 측정 표본 외에 전체 제조 개수, 성공 판정 기준, 공간적 표본 선택이 필요하다. 대표 SS 88과 집단 중앙값 92도 서로 대체하지 않는다.',
+             '저자들은 본문에서 138개 소자를 측정했다고 보고하고, SS 중앙값 92 mV/dec와 표준편차 약 10 mV/dec를 제시한다. 위 표는 이 본문 요약을 옮겼다. 대표 소자의 88 mV/dec와 집단 요약의 92 mV/dec는 각각 한 소자의 특성과 여러 소자의 통계를 뜻한다. 수율을 판단하려면 측정 표본뿐 아니라 전체 제조 개수, 성공 판정 기준, 공간적 표본 선택도 필요하다.\n\n<small>표본 범위 확인: 원문 PDF 4쪽의 본문은 전체 측정 수를 138개로 보고한다. 반면 Figure 3f의 Counts 축에서 다섯 막대의 높이를 읽으면 약 35+32+12+11+5=95개의 관측치에 해당한다. 공개 자료에는 두 숫자의 관계가 명시되어 있지 않아, 그림을 138개 전체의 히스토그램으로 단정하지 않는다. 그림에서 읽은 약 95개도 저자가 밝힌 전체 측정 수를 대체하는 값으로 사용하지 않는다. <a href="https://www.nature.com/articles/s41467-026-77186-9_reference.pdf#page=4" target="_blank" rel="noopener noreferrer">본문과 Figure 3f 함께 보기</a></small>'),
+            ('이 논문이 보여준 138개 소자의 분포는 반복성의 실제 증거이고, 다음 단계는 그 표본을 전체 공정의 공간적 분포와 성공률로 연결하는 일이다.','논문은 138개 소자 측정을 보고하며 반복성을 평가한다. 다음 단계는 실제 통계에 포함한 표본과 전체 측정 집합의 관계를 명확히 하고, 그 표본을 공정의 공간적 분포와 성공률로 연결하는 일이다.'),
+            ('88 mV/dec를 읽는 법과 138개 소자의 분포, 테이프·습식 경로의 차이까지 함께 볼 때','88 mV/dec를 읽는 법과 소자별 SS 통계의 표본 범위, 테이프·습식 경로의 차이까지 함께 볼 때'),
+          ]
+          for old,new in replacements:
+              assert s.count(old)==1,(old,s.count(old));s=s.replace(old,new)
+          p.write_text(s)
+          caption='a–c는 단면과 한 소자 안의 길이 분포, d–e는 대표 소자의 전기 측정, f는 소자별 SS 도수분포다. 980개 길이 구간은 소자 내부의 측정이며, 전체 측정 수와 f의 표시 도수 사이 관계는 본문의 작은 출처 주석에서 구분한다.'
+          for name in ['site/news-media.json','site/assets/assets/posts/news-20260922/provenance.json']:
+              p=root/name;j=json.loads(p.read_text());row=j['sep22-mos2-fig-3'] if isinstance(j,dict) else next(x for x in j if x['id']=='sep22-mos2-fig-3')
+              assert '138개 소자의 SS' in row['caption'];row['caption']=caption;row['alt']='MOS2 원문 Figure 3. '+caption
+              p.write_text(json.dumps(j,ensure_ascii=False,indent=2)+'\n')
+          p=root/'site/news-reading-20260922.json';j=json.loads(p.read_text())
+          j['required']['mos2']+=['본문에서 138개 소자를 측정','35+32+12+11+5=95','공개 자료에는 두 숫자의 관계가 명시되어 있지 않아','본문의 SS 요약 통계']
+          p.write_text(json.dumps(j,ensure_ascii=False,indent=2)+'\n')
+          PY
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';import crypto from 'node:crypto';
+          const p='spaceship-ui/site/news-edition-20260922.json',j=JSON.parse(fs.readFileSync(p,'utf8'));
+          const e=j.entries.find(e=>e.key==='mos2'),s=fs.readFileSync(`spaceship-ui/site/content/posts/${e.slug}.mdx`,'utf8');
+          const body=s.split('---').slice(2).join('---').split(/^## 9\. /m)[0].replace(/^import .*?;\s*/gm,'').replace(/<Math\b[\s\S]*?\/>/g,'').replace(/<CandidateEquation\b[^\n]+>/g,'').replace(/<[^>]*>/g,' ').replace(/\[\d+\]/g,'').replace(/[*#|`>]+/g,'').replace(/\s+/g,' ').trim();
+          e.sha256=crypto.createHash('sha256').update(s).digest('hex');e.bodyCharacters=body.length;
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');console.log(e.slug,e.sha256,e.bodyCharacters);
+          JS
+      - name: Source contract remains strict
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          node scripts/news-edition-20260922-contract.mjs
+      - name: Store exact immutable corrected blobs only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request,shutil
+          from pathlib import Path
+          paths=['spaceship-ui/site/content/posts/2026-09-22-mos2-sub5nm-transistors-news.mdx','spaceship-ui/site/news-media.json','spaceship-ui/site/assets/assets/posts/news-20260922/provenance.json','spaceship-ui/site/news-reading-20260922.json','spaceship-ui/site/news-edition-20260922.json']
+          out=Path('cohort-correction');out.mkdir();rows=[]
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'}
+          for name in paths:
+              p=Path(name);data=p.read_bytes();sha=hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers=headers,data=json.dumps({'encoding':'base64','content':base64.b64encode(data).decode()}).encode(),method='POST')
+              with urllib.request.urlopen(req,timeout=60) as r:assert json.load(r)['sha']==sha
+              rows.append({'path':name,'mode':'100644','type':'blob','sha':sha});q=out/name;q.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,q)
+          (out/'tree-elements.json').write_text(json.dumps(rows,indent=2));print(json.dumps(rows,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep22-cohort-source-correction
+          path: cohort-correction/
+          retention-days: 7
+          if-no-files-found: error
