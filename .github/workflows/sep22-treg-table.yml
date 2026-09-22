@@ -1,0 +1,67 @@
+name: Sep22 Treg table source correction
+on:
+  push:
+    branches: [ops/sep22-source-review]
+    paths: [.github/workflows/sep22-treg-table.yml]
+permissions:
+  contents: write
+jobs:
+  correction:
+    if: github.ref == 'refs/heads/ops/sep22-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 3aa4e22cde05c1538cac15b3ddc117278d1ad9c6
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.19.0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Bind the results table to the corrected replication unit
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('spaceship-ui');p=root/'site/content/posts/2026-09-22-irf4-treg-stability-news.mdx';s=p.read_text()
+          old='| Figure 8a의 억제 시험 | 다른 T세포의 증식을 제어하는가 | 배양 기능 시험, 2명의 기증자 |'
+          new='| Figure 8a의 억제 시험 | 다른 T세포의 증식을 제어하는가 | 배양 기능 시험, 3개의 기술 반복 |'
+          assert s.count(old)==1;s=s.replace(old,new);assert '2명의 기증자' not in s;p.write_text(s)
+          p=root/'site/news-reading-20260922.json';j=json.loads(p.read_text());j['required']['treg'].append(new);p.write_text(json.dumps(j,ensure_ascii=False,indent=2)+'\n')
+          PY
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';import crypto from 'node:crypto';
+          const p='spaceship-ui/site/news-edition-20260922.json',j=JSON.parse(fs.readFileSync(p,'utf8'));
+          const e=j.entries.find(e=>e.key==='treg'),s=fs.readFileSync(`spaceship-ui/site/content/posts/${e.slug}.mdx`,'utf8');
+          const body=s.split('---').slice(2).join('---').split(/^## 9\. /m)[0].replace(/^import .*?;\s*/gm,'').replace(/<Math\b[\s\S]*?\/>/g,'').replace(/<CandidateEquation\b[^\n]+>/g,'').replace(/<[^>]*>/g,' ').replace(/\[\d+\]/g,'').replace(/[*#|`>]+/g,'').replace(/\s+/g,' ').trim();
+          e.sha256=crypto.createHash('sha256').update(s).digest('hex');e.bodyCharacters=body.length;fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');console.log(e.slug,e.sha256,e.bodyCharacters);
+          JS
+      - name: Existing source and numerical checks
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          node scripts/news-edition-20260922-contract.mjs
+      - name: Store immutable corrected files without a branch change
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request,shutil
+          from pathlib import Path
+          paths=['spaceship-ui/site/content/posts/2026-09-22-irf4-treg-stability-news.mdx','spaceship-ui/site/news-reading-20260922.json','spaceship-ui/site/news-edition-20260922.json']
+          out=Path('treg-table-correction');out.mkdir();rows=[]
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'}
+          for name in paths:
+              p=Path(name);data=p.read_bytes();sha=hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers=headers,data=json.dumps({'encoding':'base64','content':base64.b64encode(data).decode()}).encode(),method='POST')
+              with urllib.request.urlopen(req,timeout=60) as r:assert json.load(r)['sha']==sha
+              rows.append({'path':name,'mode':'100644','type':'blob','sha':sha});shutil.copyfile(p,out/p.name)
+          (out/'tree-elements.json').write_text(json.dumps(rows,indent=2));print(json.dumps(rows,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep22-treg-table-correction
+          path: treg-table-correction/
+          retention-days: 7
+          if-no-files-found: error
