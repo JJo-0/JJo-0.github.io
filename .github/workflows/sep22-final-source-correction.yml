@@ -1,0 +1,86 @@
+name: Sep22 final source correction
+on:
+  push:
+    branches: [ops/sep22-source-review]
+    paths: [.github/workflows/sep22-final-source-correction.yml]
+permissions:
+  contents: write
+jobs:
+  review:
+    if: github.ref == 'refs/heads/ops/sep22-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feec9b5132259afd60069da032f02b4a5c8fd02c
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.19.0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Correct only the caption-supported replication units
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('spaceship-ui/site/content/posts/2026-09-22-irf4-treg-stability-news.mdx')
+          s=p.read_text()
+          old='이 실험은 2명의 기증자와 기술 반복을 사용했다. 앞서 Figure 5의 6명 기증자 실험과 동일한 표본 수로 표시하면 안 된다.'
+          new='원문 Figure 8a는 3개의 기술 반복에 대한 평균과 표준편차를 표시한다. 기술 반복 수는 서로 다른 기증자 수와 별개이므로, Figure 5의 6명 기증자 비교와 구분해 읽는다.'
+          assert s.count(old)==1;s=s.replace(old,new)
+          old='이 검증에는 두 인간 기증자의 세포가 사용됐고, 주요 PBMC 또는 Treg 비교군은 14–15마리, 방사선 처리만 한 대조군은 7마리다.'
+          new='생쥐 실험은 2명의 인간 기증자의 세포를 사용했으며, 주요 PBMC 또는 Treg 비교군은 14–15마리, 방사선 처리만 한 대조군은 7마리다.'
+          assert s.count(old)==1;s=s.replace(old,new);p.write_text(s)
+          p=Path('spaceship-ui/site/news-reading-20260922.json');j=json.loads(p.read_text())
+          assert j['required']['treg'].count('2명의 기증자')==1
+          j['required']['treg'].remove('2명의 기증자')
+          j['required']['treg']+=['3개의 기술 반복','생쥐 실험은 2명의 인간 기증자']
+          p.write_text(json.dumps(j,ensure_ascii=False,indent=2)+'\n')
+          PY
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const ep='spaceship-ui/site/news-edition-20260922.json';
+          const j=JSON.parse(fs.readFileSync(ep,'utf8'));
+          const e=j.entries.find(e=>e.key==='treg');
+          const s=fs.readFileSync(`spaceship-ui/site/content/posts/${e.slug}.mdx`,'utf8');
+          const body=s.split('---').slice(2).join('---').split(/^## 9\. /m)[0]
+            .replace(/^import .*?;\s*/gm,'').replace(/<Math\b[\s\S]*?\/>/g,'')
+            .replace(/<CandidateEquation\b[^\n]+>/g,'').replace(/<[^>]*>/g,' ')
+            .replace(/\[\d+\]/g,'').replace(/[*#|`>]+/g,'').replace(/\s+/g,' ').trim();
+          e.sha256=crypto.createHash('sha256').update(s).digest('hex');
+          e.bodyCharacters=body.length;
+          fs.writeFileSync(ep,JSON.stringify(j,null,2)+'\n');
+          console.log(e.slug,e.sha256,e.bodyCharacters);
+          JS
+      - name: Preserve all source assertions
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          node scripts/news-edition-20260922-contract.mjs
+      - name: Store immutable corrected blobs, without moving any branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,urllib.request,shutil
+          from pathlib import Path
+          paths=['spaceship-ui/site/content/posts/2026-09-22-irf4-treg-stability-news.mdx','spaceship-ui/site/news-reading-20260922.json','spaceship-ui/site/news-edition-20260922.json']
+          out=Path('source-correction');out.mkdir();rows=[]
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'}
+          for name in paths:
+              p=Path(name);data=p.read_bytes();sha=hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers=headers,data=json.dumps({'encoding':'base64','content':base64.b64encode(data).decode()}).encode(),method='POST')
+              with urllib.request.urlopen(req,timeout=60) as r:assert json.load(r)['sha']==sha
+              rows.append({'path':name,'mode':'100644','type':'blob','sha':sha})
+              shutil.copyfile(p,out/p.name)
+          (out/'tree-elements.json').write_text(json.dumps(rows,indent=2))
+          print(json.dumps(rows,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep22-final-source-correction
+          path: source-correction/
+          retention-days: 7
+          if-no-files-found: error
