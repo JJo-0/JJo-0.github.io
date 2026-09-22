@@ -1,0 +1,82 @@
+name: Sep22 primary source review
+on:
+  push:
+    branches: [ops/sep22-source-review]
+    paths: [.github/workflows/sep22-source-review.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: acb78cf61689a27c4fa64d55aa373323750c104d
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install requests==2.32.5 beautifulsoup4==4.13.5 PyMuPDF==1.26.4 Pillow==11.3.0
+      - name: Read complete papers and preserve original figures
+        run: |
+          python - <<'PY'
+          import requests,fitz,hashlib,json,subprocess,zipfile,concurrent.futures,re,io
+          from pathlib import Path
+          from urllib.parse import urljoin
+          from bs4 import BeautifulSoup
+          from PIL import Image
+          out=Path('sep22-evidence');out.mkdir()
+          def capture(item):
+              key,doi=item;root=out/key;root.mkdir();session=requests.Session();session.headers['User-Agent']='Mozilla/5.0 scholarly-reading'
+              page='https://www.nature.com/articles/'+doi;receipts=[]
+              def get(name,url,kind='html'):
+                  try:
+                      r=session.get(url,timeout=(15,65));r.raise_for_status();data=r.content
+                      assert len(data)<60000000
+                      if kind=='pdf':assert data.startswith(b'%PDF-'),'Non-PDF response'
+                      if kind=='image':Image.open(io.BytesIO(data)).verify()
+                      (root/name).write_bytes(data);receipts.append({'file':name,'url':url,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+                      return data
+                  except Exception as e:receipts.append({'file':name,'url':url,'error':str(e)});return None
+              html=get('article.html',page)
+              if html:
+                  soup=BeautifulSoup(html,'html.parser');main=soup.select_one('article') or soup.select_one('main') or soup
+                  (root/'article.txt').write_text(main.get_text('\n',strip=True))
+                  links=[{'url':urljoin(page,a['href']),'text':a.get_text(' ',strip=True)} for a in main.select('a[href]')]
+                  (root/'links.json').write_text(json.dumps(links,ensure_ascii=False,indent=2))
+                  figures=[]
+                  for fig in main.select('figure'):
+                      fid=fig.get('id','');im=fig.select_one('img');rec={'id':fid,'text':fig.get_text(' ',strip=True)}
+                      if im:
+                          url=urljoin(page,im.get('src',''));rec['alt']=im.get('alt','')
+                          if 'media.springernature.com' in url and '/springer-static/' in url:url='https://media.springernature.com/full/springer-static/'+url.split('/springer-static/',1)[1]
+                          rec['url']=url
+                          if re.fullmatch(r'Fig[1-8]',fid):
+                              data=get(fid.lower()+'.png',url,'image')
+                              if data:
+                                  image=Image.open(io.BytesIO(data));rec.update(width=image.width,height=image.height)
+                                  image.thumbnail((1600,1800));image.convert('RGB').save(root/(fid.lower()+'-review.jpg'),quality=92)
+                      figures.append(rec)
+                  (root/'figures.json').write_text(json.dumps(figures,ensure_ascii=False,indent=2))
+                  pdfs=list(dict.fromkeys([x['url'] for x in links if '.pdf' in x['url'] and ('Download PDF' in x['text'] or 'reference.pdf' in x['url'])]+[page+'.pdf',page+'_reference.pdf']))
+                  for url in pdfs:
+                      if get('paper.pdf',url,'pdf'):break
+                  supplements=[x for x in links if '.pdf' in x['url'] and any(t in x['text'].lower() for t in ['supplementary','peer review','reporting'])]
+                  for i,x in enumerate(supplements[:3]):get(f'supplement-{i+1}.pdf',x['url'],'pdf')
+              for p in root.glob('*.pdf'):
+                  doc=fitz.open(p);(root/(p.stem+'.txt')).write_text('\n'.join(f'--- PDF PAGE {i+1} ---\n'+page.get_text() for i,page in enumerate(doc)))
+              (root/'receipts.json').write_text(json.dumps(receipts,ensure_ascii=False,indent=2));print(key,len(receipts))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:list(pool.map(capture,[('mos2','s41467-026-77186-9'),('treg','s41590-026-02655-8'),('phage','s41591-026-04654-6')]))
+          with zipfile.ZipFile(out/'repo.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in subprocess.check_output(['git','ls-files','-z']).decode().split('\0'):
+                  p=Path(name)
+                  if p.is_file() and (name.startswith(('spaceship-ui/','scripts/','.github/')) or name in ['CONTENT_POLICY.md','AGENTS.md']):z.write(p,name)
+          (out/'base.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep22-source-evidence
+          path: sep22-evidence/
+          retention-days: 3
+          if-no-files-found: error
