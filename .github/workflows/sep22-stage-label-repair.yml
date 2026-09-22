@@ -1,0 +1,101 @@
+name: Sep22 table and reading repair
+on:
+  push:
+    branches: [ops/sep22-source-review]
+    paths: [.github/workflows/sep22-stage-label-repair.yml]
+permissions:
+  contents: write
+jobs:
+  staging:
+    if: github.ref == 'refs/heads/ops/sep22-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run: {shell: bash}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/news-20260922-mos2-treg-phage
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install PyYAML==6.0.2
+      - name: Apply the pinned staging recipe with the table prop correction
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess,urllib.request,yaml
+          from pathlib import Path
+          url='https://api.github.com/repos/JJo-0/JJo-0.github.io/contents/.github/workflows/sep22-stage.yml?ref=183fd1a783c8cd0d3a22b6173195a6d84dab0a4d'
+          req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(req,timeout=60) as r:j=json.load(r)
+          raw=base64.b64decode(j['content']);assert hashlib.sha1(f'blob {len(raw)}\0'.encode()+raw).hexdigest()==j['sha']
+          wf=yaml.safe_load(raw);steps=wf['jobs']['staging']['steps']
+          recipe=next(s['run'] for s in steps if s.get('name')=='Bind authored source and integrate exact figures')
+          anchor='specs=[\n';assert recipe.count(anchor)==1
+          fix='''for p in (root/'site/content/posts').glob('2026-09-22*.mdx'):
+              s=p.read_text()
+              s=re.sub(r'(<CandidateTable id="[^"]+") title=',r'\\1 label=',s)
+              p.write_text(s)
+          p=root/'scripts/news-edition-20260922-contract.mjs';s=p.read_text()
+          target="  assert.deepEqual(lessons(source).map(m => m[1]), entry.equations);"
+          assert s.count(target)==1
+          s=s.replace(target,target+"\\n  for (const tag of source.matchAll(/<CandidateTable\\\\b[^>]+>/g)) assert(/ label=\"[^\"]+\"/.test(tag[0]), 'Table label required');")
+          p.write_text(s)
+          '''
+          recipe=recipe.replace(anchor,fix+anchor)
+          subprocess.run(['bash','-e','-o','pipefail'],input=recipe,text=True,check=True)
+          Path('stage-review/recipe-blob.txt').write_text(j['sha'])
+          # Save only the reviewed commit/publication and artifact-preservation
+          # shell steps from the pinned recipe for later execution.
+          for name,file in [('Commit passing integration to its content branch only','commit.sh'),('Preserve exact source and rendered reading evidence','preserve.sh')]:
+              Path('stage-review/'+file).write_text(next(s['run'] for s in steps if s.get('name')==name))
+          PY
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.19.0}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Dependencies and Korean fonts
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Source and established publishing checks
+        working-directory: spaceship-ui
+        run: |
+          node scripts/news-edition-20260922-contract.mjs 2>&1 | tee ../stage-review/source.log
+          pnpm taxonomy:check 2>&1 | tee ../stage-review/taxonomy.log
+          pnpm lint 2>&1 | tee ../stage-review/lint.log
+          pnpm check 2>&1 | tee ../stage-review/type.log
+          pnpm seo:check 2>&1 | tee ../stage-review/seo.log
+          pnpm blog:harness:check 2>&1 | tee ../stage-review/harness.log
+      - name: Build and all content contracts
+        working-directory: spaceship-ui
+        run: |
+          pnpm build 2>&1 | tee ../stage-review/build.log
+          pnpm content:check 2>&1 | tee ../stage-review/content.log
+          node scripts/news-edition-20260922-contract.mjs 2>&1 | tee ../stage-review/rendered.log
+      - name: Complete native reading matrix
+        working-directory: spaceship-ui
+        timeout-minutes: 6
+        env: {JJO_SMOKE_REQUIRE_GPU: '0'}
+        run: node scripts/browser-sep22.mjs 2>&1 | tee ../stage-review/browser.log
+      - name: Commit only passing integration
+        run: bash -e -o pipefail stage-review/commit.sh
+      - name: Preserve exact evidence
+        if: always()
+        run: |
+          if test -f stage-review/preserve.sh; then bash -e -o pipefail stage-review/preserve.sh; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep22-stage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stage-review/
+          retention-days: 7
+          if-no-files-found: error
