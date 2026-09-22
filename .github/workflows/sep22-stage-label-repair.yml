@@ -41,14 +41,12 @@ jobs:
           p=root/'scripts/news-edition-20260922-contract.mjs';s=p.read_text()
           target="  assert.deepEqual(lessons(source).map(m => m[1]), entry.equations);"
           assert s.count(target)==1
-          s=s.replace(target,target+"\\n  for (const tag of source.matchAll(/<CandidateTable\\\\b[^>]+>/g)) assert(/ label=\"[^\"]+\"/.test(tag[0]), 'Table label required');")
+          s=s.replace(target,target+"\\n  for (const tag of source.matchAll(/<CandidateTable\\\\b[^>]+>/g)) assert(tag[0].includes(' label='), 'Table label required');")
           p.write_text(s)
           '''
           recipe=recipe.replace(anchor,fix+anchor)
           subprocess.run(['bash','-e','-o','pipefail'],input=recipe,text=True,check=True)
           Path('stage-review/recipe-blob.txt').write_text(j['sha'])
-          # Save only the reviewed commit/publication and artifact-preservation
-          # shell steps from the pinned recipe for later execution.
           for name,file in [('Commit passing integration to its content branch only','commit.sh'),('Preserve exact source and rendered reading evidence','preserve.sh')]:
               Path('stage-review/'+file).write_text(next(s['run'] for s in steps if s.get('name')==name))
           PY
