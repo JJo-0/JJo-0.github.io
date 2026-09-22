@@ -28,6 +28,7 @@ function validate(entry, source, identity = true) {
   assert.deepEqual([...source.matchAll(/<NewsFigure media="([^"]+)"/g)].map(m => m[1]), entry.mediaIds);
   assert.deepEqual([...source.matchAll(/<CandidateTable id="([^"]+)"/g)].map(m => m[1]), entry.tableIds);
   assert.deepEqual(lessons(source).map(m => m[1]), entry.equations);
+  for (const tag of source.matchAll(/<CandidateTable\b[^>]+>/g)) assert(tag[0].includes(' label='), 'Table label required');
   for (const [,id,title,tex,body] of lessons(source)) {
     assert(title.length > 12 && body.replace(/<[^>]*>/g, '').length > 170, `${id}: concrete authored explanation`);
     assert(body.includes('예를 들어'), `${id}: actual example is required`);
@@ -71,7 +72,7 @@ for (const p of provenance) {
   assert.equal(bytes.subarray(1,4).toString(), 'PNG');
   assert.equal(bytes.readUInt32BE(16), p.width); assert.equal(bytes.readUInt32BE(20), p.height);
   if (p.id.includes('phage')) {
-    assert.equal(p.license, '原권리자 저작권 · 해설용 도판 인용');
+    assert.equal(p.license, '원권리자 저작권 · 해설용 도판 인용');
     assert(p.rightsNote.includes('No express republication permission'));
   }
 }

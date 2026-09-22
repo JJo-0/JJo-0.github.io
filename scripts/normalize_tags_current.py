@@ -208,5 +208,11 @@ POST_TAXONOMY.update({
     '2026-09-21-erbium-1540nm-led-news.mdx': Taxonomy('finance-industry', 'near-infrared-optoelectronics', 'paper-review', ('frontier-candidate', 'integrated-photonics')),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-22-mos2-sub5nm-transistors-news.mdx': Taxonomy('finance-industry', '2d-transistors', 'paper-review', ('frontier-one', 'semiconductor')),
+    '2026-09-22-irf4-treg-stability-news.mdx': Taxonomy('health-lifestyle', 'treg-engineering', 'paper-review', ('frontier-candidate', 'treg-engineering')),
+    '2026-09-22-personalized-phage-guideline-news.mdx': Taxonomy('health-lifestyle', 'phage-therapy', 'research-report', ('frontier-candidate', 'phage-therapy')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
