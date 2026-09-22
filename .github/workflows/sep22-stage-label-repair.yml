@@ -48,7 +48,14 @@ jobs:
           subprocess.run(['bash','-e','-o','pipefail'],input=recipe,text=True,check=True)
           Path('stage-review/recipe-blob.txt').write_text(j['sha'])
           for name,file in [('Commit passing integration to its content branch only','commit.sh'),('Preserve exact source and rendered reading evidence','preserve.sh')]:
-              Path('stage-review/'+file).write_text(next(s['run'] for s in steps if s.get('name')==name))
+              command=next(s['run'] for s in steps if s.get('name')==name)
+              if file=='commit.sh':
+                  route=r'spaceship-ui/src/pages/posts/\[...slug\]/index.astro '
+                  assert command.count(route)==1
+                  command=command.replace(route,'')
+                  assert command.count('git diff --cached --check')==1
+                  command=command.replace('git diff --cached --check',"git --literal-pathspecs add -- 'spaceship-ui/src/pages/posts/[...slug]/index.astro'\ngit diff --cached --check")
+              Path('stage-review/'+file).write_text(command)
           PY
       - uses: pnpm/action-setup@v4
         with: {version: 10.19.0}
