@@ -1,0 +1,192 @@
+name: Sep22 integrated publication review
+on:
+  push:
+    branches: [ops/sep22-source-review]
+    paths: [.github/workflows/sep22-stage.yml]
+permissions:
+  contents: write
+jobs:
+  staging:
+    if: github.ref == 'refs/heads/ops/sep22-source-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/news-20260922-mos2-treg-phage
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Bind authored source and integrate exact figures
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse HEAD)" = "7bcb67cf69792a088ae0a23c9d4f9771fc7842b9"
+          python3 - <<'PY'
+          import base64,hashlib,json,os,re,urllib.request,concurrent.futures
+          from pathlib import Path
+          root=Path('spaceship-ui');out=Path('stage-review');out.mkdir()
+          H=lambda b:hashlib.sha256(b).hexdigest()
+          def write(p,s):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(s)
+          def dump(p,j):write(p,json.dumps(j,ensure_ascii=False,indent=2)+'\n')
+          def body(s):
+              s='---'.join(s.split('---')[2:]);s=re.split(r'^## 9\. ',s,flags=re.M)[0]
+              s=re.sub(r'^import .*?;\s*','',s,flags=re.M);s=re.sub(r'<Math\b[\s\S]*?/>','',s)
+              s=re.sub(r'<CandidateEquation\b[^\n]+>','',s);s=re.sub(r'<[^>]*>',' ',s)
+              s=re.sub(r'\[\d+\]','',s);s=re.sub(r'[*#|`>]+','',s);return re.sub(r'\s+',' ',s).strip()
+          # Keep long equations readable beside their numbers on mobile.
+          replacements={
+            '2026-09-22-mos2-sub5nm-transistors-news':[(
+                r'J_{\mathrm E}=q\,n_{\mathrm s}(V_{\mathrm{GS}})v_{\mathrm{inj}}\,\exp\!\left[-\frac{q\varphi_{\mathrm{ch}}(V_{\mathrm{GS}})}{k_{\mathrm B}T}\right]\tag{3}',
+                r'\begin{aligned}J_{\mathrm E}&=q\,n_{\mathrm s}(V_{\mathrm{GS}})v_{\mathrm{inj}}\\&\quad\times\exp\!\left[-\frac{q\varphi_{\mathrm{ch}}(V_{\mathrm{GS}})}{k_{\mathrm B}T}\right]\end{aligned}\tag{3}'),
+                ('## 3. 광학 노광으로 5 nm 선을 직접 그린 것은 어떻게 다른가','## 3. 5 nm 간격은 어떻게 만들어졌나')],
+            '2026-09-22-irf4-treg-stability-news':[(
+                r's=\left(1-\frac{d_{\mathrm{with\ Treg}}}{d_{\mathrm{without\ Treg}}}\right)\times100\%\tag{2}',
+                r'\begin{aligned}s&=\left(1-\frac{d_{\mathrm{with\ Treg}}}{d_{\mathrm{without\ Treg}}}\right)\\&\quad\times100\%\end{aligned}\tag{2}')]
+          }
+          for slug,rs in replacements.items():
+              p=root/'site/content/posts'/f'{slug}.mdx';s=p.read_text()
+              for old,new in rs:assert s.count(old)==1,(slug,old);s=s.replace(old,new)
+              p.write_text(s)
+          p=root/'scripts/news-edition-20260922-contract.mjs';s=p.read_text();assert s.count('原권리자')==1;p.write_text(s.replace('原권리자','원권리자'))
+          specs=[
+            ('mos2','2026-09-22-mos2-sub5nm-transistors-news','finance-industry','2d-transistors','paper-review',['frontier-one','semiconductor'],[1,2,3,5],'s41467-026-77186-9','41467_2026_77186','Lin 외 · Nature Communications · 2026-09-21','CC BY-NC-ND 4.0','https://creativecommons.org/licenses/by-nc-nd/4.0/'),
+            ('treg','2026-09-22-irf4-treg-stability-news','health-lifestyle','treg-engineering','paper-review',['frontier-candidate','treg-engineering'],[5,3,8],'s41590-026-02655-8','41590_2026_2655','Ho·Vu 외 · Nature Immunology · 2026-09-21','CC BY 4.0','https://creativecommons.org/licenses/by/4.0/'),
+            ('phage','2026-09-22-personalized-phage-guideline-news','health-lifestyle','phage-therapy','research-report',['frontier-candidate','phage-therapy'],[1,2],'s41591-026-04654-6','41591_2026_4654','Würstle 외 · Nature Medicine · 2026-09-21','원권리자 저작권 · 해설용 도판 인용','https://www.nature.com/articles/s41591-026-04654-6#rightslink')]
+          blobs={
+            'mos2-1':('1eab13ccf407819d435c04a7d55e5d3c62f7a4bf','67a43c8d26c9f953a3a7b928a6400ee6b1ab3af6a6c35f85262814d099de31fa'),
+            'mos2-2':('7305e700a90cb74ae935275ab230a7bf5a5cc396','5ba4a6c125d5970958c2bb45ee0955f5c0f484c29df5e95ad4acfbea365074e4'),
+            'mos2-3':('fd5d46c5369ddc564d0752053904c89c649c59ca','ee199f845060c4b92a9233ae56d5f564f6ce36bc2e3a9faa98d7de2444ce7fa5'),
+            'mos2-5':('61c7f7b34cb5b3ac9af68b244d0a1520f4e230c9','e90c57740d96d91209a9ceb1fdbea34b7f24176fffb216c021194446033b5083'),
+            'treg-3':('65574d14c3d868784d7acdf97701e546ee3ad619','a4dcb025bd8bcea20bd19df10b2b6b267abdaecbb4dea1fd03b26790b55f30e2'),
+            'treg-5':('2492cfb3a45816a61444293064c7fef853e9e080','80d43b00c723223903141541e4ca9429ffa16e8d36473db22e0687b8e8524b14'),
+            'treg-8':('fe525801c45c55566f8712e2deaaffab8626eebb','976f90df6bcbce7985778027245c100ec22865c00bbfeffc642b517270f473d1'),
+            'phage-1':('9b38248f702090114a3cd163216b4b77332c0928','b17e8596b506f74f460bf2fc23356474b3ccea80240916f3ade0cf7ee61e74b3'),
+            'phage-2':('c4e491eda3915d2237e2cd8bc6a2ba1004b3805a','c4d6db319ba2fe55e104dba85b62dab91690ed65020d1f4cf1afd508e365fa58')}
+          captions={
+            'mos2-1':'a는 4인치 웨이퍼, b는 공기 틈과 접촉부까지 영향을 주는 게이트 구조, c는 물리적 채널 길이의 비교다. 게이트 길이와 소스–드레인 간격을 나누어 읽는다.',
+            'mos2-2':'a는 스페이서로 나노 간격을 정하는 공정, b는 테이프 보조 제거, c는 반도체 전사 전 전극 사이 누설, d는 소자의 전체 배치다. CMOS 호환 습식 대안은 본문과 보충자료에서 별도로 설명한다.',
+            'mos2-3':'a–c는 단면과 한 소자 안의 길이 분포, d–e는 대표 소자의 전기 측정, f는 서로 다른 138개 소자의 SS다. 980개 길이 구간과 138개 소자를 서로 다른 표본으로 읽는다.',
+            'mos2-5':'양자 수송 모델의 전위·장벽·전하 밀도와 구조 비교다. c–d는 채널 아래 틈의 유전율, f는 게이트–접촉 겹침의 영향을 보여준다. 제작 소자를 모두 바꿔 잰 실측 ablation과 구분한다.',
+            'treg-3':'a는 단일세포 상태 공간, b는 조절 모티프 차이, c는 IRF4 주변 접근성 트랙, d–f는 사이토카인 조건과 두 조절 영역의 관계다. 관찰된 연결을 다음 표적 제거 실험으로 시험한다.',
+            'treg-5':'a의 FOXP3·HELIOS 점 분포와 b의 기증자별 비교는 불안정 세포의 비중을 보여준다. c–d는 유지된 세포의 FOXP3 발현 강도를 평가한다. 85%는 대조군 대비 상대 감소다.',
+            'treg-8':'a는 반응 T세포의 증식 억제 곡선, b는 염증에 미리 노출한 인간 Treg의 생쥐 평가 설계, c는 집단별 생존 곡선이다. 세포 표지자와 실제 억제·보호 기능을 연결한다.',
+            'phage-1':'맞춤형 사용과 임상시험의 경로, 파지 유효성분 API와 최종 치료 제품 PTMP의 관계를 보여준다. 본문의 역할표에서 제품 준비와 임상 효과 평가를 나누어 읽는다.',
+            'phage-2':'파지와 숙주 세균의 출발 자료, 기준·작업용 보존 자료, 생산·품질 확인, 유효성분과 최종 제품의 연결이다. 각 상자는 생산의 계보와 책임을 추적할 단위를 나타낸다.'}
+          catalogue=json.loads((root/'site/news-media.json').read_text());historic={k:H(json.dumps(v,ensure_ascii=False,separators=(',',':')).encode()) for k,v in catalogue.items()}
+          prov=[];entries=[];formulas={}
+          def data(sha):
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=90) as r:j=json.load(r)
+              assert j['encoding']=='base64';b=base64.b64decode(j['content']);assert hashlib.sha1(f'blob {len(b)}\0'.encode()+b).hexdigest()==sha;return b
+          for order,(key,slug,cat,sub,typ,tags,nums,doi,stem,credit,lic,rights) in enumerate(specs,1):
+              source=(root/'site/content/posts'/f'{slug}.mdx').read_text();ids=[]
+              for n in nums:
+                  ident=f'sep22-{key}-fig-{n}';ids.append(ident);sha,digest=blobs[f'{key}-{n}'];b=data(sha);assert H(b)==digest
+                  src=f'/assets/posts/news-20260922/{key}-fig-{n}.png';p=root/('site/assets'+src);assert not p.exists();p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b)
+                  width=int.from_bytes(b[16:20],'big');height=int.from_bytes(b[20:24],'big');caption=captions[f'{key}-{n}']
+                  row={'slug':slug,'order':order,'src':src,'width':width,'height':height,'alt':f'{key.upper()} 원문 Figure {n}. '+caption,'kind':f'원문 Figure {n}','caption':caption,'credit':credit,'source':f'https://www.nature.com/articles/{doi}/figures/{n}','rights':rights,'license':lic,'changes':'원본 전체 PNG의 바이트·색상·패널을 유지했다. 한국어 해설은 이미지 밖에 별도로 작성했다.'}
+                  assert ident not in catalogue;catalogue[ident]=row
+                  prov.append({'id':ident,**row,'bytes':len(b),'sha256':digest,'blobSha':sha,'sourceByteIdentical':True,'originalUrl':f'https://media.springernature.com/full/springer-static/image/art%3A10.1038%2F{doi}/MediaObjects/{stem}_Fig{n}_HTML.png','rightsNote':'Original rights retained. No express republication permission is claimed for the phage figures; selected diagrams accompany analytical commentary, are not code under MIT, and are not offered under a CC grant.' if key=='phage' else 'Use subject to the stated article license. Original figure unchanged.','visualReview':{'status':'REVIEWED','imageSha256':digest,'date':'2026-09-22'}})
+              lessons=re.findall(r'<CandidateEquation id="([^"]+)" title="([^"]+)" tex=\{String\.raw`([^`]+)`\}>',source)
+              formulas.update({x[0]:x[2] for x in lessons})
+              references={n:{'url':url} for n,url in re.findall(r'<a id="news-ref-(\d+)" data-news-reference="\d+" href="([^"]+)"',source)}
+              title=re.search(r'^title: "(.*)"$',source,re.M).group(1)
+              entries.append({'key':key,'slug':slug,'title':title,'date':'2026-09-22','pubDate':'2026-09-22T00:00:00+09:00','order':order,'mediaIds':ids,'equations':[x[0] for x in lessons],'tableIds':re.findall(r'<CandidateTable id="([^"]+)"',source),'references':references,'citationCounts':{n:source.count(f'data-news-citation="{n}"') for n in references},'sha256':H(source.encode()),'mathExpressions':len(re.findall(r'<(?:Math|CandidateEquation)\b[^\n]*?tex=\{String\.raw`([^`]+)`\}',source)),'bodyCharacters':len(body(source)),'taxonomy':{'category':cat,'subcategory':sub,'type':typ,'tags':tags}})
+          dump(root/'site/news-media.json',catalogue);dump(root/'site/news-edition-20260922.json',{'date':'2026-09-22','entries':entries});dump(root/'site/assets/assets/posts/news-20260922/provenance.json',prov)
+          required={
+            'mos2':['테이프 기반 방식 자체는 CMOS 호환 공정이 아니라고','하나의 소자 내부','SS 중앙값 92 mV/dec','시뮬레이션','약 60 mV/dec보다 크다','88\\times3=264','528 mV'],
+            'treg':['17퍼센트포인트','인간 일차 세포의 편집·기능 실험과 생쥐에서의 보완 검증','6명의 정상 기증자','2명의 기증자','가상 수치','PCT/US2025/021912'],
+            'phage':['strong consensus는 95%를 초과','합의 지침(Consensus Statement)','가상 표결','높은 수준의 임상 근거가 충분하지 않다','60개가 넘는 권고와 설명 진술']}
+          dump(root/'site/news-reading-20260922.json',{'formulas':formulas,'required':required,'historicMedia':historic,'basis':'The published primary papers, the MoS2 accepted full manuscript and supplementary PDF, and user editorial brief; numerical teaching examples are explicitly hypothetical.'})
+          p=Path('scripts/normalize_tags_current.py');s=p.read_text();anchor='if __name__ == "__main__":';assert s.count(anchor)==1
+          lines=['POST_TAXONOMY.update({']
+          for e in entries:
+              t=e['taxonomy'];lines.append(f"    {e['slug']+'.mdx'!r}: Taxonomy({t['category']!r}, {t['subcategory']!r}, {t['type']!r}, {tuple(t['tags'])!r}),")
+          lines.append('})\n\n');p.write_text(s.replace(anchor,'\n'.join(lines)+anchor))
+          p=root/'src/pages/posts/[...slug]/index.astro';s=p.read_text();anchor="import sep21 from '../../../../site/news-edition-20260921.json';";assert s.count(anchor)==1
+          s=s.replace(anchor,"import sep22 from '../../../../site/news-edition-20260922.json';\n"+anchor)
+          assert s.count('adsEnabled={!sep21')==1;s=s.replace('adsEnabled={!sep21','adsEnabled={!sep22.entries.some((entry) => entry.slug === effectiveSlug) && !sep21');p.write_text(s)
+          p=root/'scripts/browser-news-media-audit.mjs';s=p.read_text();anchor="  const sep21 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260921.json', import.meta.url), 'utf8'));";assert s.count(anchor)==1
+          s=s.replace(anchor,anchor+"\n  const sep22 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260922.json', import.meta.url), 'utf8'));")
+          assert s.count('...sep21.entries')==2;s=s.replace('...sep21.entries','...sep21.entries, ...sep22.entries');p.write_text(s)
+          p=root/'scripts/browser-sep21.mjs';s=p.read_text().replace('20260921','20260922').replace('sep21','sep22').replace('2026-09-20T15:00:00.000Z','2026-09-21T15:00:00.000Z').replace('Sep 21, 2026','Sep 22, 2026')
+          s=s.replace("||name==='fiber-prior'||name==='erled-rates'", "||name==='mos2-capacitance'")
+          write(root/'scripts/browser-sep22.mjs',s)
+          p=Path('.github/workflows/sep21-reading.yml');s=p.read_text().replace('September 21','September 22').replace('sep21','sep22').replace('20260921','20260922');write(Path('.github/workflows/sep22-reading.yml'),s)
+          p=Path('.github/workflows/blog-pages-deploy.yml');s=p.read_text();anchor='      - name: Preserve live candidate reading evidence';assert s.count(anchor)==1
+          s=s.replace(anchor,'      - name: Live September 22 article reading\n        timeout-minutes: 6\n        run: node scripts/browser-sep22.mjs\n\n'+anchor)
+          anchor='      - name: Publish Pages live-smoke status';assert s.count(anchor)==1
+          s=s.replace(anchor,'      - name: Preserve live September 22 reading evidence\n        if: always()\n        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02\n        with:\n          name: sep22-live-${{ github.run_id }}-${{ github.run_attempt }}\n          path: spaceship-ui/sep22-review/\n          retention-days: 14\n          if-no-files-found: error\n\n'+anchor);p.write_text(s)
+          dump(out/'edition.json',{'entries':entries});print(json.dumps(entries,ensure_ascii=False,indent=2))
+          PY
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.19.0}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Dependencies and Korean fonts
+        working-directory: spaceship-ui
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Source assertions and numerical controls
+        working-directory: spaceship-ui
+        run: node scripts/news-edition-20260922-contract.mjs 2>&1 | tee ../stage-review/source.log
+      - name: Existing publishing checks
+        working-directory: spaceship-ui
+        run: |
+          pnpm taxonomy:check 2>&1 | tee ../stage-review/taxonomy.log
+          pnpm lint 2>&1 | tee ../stage-review/lint.log
+          pnpm check 2>&1 | tee ../stage-review/type.log
+          pnpm seo:check 2>&1 | tee ../stage-review/seo.log
+          pnpm blog:harness:check 2>&1 | tee ../stage-review/harness.log
+      - name: Build and content verification
+        working-directory: spaceship-ui
+        run: |
+          pnpm build 2>&1 | tee ../stage-review/build.log
+          pnpm content:check 2>&1 | tee ../stage-review/content.log
+          node scripts/news-edition-20260922-contract.mjs 2>&1 | tee ../stage-review/rendered.log
+      - name: Native reading matrix
+        working-directory: spaceship-ui
+        timeout-minutes: 6
+        env: {JJO_SMOKE_REQUIRE_GPU: '0'}
+        run: node scripts/browser-sep22.mjs 2>&1 | tee ../stage-review/browser.log
+      - name: Commit passing integration to its content branch only
+        run: |
+          git config user.name 'Park Jiho'
+          git config user.email '76779256+JJo-0@users.noreply.github.com'
+          git add spaceship-ui/site/content/posts/2026-09-22*.mdx spaceship-ui/scripts/news-edition-20260922-contract.mjs spaceship-ui/site/news-media.json spaceship-ui/site/news-edition-20260922.json spaceship-ui/site/news-reading-20260922.json spaceship-ui/site/assets/assets/posts/news-20260922/ scripts/normalize_tags_current.py spaceship-ui/src/pages/posts/\[...slug\]/index.astro spaceship-ui/scripts/browser-news-media-audit.mjs spaceship-ui/scripts/browser-sep22.mjs .github/workflows/sep22-reading.yml .github/workflows/blog-pages-deploy.yml
+          git diff --cached --check
+          git commit -m 'content: integrate September 22 original figures and verified reading'
+          git push origin HEAD:refs/heads/content/news-20260922-mos2-treg-phage
+      - name: Preserve exact source and rendered reading evidence
+        if: always()
+        run: |
+          mkdir -p stage-review/source stage-review/reading
+          if test -d spaceship-ui/sep22-review; then cp -R spaceship-ui/sep22-review/. stage-review/reading/; fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil,subprocess
+          patterns=['spaceship-ui/site/content/posts/2026-09-22*.mdx','spaceship-ui/site/news-*20260922.json','spaceship-ui/scripts/*sep22*','spaceship-ui/scripts/*20260922*','.github/workflows/sep22-reading.yml','scripts/normalize_tags_current.py','spaceship-ui/site/news-media.json','spaceship-ui/site/assets/assets/posts/news-20260922/provenance.json','spaceship-ui/scripts/browser-news-media-audit.mjs','.github/workflows/blog-pages-deploy.yml']
+          for pattern in patterns:
+              for p in Path('.').glob(pattern):
+                  q=Path('stage-review/source')/p;q.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,q)
+          for p in Path('spaceship-ui/site/content/posts').glob('2026-09-22*.mdx'):
+              h=Path('spaceship-ui/dist/posts')/p.stem/'index.html'
+              if h.exists():shutil.copyfile(h,Path('stage-review')/(p.stem+'.html'))
+          Path('stage-review/tested-head.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sep22-stage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stage-review/
+          retention-days: 7
+          if-no-files-found: error
