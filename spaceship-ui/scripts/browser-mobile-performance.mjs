@@ -59,12 +59,14 @@ try {
     const rows=cards.map(card=>{const f=card.querySelector('[data-news-figure]'),i=f?.querySelector('img');return {
       slug:card.dataset.newsCard,preview:f?.dataset.previewSrc,original:i?.getAttribute('src'),
       link:f?.querySelector('a.news-figure__image')?.getAttribute('href'),current:i?.currentSrc,
+      source:i?.closest('picture')?.querySelector('source')?.outerHTML,
       declaredWidth:Number(i?.getAttribute('width')),declaredHeight:Number(i?.getAttribute('height')),
       width:i?.naturalWidth,height:i?.naturalHeight,expectedWidth:Number(f?.dataset.previewWidth),expectedHeight:Number(f?.dataset.previewHeight),
       loading:i?.loading,priority:i?.fetchPriority};});
-    return {rows,overflow:document.documentElement.scrollWidth>innerWidth+2,
-      resources:performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize}))};
+    return {url:location.href,timeOrigin:performance.timeOrigin,rows,overflow:document.documentElement.scrollWidth>innerWidth+2,
+      resources:performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize,initiator:r.initiatorType,start:r.startTime,duration:r.duration}))};
   })()`);
+  fs.writeFileSync(`${out}/news-network.json`,JSON.stringify(news,null,2));
   assert(!news.overflow);
   assert(news.rows.length > 0 && news.rows[0].preview);
   assert.equal(news.rows[0].loading, 'eager'); assert.equal(news.rows[0].priority, 'high');
@@ -75,7 +77,8 @@ try {
     if (row.preview) {
       assert.equal(row.expectedWidth, Math.min(640,row.declaredWidth));
       assert(Math.abs(row.expectedHeight-row.declaredHeight*row.expectedWidth/row.declaredWidth)<=1);
-      assert(!news.resources.some(r=>r.url===new URL(row.original,BASE).href), 'NEWS must not fetch originals which have thumbnails');
+      const unexpected = news.resources.filter(r=>r.url===new URL(row.original,BASE).href);
+      assert.equal(unexpected.length,0, 'NEWS must not fetch thumbnail originals: '+JSON.stringify({row,requests:unexpected}));
     }
   }
   assert.equal(news.rows[0].width,news.rows[0].expectedWidth);
