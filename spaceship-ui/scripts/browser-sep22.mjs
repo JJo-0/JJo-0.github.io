@@ -92,6 +92,10 @@ try{
     assert.equal(await js(`document.querySelectorAll('[data-beginner-guide]').length`),1,'Exactly one beginner visual guide');
     assert(await js(`document.querySelector('[data-beginner-guide]').textContent.length>500`),'Beginner guide has substantial explanation');
     assert(await js(`!!document.querySelector('[data-beginner-guide] [data-news-figure="${edition.mediaIds[0]}"]')`),'First original figure lives inside beginner guide');
+    if(edition.key==='mos2'){
+      const primer=await js(`(()=>{const p=document.querySelector('[data-beginner-guide] [data-mos2-primer]');return {exists:!!p,panels:p?.querySelectorAll('section').length||0,svgs:p?.querySelectorAll('svg[role="img"]').length||0,distinction:p?.querySelector('figcaption')?.textContent.includes('실제 논문의 air-gap')||false,overflow:p?.scrollWidth>(p?.clientWidth||0)+2};})()`);
+      assert(primer.exists&&primer.panels===3&&primer.svgs===2&&primer.distinction&&!primer.overflow,'MoS2 primer structure and evidence boundary');
+    }
     await pointer(beginnerSummary,mobile);
     await wait(`document.querySelector('[data-beginner-guide]').open`,'pointer opens beginner guide');
     await enter(beginnerSummary);

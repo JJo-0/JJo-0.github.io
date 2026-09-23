@@ -87,6 +87,7 @@ function calc(name, actual, expected, key, token, tolerance = 1e-10) {
 calc('One current decade', Math.log10(10)-Math.log10(1), 1, 'mos2', '\\log_{10}(10)-\\log_{10}(1)=1');
 calc('Three illustrative decades mV', 88*3, 264, 'mos2', '88\\times3=264');
 calc('Six illustrative decades mV', 88*6, 528, 'mos2', '528 mV');
+calc('Illustrative on/off ratio', 1.1e-6/1e-12, 1.1e6, 'mos2', '1.1\\times10^{-6}/10^{-12}=1.1\\times10^6');
 calc('Thermal slope at 300K in mV', 1.380649e-23*300/1.602176634e-19*Math.log(10)*1000, 59.52642933233172, 'mos2', '59.5 mV', 1e-8);
 calc('Illustrative body factor', 60*(1+.5), 90, 'mos2', '약 90 mV/dec');
 calc('Larger parasitic ratio', 60*(1+1), 120, 'mos2', '약 120 mV/dec');
@@ -103,6 +104,7 @@ assert.equal(consensus(95), 'consensus'); assert.equal(consensus(100), 'strong')
 
 const mutations = [
   ['mos2','SS denominator', String.raw`\Delta\log_{10}I_{\mathrm D}`, String.raw`\Delta I_{\mathrm D}`],
+  ['mos2','on/off denominator', String.raw`{I_{\mathrm{off}}}`, String.raw`{I_{\mathrm{on}}}`],
   ['mos2','gate coupling direction', String.raw`{C_{\mathrm G}}`, String.raw`{C_{\mathrm S}}`],
   ['mos2','barrier sign', String.raw`-\frac{q\varphi_{\mathrm{ch}}`, String.raw`+\frac{q\varphi_{\mathrm{ch}}`],
   ['mos2','tape process boundary','테이프 기반 방식 자체는 CMOS 호환 공정이 아니라고','테이프 기반 방식 자체도 CMOS 호환 공정이라고'],
