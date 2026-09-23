@@ -57,6 +57,11 @@ async function enter(selector){
     await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
   }finally{await cdp.send('Emulation.setScriptExecutionDisabled',{value:false},sessionId);}
 }
+async function reveal(selector){
+  const found=await js(`(()=>{const target=document.querySelector(${JSON.stringify(selector)});if(!target)return false;for(let node=target.parentElement;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;return true;})()`);
+  assert(found,`Missing keyboard target: ${selector}`);
+  await js('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
+}
 async function assertReference(n){
   await wait(`location.pathname===${JSON.stringify(route)}&&location.hash==='#news-ref-${n}'`,`reference ${n}`);
   await wait(`(()=>{const r=document.getElementById('news-ref-${n}')?.getBoundingClientRect();const h=document.querySelector('header')?.getBoundingClientRect();return r&&r.top>=(h?.bottom||0)-2&&r.top<innerHeight&&r.height>0;})()`,'reference below header');
@@ -149,9 +154,13 @@ try{
     const referenceNumbers=Object.keys(edition.citationCounts).filter(n=>edition.citationCounts[n]>0);
     for(const n of referenceNumbers){
       const selector=`article a[data-news-citation="${n}"]`;
+      await reveal(selector);
       const before=await historyEntry();
       const same=await js(`new URL(document.querySelector(${JSON.stringify(selector)}).href).pathname===location.pathname`);assert(same);
       await pointer(selector,mobile);await assertReference(n);await back(before);
+      // Same-page history restoration can collapse a native <details>. Reopen
+      // any ancestor before testing the citation's native Enter behavior.
+      await reveal(selector);
       await enter(selector);await assertReference(n);await back(before);
     }
     const final=await js(`(()=>{const s=document.querySelector('article small');return {overflow:document.documentElement.scrollWidth>innerWidth+2,katexErrors:document.querySelectorAll('article .katex-error').length,citations:document.querySelectorAll('article [data-news-citation]').length,details:document.querySelectorAll('article [data-candidate-equation]').length,notesSmall:!!s&&parseFloat(getComputedStyle(s).fontSize)<parseFloat(getComputedStyle(s.parentElement).fontSize)};})()`);
