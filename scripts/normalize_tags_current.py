@@ -216,6 +216,8 @@ POST_TAXONOMY.update({
 
 POST_TAXONOMY.update({
     '2026-09-23-nioh2-electrochemical-dac-news.mdx': Taxonomy('finance-industry', 'direct-air-capture', 'paper-review', ('frontier-one', 'direct-air-capture')),
+    '2026-09-23-vc-mram-ising-machine-news.mdx': Taxonomy('finance-industry', 'spintronic-ising-machine', 'paper-review', ('frontier-candidate', 'semiconductor')),
+    '2026-09-23-herbot-her2-biliary-cancer-news.mdx': Taxonomy('health-lifestyle', 'clinical-oncology', 'paper-review', ('frontier-candidate', 'clinical-oncology')),
 })
 
 if __name__ == "__main__":
