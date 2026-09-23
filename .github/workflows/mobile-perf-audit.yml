@@ -8,7 +8,7 @@ permissions:
 jobs:
   measure:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,25 +17,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Preserve audit source (no fonts, binaries or credentials)
+      - name: Align Korean fonts with the post-fix browser
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Measure actual pre-deployment pages
         run: |
           mkdir -p perf-audit
-          python3 - <<'PY'
-          import pathlib,subprocess,zipfile
-          with zipfile.ZipFile('perf-audit/source.zip','w',zipfile.ZIP_DEFLATED) as z:
-              for name in subprocess.check_output(['git','ls-files'],text=True).splitlines():
-                  p=pathlib.Path(name)
-                  allowed=name.startswith(('spaceship-ui/src/','spaceship-ui/scripts/','spaceship-ui/site/','.github/workflows/','scripts/')) or name in ['spaceship-ui/package.json','spaceship-ui/pnpm-lock.yaml','spaceship-ui/astro.config.mjs','spaceship-ui/astro.config.ts','spaceship-ui/tsconfig.json','spaceship-ui/eslint.config.js']
-                  if allowed and p.suffix in ['.json','.ts','.js','.mjs','.astro','.svelte','.css','.md','.mdx','.py','.yml','.yaml']:
-                      z.write(p,name)
-          pathlib.Path('perf-audit/source-head.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
-          PY
-      - name: Mobile Lighthouse cold loads
-        run: |
+          git rev-parse HEAD > perf-audit/source-head.txt
           npm install --prefix /tmp/jjo-lighthouse lighthouse@12.8.2
-          for entry in 'home|https://jjo-0.github.io/' 'news|https://jjo-0.github.io/news/' 'article|https://jjo-0.github.io/posts/modern-artificial-intelligence-1/'; do
+          for entry in 'home|https://jjo-0.github.io/' 'news|https://jjo-0.github.io/news/'; do
             name=${entry%%|*}; url=${entry#*|}
-            /tmp/jjo-lighthouse/node_modules/.bin/lighthouse "$url" --only-categories=performance --chrome-flags='--headless --no-sandbox --disable-dev-shm-usage' --output=json --output-path="perf-audit/${name}.json" --quiet || true
+            /tmp/jjo-lighthouse/node_modules/.bin/lighthouse "$url" --only-categories=performance --chrome-flags='--headless --no-sandbox --disable-dev-shm-usage' --output=json --output-path="perf-audit/${name}.json" --quiet
           done
       - name: Print measured summary
         run: |
@@ -43,13 +37,11 @@ jobs:
           import pathlib,json
           for p in pathlib.Path('perf-audit').glob('*.json'):
               j=json.loads(p.read_text()); a=j.get('audits',{})
-              print('MEASUREMENT',p.name,json.dumps({'url':j.get('finalDisplayedUrl'), 'time':j.get('fetchTime'),'version':j.get('lighthouseVersion'),'error':j.get('runtimeError'),'score':j.get('categories',{}).get('performance',{}).get('score'),'metrics':{k:{x:a.get(k,{}).get(x) for x in ['numericValue','displayValue']} for k in ['first-contentful-paint','largest-contentful-paint','speed-index','total-blocking-time','cumulative-layout-shift','total-byte-weight','mainthread-work-breakdown','bootup-time','dom-size']}},ensure_ascii=False))
-              req=a.get('network-requests',{}).get('details',{}).get('items',[])
-              print('LARGEST_REQUESTS',json.dumps(sorted(req,key=lambda x:x.get('transferSize',0),reverse=True)[:12],ensure_ascii=False))
+              print('FONT_MATCHED_BASELINE',p.name,json.dumps({'url':j.get('finalDisplayedUrl'),'time':j.get('fetchTime'),'version':j.get('lighthouseVersion'),'error':j.get('runtimeError'),'score':j.get('categories',{}).get('performance',{}).get('score'),'metrics':{k:{x:a.get(k,{}).get(x) for x in ['numericValue','displayValue']} for k in ['first-contentful-paint','largest-contentful-paint','total-blocking-time','cumulative-layout-shift','total-byte-weight','mainthread-work-breakdown','bootup-time']}},ensure_ascii=False))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mobile-performance-baseline
+          name: mobile-performance-font-matched-baseline
           path: perf-audit/
           retention-days: 7
