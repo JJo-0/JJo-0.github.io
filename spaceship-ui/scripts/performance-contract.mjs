@@ -61,9 +61,11 @@ requireText(astroConfig, 'astro.config.mjs', "inlineStylesheets: 'auto'");
 requireText(astroConfig, 'astro.config.mjs', 'mediaPerformance,');
 forbidText(astroConfig, 'astro.config.mjs', "inlineStylesheets: 'always'");
 
+// The decorative GIF sits below the mobile identity text; it is not the LCP
+// image. Preserve the asset and visibility, but do not prioritize it over text.
 requireText(homeSource, 'src/pages/index.astro', 'src="/image/mouse_surprised.gif"');
-requireText(homeSource, 'src/pages/index.astro', 'loading="eager"');
-requireText(homeSource, 'src/pages/index.astro', 'fetchpriority="high"');
+requireText(homeSource, 'src/pages/index.astro', 'loading="lazy"');
+requireText(homeSource, 'src/pages/index.astro', 'fetchpriority="low"');
 requireText(homeSource, 'src/pages/index.astro', 'decoding="async"');
 
 requireText(layoutSource, 'src/layouts/Layout.astro', "import '@/styles/performance.css';");
@@ -145,11 +147,11 @@ if (fs.existsSync(homeHtmlPath)) {
     issues.push('Home HTML: eager AdSense network script reintroduced');
   }
   if (
-    !/<img\b[^>]*src=["']\/image\/mouse_surprised\.gif["'][^>]*loading=["']eager["'][^>]*fetchpriority=["']high["'][^>]*>/i.test(
+    !/<img\b[^>]*src=["']\/image\/mouse_surprised\.gif["'][^>]*loading=["']lazy["'][^>]*fetchpriority=["']low["'][^>]*>/i.test(
       homeHtml
     )
   ) {
-    issues.push('Home HTML: mouse GIF must render as eager/high-priority media');
+    issues.push('Home HTML: decorative mouse GIF must use lazy/low-priority loading');
   }
 }
 
@@ -216,5 +218,5 @@ if (uniqueIssues.length) {
 }
 
 console.log(
-  'performance-contract: PASS (eager Home identity media; native post lazy hints; deferred GPU/ads; load-time Search trigger + lazy dialog; offscreen containment; Home/Writing/renderer budgets)'
+  'performance-contract: PASS (non-blocking Home identity media; native post lazy hints; deferred GPU/ads; load-time Search trigger + lazy dialog; offscreen containment; Home/Writing/renderer budgets)'
 );

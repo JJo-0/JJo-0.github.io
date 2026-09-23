@@ -1,0 +1,97 @@
+name: Mobile performance
+on:
+  pull_request:
+    branches: [main]
+    paths: ['spaceship-ui/**', '.github/workflows/mobile-performance.yml']
+  push:
+    branches: [main]
+    paths: ['spaceship-ui/**', '.github/workflows/mobile-performance.yml']
+  workflow_run:
+    workflows: ['Deploy Blog to Pages']
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  preview:
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Browser fonts
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - run: pnpm build
+      - name: Mobile idle and thumbnail network regression
+        run: node scripts/browser-mobile-performance.mjs
+      - name: Preview Lighthouse (not public-site measurements)
+        run: |
+          npm install --prefix /tmp/jjo-lighthouse lighthouse@12.8.2
+          pnpm preview --host 127.0.0.1 --port 4321 > /tmp/jjo-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:4321/ >/dev/null; then break; fi; sleep 1; done
+          for page in home news; do
+            url=http://127.0.0.1:4321/; if [ "$page" = news ]; then url="${url}news/"; fi
+            /tmp/jjo-lighthouse/node_modules/.bin/lighthouse "$url" --only-categories=performance --chrome-flags='--headless --no-sandbox --disable-dev-shm-usage' --output=json --output-path="mobile-performance/preview-${page}.json" --quiet
+          done
+      - name: Preserve tested SHA
+        if: always()
+        run: mkdir -p mobile-performance && git rev-parse HEAD > mobile-performance/tested-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-performance-preview-${{ github.run_id }}
+          path: spaceship-ui/mobile-performance/
+          retention-days: 7
+  live:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Browser fonts
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Actual public mobile interactions
+        env:
+          JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
+        run: node scripts/browser-mobile-performance.mjs
+      - name: Actual public Lighthouse
+        run: |
+          npm install --prefix /tmp/jjo-lighthouse lighthouse@12.8.2
+          for page in home news; do
+            url=https://jjo-0.github.io/; if [ "$page" = news ]; then url="${url}news/"; fi
+            /tmp/jjo-lighthouse/node_modules/.bin/lighthouse "$url" --only-categories=performance --chrome-flags='--headless --no-sandbox --disable-dev-shm-usage' --output=json --output-path="mobile-performance/live-${page}.json" --quiet
+          done
+      - name: Preserve checked SHA
+        if: always()
+        run: mkdir -p mobile-performance && git rev-parse HEAD > mobile-performance/tested-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-performance-live-${{ github.run_id }}
+          path: spaceship-ui/mobile-performance/
+          retention-days: 7

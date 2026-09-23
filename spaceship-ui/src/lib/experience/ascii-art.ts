@@ -70,6 +70,8 @@ function installGraphCanvas(
   const context = canvas.getContext('2d', { alpha: true });
   if (!context) return () => {};
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const finePointer = matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)');
+  const autoAnimate = () => !reducedMotion.matches && finePointer.matches;
   const anchors = new Map(
     [...host.querySelectorAll<HTMLAnchorElement>('[data-post-graph-node]')].map((anchor) => [
       anchor.dataset.postGraphNode ?? '',
@@ -87,7 +89,7 @@ function installGraphCanvas(
     height = 1,
     dpr = 1,
     frame = 0,
-    visible = true,
+    visible = false,
     dragging = false,
     interacting = false,
     rotationX = -0.34,
@@ -119,6 +121,7 @@ function installGraphCanvas(
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    start();
   };
   const project = (node: GraphNode, cx: number, sx: number, cy: number, sy: number) => {
     const x1 = node.x * cy - node.z * sy,
@@ -162,8 +165,8 @@ function installGraphCanvas(
   };
   const draw = (time: number) => {
     frame = 0;
-    if (!visible) return;
-    if (!reducedMotion.matches && time - lastDrawAt < 1000 / 30) {
+    if (!visible || document.hidden) return;
+    if (autoAnimate() && time - lastDrawAt < 1000 / 30) {
       frame = requestAnimationFrame(draw);
       return;
     }
@@ -171,7 +174,7 @@ function installGraphCanvas(
     renderCount += 1;
     const delta = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
-    if (!reducedMotion.matches) {
+    if (autoAnimate()) {
       if (!interacting) targetY += delta * 0.11;
       rotationX += (targetX - rotationX) * Math.min(1, delta * 3.5);
       rotationY += (targetY - rotationY) * Math.min(1, delta * 3.5);
@@ -235,7 +238,7 @@ function installGraphCanvas(
           );
         }
       }
-      if (renderCount % 2 === 0 || reducedMotion.matches) {
+      if (renderCount % 2 === 0 || !autoAnimate()) {
         const anchor = anchors.get(node.id);
         anchor?.style.setProperty('--node-x', `${point.x}px`);
         anchor?.style.setProperty('--node-y', `${point.y}px`);
@@ -243,10 +246,10 @@ function installGraphCanvas(
     }
     context.globalAlpha = 1;
     if (hoveredId) showTooltip(hoveredId);
-    if (!reducedMotion.matches) frame = requestAnimationFrame(draw);
+    if (autoAnimate()) frame = requestAnimationFrame(draw);
   };
   const start = () => {
-      if (!frame && visible) {
+      if (!frame && visible && !document.hidden) {
         lastTime = performance.now();
         frame = requestAnimationFrame(draw);
       }
@@ -261,6 +264,8 @@ function installGraphCanvas(
       velocityX = event.movementY * 0.012;
       targetY += event.movementX * 0.005;
       targetX += event.movementY * 0.005;
+      if (!autoAnimate()) { rotationX = targetX; rotationY = targetY; }
+      start();
     }
   };
   const onPointerEnter = () => {
@@ -280,8 +285,8 @@ function installGraphCanvas(
     };
   const anchorCleanups: Array<() => void> = [];
   for (const [id, anchor] of anchors) {
-    const enter = () => showTooltip(id),
-      leave = () => showTooltip(null);
+    const enter = () => { showTooltip(id); start(); },
+      leave = () => { showTooltip(null); start(); };
     anchor.addEventListener('pointerenter', enter);
     anchor.addEventListener('pointerleave', leave);
     anchor.addEventListener('focus', enter);
@@ -295,10 +300,9 @@ function installGraphCanvas(
   }
   const onMotionChange = () => {
     stop();
-    if (reducedMotion.matches) draw(performance.now());
-    else start();
+    start();
   };
-  const themeObserver = new MutationObserver(refreshPalette);
+  const themeObserver = new MutationObserver(() => { refreshPalette(); start(); });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   const ro = new ResizeObserver(resize),
     io = new IntersectionObserver(
@@ -307,7 +311,7 @@ function installGraphCanvas(
         if (visible) start();
         else stop();
       },
-      { rootMargin: '120px 0px' }
+      { rootMargin: '0px' }
     );
   ro.observe(host);
   io.observe(host);
@@ -317,10 +321,12 @@ function installGraphCanvas(
   host.addEventListener('pointerup', onPointerUp);
   host.addEventListener('pointercancel', onPointerUp);
   host.addEventListener('pointerleave', onPointerLeave, { passive: true });
+  const onVisibilityChange = () => { if (document.hidden) stop(); else start(); };
+  finePointer.addEventListener('change', onMotionChange);
+  document.addEventListener('visibilitychange', onVisibilityChange);
   reducedMotion.addEventListener('change', onMotionChange);
   resize();
-  if (reducedMotion.matches) draw(performance.now());
-  else start();
+  start();
   return () => {
     stop();
     ro.disconnect();
@@ -333,6 +339,8 @@ function installGraphCanvas(
     host.removeEventListener('pointerup', onPointerUp);
     host.removeEventListener('pointercancel', onPointerUp);
     host.removeEventListener('pointerleave', onPointerLeave);
+    finePointer.removeEventListener('change', onMotionChange);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     reducedMotion.removeEventListener('change', onMotionChange);
   };
 }
@@ -344,11 +352,13 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
   if (!context) return () => {};
 
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const finePointer = matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)');
+  const autoAnimate = () => !reducedMotion.matches && finePointer.matches;
   let width = 1;
   let height = 1;
   let dpr = 1;
   let frame = 0;
-  let visible = true;
+  let visible = false;
   let dragging = false;
   let pointerX = 0;
   let pointerY = 0;
@@ -370,15 +380,16 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    start();
   };
 
   const draw = (time: number): void => {
     frame = 0;
-    if (!visible) return;
+    if (!visible || document.hidden) return;
     const delta = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
 
-    if (!reducedMotion.matches) {
+    if (autoAnimate()) {
       targetY += delta * 0.22;
       rotationX += (targetX + pointerY * 0.3 - rotationX) * Math.min(1, delta * 4.2);
       rotationY += (targetY + pointerX * 0.48 - rotationY) * Math.min(1, delta * 4.2);
@@ -430,11 +441,11 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
     }
     context.globalAlpha = 1;
 
-    if (!reducedMotion.matches) frame = requestAnimationFrame(draw);
+    if (autoAnimate()) frame = requestAnimationFrame(draw);
   };
 
   const start = (): void => {
-    if (frame || !visible) return;
+    if (frame || !visible || document.hidden) return;
     lastTime = performance.now();
     frame = requestAnimationFrame(draw);
   };
@@ -452,6 +463,8 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
       targetY += event.movementX * 0.006;
       targetX += event.movementY * 0.006;
     }
+    if (!autoAnimate()) { rotationX = targetX; rotationY = targetY; }
+    start();
   };
   const onPointerDown = (event: PointerEvent): void => {
     dragging = true;
@@ -469,10 +482,11 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
   };
   const onMotionChange = (): void => {
     stop();
-    if (reducedMotion.matches) draw(performance.now());
-    else start();
+    start();
   };
 
+  const themeObserver = new MutationObserver(() => start());
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   const resizeObserver = new ResizeObserver(resize);
   const visibilityObserver = new IntersectionObserver(
     ([entry]) => {
@@ -480,7 +494,7 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
       if (visible) start();
       else stop();
     },
-    { rootMargin: '120px 0px' }
+    { rootMargin: '0px' }
   );
   resizeObserver.observe(host);
   visibilityObserver.observe(host);
@@ -489,13 +503,16 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
   host.addEventListener('pointerup', onPointerUp);
   host.addEventListener('pointercancel', onPointerUp);
   host.addEventListener('pointerleave', onPointerLeave, { passive: true });
+  const onVisibilityChange = () => { if (document.hidden) stop(); else start(); };
+  finePointer.addEventListener('change', onMotionChange);
+  document.addEventListener('visibilitychange', onVisibilityChange);
   reducedMotion.addEventListener('change', onMotionChange);
   resize();
-  if (reducedMotion.matches) draw(performance.now());
-  else start();
+  start();
 
   return () => {
     stop();
+    themeObserver.disconnect();
     resizeObserver.disconnect();
     visibilityObserver.disconnect();
     host.removeEventListener('pointermove', onPointerMove);
@@ -503,6 +520,8 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
     host.removeEventListener('pointerup', onPointerUp);
     host.removeEventListener('pointercancel', onPointerUp);
     host.removeEventListener('pointerleave', onPointerLeave);
+    finePointer.removeEventListener('change', onMotionChange);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     reducedMotion.removeEventListener('change', onMotionChange);
   };
 }
