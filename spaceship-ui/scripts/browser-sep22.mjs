@@ -44,13 +44,10 @@ async function back(id){
 async function enter(selector){
   lastAction={selector,input:'Enter',scriptDisabled:true};
   await cdp.send('Page.bringToFront',{},sessionId);
+  const focused=await js(`(()=>{const target=document.querySelector(${JSON.stringify(selector)});target?.focus();return document.activeElement===target;})()`);
+  assert(focused,`Unable to focus keyboard target: ${selector}`);
   await cdp.send('Emulation.setScriptExecutionDisabled',{value:true},sessionId);
   try{
-    await cdp.send('DOM.enable',{},sessionId);
-    const {root}=await cdp.send('DOM.getDocument',{depth:0},sessionId);
-    const {nodeId}=await cdp.send('DOM.querySelector',{nodeId:root.nodeId,selector},sessionId);assert(nodeId>0);
-    await cdp.send('DOM.focus',{nodeId},sessionId);
-    const focused=await cdp.send('DOM.querySelector',{nodeId:root.nodeId,selector:':focus'},sessionId);assert.equal(focused.nodeId,nodeId);
     // A real Enter includes the CR character. rawKeyDown alone omits the
     // keypress that native summary controls use; send exactly one complete key.
     await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'},sessionId);
