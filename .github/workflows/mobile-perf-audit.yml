@@ -1,0 +1,37 @@
+name: Final mobile baseline
+on:
+  push:
+    branches: [ops/mobile-perf-audit-20260923]
+    paths: [.github/workflows/mobile-perf-audit.yml]
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c8a90787ec439dc8caffccfff74324ff8285ec1e
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Match Korean fonts
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Final pre-deploy live baseline
+        run: |
+          mkdir -p perf-audit
+          git rev-parse HEAD > perf-audit/source-head.txt
+          google-chrome --version > perf-audit/browser-version.txt
+          npm install --prefix /tmp/jjo-lighthouse lighthouse@12.8.2
+          for entry in 'home|https://jjo-0.github.io/' 'news|https://jjo-0.github.io/news/'; do
+            name=${entry%%|*}; url=${entry#*|}
+            /tmp/jjo-lighthouse/node_modules/.bin/lighthouse "$url" --only-categories=performance --chrome-flags='--headless --no-sandbox --disable-dev-shm-usage' --output=json --output-path="perf-audit/${name}.json" --quiet
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-final-predeploy-baseline
+          path: perf-audit/
+          retention-days: 7
