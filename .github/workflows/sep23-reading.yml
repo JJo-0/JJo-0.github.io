@@ -1,0 +1,45 @@
+name: September 23 reading
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - '.github/workflows/sep23-reading.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - '.github/workflows/sep23-reading.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sep23-reading-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.19.0}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Install dependencies and Korean fonts
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Source, equation and rights contract
+        run: node scripts/news-edition-20260923-contract.mjs
+      - name: Build
+        run: pnpm build
+      - name: Rendered contract
+        run: node scripts/news-edition-20260923-contract.mjs
