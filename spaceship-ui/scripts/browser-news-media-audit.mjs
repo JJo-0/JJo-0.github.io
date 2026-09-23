@@ -87,7 +87,7 @@ export async function auditNewsMedia(cdp, sessionId) {
         const ir = img.getBoundingClientRect(), tr = title.getBoundingClientRect();
         const figure = card.querySelector('[data-news-figure]');
         return {width:img.naturalWidth,height:img.naturalHeight,src:img.getAttribute('src'),
-          currentSrc:img.currentSrc,original:figure.querySelector('a.news-figure__image')?.getAttribute('href'),
+          originalSrc:img.dataset.originalSrc,currentSrc:img.currentSrc,original:figure.querySelector('a.news-figure__image')?.getAttribute('href'),
           declaredWidth:Number(img.getAttribute('width')),declaredHeight:Number(img.getAttribute('height')),
           preview:figure.dataset.previewSrc,previewWidth:Number(figure.dataset.previewWidth),previewHeight:Number(figure.dataset.previewHeight),
           before:Boolean(img.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING),
@@ -95,7 +95,8 @@ export async function auditNewsMedia(cdp, sessionId) {
           overflow:document.documentElement.scrollWidth > innerWidth + 2};
       })()`, `cover decoded ${row.slug}`, 20000);
       assert(card.before && card.positioned && !card.overflow, JSON.stringify(card));
-      assert.equal(card.src, row.src); assert.equal(card.original, row.src);
+      assert.equal(card.originalSrc, row.src); assert.equal(card.original, row.src);
+      assert.equal(card.src, card.preview ?? row.src);
       assert.equal(card.declaredWidth, row.width); assert.equal(card.declaredHeight, row.height);
       if (card.preview) {
         assert.equal(card.currentSrc, new URL(card.preview, BASE).href);

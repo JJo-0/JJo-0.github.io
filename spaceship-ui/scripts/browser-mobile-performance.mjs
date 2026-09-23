@@ -57,9 +57,8 @@ try {
   const news = await evaluate(cdp, sessionId, `(() => {
     const cards=[...document.querySelectorAll('[data-news-card]')];
     const rows=cards.map(card=>{const f=card.querySelector('[data-news-figure]'),i=f?.querySelector('img');return {
-      slug:card.dataset.newsCard,preview:f?.dataset.previewSrc,original:i?.getAttribute('src'),
+      slug:card.dataset.newsCard,preview:f?.dataset.previewSrc,original:i?.dataset.originalSrc,src:i?.getAttribute('src'),
       link:f?.querySelector('a.news-figure__image')?.getAttribute('href'),current:i?.currentSrc,
-      source:i?.closest('picture')?.querySelector('source')?.outerHTML,
       declaredWidth:Number(i?.getAttribute('width')),declaredHeight:Number(i?.getAttribute('height')),
       width:i?.naturalWidth,height:i?.naturalHeight,expectedWidth:Number(f?.dataset.previewWidth),expectedHeight:Number(f?.dataset.previewHeight),
       loading:i?.loading,priority:i?.fetchPriority};});
@@ -72,8 +71,10 @@ try {
   assert.equal(news.rows[0].loading, 'eager'); assert.equal(news.rows[0].priority, 'high');
   assert.equal(news.rows.filter(r=>r.loading==='eager').length, 1);
   for (const row of news.rows) {
-    if (!row.original) continue;
+    if (!row.src) continue;
+    assert(row.original, 'Every image retains its original provenance URL');
     assert.equal(row.link, row.original, 'Enlargement still opens the unmodified original');
+    assert.equal(row.src, row.preview ?? row.original);
     if (row.preview) {
       assert.equal(row.expectedWidth, Math.min(640,row.declaredWidth));
       assert(Math.abs(row.expectedHeight-row.declaredHeight*row.expectedWidth/row.declaredWidth)<=1);
