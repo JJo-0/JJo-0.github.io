@@ -20,7 +20,8 @@ export async function auditNewsMedia(cdp, sessionId) {
   const sep20 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260920.json', import.meta.url), 'utf8'));
   const sep21 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260921.json', import.meta.url), 'utf8'));
   const sep22 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260922.json', import.meta.url), 'utf8'));
-  const declaredEntries = [...sep11.entries, ...sep15.entries, ...sep16.entries, ...sep17.entries, sep18, ...candidates18.entries, ...wetlab19.entries, ...candidates19.entries, ...sep20.entries, ...sep21.entries, ...sep22.entries];
+  const sep23 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20260923.json', import.meta.url), 'utf8'));
+  const declaredEntries = [...sep11.entries, ...sep15.entries, ...sep16.entries, ...sep17.entries, sep18, ...candidates18.entries, ...wetlab19.entries, ...candidates19.entries, ...sep20.entries, ...sep21.entries, ...sep22.entries, ...sep23.entries];
   const sourceFigurePosts = new Map(declaredEntries.map((row) => [row.slug, row]));
   const sourceCards = declaredEntries.map((row) => ({slug: row.slug, ...media[row.mediaIds[0]]}));
   const coverOnly = new Set(covers.entries.filter((r) => !r.legacyVisualSuite).map((r) => r.slug));

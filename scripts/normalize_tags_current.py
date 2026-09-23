@@ -214,5 +214,9 @@ POST_TAXONOMY.update({
     '2026-09-22-personalized-phage-guideline-news.mdx': Taxonomy('health-lifestyle', 'phage-therapy', 'research-report', ('frontier-candidate', 'phage-therapy')),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-23-nioh2-electrochemical-dac-news.mdx': Taxonomy('finance-industry', 'direct-air-capture', 'paper-review', ('frontier-one', 'direct-air-capture')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
