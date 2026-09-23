@@ -254,6 +254,9 @@ export async function attach(cdp, { normalizeHistoryPath = true } = {}) {
         const normalizeSmokePath = () => {
           // Native-fragment audits must keep the browser URL aligned with <base>.
           if (!${JSON.stringify(normalizeHistoryPath)}) return;
+          // English links are canonical directory URLs in preview and Pages.
+          // Never rewrite those URLs during strict native-destination checks.
+          if (location.pathname.startsWith('/en/')) return;
           try {
             if (location.pathname !== '/' && /\\/+$/u.test(location.pathname)) {
               const normalizedPath = location.pathname.replace(/\\/+$/u, '') || '/';
