@@ -1,17 +1,17 @@
 import { SITE } from '@/config';
 
-export function getWebSiteSchema(url: string) {
+export function getWebSiteSchema(url: string, lang: string = SITE.lang, description: string = SITE.desc) {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: SITE.title,
-    description: SITE.desc,
+    description,
     url: url,
     author: {
       '@type': 'Person',
       name: SITE.author,
     },
-    inLanguage: SITE.lang,
+    inLanguage: lang,
   };
 }
 
@@ -19,6 +19,7 @@ export function getBlogPostingSchema(data: {
   title: string;
   description: string;
   pubDate: Date;
+  updatedDate?: Date;
   url: string;
   lang?: string;
   image?: string;
@@ -30,7 +31,7 @@ export function getBlogPostingSchema(data: {
     headline: data.title,
     description: data.description,
     datePublished: data.pubDate.toISOString(),
-    dateModified: data.pubDate.toISOString(),
+    dateModified: (data.updatedDate ?? data.pubDate).toISOString(),
     author: {
       '@type': 'Person',
       name: SITE.author,

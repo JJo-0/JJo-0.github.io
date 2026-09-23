@@ -17,6 +17,7 @@ import modernAiPartThreeReaderCleanup from './src/lib/remark/modern-ai-part3-rea
 import modernAiPartFourReaderCleanup from './src/lib/remark/modern-ai-part4-reader-cleanup.mjs';
 import modernAiPartFiveReaderCleanup from './src/lib/remark/modern-ai-part5-reader-cleanup.mjs';
 import actsEmphasis from './src/lib/remark/acts-emphasis.mjs';
+import englishCitations from './src/lib/remark/english-citations.mjs';
 import termTooltips from './src/lib/rehype/term-tooltips.mjs';
 import mediaPerformance from './src/lib/rehype/media-performance.mjs';
 import { isLegacyPathname } from './src/lib/legacy-posts.mjs';
@@ -72,6 +73,7 @@ export default defineConfig({
       modernAiPartFourReaderCleanup,
       modernAiPartFiveReaderCleanup,
       actsEmphasis,
+      englishCitations,
     ],
     rehypePlugins: [
       termTooltips,

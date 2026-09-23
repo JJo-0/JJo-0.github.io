@@ -76,7 +76,7 @@ requireText(aboutSource, 'src/pages/about.astro', 'adsEnabled={false}');
 requireText(
   headerSource,
   'src/components/Header.astro',
-  "data-astro-reload={link.href === '/about' ? true : undefined}"
+  "data-astro-reload={link.href === '/about' || link.href.startsWith('/en/') ? true : undefined}"
 );
 forbidText(layoutSource, 'src/layouts/Layout.astro', '<SearchModal client:idle />');
 if (/<script[^>]+src=["']https:\/\/pagead2\.googlesyndication\.com/i.test(layoutSource)) {
