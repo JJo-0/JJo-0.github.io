@@ -24,7 +24,10 @@ const currentPath = Astro.url.pathname;
 const isEnglish = currentPath.startsWith('/en/');
 const localePrefix = isEnglish ? '/en' : '';
 const postPrefix = `${localePrefix}/posts/`;
-const koreanPath = nativeAlternates(currentPath)['ko-KR'] || '/';
+// Section navigation is useful even when the two archives are not equivalent
+// translations for SEO. Do not add these fallbacks to nativeAlternates().
+const koreanSections = new Map([['/en/posts', '/posts'], ['/en/translations', '/posts']]);
+const koreanPath = nativeAlternates(currentPath)['ko-KR'] || koreanSections.get(currentPath.replace(/\/+$/, '')) || '/';
 const currentPostSlug = currentPath.startsWith(postPrefix)
   ? decodeURIComponent(currentPath.slice(postPrefix.length).replace(/\/$/, ''))
   : null;
