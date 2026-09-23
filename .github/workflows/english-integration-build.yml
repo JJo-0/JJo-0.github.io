@@ -1,0 +1,88 @@
+name: English integration candidate
+on:
+  push:
+    branches: [ops/english-source-20260923]
+    paths: [.github/workflows/english-integration-build.yml]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: repo/spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ops
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2d94748a983f1aaf84aa274eeda2e92f534ed39a
+          path: repo
+          persist-credentials: false
+      - name: Assemble explicit source candidate
+        working-directory: repo
+        run: |
+          git fetch --depth=1 origin 8b1696e71e011d39ca9809d06ce31eeab1ea21fb
+          python3 ../ops/.ops/english/apply-shared.py
+          python3 ../ops/.ops/english/new-pages.py
+          python3 ../ops/.ops/english/new-tests.py
+          git add -N .
+          mkdir -p ../receipt
+          git diff --check
+          python3 - <<'PY'
+          import pathlib,subprocess,hashlib,zipfile,json
+          files=subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()
+          assert len(files)==44,len(files)
+          assert not any(p.startswith('spaceship-ui/site/content/posts/') for p in files)
+          rows=[]
+          with zipfile.ZipFile('../receipt/source.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in files:
+                  p=pathlib.Path(name);b=p.read_bytes()
+                  assert p.suffix in {'.astro','.svelte','.ts','.mjs','.py','.json','.md','.mdx','.svg','.yml'}
+                  rows.append({'path':name,'sha256':hashlib.sha256(b).hexdigest(),'gitSha':hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()})
+                  z.writestr(name,b)
+          pathlib.Path('../receipt/source-manifest.json').write_text(json.dumps({'base':'2d94748a983f1aaf84aa274eeda2e92f534ed39a','ops':subprocess.check_output(['git','-C','../ops','rev-parse','HEAD'],text=True).strip(),'files':rows},indent=2))
+          print('SOURCE_FILES',len(rows));print('\n'.join(files))
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: repo/spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Lint and types
+        run: |
+          pnpm lint 2>&1 | tee ../../receipt/lint.log
+          pnpm check 2>&1 | tee ../../receipt/types.log
+      - name: Build and preserved contracts
+        run: |
+          node scripts/english-citations.test.mjs
+          pnpm seo:check 2>&1 | tee ../../receipt/seo.log
+          pnpm build 2>&1 | tee ../../receipt/build.log
+          pnpm content:check 2>&1 | tee ../../receipt/content.log
+      - name: Source translation and rendered SEO parity
+        run: python3 scripts/english-edition-audit.py 2>&1 | tee ../../receipt/english-static.log
+      - name: Real English and mobile browser regressions
+        run: |
+          node scripts/browser-english-edition.mjs 2>&1 | tee ../../receipt/english-browser.log
+          node scripts/browser-mobile-performance.mjs 2>&1 | tee ../../receipt/mobile-browser.log
+      - name: Preserve diagnostic artifacts
+        if: always()
+        working-directory: repo
+        run: |
+          mkdir -p ../receipt
+          cp -R spaceship-ui/english-review ../receipt/ 2>/dev/null || true
+          cp -R spaceship-ui/mobile-performance ../receipt/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: english-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: receipt/
+          retention-days: 3
