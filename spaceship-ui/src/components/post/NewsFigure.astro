@@ -7,16 +7,17 @@ interface Props {
   media: keyof typeof catalogue;
   priority?: boolean;
   compact?: boolean;
+  thumbnail?: boolean;
 }
-const { media, priority = false, compact = false } = Astro.props;
+const { media, priority = false, compact = false, thumbnail = false } = Astro.props;
 const item = catalogue[media];
 if (!item) throw new Error(`Unknown NEWS media: ${media}`);
-// Only archive thumbnails use derivatives. The article and enlargement link
-// retain the registered original bytes, panels, dimensions and credits.
+// Only archive thumbnails use derivatives. A compact article figure still
+// retains the registered original bytes, panels, dimensions and credits.
 const localImages = import.meta.glob<{ default: ImageMetadata }>(
   '../../../site/assets/assets/posts/**/*.{png,jpg,jpeg,webp}'
 );
-const loadImage = compact ? localImages[`../../../site/assets${item.src}`] : undefined;
+const loadImage = thumbnail ? localImages[`../../../site/assets${item.src}`] : undefined;
 const original = loadImage ? (await loadImage()).default : undefined;
 const preview = original ? await getImage({
   src: original, width: Math.min(640, original.width), format: 'webp', quality: 85,
