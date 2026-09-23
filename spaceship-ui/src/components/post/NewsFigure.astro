@@ -1,4 +1,6 @@
 ---
+import { getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import catalogue from '../../../site/news-media.json';
 
 interface Props {
@@ -9,10 +11,24 @@ interface Props {
 const { media, priority = false, compact = false } = Astro.props;
 const item = catalogue[media];
 if (!item) throw new Error(`Unknown NEWS media: ${media}`);
+// Only archive thumbnails use derivatives. The article and enlargement link
+// retain the registered original bytes, panels, dimensions and credits.
+const localImages = import.meta.glob<{ default: ImageMetadata }>(
+  '../../../site/assets/assets/posts/**/*.{png,jpg,jpeg,webp}'
+);
+const loadImage = compact ? localImages[`../../../site/assets${item.src}`] : undefined;
+const original = loadImage ? (await loadImage()).default : undefined;
+const preview = original ? await getImage({
+  src: original, width: Math.min(640, original.width), format: 'webp', quality: 85,
+}) : undefined;
 ---
 
-<figure class:list={['news-figure', compact && 'news-figure--compact']} data-news-figure={media}>
+<figure class:list={['news-figure', compact && 'news-figure--compact']} data-news-figure={media}
+  data-preview-src={preview?.src} data-preview-width={preview?.attributes.width}
+  data-preview-height={preview?.attributes.height}>
   <a class="news-figure__image" href={item.src} target="_blank" rel="noopener noreferrer" aria-label={`${item.alt} — 원본 크게 보기`}>
+    <picture>
+      {preview && <source type="image/webp" srcset={preview.src} />}
     <img
       src={item.src}
       alt={item.alt}
@@ -23,6 +39,7 @@ if (!item) throw new Error(`Unknown NEWS media: ${media}`);
       fetchpriority={priority ? 'high' : 'auto'}
       referrerpolicy="no-referrer"
     />
+    </picture>
   </a>
   <figcaption>
     <strong>{item.kind}</strong>
