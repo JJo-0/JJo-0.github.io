@@ -49,6 +49,7 @@ try {
     const path = new URL(target, BASE).pathname;
     await waitExpression(cdp, sessionId, `${JSON.stringify([path, path.endsWith('/') ? path.slice(0,-1) : path+'/'])}.includes(location.pathname)`, 'native graph link destination');
     results.push({ width, mobileIdleDraws:after-before, graphLinks:count, nativeLink:true });
+    console.log('mobile-performance: graph PASS '+JSON.stringify(results.at(-1)));
   }
   await viewport(cdp, sessionId, { width:390, height:844, mobile:true, touch:true, reduced:false });
   await navigate(cdp, sessionId, '/news/');
@@ -90,4 +91,7 @@ try {
 } finally {
   cdp?.close(); await stopChild(chrome?.child,'SIGKILL'); await stopChild(preview,'SIGTERM');
   removeProfile(chrome?.profile); clearTimeout(hardStop);
+  // Match the other standalone suites: pnpm's preview descendants can retain
+  // pipe handles after its parent exits. Never let those handles hide a verdict.
+  process.exit(process.exitCode || 0);
 }
