@@ -30,3 +30,9 @@ const cards = posts.map((post) => ({
 @media(max-width:640px){.english-news-item{grid-template-columns:minmax(0,1fr);gap:.8rem}}
 </style>
 ''')
+# The existing content/media contract is unchanged. Only the new English
+# homepage omits the decorative mouse panel; the Korean homepage is untouched.
+p=app/'src/pages/en/index.astro';s=p.read_text()
+s,n=re.subn(r'\n          <div class="experience-mouse-frame experience-mouse-frame--world">[\s\S]*?</div>','',s)
+assert n==1,n
+p.write_text(s)
