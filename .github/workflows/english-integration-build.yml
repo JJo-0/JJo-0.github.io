@@ -2,7 +2,7 @@ name: English integration candidate
 on:
   push:
     branches: [ops/english-source-20260923]
-    paths: [.github/workflows/english-integration-build.yml]
+    paths: [.github/workflows/english-integration-build.yml, '.ops/english/**']
 permissions:
   contents: read
 concurrency:
@@ -33,9 +33,9 @@ jobs:
           python3 ../ops/.ops/english/apply-shared.py
           python3 ../ops/.ops/english/new-pages.py
           python3 ../ops/.ops/english/new-tests.py
+          python3 ../ops/.ops/english/finalize.py
           git add -N .
           mkdir -p ../receipt
-          git diff --check
           python3 - <<'PY'
           import pathlib,subprocess,hashlib,zipfile,json
           files=subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()
@@ -51,6 +51,7 @@ jobs:
           pathlib.Path('../receipt/source-manifest.json').write_text(json.dumps({'base':'2d94748a983f1aaf84aa274eeda2e92f534ed39a','ops':subprocess.check_output(['git','-C','../ops','rev-parse','HEAD'],text=True).strip(),'files':rows},indent=2))
           print('SOURCE_FILES',len(rows));print('\n'.join(files))
           PY
+          git diff --check
       - uses: pnpm/action-setup@v4
         with:
           version: 10.19.0
