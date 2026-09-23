@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import transform from '../src/lib/remark/english-citations.mjs';
+const paragraph=(s)=>({type:'paragraph',children:[{type:'text',value:s}]});
+const fixture=()=>({type:'root',children:[paragraph('Claim [1][2].'),paragraph('[1] Source one'),paragraph('[2] Source two')]});
+let tree=fixture(); transform()(tree,{path:'/site/content/english/example.mdx'});
+assert.equal(tree.children[0].children.filter(n=>n.type==='link').length,2);
+assert.equal(tree.children[1].data.hProperties.id,'news-ref-1');
+assert.equal(tree.children[0].children[1].data.hProperties['data-astro-reload'],true);
+let ko=fixture(); const saved=JSON.stringify(ko);transform()(ko,{path:'/site/content/posts/example.mdx'});assert.equal(JSON.stringify(ko),saved);
+let duplicate=fixture();duplicate.children.push(paragraph('[1] Duplicate'));assert.throws(()=>transform()(duplicate,{path:'/site/content/english/x.mdx'}),/Duplicate/);
+let missing=fixture();missing.children[0]=paragraph('Unknown [3]');assert.throws(()=>transform()(missing,{path:'/site/content/english/x.mdx'}),/Undefined/);
+console.log('english-citations: PASS real transform, Korean isolation, duplicate and undefined references rejected');

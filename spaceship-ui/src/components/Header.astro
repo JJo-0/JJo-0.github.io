@@ -1,5 +1,7 @@
 ---
 import { SITE } from '@/config';
+import { englishSwitchPath, nativeAlternates } from '@/lib/locales';
+import { getEnglishPosts } from '@/lib/english';
 import ThemeToggle from '@/components/ThemeToggle.astro';
 import Search from '@/components/Search.svelte';
 import { getCollection } from 'astro:content';
@@ -15,27 +17,34 @@ interface Props {
   englishPath?: string;
 }
 
-const { pageLang = SITE.lang, englishPath } = Astro.props;
-const isKoreanPage = pageLang.toLowerCase().startsWith('ko');
+const { englishPath } = Astro.props;
+const isKoreanPage = !Astro.url.pathname.startsWith('/en/');
 const showEnglishLink = isKoreanPage && typeof englishPath === 'string' && englishPath.length > 0;
 const currentPath = Astro.url.pathname;
-const currentPostSlug = currentPath.startsWith('/posts/')
-  ? decodeURIComponent(currentPath.slice('/posts/'.length).replace(/\/$/, ''))
+const isEnglish = currentPath.startsWith('/en/');
+const localePrefix = isEnglish ? '/en' : '';
+const postPrefix = `${localePrefix}/posts/`;
+const koreanPath = nativeAlternates(currentPath)['ko-KR'] || '/';
+const currentPostSlug = currentPath.startsWith(postPrefix)
+  ? decodeURIComponent(currentPath.slice(postPrefix.length).replace(/\/$/, ''))
   : null;
 
 const [projects, appearances, currentPost] = await Promise.all([
   SITE.publicSections.projects ? getCollection('projects') : Promise.resolve([]),
   SITE.publicSections.appearances ? getCollection('appearances') : Promise.resolve([]),
   currentPostSlug
-    ? getPublishedPosts().then((posts) =>
-        posts.find((post) => getPostSlug(post) === currentPostSlug)
-      )
+    ? isEnglish
+      ? getEnglishPosts().then((posts) => posts.find((post) => post.data.slug === currentPostSlug))
+      : getPublishedPosts().then((posts) => posts.find((post) => getPostSlug(post) === currentPostSlug))
     : Promise.resolve(undefined),
 ]);
 
 const currentPostIsNews = Boolean(currentPost?.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate'));
 
-const navLinks: NavLink[] = [
+const navLinks: NavLink[] = isEnglish ? [
+  { name: 'Research', href: '/en/research/' }, { name: 'Writing', href: '/en/posts/' },
+  { name: 'News', href: '/en/news/' }, { name: 'About', href: '/en/about/' },
+] : [
   { name: 'Research', href: '/research' },
   { name: 'Writing', href: '/posts' },
   { name: 'News', href: '/news' },
@@ -49,8 +58,9 @@ const navLinks: NavLink[] = [
 ];
 
 const isActive = (href: string) => {
-  if (currentPostIsNews) return href === '/news';
-  return currentPath === href || currentPath.startsWith(`${href}/`);
+  if (currentPostIsNews) return href === `${localePrefix}/news` || href === `${localePrefix}/news/`;
+  const target = href.replace(/\/$/, '');
+  return currentPath.replace(/\/$/, '') === target || currentPath.startsWith(`${target}/`);
 };
 
 const navClass = (href: string) => [
@@ -66,7 +76,7 @@ const navClass = (href: string) => [
   <div data-header-inner class="px-2 sm:px-2 lg:px-3">
     <div class="flex items-center justify-between gap-2 sm:gap-3">
       <a
-        href="/"
+        href={isEnglish ? "/en/" : "/"}
         aria-label={`${SITE.author} home`}
         data-site-brand
         class="site-brand shrink-0 whitespace-nowrap text-foreground no-underline hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
@@ -80,7 +90,7 @@ const navClass = (href: string) => [
           navLinks.map((link) => (
             <a
               href={link.href}
-              data-astro-reload={link.href === '/about' ? true : undefined}
+              data-astro-reload={link.href === '/about' || link.href.startsWith('/en/') ? true : undefined}
               aria-current={isActive(link.href) ? 'page' : undefined}
               class:list={navClass(link.href)}
             >
@@ -95,6 +105,7 @@ const navClass = (href: string) => [
           showEnglishLink && (
             <a
               href={englishPath}
+              data-locale-choice="en" data-astro-reload
               hreflang="en"
               class="language-header-switch"
               aria-label="View this page in English"
@@ -104,6 +115,8 @@ const navClass = (href: string) => [
             </a>
           )
         }
+        {isEnglish && <a href={koreanPath} data-locale-choice="ko" data-astro-reload lang="ko" hreflang="ko-KR" class="language-header-switch" aria-label="한국어로 보기">KO</a>}
+        {isKoreanPage && !showEnglishLink && <a href={englishSwitchPath(currentPath)} data-locale-choice="en" data-astro-reload class="language-header-switch" aria-label="English edition and translation availability" title="English edition — check translation availability">EN</a>}
         <Search client:load />
         <ThemeToggle />
       </div>
@@ -117,7 +130,7 @@ const navClass = (href: string) => [
         navLinks.map((link) => (
           <a
             href={link.href}
-            data-astro-reload={link.href === '/about' ? true : undefined}
+            data-astro-reload={link.href === '/about' || link.href.startsWith('/en/') ? true : undefined}
             aria-current={isActive(link.href) ? 'page' : undefined}
             class:list={navClass(link.href)}
           >

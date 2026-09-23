@@ -4,6 +4,7 @@
 
   interface Post {
     id: string;
+    href?: string;
     data: {
       title: string;
       description: string;
@@ -42,7 +43,8 @@
 
     (async () => {
       try {
-        const res = await fetch('/api/search.json');
+        const prefix = document.documentElement.lang.toLowerCase().startsWith('en') ? '/en' : '';
+        const res = await fetch(`${prefix}/api/search.json`);
         if (res.ok) {
           posts = await res.json();
         }
@@ -58,6 +60,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+  data-search-dialog
   class="fixed inset-0 z-[100] flex items-start justify-center pt-8 sm:pt-24 px-4 bg-black/40 backdrop-blur-[4px] transition-all"
   onclick={() => uiState.closeSearch()}
 >
@@ -108,7 +111,7 @@
         <div class="space-y-1">
           {#each filteredPosts as post (post.id)}
             <a
-              href={`/posts/${post.id}`}
+              href={post.href || `/posts/${post.id}`}
               class="block p-4 sm:p-5 rounded-xl hover:bg-accent transition-all no-underline group"
               onclick={() => uiState.closeSearch()}
             >

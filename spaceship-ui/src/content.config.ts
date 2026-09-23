@@ -121,4 +121,16 @@ const about = defineCollection({
   }),
 });
 
-export const collections = { posts, projects, appearances, about };
+const englishPosts = defineCollection({
+  loader: glob({ pattern: ['**/*.{md,mdx}', '!**/_*'], base: './site/content/english' }),
+  schema: z.object({
+    title: z.string(), description: z.string(), slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    pubDate: z.date(), updatedDate: z.date().optional(), draft: z.boolean().default(false),
+    lang: z.literal('en'), category: z.enum(POST_CATEGORIES), subcategory: z.string(),
+    type: z.enum(POST_TYPES), tags: z.array(z.string()), translationKey: z.string(),
+    translatedPosts: z.record(z.string(), z.string()), featured: z.boolean().default(false),
+    researchArea: z.enum(RESEARCH_AREAS).optional(), researchFeatured: z.boolean().default(false),
+    researchOrder: z.number().optional(), showComments: z.boolean().default(true),
+  }),
+});
+export const collections = { posts, projects, appearances, about, englishPosts };
