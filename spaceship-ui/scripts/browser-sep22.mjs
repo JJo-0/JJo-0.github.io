@@ -44,21 +44,18 @@ async function back(id){
 async function enter(selector){
   lastAction={selector,input:'Enter',scriptDisabled:true};
   await cdp.send('Page.bringToFront',{},sessionId);
-  const focused=await js(`(()=>{const target=document.querySelector(${JSON.stringify(selector)});target?.focus();return document.activeElement===target;})()`);
-  assert(focused,`Unable to focus keyboard target: ${selector}`);
   await cdp.send('Emulation.setScriptExecutionDisabled',{value:true},sessionId);
   try{
+    await cdp.send('DOM.enable',{},sessionId);
+    const {root}=await cdp.send('DOM.getDocument',{depth:0},sessionId);
+    const {nodeId}=await cdp.send('DOM.querySelector',{nodeId:root.nodeId,selector},sessionId);assert(nodeId>0);
+    await cdp.send('DOM.focus',{nodeId},sessionId);
+    const focused=await cdp.send('DOM.querySelector',{nodeId:root.nodeId,selector:':focus'},sessionId);assert.equal(focused.nodeId,nodeId);
     // A real Enter includes the CR character. rawKeyDown alone omits the
     // keypress that native summary controls use; send exactly one complete key.
     await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'},sessionId);
     await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
   }finally{await cdp.send('Emulation.setScriptExecutionDisabled',{value:false},sessionId);}
-}
-async function reveal(selector){
-  const found=await js(`(()=>{document.querySelectorAll('[data-sep22-keyboard-target]').forEach(node=>node.removeAttribute('data-sep22-keyboard-target'));const candidates=[...document.querySelectorAll(${JSON.stringify(selector)})];const target=candidates.find(node=>!node.closest('details'))||candidates[0];if(!target)return false;for(let node=target.parentElement;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;target.tabIndex=0;target.setAttribute('data-sep22-keyboard-target','');target.scrollIntoView({block:'center',behavior:'instant'});return target.getClientRects().length>0;})()`);
-  assert(found,`Missing keyboard target: ${selector}`);
-  await js('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
-  return 'article a[data-sep22-keyboard-target]';
 }
 async function assertReference(n){
   await wait(`location.pathname===${JSON.stringify(route)}&&location.hash==='#news-ref-${n}'`,`reference ${n}`);
@@ -152,14 +149,10 @@ try{
     const referenceNumbers=Object.keys(edition.citationCounts).filter(n=>edition.citationCounts[n]>0);
     for(const n of referenceNumbers){
       const selector=`article a[data-news-citation="${n}"]`;
-      let targetSelector=await reveal(selector);
       const before=await historyEntry();
-      const same=await js(`new URL(document.querySelector(${JSON.stringify(targetSelector)}).href).pathname===location.pathname`);assert(same);
-      await pointer(targetSelector,mobile);await assertReference(n);await back(before);
-      // Same-page history restoration can collapse a native <details>. Reopen
-      // any ancestor before testing the citation's native Enter behavior.
-      targetSelector=await reveal(selector);
-      await enter(targetSelector);await assertReference(n);await back(before);
+      const same=await js(`new URL(document.querySelector(${JSON.stringify(selector)}).href).pathname===location.pathname`);assert(same);
+      await pointer(selector,mobile);await assertReference(n);await back(before);
+      await enter(selector);await assertReference(n);await back(before);
     }
     const final=await js(`(()=>{const s=document.querySelector('article small');return {overflow:document.documentElement.scrollWidth>innerWidth+2,katexErrors:document.querySelectorAll('article .katex-error').length,citations:document.querySelectorAll('article [data-news-citation]').length,details:document.querySelectorAll('article [data-candidate-equation]').length,notesSmall:!!s&&parseFloat(getComputedStyle(s).fontSize)<parseFloat(getComputedStyle(s.parentElement).fontSize)};})()`);
     assert(!final.overflow&&final.katexErrors===0&&final.details===edition.equations.length&&final.notesSmall);
