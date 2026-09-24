@@ -60,5 +60,6 @@ await import('./news-media-visit-plan.test.mjs');
 
 // Check the rendered NEWS roster, not only source strings.
 const { execFileSync } = await import('node:child_process');
+execFileSync(process.execPath, [new URL('./citation-pointer-lifecycle.test.mjs', import.meta.url).pathname], { stdio: 'inherit' });
 execFileSync('python3', [new URL('./news-citation-contract.test.py', import.meta.url).pathname], { stdio: 'inherit' });
 execFileSync('python3', [new URL('./news-citation-contract.py', import.meta.url).pathname], { stdio: 'inherit' });
