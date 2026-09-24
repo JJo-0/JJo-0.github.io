@@ -1,0 +1,28 @@
+name: PR129 source snapshot
+on:
+  push:
+    branches: [ops/pr129-reader-review-20260924]
+    paths: [.github/workflows/pr129-source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f584b03f1d475be631822e0abdba04b5af2e4af1
+          persist-credentials: false
+      - name: Archive reviewed source, without credentials
+        run: |
+          mkdir -p review-source
+          git rev-parse HEAD > review-source/commit.txt
+          git rev-parse HEAD^{tree} > review-source/tree.txt
+          git archive --format=zip HEAD spaceship-ui scripts .github AGENTS.md CONTENT_POLICY.md > review-source/source.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pr129-integrated-source
+          path: review-source/
+          retention-days: 3
+          if-no-files-found: error
