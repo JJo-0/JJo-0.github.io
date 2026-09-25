@@ -126,6 +126,7 @@ const englishPosts = defineCollection({
   schema: z.object({
     title: z.string(), description: z.string(), slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     pubDate: z.date(), updatedDate: z.date().optional(), draft: z.boolean().default(false),
+    publicationTimeZone: z.enum(['UTC', 'Asia/Seoul']).default('Asia/Seoul'),
     lang: z.literal('en'), category: z.enum(POST_CATEGORIES), subcategory: z.string(),
     type: z.enum(POST_TYPES), tags: z.array(z.string()), translationKey: z.string(),
     translatedPosts: z.record(z.string(), z.string()), featured: z.boolean().default(false),
