@@ -11,10 +11,17 @@ for path in ['spaceship-ui/src/components/EnglishPostCard.astro','spaceship-ui/s
  s=s.replace('post.data.pubDate.toISOString().slice(0,10)','formatDateKey(post.data.pubDate, post.data.publicationTimeZone)')
  s=s.replace('post.data.updatedDate.toISOString().slice(0,10)','formatDateKey(post.data.updatedDate, post.data.publicationTimeZone)')
  p.write_text(s);paths.add(path)
-# The Korean date formatter spells the month; the English edition uses ISO dates.
 patch('spaceship-ui/scripts/sep25-contract.py',"p=Page(text);assert any(t=='html'", "p=Page(text);assert re.search(r'<time[^>]*>\\s*(?:2026-09-25|Sep 25, 2026)\\s*</time>',text)\n assert any(t=='html'")
+# Register new data through the existing canonical mechanism; parser and coverage checks are unchanged.
+patch('scripts/normalize_tags_current.py','if __name__ == "__main__":', '''POST_TAXONOMY.update({
+    '2026-09-25-soec-stack-operational-control-news.mdx': Taxonomy('finance-industry', 'solid-oxide-electrolysis', 'paper-review', ('frontier-one', 'green-hydrogen')),
+    '2026-09-25-nhs-galleri-screening-performance-news.mdx': Taxonomy('health-lifestyle', 'multi-cancer-screening', 'paper-review', ('frontier-candidate', 'cancer-screening')),
+    '2026-09-25-npu-sparrow-wing-tail-coordination-news.mdx': Taxonomy('robotics-embedded', 'flapping-wing-robotics', 'paper-review', ('frontier-candidate', 'aerial-robotics')),
+})
+
+if __name__ == "__main__":''')
 j['files']=[]
 for path in sorted(paths):
  b=(R/path).read_bytes();j['files'].append({'path':path,'mode':'100644','type':'blob','sha':hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest(),'sha256':hashlib.sha256(b).hexdigest()})
 (receipt/'assembly.json').write_text(json.dumps(j,ensure_ascii=False,indent=2))
-print('Seoul publication display date verified in candidate; no publication timestamp changed')
+print('Seoul dates and canonical taxonomy registered; original publication timestamps and validation rules unchanged')
