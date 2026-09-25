@@ -1,0 +1,87 @@
+name: September 25 public verification
+on:
+  push:
+    branches: [ops/sep25-live-verification]
+    paths: [.github/workflows/sep25-live-verification.yml]
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: a0cb126566c0fa78bbf8b5ad36b6de3c07d38516
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Wait for the public release, without deploying or modifying it
+        run: |
+          python3 - <<'PY'
+          import time,urllib.request,urllib.error
+          url='https://jjo-0.github.io/posts/2026-09-25-soec-stack-operational-control-news/'
+          for attempt in range(60):
+              try:
+                  with urllib.request.urlopen(url,timeout=15) as r:
+                      text=r.read().decode()
+                      if r.status==200 and 'sep25-soec-fig-1' in text:
+                          print('Public edition found; continuing with independent checks.');break
+              except (urllib.error.URLError,TimeoutError):pass
+              time.sleep(10)
+          else:raise SystemExit('The public release did not become available; no deployment was attempted by this worker.')
+          PY
+      - name: Public HTTP metadata, bilingual routes and original image digests
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import json,urllib.request,hashlib,re,datetime
+          class Page(HTMLParser):
+              def __init__(self,text):super().__init__();self.tags=[];self.feed(text)
+              def handle_starttag(self,t,attrs):self.tags.append((t,dict(attrs)))
+          root='https://jjo-0.github.io';entries=json.loads(Path('site/news-edition-20260925.json').read_text())['entries'];rows=[];images=[]
+          for e in entries:
+              for lang,route in [('ko','/posts/'+e['slug']+'/'),('en','/en/posts/'+e['enSlug']+'/')]:
+                  with urllib.request.urlopen(root+route,timeout=30) as r:
+                      assert r.status==200;text=r.read().decode();last_modified=r.headers.get('Last-Modified')
+                  p=Page(text);assert any(t=='html' and a.get('lang')==lang for t,a in p.tags)
+                  assert any(t=='link' and a.get('rel')=='canonical' and a.get('href')==root+route for t,a in p.tags)
+                  assert re.search(r'<time[^>]*>\s*(?:2026-09-25|Sep 25, 2026)\s*</time>',text)
+                  assert 'google-adsense-account' not in text and 'katex-error' not in text
+                  assert [a['data-news-figure'] for t,a in p.tags if 'data-news-figure' in a]==e['mediaIds']
+                  rows.append({'url':root+route,'lang':lang,'status':200,'editionDate':'2026-09-25','canonical':True,'originalFigures':2,'ads':False,'lastModified':last_modified})
+          for f in json.loads(Path('site/assets/assets/posts/news-20260925/figures.json').read_text())['figures']:
+              with urllib.request.urlopen(root+f['src'],timeout=30) as r:assert r.status==200;b=r.read()
+              assert hashlib.sha256(b).hexdigest()==f['sha256']
+              images.append({'url':root+f['src'],'sha256':f['sha256'],'bytes':len(b)})
+          out=Path('sep25-review');out.mkdir(exist_ok=True)
+          (out/'live-http.json').write_text(json.dumps({'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'base':root,'routes':rows,'images':images},indent=2))
+          print('Public HTTP PASS: six language routes and six exact original PNG digests.')
+          PY
+      - name: Actual public edition order, figures and native citations
+        env:
+          JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
+        run: node scripts/browser-sep25.mjs
+      - name: Actual public English navigation and search
+        env:
+          JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
+        run: node scripts/browser-english-edition.mjs
+      - name: Preserve checked source and public results
+        if: always()
+        run: |
+          mkdir -p sep25-review
+          git rev-parse HEAD > sep25-review/tested-source-sha.txt
+          cp -R english-review sep25-review/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sep25-public-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/sep25-review/
+          retention-days: 7
