@@ -1,58 +1,111 @@
-name: September 25 verified figures
+name: September 25 integration candidate
 on:
   pull_request:
     branches: [main]
-    paths: [.github/workflows/sep25-evidence.yml]
+    paths: [.github/workflows/sep25-evidence.yml, '.ops/sep25-integrate.py']
 permissions:
   contents: read
+concurrency:
+  group: sep25-integration-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  figures:
+  candidate:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 15
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: repo/spaceship-ui
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: ops
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ffd6a8188d9344a75996d48b8750a5fce857d57c
+          path: repo
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install requests pymupdf==1.26.7
-      - name: Verify paper bytes and complete figure crops, then create blobs only
+      - run: pip install pyyaml
+      - name: Assemble only the declared edition
+        working-directory: repo
+        run: |
+          python ../ops/.ops/sep25-integrate.py
+          git add -N .
+          git diff --check
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: repo/spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Preserved lint, types and SEO
+        run: |
+          pnpm lint 2>&1 | tee ../../sep25-receipt/lint.log
+          pnpm check 2>&1 | tee ../../sep25-receipt/types.log
+          pnpm seo:check 2>&1 | tee ../../sep25-receipt/seo.log
+      - name: Build and content contracts
+        run: |
+          pnpm build 2>&1 | tee ../../sep25-receipt/build.log
+          pnpm content:check 2>&1 | tee ../../sep25-receipt/content.log
+          python3 scripts/english-edition-audit.py 2>&1 | tee ../../sep25-receipt/english-static.log
+          python3 scripts/sep25-contract.py 2>&1 | tee ../../sep25-receipt/sep25-static.log
+      - name: Native English, original-figure and mobile regressions
+        run: |
+          node scripts/browser-english-edition.mjs 2>&1 | tee ../../sep25-receipt/english-browser.log
+          node scripts/browser-sep25.mjs 2>&1 | tee ../../sep25-receipt/sep25-browser.log
+          node scripts/browser-mobile-performance.mjs 2>&1 | tee ../../sep25-receipt/mobile-browser.log
+      - name: Preserve checked registry blobs without committing or moving branches
+        working-directory: repo
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p figures
-          python - <<'PY'
-          import requests, pathlib, json, hashlib, fitz, os, base64
-          out=pathlib.Path('figures')
-          papers={
-            'soec':('https://www.nature.com/articles/s41467-026-78001-1_reference.pdf','e09c9c474b27bd0d20278c593cfec22a70095f7ae0773b5c0f294e3b9e8070c1'),
-            'galleri':('https://www.nature.com/articles/s41591-026-04652-8.pdf','079ef502fe4f68c3e3794b5e1eb473cac6bc9d50071954c1cecc34d91fbb8dd9'),
-            'sparrow':('https://www.nature.com/articles/s41467-026-78005-x_reference.pdf','4412f84c29f734a00f4a3c8d9224eaaf18611d7d6b775fdb04ff0aa53fa434f1')}
-          crops=[
-            ('soec',1,3,[39,43,562,335],'86f2c9118a6d464350bf74492f288b4cf92264399c4980cc59a9e6344bc8ac6b'),
-            ('soec',2,4,[39,43,562,245],'1bb315f5838b300c808e34795bd46a63f5bdd8e88f7758dd4bc2e2b09c22dad2'),
-            ('galleri',1,2,[75,43,523,350],'1d61e617951560f1e4afeb131a1e32a49128272d595bda4609c1b54452bf5e8c'),
-            ('galleri',3,7,[34,47,564,466],'5c1b470f965e6a2e267829d321c84590ca10dc6cd30ae137510c193a82ea7c17'),
-            ('sparrow',2,3,[90,44,509,351],'b1fc37776fcf4cdca36d3aef9950779568ea756453417da3ca5466db3c250fe3'),
-            ('sparrow',6,9,[40,44,562,471],'dba2cf1e672a734d57d33b7f4b3f6ccd3fd5af592556c7c345f2124f675c8069')]
-          docs={};rows=[]
-          for name,(url,digest) in papers.items():
-            r=requests.get(url,timeout=90);r.raise_for_status();assert hashlib.sha256(r.content).hexdigest()==digest
-            docs[name]=fitz.open(stream=r.content,filetype='pdf')
-          for name,fig,page,clip,digest in crops:
-            pix=docs[name][page-1].get_pixmap(matrix=fitz.Matrix(4,4),clip=fitz.Rect(clip),alpha=False)
-            data=pix.tobytes('png');assert hashlib.sha256(data).hexdigest()==digest,(name,fig,'pixel file digest mismatch')
-            filename=f'{name}-fig-{fig}.png';(out/filename).write_bytes(data)
-            response=requests.post('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'},json={'content':base64.b64encode(data).decode(),'encoding':'base64'},timeout=50);response.raise_for_status()
-            gitsha=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest();assert response.json()['sha']==gitsha
-            rows.append({'path':'spaceship-ui/site/assets/assets/posts/news-20260925/'+filename,'mode':'100644','type':'blob','sha':gitsha,'sha256':digest,'width':pix.width,'height':pix.height,'source':papers[name][0],'sourceSha256':papers[name][1],'page':page,'crop':clip})
-          (out/'receipt.json').write_text(json.dumps({'renderer':fitz.VersionBind,'files':rows,'branchWrites':False},indent=2))
-          print(json.dumps(rows));print('No commits, trees or refs were written.')
+          python3 - <<'PY'
+          import pathlib,json,hashlib,urllib.request,os
+          receipt=pathlib.Path('../sep25-receipt');j=json.loads((receipt/'assembly.json').read_text())
+          assert j['sourceCommit']=='ffd6a8188d9344a75996d48b8750a5fce857d57c'
+          assert len(j['files'])==15
+          for row in j['files']:
+              p=pathlib.Path(row['path']);assert '..' not in p.parts and not p.is_absolute()
+              assert str(p).startswith('spaceship-ui/') or str(p)=='.github/workflows/sep25-reading.yml'
+              assert not str(p).startswith(('spaceship-ui/site/content/posts/','spaceship-ui/site/content/english/'))
+              b=p.read_bytes();assert hashlib.sha256(b).hexdigest()==row['sha256']
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=json.dumps({'content':b.decode(),'encoding':'utf-8'}).encode(),headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+              with urllib.request.urlopen(req,timeout=40) as response:r=json.load(response)
+              assert r['sha']==row['sha']
+          (receipt/'verified-blobs.json').write_text(json.dumps(j,indent=2))
+          print('Verified immutable registry blobs:',len(j['files']),'; no tree, commit, ref or branch was written')
           PY
+      - name: Preserve exact candidate and diagnostics
+        if: always()
+        working-directory: repo
+        run: |
+          mkdir -p ../sep25-receipt
+          python3 - <<'PY'
+          import pathlib,json,zipfile
+          receipt=pathlib.Path('../sep25-receipt');p=receipt/'assembly.json'
+          if p.exists():
+              j=json.loads(p.read_text())
+              with zipfile.ZipFile(receipt/'assembled-source.zip','w',zipfile.ZIP_DEFLATED) as z:
+                  for row in j['files']:z.write(row['path'],row['path'])
+          PY
+          cp -R spaceship-ui/sep25-review ../sep25-receipt/ 2>/dev/null || true
+          cp -R spaceship-ui/english-review ../sep25-receipt/ 2>/dev/null || true
+          cp -R spaceship-ui/mobile-performance ../sep25-receipt/ 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: september-25-verified-figures
-          path: figures/
+          name: sep25-integration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: sep25-receipt/
           retention-days: 3
