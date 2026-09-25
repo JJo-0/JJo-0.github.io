@@ -1,0 +1,73 @@
+name: September 25 primary evidence
+on:
+  push:
+    branches: [ops/news-20260925-evidence]
+    paths: [.github/workflows/sep25-evidence.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4 pymupdf
+      - name: Retrieve publisher documents without changing source or publication state
+        run: |
+          mkdir -p evidence
+          python - <<'PY'
+          import requests, pathlib, json, hashlib, urllib.parse, re, fitz
+          from bs4 import BeautifulSoup
+          out=pathlib.Path('evidence'); log=[]
+          papers={'soec':'s41467-026-78001-1','galleri':'s41591-026-04652-8','sparrow':'s41467-026-78005-x'}
+          session=requests.Session();session.headers['User-Agent']='Mozilla/5.0 (research source verification)'
+          def get(url,path):
+              try:
+                  r=session.get(url,timeout=50);r.raise_for_status();b=r.content
+                  path.write_bytes(b);log.append({'url':url,'file':str(path),'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'type':r.headers.get('Content-Type')});return r
+              except Exception as e:log.append({'url':url,'error':str(e)});return None
+          for name,article in papers.items():
+              d=out/name;d.mkdir();url='https://www.nature.com/articles/'+article
+              r=get(url,d/'article.html')
+              links=[]
+              if r:
+                  soup=BeautifulSoup(r.text,'html.parser');(d/'article.txt').write_text(soup.get_text('\n',strip=True))
+                  for a in soup.select('a[href]'):
+                      href=urllib.parse.urljoin(url,a['href']);label=a.get_text(' ',strip=True)
+                      if '.pdf' in href or '/figures/' in href or 'creativecommons' in href or 'source data' in label.lower():links.append({'label':label,'url':href})
+                  images=[]
+                  for f in soup.select('figure'):
+                      imgs=f.select('img');cap=f.get_text(' ',strip=True)
+                      for im in imgs:
+                          src=im.get('src') or im.get('data-src')
+                          if src:images.append({'caption':cap,'url':urllib.parse.urljoin(url,src),'alt':im.get('alt')})
+                  (d/'figure-links.json').write_text(json.dumps(images,ensure_ascii=False,indent=2))
+              (d/'links.json').write_text(json.dumps(links,ensure_ascii=False,indent=2))
+              pdfs=[{'label':'Article PDF','url':url+'.pdf'}]
+              pdfs.extend(x for x in links if '.pdf' in x['url'] and ('MOESM1' in x['url'] or 'Peer Review' in x['label']))
+              seen=set()
+              for i,x in enumerate(pdfs[:4]):
+                  if x['url'] in seen:continue
+                  seen.add(x['url']);p=d/f'document-{i}.pdf';res=get(x['url'],p)
+                  if not res or not res.content.startswith(b'%PDF'):continue
+                  doc=fitz.open(p);text=[]
+                  for j,page in enumerate(doc):
+                      t=page.get_text();text.append(f'\n\n=== PAGE {j+1} ===\n'+t)
+                      if j<2 or re.search(r'Fig(?:ure|\.)?\s*[123]|Table\s*S?2|25,?011|22,?268|99.56|20.4',t,re.I):
+                          if j<60:page.get_pixmap(matrix=fitz.Matrix(1,1)).save(d/f'doc{i}-p{j+1}.png')
+                  (d/f'document-{i}.txt').write_text(''.join(text))
+              print(name,'retrieved',len([x for x in log if str(d) in x.get('file','')]))
+          (out/'retrieval.json').write_text(json.dumps(log,ensure_ascii=False,indent=2))
+          print(json.dumps(log,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: september-25-primary-evidence
+          path: evidence/
+          retention-days: 3
