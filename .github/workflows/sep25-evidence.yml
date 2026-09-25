@@ -1,7 +1,7 @@
 name: September 25 primary evidence
 on:
-  push:
-    branches: [ops/news-20260925-evidence]
+  pull_request:
+    branches: [main]
     paths: [.github/workflows/sep25-evidence.yml]
 permissions:
   contents: read
@@ -33,8 +33,7 @@ jobs:
               except Exception as e:log.append({'url':url,'error':str(e)});return None
           for name,article in papers.items():
               d=out/name;d.mkdir();url='https://www.nature.com/articles/'+article
-              r=get(url,d/'article.html')
-              links=[]
+              r=get(url,d/'article.html');links=[]
               if r:
                   soup=BeautifulSoup(r.text,'html.parser');(d/'article.txt').write_text(soup.get_text('\n',strip=True))
                   for a in soup.select('a[href]'):
@@ -42,10 +41,9 @@ jobs:
                       if '.pdf' in href or '/figures/' in href or 'creativecommons' in href or 'source data' in label.lower():links.append({'label':label,'url':href})
                   images=[]
                   for f in soup.select('figure'):
-                      imgs=f.select('img');cap=f.get_text(' ',strip=True)
-                      for im in imgs:
+                      for im in f.select('img'):
                           src=im.get('src') or im.get('data-src')
-                          if src:images.append({'caption':cap,'url':urllib.parse.urljoin(url,src),'alt':im.get('alt')})
+                          if src:images.append({'caption':f.get_text(' ',strip=True),'url':urllib.parse.urljoin(url,src),'alt':im.get('alt')})
                   (d/'figure-links.json').write_text(json.dumps(images,ensure_ascii=False,indent=2))
               (d/'links.json').write_text(json.dumps(links,ensure_ascii=False,indent=2))
               pdfs=[{'label':'Article PDF','url':url+'.pdf'}]
@@ -61,7 +59,6 @@ jobs:
                       if j<2 or re.search(r'Fig(?:ure|\.)?\s*[123]|Table\s*S?2|25,?011|22,?268|99.56|20.4',t,re.I):
                           if j<60:page.get_pixmap(matrix=fitz.Matrix(1,1)).save(d/f'doc{i}-p{j+1}.png')
                   (d/f'document-{i}.txt').write_text(''.join(text))
-              print(name,'retrieved',len([x for x in log if str(d) in x.get('file','')]))
           (out/'retrieval.json').write_text(json.dumps(log,ensure_ascii=False,indent=2))
           print(json.dumps(log,ensure_ascii=False))
           PY
