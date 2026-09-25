@@ -220,5 +220,11 @@ POST_TAXONOMY.update({
     '2026-09-23-herbot-her2-biliary-cancer-news.mdx': Taxonomy('health-lifestyle', 'clinical-oncology', 'paper-review', ('frontier-candidate', 'clinical-oncology')),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-25-soec-stack-operational-control-news.mdx': Taxonomy('finance-industry', 'solid-oxide-electrolysis', 'paper-review', ('frontier-one', 'green-hydrogen')),
+    '2026-09-25-nhs-galleri-screening-performance-news.mdx': Taxonomy('health-lifestyle', 'multi-cancer-screening', 'paper-review', ('frontier-candidate', 'cancer-screening')),
+    '2026-09-25-npu-sparrow-wing-tail-coordination-news.mdx': Taxonomy('robotics-embedded', 'flapping-wing-robotics', 'paper-review', ('frontier-candidate', 'aerial-robotics')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

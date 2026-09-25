@@ -73,7 +73,7 @@ try{
   await screen('english-404');
   await enter('header [data-site-brand]');
   await waitExpression(cdp,sessionId,`location.pathname === '/en/' && document.documentElement?.lang === 'en'`,'English 404 returns to English home');
-  fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,results,nativeLanguageRoundTrips:8,nativeCitationBack:8,archiveSwitches:4,english404:true,search:true,preference:true},null,2));
+  fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,results,nativeLanguageRoundTrips:manifest.pairs.length*2,nativeCitationBack:manifest.pairs.length*2,archiveSwitches:4,english404:true,search:true,preference:true},null,2));
   console.log('english-browser: PASS '+results.length+' article/theme/viewport cases plus exact language navigation, citations/Back, index pages, search, language preference and real English 404 recovery');
 }catch(error){console.error(error);fs.writeFileSync(`${out}/failure.json`,JSON.stringify({error:String(error),results},null,2));if(cdp&&sessionId)await screen('failure').catch(()=>{});process.exitCode=1;}
 finally{cdp?.close();await stopChild(chrome?.child,'SIGKILL');await stopChild(preview,'SIGTERM');removeProfile(chrome?.profile);clearTimeout(hardStop);process.exit(process.exitCode||0);}

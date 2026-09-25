@@ -78,9 +78,9 @@ export function buildPostGraph(posts: GraphPost[]): PostGraph {
       subcategory: post.data.subcategory,
       type: post.data.type,
       tags: post.data.tags,
-      x: Math.cos(angle) * cluster + Math.cos(local) * radius,
-      y: Math.sin(angle) * cluster + Math.sin(local) * radius,
-      z: (((seed >>> 20) % 1000) / 1000 - 0.5) * 3.8,
+      x: Number((Math.cos(angle) * cluster + Math.cos(local) * radius).toFixed(4)),
+      y: Number((Math.sin(angle) * cluster + Math.sin(local) * radius).toFixed(4)),
+      z: Number(((((seed >>> 20) % 1000) / 1000 - 0.5) * 3.8).toFixed(4)),
     };
   });
   const candidates: PostGraphEdge[] = [];
