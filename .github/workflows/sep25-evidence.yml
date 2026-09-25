@@ -2,7 +2,7 @@ name: September 25 integration candidate
 on:
   pull_request:
     branches: [main]
-    paths: [.github/workflows/sep25-evidence.yml, '.ops/sep25-integrate.py']
+    paths: [.github/workflows/sep25-evidence.yml, '.ops/sep25-integrate.py', '.ops/sep25-dates.py']
 permissions:
   contents: read
 concurrency:
@@ -38,6 +38,7 @@ jobs:
         working-directory: repo
         run: |
           python ../ops/.ops/sep25-integrate.py
+          python ../ops/.ops/sep25-dates.py
           git add -N .
           git diff --check
       - uses: pnpm/action-setup@v4
@@ -75,7 +76,7 @@ jobs:
           import pathlib,json,hashlib,urllib.request,os
           receipt=pathlib.Path('../sep25-receipt');j=json.loads((receipt/'assembly.json').read_text())
           assert j['sourceCommit']=='ffd6a8188d9344a75996d48b8750a5fce857d57c'
-          assert len(j['files'])==15
+          assert len(j['files'])==18
           for row in j['files']:
               p=pathlib.Path(row['path']);assert '..' not in p.parts and not p.is_absolute()
               assert str(p).startswith('spaceship-ui/') or str(p)=='.github/workflows/sep25-reading.yml'
