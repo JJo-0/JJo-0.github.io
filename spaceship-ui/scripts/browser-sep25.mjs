@@ -9,6 +9,13 @@ try{
  preview=await startPreview();chrome=await startChrome();cdp=await Cdp.connect(chrome.url);({sessionId}=await attach(cdp,{normalizeHistoryPath:false}));
  for(const width of [390,1440]){
   await viewport(cdp,sessionId,{width,height:900,mobile:width===390,touch:width===390,reduced:false});
+  for(const lang of ['ko','en']){
+   await navigate(cdp,sessionId,lang==='ko'?'/news/':'/en/news/');
+   const attribute=lang==='ko'?'data-news-card':'data-english-card';
+   const expected=[...edition.entries].sort((a,b)=>a.order-b.order).map(e=>lang==='ko'?e.slug:e.enSlug);
+   const actual=await evaluate(cdp,sessionId,`[...document.querySelectorAll('[${attribute}]')].map(a=>a.getAttribute('${attribute}')).filter(slug=>${JSON.stringify(expected)}.includes(slug))`);
+   assert.deepEqual(actual,expected,`${lang} NEWS must retain the declared SOEC/Galleri/Sparrow order`);
+  }
   for(const e of edition.entries)for(const lang of ['ko','en']){
    const route=lang==='ko'?`/posts/${e.slug}/`:`/en/posts/${e.enSlug}/`;
    assert.equal((await fetch(new URL(route,BASE))).status,200);await navigate(cdp,sessionId,route);
@@ -32,6 +39,6 @@ try{
    rows.push({key:e.key,lang,width,originals:seen,nativeCitation:true});console.log('sep25-browser: PASS '+JSON.stringify(rows.at(-1)));
   }
  }
- assert.equal(rows.length,12);fs.writeFileSync('sep25-review/browser.json',JSON.stringify({base:BASE,rows},null,2));
+ assert.equal(rows.length,12);fs.writeFileSync('sep25-review/browser.json',JSON.stringify({base:BASE,rows,editionOrderChecks:4},null,2));
 }catch(error){console.error(error);fs.writeFileSync('sep25-review/failure.json',JSON.stringify({error:String(error),rows},null,2));process.exitCode=1;}
 finally{cdp?.close();await stopChild(chrome?.child,'SIGKILL');await stopChild(preview,'SIGTERM');removeProfile(chrome?.profile);clearTimeout(timer);process.exit(process.exitCode||0);}

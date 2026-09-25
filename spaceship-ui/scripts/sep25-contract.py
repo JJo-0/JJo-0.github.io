@@ -24,6 +24,19 @@ def pagecheck(text,entry,lang):
  refs=[a for t,a in p.tags if a.get('id','').startswith('news-ref-')]
  assert len(refs)==(2 if entry['key']=='galleri' else 3)
  return {'figures':len(figs),'citations':len(cites),'references':len(refs)}
+def check_order(tags,attribute,expected):
+ actual=[a[attribute] for _,a in tags if a.get(attribute) in expected]
+ assert actual==expected,('edition order',actual,expected)
+# Compare this edition's relative order, allowing future editions above it.
+ordered=sorted(E['entries'],key=lambda e:e['order'])
+for lang,route,attribute,key in [('ko','news','data-news-card','slug'),('en','en/news','data-english-card','enSlug')]:
+ page=Page((R/'dist'/route/'index.html').read_text())
+ expected=[e[key] for e in ordered]
+ check_order(page.tags,attribute,expected)
+ if lang=='en':
+  try:check_order(list(reversed(page.tags)),attribute,expected)
+  except AssertionError:pass
+  else:raise AssertionError('Reversed English edition order accepted')
 # Check the actual serialized graph, without reducing its node inventory.
 home=(R/'dist/index.html').read_text();hp=Page(home)
 graph=json.loads(next(a['data-post-graph'] for t,a in hp.tags if 'data-post-graph' in a))
@@ -63,5 +76,5 @@ for m in mutations:
  try:pagecheck(m,e,'ko')
  except AssertionError:pass
  else:raise AssertionError('Broken page mutation accepted')
-out=R/'sep25-review';out.mkdir(exist_ok=True);(out/'static.json').write_text(json.dumps({'passed':True,'rows':rows,'verifiedOriginalFigures':6,'rejectedMutations':3,'lateRate':late,'overallRate':overall},indent=2))
+out=R/'sep25-review';out.mkdir(exist_ok=True);(out/'static.json').write_text(json.dumps({'passed':True,'rows':rows,'verifiedOriginalFigures':6,'rejectedMutations':4,'editionOrder':True,'lateRate':late,'overallRate':overall},indent=2))
 print('sep25-contract: PASS',json.dumps(rows))
