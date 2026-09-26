@@ -226,5 +226,12 @@ POST_TAXONOMY.update({
     '2026-09-25-npu-sparrow-wing-tail-coordination-news.mdx': Taxonomy('robotics-embedded', 'flapping-wing-robotics', 'paper-review', ('frontier-candidate', 'aerial-robotics')),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-25-power-bank-buying-guide.mdx': Taxonomy(
+        'health-lifestyle', 'consumer-guides', 'buying-guide',
+        ('power-bank', 'usb-pd', 'consumer-guides', 'lifestyle'),
+    ),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

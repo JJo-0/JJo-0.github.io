@@ -46,6 +46,7 @@ const {
 } = Astro.props;
 const pageLang = lang || SITE.lang;
 const isEnglish = Astro.url.pathname.startsWith('/en/');
+const isNotFoundPage = /(?:^|\/)404\/?$/.test(Astro.url.pathname);
 const knownAlternates = nativeAlternates(Astro.url.pathname);
 const languageAlternates = Object.keys(knownAlternates).length ? knownAlternates : providedAlternates;
 const pageTitle = title ? `${title} | ${SITE.author}` : SITE.seoTitle;
@@ -245,8 +246,9 @@ const adsenseLoaderScript = adsenseClientId
 
     <!-- English documents use native navigation and history; Korean transitions are unchanged. -->
     {!isEnglish && <ClientRouter fallback="animate" />}
-    <!-- A root base sends native #citations to the home page. Article bases must preserve their document path. -->
-    <base href={ogType === 'article' ? Astro.url.pathname : SITE.base} />
+    <!-- Categories, skip links and citations must resolve on this document, not the home page. -->
+    <!-- A 404 is served at the requested URL, not the build-time /404/ pathname. -->
+    {!isNotFoundPage && <base href={Astro.url.pathname} />}
   </head>
   <body class="site-body bg-background text-foreground min-h-screen">
     <TransitionRuntime />
