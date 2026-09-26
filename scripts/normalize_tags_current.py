@@ -100,7 +100,7 @@ POST_TAXONOMY.update(
         '2026-09-08-carep-news.mdx': Taxonomy('health-lifestyle', 'cell-therapy-engineering', 'paper-review', ('frontier-one', 'cell-therapy-engineering')),
         '2026-09-08-chorus-news.mdx': Taxonomy('health-lifestyle', 'clinical-oncology', 'paper-review', ('frontier-one', 'clinical-oncology')),
         '2026-09-08-deepwonder3d-news.mdx': Taxonomy('ai-machine-learning', 'biomedical-image-analysis', 'paper-review', ('frontier-one', 'biomedical-image-analysis')),
-        '2026-09-08-imec-nbtin-news.mdx': Taxonomy('finance-industry', 'superconducting-computing', 'research-report', ('frontier-one', 'superconducting-computing')),
+        '2026-09-08-imec-nbtin-news.mdx': Taxonomy('finance-industry', 'superconducting-computing', 'paper-review', ('frontier-one', 'superconducting-computing')),
         '2026-09-08-rentosertib-aging-news.mdx': Taxonomy('health-lifestyle', 'aging-biomarkers', 'paper-review', ('frontier-one', 'aging-biomarkers')),
     }
 )
@@ -224,6 +224,13 @@ POST_TAXONOMY.update({
     '2026-09-25-soec-stack-operational-control-news.mdx': Taxonomy('finance-industry', 'solid-oxide-electrolysis', 'paper-review', ('frontier-one', 'green-hydrogen')),
     '2026-09-25-nhs-galleri-screening-performance-news.mdx': Taxonomy('health-lifestyle', 'multi-cancer-screening', 'paper-review', ('frontier-candidate', 'cancer-screening')),
     '2026-09-25-npu-sparrow-wing-tail-coordination-news.mdx': Taxonomy('robotics-embedded', 'flapping-wing-robotics', 'paper-review', ('frontier-candidate', 'aerial-robotics')),
+})
+
+POST_TAXONOMY.update({
+    '2026-09-25-power-bank-buying-guide.mdx': Taxonomy(
+        'health-lifestyle', 'consumer-guides', 'buying-guide',
+        ('power-bank', 'usb-pd', 'consumer-guides', 'lifestyle'),
+    ),
 })
 
 if __name__ == "__main__":
