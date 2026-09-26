@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { evaluate, navigate, waitExpression } from './browser-smoke-harness.mjs';
+import { BASE, evaluate, navigate, waitExpression } from './browser-smoke-harness.mjs';
 
 // A literal href="#category" and a matching id are insufficient: <base href="/">
 // silently resolves that link against Home. Test resolved URLs and native input.
@@ -50,8 +50,11 @@ export async function checkWritingCategoryPage({ cdp, sessionId, width, enter, s
   await cdp.send('Page.navigateToHistoryEntry', { entryId: before }, sessionId);
   await waitExpression(cdp, sessionId, `['/posts', '/posts/'].includes(location.pathname) && location.hash === '' && document.readyState === 'complete'`, 'Back preserves the Writing archive');
 
-  // Existing shared /#category URLs still recover through the legacy redirect.
-  await navigate(cdp, sessionId, `/#${category}`);
+  // Allow the legacy Home fragment to redirect to Writing. navigate() deliberately
+  // pins a destination pathname, so use Page.navigate and assert the final route.
+  await cdp.send('Page.navigate', { url: new URL(`/#${category}`, BASE).href }, sessionId);
   await waitExpression(cdp, sessionId, atLifestyle, 'legacy Home fragment recovers the Writing category');
-  return { width, ...resolution, direct: true, nativeCategory: true, back: true, legacy: true };
+  const result = { width, ...resolution, direct: true, nativeCategory: true, back: true, legacy: true };
+  console.log('writing-category-browser: PASS ' + JSON.stringify(result));
+  return result;
 }
