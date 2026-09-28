@@ -227,11 +227,10 @@ export async function auditNewsMedia(cdp, sessionId) {
         cdp,
         sessionId,
         `(() => {
-        const figures = [...document.querySelectorAll('article figure.news-figure')];
-        const images = figures.map((figure) => { const img = figure.querySelector('img'); const r = img.getBoundingClientRect(); const style = getComputedStyle(img); return {
+        const images = [...document.querySelectorAll('article figure.news-figure img')].map((img) => { const figure = img.closest('figure.news-figure'); const r = img.getBoundingClientRect(); const style = getComputedStyle(img); return {
           naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight, displayedWidth: r.width, displayedHeight: r.height,
           visible: style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0 && r.width > 0 && r.height > 0,
-          caption: Boolean(figure.querySelector('figcaption')) }; });
+          caption: Boolean(figure?.querySelector('figcaption')) }; });
         return { slug: ${JSON.stringify(item.slug)}, viewport: innerWidth, imageCount: images.length,
           diagramCount: document.querySelectorAll('article [data-news-diagram]').length,
           decoded: images.every((image) => image.naturalWidth > 0 && image.naturalHeight > 0),
