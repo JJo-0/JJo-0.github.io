@@ -44,28 +44,45 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
   const themes = [];
   for (const dark of [false, true]) {
     await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark', ${dark})`);
-    const layout = await evaluate(cdp, sessionId, `(() => {
-      const figs = [...document.querySelectorAll('[data-soc-figure]')];
-      return {
-        overflow: document.documentElement.scrollWidth > innerWidth + 2,
-        diagramOverflow: figs.some(f => f.scrollWidth > f.clientWidth + 2),
-        readable: figs.every(f => parseFloat(getComputedStyle(f).fontSize) >= 16),
-        visible: figs.every(f => f.getBoundingClientRect().width > 0 && f.getBoundingClientRect().height > 0),
-        colors: figs.map(f => ({ink:getComputedStyle(f).color,paper:getComputedStyle(f).backgroundColor}))
-      };
-    })()`);
-    assert(!layout.overflow && !layout.diagramOverflow && layout.readable && layout.visible, JSON.stringify(layout));
-    themes.push({ dark, ...layout });
     await evaluate(cdp, sessionId, 'scrollTo({top:0,behavior:"instant"})');
     await screen(`soc-${lang}-${width}-${dark ? 'dark' : 'light'}-top`);
+    const diagrams = [];
     for (const kind of figureKinds) {
-      const bounds = await evaluate(cdp, sessionId, `(() => {
-        const r = document.querySelector('[data-soc-figure="${kind}"]').getBoundingClientRect();
-        return {x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height,scale:1};
+      // The site uses content-visibility:auto. Scroll as a reader would, then
+      // measure actual descendants, not an offscreen intrinsic-size placeholder.
+      await evaluate(cdp, sessionId, `(async () => {
+        const f = document.querySelector('[data-soc-figure="${kind}"]');
+        f.scrollIntoView({block:'start',behavior:'instant'});
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        scrollTo({top:Math.max(0,scrollY+f.getBoundingClientRect().top-140),behavior:'instant'});
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       })()`);
-      const { data } = await cdp.send('Page.captureScreenshot', { format:'png', captureBeyondViewport:true, clip:bounds }, sessionId);
+      await waitExpression(cdp, sessionId, `(() => {
+        const f=document.querySelector('[data-soc-figure="${kind}"]');
+        const n=f.querySelector('b');const r=n?.getBoundingClientRect();
+        return r && r.width>0 && r.height>0 && getComputedStyle(n).visibility==='visible';
+      })()`, `SoC ${kind} diagram descendants are laid out`);
+      const layout = await evaluate(cdp, sessionId, `(() => {
+        const f=document.querySelector('[data-soc-figure="${kind}"]');
+        const r=f.getBoundingClientRect();
+        const nodes=[...f.querySelectorAll('.soc-node,.soc-steps li,.soc-phase,figcaption')];
+        return {
+          overflow:document.documentElement.scrollWidth>innerWidth+2,
+          diagramOverflow:f.scrollWidth>f.clientWidth+2,
+          descendantOverflow:nodes.some(n=>n.scrollWidth>n.clientWidth+2),
+          readable:parseFloat(getComputedStyle(f).fontSize)>=16,
+          visible:r.width>0 && r.height>0 && r.top<innerHeight && r.bottom>0,
+          textCharacters:f.innerText.length,
+          colors:{ink:getComputedStyle(f).color,paper:getComputedStyle(f).backgroundColor},
+          bounds:{x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height,scale:1}
+        };
+      })()`);
+      assert(!layout.overflow && !layout.diagramOverflow && !layout.descendantOverflow && layout.readable && layout.visible && layout.textCharacters>100, JSON.stringify({kind,...layout}));
+      diagrams.push({kind,...layout});
+      const { data } = await cdp.send('Page.captureScreenshot', {format:'png',captureBeyondViewport:true,clip:layout.bounds}, sessionId);
       fs.writeFileSync(`english-review/soc-${lang}-${width}-${dark ? 'dark' : 'light'}-${kind}.png`, Buffer.from(data, 'base64'));
     }
+    themes.push({dark,diagrams});
   }
 
   await enter('[data-soc-exercise="fifo"] > summary');
@@ -86,6 +103,7 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
     ? `#robotics-embedded a[href*="2026-09-28-soc-00-system-map"]`
     : `main a[href="${enPath}"]`;
   await enter(link);
-  await waitExpression(cdp, sessionId, `location.pathname === ${JSON.stringify(route)} && document.readyState === 'complete'`, 'Native archive link opens the SoC lesson');
-  return { width, lang, ...content, themes, nativeExercise:true, nativeReview:true, archive:true };
+  await waitExpression(cdp, sessionId, `location.pathname.replace(/\\/+$/, '') === ${JSON.stringify(route.replace(/\/+$/, ''))} && document.readyState === 'complete' && document.querySelectorAll('[data-soc-figure]').length === 4`, 'Native archive link opens the exact SoC lesson');
+  const archiveDestination = await evaluate(cdp, sessionId, 'location.pathname');
+  return {width,lang,...content,themes,nativeExercise:true,nativeReview:true,archive:true,archiveDestination};
 }
