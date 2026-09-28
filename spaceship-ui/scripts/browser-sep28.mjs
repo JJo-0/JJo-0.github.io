@@ -103,6 +103,24 @@ try {
         await navigate(cdp, sessionId, route);
         await js(`document.documentElement.classList.toggle('dark',${dark})`);
         await js('document.fonts.ready.then(()=>true)');
+        const images = [];
+        for (const mediaId of entry.mediaIds) {
+          const selector = `[data-news-figure="${mediaId}"]`;
+          await point(selector);
+          await waitExpression(
+            cdp,
+            sessionId,
+            `(()=>{const i=document.querySelector('${selector} img');return i?.complete&&i.naturalWidth>0})()`,
+            `image ${mediaId} actually loads`
+          );
+          const decoded = await js(
+            `(async()=>{const f=document.querySelector('${selector}');const i=f.querySelector('img');await i.decode();return {id:${JSON.stringify(mediaId)},width:i.naturalWidth,height:i.naturalHeight,alt:i.alt,credit:f.querySelector('figcaption').textContent,overflow:f.scrollWidth>f.clientWidth+2}})()`
+          );
+          assert(decoded.width > 0 && decoded.height > 0 && decoded.alt.length >= 20);
+          assert(decoded.credit.includes('출처') && !decoded.overflow);
+          images.push(decoded);
+          await screenshot(`${entry.key}-${mediaId}-${width}-${dark ? 'dark' : 'light'}`);
+        }
         assert.equal(await js('document.documentElement.lang'), 'ko');
         assert.equal(await js("document.querySelectorAll('[data-beginner-guide]').length"), 1);
         await activate('[data-beginner-guide] > summary', mobile);
@@ -156,7 +174,15 @@ try {
         );
         assert.equal(final.references, entry.referenceCount);
         await screenshot(`${entry.key}-${width}-${dark ? 'dark' : 'light'}`);
-        rows.push({ key: entry.key, route, width, theme: dark ? 'dark' : 'light', primer, final });
+        rows.push({
+          key: entry.key,
+          route,
+          width,
+          theme: dark ? 'dark' : 'light',
+          images,
+          primer,
+          final,
+        });
         console.log(`sep28-browser: PASS ${entry.key} ${width} ${dark ? 'dark' : 'light'}`);
       }
     }

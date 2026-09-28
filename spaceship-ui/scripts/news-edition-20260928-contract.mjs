@@ -7,6 +7,33 @@ const root = new URL('../', import.meta.url);
 const read = (relative) => fs.readFileSync(new URL(relative, root), 'utf8');
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const edition = JSON.parse(read('site/news-edition-20260928.json'));
+const media = JSON.parse(read('site/news-media.json'));
+const provenance = JSON.parse(read('site/news-media-provenance-20260928.json'));
+
+// Original-first must be backed by actual bytes and reuse evidence, not a URL list.
+assert.equal(
+  provenance.assets.filter((asset) => asset.rightsStatus === 'LICENSE_CHECKED').length,
+  5
+);
+for (const asset of provenance.assets) {
+  const item = media[asset.id];
+  assert(item, `${asset.id} missing catalogue entry`);
+  const bytes = fs.readFileSync(new URL(`site/assets${item.src}`, root));
+  assert.equal(bytes.subarray(1, 4).toString(), 'PNG', `${asset.id} is not a PNG`);
+  assert.equal(hash(bytes), asset.sha256, `${asset.id} asset digest`);
+  assert.equal(item.sha256, asset.sha256);
+  assert.equal(bytes.readUInt32BE(16), item.width);
+  assert.equal(bytes.readUInt32BE(20), item.height);
+  assert(item.alt.length >= 20 && item.caption.length >= 30);
+  if (asset.rightsStatus === 'LICENSE_CHECKED') {
+    assert(item.license.startsWith('CC BY 4.0'));
+    assert(item.originalUrl && item.source && item.rights);
+  }
+}
+assert.equal(provenance.imageGeneration.mode, 'built-in imagegen');
+assert.deepEqual(provenance.imageGeneration.sourceImages, []);
+assert(provenance.thirdPartyCredits.some((credit) => credit.license === 'CC BY 3.0 Unported'));
+assert(provenance.rightsEvidence.some((item) => item.status === 'ORIGINAL_REUSE_NOT_AUTHORIZED'));
 
 const specs = {
   wpt: {
@@ -94,6 +121,28 @@ for (const entry of edition.entries) {
   assert(spec, `unknown edition entry ${entry.key}`);
   const source = read(`site/content/posts/${entry.slug}.mdx`);
   const primer = read(spec.primerPath);
+
+  assert(source.includes('먼저 쉬운 답부터'), `${entry.key} visible plain-language opening`);
+  assert(
+    source.includes('읽기') || source.includes('읽는 법'),
+    `${entry.key} figure-reading guide`
+  );
+  if (entry.key !== 'wpt') {
+    assert(
+      media[entry.mediaIds[0]].kind.startsWith('원 논문'),
+      `${entry.key} original-first image`
+    );
+  } else {
+    assert(source.includes('/figures/1') && source.includes('/figures/3'));
+    assert(source.includes('원본 재게시 허가가 확인되지 않아'));
+    assert(source.includes('식 S1·S2'));
+  }
+  if (entry.key === 'cathode') {
+    assert(source.includes('뒤 숫자가 반복 단위의 층 수라는 뜻은 아니다'));
+    assert(source.includes('Enhancing cycling stability by promoting high-voltage structural'));
+    assert(source.includes('Hekang Zhu et al.'));
+  }
+  if (entry.key === 'spacey') assert(source.includes('Ahmet Sureyya Rifaioglu et al.'));
 
   assert.equal(entry.evidenceGrade, 'PEER_REVIEWED_FRONTIER');
   assert.equal(hash(source), entry.sha256, `${entry.key} source identity`);
@@ -188,6 +237,7 @@ if (fs.existsSync(new URL('dist/index.html', root))) {
     );
     assert.equal((html.match(/data-news-reference=/g) ?? []).length, entry.referenceCount);
     assert(!html.includes('katex-error'));
+    for (const id of entry.mediaIds) assert(html.includes(`data-news-figure="${id}"`));
     const position = listing.indexOf(`data-news-card="${entry.slug}"`);
     assert(position >= 0, `${entry.key} missing from NEWS`);
     positions.push(position);

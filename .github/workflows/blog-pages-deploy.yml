@@ -228,6 +228,12 @@ jobs:
           }
           NODE
 
+      - name: Live September 28 original figures and reading
+        timeout-minutes: 6
+        run: |
+          node scripts/browser-sep28.mjs
+          git rev-parse HEAD > sep28-review/tested-sha.txt
+
       - name: Live Pages browser smoke
         run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
 
@@ -322,6 +328,15 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
+      - name: Preserve live September 28 reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep28-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/sep28-review/
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Publish Pages live-smoke status
         if: always()
         env:
@@ -361,4 +376,3 @@ jobs:
           }
           console.log(`pages-live: published ${state} for ${process.env.GITHUB_SHA}`);
           NODE
-
