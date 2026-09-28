@@ -1,10 +1,10 @@
 # SoC 00 Sensor FIFO Lab
 
-> **STATUS: UNEXECUTED LAB DRAFT**
+> **STATUS: EXECUTED — PASS WITH WARNINGS**
 >
-> CI target: `.github/workflows/soc-00-lab.yml` pins Verilator v5.052. Status remains UNEXECUTED until that workflow produces a successful run and retained logs.
+> GitHub Actions evidence: run `36396773725`, job `108844926182`. `.github/workflows/soc-00-lab.yml` pinned and built Verilator **v5.052**.
 
-상용 SoC가 아니라 HW/SW 경계를 학습하기 위한 교육용 SystemVerilog DUT다. 실제 실행 로그, FPGA 결과, silicon 결과는 아직 없다.
+상용 SoC가 아니라 HW/SW 경계를 학습하기 위한 교육용 SystemVerilog DUT다. RTL simulation은 실제 실행됐지만 FPGA 결과와 silicon 결과는 없다.
 
 ## 고정 환경
 - Target: sensor_fifo SystemVerilog RTL
@@ -16,7 +16,7 @@
 - IRQ state: sticky W1C
 - W1C clear + new HW event collision: **new event wins** (교육용 policy)
 
-실행 시 host OS와 C++ compiler의 정확한 버전을 추가한다.
+실행 환경: GitHub-hosted Ubuntu **24.04** runner image `20260920.314`, g++ **13.3.0**, Verilator **5.052 (2026-09-05 rev v5.052)**.
 
 ## 파일
 - spec/register-map.md — DUT contract
@@ -24,14 +24,14 @@
 - tb/tb_sensor_fifo.sv — self-checking testbench
 - sw/sensor_regs.h — software-visible offsets/masks 예시
 
-## 예정 명령
+## 실행 명령
 
     verilator --version
     verilator --binary --timing -Wall --top-module tb_sensor_fifo \
       rtl/sensor_fifo.sv tb/tb_sensor_fifo.sv
     ./obj_dir/Vtb_sensor_fifo
 
-위 명령은 Verilator 공식 --binary 형태를 따른 **예정 명령**이며 아직 실행하지 않았다.
+CI에서는 동일한 compile/execute 흐름을 실제 실행했다. compile 단계에는 WIDTHEXPAND, PROCASSINIT, UNUSEDSIGNAL warning이 있었고 `-Wno-fatal`로 warning을 비치명적으로 처리했다. self-checking testbench는 `SOC00 LAB EXPECTED PASS CONDITIONS MET`를 출력하고 정상 종료했다.
 
 ## Test matrix
 | Test | PASS 조건 |
