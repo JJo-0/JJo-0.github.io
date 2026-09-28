@@ -20,14 +20,17 @@ translatedPosts:
 ---
 
 import SocOverviewFigures from '@/components/post/SocOverviewFigures.astro';
+import SocSourceFigures from '@/components/post/SocSourceFigures.astro';
 
-**센서 값을 읽는 코드 한 줄 뒤에는, 서로 다른 일을 맡은 회로와 소프트웨어가 있습니다.** 이 글은 그 전체 지도를 그리는 「코드에서 칩까지」의 첫 편입니다. 보드를 구매하거나 드라이버를 작성하기 전에, 무엇이 어디서 동작하고 어떤 규칙으로 연결되는지부터 이해합니다.
+**이 초록색 보드 전체가 CPU일까요? 가운데 검은 칩 하나가 CPU일까요?** 먼저 실제 Raspberry Pi Pico 사진에서 보드·칩·CPU 코어의 경계를 확인합니다. 그다음 같은 RP2040의 제조사 데이터시트로 들어갑니다. 용어를 외우기 전에, 무엇을 가리키는 말인지 눈으로 잡아봅시다.[4][19][20]
+
+<SocSourceFigures kind="board" lang="ko" />
 
 `read_sensor()`를 호출하면 숫자 하나가 나옵니다. 하지만 센서와 통신하는 회로, 데이터를 보관할 공간, CPU에 도착을 알릴 조건, 읽을 주소와 읽기의 의미가 정해지지 않았다면 그 함수의 동작도 설명할 수 없습니다. CPU는 명령 실행을 맡는 구성 요소이고, SoC(System-on-Chip)는 여러 시스템 기능을 하나의 집적회로에 통합하는 개념입니다.[1][2]
 
 **학습 목표:** CPU와 전체 칩을 구분하고, 샘플의 이동 경로를 그리며, 회로·SW·검증 담당자가 공유해야 할 명세를 설명합니다. C 코드를 몰라도 읽을 수 있습니다. 주소와 비트의 세부 기초는 후속 편에서 보충합니다.
 
-**자료 기준은 2026-09-28입니다.** 공식 제품 사례와 교육용 가상 설계를 구분합니다. 네 장의 도식은 자체 재구성이며 실제 다이 배치도·측정 파형이 아닙니다. 이번 편에는 RTL, 드라이버, OS 포트 또는 실기 성능 검증을 구현하지 않습니다.
+**자료 기준은 2026-09-28입니다.** 공식 제품 사례와 교육용 가상 설계를 구분합니다. 실물 사진과 제조사 Figure 2 원문을 먼저 보고, 기존 다섯 학습용 도식으로 단순화합니다. 실물·원문·가상 예제를 구분하며 원본 도식은 실제 다이 배치도·측정 파형이 아닙니다. 이번 편에는 RTL, 드라이버, OS 포트 또는 실기 성능 검증을 구현하지 않습니다.
 
 ## 1. SoC·CPU·MCU·ASIC·FPGA: 포함 관계와 다른 분류축
 
@@ -57,6 +60,10 @@ FPGA의 논리·연결을 구성하는 것과 CPU가 명령을 실행하는 것�
 ## 2. CPU·메모리·인터커넥트·주변장치·가속기의 역할
 
 CPU가 빨라도 외부 신호와의 접점이나 저장 공간을 CPU 코어라는 말 하나로 대체할 수는 없습니다. 각 블록이 해결할 문제부터 나누면 시스템 구조가 보입니다. 아래 역할은 SoC 개요와 실제 MCU 구성, AMBA 자료를 입문 목적에 맞춰 재구성한 것입니다. 모든 제품의 필수 블록 목록은 아닙니다.[1][2][4][8]
+
+사진에서는 칩의 겉만 봤습니다. **이제 그 RP2040의 공식 내부 구조를 봅니다.** 다음은 제조사 데이터시트의 Figure 2이며, 오른쪽 위 `Proc0`·`Proc1`부터 중앙 `Bus Fabric`, 아래 `SRAM`, 왼쪽 `Peripherals` 순서로 읽으면 됩니다. 그림 전체를 한 번에 외울 필요는 없습니다.[20]
+
+<SocSourceFigures kind="datasheet" lang="ko" />
 
 | 블록 | 왜 필요한가? | 센서 예제에서 하는 일 |
 |---|---|---|
@@ -231,7 +238,7 @@ ISA는 명령 실행의 규칙입니다. 주변장치의 주소·접근 부작�
 
 ## 참고문헌과 근거 범위
 
-자료 조사일은 2026-09-28입니다. 아래는 기존 조사에서 확인한 개요·해당 절이며 문서 전체나 제품 동작 전체의 검증을 뜻하지 않습니다. Linux MMIO·IIO는 6.12, UART 사례는 earlgrey_1.0.0 경로를 유지합니다. master/latest 문서는 조사 시점 기준입니다. 제품 사례는 해당 제품에만, 가상 주소·FIFO·IRQ 정책과 계산은 위 교육용 계약에만 적용합니다. 별표·점수·성능 보장이나 실제 채용 범위에 대한 추정은 넣지 않았습니다.
+자료 조사일은 2026-09-28입니다. 아래는 기존 조사에서 확인한 개요·해당 절이며 문서 전체나 제품 동작 전체의 검증을 뜻하지 않습니다. Linux MMIO·IIO는 6.18, UART 사례는 earlgrey_1.0.0 경로를 유지합니다. master/latest 문서는 조사 시점 기준입니다. 제품 사례는 해당 제품에만, 가상 주소·FIFO·IRQ 정책과 계산은 위 교육용 계약에만 적용합니다. 별표·점수·성능 보장이나 실제 채용 범위에 대한 추정은 넣지 않았습니다.
 
 [1] Arm, [What is SoC Development?](https://www.arm.com/glossary/soc-development), 정의·주요 구성·개발 개요.
 
@@ -253,9 +260,9 @@ ISA는 명령 실행의 규칙입니다. 주변장치의 주소·접근 부작�
 
 [10] OpenTitan, [UART Registers](https://opentitan.org/earlgrey_1.0.0/book/hw/ip/uart/doc/registers.html), earlgrey_1.0.0, INTR_STATE.rx_overflow.
 
-[11] Linux, [Bus-Independent Device Accesses](https://docs.kernel.org/6.18/driver-api/device-io.html), 6.12, 장치 접근·__iomem·접근 함수.
+[11] Linux, [Bus-Independent Device Accesses](https://docs.kernel.org/6.18/driver-api/device-io.html), 6.18, 장치 접근·__iomem·접근 함수.
 
-[12] Linux, [Industrial I/O Introduction](https://docs.kernel.org/6.18/driver-api/iio/intro.html), 6.12, 센서 범주·SPI/I²C 사례.
+[12] Linux, [Industrial I/O Introduction](https://docs.kernel.org/6.18/driver-api/iio/intro.html), 6.18, 센서 범주·SPI/I²C 사례.
 
 [13] OpenTitan, [Hardware Development Stages](https://opentitan.org/book/doc/project_governance/development_stages.html), 설계·검증 진행 상태. 프로젝트별 기준을 업계 공통 문턱으로 전용하지 않음.
 
@@ -268,3 +275,8 @@ ISA는 명령 실행의 규칙입니다. 주변장치의 주소·접근 부작�
 [17] Zephyr, [Porting](https://docs.zephyrproject.org/latest/hardware/porting/index.html), architecture·SoC·board 가이드의 구분. 특정 포트 미구현.
 
 [18] Renesas, [Microcontroller Abstraction Layer (MCAL)](https://www.renesas.com/en/products/automotive-products/autosar/microcontroller-abstraction-layer-mcal), 주변장치 접근·상위 계층 추상화 개요. AUTOSAR 준수 판정 아님.
+
+
+[19] Phiarc, [Raspberry Pi Pico top.jpg](https://commons.wikimedia.org/wiki/File:Raspberry_Pi_Pico_top.jpg), 2023-03-18, CC BY-SA 4.0. 실물 사진, 크기 조정 및 WebP 변환.
+
+[20] Raspberry Pi Ltd, [RP2040 Datasheet](https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf#page=11), build 3184e62-clean, 2025-02-20, §1.2–1.3, Figure 2, printed p.10 / PDF page 11. CC BY-ND 4.0. 원본 그림 발췌, 그림 내용 변경 없음. 실제 다이 배치도가 아닌 기능 구조.
