@@ -1,0 +1,109 @@
+name: SoC overview
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/site/content/posts/2026-09-28-soc-00-system-map.mdx'
+      - 'spaceship-ui/site/content/english/en-soc-00-system-map.mdx'
+      - 'spaceship-ui/site/english-edition.json'
+      - 'spaceship-ui/src/components/post/SocOverviewFigures.astro'
+      - 'spaceship-ui/scripts/*soc*'
+      - '.github/workflows/soc-overview.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/site/content/posts/2026-09-28-soc-00-system-map.mdx'
+      - 'spaceship-ui/site/content/english/en-soc-00-system-map.mdx'
+      - 'spaceship-ui/site/english-edition.json'
+      - 'spaceship-ui/src/components/post/SocOverviewFigures.astro'
+      - 'spaceship-ui/scripts/*soc*'
+      - '.github/workflows/soc-overview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: soc-overview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Validate exact source receipts
+        run: |
+          mkdir -p soc-review
+          node --input-type=module <<'NODE' | tee soc-review/source-receipts.log
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          const pair = JSON.parse(fs.readFileSync('site/english-edition.json','utf8')).pairs.find(p => p.key === 'soc-00-20260928');
+          assert(pair, 'SoC translation pair missing');
+          console.log('tested source:', execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+          console.log('pair:', JSON.stringify(pair));
+          for (const [file,key] of [[`site/content/posts/${pair.koFile}`,'sourceSha256'],[`site/content/english/${pair.enFile}`,'englishSha256']]) {
+            const bytes = fs.readFileSync(file);
+            const actual = createHash('sha256').update(bytes).digest('hex');
+            const blob = execFileSync('git',['hash-object',file],{encoding:'utf8'}).trim();
+            console.log(JSON.stringify({file,bytes:bytes.length,blob,actual,expected:pair[key]}));
+            assert.equal(actual,pair[key],`Source receipt mismatch: ${file}`);
+          }
+          NODE
+      - name: Build and record diagnostics
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm build 2>&1 | tee soc-review/build.log
+      - name: Preserve exact source and diagnostic context
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p soc-review
+          git rev-parse HEAD > soc-review/tested-sha.txt
+          cp site/english-edition.json soc-review/
+          cp site/content/posts/2026-09-28-soc-00-system-map.mdx soc-review/
+          cp site/content/english/en-soc-00-system-map.mdx soc-review/
+          cp src/lib/english.ts soc-review/
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          const matches=[];
+          function walk(dir) {
+            if(!fs.existsSync(dir))return;
+            for(const e of fs.readdirSync(dir,{withFileTypes:true})){
+              const p=path.join(dir,e.name);
+              if(e.isDirectory())walk(p);
+              else if(/\.(?:mjs|js|ts|astro)$/.test(e.name)){
+                const lines=fs.readFileSync(p,'utf8').split('\n');
+                for(let i=0;i<lines.length;i++)if(lines[i].includes('Korean source changed after translation')){
+                  matches.push({file:p,line:i+1,context:lines.slice(Math.max(0,i-30),i+10)});
+                }
+              }
+            }
+          }
+          walk('src');walk('dist');walk('.astro');
+          fs.writeFileSync('soc-review/translation-guard-context.json',JSON.stringify(matches,null,2));
+          console.log(JSON.stringify(matches,null,2));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: soc-overview-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/soc-review/
+          retention-days: 7

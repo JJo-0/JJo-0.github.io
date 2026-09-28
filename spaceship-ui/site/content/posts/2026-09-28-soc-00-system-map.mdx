@@ -1,0 +1,270 @@
+---
+title: '코드에서 칩까지 00 · SoC는 무엇인가?'
+description: 'SoC의 주요 블록, 센서 데이터 경로, 레지스터 HW/SW 계약을 연결해 설명합니다.'
+slug: 2026-09-28-soc-00-system-map
+pubDate: 2026-09-28T09:00:00+09:00
+publicationTimeZone: Asia/Seoul
+category: robotics-embedded
+subcategory: embedded-systems
+type: tutorial
+tags: [soc, embedded-systems, hardware-software, soc-from-code-to-chip]
+lang: ko-KR
+researchFeatured: false
+draft: false
+showCTA: false
+series:
+  id: soc-from-code-to-chip
+  order: 0
+translatedPosts:
+  en: soc-00-system-map
+---
+
+import SocOverviewFigures from '@/components/post/SocOverviewFigures.astro';
+
+**센서 값을 읽는 코드 한 줄 뒤에는, 서로 다른 일을 맡은 회로와 소프트웨어가 있습니다.** 이 글은 그 전체 지도를 그리는 「코드에서 칩까지」의 첫 편입니다. 보드를 구매하거나 드라이버를 작성하기 전에, 무엇이 어디서 동작하고 어떤 규칙으로 연결되는지부터 이해합니다.
+
+`read_sensor()`를 호출하면 숫자 하나가 나옵니다. 하지만 센서와 통신하는 회로, 데이터를 보관할 공간, CPU에 도착을 알릴 조건, 읽을 주소와 읽기의 의미가 정해지지 않았다면 그 함수의 동작도 설명할 수 없습니다. CPU는 명령 실행을 맡는 구성 요소이고, SoC(System-on-Chip)는 여러 시스템 기능을 하나의 집적회로에 통합하는 개념입니다.[1][2]
+
+**학습 목표:** CPU와 전체 칩을 구분하고, 샘플의 이동 경로를 그리며, 회로·SW·검증 담당자가 공유해야 할 명세를 설명합니다. C 코드를 몰라도 읽을 수 있습니다. 주소와 비트의 세부 기초는 후속 편에서 보충합니다.
+
+**자료 기준은 2026-09-28입니다.** 공식 제품 사례와 교육용 가상 설계를 구분합니다. 네 장의 도식은 자체 재구성이며 실제 다이 배치도·측정 파형이 아닙니다. 이번 편에는 RTL, 드라이버, OS 포트 또는 실기 성능 검증을 구현하지 않습니다.
+
+## 1. SoC·CPU·MCU·ASIC·FPGA: 포함 관계와 다른 분류축
+
+### 왜 이름을 한 줄로 늘어놓으면 혼동할까?
+
+모두 칩과 관련된 말이지만 분류하는 기준은 다릅니다. **CPU → MCU → SoC → FPGA가 크기나 성능의 서열은 아닙니다.** 아래 표는 공식 정의와 실제 제품 구성을 비교해 만든 교육용 정리이며, 서로 배타적인 단일 분류 표준은 아닙니다.[1][2][3][4][5][6][7]
+
+| 용어 | 초점 | 처음 이해할 내용 |
+|---|---|---|
+| CPU, Central Processing Unit | 명령 실행 | 프로그램의 명령을 읽고 연산·제어를 수행하는 처리 요소입니다. |
+| ISA, Instruction Set Architecture | 명령과 동작의 규칙 | 소프트웨어가 사용할 명령과 의미를 규정합니다. 특정 CPU 회로 자체는 아닙니다. |
+| MCU, Microcontroller Unit | 제어용 통합 장치 | CPU 코어·메모리·주변장치 등을 묶은 마이크로컨트롤러입니다. |
+| SoC, System-on-Chip | 시스템 기능의 통합 | 처리·메모리·입출력 등의 기능을 하나의 칩에 통합합니다. 외부 부품까지 모두 내장한다는 뜻은 아닙니다. |
+| ASIC, Application-Specific Integrated Circuit | 특정 용도의 칩 설계 | 요구하는 기능과 용도에 맞춰 설계·제조하는 집적회로입니다. |
+| FPGA, Field-Programmable Gate Array | 구성 가능한 논리와 연결 | 구성 데이터로 논리 기능과 연결을 정해 하드웨어 동작을 구현합니다. |
+
+RISC-V는 ISA 규격이고, 이를 구현한 CPU 코어와 그 코어가 들어간 완성 칩은 별개의 대상입니다. 따라서 **같은 ISA를 쓴다는 사실만으로 센서 주소·주변장치·드라이버가 같아지지는 않습니다.** 이것은 명령 규칙과 구체적인 장치 구현을 구분한 해석입니다.[3][9][11]
+
+### 실제 칩으로 경계 확인하기
+
+Raspberry Pi의 **RP2040**에는 Arm Cortex-M0+ 코어 두 개, 264kB의 내부 SRAM, SPI·I²C·UART 등의 주변장치가 있습니다. 플래시는 외부 QSPI 장치를 사용합니다. Cortex-M0+는 코어이고 RP2040은 이를 포함하는 MCU입니다. RP2040과 이를 탑재한 보드 역시 구분해야 합니다. 이 사례만으로도 “MCU에는 반드시 플래시가 내장된다”는 단정은 맞지 않음을 알 수 있습니다.[4]
+
+또 AMD **Zynq 7000 SoC**는 Arm 프로세서와 FPGA의 구성 가능한 논리를 결합합니다. “SoC인가 FPGA인가?”가 언제나 둘 중 하나만 고르는 문제는 아닌 이유입니다.[7]
+
+FPGA의 논리·연결을 구성하는 것과 CPU가 명령을 실행하는 것은 다른 층위입니다. 마찬가지로 ASIC의 회로가 정해져 있다는 설명을 “그 칩에서는 소프트웨어나 설정을 바꿀 수 없다”는 의미로 확대하지 않습니다. 어떤 부분이 구성 가능하고 어떤 부분이 명령 실행을 담당하는지 나눠 봐야 합니다.[5][6][7]
+
+## 2. CPU·메모리·인터커넥트·주변장치·가속기의 역할
+
+CPU가 빨라도 외부 신호와의 접점이나 저장 공간을 CPU 코어라는 말 하나로 대체할 수는 없습니다. 각 블록이 해결할 문제부터 나누면 시스템 구조가 보입니다. 아래 역할은 SoC 개요와 실제 MCU 구성, AMBA 자료를 입문 목적에 맞춰 재구성한 것입니다. 모든 제품의 필수 블록 목록은 아닙니다.[1][2][4][8]
+
+| 블록 | 왜 필요한가? | 센서 예제에서 하는 일 |
+|---|---|---|
+| CPU 코어 | 명령과 판단을 실행할 곳이 필요합니다. | 센서 값을 읽고 조건을 판단합니다. |
+| 메모리 | 작업 중인 데이터와 코드를 보관해야 합니다. | 읽어온 샘플과 계산 결과를 저장합니다. |
+| 주변장치 제어기 | 외부 장치와 전송 규칙을 맞춰야 합니다. | SPI 등의 인터페이스로 센서와 통신합니다. |
+| 인터커넥트(Interconnect) | 주소 요청과 응답의 전달 경로가 필요합니다. | CPU의 요청을 올바른 메모리·장치로 연결합니다. |
+| 클록·리셋·핀 관련 회로 | 동작 시점·초기 상태·외부 연결을 준비해야 합니다. | 수집 기능이 정해진 조건에서 시작하게 합니다. |
+| 가속기(Accelerator), 선택 사항 | 특정 처리를 별도 회로에 맡길 수 있습니다. | 필요할 때 필터링 등을 추가합니다. 이번 최소 구성에는 없습니다. |
+
+<SocOverviewFigures kind="system" lang="ko" />
+
+그림 1에서 외부 센서와 칩 내부의 수집 회로를 구분해 보세요. CPU·SRAM·주변장치가 연결되는 중앙 경로가 인터커넥트입니다. 구체적인 연결 규칙에는 **AMBA(Advanced Microcontroller Bus Architecture)** 같은 표준을 사용할 수 있습니다. AMBA는 SoC 기능 블록을 연결·관리하는 표준이며, 세부 인터페이스마다 다루는 요구가 다릅니다. 이번 편에서는 AXI의 신호 규칙이나 NoC 토폴로지까지 들어가지 않습니다.[8]
+
+이 문맥의 <strong>IP(Intellectual Property)</strong>는 인터넷 주소가 아니라 설계에 통합하는 기능 블록을 뜻합니다. CPU 코어와 주변장치 제어기 등을 기능별로 이해하면 “IP를 설계한다”와 “IP를 연결한다”의 차이도 드러납니다.[1]
+
+**첫 설계 질문은 “NPU를 붙일까?”가 아니라 “어떤 데이터를, 어느 속도로, 얼마 동안 보관해야 할까?”입니다.** 이는 이번 교육의 접근 방식입니다. SoC라는 이름만으로 GPU·NPU·DDR·Linux를 필수라고 가르치지 않습니다.
+
+## 3. 센서 샘플 하나가 애플리케이션에 도달하는 과정
+
+### 데이터와 알림을 나눠서 추적하기
+
+이제부터 **교육용 가상 시스템**을 정합니다. 외부 디지털 센서, SPI 수집 제어기, `sensor_fifo` IP, CPU, SRAM이 있습니다. 수집 제어기는 이미 획득된 부호 없는 16비트 값을 FIFO에 제공합니다. SPI의 전기 신호나 프레임은 모델링하지 않습니다. 수집과 인터럽트는 리셋 직후 꺼져 있습니다.
+
+수집을 켜면 새 샘플이 FIFO(First-In, First-Out)에 들어갑니다. 먼저 들어온 값이 먼저 나오는 임시 저장 구조입니다. 데이터 인터럽트가 허용돼 있고 FIFO가 비어 있지 않으면 CPU 쪽에 처리 요청을 유지합니다. **IRQ(Interrupt Request)는 이 예제에서 샘플을 운반하지 않습니다.** 소프트웨어는 상태를 확인하고 데이터 레지스터를 별도로 읽어 샘플을 가져옵니다.
+
+<SocOverviewFigures kind="sample" lang="ko" />
+
+드라이버는 CPU 옆에서 독립적으로 계산하는 또 하나의 회로가 아닙니다. CPU에서 실행되는 소프트웨어입니다. Linux에서는 장치·버스·드라이버의 공통 모델이 있고, 센서 범주를 다루는 IIO(Industrial I/O) 체계도 있습니다. 실제 환경에서는 센서 드라이버와 SPI 제어기 드라이버가 나뉠 수 있습니다. **위 가상 IP가 Linux·Zephyr·AUTOSAR에서 이미 지원된다는 뜻은 아닙니다.** bare-metal 실습에서는 OS 계층 없이 함수가 값을 사용할 수도 있습니다.[12][16]
+
+### 레지스터는 HW와 SW가 공유하는 동작 명세
+
+CPU가 장치를 읽는 접점을 <strong>메모리 매핑 입출력(MMIO, Memory-Mapped I/O)</strong>으로 두겠습니다. 주소만 알아서는 부족합니다. 폭, 비트 의미, 초기 상태, 허용 접근, 읽기·쓰기 부작용, 잘못된 접근의 결과가 필요합니다. OpenTitan의 regtool은 하나의 명세에서 레지스터 문서·RTL·C 헤더를 생성하는 실제 사례입니다. 읽기 전용·읽으면 지워짐·1을 쓰면 지워짐 등의 접근 의미도 구분합니다.[9]
+
+다음 표는 실제 칩이 아닌 **이번 예제의 제한된 계약**입니다. 주소는 가상 IP 기준 상대 오프셋입니다. PC에서 읽거나 쓰는 물리주소가 아닙니다. 소프트웨어 접근은 정렬된 32비트 전체 워드만 허용하고, FIFO 깊이는 16개로 정합니다.
+
+| 오프셋 | 이름 | 접근·리셋 상태·동작 |
+|---|---|---|
+| `0x00` | `CTRL` | RW. bit0 ENABLE=0. 1이면 이후 샘플을 수집합니다. 0으로 내려도 기존 FIFO는 지우지 않습니다. |
+| `0x04` | `STATUS` | RO, 읽기 부작용 없음. bit0 EMPTY=1, bit1 FULL=0, bits12:8 COUNT=0으로 시작합니다. |
+| `0x08` | `DATA` | RO, 유효 읽기에 제거(pop) 부작용. 가장 오래된 16비트 값을 32비트로 0 확장해 반환하고 하나를 제거합니다. 빈 FIFO 읽기는 오류이며 제거가 없습니다. |
+| `0x0C` | `IRQ_ENABLE` | RW. bit0 DATA_READY, bit1 OVERFLOW. 초기값은 모두 0입니다. |
+| `0x10` | `ERROR` | bit0 OVERFLOW, W1C. 초기값 0. 포화로 새 샘플을 버리면 1이 됩니다. 새 사건이 없을 때 1 쓰기로 해제하고 0 쓰기로는 유지합니다. |
+
+예약 비트는 읽으면 0, 쓰기는 무시합니다. RO 쓰기, 미정의 오프셋, 비정렬·부분 워드 접근은 오류로 처리하고 상태를 바꾸지 않습니다. 오류의 실제 버스 신호 인코딩은 후속 편에서 프로토콜을 정한 뒤 정의합니다.
+
+전체 리셋은 FIFO·설정·오류를 초기화합니다. ENABLE=0의 입력은 수집 대상에서 제외합니다. 켜진 상태에서 공간이 없으면 기존 데이터는 보존하고 **새 입력을 버리는 drop-new** 정책을 씁니다. 데이터 IRQ는 FIFO가 비어 있지 않고 해당 enable이 1일 때, 오류 IRQ는 ERROR와 해당 enable이 모두 1일 때 활성화합니다. 둘 중 하나라도 참이면 IRQ를 유지하므로 **ERROR를 지워도 데이터 IRQ가 남을 수 있습니다.**
+
+동시 사건의 교육용 규칙도 분리해 둡니다. 리셋이 최우선이며, 그 외에는 기존 데이터에 대한 유효 읽기/pop 후 새 샘플의 삽입 공간을 판단합니다. 새 포화 사건과 W1C가 겹치면 새 사건이 우선해 오류를 1로 남깁니다. 아래 수작업 문제는 동시 사건을 피합니다. 이 선택을 다른 IP의 보편적 동작으로 해석하지 않습니다.
+
+<SocOverviewFigures kind="registers" lang="ko" />
+
+공통 명세는 HW/SW 불일치를 줄이는 출발점입니다. 다만 같은 명세에서 코드를 생성해도 원래 명세가 틀렸다면 오류를 공유할 수 있습니다. 요구사항과 독립적인 예상 결과도 검토해야 한다는 것이 그림 3의 두 번째 메시지입니다. 실제 Linux 접근을 구현할 때는 `__iomem`, `ioremap()`, `readl()`·`writel()` 등 해당 커널의 MMIO 계약을 따라야 합니다. 여기서는 Linux 6.18 문서의 개념만 참고하며 커널 코드를 실행하지 않습니다.[9][11]
+
+### 실패 사례: 0을 썼는데 오류가 안 지워진다
+
+**교육용 상황:** ERROR.bit0=1이고 새 입력은 없습니다. 데이터 IRQ는 끄고 오류 IRQ만 켰습니다. 일반 변수처럼 ERROR에 0을 쓰면 오류 비트와 오류 IRQ는 계속 1입니다. **W1C(Write One to Clear)는 1을 써야 지워지는 규칙**이기 때문입니다. 해당 비트에 1을 쓰면 이 조건에서 둘 다 0이 됩니다.
+
+실제 확인 사례로 OpenTitan `earlgrey_1.0.0` UART의 `INTR_STATE.rx_overflow`가 `rw1c`로 명시돼 있습니다. 그것은 해당 UART의 필드이고, 위 `ERROR`의 오프셋·bit0는 가상 설계입니다. 실제 문서의 접근 의미와 교육용 주소를 섞지 마세요.[9][10]\n\n<SocOverviewFigures kind="w1c" lang="ko" />\n\n**그림 4의 우선순위는 이번 교육용 DUT의 선택입니다.** software clear와 새 hardware overflow가 같은 clock edge에 겹치면 새 사건을 남기는 정책으로 정했습니다. 다른 IP는 반대 우선순위를 택할 수 있으므로 반드시 해당 register specification을 확인해야 합니다.
+
+### 실패 사례: 로그를 추가했더니 샘플 하나가 사라진다
+
+**교육용 상황:** FIFO에 `0x0011`, `0x0022`가 있습니다. 로그 출력을 위해 DATA를 한 번 읽고, 실제 처리를 위해 다시 읽으면 첫 읽기는 `0x0011`, 두 번째는 `0x0022`를 가져갑니다. 첫 값을 저장하지 않았다면 로깅이 그 샘플을 소비한 셈입니다.
+
+해결은 장치에서 한 번 읽은 값을 SW 변수에 보관하고, 그 변수를 로그와 처리에 함께 사용하는 것입니다. STATUS 두 번 읽기는 샘플을 소비하지 않지만 DATA 두 번 읽기는 두 개를 소비합니다. **읽기 전용(RO)과 “읽어도 아무 변화가 없음”은 같은 말이 아닙니다.** 이 pop 동작은 위 가상 계약에서 정한 규칙이고, 일반적인 접근 부작용의 존재는 공식 레지스터 자료에서 확인할 수 있습니다.[9]
+
+## 4. 사양서 → 모델 → RTL → 구현 → bring-up → 검증
+
+### 무엇을 만들어 다음 담당자에게 넘길까?
+
+“설계를 작성했다”와 “동작 근거를 확보했다”는 다른 상태입니다. OpenTitan은 설계 단계와 검증 단계를 별도로 추적합니다. 따라서 검증을 마지막에 한 번 수행하는 작업으로 그리지 않겠습니다.[13]
+
+| 단계 | 받을 것 | 넘길 산출물의 교육용 예 | 확인할 질문 |
+|---|---|---|---|
+| 요구사항 | 센서 형태·샘플률·지연·유실 정책 | `requirements.md` | 무엇을 성공과 실패로 볼까? |
+| 구조·인터페이스 | 요구사항·후보 블록 | 블록도·주소맵·레지스터 명세 | 누구와 어떤 규칙으로 연결할까? |
+| 상위 모델 | 기능·트래픽 가정 | 동작 모델·가정 목록 | 서비스가 늦어지면 버퍼는 견딜까? |
+| RTL·테스트벤치 | 인터페이스·상태 규칙 | 회로 기술·시험 입력·판정기 | 정상·리셋·포화·동시 접근은 명세와 맞을까? |
+| FPGA 또는 ASIC 구현 | RTL·제약 | 비트스트림 또는 합성·물리 구현 결과 | 선택한 구현 조건을 충족할까? |
+| 초기 구동·SW 통합 | 보드/칩·초기화 절차 | 부팅·레지스터·인터럽트 관찰 기록 | 최초로 어디까지 동작했을까? |
+| 회귀·결함 종결 | 시험·실패·변경 내용 | 재현 로그·검증 범위·제외 사유 | 변경 후 무엇을 다시 확인했을까? |
+
+표는 교육용 인계 흐름입니다. 파일명이나 역할을 특정 회사의 표준으로 제시하지 않습니다. 흐름의 근거는 ASIC 개요, OpenTitan의 개발 단계, SystemC·OpenROAD·Linux 문서입니다.[6][13][14][15][16]
+
+<SocOverviewFigures kind="workflow" lang="ko" />
+
+**SystemC**는 C++ 기반의 시스템 모델링·설계·검증에 쓰이며 HW/SW 분할이나 구조 탐색을 지원합니다. 모든 프로젝트가 반드시 SystemC를 거쳐야 하거나 모든 모델이 합성 가능하다는 뜻은 아닙니다. <strong>RTL(Register-Transfer Level)</strong>로 상태와 데이터 이동을 기술한 뒤에는 타깃에 따른 합성·물리 구현 등의 과정이 따로 있습니다.[6][14][15]
+
+초기 구동(bring-up)에서 샘플 하나를 읽었다면, 그 조건에서 기본 경로를 관찰한 것입니다. 경계 입력·리셋·포화·동시 접근·타이밍이 모두 검증됐다는 뜻은 아닙니다. FPGA에서의 성공을 ASIC 물리 조건 전체의 성공으로 확대하지 않고 **무엇을 어떤 조건에서 확인했는지** 기록합니다.[6][13][15]
+
+## 5. 회로 설계자·검증 엔지니어·펌웨어·드라이버 개발자의 산출물
+
+아래는 원래 제시된 아홉 직무를 **가상 센서 시스템에 연결한 교육용 역할 배치**입니다. 실제 회사의 업무 분장은 제품·팀·도구에 따라 확인해야 합니다.
+
+| 직무 항목 | 이번 예제에서 맡는 질문 | 산출물 예 |
+|---|---|---|
+| Arm/RISC-V 코어 기반 설계·검증 | CPU를 어떤 메모리·리셋·인터럽트에 연결할까? | CPU 서브시스템 명세·통합 시험 |
+| 버스 아키텍처 설계·검증 | 주소 요청이 올바른 블록에 도착할까? | 주소맵·연결 구조·트래픽/오류 시험 |
+| 디지털 IP 상위·상세 설계 | 수집·저장·포화·상태를 어떻게 구현할까? | 기능 모델·레지스터 명세·RTL |
+| FPGA 프로토타이핑 | 보드에서 제약을 만족하며 동작할까? | 프로젝트·제약·비트스트림·관찰 기록 |
+| Device Driver 설계 | OS 규칙 안에서 장치를 초기화하고 데이터를 전달할까? | 드라이버·동기화·오류 처리·API 시험 |
+| MCAL 설계 | MCU 의존 접근을 상위 기능에서 분리할까? | 모듈 설정·API 구현/통합·레지스터 대응 |
+| OS 포팅 | CPU·SoC·보드에서 실행 환경을 준비할까? | 시작 코드·보드 기술·포트 설정·부팅 기록 |
+| Test SW 설계 | 요구한 샘플과 상태를 실제로 관찰할까? | 입력·독립적 예상 결과·판정 기준·로그 |
+| Static/Dynamic Coverage 검증 | 무엇을 검사했고 무엇이 남아 있을까? | 검증 방법·커버리지·미검증/제외 사유 |
+
+MCAL(Microcontroller Abstraction Layer)은 MCU 주변장치에 대한 의존 접근을 다루고 상위 계층의 하드웨어 의존성을 줄이는 역할입니다. 일반 드라이버와 AUTOSAR 준수 구현을 동일시하지 않습니다. OS 포팅도 새 CPU 아키텍처 지원, SoC 지원, 보드 지원을 구분해야 합니다. Zephyr는 이 세 종류의 포팅 가이드를 따로 둡니다.[17][18]
+
+**NIC와 Static/Dynamic Coverage의 정확한 사내 의미는 미확인입니다.** 회사·대상 IP·분석 도구·담당 범위가 없는 상태에서 하나의 의미로 확정하지 않습니다. 이 글은 용어의 관계를 배우는 자료이지 특정 채용공고의 업무를 인증하는 문서가 아닙니다.
+
+## 6. 시리즈의 공통 예제와 분리된 실습 환경
+
+### 보드 없이 서비스 지연과 데이터 유실 계산하기
+
+이번 실습은 **명세 읽기와 수작업 추적**입니다. 보드, 컴파일러, RTL 시뮬레이터, 대상 OS는 사용하지 않습니다. 실제 ISA도 고르지 않았습니다. 종이나 편집기로 `system-map.md`, `register-contract.md`, `handoff-map.md`, `test-plan.md`를 작성하거나 한 문서의 네 절로 정리하면 됩니다.
+
+**가정:** t=0에서 FIFO는 비어 있고 깊이는 16, ENABLE=1입니다. t=1, 2, …, 20ms에 값 1, 2, …, 20이 한 개씩 들어옵니다. 20ms의 입력 처리 직후까지 읽기는 전혀 없습니다. 포화 시 새 입력을 버립니다. 초기화·동시 읽기·추가 리셋은 없습니다.
+
+<details data-soc-exercise="fifo">
+<summary>20ms 직후 저장된 값, 버린 값, 오류 비트를 먼저 계산하고 해설을 여세요.</summary>
+
+COUNT=16이며 값 1~16을 보존하고 17~20을 버립니다. ERROR.bit0=1입니다. 수량 보존식은 **생성 20 = 저장 16 + 소비 0 + 버림 4**입니다. 샘플 데이터만의 저장량은 **16 × 16 ÷ 8 = 32 bytes**, 유입률은 **1,000 × 2 = 2,000 bytes/s**입니다. 메타데이터·회로 자원·전송 오버헤드를 포함하지 않습니다.
+
+</details>
+
+입력 데이터율이 작아도 읽지 못하는 시간이 길면 유실됩니다. 이 예제에서 문제는 CPU의 최대 연산속도보다 **최대 서비스 지연과 유한한 저장 공간의 관계**입니다. 20개 공간이면 위 구간을 견디지만 초기 점유·버스트·더 긴 지연·이후 소비율을 모르면 실제 장치의 적정 깊이를 확정할 수 없습니다. 이 수치는 가정에 따른 계산이며 RTL·OS 시뮬레이션이나 실측 처리량이 아닙니다.
+
+두 번째 과제는 새 입력 없이 데이터 IRQ를 끄고 오류 IRQ만 켠 뒤 ERROR에 0과 1을 순서대로 쓰는 것입니다. 세 번째는 리셋 후 두 샘플을 넣고 STATUS 두 번 읽기와 DATA 두 번 읽기를 비교하는 것입니다. 네 번째는 아홉 직무에 대해 받을 것·수정할 것·넘길 것을 한 줄씩 적는 것입니다. 앞 절의 명세로 판정하고, 예상 결과를 실제 보드 로그로 포장하지 않습니다.
+
+RTL/FPGA, Linux, RTOS, MCAL의 실습 환경은 뒤에서 각각 지원되는 타깃과 버전을 고릅니다. 같은 가상 IP나 코드가 모두에서 그대로 실행된다고 가정하지 않습니다. **이번에 완성할 것은 이해를 위한 지도이지 동작을 인증한 칩이 아닙니다.**
+
+### 세 가지 오해와 다섯 가지 복습 질문
+
+**오해 1:** SoC는 CPU의 다른 이름이다. CPU는 명령 실행 블록이고 SoC는 시스템 통합을 설명합니다. **오해 2:** 같은 ISA면 센서 드라이버도 같다. 명령 규칙은 장치 주소와 접근 의미까지 같게 만들지 않습니다. **오해 3:** 읽기 전용이면 읽어도 상태는 그대로다. 위 DATA처럼 쓰기는 금지해도 읽기에 부작용이 있을 수 있습니다.[1][2][3][9]
+
+<details data-soc-review="1">
+<summary>같은 RISC-V ISA를 쓰는 두 칩에서 센서 드라이버도 같을까요?</summary>
+
+ISA는 명령 실행의 규칙입니다. 주변장치의 주소·접근 부작용·OS의 장치 모델까지 같아지는 것은 아니므로 ISA만으로 드라이버 동일성을 판단할 수 없습니다.[3][9][11]
+
+</details>
+
+<details data-soc-review="2">
+<summary>MCU라면 항상 내부 플래시가 있을까요?</summary>
+
+아닙니다. RP2040은 외부 플래시를 사용하는 MCU의 제조사 문서상 사례입니다.[4]
+
+</details>
+
+<details data-soc-review="3">
+<summary>ERROR에 0을 써도 비트가 1이면 회로 결함일까요?</summary>
+
+이번 계약에서는 정상입니다. 새 오류가 없다면 W1C 비트에 1을 써야 해제됩니다. 실제 장치에서는 해당 필드의 명세를 먼저 확인해야 합니다.[9][10]
+
+</details>
+
+<details data-soc-review="4">
+<summary>FIFO 16개에 읽기 없이 20개가 들어오면 무엇이 남을까요?</summary>
+
+처음에 비어 있고 위 시간 경계와 drop-new 정책을 따르면 16개 보존, 4개 버림, OVERFLOW 설정입니다. CPU가 빠르다는 표현만으로 서비스 공백을 없앨 수는 없습니다.
+
+</details>
+
+<details data-soc-review="5">
+<summary>FPGA에서 샘플 하나를 읽었다면 무엇을 확인했고 무엇이 남을까요?</summary>
+
+그 조건에서 기본 경로를 관찰했습니다. 리셋·포화·동시 접근·장시간 동작·타이밍 등 다른 조건은 별도 검증이 필요할 수 있고, ASIC의 물리 조건도 별개입니다.[6][13][15]
+
+</details>
+
+**이번 편의 결론:** 회로가 데이터를 받아 저장하고, 소프트웨어가 정해진 규칙으로 읽으며, 검증이 그 규칙과 관찰 결과를 연결합니다. 다음 학습 주제는 이 동작을 시간축으로 설명하기 위한 조합논리·순차논리·클록·레지스터·주소입니다. 후속 편은 아직 게시하지 않았습니다.
+
+## 참고문헌과 근거 범위
+
+자료 조사일은 2026-09-28입니다. 아래는 기존 조사에서 확인한 개요·해당 절이며 문서 전체나 제품 동작 전체의 검증을 뜻하지 않습니다. Linux MMIO·IIO는 6.12, UART 사례는 earlgrey_1.0.0 경로를 유지합니다. master/latest 문서는 조사 시점 기준입니다. 제품 사례는 해당 제품에만, 가상 주소·FIFO·IRQ 정책과 계산은 위 교육용 계약에만 적용합니다. 별표·점수·성능 보장이나 실제 채용 범위에 대한 추정은 넣지 않았습니다.
+
+[1] Arm, [What is SoC Development?](https://www.arm.com/glossary/soc-development), 정의·주요 구성·개발 개요.
+
+[2] Arm, [What is a CPU?](https://www.arm.com/glossary/cpu), 정의·명령 실행 역할.
+
+[3] RISC-V International, [Ratified Specifications](https://riscv.org/specifications/ratified/), ISA와 구현 구분을 위한 규격 개요. 개별 확장 판본 미채택.
+
+[4] Raspberry Pi, [Microcontroller chips](https://www.raspberrypi.com/documentation/microcontrollers/microcontroller-chips.html), RP2040 features.
+
+[5] Arm, [What is FPGA?](https://www.arm.com/glossary/fpga), 구성 가능한 논리·인터커넥트 개요.
+
+[6] Arm, [What is an ASIC?](https://www.arm.com/glossary/asic), 정의·설계 과정.
+
+[7] AMD, [Zynq 7000 SoCs](https://www.amd.com/en/products/adaptive-socs-and-fpgas/soc/zynq-7000.html), 프로세서와 programmable logic 통합 사례.
+
+[8] Arm, [AMBA](https://www.arm.com/architecture/system-architectures/amba), 개요·주요 규격. 개별 AXI/APB 판본 미채택.
+
+[9] OpenTitan, [reggen & regtool: Register Generator](https://opentitan.org/book/util/reggen/index.html), Register Tool·입력 형식·swaccess 표.
+
+[10] OpenTitan, [UART Registers](https://opentitan.org/earlgrey_1.0.0/book/hw/ip/uart/doc/registers.html), earlgrey_1.0.0, INTR_STATE.rx_overflow.
+
+[11] Linux, [Bus-Independent Device Accesses](https://docs.kernel.org/6.18/driver-api/device-io.html), 6.12, 장치 접근·__iomem·접근 함수.
+
+[12] Linux, [Industrial I/O Introduction](https://docs.kernel.org/6.18/driver-api/iio/intro.html), 6.12, 센서 범주·SPI/I²C 사례.
+
+[13] OpenTitan, [Hardware Development Stages](https://opentitan.org/book/doc/project_governance/development_stages.html), 설계·검증 진행 상태. 프로젝트별 기준을 업계 공통 문턱으로 전용하지 않음.
+
+[14] Accellera/SystemC, [SystemC overview](https://systemc.org/overview/systemc/), C++ 기반 모델링·HW/SW 분할 개요. 표준 전문·합성 도구 실행 검증 아님.
+
+[15] OpenROAD, [Documentation](https://openroad.readthedocs.io/en/latest/), RTL-to-GDSII 물리 구현 개요. 도구 미실행.
+
+[16] Linux, [The Linux Kernel Device Model](https://docs.kernel.org/driver-api/driver-model/overview.html), 장치·버스·드라이버 개요. 머리말의 초안 2002-08-26·갱신 2006-01-31을 최신 API 예제의 근거로 사용하지 않음.
+
+[17] Zephyr, [Porting](https://docs.zephyrproject.org/latest/hardware/porting/index.html), architecture·SoC·board 가이드의 구분. 특정 포트 미구현.
+
+[18] Renesas, [Microcontroller Abstraction Layer (MCAL)](https://www.renesas.com/en/products/automotive-products/autosar/microcontroller-abstraction-layer-mcal), 주변장치 접근·상위 계층 추상화 개요. AUTOSAR 준수 판정 아님.

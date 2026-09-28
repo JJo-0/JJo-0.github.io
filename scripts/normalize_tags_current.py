@@ -248,5 +248,12 @@ POST_TAXONOMY.update({
     ),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-28-soc-00-system-map.mdx': Taxonomy(
+        'robotics-embedded', 'embedded-systems', 'tutorial',
+        ('soc', 'embedded-systems', 'hardware-software', 'soc-from-code-to-chip'),
+    ),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
