@@ -1,6 +1,8 @@
 # SoC 00 Sensor FIFO Lab
 
 > **STATUS: UNEXECUTED LAB DRAFT**
+>
+> CI target: `.github/workflows/soc-00-lab.yml` pins Verilator v5.052. Status remains UNEXECUTED until that workflow produces a successful run and retained logs.
 
 상용 SoC가 아니라 HW/SW 경계를 학습하기 위한 교육용 SystemVerilog DUT다. 실제 실행 로그, FPGA 결과, silicon 결과는 아직 없다.
 
