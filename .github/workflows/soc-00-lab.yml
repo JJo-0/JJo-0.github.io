@@ -1,0 +1,54 @@
+name: SoC 00 RTL lab
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/docs/research/soc-00-lab/**'
+      - '.github/workflows/soc-00-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verilator-5052:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Verilator build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git help2man perl python3 make autoconf g++ flex bison libfl-dev zlib1g-dev
+      - name: Build pinned Verilator v5.052
+        run: |
+          git clone --depth 1 --branch v5.052 https://github.com/verilator/verilator.git "$RUNNER_TEMP/verilator"
+          cd "$RUNNER_TEMP/verilator"
+          autoconf
+          ./configure
+          make -j2
+          echo "$RUNNER_TEMP/verilator/bin" >> "$GITHUB_PATH"
+      - name: Record simulator version
+        run: |
+          "$RUNNER_TEMP/verilator/bin/verilator" --version
+          "$RUNNER_TEMP/verilator/bin/verilator" --version | tee soc-00-verilator-version.txt
+      - name: Compile educational DUT and self-checking testbench
+        working-directory: spaceship-ui/docs/research/soc-00-lab
+        run: |
+          "$RUNNER_TEMP/verilator/bin/verilator" --binary --timing -Wall -Wno-fatal --top-module tb_sensor_fifo             rtl/sensor_fifo.sv tb/tb_sensor_fifo.sv
+      - name: Execute self-checking testbench
+        working-directory: spaceship-ui/docs/research/soc-00-lab
+        run: |
+          ./obj_dir/Vtb_sensor_fifo | tee ../../../../../soc-00-lab-output.txt
+          grep -F "SOC00 LAB EXPECTED PASS CONDITIONS MET" ../../../../../soc-00-lab-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: soc-00-lab-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            soc-00-verilator-version.txt
+            soc-00-lab-output.txt
+          retention-days: 14
