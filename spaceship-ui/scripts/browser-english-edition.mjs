@@ -3,9 +3,10 @@ import fs from 'node:fs';
 import { Cdp, BASE, attach, evaluate, navigate, viewport, waitExpression, startPreview, startChrome, stopChild, removeProfile } from './browser-smoke-harness.mjs';
 import { checkPowerBankPage } from './power-bank-browser-check.mjs';
 import { checkWritingCategoryPage } from './writing-category-browser-check.mjs';
+import { checkSocOverviewPage } from './soc-overview-browser-check.mjs';
 const manifest=JSON.parse(fs.readFileSync(new URL('../site/english-edition.json',import.meta.url),'utf8'));
 const out='english-review';fs.mkdirSync(out,{recursive:true});
-const results=[];const powerBankResults=[];const writingCategoryResults=[];let preview,chrome,cdp,sessionId;
+const results=[];const powerBankResults=[];const writingCategoryResults=[];const socResults=[];let preview,chrome,cdp,sessionId;
 const hardStop=setTimeout(()=>{console.error('English audit timed out');process.exit(1)},180_000);
 async function enter(selector){
   await waitExpression(cdp,sessionId,`document.readyState === 'complete' && (()=>{const element=document.querySelector(${JSON.stringify(selector)});return Boolean(element) && !element.closest('astro-island')?.hasAttribute('ssr')})()`,'interactive element ready before one native input');
@@ -21,10 +22,12 @@ try{
     writingCategoryResults.push(await checkWritingCategoryPage({cdp,sessionId,width,enter,screen}));
     for(const pair of manifest.pairs){
       const powerBank=pair.key==='lifestyle-power-bank-20260926';
-      const visualSelector=powerBank?'[data-pb-visual]':'[data-news-figure]';
-      const parentNav=powerBank?'/en/posts/':'/en/news/';
+      const soc=pair.key==='soc-00-20260928';
+      const visualSelector=soc?'[data-soc-figure]':powerBank?'[data-pb-visual]':'[data-news-figure]';
+      const parentNav=(powerBank||soc)?'/en/posts/':'/en/news/';
       await navigate(cdp,sessionId,`/posts/${pair.koSlug}/`);
       if(powerBank)powerBankResults.push(await checkPowerBankPage({cdp,sessionId,width,lang:'ko',enter,screen}));
+      if(soc)socResults.push(await checkSocOverviewPage({cdp,sessionId,width,lang:'ko',enter,screen}));
       await enter('header a[data-locale-choice="en"]');
       await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/${pair.enSlug}/' && document.documentElement?.lang === 'en' && document.readyState === 'complete' && Boolean(document.querySelector('[data-english-article]'))`,'KO to exact EN article');
       for(const dark of [false,true]){
@@ -32,9 +35,11 @@ try{
         const rendered=await evaluate(cdp,sessionId,`(()=>{const article=document.querySelector('[data-english-article]');return {language:document.documentElement.lang,text:article.innerText.length,korean:/[가-힣]/.test(article.innerText),images:article.querySelectorAll('${visualSelector}').length,news:Boolean(document.querySelector('header a[href="${parentNav}"][aria-current="page"]')),overflow:document.documentElement.scrollWidth>innerWidth+2,mathErrors:article.querySelectorAll('.katex-error').length}})()`);
         assert.equal(rendered.language,'en');assert(rendered.text>9000 && !rendered.korean && rendered.news && !rendered.overflow && rendered.images>0 && !rendered.mathErrors,JSON.stringify(rendered));
         if(powerBank)assert.equal(rendered.images,10,'Consumer guide retains all ten explanatory diagrams');
+        if(soc)assert.equal(rendered.images,4,'SoC lesson retains all four explanatory diagrams');
         results.push({width,slug:pair.enSlug,dark,...rendered});
       }
       if(powerBank)powerBankResults.push(await checkPowerBankPage({cdp,sessionId,width,lang:'en',enter,screen}));
+      if(soc)socResults.push(await checkSocOverviewPage({cdp,sessionId,width,lang:'en',enter,screen}));
       const history=await cdp.send('Page.getNavigationHistory',{},sessionId);const before=history.entries[history.currentIndex].id;
       await enter('article a[data-news-citation="1"]');
       await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/${pair.enSlug}/' && location.hash === '#news-ref-1'`,'native EN citation');
@@ -82,7 +87,7 @@ try{
   await screen('english-404');
   await enter('header [data-site-brand]');
   await waitExpression(cdp,sessionId,`location.pathname === '/en/' && document.documentElement?.lang === 'en'`,'English 404 returns to English home');
-  fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,results,powerBankResults,writingCategoryResults,nativeLanguageRoundTrips:manifest.pairs.length*2,nativeCitationBack:manifest.pairs.length*2,archiveSwitches:4,english404:true,search:true,preference:true},null,2));
+  fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,results,powerBankResults,writingCategoryResults,socResults,nativeLanguageRoundTrips:manifest.pairs.length*2,nativeCitationBack:manifest.pairs.length*2,archiveSwitches:4,english404:true,search:true,preference:true},null,2));
   console.log('english-browser: PASS '+results.length+' article/theme/viewport cases plus exact language navigation, citations/Back, index pages, search, language preference and real English 404 recovery');
-}catch(error){console.error(error);fs.writeFileSync(`${out}/failure.json`,JSON.stringify({error:String(error),results,powerBankResults,writingCategoryResults},null,2));if(cdp&&sessionId)await screen('failure').catch(()=>{});process.exitCode=1;}
+}catch(error){console.error(error);fs.writeFileSync(`${out}/failure.json`,JSON.stringify({error:String(error),results,powerBankResults,writingCategoryResults,socResults},null,2));if(cdp&&sessionId)await screen('failure').catch(()=>{});process.exitCode=1;}
 finally{cdp?.close();await stopChild(chrome?.child,'SIGKILL');await stopChild(preview,'SIGTERM');removeProfile(chrome?.profile);clearTimeout(hardStop);process.exit(process.exitCode||0);}
