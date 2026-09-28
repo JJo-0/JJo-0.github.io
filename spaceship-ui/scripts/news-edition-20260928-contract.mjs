@@ -137,8 +137,12 @@ for (const entry of edition.entries) {
     assert(source.includes('원본 재게시 허가가 확인되지 않아'));
     assert(source.includes('식 S1·S2'));
   }
-  if (entry.key === 'cathode')
+  if (entry.key === 'cathode') {
     assert(source.includes('뒤 숫자가 반복 단위의 층 수라는 뜻은 아니다'));
+    assert(source.includes('Enhancing cycling stability by promoting high-voltage structural'));
+    assert(source.includes('Hekang Zhu et al.'));
+  }
+  if (entry.key === 'spacey') assert(source.includes('Ahmet Sureyya Rifaioglu et al.'));
 
   assert.equal(entry.evidenceGrade, 'PEER_REVIEWED_FRONTIER');
   assert.equal(hash(source), entry.sha256, `${entry.key} source identity`);
