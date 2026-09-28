@@ -2,7 +2,7 @@
 
 > 제목: **SoC는 무엇인가: 회로와 소프트웨어가 만나는 전체 지도**  
 > 기획 기준일: **2026-09-27** / 원문 확인일: **2026-09-28**  
-> Evidence: **READY TO DRAFT** / Lab: **UNEXECUTED**
+> Evidence: **READY TO DRAFT** / Lab: **EXECUTED — PASS WITH WARNINGS**
 
 ## A. 범위와 학습목표
 
@@ -49,7 +49,7 @@ CPU는 명령 실행 요소이고 SoC는 CPU, memory, peripheral, interconnect �
 | C11 | SystemC/TLM model과 RTL은 같은 추상화가 아니다. | **VERIFIED: S15** |
 | C12 | verification을 RTL 완료 뒤 한 번 하는 마지막 단계로만 보면 부정확하다. | **VERIFIED example / generalization INFERRED: S14** |
 | C13 | FPGA prototype은 fabricated silicon validation과 동일한 증거가 아니다. | **INFERRED: S01 workflow** |
-| C14 | Verilator 5.052로 boardless SystemVerilog lab을 구성할 수 있다. | **VERIFIED capability / UNEXECUTED: S17** |
+| C14 | Verilator 5.052에서 boardless SystemVerilog DUT/testbench가 실제 compile·execute되고 self-checking assertions를 통과했다. | **EXECUTED / PASS WITH WARNINGS: GitHub Actions run 36396773725** |
 
 ## D. 목차 수정
 
@@ -74,7 +74,7 @@ CPU는 명령 실행 요소이고 SoC는 CPU, memory, peripheral, interconnect �
 
 ## F–G. 시각자료와 실습
 
-storyboard는 `soc-00-storyboards.md`, 실습은 `soc-00-lab/`에 분리한다. 실습은 **UNEXECUTED**이며 Verilator 5.052, 16-entry × 16-bit FIFO, drop-new, W1C IRQ state를 기준으로 RESET/FIFO_ORDER/FULL/OVERFLOW/W1C/READ_SIDE_EFFECT를 검증한다.
+storyboard는 `soc-00-storyboards.md`, 실습은 `soc-00-lab/`에 분리한다. 실습은 **EXECUTED — PASS WITH WARNINGS**다. GitHub Actions run `36396773725`, job `108844926182`에서 Verilator **5.052 (2026-09-05 rev v5.052)**를 source tag로 빌드했고, Ubuntu **24.04 runner image 20260920.314**, g++ **13.3.0** 환경에서 DUT와 self-checking testbench를 compile·execute했다. 출력 `SOC00 LAB EXPECTED PASS CONDITIONS MET`와 `$finish`를 확인했다. 검증 범위는 RESET/FIFO_ORDER/FULL/OVERFLOW/W1C_ZERO/W1C_ONE/READ_SIDE_EFFECT 및 overflow IRQ assert/clear다. compile에는 WIDTHEXPAND, PROCASSINIT, UNUSEDSIGNAL warning이 있었으므로 warning-free sign-off로 표현하지 않는다.
 
 ## H. 복습 문제
 
@@ -90,7 +90,7 @@ storyboard는 `soc-00-storyboards.md`, 실습은 `soc-00-lab/`에 분리한다. 
 - 채용공고 NIC 의미: **UNKNOWN** — Network Interface Controller / Network Interconnect 등 후보
 - Static/Dynamic Coverage 의미: **UNKNOWN** — SW/RTL/static-analysis 후보를 후속 검증 편에서 분리
 - AMBA AXI Issue L clause/page: **후속 버스 편에서 고정**
-- lab host OS/compiler exact version: **실행 시 기록**
+- lab host/compiler: **RECORDED** — Ubuntu 24.04 runner image `20260920.314`, g++ 13.3.0
 - board/silicon result: **없음**
 - ASIC timing/power/signoff, AUTOSAR MCAL compliance: **00편 범위 밖**
 
@@ -101,4 +101,4 @@ storyboard는 `soc-00-storyboards.md`, 실습은 `soc-00-lab/`에 분리한다. 
 발행 조건: 교육용 가정을 명시하고, OpenTitan 등 implementation-specific behavior를 universal rule로 일반화하지 않으며, simulation/prototype evidence를 silicon validation으로 표현하지 않는다.
 
 ---
-Checkpoint 0–4 complete. Storyboards, register contract, software-visible definitions, RTL, self-checking testbench draft committed. Lab remains **UNEXECUTED** until a real Verilator run records toolchain and output.
+Checkpoint 0–5 complete. Storyboards, register contract, software-visible definitions, RTL, self-checking testbench and pinned CI are committed. Lab execution evidence: GitHub Actions run `36396773725` / job `108844926182`, **PASS WITH WARNINGS**. This is RTL simulation evidence only; no FPGA or silicon result is claimed.
