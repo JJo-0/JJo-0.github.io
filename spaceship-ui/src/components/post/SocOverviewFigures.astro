@@ -1,0 +1,70 @@
+---
+interface Props {
+  kind: 'system' | 'sample' | 'registers' | 'workflow';
+  lang?: 'ko' | 'en';
+}
+const { kind, lang = 'ko' } = Astro.props;
+const t = (ko: string, en: string) => lang === 'ko' ? ko : en;
+const captions = {
+  system: t('그림 1. CPU는 전체 시스템의 한 블록입니다.', 'Figure 1. The CPU is one block in a larger system.'),
+  sample: t('그림 2. 샘플 데이터와 처리 알림은 서로 다른 경로입니다.', 'Figure 2. Sample data and service notification are different paths.'),
+  registers: t('그림 3. HW와 SW는 주소뿐 아니라 동작 규칙도 공유합니다.', 'Figure 3. Hardware and software share behavior, not just addresses.'),
+  workflow: t('그림 4. 검증은 개발 전 과정과 연결됩니다.', 'Figure 4. Verification accompanies development throughout.'),
+};
+const steps = [
+  [t('획득', 'Acquire'), t('수집 제어기가 16비트 샘플을 얻습니다.', 'The acquisition controller obtains a 16-bit sample.')],
+  [t('보관', 'Buffer'), t('FIFO에 삽입합니다. 가득 차면 새 샘플을 버립니다.', 'Insert into the FIFO. Drop the new sample when full.')],
+  [t('알림', 'Notify'), t('FIFO가 비어 있지 않고 허용된 경우 데이터 IRQ를 유지합니다.', 'Hold data IRQ while the FIFO is nonempty and its interrupt is enabled.')],
+  [t('읽기', 'Read'), t('SW가 STATUS를 확인하고 DATA를 한 번 읽어 샘플 하나를 꺼냅니다.', 'Software checks STATUS; one successful DATA read consumes one sample.')],
+  [t('사용', 'Use'), t('CPU에서 실행되는 코드가 읽은 값을 보관하고 처리합니다.', 'Code running on the CPU stores and processes the returned value.')],
+];
+const phases = [
+  [t('요구사항', 'Requirements'), t('샘플률 · 지연 · 유실 정책', 'Sample rate · latency · loss policy'), t('성공·실패 기준을 정합니다.', 'Define observable pass/fail criteria.')],
+  [t('구조·모델', 'Architecture / model'), t('블록도 · 주소맵 · 트래픽 가정', 'Block diagram · address map · traffic assumptions'), t('버퍼와 서비스 지연을 검토합니다.', 'Examine buffering and service delays.')],
+  [t('RTL', 'RTL'), t('레지스터 · FIFO · 제어 규칙', 'Registers · FIFO · control rules'), t('정상·리셋·포화·동시 사건을 시험합니다.', 'Test normal operation, reset, full buffers and simultaneous events.')],
+  [t('구현', 'Implementation'), t('FPGA 또는 ASIC 산출물', 'FPGA or ASIC implementation outputs'), t('선택한 타깃의 제약을 확인합니다.', 'Check constraints for the selected target.')],
+  [t('초기 구동', 'Bring-up'), t('초기화 코드 · 관찰 로그', 'Initialization code · observation logs'), t('관찰한 조건과 남은 검증을 기록합니다.', 'Record observed conditions and remaining verification.')],
+];
+---
+<figure class="soc-figure" data-soc-figure={kind} lang={lang} aria-labelledby={`soc-figure-${kind}-${lang}`}>
+  <p class="soc-kicker">{t('코드에서 칩까지 · 00', 'FROM CODE TO CHIP · 00')}</p>
+  {kind === 'system' && <div class="soc-system">
+    <div class="soc-node soc-outside"><b>{t('외부 센서', 'External sensor')}</b><span>{t('획득할 데이터의 출발점', 'Source of the acquired data')}</span></div>
+    <p class="soc-connector" aria-label={t('센서와 칩 사이의 전송', 'Transfer between the sensor and chip')}>↕ {t('외부 통신', 'External communication')}</p>
+    <div class="soc-chip">
+      <p class="soc-boundary">{t('가상의 SoC 경계 · 실제 다이 배치도가 아닙니다', 'Illustrative SoC boundary · not a physical die layout')}</p>
+      <div class="soc-pair"><div class="soc-node"><b>{t('수집 제어기', 'Acquisition controller')}</b><span>SPI / {t('수집 제어', 'acquisition control')}</span></div><div class="soc-node"><b>sensor_fifo</b><span>{t('16비트 샘플 × 16개', '16-bit samples × 16 entries')}</span></div></div>
+      <div class="soc-bus"><b>{t('인터커넥트', 'Interconnect')}</b><span>{t('주소 요청과 응답을 연결', 'Route address requests and responses')}</span></div>
+      <div class="soc-pair"><div class="soc-node"><b>{t('CPU 코어', 'CPU core')}</b><span>{t('명령 실행 · SW는 여기서 동작', 'Execute instructions · software runs here')}</span></div><div class="soc-node"><b>SRAM</b><span>{t('작업 데이터 보관', 'Store working data')}</span></div></div>
+      <p class="soc-rail">{t('공통 지원: 클록 · 리셋 · 핀 설정 · IRQ 전달', 'Shared support: clock · reset · pin configuration · IRQ delivery')}</p>
+      <div class="soc-node soc-optional"><b>{t('선택적 확장', 'Optional extensions')}</b><span>{t('가속기 · DMA — 이번 최소 예제에서는 제외', 'Accelerator · DMA — excluded from this minimal example')}</span></div>
+    </div>
+    <p class="soc-foot">{t('필요하면 외부 메모리와 별도 컨트롤러도 연결합니다. SoC라는 이름이 모든 부품의 온칩 통합을 뜻하지는 않습니다.', 'External memory and its controller can be added when required. SoC does not mean that every component must be on-chip.')}</p>
+  </div>}
+  {kind === 'sample' && <div>
+    <div class="soc-legend"><span class="soc-data">{t('실선: 샘플 데이터', 'Solid line: sample data')}</span><span class="soc-notify">{t('점선: 알림 조건', 'Dashed line: notification condition')}</span></div>
+    <div class="soc-pair soc-paths"><div class="soc-node soc-data"><b>{t('데이터 경로', 'Data path')}</b><span>{t('센서 → 수집기 → FIFO → CPU 읽기 → SW 변수', 'Sensor → acquisition → FIFO → CPU read → software variable')}</span></div><div class="soc-node soc-notify"><b>{t('알림 경로', 'Notification path')}</b><span>{t('FIFO 비어 있지 않음 + IRQ 허용 → CPU에 요청', 'Nonempty FIFO + interrupt enabled → request to CPU')}</span></div></div>
+    <ol class="soc-steps">{steps.map(([title, description], i) => <li><span class="soc-number" aria-hidden="true">{i + 1}</span><div><b>{title}</b><span>{description}</span></div></li>)}</ol>
+    <p class="soc-foot">{t('이 예제에서 IRQ는 샘플을 운반하지 않습니다. 순서만 나타낸 개념도이며 시간 간격이나 실제 파형을 나타내지 않습니다.', 'In this example IRQ carries no sample payload. This is an ordering diagram, not a time-scaled or measured waveform.')}</p>
+  </div>}
+  {kind === 'registers' && <div>
+    <div class="soc-node soc-primary"><b>{t('레지스터 명세', 'Register specification')}</b><span>{t('주소 · 폭 · 리셋값 · 접근 종류 · 부작용 · 오류', 'Address · width · reset value · access type · side effects · errors')}</span></div>
+    <p class="soc-connector" aria-hidden="true">↓</p>
+    <div class="soc-triple"><div class="soc-node"><b>RTL</b><span>{t('규칙을 회로로 구현', 'Implement the behavior')}</span></div><div class="soc-node"><b>{t('SW 접근 코드', 'Software access code')}</b><span>{t('규칙에 맞게 읽고 쓰기', 'Read and write under the contract')}</span></div><div class="soc-node"><b>{t('검증 계획', 'Verification plan')}</b><span>{t('독립적인 입력과 예상 결과', 'Independent stimuli and expected results')}</span></div></div>
+    <p class="soc-boundary">{t('교육용 ERROR.bit0 = 1 · 새 오류 사건 없음', 'Educational ERROR.bit0 = 1 · no new error event')}</p>
+    <div class="soc-pair"><div class="soc-node"><b>{t('0 쓰기 → 1 유지', 'Write 0 → remains 1')}</b><span>{t('일반 변수처럼 0 대입으로 해제되지 않음', 'Assigning zero does not clear this bit')}</span></div><div class="soc-node soc-primary"><b>{t('1 쓰기 → 0 해제', 'Write 1 → cleared to 0')}</b><span>W1C · Write One to Clear</span></div></div>
+    <p class="soc-foot">{t('주소와 비트는 본문의 가상 계약입니다. 공통 생성은 불일치를 줄여도 명세 자체의 오류까지 없애지는 않습니다.', 'Addresses and bits belong to the illustrative contract in the text. Common generation can reduce disagreement but cannot eliminate errors in the specification itself.')}</p>
+  </div>}
+  {kind === 'workflow' && <div>
+    <div class="soc-phases">{phases.map(([title, artifact, check], i) => <div class="soc-phase"><div class="soc-phase-top"><span class="soc-number" aria-hidden="true">{i + 1}</span><b>{title}</b><span>{artifact}</span></div><div class="soc-check"><b>{t('함께 확인', 'Verify alongside')}</b><span>{check}</span></div></div>)}</div>
+    <p class="soc-rail">{t('모든 단계: 요구사항 ↔ 구현 ↔ 시험 결과 ↔ 수정·재검증', 'At every stage: requirements ↔ implementation ↔ test evidence ↔ correction and retest')}</p>
+    <p class="soc-foot">{t('교육용 인계 지도입니다. 한 회사의 조직도나 고정된 개발 순서가 아니며, FPGA 관찰을 ASIC 전체 검증으로 간주하지 않습니다.', 'An educational handoff map, not a company organization chart or mandatory lifecycle. An FPGA observation is not complete ASIC verification.')}</p>
+  </div>}
+  <figcaption id={`soc-figure-${kind}-${lang}`}><strong>{captions[kind]}</strong><span>{t('자체 재구성한 교육용 도식 · 제품 사양·실측 결과가 아닙니다. 근거와 적용 범위는 인접 본문 및 참고문헌을 확인하세요.', 'Original educational reconstruction · not a product specification or measurement. See adjacent text and references for evidence and scope.')}</span></figcaption>
+</figure>
+<style>
+  .soc-figure{--soc-ink:#173b48;--soc-line:#a4b9c1;--soc-accent:#175b73;--soc-paper:#f2f7f8;box-sizing:border-box;margin:2.5rem 0;padding:clamp(1rem,3vw,1.75rem);border:1px solid var(--soc-line);border-radius:16px;background:var(--soc-paper);color:var(--soc-ink);font-size:1rem;line-height:1.65;overflow-wrap:anywhere}
+  .soc-figure *{box-sizing:border-box}.soc-figure p{margin:.8rem 0}.soc-figure b,.soc-figure strong{color:inherit}.soc-kicker{font-size:.75rem;letter-spacing:.13em;font-weight:750;color:var(--soc-accent);margin-top:0!important}.soc-node{display:flex;flex-direction:column;min-width:0;padding:1rem;border:1px solid var(--soc-line);border-radius:10px;background:#fff}.soc-node b{font-size:1.05rem}.soc-node span,.soc-phase span,.soc-steps span:not(.soc-number){display:block;font-size:.94rem;line-height:1.65}.soc-pair,.soc-triple{display:grid;gap:.8rem;grid-template-columns:repeat(2,minmax(0,1fr))}.soc-triple{grid-template-columns:repeat(3,minmax(0,1fr))}.soc-chip{padding:1rem;border:2px solid var(--soc-accent);border-radius:12px}.soc-boundary{font-size:.83rem;font-weight:700;margin:1rem 0!important}.soc-chip>.soc-boundary{margin-top:0!important}.soc-bus{display:flex;flex-direction:column;text-align:center;margin:1rem 0;padding:.8rem;border-top:3px solid var(--soc-accent);border-bottom:3px solid var(--soc-accent)}.soc-bus span{font-size:.9rem}.soc-connector{text-align:center;font-weight:700;color:var(--soc-accent)}.soc-optional,.soc-outside{border-style:dashed}.soc-primary{border:2px solid var(--soc-accent)}.soc-rail{padding:.7rem;border-left:3px solid var(--soc-accent);font-size:.9rem}.soc-foot{font-size:.88rem}.soc-legend{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem;font-size:.84rem}.soc-legend span{padding:.4rem .65rem}.soc-data{border-bottom:3px solid var(--soc-accent)}.soc-notify{border:2px dashed var(--soc-accent)}.soc-paths{margin-bottom:1rem}.soc-steps{padding:0!important;margin:0!important;list-style:none!important}.soc-steps li{display:flex;gap:1rem;align-items:flex-start;padding:1rem 0;margin:0!important;border-bottom:1px solid var(--soc-line)}.soc-steps li:last-child{border:0}.soc-number{display:inline-flex;flex-shrink:0;align-items:center;justify-content:center;width:1.9rem;height:1.9rem;border-radius:50%;background:var(--soc-accent);color:white;font-size:.85rem;font-weight:700}.soc-phases{display:grid;gap:1rem}.soc-phase{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--soc-line);border-radius:10px;overflow:hidden;background:white}.soc-phase-top,.soc-check{padding:1rem;min-width:0}.soc-phase-top b{margin-left:.6rem}.soc-phase-top>span:last-child{margin-top:.5rem}.soc-check{border-left:1px dashed var(--soc-line)}.soc-check b{display:block;font-size:.85rem;color:var(--soc-accent)}.soc-figure figcaption{border-top:1px solid var(--soc-line);margin-top:1.3rem;padding-top:1rem;color:var(--soc-ink);font-size:.87rem}.soc-figure figcaption strong,.soc-figure figcaption span{display:block}.soc-figure figcaption span{margin-top:.3rem}
+  :global(.dark) .soc-figure{--soc-ink:#e1eef2;--soc-line:#506977;--soc-accent:#82c6df;--soc-paper:#142832}.dark-placeholder{display:none}:global(.dark) .soc-node,:global(.dark) .soc-phase{background:#1c3440}:global(.dark) .soc-number{color:#10252e}
+  @media(max-width:640px){.soc-pair,.soc-triple,.soc-phase{grid-template-columns:1fr}.soc-check{border-left:0;border-top:1px dashed var(--soc-line)}.soc-chip{padding:.75rem}.soc-steps li{gap:.7rem}.soc-figure{font-size:1rem}}
+</style>
