@@ -41,12 +41,15 @@ module tb_sensor_fifo;
     rd(5'h04,r);
     assert(r[1] && r[12:8]==16) else $fatal("FULL");
 
+    wr(5'h0c,32'h2);
     push(16'hbeef);
+    assert(irq) else $fatal("OVERFLOW_IRQ");
     rd(5'h10,r); assert(r[1]) else $fatal("OVERFLOW");
 
     wr(5'h10,32'h0);
     rd(5'h10,r); assert(r[1]) else $fatal("W1C_ZERO");
     wr(5'h10,32'h2);
+    assert(!irq) else $fatal("IRQ_CLEAR");
     rd(5'h10,r); assert(!r[1]) else $fatal("W1C_ONE");
 
     reset_dut(); wr(5'h00,32'h1);
