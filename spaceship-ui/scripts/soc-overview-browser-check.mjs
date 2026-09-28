@@ -14,11 +14,16 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
     const article = document.querySelector('[data-english-article]') || document.querySelector('article');
     if (!article) throw new Error('SoC article missing');
     const figures = [...article.querySelectorAll('[data-soc-figure]')];
+    const headingText = h => {
+      const clone = h.cloneNode(true);
+      clone.querySelectorAll('.heading-link').forEach(link => link.remove());
+      return clone.textContent.trim();
+    };
     return {
       language: document.documentElement.lang,
       kinds: figures.map(f => f.getAttribute('data-soc-figure')),
       named: figures.every(f => document.getElementById(f.getAttribute('aria-labelledby'))?.textContent.trim()),
-      numberedChapters: [...article.querySelectorAll('h2')].filter(h => /^[1-6]\\. /.test(h.textContent.trim())).length,
+      numberedChapters: [...article.querySelectorAll('h2')].filter(h => /^[1-6]\\. /.test(headingText(h))).length,
       reviews: article.querySelectorAll('details[data-soc-review]').length,
       exercises: article.querySelectorAll('details[data-soc-exercise]').length,
       externalFigureMedia: figures.some(f => f.querySelector('img,iframe,video')),
