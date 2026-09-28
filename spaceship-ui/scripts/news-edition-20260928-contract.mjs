@@ -145,6 +145,10 @@ for (const entry of edition.entries) {
     );
   }
   assert.equal((source.match(/data-news-reference=/g) ?? []).length, entry.referenceCount);
+  assert.deepEqual(
+    [...source.matchAll(/<NewsFigure media="([^"]+)"/g)].map((match) => match[1]),
+    entry.mediaIds
+  );
   for (const phrase of spec.phrases)
     assert(source.includes(phrase), `${entry.key} missing boundary: ${phrase}`);
   for (const link of spec.links)
