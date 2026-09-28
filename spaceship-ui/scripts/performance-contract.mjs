@@ -130,7 +130,8 @@ const homeHtmlPath = path.join(dist, 'index.html');
 const aboutHtmlPath = path.join(dist, 'about', 'index.html');
 const writingHtmlPath = path.join(dist, 'posts', 'index.html');
 for (const [label, file, budget] of [
-  ['Home HTML', homeHtmlPath, 240 * 1024],
+  // Three independently readable NEWS entries add three legitimate cards to Home.
+  ['Home HTML', homeHtmlPath, 244 * 1024],
   ['Writing HTML', writingHtmlPath, 260 * 1024],
 ]) {
   if (!fs.existsSync(file)) {

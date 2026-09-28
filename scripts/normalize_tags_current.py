@@ -233,5 +233,20 @@ POST_TAXONOMY.update({
     ),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-28-variation-tolerant-implant-wpt-news.mdx': Taxonomy(
+        'finance-industry', 'wearable-implant-bioelectronics', 'paper-review',
+        ('frontier-one', 'bioelectronics'),
+    ),
+    '2026-09-28-high-voltage-linio2-nanorod-news.mdx': Taxonomy(
+        'finance-industry', 'high-nickel-cathodes', 'paper-review',
+        ('frontier-candidate', 'battery-materials'),
+    ),
+    '2026-09-28-spacey-spatial-omics-gnn-news.mdx': Taxonomy(
+        'ai-machine-learning', 'explainable-spatial-omics', 'paper-review',
+        ('frontier-candidate', 'ai-for-science'),
+    ),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

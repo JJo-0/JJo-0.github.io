@@ -1,0 +1,222 @@
+<figure class="spacey-primer news-figure" data-spacey-primer>
+  <div class="spacey-primer__grid">
+    <section>
+      <h3>① 조직 사진을 graph로 바꾼다</h3>
+      <svg viewBox="0 0 620 300" role="img" aria-labelledby="spacey-graph-title spacey-graph-desc">
+        <title id="spacey-graph-title">공간 단백질 조직을 세포 그래프로 바꾸는 개념도</title>
+        <desc id="spacey-graph-desc">각 세포는 노드가 되고 가까운 세포 사이에 엣지가 연결된다.</desc
+        >
+        <g class="edges"
+          ><path
+            d="M93 65L188 116 90 201 188 116 279 64 188 116 300 185 90 201 201 250 300 185 401 91 300 185 433 235 401 91 530 157 433 235 530 157"
+          ></path></g
+        >
+        <g class="nodes"
+          ><circle cx="93" cy="65" r="22"></circle><circle cx="188" cy="116" r="25"></circle><circle
+            cx="90"
+            cy="201"
+            r="24"></circle><circle cx="279" cy="64" r="21"></circle><circle
+            cx="300"
+            cy="185"
+            r="29"></circle><circle cx="201" cy="250" r="19"></circle><circle
+            cx="401"
+            cy="91"
+            r="27"></circle><circle cx="433" cy="235" r="24"></circle><circle
+            cx="530"
+            cy="157"
+            r="27"></circle></g
+        >
+        <text x="310" y="292" text-anchor="middle"
+          >node = 한 세포 · feature = 단백질 marker · edge = 공간 이웃</text
+        >
+      </svg>
+      <p>
+        Delaunay triangulation으로 가까운 세포를 연결한다. 입력에는 미리 붙인 cell type·해부학 영역
+        label을 넣지 않는다.
+      </p>
+    </section>
+
+    <section>
+      <h3>② GNN과 explainer의 역할을 분리한다</h3>
+      <div class="pipeline" aria-label="예측 모델과 설명 모델의 순서">
+        <span>spatial graph</span><b>→</b><span>GNN 예후 예측</span><b>→</b><span
+          >edge mask 학습</span
+        ><b>→</b><span>연결된 motif</span>
+      </div>
+      <p>
+        먼저 GNN이 예후를 예측한다. 그 가중치를 고정한 뒤 explainer가 예측을 유지하는 작은 연결
+        subgraph를 찾는다.
+      </p>
+      <p class="spacey-primer__warning">
+        <strong>중요:</strong> 선택된 motif는 예측에 유용한 pattern이지 질병 원인이라는 증명은 아니다.
+      </p>
+    </section>
+
+    <section class="spacey-primer__wide">
+      <h3>③ 숫자는 ‘비교 우위’와 ‘절대 성능’을 함께 읽는다</h3>
+      <div class="scores">
+        <div>
+          <span>LUAD progression</span><strong>AUC 0.62</strong><small
+            >baseline 0.57 / 0.52보다 높지만 절대값은 modest</small
+          >
+        </div>
+        <div>
+          <span>JacksonFischer survival</span><strong>C-index 0.720</strong><small
+            >best baseline 0.617</small
+          >
+        </div>
+        <div>
+          <span>METABRIC survival</span><strong>C-index 0.688</strong><small
+            >best baseline 0.570</small
+          >
+        </div>
+      </div>
+      <p>
+        서로 다른 task와 split에서 나온 값이므로 세 숫자를 직접 순위처럼 비교하지 않는다. 같은
+        dataset·평가조건 안에서 baseline과 비교한다.
+      </p>
+    </section>
+  </div>
+  <figcaption>
+    <strong>JJo 자체 제작 입문 도식</strong>
+    <span
+      >Nature Communications SpaCEy 원논문의 graph 구성, prediction–explanation 분리, 보고된 성능
+      경계를 독자용으로 재구성했다. 논문 Figure와 조직 이미지를 복제하지 않았다.</span
+    >
+    <small
+      >저작권: JJo 자체 제작 · 외부 원본 이미지 미사용 · 수치와 공개 코드·데이터는 글 아래 참고문헌
+      1–4에 연결</small
+    >
+  </figcaption>
+</figure>
+
+<style>
+  .spacey-primer {
+    margin: 1rem 0 1.35rem;
+  }
+  .spacey-primer__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+  }
+  .spacey-primer section {
+    min-width: 0;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--color-background) 92%, var(--color-muted) 8%);
+  }
+  .spacey-primer__wide {
+    grid-column: 1/-1;
+  }
+  .spacey-primer h3 {
+    margin: 0 0 0.65rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+  .spacey-primer svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    color: var(--color-foreground);
+  }
+  .spacey-primer svg text {
+    fill: currentColor;
+    font:
+      700 14px/1.2 system-ui,
+      sans-serif;
+  }
+  .edges path {
+    fill: none;
+    stroke: color-mix(in srgb, var(--color-foreground) 45%, transparent);
+    stroke-width: 4;
+  }
+  .nodes circle {
+    fill: color-mix(in srgb, #577f8f 68%, var(--color-background));
+    stroke: #315663;
+    stroke-width: 3;
+  }
+  .nodes circle:nth-child(3n) {
+    fill: color-mix(in srgb, #b26b63 64%, var(--color-background));
+  }
+  .nodes circle:nth-child(3n + 1) {
+    fill: color-mix(in srgb, #b99a4e 64%, var(--color-background));
+  }
+  .spacey-primer section > p {
+    margin: 0.62rem 0 0;
+    color: var(--color-muted-foreground);
+    font-size: 0.82rem;
+    line-height: 1.65;
+  }
+  .pipeline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.85rem;
+    border-radius: 0.65rem;
+    background: color-mix(in srgb, var(--color-muted) 35%, transparent);
+  }
+  .pipeline span {
+    padding: 0.45rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.45rem;
+    background: var(--color-background);
+    font-size: 0.75rem;
+    font-weight: 750;
+    text-align: center;
+  }
+  .pipeline b {
+    color: var(--color-primary);
+  }
+  .spacey-primer__warning {
+    padding: 0.6rem 0.7rem;
+    border-left: 4px solid #b56452;
+    background: color-mix(in srgb, #b56452 10%, transparent);
+  }
+  .scores {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+  .scores div {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.8rem;
+    border-radius: 0.65rem;
+    background: color-mix(in srgb, var(--color-muted) 35%, transparent);
+  }
+  .scores span {
+    font-size: 0.72rem;
+    color: var(--color-muted-foreground);
+  }
+  .scores strong {
+    font-size: 1.16rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .scores small {
+    font-size: 0.7rem;
+    line-height: 1.5;
+  }
+  .spacey-primer figcaption {
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 0.7rem;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1.55;
+  }
+  .spacey-primer figcaption strong {
+    color: var(--color-foreground);
+  }
+  @media (max-width: 720px) {
+    .spacey-primer__grid,
+    .scores {
+      grid-template-columns: 1fr;
+    }
+    .spacey-primer__wide {
+      grid-column: auto;
+    }
+  }
+</style>
