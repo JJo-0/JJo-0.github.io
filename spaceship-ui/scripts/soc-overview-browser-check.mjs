@@ -26,6 +26,7 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
       numberedChapters: [...article.querySelectorAll('h2')].filter(h => /^[1-6]\\. /.test(headingText(h))).length,
       reviews: article.querySelectorAll('details[data-soc-review]').length,
       exercises: article.querySelectorAll('details[data-soc-exercise]').length,
+      sourceCards: [...article.querySelectorAll('[data-soc-source]')].map(f => f.dataset.socSource),
       externalFigureMedia: figures.some(f => f.querySelector('img,iframe,video')),
       offsets: ['0x00','0x04','0x08','0x0C','0x10'].every(v => article.textContent.includes(v)),
       rules: ['W1C','drop-new','0x0011','0x0022','32 bytes','2,000 bytes/s'].every(v => article.textContent.includes(v)),
@@ -33,6 +34,7 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
     };
   })()`);
   assert.deepEqual(content.kinds, figureKinds);
+  assert.deepEqual(content.sourceCards, ['board', 'datasheet']);
   assert.equal(content.language, lang === 'ko' ? 'ko-KR' : 'en');
   assert(content.named && content.offsets && content.rules, JSON.stringify(content));
   assert.equal(content.numberedChapters, 6);
@@ -51,9 +53,16 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
       await evaluate(cdp, sessionId, `document.querySelector('[data-soc-source="${sourceKind}"]').scrollIntoView({block:'center',behavior:'instant'})`);
       await waitExpression(cdp, sessionId, `(() => { const i=document.querySelector('[data-soc-source="${sourceKind}"] img'); return i && i.complete && i.naturalWidth>500; })()`, `Real ${sourceKind} image loaded`);
       const sourceLayout = await evaluate(cdp, sessionId, `(() => {
-        const f=document.querySelector('[data-soc-source="${sourceKind}"]');
+        const article=document.querySelector('[data-english-article]') || document.querySelector('article');
+        const f=article.querySelector('[data-soc-source="${sourceKind}"]');
         const img=f.querySelector('img'); const r=f.getBoundingClientRect();
-        const firstChapter=[...document.querySelectorAll('article h2')].find(h=>h.textContent.trim().startsWith('1.'));
+        // Permalink decorations are not part of the numbered chapter title.
+        const firstChapter=[...article.querySelectorAll('h2')].find(h => {
+          const copy=h.cloneNode(true);
+          copy.querySelectorAll('.heading-link').forEach(link => link.remove());
+          return copy.textContent.trim().startsWith('1.');
+        });
+        if (!firstChapter) throw new Error('The first numbered SoC chapter was not found');
         return {kind:'${sourceKind}',local:new URL(img.currentSrc).origin===location.origin,
           beforeTerms:'${sourceKind}'!=='board'||!!(f.compareDocumentPosition(firstChapter)&Node.DOCUMENT_POSITION_FOLLOWING),
           overflow:document.documentElement.scrollWidth>innerWidth+2 || f.scrollWidth>f.clientWidth+2,
