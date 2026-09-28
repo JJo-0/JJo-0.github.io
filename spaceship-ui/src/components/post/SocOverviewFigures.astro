@@ -1,6 +1,6 @@
 ---
 interface Props {
-  kind: 'system' | 'sample' | 'registers' | 'workflow';
+  kind: 'system' | 'sample' | 'registers' | 'w1c' | 'workflow';
   lang?: 'ko' | 'en';
 }
 const { kind, lang = 'ko' } = Astro.props;
@@ -9,7 +9,7 @@ const captions = {
   system: t('그림 1. CPU는 전체 시스템의 한 블록입니다.', 'Figure 1. The CPU is one block in a larger system.'),
   sample: t('그림 2. 샘플 데이터와 처리 알림은 서로 다른 경로입니다.', 'Figure 2. Sample data and service notification are different paths.'),
   registers: t('그림 3. HW와 SW는 주소뿐 아니라 동작 규칙도 공유합니다.', 'Figure 3. Hardware and software share behavior, not just addresses.'),
-  workflow: t('그림 4. 검증은 개발 전 과정과 연결됩니다.', 'Figure 4. Verification accompanies development throughout.'),
+  w1c: t('그림 4. 동시 접근 우선순위도 레지스터 계약의 일부입니다.', 'Figure 4. Simultaneous-access priority is part of the register contract.'),\n  workflow: t('그림 5. 검증은 개발 전 과정과 연결됩니다.', 'Figure 5. Verification accompanies development throughout.'),
 };
 const steps = [
   [t('획득', 'Acquire'), t('수집 제어기가 16비트 샘플을 얻습니다.', 'The acquisition controller obtains a 16-bit sample.')],
@@ -54,6 +54,17 @@ const phases = [
     <p class="soc-boundary">{t('교육용 ERROR.bit0 = 1 · 새 오류 사건 없음', 'Educational ERROR.bit0 = 1 · no new error event')}</p>
     <div class="soc-pair"><div class="soc-node"><b>{t('0 쓰기 → 1 유지', 'Write 0 → remains 1')}</b><span>{t('일반 변수처럼 0 대입으로 해제되지 않음', 'Assigning zero does not clear this bit')}</span></div><div class="soc-node soc-primary"><b>{t('1 쓰기 → 0 해제', 'Write 1 → cleared to 0')}</b><span>W1C · Write One to Clear</span></div></div>
     <p class="soc-foot">{t('주소와 비트는 본문의 가상 계약입니다. 공통 생성은 불일치를 줄여도 명세 자체의 오류까지 없애지는 않습니다.', 'Addresses and bits belong to the illustrative contract in the text. Common generation can reduce disagreement but cannot eliminate errors in the specification itself.')}</p>
+  </div>}
+  {kind === 'w1c' && <div>
+    <p class="soc-boundary">{t('교육용 IRQ_STATE.OVERFLOW · 같은 clock edge', 'Educational IRQ_STATE.OVERFLOW · same clock edge')}</p>
+    <div class="soc-triple">
+      <div class="soc-node"><b>{t('기존 상태', 'Old state')}</b><span>OVERFLOW = 1</span></div>
+      <div class="soc-node"><b>{t('SW 동작', 'Software action')}</b><span>{t('W1C: 1을 써서 clear 요청', 'W1C: write 1 to request clear')}</span></div>
+      <div class="soc-node"><b>{t('HW 사건', 'Hardware event')}</b><span>{t('새 overflow가 같은 edge에 발생', 'A new overflow arrives on the same edge')}</span></div>
+    </div>
+    <p class="soc-connector" aria-hidden="true">↓</p>
+    <div class="soc-node soc-primary"><b>{t('교육용 DUT policy: 새 HW 사건 우선', 'Educational DUT policy: new HW event wins')}</b><span>{t('다음 상태는 OVERFLOW = 1. 다른 IP는 반드시 해당 사양을 확인합니다.', 'Next state is OVERFLOW = 1. Other IP can define a different priority; check its specification.')}</span></div>
+    <p class="soc-foot">{t('OpenTitan은 동시 HW/SW update를 명시적으로 다루는 실제 사례입니다. 이 그림의 우선순위 자체는 이번 교육용 DUT의 선택입니다.', 'OpenTitan is a real example that specifies simultaneous HW/SW updates. The priority shown here is a choice of this educational DUT.')}</p>
   </div>}
   {kind === 'workflow' && <div>
     <div class="soc-phases">{phases.map(([title, artifact, check], i) => <div class="soc-phase"><div class="soc-phase-top"><span class="soc-number" aria-hidden="true">{i + 1}</span><b>{title}</b><span>{artifact}</span></div><div class="soc-check"><b>{t('함께 확인', 'Verify alongside')}</b><span>{check}</span></div></div>)}</div>
