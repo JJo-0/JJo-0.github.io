@@ -46,6 +46,28 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
     await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark', ${dark})`);
     await evaluate(cdp, sessionId, 'scrollTo({top:0,behavior:"instant"})');
     await screen(`soc-${lang}-${width}-${dark ? 'dark' : 'light'}-top`);
+    const sourceCards = [];
+    for (const sourceKind of ['board', 'datasheet']) {
+      await evaluate(cdp, sessionId, `document.querySelector('[data-soc-source="${sourceKind}"]').scrollIntoView({block:'center',behavior:'instant'})`);
+      await waitExpression(cdp, sessionId, `(() => { const i=document.querySelector('[data-soc-source="${sourceKind}"] img'); return i && i.complete && i.naturalWidth>500; })()`, `Real ${sourceKind} image loaded`);
+      const sourceLayout = await evaluate(cdp, sessionId, `(() => {
+        const f=document.querySelector('[data-soc-source="${sourceKind}"]');
+        const img=f.querySelector('img'); const r=f.getBoundingClientRect();
+        const firstChapter=[...document.querySelectorAll('article h2')].find(h=>h.textContent.trim().startsWith('1.'));
+        return {kind:'${sourceKind}',local:new URL(img.currentSrc).origin===location.origin,
+          beforeTerms:'${sourceKind}'!=='board'||!!(f.compareDocumentPosition(firstChapter)&Node.DOCUMENT_POSITION_FOLLOWING),
+          overflow:document.documentElement.scrollWidth>innerWidth+2 || f.scrollWidth>f.clientWidth+2,
+          width:img.naturalWidth,height:img.naturalHeight,alt:img.alt,
+          zoom:f.querySelector('[data-soc-zoom]').getAttribute('href')===img.getAttribute('src'),
+          license:!!f.querySelector('a[href*="creativecommons.org/licenses/"]'),
+          bounds:{x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height,scale:1}};
+      })()`);
+      assert(sourceLayout.local && sourceLayout.beforeTerms && !sourceLayout.overflow && sourceLayout.zoom && sourceLayout.license && sourceLayout.alt.length>40, JSON.stringify(sourceLayout));
+      const {data: sourcePng}=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:sourceLayout.bounds},sessionId);
+      fs.writeFileSync(`english-review/soc-${lang}-${width}-${dark?'dark':'light'}-source-${sourceKind}.png`,Buffer.from(sourcePng,'base64'));
+      sourceCards.push(sourceLayout);
+    }
+
     const diagrams = [];
     for (const kind of figureKinds) {
       // The site uses content-visibility:auto. Scroll as a reader would, then
@@ -82,7 +104,7 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
       const { data } = await cdp.send('Page.captureScreenshot', {format:'png',captureBeyondViewport:true,clip:layout.bounds}, sessionId);
       fs.writeFileSync(`english-review/soc-${lang}-${width}-${dark ? 'dark' : 'light'}-${kind}.png`, Buffer.from(data, 'base64'));
     }
-    themes.push({dark,diagrams});
+    themes.push({dark,diagrams,sourceCards});
   }
 
   await enter('[data-soc-exercise="fifo"] > summary');

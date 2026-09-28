@@ -1,6 +1,6 @@
 ---
 title: 'From Code to Chip 00 · What Is an SoC?'
-description: 'Follow one sensor sample to understand CPU, ISA, MCU, SoC, ASIC and FPGA. Four diagrams, register side effects and a board-free FIFO exercise connect hardware, drivers, operating systems and verification.'
+description: 'Start with a real Pico photograph and the RP2040 datasheet, then trace the hardware/software boundary.'
 slug: soc-00-system-map
 pubDate: 2026-09-28T09:00:00+09:00
 publicationTimeZone: Asia/Seoul
@@ -16,14 +16,17 @@ translatedPosts:
 ---
 
 import SocOverviewFigures from '@/components/post/SocOverviewFigures.astro';
+import SocSourceFigures from '@/components/post/SocSourceFigures.astro';
 
-**Behind a single line that reads a sensor are circuits and software with different responsibilities.** This opening chapter of *From Code to Chip* draws the overall map. Before buying a board or writing a driver, we need to understand what runs where and which rules connect the parts.
+**Is the whole green board a CPU? Or is the black chip in the middle the CPU?** Start with a real Raspberry Pi Pico photograph, then open the manufacturer’s datasheet for the same RP2040. Identify the physical board, the chip package and the internal CPU cores before memorising the terms.[4][19][20]
+
+<SocSourceFigures kind="board" lang="en" />
 
 A call to `read_sensor()` returns a number. But the operation remains unexplained unless we identify the circuit communicating with the sensor, the space holding its data, the condition notifying the CPU, and the address and meaning of a read. A CPU executes instructions; an SoC, or System-on-Chip, integrates multiple system functions in one integrated circuit.[1][2]
 
 **Learning goals:** distinguish a CPU from the complete chip, draw the path of a sample, and explain the specification that hardware, software and verification engineers must share. You do not need to write C to follow this chapter. Later lessons will supply the detailed foundations of addresses and bits.
 
-**The evidence baseline is 2026-09-28.** Documented product examples are separated from an invented educational design. All four figures are original reconstructions, not physical die layouts or measured waveforms. This chapter implements no RTL, device driver or OS port and makes no claim of measured hardware performance.
+**The evidence baseline is 2026-09-28.** Documented product examples are separated from an invented educational design. The real photograph and the manufacturer’s original Figure 2 come first; five separate teaching diagrams simplify the ideas. Photographs, source figures and invented examples are clearly distinguished, and functional diagrams are not physical die layouts or measured waveforms. This chapter implements no RTL, device driver or OS port and makes no claim of measured hardware performance.
 
 ## 1. SoC, CPU, MCU, ASIC and FPGA: relationships and different classification axes
 
@@ -53,6 +56,10 @@ Configuring FPGA logic and connections operates at a different level from execut
 ## 2. The roles of CPU, memory, interconnect, peripherals and accelerators
 
 A fast CPU does not make the external-signal interface or storage space disappear. Separating the problem each block solves makes the system structure visible. The roles below reconstruct the SoC overview, an actual MCU configuration and AMBA documentation for beginners; they are not a mandatory block list for every product.[1][2][4][8]
+
+The photograph showed the outside of the package. **Now look at the official functional structure of that same RP2040.** In the manufacturer’s Figure 2, read `Proc0`/`Proc1` at upper right, then `Bus Fabric`, `SRAM` and `Peripherals`. You do not need to memorise every block.[20]
+
+<SocSourceFigures kind="datasheet" lang="en" />
 
 | Block | Why is it needed? | Role in the sensor example |
 |---|---|---|
@@ -251,7 +258,7 @@ The research date is 2026-09-28. The entries below identify the overview or spec
 
 [11] Linux, [Bus-Independent Device Accesses](https://docs.kernel.org/6.18/driver-api/device-io.html), 6.18, device access, __iomem and access functions.
 
-[12] Linux, [Industrial I/O Introduction](https://docs.kernel.org/6.18/driver-api/iio/intro.html), 6.12, sensor categories and SPI/I²C examples.
+[12] Linux, [Industrial I/O Introduction](https://docs.kernel.org/6.18/driver-api/iio/intro.html), 6.18, sensor categories and SPI/I²C examples.
 
 [13] OpenTitan, [Hardware Development Stages](https://opentitan.org/book/doc/project_governance/development_stages.html), separate design and verification progress. Project-specific criteria are not universal industry thresholds.
 
@@ -264,3 +271,8 @@ The research date is 2026-09-28. The entries below identify the overview or spec
 [17] Zephyr, [Porting](https://docs.zephyrproject.org/latest/hardware/porting/index.html), separation of architecture, SoC and board guides. No specific port implemented.
 
 [18] Renesas, [Microcontroller Abstraction Layer (MCAL)](https://www.renesas.com/en/products/automotive-products/autosar/microcontroller-abstraction-layer-mcal), peripheral access and upper-layer abstraction overview. Not an AUTOSAR compliance verdict.
+
+
+[19] Phiarc, [Raspberry Pi Pico top.jpg](https://commons.wikimedia.org/wiki/File:Raspberry_Pi_Pico_top.jpg), 2023-03-18, CC BY-SA 4.0. Real photograph, resized and converted to WebP.
+
+[20] Raspberry Pi Ltd, [RP2040 Datasheet](https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf#page=11), build 3184e62-clean, 2025-02-20, §1.2–1.3, Figure 2, printed p.10 / PDF page 11. CC BY-ND 4.0. Unchanged figure excerpt. Functional structure, not a physical die layout.
