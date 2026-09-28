@@ -23,7 +23,15 @@ import BeginnerGuide from '@/components/post/BeginnerGuide.astro';
 import WearableImplantWptPrimer from '@/components/post/WearableImplantWptPrimer.astro';
 import NewsFigure from '@/components/post/NewsFigure.astro';
 
-<NewsFigure media="sep28-wpt-cover" priority />
+**먼저 쉬운 답부터.** 휴대전화는 충전판에서 조금 벗어나도 충전이 끊길 수 있다. 몸속 장치는 심장과 피부가 계속 움직여 더 어렵다. 이번 연구는 **몸 밖 회로가 잘 맞는 주파수를 스스로 찾고, 몸 안 코일은 부드럽게 늘어나게** 만들었다. 토끼·돼지에서 기능을 확인했지만 사람용 제품을 완성한 것은 아니다.
+
+<NewsFigure media="sep28-wpt-explained" priority />
+
+### 그림을 먼저 읽기: 에너지는 어디에서 어디로 가나
+
+파란 코일은 몸 밖 송신기, 초록 코일은 몸 안 수신기다. 곡선 화살표는 자기장에 의한 결합을 단순화한 표시이지 전기가 피부를 관통하는 광선이 아니다. 오른쪽 확대 그림은 탄성 재료 안의 액체금속 도체가 변형을 받아들이는 **설명용 그림**이다. 실제 장치의 모양·크기·삽입 깊이를 재현하지 않았다. 전원은 여전히 몸 밖에 있고, 수신기는 받은 에너지로 몸 안 회로를 구동한다.
+
+아래에서는 **① 왜 움직이면 충전이 약해지는가 → ② 회로와 소재가 무엇을 바꿨는가 → ③ 50%와 6%가 왜 다른 숫자인가** 순서로 읽는다. 수식의 해설은 접힌 설명에서 확인할 수 있다.
 
 <BeginnerGuide title="무선 충전·공진·PTE가 낯설다면: 그림 세 장으로 먼저 보기">
 
@@ -75,6 +83,8 @@ inductance, <Math tex={String.raw`C`} />는 capacitance다. 코일이 늘어나 
 <Math tex={String.raw`L`} />과 기생 capacitance가 달라질 수 있고, 도체 길이와 단면 변화는
 resistance에도 영향을 준다.
 
+단위는 주파수 Hz, 인덕턴스 H(헨리), 정전용량 F(패럿)다. 이 식은 저항 손실을 무시한 단순 LC 회로의 고유 주파수이며, 두 코일의 결합·조직·정류기·비선형 증폭기를 포함한 전체 효율 식이 아니다. 따라서 식에 코일 크기만 넣어 체내 충전 효율을 계산할 수는 없다.
+
 예를 들어 capacitance가 그대로이고 inductance가 21% 증가했다고 가정하면 새 주파수는 기존의 <Math tex={String.raw`1/\sqrt{1.21}=1/1.1`} />, 약 90.9%가 된다. 이는 계산 원리를 보여 주는 가상 예이며 논문 장치의 inductance를 역산한 값이 아니다.
 
 보충자료에서 실제 LM receiver의 측정 공진 주파수는 0% strain의 2.64 MHz에서 50% strain의 2.39 MHz로 낮아졌다. 약 9.5% 이동이다. fixed-frequency transmitter가 2.64 MHz만 계속 사용하면 수신기가 가장 잘 반응하는 점과 어긋난다.<Cite n={2} />
@@ -90,6 +100,30 @@ parity–time symmetry라는 이름 때문에 양자컴퓨터나 입자물리 �
 wearable transmitter에는 self-oscillating gain과 real-time feedback이 있다. 수신기와의 coupling이 바뀌면 회로의 oscillation frequency도 새 operating point로 이동한다. 보충자료의 time-domain simulation에서는 coupling condition을 갑자기 바꿨을 때 잠시 정상상태를 벗어난 뒤 새 steady-state oscillation으로 적응하는 과정을 분석한다.<Cite n={2} />
 
 “자동 적응”도 무한한 범위를 뜻하지 않는다. coupling rate가 receiver loss 아래로 떨어져 PT-symmetric regime이 깨지면 효율은 급격히 저하될 수 있다. 송신기에서 너무 멀어지거나, 코일을 지나치게 작게 만들거나, 손실이 커지면 feedback만으로 물리적 한계를 없앨 수 없다. 이 임계조건 때문에 현재 장치의 가장 큰 한계가 receiver coil 크기로 돌아온다.<Cite n={2} />
+
+쉽게 말하면 두 그네가 연결된 상황에 가깝다. 그네를 미는 쪽은 송신기의 에너지 공급, 마찰로 에너지가 줄어드는 쪽은 수신기의 손실에 대응한다. **비유의 한계:** 실제 회로는 그네가 아니라 교류 전압·자기장으로 에너지를 교환하며, 아래 식은 그 관계를 정량화한다. 이번 연구가 바꾼 것은 전자기 법칙이 아니라, 외부에서 한 주파수를 강제로 넣던 구동 방식을 스스로 진동하는 피드백으로 바꾼 점이다.
+
+<CandidateEquation id="wpt-coupled-modes" title="대학생·연구자 해설: 결합이 손실보다 커야 두 공진 모드가 유지된다" tex={String.raw`\begin{aligned}\frac{d}{dt}\begin{pmatrix}a_S\\a_R\end{pmatrix}&=\begin{pmatrix}i\omega_S+g_S&-i\kappa\\-i\kappa&i\omega_R-\gamma_R\end{pmatrix}\begin{pmatrix}a_S\\a_R\end{pmatrix}\\\omega_\pm&=\omega_0\pm\sqrt{\kappa^2-\gamma_R^2}\quad(\kappa>\gamma_R)\end{aligned}\tag{3}`}>
+
+원문 위치는 **보충자료 Note 2, 인쇄 페이지 6–8, 식 S1·S2와 그 아래 두 경우의 분석**이다. 첫 줄은 결합모드의 **시간 변화를 지배하는 미분방정식**이다. <Math tex={String.raw`a_S,a_R`} />는 송신·수신 공진기의 에너지 정규화 진폭으로 단위는 <Math tex={String.raw`\sqrt{\mathrm J}`} />다. 시간 <Math tex={String.raw`t`} />는 초, <Math tex={String.raw`i`} />는 허수 단위다. <Math tex={String.raw`\omega_S,\omega_R`} />는 각 공진기의 각주파수(rad/s), <Math tex={String.raw`g_S`} />는 송신기의 이득률, <Math tex={String.raw`\gamma_R`} />는 수신기의 손실률, <Math tex={String.raw`\kappa`} />는 에너지 결합률이며 세 비율의 단위는 초의 역수다. 진폭 벡터에 행렬을 곱해 각 진폭이 얼마나 빨리 변하는지를 계산한다.<Cite n={2} />
+
+대각선 항은 각 코일이 혼자 진동하면서 에너지를 얻거나 잃는 부분이고, 비대각선의 <Math tex={String.raw`-i\kappa`} />는 두 코일이 서로 영향을 주는 부분이다. 논문의 정규화에서는 <Math tex={String.raw`\kappa=\omega k/2`} />이며 <Math tex={String.raw`k`} />는 무차원 결합계수다. 코일이 어긋나면 주로 이 결합이 약해진다. 수신기 저항이나 부하가 커지면 손실률이 바뀐다.
+
+둘째 줄은 아무 조건에서나 성립하지 않는다. **두 고유 주파수가 같고** <Math tex={String.raw`\omega_S=\omega_R=\omega_0`} />, 비선형 이득이 정상상태에서 <Math tex={String.raw`g_{S,\mathrm{sat}}=\gamma_R`} />로 포화되며 결합이 손실보다 강한 경우다. 이때 허용되는 두 동작 주파수 <Math tex={String.raw`\omega_+,\omega_-`} />가 나온다. 결합이 바뀌면 제곱근 항도 바뀌므로 “항상 같은 주파수”를 쓰지 않고 새로운 모드를 따라갈 수 있다. 기호가 낯설다면 **연결 강도 > 에너지 손실**이라는 조건만 먼저 기억해도 된다.
+
+가상 계산 예로 <Math tex={String.raw`\kappa=2\gamma_R`} />라면 모드의 주파수 이동 폭은 <Math tex={String.raw`\sqrt{3}\gamma_R`} />다. 이는 원리를 설명하는 예시이며 실험의 MHz 값을 역산한 결과가 아니다. <Math tex={String.raw`\kappa<\gamma_R`} />가 되면 위의 실수 주파수 쌍 해석을 유지할 수 없고, 논문은 별도의 약결합 경우를 다룬다. 늘어난 코일로 두 고유 주파수가 달라지는 상황도 엄밀한 주파수 일치 조건을 벗어나므로 보충자료의 비동조 분석을 함께 봐야 한다.
+
+고정 주파수 구동은 입력 주파수를 유지하고, 외부 능동 튜닝은 센서·제어기를 추가해 공진점을 추정한다. 이번 방식은 결합된 회로의 자기발진으로 동작점을 찾는다. 따라서 이 연구는 **새 물리 법칙의 증명이나 모든 거리에서의 닫힌 해**가 아니라, 기존 결합모드 이론을 연성 수신기와 구현 회로로 연결한 시스템 개선이다.
+
+</CandidateEquation>
+
+### 원본 Figure 1·3 읽는 법: 사진과 성능 곡선을 구분하자
+
+[출판사에서 원본 Figure 1 열기](https://www.nature.com/articles/s41928-026-01714-0/figures/1): **e는 실제 연성 수신 장치, f는 착용형 송신기 사진**이다. 먼저 이 사진으로 구성요소를 확인한 뒤 a의 송수신 위치 관계를 본다. c·d는 원리를 설명하는 개념 비교이므로 실제 측정 곡선처럼 읽지 않는다. 사진의 축척과 위 설명용 그림의 크기도 같지 않다.
+
+[원본 Figure 3 열기](https://www.nature.com/articles/s41928-026-01714-0/figures/3): **d·e는 거리·옆으로 어긋난 정도에 따른 효율, g는 늘어난 비율에 따른 효율**을 본다. 먼저 가로축이 mm인지 strain인지, 세로축이 코일 간 PTE인지 확인한다. 특히 e·g·j의 조건은 축 방향 간격 10 mm이며, 모든 간격·각도 조합에서 같은 효율을 보장하는 그래프가 아니다. 해당 패널의 반복 측정은 평균과 표준편차(n=3)로 표시된다.
+
+이 논문은 일반 저작권 조건이며 Figure 일부에 BioRender 제3자 표시도 있다. **원본 재게시 허가가 확인되지 않아 이미지를 복제하거나 외부 이미지 삽입으로 우회하지 않고 원본 열람 링크와 읽기 안내를 제공한다.** 위 교육 그림은 이미지 제작 스킬로 새로 만든 것이며 논문 사진 대체 증거가 아니다.
 
 ## 5. 액체금속 수신기는 무엇을 해결했나
 
@@ -119,7 +153,13 @@ in-vivo rabbit model에서는 등 쪽 피부 아래 receiver를 두고 위치 �
 
 이 동물실험의 강점은 마취된 조직 위 한 지점에서 LED가 켜진 것에 그치지 않고, freely moving pig에 wearable module을 연결했다는 데 있다. 그러나 동물 수, 장기 추적, implant 위치와 조직 두께가 실제 환자군의 다양성을 대표하는지는 별도의 질문이다. “대동물에서 기능했다”와 “사람에게 장기간 안전하다” 사이에는 chronic reliability와 규제 검증이 남아 있다.
 
+[원본 Figure 5의 장치 사진·심전도 열기](https://www.nature.com/articles/s41928-026-01714-0/figures/5): b·c에서 실제 이식 장치와 X선 위치를, d·e에서 몸 밖 모듈을 확인한다. f의 심전도는 위치를 바꾸는 동안 자극에 따른 박동이 이어지는지 읽는 기능 시험이다. 저자들은 돼지 2마리의 결과를 제시하므로 이를 환자 집단의 치료 성공률이나 장기간 임상 안전성으로 바꾸어 말할 수 없다. 그래프 옆의 박동수와 자극 조건도 함께 읽는다.
+
 ## 7. 50% PTE와 0.4 W → 24 mW를 분리해서 읽는다
+
+<NewsFigure media="sep28-wpt-cover" />
+
+**구조도를 읽는 순서:** 몸 밖 입력 → 코일 사이 전달 → 정류 → 전압 조절 → 몸 안 회로다. ‘50% 초과’는 코일 사이, ‘24 mW’는 전압 조절 뒤의 별도 측정이다. 두 숫자가 그림에 함께 있어도 동일 조건에서 각 단계의 손실을 모두 측정한 그래프는 아니다.
 
 가장 중요한 편집 경계는 효율의 분자와 분모다. 원논문의 headline PTE는 resonator 사이의 AC power transfer를 평가한다. implant가 실제로 쓰는 regulated DC power까지 가려면 rectifier와 voltage regulator를 통과해야 하고, 각 단계에 손실이 생긴다.<Cite n={1} /><Cite n={2} />
 
@@ -192,4 +232,4 @@ Note 9는 liquid-metal conductor의 conductance를 높이고 LDO 대신 효율�
   deformation for soft implants,” 2026-09-25. 연구의 의미와 movement·deformation tolerance 요약
 </a>
 
-2026년 9월 28일 기준으로 원논문 Version of Record, 보충자료와 공식 Research Briefing을 대조했다. 원문은 Springer Nature의 일반 저작권 조건이 적용되므로 외부 논문 Figure를 복제하지 않았고, 위 입문 그림은 시스템 경계만 다시 그린 자체 제작 교육 도식이다. 동물실험·시뮬레이션 결과를 인간 임상 결과로 확대하지 않았다.
+2026년 9월 28일 기준으로 공개 초록·Figure 설명·보충자료와 공식 Research Briefing을 대조했다. 구독 본문의 모든 구간을 읽었다고 처리하지 않았다. 원문은 Springer Nature의 일반 저작권 조건이 적용되므로 외부 논문 Figure를 복제하지 않았다. 첫 그림은 AI 생성 교육 일러스트, 뒤의 구조도와 입문 도식은 자체 작성한 설명 자료다. 실제 장치 사진·측정 증거와 구분하며 동물실험·시뮬레이션을 인간 임상 결과로 확대하지 않는다.
