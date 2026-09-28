@@ -11,6 +11,13 @@ from normalize_tags import CATEGORY_IDS, POST_TAXONOMY, Taxonomy, main
 # Extend the current registry without rewriting the frozen cutover manifest.
 CATEGORY_IDS.add("biblical-studies")
 
+POST_TAXONOMY.update({
+    '2026-09-28-soc-00-system-map.mdx': Taxonomy(
+        'robotics-embedded', 'soc-fundamentals', 'tutorial',
+        ('soc', 'embedded-systems', 'hardware-software', 'soc-from-code-to-chip'),
+    ),
+})
+
 POST_TAXONOMY.update(
     {
         "self-improving-ai-chip-design.md": Taxonomy(
@@ -95,7 +102,7 @@ POST_TAXONOMY.update(
         '2026-09-06-hugcl-news.mdx': Taxonomy('ai-machine-learning', 'continual-learning-robotics', 'paper-review', ('frontier-one', 'continual-learning-robotics')),
         '2026-09-06-solar-blind-corona-news.mdx': Taxonomy('finance-industry', 'power-grid-sensing', 'paper-review', ('frontier-one', 'power-grid-sensing')),
         '2026-09-06-tilted-mnte-news.mdx': Taxonomy('finance-industry', 'spintronics', 'paper-review', ('frontier-one', 'spintronics')),
-        '2026-09-07-dlcatalysis-neuac-news.mdx': Taxonomy('health-lifestyle', 'computational-biomanufacturing', 'paper-review', ('frontier-one', 'computational-biomanufacturing')),
+        '2026-09-07-dlcatalysis-neuac-news.mdx': Taxonomy('finance-industry', 'computational-biomanufacturing', 'paper-review', ('frontier-one', 'computational-biomanufacturing')),
         '2026-09-07-glud1-hsc-news.mdx': Taxonomy('health-lifestyle', 'stem-cell-bioengineering', 'paper-review', ('frontier-one', 'stem-cell-bioengineering')),
         '2026-09-08-carep-news.mdx': Taxonomy('health-lifestyle', 'cell-therapy-engineering', 'paper-review', ('frontier-one', 'cell-therapy-engineering')),
         '2026-09-08-chorus-news.mdx': Taxonomy('health-lifestyle', 'clinical-oncology', 'paper-review', ('frontier-one', 'clinical-oncology')),
@@ -107,7 +114,7 @@ POST_TAXONOMY.update(
 
 POST_TAXONOMY.update(
     {
-        '2026-09-11-embryo-base-editing-news.mdx': Taxonomy('health-lifestyle', 'genome-editing', 'paper-review', ('frontier-one', 'genome-editing')),
+        '2026-09-11-embryo-base-editing-news.mdx': Taxonomy('health-lifestyle', 'genome-editing', 'research-report', ('frontier-one', 'genome-editing')),
         '2026-09-11-high-na-large-mask-news.mdx': Taxonomy('finance-industry', 'semiconductor-lithography', 'research-report', ('frontier-one', 'semiconductor-lithography')),
         '2026-09-11-sulfide-electrolyte-film-news.mdx': Taxonomy('finance-industry', 'solid-state-batteries', 'paper-review', ('frontier-one', 'solid-state-batteries')),
     }
