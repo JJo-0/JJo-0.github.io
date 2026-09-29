@@ -255,5 +255,12 @@ POST_TAXONOMY.update({
     ),
 })
 
+POST_TAXONOMY.update({
+    '2026-09-29-agent-thermostable-mrna-vaccine-news.mdx': Taxonomy(
+        'ai-machine-learning', 'bayesian-vaccine-formulation', 'paper-review',
+        ('frontier-one', 'ai-for-science', 'bioengineering'),
+    ),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
