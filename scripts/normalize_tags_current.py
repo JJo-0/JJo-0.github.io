@@ -260,6 +260,10 @@ POST_TAXONOMY.update({
         'ai-machine-learning', 'bayesian-vaccine-formulation', 'paper-review',
         ('frontier-one', 'ai-for-science', 'bioengineering'),
     ),
+    '2026-09-30-wrn-inhibitor-phase1-news.mdx': Taxonomy(
+        'health-lifestyle', 'wrn-msi-clinical-trial', 'paper-review',
+        ('frontier-candidate', 'oncology', 'clinical-trial'),
+    ),
 })
 
 if __name__ == "__main__":
