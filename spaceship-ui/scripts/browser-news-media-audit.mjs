@@ -84,6 +84,9 @@ export async function auditNewsMedia(cdp, sessionId) {
     ['2026-09-14-justgrpo-diffusion-reasoning-news', { minFigures: 4, minDiagrams: 0 }],
     ['2026-09-14-fors-diffusion-sampling-news', { minFigures: 2, minDiagrams: 0 }],
     ['2026-09-14-d4rt-dynamic-4d-vision-news', { minFigures: 2, minDiagrams: 0 }],
+    // This clinical explainer uses three credited, CC BY original paper figures
+    // rather than legacy NewsDiagram components.
+    ['2026-09-30-wrn-inhibitor-phase1-news', { minFigures: 3, minDiagrams: 0 }],
   ]);
   // Media registration does not publish a post. Validate source state first,
   // then require published images and reject draft listing/route exposure.
