@@ -93,15 +93,15 @@ export function buildPostGraph(posts: GraphPost[]): PostGraph {
       let score = 0;
       if (a.data.researchArea && a.data.researchArea === b.data.researchArea) {
         score += 5;
-        reasons.push('same research area');
+        reasons.push('research area');
       }
       if (a.data.category === b.data.category) {
         score += 4;
-        reasons.push('same category');
+        reasons.push('category');
       }
       if (a.data.subcategory === b.data.subcategory) {
         score += 3;
-        reasons.push('same subcategory');
+        reasons.push('subcategory');
       }
       if (a.data.type === b.data.type) score += 0.6;
       const sharedTags = a.data.tags.filter((tag) => b.data.tags.includes(tag));

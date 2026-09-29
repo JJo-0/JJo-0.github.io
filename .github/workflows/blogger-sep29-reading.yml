@@ -1,0 +1,45 @@
+name: September 29 Blogger reading
+on:
+  workflow_dispatch:
+    inputs:
+      public_url:
+        description: Published Sep29 AGENT Blogger URL
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  reading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Install
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Verify published Blogger
+        env:
+          BLOGGER_PUBLIC_URL: ${{ inputs.public_url }}
+        run: node scripts/browser-blogger-sep29.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blogger-sep29-reading-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/blogger-sep29-review/
+          retention-days: 14
+          if-no-files-found: error
