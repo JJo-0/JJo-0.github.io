@@ -53,6 +53,15 @@ for (const [, , tex] of equations)
     trust: false,
   });
 assert.equal(equations.length, 3);
+for (const id of entry.tableIds) {
+  const table = source.match(
+    new RegExp(`<CandidateTable id="${id}"[^>]*>([\\s\\S]*?)</CandidateTable>`)
+  );
+  assert(
+    table && /<table>/.test(table[1]) && /<\/table>/.test(table[1]),
+    `missing semantic table ${id}`
+  );
+}
 for (const [number, count] of Object.entries(entry.citationCounts)) {
   assert.equal(
     [...source.matchAll(new RegExp(`<Cite n=\\{${number}\\}\\s*\\/>`, 'g'))].length,
@@ -106,6 +115,8 @@ if (fs.existsSync(new URL(`dist/posts/${entry.slug}/index.html`, root))) {
   assert.equal((html.match(/data-candidate-equation=/g) || []).length, 3);
   assert.equal((html.match(/data-news-reference=/g) || []).length, 5);
   assert(html.includes(entry.primerSelector));
+  for (const id of entry.tableIds)
+    assert(new RegExp(`data-candidate-table="${id}"[^>]*><table>`).test(html));
   for (const id of entry.mediaIds) assert(html.includes(`data-news-figure="${id}"`));
   assert(read('dist/news/index.html').includes(`data-news-card="${entry.slug}"`));
 }
