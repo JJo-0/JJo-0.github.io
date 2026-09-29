@@ -23,30 +23,42 @@ async function pointer(selector, mobile) {
   // failed click or synthesize HTMLElement.click()/location.hash navigation.
   const point = await evaluate(cdp, sessionId, `(async () => {
     await document.fonts.ready;
-    const a = document.querySelector(${JSON.stringify(selector)});
+    const selector = ${JSON.stringify(selector)};
+    const initialUrl = location.href;
+    let a = document.querySelector(selector);
     if (!a) throw new Error('Missing citation activation target');
     // Align once. Repeated scrollIntoView calls can perturb the scroll anchor
     // while content-visibility layout is settling after browser Back.
     a.scrollIntoView({block:'center', behavior:'instant'});
     const started = performance.now();
-    let previous = null, stable = 0;
+    let previous = null, previousNode = null, stable = 0;
     const observations = [];
     while (performance.now() - started < 2500) {
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       await new Promise(resolve => setTimeout(resolve, 50));
-      const r = a.getBoundingClientRect();
-      const x = r.left + r.width / 2, y = r.top + r.height / 2;
-      const hit = document.elementFromPoint(x, y);
-      const ready = a.isConnected && r.width > 0 && r.height > 0 && (hit === a || a.contains(hit));
-      const current = {x,y,scrollY,documentHeight:document.documentElement.scrollHeight};
-      observations.push({...current,ready});
-      const unchanged = previous && Object.keys(current).every(k=>Math.abs(current[k]-previous[k]) < 0.5);
+      // Astro/Back may replace the anchor after positioning. Resolve the live
+      // node on every sample; a replacement must earn three fresh samples.
+      a = document.querySelector(selector);
+      const r = a?.getBoundingClientRect();
+      const x = r ? r.left + r.width / 2 : null, y = r ? r.top + r.height / 2 : null;
+      const hit = r ? document.elementFromPoint(x, y) : null;
+      const sameNode = a !== null && a === previousNode;
+      const connected = Boolean(a?.isConnected);
+      const hitMatches = Boolean(a && (hit === a || a.contains(hit)));
+      const ready = connected && r.width > 0 && r.height > 0 && hitMatches && location.href === initialUrl;
+      const current = {x,y,width:r?.width ?? 0,height:r?.height ?? 0,
+        scrollY,documentHeight:document.documentElement.scrollHeight};
+      observations.push({...current,selector,nodePresent:Boolean(a),connected,sameNode,hitMatches,
+        hitTag:hit?.tagName ?? null,url:location.href,readyState:document.readyState,ready});
+      const unchanged = sameNode && previous && Object.keys(current).every(k=>Math.abs(current[k]-previous[k]) < 0.5);
       stable = ready && unchanged ? stable + 1 : 0;
       if (stable >= 2) return {...current,ready,stableSamples:stable+1,
-        resolvedPath:new URL(a.href).pathname,currentPath:location.pathname,html:a.outerHTML};
-      previous = current;
+        resolvedPath:new URL(a.href).pathname,currentPath:location.pathname,html:a.outerHTML,
+        observations:observations.slice(-4)};
+      previous = ready ? current : null;
+      previousNode = a;
     }
-    throw new Error('Citation geometry did not stabilize before trusted input: ' + JSON.stringify(observations.slice(-4)));
+    throw new Error('Citation geometry did not stabilize before trusted input: ' + JSON.stringify({selector,initialUrl,observations:observations.slice(-4)}));
   })()`);
   lastPointer = {selector,mobile,...point};
   assert.equal(point.resolvedPath, point.currentPath, 'Native fragment must resolve to the exact same article path');
