@@ -160,10 +160,10 @@ try {
             `equation ${equation} opens`
           );
           const layout = await js(
-            `(()=>{const h=document.querySelector('[data-candidate-equation="${equation}"] .candidate-equation__math');return {fits:h.scrollWidth<=h.clientWidth+2,scrollable:['auto','scroll'].includes(getComputedStyle(h).overflowX),error:!!h.querySelector('.katex-error')}})()`
+            `(()=>{const h=document.querySelector('[data-candidate-equation="${equation}"] .candidate-equation__math');const r=h.getBoundingClientRect();return {visible:r.width>0&&r.height>0&&getComputedStyle(h).visibility!=='hidden',fits:h.scrollWidth<=h.clientWidth+2,scrollable:['auto','scroll'].includes(getComputedStyle(h).overflowX),error:!!h.querySelector('.katex-error')}})()`
           );
-          assert(!layout.error && (layout.fits || layout.scrollable));
-          await point(`[data-candidate-equation="${equation}"]`);
+          assert(layout.visible && !layout.error && (layout.fits || layout.scrollable));
+          await point(`[data-candidate-equation="${equation}"] .candidate-equation__math`);
           await screenshot(`${entry.key}-${equation}-${width}-${dark ? 'dark' : 'light'}`);
         }
         for (const tableId of entry.tableIds) {
