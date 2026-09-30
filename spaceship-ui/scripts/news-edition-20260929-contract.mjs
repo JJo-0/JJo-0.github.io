@@ -11,8 +11,9 @@ const provenance = JSON.parse(read('site/news-media-provenance-20260929.json'));
 const media = JSON.parse(read('site/news-media.json'));
 const handoff = JSON.parse(read('ops/blog-harness/research/2026-09-29-agent.handoff.json'));
 assert.equal(edition.date, '2026-09-29');
-assert.equal(edition.entries.length, 1);
-const entry = edition.entries[0];
+assert.equal(edition.entries.length, 2);
+const entry = edition.entries.find((item) => item.key === 'agent');
+assert(entry);
 const source = read(`site/content/posts/${entry.slug}.mdx`);
 assert.equal(hash(source), entry.sha256);
 assert(entry.bodyCharacters >= 8000);
@@ -117,7 +118,7 @@ if (fs.existsSync(new URL(`dist/posts/${entry.slug}/index.html`, root))) {
   assert(html.includes(entry.primerSelector));
   for (const id of entry.tableIds)
     assert(new RegExp(`data-candidate-table="${id}"[^>]*><table>`).test(html));
-  for (const id of entry.mediaIds) assert(html.includes(`data-news-figure="${id}"`));
+for (const id of entry.mediaIds) assert(html.includes(`data-news-figure="${id}"`));
   assert(read('dist/news/index.html').includes(`data-news-card="${entry.slug}"`));
 }
 fs.mkdirSync(new URL('sep29-review/', root), { recursive: true });
@@ -134,3 +135,38 @@ console.log(
   entry.bodyCharacters,
   'characters, 4 original figures, 3 equations, handoff and Blogger'
 );
+
+const silicon = edition.entries.find((item) => item.key === 'silicon-battery');
+assert(silicon);
+const siliconSource = read(`site/content/posts/${silicon.slug}.mdx`);
+assert.equal(hash(siliconSource), silicon.sha256);
+assert(silicon.bodyCharacters >= 8000);
+assert.match(siliconSource, /^draft: false$/m);
+assert.match(siliconSource, /^pubDate: 2026-09-29T00:00:00\+09:00$/m);
+assert.deepEqual(
+  [...siliconSource.matchAll(/<CandidateEquation id="([^"]+)/g)].map((match) => match[1]),
+  silicon.equations
+);
+assert.deepEqual(
+  [...siliconSource.matchAll(/<NewsFigure media="([^"]+)/g)].map((match) => match[1]),
+  silicon.mediaIds
+);
+for (const id of silicon.mediaIds) {
+  assert.equal(media[id].rightsStatus, 'SELF_CREATED');
+  assert(media[id].alt.length >= 20 && media[id].caption.length >= 30);
+}
+assert(siliconSource.includes('5.184 mWh'));
+assert(siliconSource.includes('17.25 mg'));
+assert(!siliconSource.includes('chatgpt-content-reference'));
+const siliconHandoff = JSON.parse(read('ops/blog-harness/research/2026-09-29-silicon.handoff.json'));
+for (const key of ['equationCards', 'baselineMethods', 'graphNodes', 'graphEdges', 'visualPlan', 'sourceLocators'])
+  assert(siliconHandoff[key]?.length > 0, `silicon handoff missing ${key}`);
+const siliconBlogger = read('ops/blog-harness/blogger/2026-09-29-silicon-battery-easy.html');
+assert.equal((siliconBlogger.match(/<img\b/g) || []).length, 3);
+if (fs.existsSync(new URL(`dist/posts/${silicon.slug}/index.html`, root))) {
+  const siliconHtml = read(`dist/posts/${silicon.slug}/index.html`);
+  assert(!siliconHtml.includes('katex-error'));
+  assert(read('dist/news/index.html').includes(`data-news-card="${silicon.slug}"`));
+  for (const id of silicon.mediaIds) assert(siliconHtml.includes(`data-news-figure="${id}"`));
+}
+console.log('sep29-silicon-contract: PASS', silicon.bodyCharacters, 'characters, 3 self-created figures, 3 equations');
