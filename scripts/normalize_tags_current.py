@@ -281,5 +281,20 @@ POST_TAXONOMY.update({
     ),
 })
 
+POST_TAXONOMY.update({
+    'acts-2-14-37-1.mdx': Taxonomy(
+        'biblical-studies', 'acts-2-14-37', 'research-report',
+        ('acts', 'biblical-studies', 'greek-exegesis', 'new-testament'),
+    ),
+    'acts-2-14-37-2.mdx': Taxonomy(
+        'biblical-studies', 'acts-2-14-37', 'research-report',
+        ('acts', 'biblical-studies', 'narrative-criticism', 'new-testament'),
+    ),
+    'acts-2-14-37-3.mdx': Taxonomy(
+        'biblical-studies', 'acts-2-14-37', 'research-report',
+        ('acts', 'biblical-studies', 'reception-history', 'new-testament'),
+    ),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
