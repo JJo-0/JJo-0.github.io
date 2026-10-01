@@ -3,22 +3,28 @@ import WritingListItem from '@/components/WritingListItem.astro';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import { getReadTime } from '@/lib/utils/readTime';
 import series from '@/data/acts-series.json';
+import ezekielReport1 from '@/data/ezekiel-reports/report-1.html?raw';
+import ezekielReport2 from '@/data/ezekiel-reports/report-2.html?raw';
+import ezekielReport3 from '@/data/ezekiel-reports/report-3.html?raw';
+const ezekielTexts = [ezekielReport1, ezekielReport2, ezekielReport3];
 const allPosts = (await getPublishedPosts()).filter((post) => post.data.category === 'biblical-studies');
 const groups = [
-  { id: 'overview', title: '먼저 · 사도행전 전체 읽기', description: '책의 큰 구조, 역사 자료, 여러 해석 관점을 먼저 살펴봅니다.' },
-  { id: 'exegesis', title: '이어서 · 사도행전 1장 1–5절', description: '전체 지도를 바탕으로 원어, 문학, 신학과 수용사를 자세히 읽습니다.' },
-  { id: 'exegesis-1-6-14', title: '다음 · 사도행전 1장 6–14절', description: '회복의 질문에서 승천과 기도 공동체까지, 원어·문학·신학의 세 관점으로 이어갑니다.' },
+  { id: 'overview', title: '먼저 · 사도행전 전체 읽기', description: '책의 큰 구조, 역사 자료, 여러 해석 관점을 먼저 살펴봅니다.', entryGroups: ['overview'] },
+  { id: 'acts-1-1-14', title: '사도행전 1장 1–14절', description: '1:1–5의 서문과 1:6–14의 회복·승천·기도 공동체를 각각 세 관점으로 읽습니다.', entryGroups: ['exegesis', 'exegesis-1-6-14'] },
 ];
 const entries = series.entries.map((entry) => ({ ...entry, post: allPosts.find((post) => getPostSlug(post) === entry.slug) }));
-const otherPosts = allPosts.filter((post) => !series.entries.some((entry) => entry.slug === getPostSlug(post))).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const ezekielPosts = allPosts.filter((post) => post.data.series?.id === 'ezekiel-study').sort((a, b) => (a.data.series?.order || 0) - (b.data.series?.order || 0));
+const otherPosts = allPosts.filter((post) => post.data.series?.id !== 'ezekiel-study' && !series.entries.some((entry) => entry.slug === getPostSlug(post))).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
 <div data-acts-shelf class="acts-shelf">
   {groups.map((group) => <section class="acts-shelf__group" data-acts-group={group.id}>
     <header class="acts-shelf__header"><h3>{group.title}</h3><p>{group.description}</p></header>
-    {entries.filter((entry) => entry.group === group.id && entry.post).map((entry) => entry.post && <div data-acts-card={entry.slug} data-acts-order={entry.order}>
+    {entries.filter((entry) => group.entryGroups.includes(entry.group) && entry.post).map((entry) => entry.post && <div data-acts-card={entry.slug} data-acts-order={entry.order}>
       <WritingListItem post={entry.post} slug={entry.slug} readTime={getReadTime(entry.post.body || '')} />
     </div>)}
   </section>)}
+  <aside class="acts-shelf__header" data-bible-coverage-gap aria-label="본문 연구 범위 안내"><h3>아직 자료가 없는 구간</h3><p>사도행전 1:15–26과 2:1–13의 본문 연구는 아직 제공되지 않았습니다. 공개된 연구는 범위별 자료이며, 모든 절을 연속해서 해설하는 주석은 아닙니다.</p></aside>
+  {ezekielPosts.length > 0 && <section class="acts-shelf__group" data-bible-group="ezekiel-2-1-3-11"><header class="acts-shelf__header"><h3>에스겔 2장 1절–3장 11절</h3><p>예언자 소명과 두루마리 섭취를 원어·문학·사회과학의 세 관점에서 읽는 전체 연구입니다.</p></header>{ezekielPosts.map((post) => <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(ezekielTexts[(post.data.series?.order || 1) - 1])} />)}</section>}
   {otherPosts.length > 0 && <section class="acts-shelf__group"><header class="acts-shelf__header"><h3>다른 성경 연구</h3></header>{otherPosts.map((post) => <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}</section>}
 </div>
 <style>

@@ -266,5 +266,20 @@ POST_TAXONOMY.update({
     ),
 })
 
+POST_TAXONOMY.update({
+    'ezekiel-2-1-3-11-1.mdx': Taxonomy(
+        'biblical-studies', 'ezekiel-2-1-3-11', 'research-report',
+        ('ezekiel', 'biblical-studies', 'hebrew-exegesis', 'old-testament'),
+    ),
+    'ezekiel-2-1-3-11-2.mdx': Taxonomy(
+        'biblical-studies', 'ezekiel-2-1-3-11', 'research-report',
+        ('ezekiel', 'biblical-studies', 'narrative-criticism', 'old-testament'),
+    ),
+    'ezekiel-2-1-3-11-3.mdx': Taxonomy(
+        'biblical-studies', 'ezekiel-2-1-3-11', 'research-report',
+        ('ezekiel', 'biblical-studies', 'reception-history', 'old-testament'),
+    ),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
