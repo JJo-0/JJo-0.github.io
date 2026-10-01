@@ -12,6 +12,11 @@ export async function getStaticPaths() {
     if (source.date && source.date > today) continue;
 
     const post = postsById.get(source.id);
+    if (!post && ['deep-search-gemini', 'deep-search-travel-prompt'].includes(source.id)) {
+      const legacyPath = legacyPathForPost(source);
+      paths.push({ params: { legacy: legacyPath.replace(/^\//, '').replace(/\/$/, '') }, props: { legacyPath, target: `/posts/2025-05-23-${source.id}/`, title: '공개 종료된 프롬프트 가이드' } });
+      continue;
+    }
     if (!post) {
       throw new Error(
         `Legacy redirect target is missing for ${source.filename} (expected current post id: ${source.id})`

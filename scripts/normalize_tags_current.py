@@ -296,5 +296,10 @@ POST_TAXONOMY.update({
     ),
 })
 
+# Public retirement keeps the frozen cutover registry intact and removes only
+# the two explicitly retired articles from the current publication manifest.
+for retired in ("deep-search-gemini.md", "deep-search-travel-prompt.md"):
+    POST_TAXONOMY.pop(retired, None)
+
 if __name__ == "__main__":
     raise SystemExit(main())
