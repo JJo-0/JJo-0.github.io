@@ -1,0 +1,34 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import WritingListItem from './WritingListItem.astro';
+import SeriesGroup from './SeriesGroup.astro';
+import { getPostSlug } from '@/lib/utils/posts';
+import { getReadTime } from '@/lib/utils/readTime';
+interface Props { posts: CollectionEntry<'posts'>[]; }
+const { posts } = Astro.props;
+const names: Record<string, string> = {
+  'modern-artificial-intelligence': '현대 인공지능',
+  'ai-consciousness-deep-research': 'AI가 의식이 있는가?',
+  'data-structures-coding-tests': '자료구조·코딩테스트',
+  supplements: '영양제 · 마그네슘·비타민B·오메가3',
+  'soc-from-code-to-chip': '코드에서 칩까지',
+};
+const keyFor = (post: CollectionEntry<'posts'>) => {
+  if (post.data.category === 'health-lifestyle' && post.data.subcategory === 'supplements') return 'supplements';
+  if (post.data.category === 'software-engineering-cs' && (post.data.subcategory === 'data-structures' || post.data.tags.includes('coding-test'))) return 'data-structures-coding-tests';
+  return post.data.series?.id;
+};
+const grouped = new Map<string, CollectionEntry<'posts'>[]>();
+for (const post of posts) { const key = keyFor(post); if (key) grouped.set(key, [...(grouped.get(key) || []), post]); }
+const emitted = new Set<string>();
+interface ListItem { post: CollectionEntry<'posts'>; key?: string; members: CollectionEntry<'posts'>[]; }
+const items = posts.flatMap<ListItem>(post => {
+  const key = keyFor(post);
+  if (!key || (grouped.get(key)?.length || 0) < 2) return [{ post, key: undefined, members: [] }];
+  if (emitted.has(key)) return [];
+  emitted.add(key);
+  const members = [...grouped.get(key)!].sort((a, b) => a.data.series?.id === key ? (a.data.series?.order || 0) - (b.data.series?.order || 0) : a.data.pubDate.valueOf() - b.data.pubDate.valueOf());
+  return [{ post, key, members }];
+});
+---
+{items.map(({ post, key, members }) => key ? <SeriesGroup groupId={key} title={names[key] || post.data.title.split(' — ')[0]} count={members.length}>{members.map(member => <WritingListItem post={member} slug={getPostSlug(member)} readTime={getReadTime(member.body || '')} />)}</SeriesGroup> : <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}

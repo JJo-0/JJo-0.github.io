@@ -264,7 +264,65 @@ POST_TAXONOMY.update({
         'health-lifestyle', 'wrn-msi-clinical-trial', 'paper-review',
         ('frontier-candidate', 'oncology', 'clinical-trial'),
     ),
+    '2026-09-30-rbn-sliding-ferroelectric-memory-news.mdx': Taxonomy(
+        'finance-industry', 'sliding-ferroelectric-memory', 'paper-review',
+        ('frontier-one', 'semiconductor', 'two-dimensional-materials'),
+    ),
+    '2026-09-30-trans-interface-perovskite-solar-news.mdx': Taxonomy(
+        'finance-industry', 'perovskite-photovoltaics', 'paper-review',
+        ('frontier-candidate', 'solar-energy', 'materials-science'),
+    ),
 })
+
+POST_TAXONOMY.update({
+    '2026-10-01-synthidbio-protein-watermark-news.mdx': Taxonomy(
+        'ai-machine-learning', 'protein-design-provenance', 'paper-review',
+        ('frontier-one', 'ai-for-science', 'bioengineering'),
+    ),
+    '2026-10-01-wafer-scale-p-type-bcn-news.mdx': Taxonomy(
+        'finance-industry', '2d-transistors', 'paper-review',
+        ('frontier-candidate', 'semiconductor'),
+    ),
+    '2026-10-01-ataraxos-hidden-information-games-news.mdx': Taxonomy(
+        'ai-machine-learning', 'imperfect-information-agents', 'paper-review',
+        ('frontier-candidate', 'reinforcement-learning'),
+    ),
+})
+
+POST_TAXONOMY.update({
+    'ezekiel-2-1-3-11-1.mdx': Taxonomy(
+        'biblical-studies', 'ezekiel-2-1-3-11', 'research-report',
+        ('ezekiel', 'biblical-studies', 'hebrew-exegesis', 'old-testament'),
+    ),
+    'ezekiel-2-1-3-11-2.mdx': Taxonomy(
+        'biblical-studies', 'ezekiel-2-1-3-11', 'research-report',
+        ('ezekiel', 'biblical-studies', 'narrative-criticism', 'old-testament'),
+    ),
+    'ezekiel-2-1-3-11-3.mdx': Taxonomy(
+        'biblical-studies', 'ezekiel-2-1-3-11', 'research-report',
+        ('ezekiel', 'biblical-studies', 'reception-history', 'old-testament'),
+    ),
+})
+
+POST_TAXONOMY.update({
+    'acts-2-14-37-1.mdx': Taxonomy(
+        'biblical-studies', 'acts-2-14-37', 'research-report',
+        ('acts', 'biblical-studies', 'greek-exegesis', 'new-testament'),
+    ),
+    'acts-2-14-37-2.mdx': Taxonomy(
+        'biblical-studies', 'acts-2-14-37', 'research-report',
+        ('acts', 'biblical-studies', 'narrative-criticism', 'new-testament'),
+    ),
+    'acts-2-14-37-3.mdx': Taxonomy(
+        'biblical-studies', 'acts-2-14-37', 'research-report',
+        ('acts', 'biblical-studies', 'reception-history', 'new-testament'),
+    ),
+})
+
+# Public retirement keeps the frozen cutover registry intact and removes only
+# the two explicitly retired articles from the current publication manifest.
+for retired in ("deep-search-gemini.md", "deep-search-travel-prompt.md"):
+    POST_TAXONOMY.pop(retired, None)
 
 if __name__ == "__main__":
     raise SystemExit(main())
