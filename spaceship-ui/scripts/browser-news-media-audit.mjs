@@ -59,6 +59,9 @@ export async function auditNewsMedia(cdp, sessionId) {
   const oct01 = JSON.parse(
     fs.readFileSync(new URL('../site/news-edition-20261001.json', import.meta.url), 'utf8')
   );
+  const sep30 = JSON.parse(
+    fs.readFileSync(new URL('../site/news-edition-20260930-completion.json', import.meta.url), 'utf8')
+  );
   const declaredEntries = [
     ...sep11.entries,
     ...sep15.entries,
@@ -76,6 +79,7 @@ export async function auditNewsMedia(cdp, sessionId) {
     ...sep28.entries,
     ...sep29.entries,
     ...oct01.entries,
+    ...sep30.entries,
   ];
   const sourceFigurePosts = new Map(declaredEntries.map((row) => [row.slug, row]));
   const sourceCards = declaredEntries.map((row) => ({ slug: row.slug, ...media[row.mediaIds[0]] }));
@@ -91,6 +95,8 @@ export async function auditNewsMedia(cdp, sessionId) {
     // This clinical explainer uses three credited, CC BY original paper figures
     // rather than legacy NewsDiagram components.
     ['2026-09-30-wrn-inhibitor-phase1-news', { minFigures: 3, minDiagrams: 0 }],
+    ['2026-09-30-rbn-sliding-ferroelectric-memory-news', { minFigures: 2, minDiagrams: 0 }],
+    ['2026-09-30-trans-interface-perovskite-solar-news', { minFigures: 2, minDiagrams: 0 }],
   ]);
   // Media registration does not publish a post. Validate source state first,
   // then require published images and reject draft listing/route exposure.

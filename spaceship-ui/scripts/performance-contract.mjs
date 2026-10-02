@@ -130,10 +130,9 @@ const homeHtmlPath = path.join(dist, 'index.html');
 const aboutHtmlPath = path.join(dist, 'about', 'index.html');
 const writingHtmlPath = path.join(dist, 'posts', 'index.html');
 for (const [label, file, budget] of [
-  // October 1 adds three more real NEWS nodes to the Home writing atlas and
-  // latest-post metadata. Keep a bounded ceiling, with 2 KiB of headroom over
-  // the measured 251854 B edition build rather than dropping those articles.
-  ['Home HTML', homeHtmlPath, 248 * 1024],
+  // Sep 30 and Oct 1 add five legitimate NEWS nodes to the Home graph.
+  // The integrated build measures 254311 B; retain <2 KiB headroom.
+  ['Home HTML', homeHtmlPath, 250 * 1024],
   ['Writing HTML', writingHtmlPath, 260 * 1024],
 ]) {
   if (!fs.existsSync(file)) {
