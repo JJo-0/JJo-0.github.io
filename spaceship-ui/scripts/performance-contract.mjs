@@ -130,9 +130,9 @@ const homeHtmlPath = path.join(dist, 'index.html');
 const aboutHtmlPath = path.join(dist, 'about', 'index.html');
 const writingHtmlPath = path.join(dist, 'posts', 'index.html');
 for (const [label, file, budget] of [
-  // Sep 30 and Oct 1 add five legitimate NEWS nodes to the Home graph.
-  // The integrated build measures 254311 B; retain <2 KiB headroom.
-  ['Home HTML', homeHtmlPath, 250 * 1024],
+  // Sep 29 completion adds two legitimate NEWS nodes to the existing graph.
+  // The integrated build measures 256512 B; retain <2 KiB headroom.
+  ['Home HTML', homeHtmlPath, 252 * 1024],
   ['Writing HTML', writingHtmlPath, 260 * 1024],
 ]) {
   if (!fs.existsSync(file)) {

@@ -42,7 +42,7 @@ home=(R/'dist/index.html').read_text();hp=Page(home)
 graph=json.loads(next(a['data-post-graph'] for t,a in hp.tags if 'data-post-graph' in a))
 # Later published editions add legitimate NEWS cards to the Home graph.
 # Keep the same bounded allowance as the current performance contract.
-assert len(home.encode())<=250*1024
+assert len(home.encode())<=252*1024
 assert len(graph['nodes'])==len([1 for t,a in hp.tags if t=='a' and 'data-post-graph-node' in a])
 for node in graph['nodes']:
  for axis in ['x','y','z']:assert abs(node[axis]-round(node[axis],4))<1e-10

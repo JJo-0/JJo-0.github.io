@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import katex from 'katex';
+import { assertNewsProseLength } from './news-prose-policy.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (p) => fs.readFileSync(new URL(p, root), 'utf8');
@@ -11,7 +12,11 @@ const provenance = JSON.parse(read('site/news-media-provenance-20260929.json'));
 const media = JSON.parse(read('site/news-media.json'));
 const handoff = JSON.parse(read('ops/blog-harness/research/2026-09-29-agent.handoff.json'));
 assert.equal(edition.date, '2026-09-29');
-assert.equal(edition.entries.length, 2);
+assert.equal(edition.entries.length, 3);
+assert.deepEqual(
+  edition.entries.map((item) => item.key),
+  ['agent', 'lc1', 'silicon-battery']
+);
 const entry = edition.entries.find((item) => item.key === 'agent');
 assert(entry);
 const source = read(`site/content/posts/${entry.slug}.mdx`);
@@ -118,7 +123,7 @@ if (fs.existsSync(new URL(`dist/posts/${entry.slug}/index.html`, root))) {
   assert(html.includes(entry.primerSelector));
   for (const id of entry.tableIds)
     assert(new RegExp(`data-candidate-table="${id}"[^>]*><table>`).test(html));
-for (const id of entry.mediaIds) assert(html.includes(`data-news-figure="${id}"`));
+  for (const id of entry.mediaIds) assert(html.includes(`data-news-figure="${id}"`));
   assert(read('dist/news/index.html').includes(`data-news-card="${entry.slug}"`));
 }
 fs.mkdirSync(new URL('sep29-review/', root), { recursive: true });
@@ -152,14 +157,26 @@ assert.deepEqual(
   silicon.mediaIds
 );
 for (const id of silicon.mediaIds) {
-  assert.equal(media[id].rightsStatus, 'SELF_CREATED');
+  assert.equal(
+    media[id].rightsStatus,
+    id === 'sep29-silicon-background' ? 'LICENSE_CHECKED' : 'SELF_CREATED'
+  );
   assert(media[id].alt.length >= 20 && media[id].caption.length >= 30);
 }
 assert(siliconSource.includes('5.184 mWh'));
 assert(siliconSource.includes('17.25 mg'));
 assert(!siliconSource.includes('chatgpt-content-reference'));
-const siliconHandoff = JSON.parse(read('ops/blog-harness/research/2026-09-29-silicon.handoff.json'));
-for (const key of ['equationCards', 'baselineMethods', 'graphNodes', 'graphEdges', 'visualPlan', 'sourceLocators'])
+const siliconHandoff = JSON.parse(
+  read('ops/blog-harness/research/2026-09-29-silicon.handoff.json')
+);
+for (const key of [
+  'equationCards',
+  'baselineMethods',
+  'graphNodes',
+  'graphEdges',
+  'visualPlan',
+  'sourceLocators',
+])
   assert(siliconHandoff[key]?.length > 0, `silicon handoff missing ${key}`);
 const siliconBlogger = read('ops/blog-harness/blogger/2026-09-29-silicon-battery-easy.html');
 assert.equal((siliconBlogger.match(/<img\b/g) || []).length, 3);
@@ -169,4 +186,97 @@ if (fs.existsSync(new URL(`dist/posts/${silicon.slug}/index.html`, root))) {
   assert(read('dist/news/index.html').includes(`data-news-card="${silicon.slug}"`));
   for (const id of silicon.mediaIds) assert(siliconHtml.includes(`data-news-figure="${id}"`));
 }
-console.log('sep29-silicon-contract: PASS', silicon.bodyCharacters, 'characters, 3 self-created figures, 3 equations');
+console.log(
+  'sep29-silicon-contract: PASS',
+  silicon.bodyCharacters,
+  'characters, 3 self-created figures, 3 equations'
+);
+
+const completion = JSON.parse(read('site/news-media-provenance-20260929-completion.json'));
+assert.equal(completion.assets.length, 4);
+for (const asset of completion.assets) {
+  const item = media[asset.id];
+  assert.equal(item.src, asset.src);
+  assert.equal(hash(fs.readFileSync(new URL(`site/assets${item.src}`, root))), asset.sha256);
+  assert.equal(item.sha256, asset.sha256);
+  assert.equal(item.license, asset.license);
+  assert(item.commercialUse && item.modificationAllowed);
+  assert(item.alt.length >= 20 && item.caption.length >= 30);
+}
+assert.match(media['sep29-lc1-background'].license, /CC BY-SA 4.0/);
+assert.match(media['sep29-lc1-background'].caption, /LC-1 LNP·mRNA·실제 편집 결과가 아니/);
+const lc1 = edition.entries.find((item) => item.key === 'lc1');
+assert.equal(lc1.publicationScope, 'PUBLIC_SOURCE_NEWS');
+assert.equal(lc1.engineeringDepthStatus, 'FULL_METHODS_REVIEW_PENDING');
+const candidatePrimer = read('src/components/post/Sep29CandidatePrimer.astro');
+assert.equal((candidatePrimer.match(/<section\b/g) || []).length, 3);
+assert.equal((candidatePrimer.match(/<svg\b/g) || []).length, 1);
+for (const current of [lc1, silicon]) {
+  const mdx = read(`site/content/posts/${current.slug}.mdx`);
+  assert.equal(hash(mdx), current.sha256);
+  assert(current.bodyCharacters >= 8000);
+  const prose = mdx
+    .replace(/^---\n[\s\S]*?\n---\n/, '')
+    .replace(/^import .*;\n/gm, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/https?:\/\/\S+/g, '');
+  assertNewsProseLength(prose.length, current.slug);
+  assert.match(mdx, /^draft: false$/m);
+  assert.match(mdx, /^pubDate: 2026-09-29T00:00:00\+09:00$/m);
+  assert.equal((mdx.match(/<BeginnerGuide\b/g) || []).length, 1);
+  assert(candidatePrimer.includes(current.primerSelector));
+  const formulas = [
+    ...mdx.matchAll(/<CandidateEquation id="([^"]+)"[^\n]*tex=\{String\.raw`([^`]+)`\}>/g),
+  ];
+  assert.deepEqual(
+    formulas.map((match) => match[1]),
+    current.equations
+  );
+  for (const [, , tex] of formulas)
+    katex.renderToString(tex, {
+      displayMode: true,
+      throwOnError: true,
+      strict: 'error',
+      trust: false,
+    });
+  assert.deepEqual(
+    [...mdx.matchAll(/<NewsFigure media="([^"]+)/g)].map((match) => match[1]),
+    current.mediaIds
+  );
+  for (const [n, count] of Object.entries(current.citationCounts)) {
+    assert.equal([...mdx.matchAll(new RegExp(`<Cite n=\\{${n}\\}\\s*\\/>`, 'g'))].length, count);
+    assert.equal([...mdx.matchAll(new RegExp(`id="news-ref-${n}"`, 'g'))].length, 1);
+  }
+  assert.equal((mdx.match(/data-news-reference=/g) || []).length, current.referenceCount);
+  for (const id of current.tableIds)
+    assert(new RegExp(`<CandidateTable id="${id}"[^>]*>[\\s\\S]*?<table>`).test(mdx));
+  if (rendered) {
+    const html = read(`dist/posts/${current.slug}/index.html`);
+    assert(!html.includes('katex-error'));
+    assert.equal((html.match(/data-candidate-equation=/g) || []).length, 3);
+    assert(html.includes(current.primerSelector));
+    for (const id of current.mediaIds) assert(html.includes(`data-news-figure="${id}"`));
+    for (const id of current.tableIds)
+      assert(new RegExp(`data-candidate-table="${id}"[^>]*><table>`).test(html));
+    assert(read('dist/news/index.html').includes(`data-news-card="${current.slug}"`));
+  }
+}
+const lc1Source = read(`site/content/posts/${lc1.slug}.mdx`);
+for (const boundary of [
+  'Methods 전체는 구독 제한',
+  '79%',
+  '48%',
+  '27%',
+  '정맥',
+  '척수강',
+  '기관 내',
+  '가상 예',
+  '일반 교육용 정의',
+  '논문의 원시 세포 수가 아니다',
+  '사람 치료제',
+  'LC-1 LNP 사진도',
+])
+  assert(lc1Source.includes(boundary), `LC-1 evidence boundary missing: ${boundary}`);
+console.log(
+  'sep29-trilogy-contract: PASS three authorized NEWS cards; public-source LC-1 limits; rights and hashes; beginner guides; nine equations'
+);
