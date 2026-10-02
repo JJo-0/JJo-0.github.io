@@ -56,6 +56,9 @@ export async function auditNewsMedia(cdp, sessionId) {
   const sep29 = JSON.parse(
     fs.readFileSync(new URL('../site/news-edition-20260929.json', import.meta.url), 'utf8')
   );
+  const oct01 = JSON.parse(
+    fs.readFileSync(new URL('../site/news-edition-20261001.json', import.meta.url), 'utf8')
+  );
   const sep30 = JSON.parse(
     fs.readFileSync(new URL('../site/news-edition-20260930-completion.json', import.meta.url), 'utf8')
   );
@@ -75,6 +78,7 @@ export async function auditNewsMedia(cdp, sessionId) {
     ...sep25.entries,
     ...sep28.entries,
     ...sep29.entries,
+    ...oct01.entries,
     ...sep30.entries,
   ];
   const sourceFigurePosts = new Map(declaredEntries.map((row) => [row.slug, row]));

@@ -130,10 +130,9 @@ const homeHtmlPath = path.join(dist, 'index.html');
 const aboutHtmlPath = path.join(dist, 'about', 'index.html');
 const writingHtmlPath = path.join(dist, 'posts', 'index.html');
 for (const [label, file, budget] of [
-  // Three independently readable NEWS entries add three legitimate cards to Home.
-  // Two legitimate Sep 30 NEWS nodes increase the serialized Home graph;
-  // preserve a bounded HTML budget while covering those published cards.
-  ['Home HTML', homeHtmlPath, 248 * 1024],
+  // Sep 30 and Oct 1 add five legitimate NEWS nodes to the Home graph.
+  // The integrated build measures 254311 B; retain <2 KiB headroom.
+  ['Home HTML', homeHtmlPath, 250 * 1024],
   ['Writing HTML', writingHtmlPath, 260 * 1024],
 ]) {
   if (!fs.existsSync(file)) {

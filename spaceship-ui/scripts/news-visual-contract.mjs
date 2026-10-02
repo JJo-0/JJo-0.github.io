@@ -56,6 +56,7 @@ await import('./news-edition-20260930-completion-contract.mjs');
 await import('./news-20260914-candidates-visual-contract.mjs');
 
 await import("./news-20260915-contract.mjs");
+await import('./news-edition-20261001-contract.mjs');
 
 await import('./news-media-visit-plan.test.mjs');
 

@@ -275,6 +275,21 @@ POST_TAXONOMY.update({
 })
 
 POST_TAXONOMY.update({
+    '2026-10-01-synthidbio-protein-watermark-news.mdx': Taxonomy(
+        'ai-machine-learning', 'protein-design-provenance', 'paper-review',
+        ('frontier-one', 'ai-for-science', 'bioengineering'),
+    ),
+    '2026-10-01-wafer-scale-p-type-bcn-news.mdx': Taxonomy(
+        'finance-industry', '2d-transistors', 'paper-review',
+        ('frontier-candidate', 'semiconductor'),
+    ),
+    '2026-10-01-ataraxos-hidden-information-games-news.mdx': Taxonomy(
+        'ai-machine-learning', 'imperfect-information-agents', 'paper-review',
+        ('frontier-candidate', 'reinforcement-learning'),
+    ),
+})
+
+POST_TAXONOMY.update({
     'ezekiel-2-1-3-11-1.mdx': Taxonomy(
         'biblical-studies', 'ezekiel-2-1-3-11', 'research-report',
         ('ezekiel', 'biblical-studies', 'hebrew-exegesis', 'old-testament'),
