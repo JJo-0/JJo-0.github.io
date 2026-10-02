@@ -260,6 +260,14 @@ POST_TAXONOMY.update({
         'ai-machine-learning', 'bayesian-vaccine-formulation', 'paper-review',
         ('frontier-one', 'ai-for-science', 'bioengineering'),
     ),
+    '2026-09-29-lc1-large-rna-delivery-news.mdx': Taxonomy(
+        'health-lifestyle', 'large-rna-lipid-delivery', 'paper-review',
+        ('frontier-candidate', 'bioengineering', 'genome-editing'),
+    ),
+    '2026-09-29-silicon-solid-polymer-battery-news.mdx': Taxonomy(
+        'finance-industry', 'silicon-solid-state-batteries', 'paper-review',
+        ('frontier-candidate', 'silicon-anode', 'solid-polymer-electrolyte'),
+    ),
     '2026-09-30-wrn-inhibitor-phase1-news.mdx': Taxonomy(
         'health-lifestyle', 'wrn-msi-clinical-trial', 'paper-review',
         ('frontier-candidate', 'oncology', 'clinical-trial'),
