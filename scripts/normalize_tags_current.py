@@ -264,6 +264,14 @@ POST_TAXONOMY.update({
         'health-lifestyle', 'wrn-msi-clinical-trial', 'paper-review',
         ('frontier-candidate', 'oncology', 'clinical-trial'),
     ),
+    '2026-09-30-rbn-sliding-ferroelectric-memory-news.mdx': Taxonomy(
+        'finance-industry', 'sliding-ferroelectric-memory', 'paper-review',
+        ('frontier-one', 'semiconductor', 'two-dimensional-materials'),
+    ),
+    '2026-09-30-trans-interface-perovskite-solar-news.mdx': Taxonomy(
+        'finance-industry', 'perovskite-photovoltaics', 'paper-review',
+        ('frontier-candidate', 'solar-energy', 'materials-science'),
+    ),
 })
 
 POST_TAXONOMY.update({

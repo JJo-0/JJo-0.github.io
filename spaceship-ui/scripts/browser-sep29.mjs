@@ -86,6 +86,7 @@ try {
     edition.entries.map((entry) => entry.slug)
   );
   assert(!listing.overflow);
+  await js(`document.querySelector('[data-news-date="2026-09-29"] img')?.scrollIntoView({block:'center',behavior:'instant'})`);
   const thumbnail = await waitExpression(
     cdp,
     sessionId,
