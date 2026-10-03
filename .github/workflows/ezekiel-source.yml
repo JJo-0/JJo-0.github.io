@@ -1,0 +1,34 @@
+name: Ezekiel source snapshot
+on:
+  push:
+    branches: [ops/ezekiel-source-20261003]
+    paths: [.github/workflows/ezekiel-source.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: edd51bb3c839539115793b07e3047ed95f04f8fe
+          persist-credentials: false
+      - run: |
+          mkdir -p snapshot
+          python3 - <<'PY'
+          import pathlib, subprocess, zipfile, json
+          names=subprocess.check_output(['git','ls-files'],text=True).splitlines()
+          suffixes={'.md','.mdx','.json','.js','.mjs','.cjs','.ts','.astro','.svelte','.css','.html','.yml','.yaml','.py','.txt'}
+          with zipfile.ZipFile('snapshot/source.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in names:
+                  if pathlib.Path(name).suffix in suffixes and not name.startswith('snapshot/'):
+                      z.write(name,name)
+          pathlib.Path('snapshot/tree.txt').write_text(subprocess.check_output(['git','ls-tree','-r','HEAD'],text=True))
+          pathlib.Path('snapshot/tested-sha.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ezekiel-source-snapshot
+          path: snapshot/
+          retention-days: 3
