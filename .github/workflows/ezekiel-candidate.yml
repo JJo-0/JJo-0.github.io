@@ -1,0 +1,124 @@
+name: Ezekiel integration candidate
+on:
+  push:
+    branches: [ops/ezekiel-source-20261003]
+    paths: [.github/workflows/ezekiel-candidate.yml, '.ops/ezekiel-import.py']
+permissions:
+  contents: read
+concurrency:
+  group: ezekiel-integration-candidate
+  cancel-in-progress: true
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: repo/spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ops
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: edd51bb3c839539115793b07e3047ed95f04f8fe
+          path: repo
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: repo/spaceship-ui/pnpm-lock.yaml
+      - run: pip install brotli
+      - name: Restore exact supplied HTML and reviewed hosting source
+        working-directory: repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 ../ops/.ops/ezekiel-import.py
+          python3 - <<'PY'
+          import pathlib,urllib.request,base64,json,hashlib,brotli
+          import os
+          data=b''
+          for sha in ['a59e824c9479d98eebccee62c352ce9c09a77dd7','9530c38f4a1496aa6cf8dddd372ba93de069fb14']:
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=40) as response:r=json.load(response)
+              b=base64.b64decode(r['content']);assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==sha;data+=b
+          assert hashlib.sha256(data).hexdigest()=='a660cf848d60b7e970ad67c847ad1508a0fe7a8ea7e97d34af66f56047c81ed3'
+          files=json.loads(brotli.decompress(data));assert len(files)==19
+          for name,text in files.items():
+              p=pathlib.Path(name);assert not p.is_absolute() and '..' not in p.parts
+              assert name.startswith('spaceship-ui/') or name=='.github/workflows/ezekiel-reading.yml'
+              p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
+          print('Restored 19 reviewed UTF-8 hosting files; no branch or ref writes.')
+          PY
+      - run: pnpm install --frozen-lockfile
+      - name: Compile source-specific Tailwind CSS once
+        run: pnpm ezekiel:native:compile
+      - name: Record source-only candidate before validation
+        working-directory: repo
+        run: |
+          git add -N .
+          git diff --check -- . ':!spaceship-ui/src/data/ezekiel-native'
+          mkdir -p ../ezekiel-candidate
+          python3 - <<'PY'
+          import pathlib,subprocess,json,hashlib,zipfile
+          names=subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()
+          rows=[]
+          with zipfile.ZipFile('../ezekiel-candidate/source.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in names:
+                  b=pathlib.Path(name).read_bytes();z.writestr(name,b)
+                  rows.append({'path':name,'mode':'100644','type':'blob','sha':hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest(),'sha256':hashlib.sha256(b).hexdigest()})
+          pathlib.Path('../ezekiel-candidate/manifest.json').write_text(json.dumps({'base':'edd51bb3c839539115793b07e3047ed95f04f8fe','files':rows},indent=2))
+          print('Candidate files:',len(rows))
+          PY
+      - name: Lint, type and SEO checks
+        run: |
+          pnpm lint 2>&1 | tee ../../ezekiel-candidate/lint.log
+          pnpm check 2>&1 | tee ../../ezekiel-candidate/types.log
+          pnpm seo:check 2>&1 | tee ../../ezekiel-candidate/seo.log
+      - name: Build and complete preserved content checks
+        run: |
+          pnpm build 2>&1 | tee ../../ezekiel-candidate/build.log
+          pnpm content:check 2>&1 | tee ../../ezekiel-candidate/content.log
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Real keyboard interaction, original data and full-report reading
+        run: node scripts/browser-ezekiel-audit.mjs 2>&1 | tee ../../ezekiel-candidate/browser.log
+      - name: Preserve verified readable source blobs only
+        working-directory: repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import pathlib,json,hashlib,urllib.request,os
+          out=pathlib.Path('../ezekiel-candidate');m=json.loads((out/'manifest.json').read_text())
+          for row in m['files']:
+              data=pathlib.Path(row['path']).read_bytes();assert hashlib.sha256(data).hexdigest()==row['sha256']
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=json.dumps({'content':data.decode(),'encoding':'utf-8'}).encode(),headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+              with urllib.request.urlopen(req,timeout=40) as response:j=json.load(response)
+              assert j['sha']==row['sha']
+          (out/'verified-blobs.json').write_text(json.dumps(m,indent=2))
+          print('All readable source blobs verified; no tree, commit, branch or ref written.')
+          PY
+      - name: Preserve diagnostics
+        if: always()
+        working-directory: repo
+        run: |
+          mkdir -p ../ezekiel-candidate
+          cp -R spaceship-ui/ezekiel-review ../ezekiel-candidate/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ezekiel-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ezekiel-candidate/
+          retention-days: 3
