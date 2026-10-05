@@ -2,7 +2,7 @@ name: October 2 integration candidate
 on:
   push:
     branches: [ops/oct02-evidence-20261005]
-    paths: [.github/workflows/oct02-evidence.yml, .ops/oct02-integrate.py]
+    paths: [.github/workflows/oct02-evidence.yml, .ops/oct02-integrate.py, .ops/oct02-compact.py]
 permissions:
   contents: read
 concurrency:
@@ -44,6 +44,7 @@ jobs:
           s=s.replace(old,"SOURCE='378fa5621f9a4c92ddf281743c4de8db54dd2d65'")
           exec(compile(s,'oct02-integrate.py','exec'),{'__name__':'__main__'})
           PY
+          python ../ops/.ops/oct02-compact.py
           git add -N .
           git diff --check
       - uses: pnpm/action-setup@v4
@@ -83,7 +84,7 @@ jobs:
           import pathlib,json,hashlib,base64,requests,os
           out=pathlib.Path('../oct02-receipt');j=json.loads((out/'assembly.json').read_text())
           assert j['sourceCommit']=='378fa5621f9a4c92ddf281743c4de8db54dd2d65'
-          assert len(j['files'])==21
+          assert len(j['files'])==23
           for row in j['files']:
               p=pathlib.Path(row['path']);assert not p.is_absolute() and '..' not in p.parts
               assert str(p).startswith('spaceship-ui/') or str(p) in ['scripts/normalize_tags_current.py','.github/workflows/oct02-reading.yml']
