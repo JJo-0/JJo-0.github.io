@@ -1,0 +1,111 @@
+name: October 1 live verification
+on:
+  push:
+    branches: [ops/oct01-live-20261005]
+    paths: [.github/workflows/oct01-live-verification.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 99a2e79f58d95f7a0ca31a13b767f84928bb1732
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Require successful deployment of the exact source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import urllib.request,json,os,time
+          base='https://api.github.com/repos/JJo-0/JJo-0.github.io/actions/runs/37256845187'
+          def get(url):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=20) as r:return json.load(r)
+          run=get(base)
+          assert run['head_sha']=='99a2e79f58d95f7a0ca31a13b767f84928bb1732'
+          for attempt in range(60):
+              jobs=get(base+'/jobs')['jobs']
+              deploy=next((j for j in jobs if j['name']=='deploy'),None)
+              if deploy and deploy['conclusion']=='success':break
+              assert not any(j['name'] in ['build','deploy'] and j['conclusion'] in ['failure','cancelled','timed_out'] for j in jobs),jobs
+              time.sleep(5)
+          else:raise RuntimeError('Exact deployment did not complete within the bounded wait')
+          print('Exact Pages build and deployment completed; later whole-site smoke is evaluated separately.')
+          PY
+      - name: Browser fonts
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Actual public article metadata, search and RSS
+        run: |
+          python3 - <<'PY'
+          import urllib.request,json,hashlib,datetime
+          from pathlib import Path
+          from html.parser import HTMLParser
+          base='https://jjo-0.github.io';manifest=json.loads(Path('site/english-edition.json').read_text())
+          pairs=[p for p in manifest['pairs'] if p['key'].endswith('20261001')];assert len(pairs)==3
+          class Page(HTMLParser):
+              def __init__(self,s):super().__init__();self.tags=[];self.feed(s)
+              def handle_starttag(self,t,a):self.tags.append((t,dict(a)))
+              def has(self,t,**a):return any(t==tag and all(attrs.get(k)==v for k,v in a.items()) for tag,attrs in self.tags)
+          def get(path):
+              req=urllib.request.Request(base+path,headers={'User-Agent':'JJo-release-functional-verification'})
+              with urllib.request.urlopen(req,timeout=25) as r:
+                  assert r.status==200
+                  return r.read()
+          rows=[]
+          for p in pairs:
+              for lang,route,otherlang,other in [('ko','/posts/'+p['koSlug']+'/','en','/en/posts/'+p['enSlug']+'/'),('en','/en/posts/'+p['enSlug']+'/','ko-KR','/posts/'+p['koSlug']+'/')]:
+                  raw=get(route);s=raw.decode();h=Page(s)
+                  assert h.has('html',lang=lang)
+                  assert h.has('link',rel='canonical',href=base+route)
+                  assert h.has('link',rel='alternate',hreflang=otherlang,href=base+other)
+                  assert h.has('a',href='#news-ref-1')
+                  if lang=='en':
+                      assert '2026-10-05' in s and 'data-english-article' in s
+                      assert 'Expand symbols and the worked calculation' in s
+                      assert 'google-adsense-account' not in s
+                  rows.append({'route':route,'language':lang,'http':200,'reciprocalLocale':True,'htmlSha256':hashlib.sha256(raw).hexdigest()})
+          search=json.loads(get('/en/api/search.json'));assert len(search)==len(manifest['pairs'])==12
+          for p in pairs:assert any(x.get('href')=='/en/posts/'+p['enSlug']+'/' for x in search)
+          rss=get('/en/rss.xml').decode();assert '<language>en</language>' in rss
+          for p in pairs:assert '/en/posts/'+p['enSlug']+'/' in rss
+          out=Path('english-review');out.mkdir(exist_ok=True)
+          (out/'live-http.json').write_text(json.dumps({'base':base,'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'source':'99a2e79f58d95f7a0ca31a13b767f84928bb1732','rows':rows,'englishCount':len(search),'englishSearch':True,'englishRSS':True},indent=2))
+          print('Public HTTP/reciprocal locale/search/RSS checks passed:',len(rows),'articles')
+          PY
+      - name: Native bilingual October 1 reading and original images
+        env:
+          JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
+        run: node scripts/browser-oct01-english.mjs
+      - name: Complete English language switching, citations, search and 404
+        env:
+          JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
+        run: node scripts/browser-english-edition.mjs
+      - name: Existing mobile idle and thumbnail regression
+        env:
+          JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
+        run: node scripts/browser-mobile-performance.mjs
+      - name: Preserve source, time and summary drafts
+        if: always()
+        run: |
+          mkdir -p english-review
+          git rev-parse HEAD > english-review/tested-sha.txt
+          date -u +%Y-%m-%dT%H:%M:%SZ > english-review/completed-at.txt
+          cp -R docs/blogger-drafts/2026-10-01 english-review/blogger-drafts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oct01-live-${{ github.run_id }}
+          path: |
+            spaceship-ui/english-review/
+            spaceship-ui/mobile-performance/
+          retention-days: 7
