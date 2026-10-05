@@ -1,75 +1,142 @@
-name: October 3 source evidence
+name: October 3 integration candidate
 on:
-  push:
-    branches: [content/news-20261003-three-candidates]
-    paths: [.github/workflows/oct03-evidence.yml]
   pull_request:
     branches: [main]
-    paths: [.github/workflows/oct03-evidence.yml]
+    paths: [.github/workflows/oct03-evidence.yml, '.ops/oct03-assemble.py', '.ops/oct03-finalize.py']
 permissions:
   contents: read
+  actions: read
+concurrency:
+  group: oct03-candidate-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  evidence:
+  verify:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 18
+    defaults:
+      run:
+        shell: bash
+        working-directory: repo/spaceship-ui
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 99a2e79f58d95f7a0ca31a13b767f84928bb1732
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: ops
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 08d3e94f1066006bfa503db251dde68b41eaad99
+          path: repo
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: october-3-source-evidence
+          run-id: 37262628541
+          github-token: ${{ github.token }}
+          path: input
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install requests beautifulsoup4 pymupdf==1.26.7
-      - name: Preserve source and publisher evidence (no publication writes)
+      - run: pip install pyyaml pymupdf==1.26.7
+      - name: Assemble reviewed original figures and metadata
+        working-directory: repo
         run: |
-          python - <<'PY'
-          import pathlib,subprocess,zipfile,json,hashlib,requests,urllib.parse,fitz
-          from bs4 import BeautifulSoup
-          out=pathlib.Path('oct03-evidence');out.mkdir()
-          (out/'head.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
-          tree={}
-          with zipfile.ZipFile(out/'site-source.zip','w',zipfile.ZIP_DEFLATED) as z:
-              for line in subprocess.check_output(['git','ls-tree','-r','HEAD'],text=True).splitlines():
-                  meta,name=line.split('\t');mode,kind,sha=meta.split();p=pathlib.Path(name);tree[name]={'mode':mode,'type':kind,'sha':sha}
-                  if kind=='blob' and (p.suffix in {'.md','.mdx','.json','.js','.mjs','.ts','.svelte','.astro','.css','.yml','.yaml','.py','.svg'} or p.name=='AGENTS.md') and not p.name.startswith('.env'):
-                      z.write(p,name)
-                  if p.name=='AGENTS.md':print(name+'\n'+p.read_text())
-          (out/'tree.json').write_text(json.dumps(tree))
-          session=requests.Session();session.headers['User-Agent']='Mozilla/5.0'
-          log=[]
-          def get(url,p):
-              try:
-                  r=session.get(url,timeout=70);r.raise_for_status();p.write_bytes(r.content)
-                  log.append({'url':url,'path':str(p),'sha256':hashlib.sha256(r.content).hexdigest(),'bytes':len(r.content),'type':r.headers.get('Content-Type')});return r
-              except Exception as e:log.append({'url':url,'error':str(e)});return None
-          papers={'ltri':'s41467-026-78268-4','mccv':'s41588-026-02776-8','paml':'s41467-026-78283-5'}
-          for key,article in papers.items():
-              d=out/key;d.mkdir();base='https://www.nature.com/articles/'+article;r=get(base,d/'article.html')
-              if not r:continue
-              soup=BeautifulSoup(r.text,'html.parser');(d/'article.txt').write_text(soup.get_text('\n',strip=True))
-              links=[{'text':a.get_text(' ',strip=True),'url':urllib.parse.urljoin(base,a['href'])} for a in soup.select('a[href]')]
-              (d/'links.json').write_text(json.dumps(links,ensure_ascii=False,indent=2))
-              figs=[{'text':f.get_text(' ',strip=True),'images':[dict(i.attrs) for i in f.select('img')]} for f in soup.select('figure')]
-              (d/'figure-links.json').write_text(json.dumps(figs,ensure_ascii=False,indent=2))
-              pdfs=[]
-              meta=soup.find('meta',attrs={'name':'citation_pdf_url'})
-              if meta:pdfs.append({'text':'Article PDF','url':meta.get('content')})
-              pdfs += [x for x in links if '.pdf' in x['url'] and (('_reference.pdf' in x['url']) or 'MOESM1' in x['url'] or 'Supplementary Information' in x['text'])]
-              if not any('/articles/' in x['url'] for x in pdfs):pdfs.insert(0,{'text':'Article PDF','url':base+'.pdf'})
-              seen=set();pdfmap=[]
-              for x in pdfs:
-                  if x['url'] in seen or len(seen)>=3:continue
-                  i=len(seen);seen.add(x['url']);p=d/f'document-{i}.pdf';res=get(x['url'],p)
-                  if not res or not res.content.startswith(b'%PDF'):continue
-                  doc=fitz.open(p);pdfmap.append({'file':p.name,'label':x['text'],'url':x['url'],'pages':len(doc)})
-                  (d/f'document-{i}.txt').write_text('\n\n'.join(f'=== PAGE {n+1} ===\n'+page.get_text() for n,page in enumerate(doc)))
-              (d/'pdfs.json').write_text(json.dumps(pdfmap,indent=2))
-          (out/'retrieval.json').write_text(json.dumps(log,ensure_ascii=False,indent=2));print(json.dumps(log))
+          python ../ops/.ops/oct03-assemble.py
+          if test -f ../ops/.ops/oct03-finalize.py; then python ../ops/.ops/oct03-finalize.py; fi
+          git add -N .
+          git diff --check
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: repo/spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Existing source quality gates
+        run: |
+          pnpm lint 2>&1 | tee ../../oct03-receipt/lint.log
+          pnpm check 2>&1 | tee ../../oct03-receipt/types.log
+          pnpm seo:check 2>&1 | tee ../../oct03-receipt/seo.log
+      - name: Build and content integrity
+        run: |
+          pnpm build 2>&1 | tee ../../oct03-receipt/build.log
+          pnpm content:check 2>&1 | tee ../../oct03-receipt/content.log
+          python3 scripts/english-edition-audit.py 2>&1 | tee ../../oct03-receipt/english-static.log
+          python3 scripts/oct03-contract.py 2>&1 | tee ../../oct03-receipt/oct03-static.log
+      - name: Real reading and preserved mobile behavior
+        run: |
+          node scripts/browser-oct03.mjs 2>&1 | tee ../../oct03-receipt/oct03-browser.log
+          node scripts/browser-english-edition.mjs 2>&1 | tee ../../oct03-receipt/english-browser.log
+          node scripts/browser-mobile-performance.mjs 2>&1 | tee ../../oct03-receipt/mobile-browser.log
+      - name: Preserve exact candidate and diagnostic files
+        if: always()
+        working-directory: repo
+        run: |
+          mkdir -p ../oct03-receipt
+          python3 - <<'PY'
+          import pathlib,json,hashlib,zipfile,subprocess
+          out=pathlib.Path('../oct03-receipt');p=out/'manifest.json'
+          if p.exists():
+              m=json.loads(p.read_text());m['workerCommit']=subprocess.check_output(['git','-C','../ops','rev-parse','HEAD'],text=True).strip()
+              with zipfile.ZipFile(out/'candidate-source.zip','w',zipfile.ZIP_DEFLATED) as z:
+                  for row in m['files']:
+                      b=pathlib.Path(row['path']).read_bytes();assert hashlib.sha256(b).hexdigest()==row['sha256'];z.writestr(row['path'],b)
+              p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
           PY
+          cp -R spaceship-ui/oct03-review ../oct03-receipt/ 2>/dev/null || true
+          cp -R spaceship-ui/english-review ../oct03-receipt/ 2>/dev/null || true
+          cp -R spaceship-ui/mobile-performance ../oct03-receipt/ 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: october-3-source-evidence
-          path: oct03-evidence/
+          name: oct03-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: oct03-receipt/
+          retention-days: 7
+  preserve-blobs:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: oct03-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: input
+      - name: Verify and preserve immutable blobs only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import pathlib,json,zipfile,hashlib,urllib.request,base64,os
+          root=pathlib.Path('input');m=json.loads((root/'manifest.json').read_text());z=zipfile.ZipFile(root/'candidate-source.zip')
+          assert m['base']=='99a2e79f58d95f7a0ca31a13b767f84928bb1732'
+          assert m['sourceCommit']=='08d3e94f1066006bfa503db251dde68b41eaad99'
+          assert 25<=len(m['files'])<=35
+          assert sorted(z.namelist())==sorted(r['path'] for r in m['files'])
+          for row in m['files']:
+              path=pathlib.PurePosixPath(row['path']);assert not path.is_absolute() and '..' not in path.parts
+              assert str(path).startswith('spaceship-ui/') or str(path) in ['scripts/normalize_tags_current.py','.github/workflows/oct03-reading.yml']
+              assert path.suffix in {'.md','.mdx','.json','.mjs','.ts','.astro','.png','.py','.yml'}
+              b=z.read(str(path));assert len(b)<6000000 and hashlib.sha256(b).hexdigest()==row['sha256']
+              assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==row['sha']
+              payload={'content':base64.b64encode(b).decode(),'encoding':'base64'} if path.suffix=='.png' else {'content':b.decode('utf-8'),'encoding':'utf-8'}
+              request=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=json.dumps(payload).encode(),headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+              with urllib.request.urlopen(request,timeout=40) as response:created=json.load(response)
+              assert created['sha']==row['sha']
+          pathlib.Path('output').mkdir();pathlib.Path('output/verified-blobs.json').write_text(json.dumps(m,indent=2))
+          print('Verified',len(m['files']),'immutable source blobs; no tree, commit, ref or branch written')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oct03-verified-blobs-${{ github.run_id }}
+          path: output/
           retention-days: 7
