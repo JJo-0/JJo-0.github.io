@@ -5,7 +5,7 @@ def patch(path,a,b):
  p=R/path;s=p.read_text();assert s.count(a)==1,(path,a);p.write_text(s.replace(a,b));paths.add(path)
 patch('spaceship-ui/src/components/experience/ExperienceCanvas.astro','            <span class="post-graph-node__dot" aria-hidden="true" />\n','')
 css='spaceship-ui/src/styles/renderer.css'
-patch(css,'.post-graph-node__dot {',".post-graph-node::before {\n  content: '';")
+patch(css,'\n.post-graph-node__dot {\n',"\n.post-graph-node::before {\n  content: '';\n")
 patch(css,'.post-graph-node:hover .post-graph-node__dot,','.post-graph-node:hover::before,')
 patch(css,'.post-graph-node:focus-visible .post-graph-node__dot {','.post-graph-node:focus-visible::before {')
 patch('spaceship-ui/scripts/oct02-contract.py','rows=[]',r'''home=(R/'dist/index.html').read_text();hp=Page(home)
