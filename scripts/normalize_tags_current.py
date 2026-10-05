@@ -332,5 +332,17 @@ POST_TAXONOMY.update({
 for retired in ("deep-search-gemini.md", "deep-search-travel-prompt.md"):
     POST_TAXONOMY.pop(retired, None)
 
+POST_TAXONOMY.update({
+    '2026-10-03-ai-nanocrystal-photovoltaics-news.mdx': Taxonomy('finance-industry', 'ai-accelerated-photovoltaics', 'paper-review', ('frontier-one', 'perovskite-photovoltaics')),
+    '2026-10-03-mccv-regulatory-variant-mapping-news.mdx': Taxonomy('health-lifestyle', 'regulatory-genomics', 'paper-review', ('frontier-candidate', 'functional-genomics')),
+    '2026-10-03-paml-chemoresistant-cell-risk-news.mdx': Taxonomy('health-lifestyle', 'pediatric-leukemia', 'paper-review', ('frontier-candidate', 'precision-oncology')),
+})
+
+POST_TAXONOMY.update({
+    '2026-10-02-lace-complementary-heuristics-news.mdx': Taxonomy('ai-machine-learning', 'automated-algorithm-design', 'paper-review', ('frontier-one', 'algorithm-discovery')),
+    '2026-10-02-perturbation-benchmark-calibration-news.mdx': Taxonomy('ai-machine-learning', 'genetic-perturbation-evaluation', 'paper-review', ('frontier-candidate', 'virtual-cell-benchmark')),
+    '2026-10-02-glassrecon-depth-prior-news.mdx': Taxonomy('robotics-embedded', 'glass-depth-reconstruction', 'paper-review', ('frontier-candidate', 'depth-reconstruction')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

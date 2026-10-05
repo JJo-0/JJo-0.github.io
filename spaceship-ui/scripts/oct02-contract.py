@@ -1,10 +1,4 @@
-from pathlib import Path
-import hashlib,json
-R=Path.cwd();A=R/'spaceship-ui';O=R.parent/'oct03-receipt';m=json.loads((O/'manifest.json').read_text());paths={x['path'] for x in m['files']}
-def write(path,text):
- p=R/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text);paths.add(path)
-write('spaceship-ui/src/lib/experience/graph-json.mjs',"export function serializeGraphPayload(graph) {\n  return JSON.stringify(graph).replace(/</g, () => String.fromCharCode(92) + 'u003c');\n}\n")
-write('spaceship-ui/scripts/oct02-contract.py',r'''import hashlib,json,re,struct,xml.etree.ElementTree as ET
+import hashlib,json,re,struct,xml.etree.ElementTree as ET
 from pathlib import Path
 from html.parser import HTMLParser
 R=Path(__file__).resolve().parents[1]
@@ -80,14 +74,3 @@ for bad in [html.replace('id="news-ref-1"','id="lost-reference"'),html.replace('
  else:raise AssertionError('Invalid page mutation accepted')
 out=R/'oct02-review';out.mkdir(exist_ok=True);(out/'static.json').write_text(json.dumps({'passed':True,'rows':rows,'originalPaperFigures':2,'teachingFigures':4,'rejectedMutations':3,'homeBytes':len(home.encode()),'graphNodes':len(graph['nodes'])},indent=2))
 print('oct02-contract: PASS '+json.dumps(rows))
-''')
-workflow=(R/'.github/workflows/oct03-reading.yml').read_text().replace('October 3','October 2').replace('oct03','oct02')
-# Add the actual serializer unit test to the new permanent gate.
-workflow=workflow.replace('- run: pnpm build','- run: node scripts/graph-json.test.mjs\n      - run: pnpm build')
-write('.github/workflows/oct02-reading.yml',workflow)
-# Register every file actually changed, including shared registries rewritten after Oct3.
-m['files']=[]
-for path in sorted(paths):
- b=(R/path).read_bytes();m['files'].append({'path':path,'mode':'100644','type':'blob','sha':hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest(),'sha256':hashlib.sha256(b).hexdigest()})
-(O/'manifest.json').write_text(json.dumps(m,ensure_ascii=False,indent=2))
-print('Final combined candidate:',len(m['files']),'files')
