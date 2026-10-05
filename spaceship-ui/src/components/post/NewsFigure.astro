@@ -3,6 +3,7 @@ import { getImage } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import catalogue from '../../../site/news-media.json';
 import englishCaptions from '../../../site/news-media-en.json';
+import octoberEnglishCaptions from '../../../site/news-media-en-20261001.json';
 
 interface Props {
   media: keyof typeof catalogue;
@@ -15,7 +16,10 @@ const { media, priority = false, compact = false, thumbnail = false, lang = 'ko'
 const source = catalogue[media];
 if (!source) throw new Error(`Unknown NEWS media: ${media}`);
 const captions =
-  lang === 'en' ? (englishCaptions as Record<string, Partial<typeof source>>)[media] : undefined;
+  lang === 'en'
+    ? ((englishCaptions as Record<string, Partial<typeof source>>)[media] ??
+       (octoberEnglishCaptions as Record<string, Partial<typeof source>>)[media])
+    : undefined;
 if (lang === 'en' && !captions) throw new Error(`Missing English caption: ${media}`);
 const item = { ...source, ...captions };
 // Only archive thumbnails use derivatives. A compact article figure still
