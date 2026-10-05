@@ -1,0 +1,48 @@
+name: October 1 source review
+on:
+  push:
+    branches: [ops/oct01-source-review-20261005]
+    paths: [.github/workflows/oct01-source-review.yml]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: edd51bb3c839539115793b07e3047ed95f04f8fe
+          persist-credentials: false
+      - name: Snapshot text sources only
+        run: |
+          mkdir -p review
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess,zipfile,json,urllib.request
+          names=subprocess.check_output(['git','ls-files'],text=True).splitlines()
+          allowed={'.astro','.svelte','.ts','.js','.mjs','.cjs','.py','.json','.yaml','.yml','.md','.mdx','.css','.svg','.txt'}
+          with zipfile.ZipFile('review/site-source.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in names:
+                  p=Path(name)
+                  if p.suffix in allowed and not any(part.startswith('.env') for part in p.parts):
+                      z.write(p,name)
+          Path('review/head.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True))
+          urls={'synthid':'https://www.nature.com/articles/s41586-026-10965-y','bcn':'https://www.nature.com/articles/s41586-026-11047-9','ataraxos':'https://www.nature.com/articles/s41586-026-11036-y','deepmind':'https://deepmind.google/blog/introducing-synthid-bio/'}
+          statuses=[]
+          for key,url in urls.items():
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+                  with urllib.request.urlopen(req,timeout=30) as r:
+                      b=r.read();status=r.status
+                  Path('review/'+key+'.html').write_bytes(b)
+                  statuses.append({'key':key,'url':url,'status':status,'bytes':len(b)})
+              except Exception as e: statuses.append({'key':key,'url':url,'error':str(e)})
+          Path('review/retrieval.json').write_text(json.dumps(statuses,indent=2))
+          print(json.dumps(statuses))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oct01-source-review
+          path: review/
+          retention-days: 3
