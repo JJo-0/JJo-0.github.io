@@ -1,0 +1,138 @@
+---
+title: 'LLMs are beginning to evolve optimization algorithms themselves'
+description: 'Read LACE through its verified problem contract and complementary heuristics. Separate the 0.945 benchmark score, reused evaluators, 40-problem release and limits of industrial deployment.'
+pubDate: 2026-10-02T00:02:00+09:00
+updatedDate: 2026-10-05
+publicationTimeZone: Asia/Seoul
+slug: lace-complementary-heuristics
+category: ai-machine-learning
+subcategory: automated-algorithm-design
+type: paper-review
+tags:
+  - frontier-one
+  - algorithm-discovery
+researchFeatured: false
+draft: false
+lang: en
+translationKey: frontier-lace-20261002
+translatedPosts:
+  ko-KR: 2026-10-02-lace-complementary-heuristics-news
+---
+
+import BeginnerGuide from '@/components/post/BeginnerGuide.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+## 1. The conclusion: a complementary collection rather than one finished solver
+
+LACE does not ask a large language model to immediately deliver one complete optimization program. It first connects **input/output interfaces and validation tools, then evolves a collection of heuristics that excel on different instances**. Published in Nature Machine Intelligence on 1 October 2026, the study reports a mean benchmark score of 0.945 across 36 established combinatorial-optimization problems. That number is neither a success probability nor a reduction in real logistics costs.[1]
+
+This article follows the 2 October editorial selection; publication and source checks took place on 5 October. We compared the public abstract, supplementary information and official implementation. The supplied 99-point rating is an editorial assessment, not a journal-issued score or an award. The important development is a concrete **process for searching for algorithms inside a verifiable boundary**, rather than a declaration that AI has replaced every expert.
+
+<NewsFigure media="oct02-lace-benchmark" lang="en" priority />
+
+### Reading this chart: do not turn 0.945 into a percentage
+
+These bars replot the public abstract's mean scores of 0.571, 0.870 and 0.945 across 36 problems. They are not a reproduction of a publisher figure or a new experiment. The chart shows that LACE scored higher under the reported evaluation. The frequency of optimal solutions, computational time and failure rate are separate metrics. Reading the bar endpoint as a 94.5% guarantee of optimality or reliability would change its meaning.[1]
+
+## 2. Why the problem is difficult: feasibility comes first
+
+Delivery sequences, factory schedules and container arrangements involve combinations whose number can grow rapidly. An **objective function** defines what to minimize or maximize; **constraints** define what must be respected. A solution with a favorable objective but a violated constraint is not usable. Checking that an LLM has written plausible Python is a different task from checking that the resulting schedule is feasible.
+
+A new constraint can require more than an algorithm change. Input parsing, the decisions represented in the output, the definition of failure and the behavior on timeout must all fit together. Without separating these concerns, parsing and representation errors can consume the search effort before an algorithmic idea can be judged. LACE separates these implementation boundaries from the design of the heuristic.[2][3]
+
+<BeginnerGuide title="Start here: what are a heuristic and a problem instance?" lang="en">
+
+A problem supplies the rules; an **instance** supplies concrete data under those rules. Assigning jobs to specified machines is a problem, while today's job durations and due dates form an instance. Scheduling short jobs first and scheduling the earliest due dates first are different heuristics: rules for finding useful solutions quickly, not formulas guaranteed to be optimal in every case.
+
+Yesterday's best rule need not remain best today. A workload with many short jobs differs from one dominated by urgent deadlines. Here, a **portfolio** is a collection of executable algorithms for the same problem, not a financial asset portfolio. Ten similar programs and ten programs that cover one another's weaknesses have different value.
+
+For example, two jobs using the same machine at the same time should cause `is_feasible()` to return false. For a usable schedule, `objective()` can calculate a delay cost. This is a conceptual illustration, not a reproduction of a particular port instance. An incorrect checker can give an excellent score to a solution that merely satisfies the wrong rules.
+
+</BeginnerGuide>
+
+## 3. What changes: generation and evaluation are not one undifferentiated task
+
+Direct prompting asks one generation process to handle input/output processing, constraint checks, search strategy and exceptional cases together. Iteratively improving a single heuristic may raise its average performance while losing specialized strategies useful on different instances. LACE decomposes the problem into **I–O–T–H**: an input schema, output schema, tool library and heuristic portfolio.[1][2]
+
+A contract here is a programmatic interface, not just a natural-language promise. The fields provided by I, fields required by O, and feasibility/objective operations supplied by T must be usable by H. The supplement describes assembling a temporary specification, testing an actual end-to-end solution path, employing separate review agents and allowing bounded repair. This tests whether the pieces compose; it is not a formal correctness proof for every possible input.[3]
+
+There is an **important clarification beyond the supplied draft**. Supplementary section 4.4 states that the existing 36 CO-Bench problems reuse their input parsers and final scoring oracle. Those adopted components must be distinguished from generated output representations, tools and heuristics. Exercising input generation on the novel problems does not mean that all parsers and evaluators in the established benchmark were autonomously invented. The implementation also offers an option to adopt a known parser unchanged.[2][3]
+
+## 4. Three stages: establish the contract, evolve candidates and select complements
+
+First, the problem description and instance files are organized into an executable interface. Input, output and tool-design roles are separated, and the initial heuristics must be able to traverse that interface. Defining the checks before repeatedly solving instances helps distinguish an execution failure from low solution quality. It does not automatically eliminate misunderstandings of the natural-language constraints.[3]
+
+Second, multiple candidates evolve. Official materials provide five generation operators—LR, RR, CC, CS and DI—and two repair operators, ER and EI. Mutation, reflective redesign, complementary crossover, comparative synthesis and diversity injection generate candidates, while execution-error and timeout repair keep them usable. **Finding good solutions and maintaining executable programs are different responsibilities.** The supplementary operator-removal experiments also distinguish these roles.[2][3]
+
+Third, the system selects which programs to retain. Instead of cloning the average winner, a mixed-integer linear program uses instance-specific ranks to select a complementary set. This MILP selects **a portfolio of candidate algorithms**; it does not mean the complete original logistics problem was solved by that MILP. Ranking also avoids simply summing objective values whose absolute scales differ across instances.[3]
+
+<NewsFigure media="oct02-lace-portfolio" lang="en" />
+
+### Reading the teaching chart: the best average individual is not the best collection
+
+The four instances above use hypothetical costs created for this explainer. Specialist 1 costs 8 on A/B and 20 on C/D; specialist 2 has the opposite strengths. The generalist always costs 11. If only one program is retained, the generalist's mean of 11 is better than either specialist's mean of 14. But executing both specialists and retaining the better result on each instance gives a mean of 8. This illustrates complementarity, not actual LACE results or the measured performance of a selection policy.
+
+<CandidateEquation id="lace-portfolio-mean" title="Why can two specialists outperform the single best average algorithm?" lang="en" tex={String.raw`C(P)=\frac{1}{m}\sum_{i=1}^{m}\min_{h\in P}c_{ih}`}>
+
+P is the retained algorithm set, m the instance count and c the cost, assumed lower-is-better. First take the minimum cost available within the set on each instance, then average those minima. In the example, the two specialists' per-instance minima are all 8, so C(P)=8. The generalist alone gives C(P)=11. This is an **educational best-of-set cost definition**, not a transcription of the paper's rank-based MILP objective.
+
+The order of operations matters. Averaging each algorithm and then choosing one differs from choosing the best per instance and then averaging. The minimum is not available for free: several solvers must run and be checked, or a method must decide which to use. Operational comparisons therefore need matching boundaries for portfolio size, parallel resources, total execution time and selection overhead.
+
+</CandidateEquation>
+
+## 5. Experimental evidence: mean scores and feasibility answer different questions
+
+The public abstract reports 0.945 for LACE, 0.870 for the strongest existing LLM-based method and 0.571 for direct prompting without the framework on 36 established problems. On four novel problems, it reports 0.97–0.99 while the five compared LLM methods produced no feasible algorithm. **Those five approaches are not every optimization solver.** The supplement separately describes metaheuristic and Gurobi comparison settings.[1][3]
+
+<CandidateTable id="lace-evidence" label="LACE evidence and its interpretation boundaries">
+
+| Comparison | Reported or released evidence | What it does not establish |
+| --- | --- | --- |
+| Established problems | Means of 0.945 / 0.870 / 0.571 on 36 CO-Bench problems | Probability of obtaining an optimum on every instance |
+| Novel problems | Four port-logistics problems at 0.97–0.99; five LLM baselines failed to generate feasible algorithms | Superiority over every commercial solver or industrial domain |
+| Portfolio | Ten final heuristics per problem | Always faster than one solver at the same total resource budget |
+| Release | Forty problems, 7,109 test instances, code and reproduction tools | Independent reproduction of every experiment by this blog |
+
+</CandidateTable>
+
+The official interactive supplement distinguishes Avg Score, Valid Rate and Survival Rate. A high mean does not establish that failures on difficult instances disappeared. Supplementary selection ablations hold generation and data splits fixed while changing the selection rule, illustrating that average performance and coverage of challenging instances can respond differently. We did not calculate the detailed tool-library/portfolio effect sizes in main-paper Figure 4 from its public abstract alone.[3][4]
+
+## 6. Public code is valuable, but reproduction has several layers
+
+The official repository supplies a manifest of the exact 7,109 test instances across 40 problems, their contracts, final ten-heuristic portfolios and reproduction scripts. One file can contain multiple instances, so file count is not instance count. The documentation points to `instances.json` and a verification script for checking the instance set. The code/data release and fixed Zenodo archive make the reported artifacts traceable.[2][5]
+
+**Evaluating a shipped portfolio** differs from **evolving a fresh portfolio from the beginning**. The former executes already-written algorithms without an API key. The latter depends on an external LLM API, a selected model and sampling behavior. Downloading the same repository cannot freeze the future responses of an external service. Reproduction needs data and code versions, model identifiers, execution conditions and resource-use records.[2]
+
+This publication task did not run new algorithm-generation experiments. The availability of a Colab notebook is not presented as successful reproduction of every experiment in Colab. Executing generated code in an actual business system also requires isolation, resource limits and file/network controls. A research execution check is not a production security audit.
+
+## 7. Limitations and counterevidence: what remains outside the automation
+
+All four novel problems concern port scheduling or tugboat routing. Testing newly combined constraint structures is informative, but it does not establish zero-adjustment generalization to every medical, power-grid or robotics problem. The framework also assumes that feasibility and objective values can be evaluated. Conflicting policy documents or implicit operator exceptions can make a correct checker difficult to define in the first place.[1][3]
+
+A smoke test establishes at least one working execution path, not universal correctness under extreme values, missing data or new constraints. If a generated tool omits a constraint and a generated heuristic ignores the same constraint, internal checking can miss the shared defect. This is an engineering risk to investigate when generation and validation are coupled, not a claim that the paper observed that particular failure.
+
+The time boundary matters too. API expenditure for designing algorithms, development-instance evaluation and final portfolio execution are distinct costs. A high mean score does not prove a lower total factory cost. The study concerns particular problems, methods and conditions, not universal superiority over commercial MILP or CP solvers on every hardware configuration and time budget. The authors declare no competing interests.[1][2][3]
+
+## 8. What could change, and what to examine next
+
+The practical direction is an iterative process: fix the problem rules, let AI explore candidates, and select using execution results. Human responsibilities extend beyond manually writing one good algorithm to inspecting the contract, evaluation split, failure conditions and computational budget. The important design questions concern **which evaluator is trusted and which evidence is retained**, not merely how many agents are connected.
+
+Next, examine novel problems outside ports, comparisons at matched total time and computational cost, independent repeated runs and the distribution of failures. When noisy operational data or changing constraints arrive, researchers also need to define when an old portfolio must be retired and revalidated. A reproducible failure boundary can be more useful operationally than another increase in the average score.
+
+The supplied draft's central conclusion survives: **automatically evolving complementary algorithms inside a verifiable contract has become a powerful approach**. Correctly specifying that contract, separating averages from difficult instances, and comparing generation plus operating costs are not automatically solved. Keeping those distinctions is essential when moving from research on algorithm discovery toward operational algorithm engineering.
+
+## 9. Sources and access scope
+
+[1] Gong et al., Large language models discover complementary heuristics for combinatorial optimization. Nature Machine Intelligence, 1 October 2026, DOI 10.1038/s42256-026-01307-8. Public abstract, publication details, availability and interests. [Original source](https://www.nature.com/articles/s42256-026-01307-8).
+
+[2] PJ-NTU/LACE official implementation. README, ARCHITECTURE, REPRODUCE and data/API boundaries. Its MIT repository license is separate from permission to reproduce publisher article figures. [Original source](https://github.com/PJ-NTU/LACE).
+
+[3] Supplementary Information, Notes 3–5: comparison settings, automated contracts, section 4.4 on adopted/generated components and ablations. [Original source](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs42256-026-01307-8/MediaObjects/42256_2026_1307_MOESM1_ESM.pdf).
+
+[4] Authors' interactive supplement: metric distinctions, problem-level results, prompts and final portfolios. [Original source](https://pj-ntu.github.io/LACE/lace_supplementary_information.html).
+
+[5] Fixed Zenodo archive linked by the paper's Data/Code availability; archive availability is distinct from rerunning the algorithms. [Original source](https://doi.org/10.5281/zenodo.21886438).
+
+Sources were checked on 5 October 2026. The publisher main paper was accessible as a subscription preview, so full access to its Results/Methods is not claimed. Findings additionally checked in the public supplementary PDF and official repository are identified in the article. The benchmark chart is our replot of public reported values; the portfolio chart is a labeled hypothetical teaching example. Publisher figures without confirmed reuse permission were not copied. No complete reproduction run, fresh LLM evolution or industrial deployment validation was performed.
