@@ -1,0 +1,79 @@
+name: October 2 evidence
+on:
+  push:
+    branches: [ops/oct02-evidence-20261005]
+    paths: [.github/workflows/oct02-evidence.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 99a2e79f58d95f7a0ca31a13b767f84928bb1732
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4 pymupdf
+      - name: Read only source snapshot and publisher evidence
+        run: |
+          mkdir -p evidence
+          python - <<'PY'
+          import pathlib,subprocess,zipfile,requests,json,hashlib,urllib.parse,fitz
+          from bs4 import BeautifulSoup
+          out=pathlib.Path('evidence');log=[]
+          head=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip();assert head=='99a2e79f58d95f7a0ca31a13b767f84928bb1732'
+          (out/'head.txt').write_text(head)
+          with zipfile.ZipFile(out/'source.zip','w',zipfile.ZIP_DEFLATED) as z:
+            for name in subprocess.check_output(['git','ls-files'],text=True).splitlines():
+              p=pathlib.Path(name)
+              if p.name.startswith('.env') or p.stat().st_size>5000000:continue
+              try:p.read_text()
+              except (UnicodeError,OSError):continue
+              z.write(p,name)
+          def get(url,name):
+            try:
+              r=requests.get(url,timeout=60);r.raise_for_status();p=out/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(r.content)
+              log.append({'url':url,'file':name,'sha256':hashlib.sha256(r.content).hexdigest(),'bytes':len(r.content)})
+              return r
+            except Exception as e:log.append({'url':url,'error':str(e)});return None
+          for key,article in [('lace','s42256-026-01307-8'),('perturbation','s41587-026-03307-w')]:
+            url='https://www.nature.com/articles/'+article;r=get(url,key+'/article.html')
+            if not r:continue
+            soup=BeautifulSoup(r.text,'html.parser');(out/key/'article.txt').write_text(soup.get_text('\n',strip=True))
+            links=[]
+            for a in soup.select('a[href]'):
+              href=urllib.parse.urljoin(url,a['href']);label=a.get_text(' ',strip=True)
+              if '.pdf' in href or 'github.com' in href or 'creativecommons.org' in href:links.append({'label':label,'url':href})
+            (out/key/'links.json').write_text(json.dumps(links,indent=2))
+            figures=[]
+            for f in soup.select('figure'):
+              for im in f.select('img[src]'):
+                figures.append({'url':urllib.parse.urljoin(url,im['src']),'caption':f.get_text(' ',strip=True)})
+            (out/key/'figures.json').write_text(json.dumps(figures,indent=2))
+            urls=[url+'.pdf']+[x['url'] for x in links if '.pdf' in x['url'] and 'MOESM1' in x['url']]
+            for i,u in enumerate(dict.fromkeys(urls)):
+              r=get(u,key+f'/document-{i}.pdf')
+              if r and r.content.startswith(b'%PDF'):
+                d=fitz.open(stream=r.content,filetype='pdf');(out/key/f'document-{i}.txt').write_text('\n'.join(f'=== PAGE {n+1} ===\n'+p.get_text() for n,p in enumerate(d)))
+                for n,p in enumerate(d):
+                  if n<12:p.get_pixmap(matrix=fitz.Matrix(1.2,1.2)).save(out/key/f'doc{i}-p{n+1}.png')
+          get('https://arxiv.org/html/2604.18336v3','glass/article.html');r=get('https://arxiv.org/pdf/2604.18336v3','glass/article.pdf')
+          if r and r.content.startswith(b'%PDF'):
+            d=fitz.open(stream=r.content,filetype='pdf');(out/'glass/article.txt').write_text('\n'.join(f'=== PAGE {n+1} ===\n'+p.get_text() for n,p in enumerate(d)))
+            for n,p in enumerate(d):p.get_pixmap(matrix=fitz.Matrix(1.2,1.2)).save(out/'glass'/f'page-{n+1}.png')
+          resources=[
+            ('PJ-NTU/LACE','README.md'),('PJ-NTU/LACE','LICENSE'),('PJ-NTU/LACE','docs/lace_supplementary_information.html'),('PJ-NTU/LACE','docs/ARCHITECTURE.md'),('PJ-NTU/LACE','REPRODUCE.md'),
+            ('jarvisyjw/GlassRecon','index.html'),('jarvisyjw/GlassRecon','LICENSE'),('JMamie/GlassRecon','README.md'),('JMamie/GlassRecon','LICENSE')]
+          for repo,p in resources:get('https://raw.githubusercontent.com/'+repo+'/main/'+p,'repos/'+repo+'/'+p)
+          (out/'retrieval.json').write_text(json.dumps(log,indent=2));print(json.dumps(log))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oct02-evidence
+          path: evidence/
+          retention-days: 7
