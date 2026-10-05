@@ -1,0 +1,49 @@
+name: October 2 emphasis repair
+on:
+  push:
+    branches: [ops/oct02-evidence-20261005]
+    paths: [.github/workflows/oct02-markup.yml]
+permissions:
+  contents: write
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 72c55bf3f615006e7e0644cad490599a9b1cb118
+          persist-credentials: false
+      - name: Correct only seven verified literal strong markers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p markup-receipt
+          python3 - <<'PY'
+          import pathlib,json,hashlib,urllib.request
+          import os
+          directory=pathlib.Path('spaceship-ui/site/content/posts')
+          fixes={
+            '2026-10-02-lace-complementary-heuristics-news.mdx':['목적함수(objective)','제약조건(constraint)','instance(사례)','포트폴리오(portfolio)'],
+            '2026-10-02-perturbation-benchmark-calibration-news.mdx':['평균 기준선(mean baseline)','양성 대조군(positive control)'],
+            '2026-10-02-glassrecon-depth-alignment-news.mdx':['단안 깊이 모델(monocular depth model)']}
+          rows=[]
+          for filename,terms in fixes.items():
+            p=directory/filename;before=p.read_bytes();text=before.decode()
+            for term in terms:
+              a='**'+term+'**';assert text.count(a)==1;text=text.replace(a,'<strong>'+term+'</strong>')
+            data=text.encode();p.write_bytes(data)
+            payload=json.dumps({'content':text,'encoding':'utf-8'}).encode()
+            req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=payload,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+            with urllib.request.urlopen(req,timeout=40) as response:result=json.load(response)
+            expected=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest();assert result['sha']==expected
+            rows.append({'path':str(p),'mode':'100644','type':'blob','sha':expected,'sha256':hashlib.sha256(data).hexdigest(),'previousSha256':hashlib.sha256(before).hexdigest(),'terms':terms})
+            pathlib.Path('markup-receipt',filename).write_bytes(data)
+          pathlib.Path('markup-receipt/receipt.json').write_text(json.dumps({'source':'72c55bf3f615006e7e0644cad490599a9b1cb118','files':rows,'changes':7},ensure_ascii=False,indent=2))
+          print(json.dumps(rows,ensure_ascii=False));print('No tree, commit or ref writes')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oct02-markup-repair
+          path: markup-receipt/
+          retention-days: 7
