@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 72c55bf3f615006e7e0644cad490599a9b1cb118
+          ref: 378fa5621f9a4c92ddf281743c4de8db54dd2d65
           path: repo
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -36,7 +36,14 @@ jobs:
       - name: Assemble declared content without changing source articles
         working-directory: repo
         run: |
-          python ../ops/.ops/oct02-integrate.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('../ops/.ops/oct02-integrate.py').read_text()
+          old="SOURCE='72c55bf3f615006e7e0644cad490599a9b1cb118'"
+          assert s.count(old)==1
+          s=s.replace(old,"SOURCE='378fa5621f9a4c92ddf281743c4de8db54dd2d65'")
+          exec(compile(s,'oct02-integrate.py','exec'),{'__name__':'__main__'})
+          PY
           git add -N .
           git diff --check
       - uses: pnpm/action-setup@v4
@@ -75,7 +82,7 @@ jobs:
           python - <<'PY'
           import pathlib,json,hashlib,base64,requests,os
           out=pathlib.Path('../oct02-receipt');j=json.loads((out/'assembly.json').read_text())
-          assert j['sourceCommit']=='72c55bf3f615006e7e0644cad490599a9b1cb118'
+          assert j['sourceCommit']=='378fa5621f9a4c92ddf281743c4de8db54dd2d65'
           assert len(j['files'])==21
           for row in j['files']:
               p=pathlib.Path(row['path']);assert not p.is_absolute() and '..' not in p.parts
