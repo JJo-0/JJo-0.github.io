@@ -1,8 +1,8 @@
-name: October 3 integration candidate
+name: October 2 and 3 integration candidate
 on:
   pull_request:
     branches: [main]
-    paths: [.github/workflows/oct03-evidence.yml, '.ops/oct03-assemble.py', '.ops/oct03-finalize.py']
+    paths: [.github/workflows/oct03-evidence.yml, '.ops/oct03-assemble.py', '.ops/oct03-finalize.py', '.ops/oct02-assemble.py', '.ops/oct02-checks.py']
 permissions:
   contents: read
   actions: read
@@ -35,15 +35,24 @@ jobs:
           run-id: 37262628541
           github-token: ${{ github.token }}
           path: input
+      - uses: actions/download-artifact@v4
+        with:
+          name: october-2-source-evidence
+          run-id: 37269049027
+          github-token: ${{ github.token }}
+          path: input02
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install pyyaml pymupdf==1.26.7
-      - name: Assemble reviewed original figures and metadata
+      - name: Assemble all reviewed source pairs and media
         working-directory: repo
         run: |
+          git fetch --depth=1 origin 2c2841cf089dde5ae554788e91ffa31662545126
           python ../ops/.ops/oct03-assemble.py
-          if test -f ../ops/.ops/oct03-finalize.py; then python ../ops/.ops/oct03-finalize.py; fi
+          python ../ops/.ops/oct03-finalize.py
+          python ../ops/.ops/oct02-assemble.py
+          python ../ops/.ops/oct02-checks.py
           git add -N .
           git diff --check
       - uses: pnpm/action-setup@v4
@@ -58,21 +67,24 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Existing source quality gates
         run: |
+          node scripts/graph-json.test.mjs
           pnpm lint 2>&1 | tee ../../oct03-receipt/lint.log
           pnpm check 2>&1 | tee ../../oct03-receipt/types.log
           pnpm seo:check 2>&1 | tee ../../oct03-receipt/seo.log
-      - name: Build and content integrity
+      - name: Build and preserved content integrity
         run: |
           pnpm build 2>&1 | tee ../../oct03-receipt/build.log
           pnpm content:check 2>&1 | tee ../../oct03-receipt/content.log
           python3 scripts/english-edition-audit.py 2>&1 | tee ../../oct03-receipt/english-static.log
+          python3 scripts/oct02-contract.py 2>&1 | tee ../../oct03-receipt/oct02-static.log
           python3 scripts/oct03-contract.py 2>&1 | tee ../../oct03-receipt/oct03-static.log
       - name: Real reading and preserved mobile behavior
         run: |
+          node scripts/browser-oct02.mjs 2>&1 | tee ../../oct03-receipt/oct02-browser.log
           node scripts/browser-oct03.mjs 2>&1 | tee ../../oct03-receipt/oct03-browser.log
           node scripts/browser-english-edition.mjs 2>&1 | tee ../../oct03-receipt/english-browser.log
           node scripts/browser-mobile-performance.mjs 2>&1 | tee ../../oct03-receipt/mobile-browser.log
-      - name: Preserve exact candidate and diagnostic files
+      - name: Preserve exact candidate and diagnostics
         if: always()
         working-directory: repo
         run: |
@@ -87,6 +99,7 @@ jobs:
                       b=pathlib.Path(row['path']).read_bytes();assert hashlib.sha256(b).hexdigest()==row['sha256'];z.writestr(row['path'],b)
               p.write_text(json.dumps(m,ensure_ascii=False,indent=2))
           PY
+          cp -R spaceship-ui/oct02-review ../oct03-receipt/ 2>/dev/null || true
           cp -R spaceship-ui/oct03-review ../oct03-receipt/ 2>/dev/null || true
           cp -R spaceship-ui/english-review ../oct03-receipt/ 2>/dev/null || true
           cp -R spaceship-ui/mobile-performance ../oct03-receipt/ 2>/dev/null || true
@@ -111,7 +124,7 @@ jobs:
         with:
           name: oct03-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: input
-      - name: Verify and preserve immutable blobs only
+      - name: Verify and preserve immutable source blobs only
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -120,20 +133,21 @@ jobs:
           root=pathlib.Path('input');m=json.loads((root/'manifest.json').read_text());z=zipfile.ZipFile(root/'candidate-source.zip')
           assert m['base']=='99a2e79f58d95f7a0ca31a13b767f84928bb1732'
           assert m['sourceCommit']=='08d3e94f1066006bfa503db251dde68b41eaad99'
-          assert 25<=len(m['files'])<=35
+          assert m['oct02SourceCommit']=='2c2841cf089dde5ae554788e91ffa31662545126'
+          assert 45<=len(m['files'])<=65
           assert sorted(z.namelist())==sorted(r['path'] for r in m['files'])
           for row in m['files']:
               path=pathlib.PurePosixPath(row['path']);assert not path.is_absolute() and '..' not in path.parts
-              assert str(path).startswith('spaceship-ui/') or str(path) in ['scripts/normalize_tags_current.py','.github/workflows/oct03-reading.yml']
-              assert path.suffix in {'.md','.mdx','.json','.mjs','.ts','.astro','.png','.py','.yml'}
+              assert str(path).startswith('spaceship-ui/') or str(path) in ['scripts/normalize_tags_current.py','.github/workflows/oct03-reading.yml','.github/workflows/oct02-reading.yml']
+              assert path.suffix in {'.md','.mdx','.json','.mjs','.ts','.astro','.png','.py','.yml','.svg'}
               b=z.read(str(path));assert len(b)<6000000 and hashlib.sha256(b).hexdigest()==row['sha256']
               assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==row['sha']
               payload={'content':base64.b64encode(b).decode(),'encoding':'base64'} if path.suffix=='.png' else {'content':b.decode('utf-8'),'encoding':'utf-8'}
-              request=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=json.dumps(payload).encode(),headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
-              with urllib.request.urlopen(request,timeout=40) as response:created=json.load(response)
+              req=urllib.request.Request('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',data=json.dumps(payload).encode(),headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+              with urllib.request.urlopen(req,timeout=40) as response:created=json.load(response)
               assert created['sha']==row['sha']
           pathlib.Path('output').mkdir();pathlib.Path('output/verified-blobs.json').write_text(json.dumps(m,indent=2))
-          print('Verified',len(m['files']),'immutable source blobs; no tree, commit, ref or branch written')
+          print('Verified',len(m['files']),'immutable blobs; no tree, commit, ref or branch written')
           PY
       - uses: actions/upload-artifact@v4
         with:
