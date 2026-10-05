@@ -1,0 +1,136 @@
+---
+title: 'Did the cell model fail, or did its benchmark miss the difference?'
+description: 'A 14-dataset, 18-metric reassessment of genetic perturbation prediction. Understand positive controls, DRF, PRESAGE’s 15-of-18 result and the limits of unseen-context generalization.'
+pubDate: 2026-10-02T00:01:00+09:00
+updatedDate: 2026-10-05
+publicationTimeZone: Asia/Seoul
+slug: perturbation-benchmark-calibration
+category: ai-machine-learning
+subcategory: perturbation-benchmarking
+type: paper-review
+tags:
+  - frontier-candidate
+  - virtual-cell
+researchFeatured: false
+draft: false
+lang: en
+translationKey: frontier-perturbation-20261002
+translatedPosts:
+  ko-KR: 2026-10-02-perturbation-benchmark-calibration-news
+---
+
+import BeginnerGuide from '@/components/post/BeginnerGuide.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+## 1. The conclusion: test the metric before judging the model
+
+When a deep-learning cell model appears to perform no better than a simple average, researchers should ask whether **the evaluation metric can distinguish biologically informative predictions**. Published in Nature Biotechnology on 1 October 2026, this study examines 14 datasets and 18 metrics, using positive controls and a Dynamic Range Fraction (DRF) to assess metric sensitivity. Under well-calibrated metrics, several deep-learning models can outperform uninformative baselines.[1]
+
+This does not declare every earlier negative result incorrect, nor announce a completed virtual cell. The title's “can outperform” describes performance under particular evaluation conditions. The model, dataset, metric and comparison must remain visible. This is the second candidate in the 2 October editorial selection, with actual publication and source checks on 5 October.
+
+<NewsFigure media="oct02-perturbation-fig1" lang="en" priority />
+
+### Reading original Figure 1: can the test reward an informative answer?
+
+Panel **a** constructs a technical-duplicate control by splitting cells under the same perturbation and predicting one group from the other. Panel **b** blends that duplicate with a mean baseline using gene-specific weights. Panel **c** compares the ideal gap to perfect prediction with the gap actually achieved by the positive control. Panel **d** compares calibration for MSE and weighted MSE; **e** shows mean DRF for 12 metrics across 14 datasets. The 12 metrics in that panel are not the same count as the study's full set of 18 metrics.[1]
+
+## 2. Why this is difficult: unchanged genes can dominate the average
+
+A **genetic perturbation** inhibits or activates a gene so researchers can observe how the cell responds. A prediction model estimates the resulting expression changes across many genes. Useful predictions must do more than output an array that resembles a typical cell: they need to capture **changes specific to the perturbation being applied**.[1]
+
+If many genes barely change while a small subset changes meaningfully, averaging errors with equal weight across all genes can dilute that signal. Conversely, systematic differences between control cells and all perturbed cells can make a non-specific mean prediction look informative under control-referenced change metrics. The paper distinguishes these mechanisms as **signal dilution** and **control bias**.[1]
+
+<BeginnerGuide title="Start here: expression, perturbations and baselines" lang="en">
+
+Think of measurements indicating how much a cell uses each gene. One task is to reduce gene A's activity and predict changes in the expression of B, C, D and others. An expression change is not automatically a drug benefit or improved patient survival. This study directly compares predictions of measured expression responses.
+
+The **mean baseline** outputs an average training-set response regardless of the requested perturbation. Its definition is also not simply an equal-weight average of every cell. The paper first averages within each perturbation, then averages those perturbation means equally. A perturbation with more measured cells does not automatically receive more weight.
+
+For a teaching example, imagine 1,000 genes, of which 990 stay almost unchanged and ten change strongly. A model that predicts almost everything unchanged may score well on overall error while missing the ten informative changes. Those counts are hypothetical, not dataset statistics from the paper. Nor does the example justify ignoring the other 990 genes: overall plausibility and recovery of important changes need to be evaluated together.
+
+</BeginnerGuide>
+
+## 3. What earlier benchmarks lacked: an informative positive control
+
+If all predictors have similarly poor scores, perhaps none learned meaningful perturbation effects. But perhaps the metric cannot distinguish informative predictions from an irrelevant average. A negative control alone cannot resolve those explanations. The authors therefore introduce a **positive control** deliberately given information about the relevant perturbation, using it to test the evaluation metric itself.[1][2]
+
+The technical duplicate divides cells from the same perturbation and uses the mean of one group to predict the other. Small samples and weak effects can still make this control noisy. The interpolated duplicate places more weight on the technical duplicate for genes with strong differential-expression evidence, and more on the mean baseline for genes with weak evidence. Its gene-specific interpolation weight alpha is tied to an adjusted P value.[1]
+
+The essential boundary is that **this positive control is not a deployable model predicting a previously unmeasured perturbation**. It uses measurements from that perturbation to construct an idealized reference. A high score cannot be presented as successful prediction without access to relevant test-condition information. Its role is to check the exam, not to become the new winner on a predictive leaderboard.
+
+The paper also distinguishes the data used to construct this control from the data used to calculate evaluation weights. Data appearing in more than one part of an analysis do not always have the same role. Model training, control construction and metric-weight estimation need separate tracking to distinguish information leakage from a legitimate calibration experiment.[1]
+
+## 4. What the DRF calculation answers
+
+DRF expresses how much of the ideal metric gap from a negative control to perfect prediction is covered by the positive control. The metric function m compares a prediction with ground truth. Meaningful calculation requires the same metric and the same perturbation's reference data throughout. Swapping the roles of ground truth, positive prediction and negative prediction would answer a different question.[1]
+
+<CandidateEquation id="perturbation-drf" title="What if a positive control covers only half of the ideal gap?" lang="en" tex={String.raw`\mathrm{DRF}=\frac{m(\hat y_p)-m(\hat y_n)}{m(y)-m(\hat y_n)+\epsilon}`}>
+
+y is ground truth, p denotes the positive-control prediction, n the negative-control prediction, and epsilon is a small numerical-stability term. The numerator is the observed gap between positive and negative controls; the denominator is the gap from the negative control to perfect prediction. This is the DRF definition from the paper's Methods. Some metrics are higher-is-better and others lower-is-better, so their original direction and calculation convention must be preserved.[1]
+
+Consider a hypothetical higher-is-better metric: perfect prediction scores 1.0, the negative control 0.2 and the positive control 0.6. Assume the gaps are large enough that epsilon has negligible influence. The observed gap is 0.4 and the ideal gap 0.8, giving DRF approximately 0.5. That does not mean half the genes were predicted correctly. It means the controls span **half of the metric's reference gap**. These values are a teaching example.
+
+If the denominator is nearly zero, the ratio should not be read as a stable quality measure. Control choice and data noise also matter. A high DRF does not automatically establish a good predictive model. First assess the metric's sensitivity, then compare models under that metric: they are separate stages.
+
+</CandidateEquation>
+
+Weighted-error and rank-based metrics were often more sensitive to perturbation-specific signals, but the paper warns against making one metric the final verdict. Whole-profile error remains useful as a guardrail against implausible predictions. Rather than discarding MSE, the authors recommend reporting complementary metrics and note that MSE generally calibrated better than MAE. “All traditional MSE evaluation is useless” is not the conclusion.[1]
+
+## 5. The experiments: unseen genes and unseen combinations are different tasks
+
+The study separates two tasks. In the first, models predict responses to individual genetic perturbations held out during training. In the second, they observe individual perturbations and some combinations, then predict **new combinations**. Never encountering a gene's perturbation is different from observing each component individually but not the pair. These are distinct generalization settings.[1]
+
+<NewsFigure media="oct02-perturbation-fig2" lang="en" />
+
+### Reading original Figure 2: inspect the baseline, metric and dataset
+
+Panel **a** shows the two data-splitting tasks. Panels **b–d** evaluate unseen single perturbations in Replogle22 K562 using different metrics; **e–g** concern unseen combinations in Wessels23. Points and intervals express performance differences from a baseline and their uncertainty. WMSE is lower-is-better, while correlation/explained-variation metrics are higher-is-better, so one visual direction cannot be called “winning” in every panel. The sampling unit is the perturbation in the analysis, not a patient or an independent clinical trial.[1]
+
+The comparisons include scGPT, GEARS, PRESAGE, scLambda, CellFlow and MLP probes using four types of pretrained representations. This design examines both model architecture and the information in representations. A statement that at least one deep-learning model exceeds all baselines on each metric does not mean that one identical model wins on every metric and dataset. Strengths differ with the kind of signal being evaluated.[1]
+
+<CandidateTable id="perturbation-evidence" label="Perturbation benchmark tasks, findings and boundaries">
+
+| Item | Scope supported by the paper | Interpretation to avoid |
+| --- | --- | --- |
+| Metric assessment | Fourteen datasets and 18 metrics | 252 independent clinical validations |
+| Unseen single perturbations | Model/baseline comparisons in Replogle22 K562 and Nadig25 HepG2 | Generalization to every cell context and donor |
+| Unseen combinations | PRESAGE exceeds the additive baseline on 15 of 18 metrics in Wessels23 | An 83.3% success rate across all combinations |
+| Positive control | Perturbation measurements used to test metric sensitivity | A deployable predictor for unmeasured perturbations |
+
+</CandidateTable>
+
+## 6. The exact denominators behind 0.63% and 15 of 18
+
+The supplied draft's Norman19 “0.63% coverage” needs a more precise denominator. The paper means **the fraction of the possible combination space represented in training**. It is not a fraction of all measured cells or a generic ratio of everything in the dataset. The corresponding training-combination coverage reported for Wessels23 is 10.3%. This distinction appears in the paper's main text and limitations.[1]
+
+An **additive baseline** predicts a combination by adding the effects of its individual perturbations. The paper adds the two single-perturbation mean profiles and subtracts the control mean once to avoid double-counting that background. When many changes are explained well by addition, this simple baseline is intrinsically strong. Failure to surpass it does not automatically mean that a model learned nothing.[1]
+
+Norman19's strong additive baseline and limited training-combination coverage need to be considered together. PRESAGE outperforming the additive baseline on 15 of 18 Wessels23 metrics is important, but the metrics are not 18 independent trials. Turning 15/18 into “83.3% predictive accuracy” changes the denominator. Differences between two datasets also cannot establish that combination coverage is the sole cause of a performance difference.[1]
+
+## 7. Limitations and interests: this is not validation of a complete virtual cell
+
+The work does not address the **unseen-context** task of predicting responses in a previously unobserved cell type, donor or condition. How a gene perturbation behaves in another environment needs separate validation. Better expression-response prediction also does not automatically demonstrate clinical benefit for a drug target or establish that experiments can be replaced. Connecting predictions to function and application requires additional forms of evidence.[1]
+
+Metric selection retains its own risks. Choosing only favorable metrics after observing results can bias evaluation. Controls and several application-relevant metrics should be specified in advance, with unfavorable results and failures retained. A high weighted score should not excuse globally implausible expression values. The authors likewise emphasize complementary metric families rather than one privileged score.[1]
+
+At publication, the competing-interests section disclosed employment relationships with Shift Bioscience for several authors and Bo Wang's role at Xaira Therapeutics. That is a report of the paper's disclosure at that time, not an independently updated claim about a current position. Public reproduction code also does not grant unrestricted commercial use of every evaluated model. Methods explicitly describes PRESAGE use under noncommercial academic benchmarking conditions.[1][3]
+
+## 8. What could change: put evaluation checks ahead of model competition
+
+A reusable research habit is straightforward: before comparing new models, test whether **known uninformative predictions and an informative positive control are distinguishable by the evaluator**. Then inspect the training/test split, the unit being averaged, the signal emphasized by each metric and the strength of the baselines. This sequence allows a more specific investigation of whether a low score reflects model failure or an insensitive measuring instrument.
+
+Follow-up studies should examine new cell contexts, more diverse combination datasets, sufficient repetitions and model versions. Application-related tasks such as pathway recovery or the relationships among perturbations also deserve attention. However, adding more evaluation columns does not itself create rigor. Several closely related metrics should not be counted as several independent pieces of evidence.
+
+The study's conclusion is that **deep-learning perturbation models can outperform uninformative baselines, and observing the difference requires checking metric sensitivity**. Treating the quality of the test itself as a research question is the contribution. It remains important not to suggest that calibration has solved every biological generalization problem.
+
+## 9. Sources and access scope
+
+[1] Miller, Mejia, Leblanc et al., Deep learning perturbation models can outperform baselines on calibrated metrics. Nature Biotechnology, 1 October 2026, DOI 10.1038/s41587-026-03307-w. Main text, Methods, Figures 1–2, interests and CC BY 4.0. [Original source](https://www.nature.com/articles/s41587-026-03307-w).
+
+[2] Supplementary Information, Notes 1–2 on positive controls and additional calibration analyses. [Original source](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41587-026-03307-w/MediaObjects/41587_2026_3307_MOESM1_ESM.pdf).
+
+[3] Official reproduction repository linked by Code availability. Individual model licenses and modifications need separate examination. [Original source](https://github.com/shiftbioscience/Perturbation-Models-Outperform-Baselines).
+
+The article retains the ranking and central findings of the supplied 2 October selection while explicitly adding the training-coverage, positive-control and model-use distinctions checked in the original on 5 October. Both original figures retain their full panels, axes and colors, with source attribution under CC BY 4.0. We checked the reported values and DRF definition but did not reprocess the raw single-cell datasets or retrain all models. This research explainer does not recommend personal medical testing or treatment.
