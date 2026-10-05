@@ -1,79 +1,112 @@
-name: October 2 evidence
+name: October 2 integration candidate
 on:
   push:
     branches: [ops/oct02-evidence-20261005]
-    paths: [.github/workflows/oct02-evidence.yml]
+    paths: [.github/workflows/oct02-evidence.yml, .ops/oct02-integrate.py]
 permissions:
   contents: read
+concurrency:
+  group: oct02-integration-candidate
+  cancel-in-progress: true
 jobs:
-  evidence:
+  candidate:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: repo/spaceship-ui
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 99a2e79f58d95f7a0ca31a13b767f84928bb1732
+          ref: ${{ github.sha }}
+          path: ops
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 72c55bf3f615006e7e0644cad490599a9b1cb118
+          path: repo
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install requests beautifulsoup4 pymupdf
-      - name: Read only source snapshot and publisher evidence
+      - run: pip install requests pyyaml matplotlib pillow numpy
+      - name: Assemble declared content without changing source articles
+        working-directory: repo
         run: |
-          mkdir -p evidence
+          python ../ops/.ops/oct02-integrate.py
+          git add -N .
+          git diff --check
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: repo/spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Existing source quality checks
+        run: |
+          pnpm taxonomy:check 2>&1 | tee ../../oct02-receipt/taxonomy.log
+          pnpm lint 2>&1 | tee ../../oct02-receipt/lint.log
+          pnpm check 2>&1 | tee ../../oct02-receipt/types.log
+          pnpm seo:check 2>&1 | tee ../../oct02-receipt/seo.log
+          pnpm blog:harness:check 2>&1 | tee ../../oct02-receipt/harness.log
+      - name: Build and unchanged integrity contracts
+        run: |
+          pnpm build 2>&1 | tee ../../oct02-receipt/build.log
+          pnpm content:check 2>&1 | tee ../../oct02-receipt/content.log
+          python3 scripts/english-edition-audit.py 2>&1 | tee ../../oct02-receipt/english-static.log
+          python3 scripts/oct02-contract.py 2>&1 | tee ../../oct02-receipt/oct02-static.log
+      - name: Actual browser input and mobile regressions
+        run: |
+          node scripts/browser-english-edition.mjs 2>&1 | tee ../../oct02-receipt/english-browser.log
+          node scripts/browser-oct02.mjs 2>&1 | tee ../../oct02-receipt/oct02-browser.log
+          node scripts/browser-mobile-performance.mjs 2>&1 | tee ../../oct02-receipt/mobile-browser.log
+      - name: Preserve only verified immutable blobs
+        working-directory: repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
           python - <<'PY'
-          import pathlib,subprocess,zipfile,requests,json,hashlib,urllib.parse,fitz
-          from bs4 import BeautifulSoup
-          out=pathlib.Path('evidence');log=[]
-          head=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip();assert head=='99a2e79f58d95f7a0ca31a13b767f84928bb1732'
-          (out/'head.txt').write_text(head)
-          with zipfile.ZipFile(out/'source.zip','w',zipfile.ZIP_DEFLATED) as z:
-            for name in subprocess.check_output(['git','ls-files'],text=True).splitlines():
-              p=pathlib.Path(name)
-              if p.name.startswith('.env') or p.stat().st_size>5000000:continue
-              try:p.read_text()
-              except (UnicodeError,OSError):continue
-              z.write(p,name)
-          def get(url,name):
-            try:
-              r=requests.get(url,timeout=60);r.raise_for_status();p=out/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(r.content)
-              log.append({'url':url,'file':name,'sha256':hashlib.sha256(r.content).hexdigest(),'bytes':len(r.content)})
-              return r
-            except Exception as e:log.append({'url':url,'error':str(e)});return None
-          for key,article in [('lace','s42256-026-01307-8'),('perturbation','s41587-026-03307-w')]:
-            url='https://www.nature.com/articles/'+article;r=get(url,key+'/article.html')
-            if not r:continue
-            soup=BeautifulSoup(r.text,'html.parser');(out/key/'article.txt').write_text(soup.get_text('\n',strip=True))
-            links=[]
-            for a in soup.select('a[href]'):
-              href=urllib.parse.urljoin(url,a['href']);label=a.get_text(' ',strip=True)
-              if '.pdf' in href or 'github.com' in href or 'creativecommons.org' in href:links.append({'label':label,'url':href})
-            (out/key/'links.json').write_text(json.dumps(links,indent=2))
-            figures=[]
-            for f in soup.select('figure'):
-              for im in f.select('img[src]'):
-                figures.append({'url':urllib.parse.urljoin(url,im['src']),'caption':f.get_text(' ',strip=True)})
-            (out/key/'figures.json').write_text(json.dumps(figures,indent=2))
-            urls=[url+'.pdf']+[x['url'] for x in links if '.pdf' in x['url'] and 'MOESM1' in x['url']]
-            for i,u in enumerate(dict.fromkeys(urls)):
-              r=get(u,key+f'/document-{i}.pdf')
-              if r and r.content.startswith(b'%PDF'):
-                d=fitz.open(stream=r.content,filetype='pdf');(out/key/f'document-{i}.txt').write_text('\n'.join(f'=== PAGE {n+1} ===\n'+p.get_text() for n,p in enumerate(d)))
-                for n,p in enumerate(d):
-                  if n<12:p.get_pixmap(matrix=fitz.Matrix(1.2,1.2)).save(out/key/f'doc{i}-p{n+1}.png')
-          get('https://arxiv.org/html/2604.18336v3','glass/article.html');r=get('https://arxiv.org/pdf/2604.18336v3','glass/article.pdf')
-          if r and r.content.startswith(b'%PDF'):
-            d=fitz.open(stream=r.content,filetype='pdf');(out/'glass/article.txt').write_text('\n'.join(f'=== PAGE {n+1} ===\n'+p.get_text() for n,p in enumerate(d)))
-            for n,p in enumerate(d):p.get_pixmap(matrix=fitz.Matrix(1.2,1.2)).save(out/'glass'/f'page-{n+1}.png')
-          resources=[
-            ('PJ-NTU/LACE','README.md'),('PJ-NTU/LACE','LICENSE'),('PJ-NTU/LACE','docs/lace_supplementary_information.html'),('PJ-NTU/LACE','docs/ARCHITECTURE.md'),('PJ-NTU/LACE','REPRODUCE.md'),
-            ('jarvisyjw/GlassRecon','index.html'),('jarvisyjw/GlassRecon','LICENSE'),('JMamie/GlassRecon','README.md'),('JMamie/GlassRecon','LICENSE')]
-          for repo,p in resources:get('https://raw.githubusercontent.com/'+repo+'/main/'+p,'repos/'+repo+'/'+p)
-          (out/'retrieval.json').write_text(json.dumps(log,indent=2));print(json.dumps(log))
+          import pathlib,json,hashlib,base64,requests,os
+          out=pathlib.Path('../oct02-receipt');j=json.loads((out/'assembly.json').read_text())
+          assert j['sourceCommit']=='72c55bf3f615006e7e0644cad490599a9b1cb118'
+          assert len(j['files'])==21
+          for row in j['files']:
+              p=pathlib.Path(row['path']);assert not p.is_absolute() and '..' not in p.parts
+              assert str(p).startswith('spaceship-ui/') or str(p) in ['scripts/normalize_tags_current.py','.github/workflows/oct02-reading.yml']
+              assert not str(p).startswith(('spaceship-ui/site/content/posts/','spaceship-ui/site/content/english/'))
+              b=p.read_bytes();assert hashlib.sha256(b).hexdigest()==row['sha256']
+              r=requests.post('https://api.github.com/repos/JJo-0/JJo-0.github.io/git/blobs',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'},json={'encoding':'base64','content':base64.b64encode(b).decode()},timeout=45);r.raise_for_status();assert r.json()['sha']==row['sha']
+          (out/'verified-blobs.json').write_text(json.dumps(j,indent=2))
+          print('Verified immutable blobs:',len(j['files']),'; no tree, commit, ref or deployment writes')
           PY
+      - name: Preserve candidate sources and evidence
+        if: always()
+        working-directory: repo
+        run: |
+          mkdir -p ../oct02-receipt
+          python - <<'PY'
+          import pathlib,json,zipfile
+          out=pathlib.Path('../oct02-receipt');p=out/'assembly.json'
+          if p.exists():
+              j=json.loads(p.read_text());names=[r['path'] for r in j['files']]
+              names.extend(str(p) for p in pathlib.Path('spaceship-ui/site/content/posts').glob('2026-10-02-*.mdx'))
+              names.extend('spaceship-ui/site/content/english/en-'+s+'.mdx' for s in ['lace-complementary-heuristics','perturbation-benchmark-calibration','glassrecon-depth-alignment'])
+              with zipfile.ZipFile(out/'candidate-source.zip','w',zipfile.ZIP_DEFLATED) as z:
+                  for name in sorted(set(names)):z.write(name,name)
+          PY
+          cp -R spaceship-ui/english-review ../oct02-receipt/ 2>/dev/null || true
+          cp -R spaceship-ui/mobile-performance ../oct02-receipt/ 2>/dev/null || true
+          git rev-parse HEAD > ../oct02-receipt/source-sha.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: oct02-evidence
-          path: evidence/
+          name: oct02-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: oct02-receipt/
           retention-days: 7
