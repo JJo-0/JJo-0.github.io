@@ -62,7 +62,11 @@ export async function auditNewsMedia(cdp, sessionId) {
   const sep30 = JSON.parse(
     fs.readFileSync(new URL('../site/news-edition-20260930-completion.json', import.meta.url), 'utf8')
   );
+  const oct03 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20261003.json', import.meta.url), 'utf8'));
+  const oct02 = JSON.parse(fs.readFileSync(new URL('../site/news-edition-20261002.json', import.meta.url), 'utf8'));
   const declaredEntries = [
+    ...oct02.entries,
+    ...oct03.entries,
     ...sep11.entries,
     ...sep15.entries,
     ...sep16.entries,

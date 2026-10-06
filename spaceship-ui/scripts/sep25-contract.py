@@ -39,7 +39,9 @@ for lang,route,attribute,key in [('ko','news','data-news-card','slug'),('en','en
   else:raise AssertionError('Reversed English edition order accepted')
 # Check the actual serialized graph, without reducing its node inventory.
 home=(R/'dist/index.html').read_text();hp=Page(home)
-graph=json.loads(next(a['data-post-graph'] for t,a in hp.tags if 'data-post-graph' in a))
+graph_match=re.search(r'<script\b[^>]*data-post-graph-source[^>]*>([\s\S]*?)</script>',home)
+assert graph_match, 'Complete graph JSON payload required'
+graph=json.loads(graph_match.group(1))
 # Later published editions add legitimate NEWS cards to the Home graph.
 # Keep the same bounded allowance as the current performance contract.
 assert len(home.encode())<=252*1024

@@ -55,7 +55,7 @@ const artifact = buildArtifact();
 
 function readGraph(host: HTMLElement): PostGraph | null {
   try {
-    const graph = JSON.parse(host.dataset.postGraph ?? 'null');
+    const graph = JSON.parse(host.querySelector<HTMLScriptElement>('script[data-post-graph-source]')?.textContent ?? host.dataset.postGraph ?? 'null');
     return graph && Array.isArray(graph.nodes) && Array.isArray(graph.edges) ? graph : null;
   } catch {
     return null;

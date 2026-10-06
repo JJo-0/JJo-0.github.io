@@ -1,0 +1,135 @@
+---
+title: 'An LLM builds a complementary algorithm team instead of one universal answer'
+description: 'Read LACE’s I-O-T-H contract, complementary heuristic evolution and MILP selection. Separate the 0.945 benchmark score, reproducibility materials and operational claims.'
+pubDate: 2026-10-02T00:00:00+09:00
+updatedDate: 2026-10-05
+publicationTimeZone: Asia/Seoul
+slug: lace-complementary-heuristics
+category: ai-machine-learning
+subcategory: automated-algorithm-design
+type: paper-review
+tags:
+  - frontier-one
+  - algorithm-discovery
+researchFeatured: false
+draft: false
+lang: en
+translationKey: frontier-lace-20261002
+translatedPosts:
+  ko-KR: 2026-10-02-lace-complementary-heuristics-news
+---
+
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import BeginnerGuide from '@/components/post/BeginnerGuide.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+**Start with the practical answer.** Algorithms for delivery routes or factory schedules have different strengths on different instances. Rather than asking an LLM for one finished program, LACE first establishes compatible inputs, outputs and evaluation tools, then evolves **a portfolio of heuristics with complementary strengths**. This division of responsibilities matters before interpreting the reported mean score of 0.945. That number does not mean real logistics costs were reduced by 94.5%.[1][2]
+
+<NewsFigure media="oct02-lace-contract" lang="en" priority />
+
+### Reading the first diagram: separate inputs, outputs, checking and candidates
+
+This is an **independently created teaching diagram**, not a reproduction of a paper figure. A problem description and instance files lead to input and output schemas and a common tool library. Heuristics operate inside that contract. Two key questions asked by the tools are whether a solution obeys the constraints and what objective value it achieves. Poor candidates can be revised, but a high score means little if the evaluator itself is wrong. The diagram can be read alongside the description of original Figure 1 and the module structure in the public repository.[1][3]
+
+<BeginnerGuide title="Combinatorial optimization and heuristics from first principles" lang="en">
+
+**Combinatorial optimization** combines choices to obtain a good answer under constraints. With three jobs on one machine, six possible orders can be enumerated. With many jobs and deadlines, machine requirements and staffing constraints, exhaustive comparison becomes difficult. A **heuristic** searches for a useful solution within a limited time; it is not a guarantee of optimality.
+
+Even the same delivery setting can have different objectives. Minimizing total travel distance differs from minimizing the latest vehicle's delay. A **feasible solution** obeys the constraints; a **good solution** has a favorable objective value among feasible alternatives. Syntactically valid Python, a program that terminates, a feasible solution and a high-quality solution are four different levels of success. Keep them separate when reading LACE.
+
+</BeginnerGuide>
+
+## 1. Why generating a complete algorithm in one pass is difficult
+
+An LLM can describe a plausible search strategy while misreading units in an instance file or allowing a job to be assigned twice. A good algorithmic idea cannot be compared fairly when its parser reads the wrong problem. Conversely, a program can terminate while using a forbidden route or exceeding a resource's capacity. Direct prompting must handle problem definition, implementation and search at the same time.[1][3]
+
+Adding a constraint to a factory schedule is also more than editing one sentence. An input field may be added, the output's meaning can change, and both the feasibility checker and the objective must reflect the revision. Automated algorithm design therefore depends on more than generating longer code. Every candidate must solve the same problem and be judged under the same rules.
+
+The study asks whether establishing that foundation first makes better use of LLM search. It separates inputs, outputs, tools and heuristics, validates execution and then changes higher-level strategies. This creates an iterative engineering process between manually writing the entire algorithm and requesting one complete program in a single pass.[1][2]
+
+## 2. I-O-T-H assigns four different responsibilities
+
+I denotes the input schema, O the output schema, T the tool library and H the heuristic portfolio. The reference implementation includes a process for generating the interface, while the distributed problems already contain their contracts. Thus, neither “humans manually supplied every contract” nor “the LLM does everything without validation” describes the framework accurately. Contract construction is automated, but it includes checking that an actual heuristic can execute end to end.[2][3]
+
+The tool library includes operations such as `is_feasible()` and `objective()`. A candidate constructs a solution through the interface, and shared tools assess feasibility and quality. Reusing a common contract instead of regenerating parsers and evaluators for every candidate improves comparability and leaves more of the model's effort available for search strategy.
+
+A smoke test is not a complete proof of a formal specification. Passing an example does not show that every boundary case is evaluated correctly. If the generator and checker share a misunderstanding, both may agree on an incorrect result. An operational implementation should compare reference solutions, forbidden solutions, empty inputs, capacity extremes and ties against independently understood rules. This is not a dismissal of the result; it is an additional responsibility when turning an automatically generated contract into a trusted operational component.
+
+## 3. Select complementary specialists, not just the best average candidate
+
+The second stage generates, revises and selects candidates under runtime constraints. Public materials distinguish five generation operators from two repair operators. Candidate variation, reflective redesign, complementary crossover, comparative synthesis and diversity injection propose strategies; execution errors and timeouts receive separate repair. These seven operators should not be described as seven independently discovered algorithm families.[2][3]
+
+Selection is not simply keeping the ten highest average scores. Ten heuristics that excel on the same instances and fail on the same others offer little complementarity. Ranking-based mixed-integer linear programming (MILP) selects a set whose strengths cover different cases. The distributed portfolios contain ten evolved heuristics per problem.[2][3]
+
+<NewsFigure media="oct02-lace-portfolio" lang="en" />
+
+### Reading the second diagram: coverage rather than a universal winner
+
+The labels A, B and C and instances X, Y and Z are **teaching examples, not experimental observations**. If A is strongest on X, B on Y and C on Z, evaluating one heuristic's mean differs from evaluating the best available answer from a portfolio. The actual study uses a ranking matrix on development instances for portfolio selection. The illustration explains the intuition without reproducing the paper's MILP coefficients or a measured performance matrix.
+
+<CandidateEquation id="lace-portfolio-rank" title="How can complementary coverage be expressed mathematically?" lang="en" tex={String.raw`F(S)=\frac{1}{m}\sum_{i=1}^{m}\min_{h\in S}r_{ih}`}>
+
+Here m is the number of development instances, S the retained set of heuristics, and r the rank of heuristic h on instance i, with smaller ranks better. Suppose A has ranks 1, 3 and 2, while B has ranks 3, 1 and 1. A alone averages 2. Together their best available ranks are 1, 1 and 1, averaging 1. This simplified expression explains complementary selection; it does not specify every variable and constraint of the implemented MILP. It also does not make the computation required to evaluate both heuristics free.
+
+</CandidateEquation>
+
+A best-per-instance portfolio must be compared with individual heuristics under compatible resource assumptions. Running ten candidates for a long time and comparing their best outcome with one short run would confound strategy with computation. The study supplies runtime constraints and ablations, but an operational assessment should also record total wall-clock time, parallel resources and failure handling.[2]
+
+## 4. What the score of 0.945 measures
+
+Across 36 established CO-Bench problems, the paper reports a mean score of 0.945. The strongest existing LLM-based comparison method scores 0.870 and direct prompting without a framework scores 0.571. These are values within the paper's evaluation protocol. They must not be renamed success probability, fraction of the optimum, or real-world cost reduction.[1]
+
+<CandidateTable id="lace-evidence-table" label="Reported evidence and its scope">
+
+| Comparison | Reported result | Scope to retain |
+| --- | --- | --- |
+| Established CO-Bench, 36 problems | LACE 0.945 | Mean benchmark score defined by the study |
+| Strongest prior LLM-based comparison | 0.870 | A comparison under the evaluated model and settings |
+| Direct prompting | 0.571 | Generation without the framework |
+| Four new port-logistics problems | 0.97–0.99 | All four concern ports or tugboats |
+| Public reproduction materials | 40 problems, 7,109 instances | Instances are not the same as source-file counts |
+
+</CandidateTable>
+
+The subtraction 0.945−0.870=0.075 gives a difference on this scoring scale. Calling it a 7.5-percentage-point accuracy gain would require establishing that the metric is accuracy; that is not established here, so it is described as a score difference. An average across 36 problems also does not imply winning on every problem and every instance. Per-problem distributions, failures and runtime costs remain important.
+
+The failure of five LLM-based baselines to generate feasible algorithms on the four new problems supports the importance of problem definition and constraint handling. However, all four belong to port logistics. They do not demonstrate transfer unchanged to unrelated medical, power-grid or robot-planning conditions. “New problems” refers to the structures and domains actually evaluated.[1][2]
+
+## 5. What open code enables—and what has not been reproduced here
+
+The repository provides the framework, contracts for 40 problems, an exact manifest of 7,109 test instances, ten heuristics per problem, evaluation and reproduction scripts, and a Colab entry point. Some original files contain multiple instances, so a smaller file count need not contradict the manifest. Instance identifiers, rather than directory file counts, are the appropriate basis for verifying that number.[3]
+
+**Evaluating the provided portfolios** and **evolving fresh portfolios from scratch** are different activities. The first reruns distributed candidates; the second uses an external LLM API and generation settings. A repository and archived results do not guarantee that a new search produces the same candidates when model-provider versions, sampling or responses change. Openness is a starting point for reproduction, not a guarantee of determinism.[3]
+
+For this explainer, the public README, architecture descriptions and relevant supplementary sections were checked. No fresh heuristics were generated through an external API, and the 7,109 instances were not independently rerun. This article also does not provide a procedure for executing generated Python without limits on a personal workstation. An operational design system needs execution isolation with bounded permissions, file access, runtime and memory.
+
+## 6. Defining the evaluator can be the hardest real-world problem
+
+A benchmark usually provides comparatively explicit inputs, constraints and objectives. Operational rules can conflict across documents, and different stakeholders can attach different importance to costs. Noisy sensors, canceled jobs and demand changes introduce further uncertainty. Before asking for a better algorithm, the system must establish which answers are permitted and what counts as better.
+
+<CandidateEquation id="lace-objective-boundary" title="Why can the same schedule change rank when the objective changes?" lang="en" tex={String.raw`J(x)=\lambda_d D(x)+\lambda_t T(x)+\lambda_v V(x)`}>
+
+This is a teaching example, not the paper's actual objective. Let D denote travel cost, T delay cost, and V a violation penalty, with the weights converting them to compatible units. A short but late schedule can fall in rank when the delay weight increases. An inviolable safety condition represented only by a small penalty could even permit a dangerous answer to score well. The designer must distinguish conditions rejected by a feasibility checker from acceptable inconveniences priced through the objective.
+
+</CandidateEquation>
+
+The supplement includes mathematical-programming comparisons under specified conditions, but the study does not prove superiority over every commercial MILP or CP solver on every hardware platform and runtime budget. The reusable contributions are modular algorithm construction and complementary search. A claim of operational cost advantage requires an additional comparison using the same data, objective, time and resource boundaries.[2]
+
+## 7. What to check next instead of another higher mean
+
+Follow-up evaluation should examine contract accuracy on new domains beyond port logistics, how incorrect constraints are detected, and comparisons with established solvers under matched budgets. Portfolio failures should not disappear inside an average. Separating failures of generation, validation and runtime would make the remaining bottlenecks more useful to engineers.
+
+A portfolio selected on development instances must also be evaluated on separate test instances. Repeated selection using test performance creates the same kind of leakage encountered in model development. When the objective or operational rules change, a system needs a policy identifying what must be invalidated and revalidated. Code generation does not remove change management.
+
+The paper was not selected on the basis of an official award. The supplied score of 99 is an editorial judgment, not a scientific probability. The authors declare no competing interests. The defensible conclusion is that **LLM-driven search for complementary heuristics around a verifiable problem contract produced strong benchmark results**. That differs from demonstrating that algorithm engineers have been replaced or that a real logistics network has already saved a stated percentage of its costs.[1]
+
+## Sources and access scope
+
+[1] Gong et al., Large language models discover complementary heuristics for combinatorial optimization, Nature Machine Intelligence, 1 October 2026, DOI 10.1038/s42256-026-01307-8. Public abstract, figure descriptions and publication information. [Publisher](https://www.nature.com/articles/s42256-026-01307-8).
+
+[2] Supplementary Information: problem definitions, comparison budgets, automated contract construction and selection/runtime ablations. [Supplement](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs42256-026-01307-8/MediaObjects/42256_2026_1307_MOESM1_ESM.pdf).
+
+[3] PJ-NTU/LACE reference implementation, README, architecture and reproduction guidance, and instance manifest. Archived materials: DOI 10.5281/zenodo.21886438. [Repository](https://github.com/PJ-NTU/LACE).
+
+The edition date is 2 October 2026; writing and source rechecks took place on 5 October. The publisher PDF request redirected to the public article landing page, so the full main-paper PDF was not retrieved. This article relies on the supplied selection, public abstract, relevant supplementary sections and official repository, without claiming a full independent main-paper review or reproduction of every experiment. Publisher figure-republication permission was not established; the two displayed diagrams are independently created teaching material, not original experimental figures. The earlier 24-candidate discovery scan was not independently repeated in this publication task.
