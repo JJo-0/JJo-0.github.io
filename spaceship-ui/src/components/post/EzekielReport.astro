@@ -7,7 +7,22 @@ import report3Html from '@/data/ezekiel-reports/report-3.html?raw';
 interface Props { report: 1 | 2 | 3; }
 const { report } = Astro.props;
 const perspectives = ['원어·역사·본문비평', '문학·수사·신체성', '사회과학·트라우마·수용사'];
-const reportHtml = [report1Html, report2Html, report3Html][report - 1];
+const imageDimensions = new Map<string, [number, number]>([
+  ['/assets/posts/ezekiel-2-1-3-11/01-babylon-lion-met-31-13-2.jpg', [3811, 1656]],
+  ['/assets/posts/ezekiel-2-1-3-11/02-nebuchadnezzar-cylinder-met-86-11-60-original.jpg', [3895, 2318]],
+  ['/assets/posts/ezekiel-2-1-3-11/03-babylon-city-map-commons.png', [800, 694]],
+]);
+const reserveImageSpace = (html: string) => {
+  let rendered = html;
+  for (const [src, [width, height]] of imageDimensions) {
+    rendered = rendered.replaceAll(
+      `<img src="${src}"`,
+      `<img src="${src}" width="${width}" height="${height}"`
+    );
+  }
+  return rendered;
+};
+const reportHtml = reserveImageSpace([report1Html, report2Html, report3Html][report - 1]);
 const perspective = perspectives[report - 1];
 ---
 
