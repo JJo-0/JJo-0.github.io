@@ -65,9 +65,14 @@ jobs:
             }
             if (text.includes('data-dashboard-pending')) throw new Error(`${item.path}: old pending placeholder remains`);
             if (text.length < 30000) throw new Error(`${item.path}: suspiciously short HTML ${text.length}`);
+            const imageTags = [...text.matchAll(/<img\b[^>]*>/g)].map(match => match[0]);
             for (const [file,width,height] of item.images) {
-              const re = new RegExp(`<img[^>]+src="/assets/posts/ezekiel-2-1-3-11/${file.replaceAll('.', '\\\\.')}[^>]+width="${width}"[^>]+height="${height}"`);
-              if (!re.test(text)) throw new Error(`${item.path}: missing intrinsic geometry for ${file}`);
+              const tag = imageTags.find(value => value.includes(`/assets/posts/ezekiel-2-1-3-11/${file}`));
+              if (!tag) throw new Error(`${item.path}: image missing ${file}`);
+              if (!tag.includes(`width="${width}"`) || !tag.includes(`height="${height}"`)) {
+                throw new Error(`${item.path}: geometry mismatch for ${file}: ${tag}`);
+              }
+              console.log('ezekiel-live image: ' + tag);
             }
             const refCount = (text.match(new RegExp(`id="reference-ezekiel-${item.n}-\\d+"`, 'g')) || []).length;
             if (refCount !== item.refs) throw new Error(`${item.path}: references ${refCount} != ${item.refs}`);
@@ -76,5 +81,7 @@ jobs:
           const shelf = await get('/bible/');
           if (!shelf.text.includes('블로그 본문에서 읽는 전체 연구 · 세 연구 관점')) throw new Error('/bible/: inline copy missing');
           if (shelf.text.includes('Naver 완성 원문 · 세 연구 관점 안내')) throw new Error('/bible/: stale source-guide copy remains');
+          const readTimes = [...shelf.text.matchAll(/(\d+) min read/g)].map(match => Number(match[1]));
+          if (readTimes.filter(value => value >= 15).length < 3) throw new Error('/bible/: full report reading-time estimates missing');
           console.log('ezekiel-live: PASS ' + JSON.stringify(results));
           NODE
