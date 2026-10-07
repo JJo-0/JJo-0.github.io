@@ -1,0 +1,99 @@
+---
+title: '눈의 혈관으로 자간전증 위험을 먼저 본다'
+description: 'Visionary AI는 임신 초기 망막 혈관을 그래프와 위상 특징으로 바꿔 자간전증 위험을 예측했다. 외부 검증과 PPV의 유병률 의존성을 함께 읽는다.'
+pubDate: 2026-10-06T00:00:00+09:00
+updatedDate: 2026-10-07
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-06-visionary-ai-preeclampsia-news
+category: health-lifestyle
+subcategory: retinal-ai-preeclampsia
+type: paper-review
+tags:
+  - frontier-one
+  - maternal-health
+  - medical-ai
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+> **연구 단계:** 전향적 관찰형 예측 연구 + 독립 외부 검증. 임상시험이나 승인된 선별검사는 아니다.
+
+**한 문장 결론.** Visionary AI는 임신 초기 초광각 망막 영상에서 혈관을 분할한 뒤, 분지·굵기·굴곡·루프 구조 같은 해석 가능한 혈관 특징을 모델링해 이후 발생할 자간전증(preeclampsia) 위험을 예측했고 다른 병원의 외부 코호트에서도 성능을 유지했다.
+
+## 왜 눈의 혈관을 보는가
+
+자간전증은 보통 임신 20주 이후 고혈압과 장기 이상이 나타난 뒤 진단되지만 태반 형성과 전신 혈관 이상은 그보다 먼저 진행될 수 있다.
+
+망막은 몸 밖에서 직접 관찰할 수 있는 미세혈관 네트워크다. 혈관이 얼마나 갈라지는지, 얼마나 구불구불한지, 굵기가 어떻게 분포하는지, 서로 연결돼 루프를 만드는 방식은 전신 혈관 상태의 간접 신호가 될 수 있다.
+
+## 블랙박스 이미지 분류와 무엇이 다른가
+
+Visionary AI는 망막 사진 전체를 바로 image embedding으로만 사용하지 않는다.
+
+먼저 vessel segmentation image(VSI)를 만들고, 이를 graph로 바꿔 branching, connected components, topological length를 계산한다.
+
+여기에 vessel length·thickness·curvature·tortuosity, fractal, box-counting, topological data analysis(TDA), nesting-tree 특징을 추가한다.
+
+32개 feature set 각각에 logistic regression, random forest, XGBoost를 적용해 96개 base learner 후보를 만들고, 안정성 기반 선택 뒤 stacked metalearner가 participant-level risk를 출력한다.
+
+## 핵심 결과
+
+Columbia University 개발 코호트는 **1,267명**이었고 자간전증은 55명에서 발생했다.
+
+Population-wide 설정의 performance-optimized model은 AUC 약 **0.91**, AP 약 **0.81**을 기록했다.
+
+더 중요한 것은 NYU 외부 검증이다. 분석 가능한 66명 중 자간전증은 13명이었다. Columbia에서 만든 stability-optimized model을 NYU outcome으로 다시 학습시키지 않고 적용했을 때 **AUC 0.81, AP 0.68**이었다.
+
+같은 코호트에서 Fetal Medicine Foundation(FMF) risk calculator는 AUC 0.73, AP 0.50이었다.
+
+## AUC 0.81은 정확도 81%가 아니다
+
+AUC는 모든 사람 중 81%를 맞혔다는 뜻이 아니다. 여러 threshold에서 case와 non-case의 위험 순위를 얼마나 잘 구분하는지를 요약한다.
+
+Screening에서는 양성예측도(PPV)가 더 직관적인 질문일 수 있다.
+
+[
+PPV =
+rac{Sensitivity 	imes Prevalence}
+{Sensitivity 	imes Prevalence+(1-Specificity)(1-Prevalence)}
+]
+
+같은 sensitivity와 specificity라도 대상 집단의 prevalence가 달라지면 PPV가 달라진다.
+
+NYU 연구 코호트의 관찰 자간전증 비율은 17.7%로 기관 평균 약 8%보다 높았다. 저자들이 8% prevalence로 조정한 이유다.
+
+FPR 0.13, TPR 0.69 operating point에서 조정 PPV는 **0.31**, NPV는 **0.97**이었다.
+
+## 가장 강한 한계
+
+외부 검증의 자간전증 사건이 **13건**뿐이라는 점이 가장 크다.
+
+또 현재 연구는 미국 두 academic medical center에 한정된다. 다른 국가·인종 구성·저가형 fundus camera에서도 calibration이 유지되는지는 확인되지 않았다.
+
+RETFound와 transfer-learning CNN이 약했다는 비교도 “모든 deep learning보다 vascular feature engineering이 우월하다”는 증거는 아니다. 사건 수와 fine-tuning 조건이 제한적이었다.
+
+Retinal feature와 자간전증의 연관 역시 예측 신호다. tortuosity나 loop 감소가 질환을 직접 일으킨다는 인과 증거는 아니다.
+
+## 재현성
+
+분석 코드는 공개돼 있다. 하지만 개인 환자의 영상과 임상 데이터는 개인정보와 동의 조건 때문에 공개 저장소에 직접 올라가 있지 않고 qualified investigator가 요청하는 방식이다.
+
+따라서 method reproducibility와 complete data reproducibility를 구분해야 한다.
+
+## 실제로 무엇이 달라질 수 있나
+
+핵심은 “눈 사진으로 자간전증을 진단했다”가 아니다.
+
+**임신 초기 망막의 혈관 네트워크를 해석 가능한 지표로 바꾸면 증상이 나타나기 전에 전신 혈관 위험 신호를 포착할 수 있다는 가능성을 독립 외부 코호트까지 가져갔다**는 데 있다.
+
+더 큰 코호트에서 재현된다면 retinal imaging은 기존 임상 risk score와 혈액·태반 biomarker 사이를 보완하는 빠른 screening layer가 될 수 있다.
+
+## 다음 트리거
+
+수천~수만 명 규모 다기관 prospective validation, 저가형 camera 검증, 다양한 인종·의료체계의 calibration, 그리고 Visionary AI 결과를 실제 진료에 사용했을 때 aspirin 처방·surveillance·maternal/fetal outcome이 개선되는지를 확인해야 한다.
+
+## 출처
+
+1. Bearelly, S. et al., “Decoding systemic vascular health and hypertensive disorders in pregnancy through retinal imaging and Visionary AI,” Nature Biotechnology, 6 October 2026. DOI: 10.1038/s41587-026-03303-0.
+2. Shenhav-Lab/Visionary-AI-HDP, analysis code repository.
