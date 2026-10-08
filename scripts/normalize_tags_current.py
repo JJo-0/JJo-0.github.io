@@ -344,5 +344,27 @@ POST_TAXONOMY.update({
     '2026-10-02-glassrecon-depth-prior-news.mdx': Taxonomy('robotics-embedded', 'glass-depth-reconstruction', 'paper-review', ('frontier-candidate', 'depth-reconstruction')),
 })
 
+# Register the restored News drafts explicitly; keep the strict coverage gate.
+# These tuples preserve the current frontmatter and do not approve publication.
+POST_TAXONOMY.update({
+    '2026-09-13-rentosertib-phase3-news.mdx': Taxonomy('health-lifestyle', 'ai-drug-discovery', 'research-report', ('frontier-one', 'ai-drug-discovery', 'clinical-trials')),
+    '2026-09-24-raibo2-marathon-news.mdx': Taxonomy('ai-machine-learning', 'energy-efficient-legged-robotics', 'paper-review', ('frontier-one', 'robotics', 'embodied-ai')),
+    '2026-10-04-nutrivax-measles-uptake-news.mdx': Taxonomy('health-lifestyle', 'vaccine-implementation-science', 'paper-review', ('frontier-candidate', 'vaccination', 'public-health')),
+    '2026-10-04-room-temperature-cqd-phase-shift-news.mdx': Taxonomy('finance-industry', 'room-temperature-quantum-photonics', 'paper-review', ('frontier-one', 'quantum-photonics', 'semiconductor')),
+    '2026-10-04-ultrahigh-voltage-li-metal-pouch-cell-news.mdx': Taxonomy('finance-industry', 'ultrahigh-voltage-lithium-metal-battery', 'paper-review', ('frontier-candidate', 'lithium-metal-battery', 'machine-learning')),
+    '2026-10-05-avian-r2-targeted-integration-news.mdx': Taxonomy('health-lifestyle', 'targeted-gene-integration', 'paper-review', ('frontier-candidate', 'genome-editing', 'synthetic-biology')),
+    '2026-10-05-inspire-photonic-in-situ-learning-news.mdx': Taxonomy('ai-machine-learning', 'photonic-in-situ-learning', 'paper-review', ('frontier-one', 'photonic-ai', 'neuromorphic-computing')),
+    '2026-10-05-survodutide-phase3-news.mdx': Taxonomy('health-lifestyle', 'obesity-diabetes-therapy', 'paper-review', ('frontier-candidate', 'metabolic-medicine', 'phase-3')),
+    '2026-10-06-rapid-wgs-pediatric-cancer-news.mdx': Taxonomy('health-lifestyle', 'rapid-cancer-genomics', 'paper-review', ('frontier-candidate', 'pediatric-oncology', 'genomics')),
+    '2026-10-06-shotgun-mammalian-metabolic-engineering-news.mdx': Taxonomy('health-lifestyle', 'mammalian-metabolic-engineering', 'paper-review', ('frontier-candidate', 'synthetic-biology', 'cell-engineering')),
+    '2026-10-06-visionary-ai-preeclampsia-news.mdx': Taxonomy('health-lifestyle', 'retinal-ai-preeclampsia', 'paper-review', ('frontier-one', 'maternal-health', 'medical-ai')),
+    '2026-10-07-7ev-colossal-bandgap-semiconductor-news.mdx': Taxonomy('finance-industry', 'colossal-bandgap-semiconductor', 'paper-review', ('frontier-one', 'semiconductor', 'power-electronics')),
+    '2026-10-07-deterministic-2d-semiconductor-nucleation-news.mdx': Taxonomy('finance-industry', 'deterministic-2d-crystal-growth', 'paper-review', ('frontier-candidate', 'two-dimensional-materials', 'semiconductor-manufacturing')),
+    '2026-10-07-horizontal-up-microfluidic-chip-cooling-news.mdx': Taxonomy('finance-industry', 'embedded-chip-cooling', 'paper-review', ('frontier-candidate', 'semiconductor-cooling', 'data-center-infrastructure')),
+    '2026-10-08-google-constellation-nuclear-uprate-news.mdx': Taxonomy('finance-industry', 'nuclear-power-uprates', 'research-report', ('frontier-one', 'nuclear-energy', 'power-grid', 'ai-infrastructure')),
+    '2026-10-08-overhead-cable-radiative-cooling-news.mdx': Taxonomy('finance-industry', 'grid-radiative-cooling', 'paper-review', ('frontier-candidate', 'power-grid', 'radiative-cooling')),
+    '2026-10-08-single-crystal-cof-carbon-capture-news.mdx': Taxonomy('finance-industry', 'carbon-capture-membranes', 'paper-review', ('frontier-candidate', 'carbon-capture', 'membrane-technology')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
