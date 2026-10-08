@@ -344,8 +344,6 @@ POST_TAXONOMY.update({
     '2026-10-02-glassrecon-depth-prior-news.mdx': Taxonomy('robotics-embedded', 'glass-depth-reconstruction', 'paper-review', ('frontier-candidate', 'depth-reconstruction')),
 })
 
-# Register the restored News drafts explicitly; keep the strict coverage gate.
-# These tuples preserve the current frontmatter and do not approve publication.
 POST_TAXONOMY.update({
     '2026-09-13-rentosertib-phase3-news.mdx': Taxonomy('health-lifestyle', 'ai-drug-discovery', 'research-report', ('frontier-one', 'ai-drug-discovery', 'clinical-trials')),
     '2026-09-24-raibo2-marathon-news.mdx': Taxonomy('ai-machine-learning', 'energy-efficient-legged-robotics', 'paper-review', ('frontier-one', 'robotics', 'embodied-ai')),
