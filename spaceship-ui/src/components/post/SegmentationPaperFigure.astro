@@ -1,0 +1,37 @@
+---
+import provenance from '../../../site/assets/assets/posts/modern-ai-vi-papers/provenance.json';
+
+interface Props { figure: string; alt: string; }
+const { figure, alt } = Astro.props;
+const record = provenance.figures.find((item) => item.id === figure);
+if (!record || !alt.trim()) throw new Error(`Missing segmentation paper figure or alt: ${figure}`);
+const src = `/assets/posts/modern-ai-vi-papers/${record.file}`;
+const label = `${record.paper === 'fcn' ? 'FCN' : 'U-Net'} 원논문 Figure ${record.figure}`;
+---
+
+<figure class="paper-figure" data-paper-figure={figure} data-paper-version={record.version}>
+  <a class="paper-image-link" href={src} target="_blank" rel="noopener noreferrer" aria-label={`${label} 원본 크기로 보기`}>
+    <img src={src} alt={alt} width={record.width} height={record.height} loading="lazy" decoding="async" />
+  </a>
+  <figcaption>
+    <strong>{label}.</strong> <slot />
+    <span class="paper-credit">
+      {record.authors} · {record.sourceDate} ·
+      <a href={record.source} target="_blank" rel="noopener noreferrer">{record.version} 원문</a> ·
+      <a href={`${record.pdfSource}#page=${record.pdfPage}`} target="_blank" rel="noopener noreferrer">논문 속 그림 위치</a> ·
+      <a href={src} target="_blank" rel="noopener noreferrer">크게 보기</a>
+    </span>
+    <span class="paper-rights">원논문 도판 발췌. 그림 부분만 잘라 무손실 WebP로 변환했으며 내용·색상은 다시 그리지 않았다. 한국어 설명은 별도 작성했다. 도판의 권리는 원권리자에게 있으며 블로그 코드의 MIT 라이선스나 CC 재배포 허락이 적용된다는 뜻은 아니다.</span>
+  </figcaption>
+</figure>
+
+<style>
+  .paper-figure { margin: 2rem 0; max-width: 100%; min-width: 0; }
+  .paper-image-link { display: block; padding: .75rem; border: 1px solid var(--color-border); border-radius: .5rem; background: #fff; }
+  .paper-image-link:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 4px; }
+  img { display: block; width: 100%; max-width: 100%; height: auto; margin: 0; filter: none; }
+  figcaption { margin-top: .7rem; line-height: 1.7; font-size: .92em; color: var(--color-foreground); overflow-wrap: anywhere; }
+  .paper-credit, .paper-rights { display: block; margin-top: .45rem; }
+  .paper-credit a { text-decoration: underline; text-underline-offset: .2em; }
+  .paper-rights { color: var(--color-muted-foreground); font-size: .86em; }
+</style>

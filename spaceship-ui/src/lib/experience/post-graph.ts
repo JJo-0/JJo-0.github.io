@@ -1,5 +1,6 @@
 import type { CollectionEntry } from 'astro:content';
 import { getPostSlug } from '@/lib/utils/posts';
+type GraphPost = CollectionEntry<'posts'> | CollectionEntry<'englishPosts'>;
 export interface PostGraphNode {
   id: string;
   title: string;
@@ -51,7 +52,7 @@ function hash(value: string) {
   }
   return output >>> 0;
 }
-function keywords(post: CollectionEntry<'posts'>) {
+function keywords(post: GraphPost) {
   const source = `${post.data.title} ${post.data.description} ${post.body ?? ''}`
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/https?:\/\/\S+/g, ' ')
@@ -59,7 +60,7 @@ function keywords(post: CollectionEntry<'posts'>) {
   const tokens = source.match(/[a-z][a-z0-9-]{3,}|[가-힣]{2,}/g) ?? [];
   return new Set(tokens.filter((token) => !STOP_WORDS.has(token)).slice(0, 240));
 }
-export function buildPostGraph(posts: CollectionEntry<'posts'>[]): PostGraph {
+export function buildPostGraph(posts: GraphPost[]): PostGraph {
   const categories = [...new Set(posts.map((post) => post.data.category))];
   const keywordSets = new Map(posts.map((post) => [post.id, keywords(post)]));
   const nodes = posts.map((post, index): PostGraphNode => {
@@ -72,14 +73,14 @@ export function buildPostGraph(posts: CollectionEntry<'posts'>[]): PostGraph {
     return {
       id: `post-${index}`,
       title: post.data.title,
-      href: `/posts/${getPostSlug(post)}`,
+      href: post.collection === 'englishPosts' ? `/en/posts/${post.data.slug}/` : `/posts/${getPostSlug(post)}`,
       category: post.data.category,
       subcategory: post.data.subcategory,
       type: post.data.type,
       tags: post.data.tags,
-      x: Math.cos(angle) * cluster + Math.cos(local) * radius,
-      y: Math.sin(angle) * cluster + Math.sin(local) * radius,
-      z: (((seed >>> 20) % 1000) / 1000 - 0.5) * 3.8,
+      x: Number((Math.cos(angle) * cluster + Math.cos(local) * radius).toFixed(4)),
+      y: Number((Math.sin(angle) * cluster + Math.sin(local) * radius).toFixed(4)),
+      z: Number(((((seed >>> 20) % 1000) / 1000 - 0.5) * 3.8).toFixed(4)),
     };
   });
   const candidates: PostGraphEdge[] = [];
@@ -92,15 +93,15 @@ export function buildPostGraph(posts: CollectionEntry<'posts'>[]): PostGraph {
       let score = 0;
       if (a.data.researchArea && a.data.researchArea === b.data.researchArea) {
         score += 5;
-        reasons.push('same research area');
+        reasons.push('research area');
       }
       if (a.data.category === b.data.category) {
         score += 4;
-        reasons.push('same category');
+        reasons.push('category');
       }
       if (a.data.subcategory === b.data.subcategory) {
         score += 3;
-        reasons.push('same subcategory');
+        reasons.push('subcategory');
       }
       if (a.data.type === b.data.type) score += 0.6;
       const sharedTags = a.data.tags.filter((tag) => b.data.tags.includes(tag));

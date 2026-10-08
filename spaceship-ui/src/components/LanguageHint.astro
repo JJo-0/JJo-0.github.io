@@ -1,0 +1,33 @@
+---
+import { englishSwitchPath } from '@/lib/locales';
+interface Props { lang: 'ko' | 'en'; }
+const { lang } = Astro.props;
+---
+{lang === 'ko' && <aside data-language-hint hidden class="language-hint" lang="en" aria-label="Language preference">
+  <span>Prefer English?</span> <a href={englishSwitchPath(Astro.url.pathname)} data-locale-choice="en" data-astro-reload>Open the English edition</a>
+  <button type="button" data-language-dismiss aria-label="Keep reading in Korean">Keep Korean</button>
+</aside>}
+<script>
+  const readChoice = () => { try { return localStorage.getItem('jjo-locale'); } catch { return null; } };
+  const saveChoice = (locale: string) => { try { localStorage.setItem('jjo-locale', locale); } catch { /* Storage is optional. */ } };
+  const init = () => {
+    const hint = document.querySelector<HTMLElement>('[data-language-hint]');
+    if (!hint) return;
+    const primary = (navigator.languages?.[0] || navigator.language || '').toLowerCase();
+    const choice = readChoice();
+    hint.hidden = !(choice === 'en' || (!choice && primary && !primary.startsWith('ko')));
+  };
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const choice = target?.closest<HTMLElement>('[data-locale-choice]')?.dataset.localeChoice;
+    if (choice === 'en' || choice === 'ko') saveChoice(choice);
+    if (target?.closest('[data-language-dismiss]')) { saveChoice('ko'); init(); }
+  });
+  document.addEventListener('astro:page-load', init);
+  init();
+</script>
+<style>
+.language-hint:not([hidden]){display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;padding:.75rem 1rem;margin-bottom:1.5rem;border:1px solid var(--color-border);font-size:.8rem;line-height:1.6}
+.language-hint a{text-decoration:underline;text-underline-offset:3px}
+.language-hint button{margin-left:auto;padding:.25rem .5rem;border:1px solid var(--color-border);border-radius:.3rem;cursor:pointer}
+</style>

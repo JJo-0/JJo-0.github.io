@@ -27,38 +27,70 @@ async function pointer(selector, mobile) {
     const initialUrl = location.href;
     let a = document.querySelector(selector);
     if (!a) throw new Error('Missing citation activation target');
-    // Align once. Repeated scrollIntoView calls can perturb the scroll anchor
-    // while content-visibility layout is settling after browser Back.
+    // Position before observing. A delayed Back/layout restoration may undo
+    // this alignment; only a proven stable offscreen target may be realigned.
     a.scrollIntoView({block:'center', behavior:'instant'});
     const started = performance.now();
     let previous = null, previousNode = null, stable = 0;
+    let offscreenPrevious = null, offscreenNode = null, offscreenStable = 0;
+    let realignments = 0;
     const observations = [];
+    const fail = () => { throw new Error('Citation geometry did not stabilize before trusted input: ' +
+      JSON.stringify({selector,initialUrl,realignments,observations:observations.slice(-4)})); };
     while (performance.now() - started < 2500) {
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       await new Promise(resolve => setTimeout(resolve, 50));
-      // Astro/Back may replace the anchor after positioning. Resolve the live
-      // node on every sample; a replacement must earn three fresh samples.
+      // Never retain a node discarded by Astro/Back. Every replacement must
+      // earn three new samples; an unready sample resets readiness completely.
       a = document.querySelector(selector);
       const r = a?.getBoundingClientRect();
       const x = r ? r.left + r.width / 2 : null, y = r ? r.top + r.height / 2 : null;
-      const hit = r ? document.elementFromPoint(x, y) : null;
-      const sameNode = a !== null && a === previousNode;
+      const finite = Boolean(r && [x,y,r.width,r.height].every(Number.isFinite));
       const connected = Boolean(a?.isConnected);
+      const valid = connected && finite && r.width > 0 && r.height > 0;
+      const inViewport = valid && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight;
+      const hit = inViewport ? document.elementFromPoint(x,y) : null;
       const hitMatches = Boolean(a && (hit === a || a.contains(hit)));
-      const ready = connected && r.width > 0 && r.height > 0 && hitMatches && location.href === initialUrl;
+      const sameNode = a !== null && a === previousNode;
+      const sameUrl = location.href === initialUrl;
+      const complete = document.readyState === 'complete';
+      const ready = Boolean(valid && inViewport && hitMatches && sameUrl && complete);
       const current = {x,y,width:r?.width ?? 0,height:r?.height ?? 0,
-        scrollY,documentHeight:document.documentElement.scrollHeight};
+        scrollY,documentHeight:document.documentElement.scrollHeight,
+        viewportWidth:innerWidth,viewportHeight:innerHeight};
+      const unchangedFrom = (before) => before && Object.keys(current).every(k =>
+        Number.isFinite(current[k]) && Number.isFinite(before[k]) && Math.abs(current[k]-before[k]) < 0.5);
+      const offscreen = Boolean(valid && !inViewport && sameUrl && complete);
+      offscreenStable = offscreen
+        ? (a === offscreenNode && unchangedFrom(offscreenPrevious) ? offscreenStable + 1 : 1)
+        : 0;
       observations.push({...current,selector,nodePresent:Boolean(a),connected,sameNode,hitMatches,
-        hitTag:hit?.tagName ?? null,url:location.href,readyState:document.readyState,ready});
-      const unchanged = sameNode && previous && Object.keys(current).every(k=>Math.abs(current[k]-previous[k]) < 0.5);
+        hitTag:hit?.tagName ?? null,url:location.href,readyState:document.readyState,
+        ready,offscreen,offscreenStable,realignments});
+      // URL changes are fatal even if a later sample would return to the old URL.
+      // Do not accept a sample (or reset the budget) after the original deadline.
+      if (!sameUrl || performance.now() - started >= 2500) fail();
+      const unchanged = sameNode && unchangedFrom(previous);
       stable = ready && unchanged ? stable + 1 : 0;
-      if (stable >= 2) return {...current,ready,stableSamples:stable+1,
+      if (stable >= 2) return {...current,ready,stableSamples:stable+1,realignments,
         resolvedPath:new URL(a.href).pathname,currentPath:location.pathname,html:a.outerHTML,
         observations:observations.slice(-4)};
+      if (realignments === 0 && offscreenStable >= 3) {
+        // At most one pre-input correction, never a repeated-scroll loop or a
+        // retry of an activation. Covered, detached and moving nodes cannot enter.
+        realignments += 1;
+        observations[observations.length-1].action = 'realign-offscreen';
+        a.scrollIntoView({block:'center', behavior:'instant'});
+        previous = null; previousNode = null; stable = 0;
+        offscreenPrevious = null; offscreenNode = null; offscreenStable = 0;
+        continue;
+      }
       previous = ready ? current : null;
       previousNode = a;
+      offscreenPrevious = offscreen ? current : null;
+      offscreenNode = offscreen ? a : null;
     }
-    throw new Error('Citation geometry did not stabilize before trusted input: ' + JSON.stringify({selector,initialUrl,observations:observations.slice(-4)}));
+    fail();
   })()`);
   lastPointer = {selector,mobile,...point};
   assert.equal(point.resolvedPath, point.currentPath, 'Native fragment must resolve to the exact same article path');

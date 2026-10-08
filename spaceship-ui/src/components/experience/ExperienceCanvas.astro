@@ -1,5 +1,6 @@
 ---
 import '@/styles/renderer.css';
+import { serializeGraphPayload } from '@/lib/experience/graph-json.mjs';
 
 interface Props {
   variant: 'home' | 'research';
@@ -14,11 +15,11 @@ const { variant, graph } = Astro.props;
   data-experience-canvas={variant}
   data-renderer-status="idle"
   data-renderer-tier="safe"
-  data-post-graph={graph ? JSON.stringify(graph) : undefined}
   data-ascii-graph={graph ? 'true' : undefined}
   aria-label={graph ? `Interactive writing graph with ${graph.nodes.length} articles` : undefined}
   aria-hidden={graph ? undefined : 'true'}
 >
+  {graph && <script is:inline type="application/json" data-post-graph-source set:html={serializeGraphPayload(graph)} />}
   <canvas class="experience-renderer__gpu" data-experience-canvas-element tabindex="-1"></canvas>
   <canvas class="experience-renderer__ascii" data-ascii-art tabindex="-1"></canvas>
   {
@@ -29,7 +30,7 @@ const { variant, graph } = Astro.props;
             href={node.href}
             class="post-graph-node"
             data-post-graph-node={node.id}
-            aria-label={`${node.title}. ${node.category}. ${node.tags.join(', ')}`}
+            aria-label={`${node.title}. ${node.category}`}
           >
             <span class="post-graph-node__dot" aria-hidden="true" />
           </a>

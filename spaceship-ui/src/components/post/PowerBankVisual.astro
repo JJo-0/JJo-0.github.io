@@ -1,0 +1,126 @@
+---
+type Kind = 'capacity' | 'energy' | 'boost' | 'pd' | 'cccv' | 'heat' | 'bms' | 'wireless' | 'mass' | 'test';
+interface Props { kind: Kind; lang?: 'ko' | 'en' }
+const { kind, lang = 'ko' } = Astro.props;
+const t = (ko: string, en: string) => lang === 'ko' ? ko : en;
+const titles: Record<Kind, string> = {
+  capacity: t('전압이 바뀌어도 에너지는 보존됩니다', 'Voltage changes; energy is conserved'),
+  energy: t('셀, USB 포트, 휴대폰은 다른 측정 경계입니다', 'Cell, USB and phone are different boundaries'),
+  boost: t('스위치와 인덕터가 전압을 바꿉니다', 'A switch and inductor change voltage'),
+  pd: t('충전은 공급자와 기기의 협상입니다', 'Charging is a negotiated contract'),
+  cccv: t('충전 후반에는 전류가 줄어듭니다', 'Current tapers near the end of charging'),
+  heat: t('열 발생과 방열의 경쟁', 'Heat generation versus heat removal'),
+  bms: t('감지 → 판단 → 전류 경로 차단', 'Sense → decide → disconnect'),
+  wireless: t('무선에는 자기 결합 단계가 더 있습니다', 'Wireless adds a magnetic coupling stage'),
+  mass: t('같은 에너지, 다른 휴대 부담', 'The same energy, a different carry weight'),
+  test: t('최댓값 한 장면 대신 방전 전체를 측정', 'Measure the discharge, not one peak')
+};
+const notes: Record<Kind, string> = {
+  capacity: t('손실을 무시한 환산 예시. 14,800mAh는 5V 기준이며, 20,000mAh는 3.7V 기준입니다.', 'Loss-free conversion example. 14,800mAh refers to 5V; 20,000mAh refers to 3.7V.'),
+  energy: t('교육용 가정: 접근 가능 비율 96%, 평균 변환효율 90%. 잔류 에너지와 열 손실을 구분합니다.', 'Illustrative assumptions: 96% accessible energy and 90% average conversion efficiency. Retained energy is not heat loss.'),
+  boost: t('승압형의 동작 개념도입니다. 실제 제품은 동기 정류 및 승강압 회로를 사용할 수 있습니다.', 'Conceptual boost operation, not a product schematic. Real units may use synchronous rectification and buck–boost stages.'),
+  pd: t('표시된 전력은 제공 가능한 상한입니다. 공통 프로파일, 케이블, 기기 상태와 포트 분배가 실제 출력을 제한합니다.', 'Advertised power is a ceiling. Shared profiles, the cable, device state and port allocation constrain actual power.'),
+  cccv: t('실측이 아닌 정규화 개념 곡선입니다. 전압과 전류는 서로 다른 단위이며 전환 시점을 특정 잔량으로 고정하지 않습니다.', 'Normalized conceptual curves, not measurements. Voltage and current have different units; transition is not fixed to a particular state of charge.'),
+  heat: t('조건을 단순화한 열 경로입니다. 표면온도와 내부 최고온도는 같지 않습니다.', 'Simplified thermal path. Surface temperature is not the internal hotspot temperature.'),
+  bms: t('가능한 보호 구조의 예입니다. 모든 제품이 동일한 센서 수, 밸런싱 또는 임계값을 갖지는 않습니다.', 'Example protection architecture. Sensor count, balancing and thresholds differ by product.'),
+  wireless: t('추가 단계마다 손실이 생길 수 있습니다. 정렬 개선이 손실을 없애거나 일정 효율을 보장하지는 않습니다.', 'Each additional stage can introduce loss. Better alignment neither eliminates loss nor guarantees a fixed efficiency.'),
+  mass: t('두 제품 모두 74Wh라고 가정한 산술 예시입니다. 아래 수치는 특정 제품의 측정값이 아닙니다.', 'Arithmetic example assuming 74Wh for both packs. These are not measurements of particular products.'),
+  test: t('출력 조건과 주변온도를 기록하고 USB 포트에서 Wh를 적산합니다. 5·15·30분은 관찰 시점이지 공통 차단 시점이 아닙니다.', 'Record load and ambient temperature; integrate Wh at the USB port. 5, 15 and 30 minutes are observation points, not universal cutoffs.')
+};
+const photo = kind === 'boost' ? { file: '2023101109200962.jpeg', caption: t('실제 사진: 구리 권선 인덕터. 전류 변화에 따라 자기장에 에너지를 저장하고 방출하는 부품입니다.', 'Actual photograph: a copper-wound inductor. It stores and releases magnetic energy as current changes.') }
+  : kind === 'heat' ? { file: '2023101109195560.jpeg', caption: t('실제 사진: PCB 뒷면의 노출 구리 영역. 열이 방열 구조로 이동하는 경로를 보여줍니다. 이 사진 자체가 알루미늄 방열판은 아닙니다.', 'Actual photograph: exposed copper on the PCB back. It forms part of the heat-transfer path; this photograph is not the aluminum heat spreader itself.') }
+  : kind === 'bms' ? { file: '2023101109195932.jpeg', caption: t('실제 사진: 두 개의 온도 감지 프로브. 온도를 감지하는 부품이지, 열을 제거하는 냉각 장치는 아닙니다.', 'Actual photograph: two temperature-sensing probes. They sense temperature; they do not remove heat.') } : null;
+const source = 'https://www.chargerlab.com/teardown-of-cuktech-no-15-150w-20000mah-power-bank-pb200p/';
+---
+<figure class="pb-visual" data-pb-visual={kind}>
+  <svg viewBox="0 0 560 340" role="img" aria-label={titles[kind]} xmlns="http://www.w3.org/2000/svg">
+    <title>{titles[kind]}</title><desc>{notes[kind]}</desc>
+    <rect width="560" height="340" rx="20" class="canvas" />
+    {kind === 'capacity' && <>
+      <rect x="38" y="48" width="205" height="165" rx="15" class="box"/><rect x="257" y="88" width="260" height="125" rx="15" class="box"/>
+      <text x="140" y="86" class="label">3.7 V</text><text x="140" y="135" class="big">20 Ah</text><text x="140" y="185" class="label">74 Wh</text>
+      <text x="388" y="123" class="label">5 V</text><text x="388" y="166" class="big">14.8 Ah</text><text x="388" y="198" class="small">74 Wh</text>
+      <path d="M140 244 H389" class="line"/><text x="280" y="285" class="label">20 × 3.7 = 14.8 × 5</text>
+    </>}
+    {kind === 'energy' && <>
+      <text x="280" y="48" class="label">74 Wh</text><rect x="40" y="65" width="480" height="45" rx="8" class="box"/>
+      <rect x="40" y="65" width="415" height="45" rx="8" class="solid"/><rect x="455" y="65" width="46" height="45" class="warm"/>
+      <path d="M455 125 V153 H520 M501 116 V202 H520" class="line"/>
+      <text x="228" y="97" class="inverse">63.94 Wh → USB</text>
+      <text x="260" y="156" class="small">7.10 Wh → {t('변환 열 손실', 'conversion heat')}</text>
+      <text x="260" y="205" class="small">2.96 Wh → {t('접근하지 않는 에너지', 'inaccessible energy')}</text>
+      <text x="280" y="264" class="label">USB → {t('케이블', 'cable')} → PMIC → {t('휴대폰 셀', 'phone cell')}</text>
+      <text x="280" y="305" class="small">{t('포트 이후에도 손실은 이어집니다', 'Further losses occur after the port')}</text>
+    </>}
+    {kind === 'boost' && <>
+      <text x="140" y="39" class="label">① {t('스위치 ON', 'Switch ON')}</text><text x="420" y="39" class="label">② {t('스위치 OFF', 'Switch OFF')}</text>
+      <rect x="28" y="73" width="55" height="84" rx="7" class="box"/><text x="55" y="122" class="small">Vᵢₙ</text>
+      <path d="M83 115 H101 q10 -44 20 0 q10 -44 20 0 q10 -44 20 0 H211 V220 H55 V157 M211 115 V184" class="line"/>
+      <circle cx="211" cy="192" r="5" class="solid"/><path d="M211 195 V220" class="line"/>
+      <text x="140" y="258" class="small">{t('인덕터에 에너지 축적', 'Inductor stores energy')}</text>
+      <rect x="300" y="73" width="55" height="84" rx="7" class="box"/><text x="328" y="122" class="small">Vᵢₙ</text>
+      <path d="M355 115 H369 q10 -44 20 0 q10 -44 20 0 q10 -44 20 0 H505 V220 H328 V157 M440 115 V178 M440 212 V220 M440 178 L458 198" class="line"/>
+      <rect x="483" y="140" width="43" height="45" rx="5" class="box"/><text x="505" y="169" class="small">C</text>
+      <text x="420" y="258" class="small">{t('입력과 함께 출력에 전달', 'Energy flows to output')}</text><text x="280" y="308" class="label">Eᴸ = ½ L I²</text>
+    </>}
+    {kind === 'pd' && <>
+      {[t('보조배터리', 'Power bank'), t('케이블', 'Cable'), t('충전 기기', 'Device')].map((label, i) => <><rect x={30 + i * 177} y="65" width="146" height="86" rx="12" class="box"/><text x={103 + i * 177} y="116" class="label">{label}</text></>)}
+      <path d="M176 108 H207 M353 108 H384" class="line"/>
+      <text x="280" y="202" class="label">{t('지원 프로파일의 교집합', 'Intersection of supported profiles')}</text>
+      <text x="280" y="249" class="small">{t('포트 분배 · 온도 · 잔량 · 기기 요구', 'Port sharing · temperature · SOC · demand')}</text>
+      <text x="280" y="300" class="big">P = V × I</text>
+    </>}
+    {kind === 'cccv' && <>
+      <text x="150" y="41" class="label">CC</text><text x="407" y="41" class="label">CV</text>
+      <path d="M55 65 V264 H520 M297 65 V264" class="axis"/>
+      <path d="M60 213 C145 184 215 108 297 85 H514" class="line"/>
+      <path d="M60 120 H297 C345 121 356 214 514 245" class="dash"/>
+      <text x="440" y="73" class="small">V {t('전압', 'voltage')}</text><text x="437" y="198" class="small">I {t('전류', 'current')}</text>
+      <text x="280" y="302" class="small">{t('시간 → (서로 다른 축의 개념도)', 'Time → (separately normalized axes)')}</text>
+    </>}
+    {kind === 'heat' && <>
+      <text x="280" y="45" class="label">100 W {t('출력일 때', 'output')}</text>
+      <rect x="35" y="66" width="225" height="105" rx="12" class="box"/><rect x="300" y="66" width="225" height="105" rx="12" class="box"/>
+      <text x="148" y="103" class="label">η = 90%</text><text x="148" y="145" class="big">11.1 W</text><text x="412" y="103" class="label">η = 95%</text><text x="412" y="145" class="big">5.3 W</text>
+      <text x="280" y="202" class="small">{t('위 숫자는 변환단에서 발생하는 열', 'Heat generated by the conversion stage')}</text>
+      <text x="280" y="250" class="label">{t('부품 → PCB → 케이스 → 공기', 'Parts → PCB → enclosure → air')}</text>
+      <text x="280" y="297" class="small">{t('열이 더 빨리 쌓이면 출력 제한', 'Accumulating heat can trigger limiting')}</text>
+    </>}
+    {kind === 'bms' && <>
+      {[t('전압', 'Voltage'), t('전류', 'Current'), t('온도', 'Temperature')].map((label, i) => <><rect x={25+i*180} y="45" width="150" height="60" rx="10" class="box"/><text x={100+i*180} y="83" class="label">{label}</text><path d={`M${100+i*180} 105 V134 H280 V165`} class="line"/></>)}
+      <rect x="167" y="166" width="226" height="60" rx="12" class="box"/><text x="280" y="204" class="label">{t('보호 IC / 제어기', 'Protection IC / controller')}</text>
+      <path d="M280 227 V250" class="line"/><rect x="100" y="252" width="360" height="58" rx="12" class="box"/><text x="280" y="289" class="label">MOSFET → {t('제한 / 차단', 'limit / disconnect')}</text>
+    </>}
+    {kind === 'wireless' && <>
+      <text x="280" y="37" class="label">DC → AC → {t('자기장', 'magnetic field')} → AC → DC</text>
+      <rect x="36" y="103" width="135" height="123" rx="15" class="box"/><rect x="389" y="103" width="135" height="123" rx="15" class="box"/>
+      <text x="104" y="149" class="label">TX</text><text x="104" y="191" class="small">{t('송신 코일', 'TX coil')}</text><text x="456" y="149" class="label">RX</text><text x="456" y="191" class="small">{t('수신 코일', 'RX coil')}</text>
+      <path d="M186 111 Q280 30 374 111 M186 159 Q280 83 374 159 M186 207 Q280 282 374 207" class="dash"/>
+      <text x="280" y="278" class="label">{t('거리 · 정렬 · 케이스 두께', 'Gap · alignment · case thickness')}</text><text x="280" y="316" class="small">{t('결합과 손실이 함께 바뀝니다', 'Coupling and losses change together')}</text>
+    </>}
+    {kind === 'mass' && <>
+      <rect x="47" y="55" width="200" height="118" rx="16" class="box"/><rect x="307" y="55" width="200" height="118" rx="16" class="box"/>
+      <text x="147" y="101" class="big">74 Wh</text><text x="407" y="101" class="big">74 Wh</text><text x="147" y="148" class="label">350 g</text><text x="407" y="148" class="label">500 g</text>
+      <text x="147" y="223" class="big">21.1</text><text x="407" y="223" class="big">14.8</text><text x="280" y="270" class="label">Wh / 100 g</text>
+      <text x="280" y="314" class="small">{t('방열·내구성은 이 숫자만으로 판단 불가', 'This number does not establish cooling or durability')}</text>
+    </>}
+    {kind === 'test' && <>
+      {[t('보조배터리', 'Power bank'), t('Wh 계측기', 'Wh meter'), t('전자 부하', 'Electronic load')].map((label,i) => <><rect x={23+i*180} y="61" width="152" height="85" rx="12" class="box"/><text x={99+i*180} y="112" class="label">{label}</text></>)}
+      <path d="M175 103 H203 M355 103 H383" class="line"/>
+      <text x="280" y="193" class="label">Eᵤₛᵦ = ∫ V(t) I(t) dt</text>
+      <text x="280" y="242" class="small">{t('같은 부하 · 주변온도 · 종료 조건', 'Matched load · ambient · stopping rule')}</text><text x="280" y="293" class="label">0 → 5 → 15 → 30 min → {t('종료', 'end')}</text>
+    </>}
+  </svg>
+  <figcaption><strong>{titles[kind]}</strong><br/>{notes[kind]} <span>{t('자체 제작 개념도 · 실측 아님', 'Original explanatory diagram · not measured data')}</span></figcaption>
+</figure>
+{photo && <figure class="pb-photo">
+  <a href={source} target="_blank" rel="noopener noreferrer"><img src={`https://www.chargerlab.com/wp-content/uploads/2023/10/${photo.file}`} alt={photo.caption} width="900" height="600" loading="lazy" decoding="async" referrerpolicy="no-referrer" /></a>
+  <figcaption>{photo.caption}<br/><a href={source} target="_blank" rel="noopener noreferrer">{t('사진: ChargerLAB, PB200P 분해, 2023-10-11 · 원문/사진 보기', 'Photo: ChargerLAB, PB200P teardown, 2023-10-11 · view source')}</a><br/>{t('해당 분해 시료의 사진이며 다른 모델이나 현재 생산분의 구조를 보증하지 않습니다. 외부 이미지가 차단되면 위 원문에서 확인하세요. 직접 분해하지 마세요.', 'These photographs show the examined sample, not a guarantee for other models or current production. Open the source if external images are blocked. Do not dismantle your own battery.')}</figcaption>
+</figure>}
+<style>
+  .pb-visual,.pb-photo{margin:2rem 0!important;border:1px solid #cbd5d7;border-radius:18px;overflow:hidden;background:#fff;color:#163239}
+  .pb-visual svg{display:block;width:100%;height:auto;max-height:470px}.pb-visual .canvas{fill:#f2f6f4}.pb-visual .box{fill:#fff;stroke:#287166;stroke-width:2}.pb-visual .solid{fill:#287166}.pb-visual .warm{fill:#e4a572}
+  .pb-visual text{font-family:system-ui,sans-serif;text-anchor:middle;fill:#163239}.pb-visual .label{font-size:22px;font-weight:650}.pb-visual .big{font-size:34px;font-weight:750}.pb-visual .small{font-size:18px}.pb-visual .inverse{fill:#fff;font-size:22px;font-weight:650}
+  .pb-visual .line,.pb-visual .dash{stroke:#287166;stroke-width:3;fill:none}.pb-visual .dash{stroke:#b46a33;stroke-dasharray:8 5}.pb-visual .axis{stroke:#81918d;stroke-width:1.5;fill:none}
+  .pb-visual figcaption,.pb-photo figcaption{padding:1rem 1.2rem;font-size:.92rem;line-height:1.75}.pb-visual figcaption span{display:block;font-size:.8rem;color:#53615e}.pb-photo img{display:block;width:100%;height:auto;max-height:470px;object-fit:contain;margin:0!important}.pb-photo a{color:#1d655b}
+</style>

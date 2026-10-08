@@ -1,0 +1,46 @@
+name: October 3 reading
+on:
+  pull_request:
+    branches: [main]
+    paths: ['spaceship-ui/**', '.github/workflows/oct03-reading.yml']
+  push:
+    branches: [main]
+    paths: ['spaceship-ui/**', '.github/workflows/oct03-reading.yml']
+permissions:
+  contents: read
+concurrency:
+  group: oct03-reading-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - run: pnpm build
+      - run: python3 scripts/oct03-contract.py
+      - run: node scripts/browser-oct03.mjs
+      - name: Preserve tested source
+        if: always()
+        run: mkdir -p oct03-review && git rev-parse HEAD > oct03-review/tested-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oct03-reading-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/oct03-review/
+          retention-days: 7

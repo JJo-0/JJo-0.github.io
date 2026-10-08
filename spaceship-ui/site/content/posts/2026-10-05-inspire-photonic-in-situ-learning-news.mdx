@@ -1,0 +1,106 @@
+---
+title: '광학 칩이 자기 몸에서 gradient를 측정하기 시작했다'
+description: 'INSPIRE는 photonic circuit의 순·역방향 복소광장을 직접 측정해 gradient를 계산하고 실제 칩 안에서 학습하는 in-situ photonic training을 구현했다.'
+pubDate: 2026-10-05T00:05:00+09:00
+updatedDate: 2026-10-07
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-05-inspire-photonic-in-situ-learning-news
+category: ai-machine-learning
+subcategory: photonic-in-situ-learning
+type: paper-review
+tags:
+  - frontier-one
+  - photonic-ai
+  - neuromorphic-computing
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+import Math from '@/components/post/Math.astro';
+
+**한 문장 결론.** INSPIRE는 photonic neural network의 weight를 컴퓨터 속 digital twin에서만 학습시키는 대신, **실제 광학 칩 내부의 빛을 측정해 gradient를 얻고 그 자리에서 parameter를 업데이트하는 학습 방식**을 구현했다.
+
+## 왜 이 문제가 어려운가
+
+Photonic computing의 매력은 matrix multiplication을 빛의 간섭과 전파 자체로 처리할 수 있다는 점이다.
+
+하지만 실제 chip에는 fabrication variation, thermal drift, scattering, phase error가 존재한다. 컴퓨터에서 만든 photonic model이 아무리 정교해도 실제 device와 완전히 같지 않다.
+
+그래서 inference를 빛으로 처리하면서도 training은 CPU·GPU와 digital model에 크게 의존하는 역설이 생긴다.
+
+## gradient가 왜 필요한가
+
+Neural network 학습은 loss를 줄이는 방향으로 parameter를 움직이는 과정이다.
+
+<Math display tex={String.raw`\theta_{t+1}=\theta_t-\eta\nabla_{\theta}\mathcal{L}`} />
+
+여기서 <Math tex={String.raw`\theta`} />는 조정할 parameter, <Math tex={String.raw`\eta`} />는 learning rate, <Math tex={String.raw`\mathcal{L}`} />은 loss다.
+
+문제는 gradient <Math tex={String.raw`\nabla_{\theta}\mathcal{L}`} />을 실제 photonic hardware에서 어떻게 얻느냐이다.
+
+기존에는 digital twin에서 계산하거나 parameter를 하나씩 perturb하면서 loss 변화를 측정했다. Tunable element 수가 많아질수록 비용과 calibration 부담이 커진다.
+
+## INSPIRE는 무엇을 바꿨나
+
+INSPIRE는 on-chip **synthetic time-reversal holography**를 사용해 forward와 backward photonic mode의 amplitude와 phase, 즉 full complex field를 측정한다.
+
+이 physical field를 이용해 gradient를 계산하고 실제 chip parameter를 업데이트한다.
+
+핵심은 update 식을 새로 만든 것이 아니라 **gradient가 어디에서 오는지를 바꿨다**는 점이다.
+
+기존:
+digital physical model → simulated gradient
+
+INSPIRE:
+actual optical fields → measured physical gradient
+
+따라서 fabrication error와 scattering도 단순 modelling error가 아니라 학습 대상 physical system의 일부가 된다.
+
+## 핵심 실험과 수치
+
+저자들은 직접 학습한 matrix에서 target 대비 **relative error 0.26%**를 보고했다.
+
+또 scattering medium이 포함된 환경에서도 in-situ training을 수행했고, native tunable element 수보다 큰 matrix에 대한 학습을 시연했다.
+
+Meta-learning에서는 single-shot photonic learning을 구현해 **251배 model compression**과 **136배 task-specific training acceleration**을 보고했다.
+
+Source Data와 training software도 공개됐다.
+
+## 136배를 어떻게 읽어야 하나
+
+“AI training이 136배 빨라졌다”라고 일반화하면 안 된다.
+
+이 수치는 논문이 구성한 **photonic meta-learning system에서 새로운 task에 적응하는 task-specific training 비교**다.
+
+GPU 기반 foundation-model training 전체가 136배 빨라진다는 뜻이 아니다.
+
+## 에너지도 자동으로 해결되나
+
+그렇지 않다.
+
+Optical core의 matrix operation이 효율적이어도 실제 system에는 laser, modulator, detector, ADC/DAC, thermal tuning, control electronics가 필요하다.
+
+INSPIRE에는 complex field를 읽는 holographic measurement도 포함된다.
+
+따라서 상용 accelerator와 비교하려면 optical core 하나가 아니라 **같은 task를 끝냈을 때 wall socket에서 총 몇 joule을 썼는가**를 봐야 한다.
+
+## 실제로 무엇이 달라질 수 있나
+
+Photonic accelerator는 흔히 “다른 컴퓨터에서 학습한 neural network를 빠르게 실행하는 칩”으로 설명됐다.
+
+INSPIRE가 scaling된다면 chip이 자신의 제조 오차와 환경 변화까지 포함한 상태에서 parameter를 직접 다시 맞추는 **adaptive physical processor**가 될 수 있다.
+
+Datacenter뿐 아니라 optical sensor, imaging, communication, edge photonics처럼 환경 변화가 큰 시스템에서 특히 의미가 클 수 있다.
+
+## 한계와 다음 트리거
+
+수천~수만 tunable element 규모에서 gradient measurement가 유지되는지, laser와 electronics를 포함한 end-to-end energy가 실제 digital accelerator보다 낮은지, chip-to-chip variation에서도 같은 training framework가 재현되는지 확인해야 한다.
+
+또 현재 공개 정보에서 논문 Supplementary의 핵심 gradient derivation 위치를 완전히 정리하지 못했으므로, 이 초안은 수식 해설을 baseline gradient-descent 수준으로 제한한다.
+
+## 출처
+
+1. Zhou, T., Zhao, Y., Li, S. et al., “Photonic neuromorphic learning via generalized in situ physical gradient descent,” Nature Computational Science, 5 October 2026. DOI: 10.1038/s43588-026-01057-y.
+2. Source Data Figs. 2–5, same article.
+3. Model and training software archive, Zenodo DOI: 10.5281/zenodo.21918485.

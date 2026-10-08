@@ -1,0 +1,150 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import Breadcrumbs from '@/components/Breadcrumbs.svelte';
+import MotionRuntime from '@/components/experience/MotionRuntime.astro';
+import ResearchMap from '@/components/experience/ResearchMap.astro';
+import '@/styles/world.css';
+import { RESEARCH_FOCUS } from '@/lib/research-en';
+import { getPostTypeLabel } from '@/lib/taxonomy.mjs';
+import { formatDate } from '@/lib/utils/date';
+import { getEnglishPosts as getPublishedPosts, englishSlug as getPostSlug } from '@/lib/english';
+import { getBreadcrumbSchema } from '@/lib/schemas';
+import { buildPostGraph } from '@/lib/experience/post-graph';
+
+const posts = await getPublishedPosts();
+const postGraph = buildPostGraph(posts);
+
+const focusWithPosts = RESEARCH_FOCUS.map((focus) => ({
+  ...focus,
+  posts: posts
+    .filter((post) => post.data.researchArea === focus.id && post.data.researchFeatured)
+    .sort(
+      (a, b) =>
+        (a.data.researchOrder ?? Number.MAX_SAFE_INTEGER) -
+          (b.data.researchOrder ?? Number.MAX_SAFE_INTEGER) ||
+        b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+    ),
+}));
+
+const schema = getBreadcrumbSchema([
+  { name: 'Research', url: new URL('/en/research/', Astro.site).toString() },
+]);
+---
+
+<Layout
+  title="Research"
+  lang="en"
+  adsEnabled={false}
+  description="Research and engineering topics in robotics, AI, and computer vision, with public technical notes by Jiho Park."
+  schema={schema}
+>
+  <div class="experience-page" data-experience-page="research">
+    <MotionRuntime scope="research" />
+    <Breadcrumbs homeHref="/en/" items={[{ name: 'Research', href: '/en/research/' }]} />
+
+    <div class="research-world-shell" data-world-shell>
+      <aside class="research-world-sticky" aria-label="Interactive research map">
+        <ResearchMap graph={postGraph} />
+      </aside>
+
+      <div class="research-world-content">
+        <header class="research-experience-hero">
+          <div>
+            <p class="experience-kicker" data-motion="hero-kicker">02 / Research Index</p>
+            <h1 class="research-experience-title" data-motion="hero-copy">
+              Research<br />Engineering
+            </h1>
+            <p class="experience-role" data-motion="hero-copy">Problem → Method → Evidence</p>
+            <p class="research-experience-copy" data-motion="hero-copy">
+              I connect studies and experiments in robotics, AI, and computer vision with public technical
+              writing and research notes. The map tracks the line of inquiry you are reading.
+            </p>
+          </div>
+        </header>
+
+        <div class="research-focus-stack">
+          {
+            focusWithPosts.map((focus, index) => (
+              <section
+                id={focus.id}
+                aria-labelledby={`${focus.id}-heading`}
+                class="research-focus-section"
+                data-research-section={focus.id}
+                data-world-chapter={focus.id}
+              >
+                <div class="research-focus-layout">
+                  <div>
+                    <span class="research-focus-number">
+                      {String(index + 1).padStart(2, '0')} / {focus.label}
+                    </span>
+                    <h2 id={`${focus.id}-heading`} class="research-focus-title">
+                      {focus.title}
+                    </h2>
+                    <p class="research-focus-description">{focus.description}</p>
+                    <p class="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                      {focus.posts.length} curated public records
+                    </p>
+                  </div>
+
+                  <div>
+                    <p class="research-notes-label">Selected public evidence</p>
+                    {focus.posts.length > 0 ? (
+                      focus.posts.map((post) => {
+                        const slug = getPostSlug(post);
+                        return (
+                          <a
+                            href={`/en/posts/${slug}/`}
+                            class="research-note-link"
+                            data-post-transition-slug={slug}
+                          >
+                            <div class="flex items-start justify-between gap-5">
+                              <div class="min-w-0">
+                                <div class="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                  <span>{getPostTypeLabel(post.data.type)}</span>
+                                  <span aria-hidden="true">·</span>
+                                  <span>{post.data.subcategory}</span>
+                                </div>
+                                <h3 data-post-transition-title>{post.data.title}</h3>
+                                <p class="line-clamp-2">{post.data.description}</p>
+                              </div>
+                              <time
+                                datetime={post.data.pubDate.toISOString()}
+                                class="shrink-0 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground tabular-nums"
+                              >
+                                {formatDate(post.data.pubDate)}
+                              </time>
+                            </div>
+                          </a>
+                        );
+                      })
+                    ) : (
+                      <p class="py-4 text-sm text-muted-foreground">
+                        English translations of these research records are being prepared. The original records remain available in the Korean edition.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </section>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+
+    <section class="experience-section border-t border-border pt-10 sm:pt-12" data-reveal>
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+        <div class="max-w-2xl">
+          <p class="experience-section-label">Research Notes</p>
+          <h2 class="mt-4 text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+            Explore study, implementation, and research records by subject in Writing.
+          </h2>
+          <p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
+            Categories, content types, detailed tags, and series separate selected research evidence
+            from the complete archive. Translation coverage identifies what is available in English.
+          </p>
+        </div>
+        <a href="/en/posts/" class="experience-button experience-button--primary">Browse Writing</a>
+      </div>
+    </section>
+  </div>
+</Layout>
