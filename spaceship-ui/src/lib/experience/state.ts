@@ -99,6 +99,7 @@ class ExperienceStore {
 export const experienceState = new ExperienceStore();
 
 export function experienceRouteFromPath(pathname: string): ExperienceRoute {
+  if (pathname === '/en' || pathname.startsWith('/en/')) pathname = pathname.slice(3) || '/';
   if (pathname === '/') return 'home';
   if (pathname === '/research' || pathname.startsWith('/research/')) return 'research';
   return 'other';

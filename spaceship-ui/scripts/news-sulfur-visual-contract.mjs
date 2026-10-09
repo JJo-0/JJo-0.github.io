@@ -1,3 +1,4 @@
+import { assertNewsProseLength } from './news-prose-policy.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
@@ -52,9 +53,13 @@ for (const id of ids.slice(2)) {
 }
 const prose = body.split('## 9. 출처')[0]
   .replace(/<(?:Math|NewsFigure)\b[^>]*?\/>/gs, '')
+  // Citation anchors are navigation markup, not prose. Keep the visible label
+  // so the pre-existing citation-number stripping and 7,000+ prose gate
+  // retain exactly the same semantic counting rule as before the link repair.
+  .replace(/<a\b[^>]*\bdata-news-citation="\d+"[^>]*>([\s\S]*?)<\/a>/g, '$1')
   .replace(/\[\d+\]/g, '')
   .replace(/^[#>\s]+/gm, '')
   .replace(/[*|]/g, '')
   .replace(/\s+/g, ' ').trim();
-assert(prose.length >= 7000 && prose.length <= 10000, `sulfur: body must stay within 7,000–10,000 characters; got ${prose.length}`);
+assertNewsProseLength(prose.length, "news-sulfur-visual-contract.mjs");
 console.log(`news-sulfur-visual-contract: PASS image-first body, photo-first thumbnail, 4 credited visuals, ${prose.length} prose characters`);

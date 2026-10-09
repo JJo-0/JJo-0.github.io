@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -19,6 +20,37 @@ const NONCANONICAL_FENCE_IDS = new Map([
   ['pseudocode', 'text'],
 ]);
 const CHART_RUNTIME_PATTERN = /\b(?:new\s+Chart\s*\(|Chart\.getChart\s*\()/;
+
+// Only a reference beginning at /image/ points at the retired public tree.
+// A /image/ segment inside an external CDN URL is not a repository-owned asset.
+function retiredImageReferences(source) {
+  return Array.from(
+    source.matchAll(/(?:^|[\s"'`(=])(\/image\/[^\s)"'`<>{]+)/g),
+    (match) => match[1].replace(/[.,;:]$/, ''),
+  );
+}
+
+// Keep the local-path prohibition covered while preventing remote-URL false positives.
+for (const [source, expected] of [
+  ['/image/old.png', ['/image/old.png']],
+  ['![old](/image/old.png)', ['/image/old.png']],
+  ['<img src="/image/old.png" />', ['/image/old.png']],
+  ["const image = '/image/old.png';", ['/image/old.png']],
+  ['const image = `/image/old.png`;', ['/image/old.png']],
+  ['url(/image/old.png)', ['/image/old.png']],
+  ['<img src=/image/old.png>', ['/image/old.png']],
+  ['\n/image/old.png?size=2#photo', ['/image/old.png?size=2#photo']],
+  ['/image/a.png /image/b.png', ['/image/a.png', '/image/b.png']],
+  [HOMEPAGE_IMAGE_REFERENCE, [HOMEPAGE_IMAGE_REFERENCE]],
+  ['https://images.samsung.com/is/image/samsung/photo.png', []],
+  ['https://www.belkin.com/dw/image/v2/catalog/photo.jpg', []],
+  ['https://cdn.example.com/image/photo.png', []],
+  ['//cdn.example.com/image/photo.png', []],
+  ['https://cdn.example.com/image/photo.png <img src="/image/old.png">', ['/image/old.png']],
+  ['/assets/posts/example/image/photo.png', []],
+]) {
+  assert.deepEqual(retiredImageReferences(source), expected, `retired image reference regression: ${source}`);
+}
 
 function filesUnder(dir, predicate = () => true) {
   if (!fs.existsSync(dir)) return [];
@@ -138,7 +170,7 @@ for (const file of postFiles) {
     assertPublicAssetExists(reference, relative);
   }
 
-  if (/\/image\//.test(source)) {
+  if (retiredImageReferences(source).length) {
     issues.push(
       `${relative}: /image is retired; move repository-owned media to /assets/posts/<namespace>/`,
     );
@@ -192,8 +224,7 @@ for (const sourceRoot of [path.join(root, 'site', 'content'), path.join(root, 's
   )) {
     const relative = path.relative(root, file).replaceAll(path.sep, '/');
     const source = stripFencedCode(fs.readFileSync(file, 'utf8'));
-    for (const match of source.matchAll(/\/image\/[^\s)"'<>{]+/g)) {
-      const reference = match[0].replace(/[.,;:]$/, '');
+    for (const reference of retiredImageReferences(source)) {
       if (relative === HOMEPAGE_IMAGE_SOURCE && reference === HOMEPAGE_IMAGE_REFERENCE) continue;
       issues.push(`${relative}: /image is retired for content; only the homepage mouse GIF is allowed`);
     }

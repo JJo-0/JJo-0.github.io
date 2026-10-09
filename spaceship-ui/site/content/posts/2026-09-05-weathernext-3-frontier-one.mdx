@@ -15,7 +15,7 @@ researchFeatured: false
 featured: false
 draft: false
 lang: "ko"
-updatedDate: 2026-09-13
+updatedDate: 2026-10-09
 ---
 
 import NewsFigure from '@/components/post/NewsFigure.astro';
@@ -91,7 +91,7 @@ WeatherNext 3는 같은 FGN 계열을 확장하되, <strong>서로 다른 해상
 
 *그림 2. Held-out METAR station 평가. 출처: Rasp et al., arXiv:2609.03582v1, Figure 3. CC BY 4.0.*
 
-강수에서는 WN3의 PARDIG head가 초기 lead time 기준으로 IMERG 평가에서 최대 <strong>60%</strong>, MRMS에서 <strong>30%</strong>, rain gauge에서 <strong>10%</strong> 수준의 CRPS 감소를 보고했다. 또한 매시간 초기화(hourly initialization)는 6시간 초기화와 비교해 운영 lead time을 약 <strong>2~3시간</strong> 더 확보했다.
+강수에서는 WN3의 PARDIG head가 WN2·ECMWF ENS라는 전 지구 확률예보 기준 모델들과의 비교에서, 초기 lead time의 CRPS 감소를 IMERG 최대 <strong>60%</strong>, MRMS <strong>30%</strong>, rain gauge <strong>10%</strong> 수준으로 보고했다. Figure 4a는 2024년 00/12 UTC 초기화 예보를 사용하며 IMERG·MRMS는 6시간 누적 강수, rain gauge는 24시간 누적 강수를 평가한다. 이 최대값들은 같은 지역·선행시간의 보편적 개선율이 아니다. 또한 매시간 초기화(hourly initialization)는 6시간 초기화와 비교해 운영 lead time을 약 <strong>2~3시간</strong> 더 확보했다.
 
 ![WeatherNext 3 강수 평가와 hourly initialization](https://arxiv.org/html/2609.03582v1/Figures/fig3_combined.png)
 
@@ -111,11 +111,13 @@ CRPS는 예측한 누적분포와 실제 관측을 비교하는 점수다. 단�
 
 위성 기반 강수 추정, 레이더 기반 자료, 지상의 우량계는 같은 비를 다른 방식으로 관측한다. 공간 범위와 오차 특성이 달라 어느 한 자료에서 점수가 좋다고 모든 자료에서 같은 개선이 나타나는 것은 아니다. 논문이 여러 평가 자료의 결과를 구분해서 제시한다는 점은 유용하지만, 이를 독립된 장기 현장 검증이 모두 끝났다는 뜻으로 확대하지 않는다.[1]
 
+IMERG는 WN3의 학습 target에도 사용되므로 이 모델에 완전히 독립적인 정답 자료가 아니다. IMERG와 함께 학습되는 PARDIG head에도 간접 영향이 가능하다는 점을 원문은 명시한다. MRMS는 미국 본토 중심의 제한된 공간 범위이고, 우량계도 분포가 고르지 않다. 세 자료의 결과는 독립성·공간 범위·누적 시간을 함께 읽어야 한다.[1]
+
 ## 6. 논문의 한계와 반대 증거
 
 가장 중요한 제한은 세 가지다.
 
-첫째, 논문은 아직 <strong>arXiv v1 preprint</strong>다. 둘째, 저자들은 극한 강수에서 충분한 true positive를 확보하기 어렵기 때문에 평가는 <strong>4 mm / 6 h 이하의 중간 수준 강수에 제한</strong>하고, 극한 강수 평가는 향후 과제로 남겼다. 따라서 “폭우까지 해결했다”는 결론은 근거가 없다.
+첫째, 논문은 아직 <strong>arXiv v1 preprint</strong>다. 둘째, 저자들은 충분한 true positive가 부족해 극한 강수 평가를 향후 과제로 남겼다. 강수량 threshold별 사건 평가인 Brier score에서는 <strong>4 mm / 6 h까지의 중간 수준 임계값</strong>을 다룬다. 이것을 앞의 6시간·24시간 누적 강수 CRPS 자료가 모두 같은 단위이거나, 더 큰 강수 관측을 일괄 제외했다는 뜻으로 읽으면 안 된다. 따라서 “폭우까지 해결했다”는 결론은 근거가 없다.
 
 셋째, 개별 ensemble sample에서는 모델 mesh 구조가 드러나는 육각형 artifact와 6시간 outer step 경계의 시간 불연속이 관찰된다. 저자들은 이런 현상이 precipitation과 station output에서 특히 뚜렷하다고 직접 보고한다.
 

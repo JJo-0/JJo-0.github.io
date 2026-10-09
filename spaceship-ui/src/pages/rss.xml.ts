@@ -24,6 +24,6 @@ export async function GET(context: APIContext) {
       link: `/posts/${getPostSlug(post)}/`,
       categories: post.data.tags,
     })),
-    customData: `<language>ko-KR</language>`,
+    customData: `<language>en-us</language>`,
   });
 }

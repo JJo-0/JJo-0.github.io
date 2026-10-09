@@ -1,3 +1,4 @@
+import { assertNewsProseLength } from './news-prose-policy.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -64,5 +65,5 @@ const prose = body
   .replace(/[*|]/g, '')
   .replace(/\s+/g, ' ')
   .trim();
-assert(prose.length >= 8000 && prose.length <= 10000, `justgrpo: 8,000–10,000 Korean prose characters required; got ${prose.length}`);
+assertNewsProseLength(prose.length, "news-justgrpo-visual-contract.mjs");
 console.log(`news-justgrpo-visual-contract: PASS original source PNGs, rights ledger, 2 educational SVGs, ${prose.length} prose characters`);

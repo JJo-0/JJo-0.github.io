@@ -1,0 +1,168 @@
+---
+title: '한 가닥 광섬유로 색과 위치를 함께 읽는 방법'
+description: '나노광학 부호화와 계산으로 단일 광섬유에서 초분광 영상을 복원한다. 원문 수식·FISTA·조직 실험을 연결하고 단일 측정과 36회 회전 측정을 구분한다.'
+pubDate: 2026-09-21T00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+category: research-methods-tools
+subcategory: hyperspectral-imaging
+type: paper-review
+tags:
+  - frontier-candidate
+  - hyperspectral-imaging
+slug: 2026-09-21-single-fiber-hyperspectral-news
+researchFeatured: false
+draft: false
+lang: ko
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import Math from '@/components/post/Math.astro';
+
+<NewsFigure media="fiber-fig-1" priority />
+
+흑백 사진의 한 점에는 밝기 하나가, RGB 사진에는 세 가지 색 성분이 들어간다. 초분광 영상(hyperspectral image)은 한 점마다 훨씬 많은 파장의 밝기를 기록한다. 물체의 모양과 빛의 스펙트럼을 함께 얻는 대신, 센서와 광학 장치가 커지기 쉽다. 이번 연구는 <strong>장면의 위치와 색 정보를 광섬유에 넣기 전에 부호화하고, 반대편에서 읽은 스펙트럼을 계산으로 풀어내는 방법</strong>을 제시한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+<small>2026년 9월 19일 공개된 동료평가 승인 원고의 전체 PDF·Methods·보충자료를 기준으로 읽었다. 원논문 식 번호와 이 글의 풀이 번호를 구분한다. 저자 공개 코드는 별도의 재현 예제로 함께 확인했다.<a href="#news-ref-4" data-news-citation="4" aria-label="참고문헌 4로 이동" data-astro-reload>[4]</a></small>
+
+## 1. 한 가닥으로 보내려면 무엇을 바꿔야 할까
+
+광섬유 묶음은 많은 가느다란 통로를 나란히 놓아 위치 정보를 전달할 수 있다. 한 가닥 다중모드 광섬유에는 더 작은 단면 안에 많은 전파 모드가 있지만, 굽힘과 비틀림에 따라 출구의 공간 무늬가 바뀐다. 입구의 한 점과 출구의 한 점을 고정적으로 대응시키는 방법은 그 변화에 민감하다. 연구진은 공간 무늬를 그대로 보존하려는 대신 <strong>입사 방향마다 다른 파장별 투과 특성을 부여</strong>하는 쪽으로 문제를 바꿨다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+맨 위 Figure 1a에서 왼쪽 장면은 방향 <Math tex={String.raw`\theta_x,\theta_y`} />와 파장 <Math tex={String.raw`\lambda`} />에 따라 밝기가 달라진다. 작은 부호화 소자를 통과한 빛은 광섬유를 지나 오른쪽 분광기에 도달한다. 분광기는 파장별로 빛이 얼마나 들어왔는지 읽고, 마지막 계산 단계가 여러 파장 영상을 쌓은 데이터 큐브를 추정한다. 그림에 그려진 위 모양 장기는 지향하는 응용을 나타내며, 실제 조직 실험의 시료와 측정 과정은 6절에서 살펴본다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+Figure 1b의 DDE는 무질서 분산 부호화기(disordered-dispersion encoder)다. 서로 다른 방향에서 온 빛이 같은 파장에서도 서로 다른 비율로 통과하게 만든다. Figure 1c는 그 결과를 수학적으로 보여준다. 장면의 밝기 분포와 부호화기의 응답을 곱한 뒤 각도 방향으로 더하면, 측정할 한 줄의 스펙트럼이 된다. 아래의 울퉁불퉁한 곡선들은 이 응답이 파장과 각도에 따라 달라지는 모습을 그린 것이다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+핵심은 색을 다른 색으로 바꾸는 장치가 아니라 <strong>같은 색이 어느 방향에서 들어왔느냐에 따라 통과량을 달리하는 장치</strong>라는 점이다. 부호를 알고 있으면 출구에 섞인 신호에서 입력을 추정할 단서가 생긴다. 그러나 신호를 섞는 것만으로 정보가 늘지는 않는다. 무엇을 알고 무엇을 가정해야 입력을 되찾을 수 있는지가 다음 질문이다.
+
+## 2. 그림의 곱셈과 적분을 작은 숫자로 읽기
+
+논문은 비선형 광학 효과를 무시할 수 있는 조건에서, 각도와 파장을 가진 물체 <Math tex={String.raw`o(\lambda,\theta)`} />를 파장별 측정 <Math tex={String.raw`m(\lambda)`} />로 연결한다. 전달함수 <Math tex={String.raw`T(\lambda,\theta)`} />는 각 조건의 빛이 얼마나 측정에 기여하는지를 나타낸다. 이 전달함수는 실제 장치에서 보정(calibration)해 알아야 한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+<CandidateEquation id="fiber-forward" title="각 방향의 빛은 한 줄의 스펙트럼에 어떻게 더해질까?" tex={String.raw`m(\lambda)=\int T(\lambda,\theta)o(\lambda,\theta)\,d\theta\tag{1}`}>
+
+원논문 식 (1)이다. <Math tex={String.raw`o`} />는 입력 밝기, <Math tex={String.raw`T`} />는 방향·파장에 따른 투과 응답, <Math tex={String.raw`m`} />은 분광기에서 읽는 밝기다. 곱셈은 입력 빛 중 장치를 통과해 측정되는 비중을 적용한다. 적분은 여러 입사 방향의 기여를 모두 더한다. 적분 변수가 <Math tex={String.raw`\theta`} />라는 점이 중요하다. 이 식은 같은 <Math tex={String.raw`\lambda`} />에서 각도를 합치며, 서로 다른 파장을 임의로 변환해 합친다는 식이 아니다.
+
+하나의 파장에 두 방향의 입력 밝기 2와 1, 투과 계수 0.8과 0.3이 있다고 가정하자. 각도 구간의 가중치를 계수에 포함한 이산 예제에서 측정값은 <Math tex={String.raw`0.8\times2+0.3\times1=1.9`} />다. 먼저 곱하고 나중에 더하는 순서가 바로 부호화 과정이다.
+
+측정값 1.9만으로 두 밝기 2와 1을 유일하게 알아낼 수는 없다. 예를 들어 2.375와 0도 같은 값을 만든다. 다른 파장에서의 응답, 공간·스펙트럼의 구조, 추가 측정이 입력을 구별하는 데 필요하다. 이 간단한 예제가 역문제의 어려움을 보여준다. 숫자는 이해를 위한 가상 값이며 논문의 실제 투과율 데이터가 아니다.
+
+</CandidateEquation>
+
+컴퓨터에서는 각도와 파장을 유한한 칸으로 나눠 <Math tex={String.raw`\boldsymbol m=\boldsymbol S\boldsymbol o`} />로 계산한다. <Math tex={String.raw`\boldsymbol o`} />는 입력 격자를 일렬로 편 벡터, <Math tex={String.raw`\boldsymbol m`} />은 측정 스펙트럼, <Math tex={String.raw`\boldsymbol S`} />는 각 입력이 출력에 기여하는 계수를 모은 행렬이다. 논문의 1개 각도 축 모델에서 입력 원소 수는 <Math tex={String.raw`N_\theta N_\lambda`} />, 측정 원소 수는 <Math tex={String.raw`N_\lambda`} />다. 같은 파장을 연결하는 구조를 유지한 이산화이며, 모든 파장 사이에 임의의 혼합 계수를 넣는 것과는 다르다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+Figure 1d는 영상 정보의 차원과 검출부의 소형화 사이에 이 연구가 놓이는 위치를 개념적으로 비교한다. 이 그림의 별 하나가 모든 성능을 동시에 측정한 순위표는 아니다. 실제 구현에서 얻는 정보의 범위와 필요한 측정 횟수는 뒤의 실험을 통해 확인해야 한다.
+
+## 3. Figure 2: 복잡한 응답을 만드는 물리 구조
+
+<NewsFigure media="fiber-fig-2" />
+
+Figure 2a에는 아래쪽의 다층 박막과 위쪽의 긴 주기 메타격자(metagrating)가 보인다. 재료는 질화규소와 이산화규소이며, 하나의 반복 단위 안에는 폭과 배치가 다른 구조들이 들어간다. 무질서하다는 이름 때문에 전체가 아무 규칙 없이 만들어진 표면으로 읽기보다, <strong>반복 구조 안의 복잡한 모드 결합으로 각도·파장 응답을 풍부하게 만든 설계</strong>로 읽는 편이 정확하다. 옆의 전자현미경 영상은 그 구조를 위와 옆에서 확인한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+그림의 <Math tex={String.raw`k_0=2\pi/\lambda`} />는 자유공간 파수, <Math tex={String.raw`k_x=k_0\sin\theta_x`} />는 입사 빛의 옆 방향 파수 성분이다. 파장이 짧아지면 같은 길이에 더 많은 파동 주기가 들어가므로 파수가 커진다. 입사각이 달라지면 옆 방향으로 진행하는 비중도 변한다. 부호화기는 이 두 변화에 따라 다른 모드가 결합하도록 만든다.
+
+Figure 2b는 주파수와 파수에 따른 모드 상태 밀도(DOS)다. 가로축은 <Math tex={String.raw`k_x`} />, 세로축은 주파수 <Math tex={String.raw`f`} />이며, 색은 그 조건에서의 상태 밀도를 나타낸다. 표시한 네 점이 가까이 있어도, 2c의 전기장 <Math tex={String.raw`E_y`} /> 무늬는 서로 다르다. 이 네 패널은 비슷한 입력 조건이 다른 내부 장 분포와 결합할 수 있음을 보여준다. 여기의 DOS 지도와 실제로 측정한 투과 지도는 다음 패널에서 구분한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+<strong>Figure 2d가 실측한 각도–파장 투과 지도다.</strong> 가로축은 약 −60°부터 +60°까지의 각도, 세로축은 400–700 nm의 파장, 색은 투과 응답이다. 일정한 각도에서 세로로 읽으면 그 방향의 파장별 지문을 얻고, 일정한 파장에서 가로로 읽으면 방향별 민감도를 얻는다. 따라서 어느 축을 따라 잘랐는지에 따라 비교하는 물리량이 달라진다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+2e는 서로 떨어진 각도 또는 파장에서 응답이 얼마나 비슷한지 상관계수로 비교한다. 2f는 부호화 행렬과 복원에 사용하는 기저의 상호 코히런스(mutual coherence)를 압축비에 따라 비교한다. DDE, 단순 주기 격자(PG), 다층 박막(TF)을 나란히 보면 복잡한 구조를 추가한 이유를 확인할 수 있다. 비슷한 응답이 반복되면 다른 입력을 구별하기 어렵고, 응답이 충분히 달라지면 복원에 유리해질 수 있다. 다만 낮은 상관만으로 모든 장면을 정확히 복원한다는 보장이 생기는 것은 아니다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+Methods는 부호화기의 투과율을 여러 회절 차수의 기여로 설명한다. 각 차수의 회절 효율과 광섬유에 결합하는 정도를 곱한 뒤 더한다. 즉 소자에서 빛이 나왔다고 모두 광섬유에 들어가는 것이 아니라, <strong>어느 방향으로 나왔으며 그 방향을 광섬유가 얼마나 받아들이는지</strong>까지 전달함수에 반영한다. 이 때문에 부호화기 단독 설계와 실제 광섬유·검출기 보정을 함께 보아야 한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+## 4. 복원은 측정과의 일치와 장면의 구조를 함께 요구한다
+
+출력 스펙트럼에 비해 입력 격자의 미지수가 많으면 같은 측정을 만드는 후보 장면이 여러 개다. 연구진은 측정과 잘 맞는 후보 중에서도 공간과 스펙트럼이 불필요하게 요동하지 않는 해를 찾는다. 논문 Methods 식 (4)는 이를 데이터 적합 항과 사전 구조(prior) 항의 합으로 쓴다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a>
+
+<CandidateEquation id="fiber-prior" title="측정 오차만 줄이지 않고 두 규제 항을 더하는 이유는?" tex={String.raw`\begin{aligned}\widehat o=\arg\min_o\;&\frac12\lVert m-So\rVert_2^2\\&+\alpha\lVert\Psi_{xy}^{-1}o\rVert_1\\&+\beta\lVert\Psi_{\lambda}^{-1}o\rVert_2\end{aligned}\tag{2}`}>
+
+원문의 결합 규제 항을 분리해 적었다. <Math tex={String.raw`So`} />는 현재 추정 장면으로 다시 계산한 스펙트럼, <Math tex={String.raw`m-So`} />는 실제 측정과의 차이다. 그 차이를 제곱해 더하면 양·음 오차가 서로 상쇄되지 않으며 큰 차이에 더 큰 비용을 준다. 앞의 <Math tex={String.raw`1/2`} />는 미분할 때 제곱에서 생기는 2를 정리해 주는 계수다.
+
+<Math tex={String.raw`\Psi^{-1}`} />는 이 문맥에서 장면을 희소 표현으로 바꾸는 변환 기호다. 보정 행렬 <Math tex={String.raw`S`} />를 역행렬로 뒤집는 뜻이 아니다. 아래첨자 <Math tex={String.raw`xy`} />는 공간 방향, <Math tex={String.raw`\lambda`} />는 파장 방향의 구조를 나타낸다. 첫 규제의 1-노름은 변환한 성분의 절댓값 합, 둘째의 2-노름은 제곱합의 제곱근이다. <Math tex={String.raw`\alpha,\beta`} />는 측정 일치와 이 구조 사이의 비중을 조절한다.
+
+가상 예제로 공간 변환 성분이 <Math tex={String.raw`(2,0,-1)`} />, 파장 변환 성분이 <Math tex={String.raw`(3,4)`} />, 가중치가 각각 0.1과 0.2라면 규제 비용은 <Math tex={String.raw`0.1\times3+0.2\times5=1.3`} />이다. 측정 오차만 가장 작은 해와 총비용이 가장 작은 해가 달라질 수 있다. 가중치를 지나치게 크게 두면 실제 경계나 스펙트럼 변화까지 지울 수 있으므로, 규제는 정보를 공짜로 추가하는 것이 아니라 어떤 해를 선호할지 정하는 선택이다.
+
+</CandidateEquation>
+
+<small>위 식은 승인 원고 Methods의 표기를 따른다. 특히 파장 규제는 원문에 제곱 없는 2-노름으로 적혀 있다. 공개 코드의 파장 평활화 gradient와 계수 설정은 구현을 별도로 확인해야 하며, 코드의 제곱형 평활화 해석을 원문 식과 동일한 식으로 바꾸어 쓰지 않았다.</small>
+
+연구진은 FISTA라는 반복 최적화 방법을 사용한다. 현재 장면에서 예측 스펙트럼을 만들고, 측정과의 차이가 어떤 입력 위치에서 비롯됐는지 되돌려 보낸 뒤, 규제가 선호하는 구조를 적용하고 다음 추정을 만든다. 공개 구현에는 공간 TV 규제, 파장 평활화와 비음수 투영이 들어 있다. 비음수 투영은 추정 광세기가 0보다 작아지는 결과를 제한하는 역할이다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a><a href="#news-ref-3" data-news-citation="3" aria-label="참고문헌 3로 이동" data-astro-reload>[3]</a>
+
+<CandidateEquation id="fiber-gradient" title="측정한 쪽의 오차를 왜 전치행렬로 되돌려 보낼까?" tex={String.raw`\nabla F(o)=S^{\mathsf T}(So-m)\tag{3}`}>
+
+이 식은 데이터 적합 항 <Math tex={String.raw`F(o)=\tfrac12\lVert So-m\rVert_2^2`} />만 미분한 해설이다. <Math tex={String.raw`So-m`} />은 검출기 쪽에서 남은 오차이고, <Math tex={String.raw`S^{\mathsf T}`} />는 각 입력 원소가 그 오차에 기여한 정도를 모아 입력 공간으로 돌려보낸다. 전치행렬은 역행렬이 아니다. 현재 오차를 어느 방향으로 줄여야 하는지 알려 주는 미분 계산에 등장한다.
+
+예를 들어 <Math tex={String.raw`S=(0.8,0.3)`} />, 추정 입력 <Math tex={String.raw`o=(1,1)^{\mathsf T}`} />, 측정 <Math tex={String.raw`m=1.9`} />이면 예측은 1.1이고 잔차는 −0.8이다. gradient는 <Math tex={String.raw`(-0.64,-0.24)^{\mathsf T}`} />다. 걸음 크기 0.5로 gradient를 빼면 새 후보는 <Math tex={String.raw`(1.32,1.12)^{\mathsf T}`} />이며 예측은 1.392가 된다. 측정에 가까워지는 방향을 확인할 수 있다. 이 한 걸음은 규제와 가속을 생략한 예제이며 전체 FISTA 실행 결과가 아니다.
+
+실제 FISTA는 이 오차 감소 단계에 근접 연산(proximal operation)과 이전 갱신 방향을 활용하는 가속을 결합한다. 매번 얼마나 움직일지의 설정도 중요하다. 공개 코드에 표시되는 잔차 <Math tex={String.raw`\lVert So-m\rVert_2`} />는 측정 일치만 확인하므로, 그 값이 낮다는 사실과 정답 장면의 복원이 정확하다는 사실을 구분해야 한다.
+
+</CandidateEquation>
+
+## 5. 한 번의 측정과 회전 측정은 어떤 정보를 주는가
+
+논문의 첫 영상 실험은 슬릿과 색 필터로 만든 각도–파장 입력을 사용한다. 여기서 ‘2D’는 각도 한 축과 파장 한 축의 조합이다. 한 번의 스펙트럼으로 각도별 밝기와 색 분포를 되찾는 단계이며, 일반 사진처럼 가로·세로 두 공간 축을 동시에 단발 촬영했다는 뜻과 구분한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+실험 물체 O1은 550 nm 장파장 통과 필터를 붙인 단일 슬릿, O2는 파란색 필터를 붙인 단일 슬릿, O3는 필터 없는 이중 슬릿이다. 서로 다른 공간·색 조건에서 복원이 유지되는지를 비교한다. 범위에 걸친 평가에서 평균 각도 프로파일 오차 6.44%, 스펙트럼 오차 6.27%를 보고한다. 이 백분율은 정규화된 프로파일의 차이이며, 각도 위치 오차가 6.44°라는 뜻으로 단위를 바꾸지 않는다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+두 공간 축까지 복원하려면 현재 소자에서 덜 구별되는 방향의 정보를 더 얻어야 한다. 연구진은 물체를 광섬유 축 둘레로 10°씩 회전시켜 <strong>36개의 스펙트럼</strong>을 모았다. 회전할 때 서로 다른 투영이 생기므로 이전에는 겹쳤던 성분을 구별할 단서가 늘어난다. 논문에서는 향후 탐침 끝을 회전하는 구성을 모사하기 위해 물체 쪽을 회전했다고 설명한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+<CandidateTable id="fiber-evidence" label="단일 광섬유 논문의 입력 차원과 획득 조건">
+
+| 실험 | 복원할 정보 | 획득 조건·의미 |
+|---|---|---|
+| 슬릿·색 필터 | 각도 한 축 + 파장 | 한 스펙트럼에서 복원 |
+| 인공 다색 물체 | 각도 두 축 + 파장 | 10° 간격 36회 회전, 각 30 ms 적분 |
+| 염색 조직 절편 | 각도 두 축 + 파장 | 36회 회전, 각 10 ms 적분 |
+| 보고한 광학 범위 | ±60° / 400–700 nm | 보정·각도–파장 측정 범위 |
+| 사용한 광섬유 | 코어 직경 400 μm | 실제 실험에서 광량을 확보한 구성 |
+| 현재 계산 시간 | 분 단위 | 적분 시간과 별도인 재구성 단계 |
+
+</CandidateTable>
+
+예를 들어 조직의 36회에 10 ms를 곱하면 노출 시간의 합은 0.36초다. 하지만 회전·정착·전송·재구성 시간은 이 곱셈에 들어 있지 않다. 따라서 이 수치에서 곧바로 초당 약 세 장의 실시간 영상이라고 계산하면 실제 측정의 경계를 놓친다. 논문은 현재 재구성 시간이 분 단위라고 명시하고, 계산과 소형화의 추가 개선을 논의한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+## 6. Figure 4: 조직의 모양과 스펙트럼을 함께 확인하기
+
+<NewsFigure media="fiber-fig-4" />
+
+Figure 4a는 염색한 조직을 비추고 회전시켜 스펙트럼을 모으는 구성이다. 실제 시료는 <strong>두께 4 μm의 마우스 위 종양 조직 절편</strong>으로, 헤마톡실린과 에오신(H&E) 염색을 했다. 살아 있는 몸 안을 움직이며 촬영한 실험이 아니라, 준비된 조직 절편의 공간·분광 구조를 되찾는 실험이다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+4b의 여러 곡선은 회전각이 바뀔 때 입력 혼합이 달라지는 모습을 보여준다. 같은 장면을 다른 방향으로 읽어 정보가 보완되는 단계다. 4c는 복원한 파장별 영상을 눈에 익숙한 RGB 형태로 합친 결과다. 논문은 같은 시료를 독립적으로 세 차례 측정·재구성하고, 그 평균으로 이 영상을 만들었다. 따라서 세 반복은 세 개의 다른 종양이나 세 동물 집단을 뜻하지 않는다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+4d에서는 복원한 스펙트럼을 k-means로 군집화해 세 영역으로 나눈다. 형태와 색이 다른 영역의 분광 차이가 영상 분석에 활용될 수 있음을 보여주는 단계다. 이 군집화가 의료진의 진단 정확도를 검증한 임상 분류기 실험으로 바뀌는 것은 아니다. 어떤 영역이 어떤 스펙트럼을 가졌는지가 이 그림의 직접적인 질문이다.
+
+4e에서 실선은 선택한 영역의 재구성 평균, 음영은 반복의 표준편차, 점선은 기존 초분광 장비로 얻은 기준 스펙트럼이다. 괴사 영역과 종양 영역의 차이를 비교할 때는 먼저 가로축 파장과 세로축 밝기 정규화를 읽고, 평균의 일치와 반복 변동을 따로 살펴본다. 사진의 외형이 비슷하다는 판단에 더해, 파장별 신호까지 기준과 대응하는지를 확인하는 구성이다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+## 7. 공개 코드를 실행할 때 무엇을 재현하는가
+
+저자는 MATLAB 코드를 공개했다. 현재 README는 실험적으로 보정한 응답을 불러오되 <strong>데모의 물체와 측정은 시뮬레이션으로 생성</strong>한다고 명시한다. 실제 광학 실험에서 알아낸 부호를 이용해 가상 장면을 섞고 복원하는 것이다. 이를 실행하면 순방향 모델과 복원 코드의 연결을 공부할 수 있지만, 논문의 실제 조직 측정 파일을 그대로 다시 분석한 것이라고 소개해서는 안 된다.<a href="#news-ref-3" data-news-citation="3" aria-label="참고문헌 3로 이동" data-astro-reload>[3]</a>
+
+<CandidateEquation id="fiber-grid" title="121×601개의 복원 칸은 72,721개 센서를 뜻할까?" tex={String.raw`\begin{aligned}N&=N_\theta N_\lambda\\&=121\times601\\&=72{,}721\end{aligned}\tag{4}`}>
+
+예를 들어 공개 2D 데모는 −60°부터 +60°까지 1° 간격을 사용한다. 양 끝을 포함하므로 각도 수는 <Math tex={String.raw`120/1+1=121`} />이다. 파장은 400 nm부터 700 nm까지 0.5 nm 간격이므로 <Math tex={String.raw`300/0.5+1=601`} />이다. 가능한 각도와 파장의 조합을 모두 만들기 때문에 두 수를 곱한다.
+
+72,721은 복원할 미지수 격자의 크기다. detector를 그만큼 배치했다는 수치도, 그만큼의 독립 정보가 한 번에 측정됐다는 보장도 아니다. 촘촘한 격자는 장면을 세밀하게 표현할 수 있게 하지만, 실제 분해능은 전달함수의 구별 가능성과 잡음에 의해 제한된다.
+
+3D 데모는 각도 두 축에 각각 50개 위치와 601개 파장, 36개 회전 측정을 사용한다. 그 미지수 수는 <Math tex={String.raw`50\times50\times601=1{,}502{,}500`} />이다. 이 또한 데모 배열 크기이며 논문의 모든 물리 실험을 똑같은 크기로 수행했다는 뜻은 아니다. 배열 차원과 광학 분해능을 분리해서 읽으면 코드 숫자를 성능으로 잘못 해석하지 않을 수 있다.
+
+</CandidateEquation>
+
+## 8. 부호화의 장점은 어디서 실제 탐침의 조건이 되는가
+
+이 방법은 입구의 위치 무늬를 출구까지 그대로 유지하는 대신, 입구에서 부호화한 스펙트럼을 전달한다. 논문은 광섬유를 변형하는 실험에서도 복원이 유지되는 성질을 확인한다. 이는 기존 공간 모드에 의존하는 방식의 취약점을 줄이는 방향이지만, 시료 움직임·온도·편광·광결합이 임의로 바뀌어도 같은 보정을 쓸 수 있다는 뜻까지 확장하지 않는다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>
+
+실제 탐침에는 작고 단단한 부호화기, 충분한 빛, 안정적인 보정, 빠른 계산이 동시에 필요하다. 회전을 줄이면 움직이는 장면에 유리하지만 한 번의 측정이 구별해야 할 정보가 늘어난다. 광섬유를 더 가늘게 하면 접근성이 좋아지는 대신 받아들이는 빛과 결합 조건이 달라질 수 있다. 현재 결과를 단일 스펙트럼 센서 하나의 성능이 아니라 이 전체 절충을 시험한 시스템으로 보아야 한다.
+
+마지막으로 복원 결과의 자연스러운 외형보다 기준 측정과의 일치가 중요하다. 규제가 강하면 그림이 매끈해질 수 있어도 작은 구조가 사라질 수 있다. 조직의 새로운 특징을 주장하려면 그 영역의 원시 측정, 기준 스펙트럼, 반복 변동을 함께 확인해야 한다. 이 연구의 진전은 <strong>작은 광학 부호화기와 계산을 결합하면 공간·파장 정보를 단일 광섬유로 전달할 수 있다는 실험 경로</strong>를 보여준 데 있다. 완성된 실시간 내시경으로 가려면 획득 차원과 회전·계산 부담을 실제 사용 조건에서 줄여야 한다.<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="참고문헌 2로 이동" data-astro-reload>[2]</a>
+
+<small>저자들은 DDE 관련 NTU 특허 출원을 공개했다. 원본 도판은 출판사의 CC BY-NC-ND 4.0 파일을 변경하지 않고 싣고, 한국어 해설을 이미지 밖에 별도로 작성했다.</small>
+
+## 9. 출처
+
+<p><a id="news-ref-1" data-news-reference="1" href="https://www.nature.com/articles/s41467-026-77550-9_reference.pdf" target="_blank" rel="noopener noreferrer">[1] Single-fiber hyperspectral imaging via nanophotonic disordered dispersion. Nature Communications 승인 원고, 2026-09-19. 전체 PDF·Methods·그림.</a></p>
+
+<p><a id="news-ref-2" data-news-reference="2" href="https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-026-77550-9/MediaObjects/41467_2026_77550_MOESM1_ESM.pdf" target="_blank" rel="noopener noreferrer">[2] 같은 논문의 Supplementary Information. 보정·복원·영상 획득 조건.</a></p>
+
+<p><a id="news-ref-3" data-news-reference="3" href="https://github.com/THUHoloLab/Disordered-dispersion/tree/c3630c720021a5693ee9ac8eed7986ca0e834ee4" target="_blank" rel="noopener noreferrer">[3] 저자 공개 코드: Disordered-dispersion. 실험 보정 응답을 사용하는 시뮬레이션 데모.</a></p>
+
+<p><a id="news-ref-4" data-news-reference="4" href="https://www.nature.com/articles/s41467-026-77550-9" target="_blank" rel="noopener noreferrer">[4] 출판사 논문 페이지: 승인 원고·공개 코드와 버전 정보.</a></p>

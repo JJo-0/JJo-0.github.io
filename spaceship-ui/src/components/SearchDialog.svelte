@@ -2,11 +2,9 @@
   import { onMount } from 'svelte';
   import { uiState } from '@/lib/ui.svelte';
 
-  let { lang = 'ko' }: { lang?: string } = $props();
   interface Post {
     id: string;
-    url: string;
-    lang: string;
+    href?: string;
     data: {
       title: string;
       description: string;
@@ -43,30 +41,26 @@
   onMount(() => {
     window.addEventListener('keydown', handleKeydown);
 
-
-
-    return () => window.removeEventListener('keydown', handleKeydown);
-  });
-
-  $effect(() => {
-    const endpoint = lang.startsWith('en') ? '/en/api/search.json' : '/api/search.json';
-    const controller = new AbortController();
-    posts = []; query = '';
     (async () => {
       try {
-        const res = await fetch(endpoint, { signal: controller.signal });
-        if (res.ok) posts = await res.json();
-      } catch (error) {
-        if (!controller.signal.aborted) console.error('Failed to load search index:', error);
+        const prefix = document.documentElement.lang.toLowerCase().startsWith('en') ? '/en' : '';
+        const res = await fetch(`${prefix}/api/search.json`);
+        if (res.ok) {
+          posts = await res.json();
+        }
+      } catch (err) {
+        console.error('Failed to load search index:', err);
       }
     })();
-    return () => controller.abort();
+
+    return () => window.removeEventListener('keydown', handleKeydown);
   });
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+  data-search-dialog
   class="fixed inset-0 z-[100] flex items-start justify-center pt-8 sm:pt-24 px-4 bg-black/40 backdrop-blur-[4px] transition-all"
   onclick={() => uiState.closeSearch()}
 >
@@ -117,7 +111,7 @@
         <div class="space-y-1">
           {#each filteredPosts as post (post.id)}
             <a
-              href={post.url}
+              href={post.href || `/posts/${post.id}`}
               class="block p-4 sm:p-5 rounded-xl hover:bg-accent transition-all no-underline group"
               onclick={() => uiState.closeSearch()}
             >

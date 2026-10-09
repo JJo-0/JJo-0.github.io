@@ -1,0 +1,70 @@
+name: Modern AI VI paper reading
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - '.github/workflows/modern-ai-vi-papers.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - '.github/workflows/modern-ai-vi-papers.yml'
+permissions:
+  contents: read
+concurrency:
+  group: vi-paper-reading-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  paper-reading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Install dependencies and Korean browser fonts
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Numerical examples, exact sources and mutation controls
+        run: node scripts/modern-ai-vi-papers-audit.mjs
+      - name: Build unchanged site pipeline
+        run: pnpm build
+      - name: Verify rendered paper equations and figures
+        run: node scripts/modern-ai-vi-papers-audit.mjs
+      - name: Mobile and desktop original-figure reading
+        env:
+          JJO_SMOKE_REQUIRE_GPU: '0'
+        timeout-minutes: 4
+        run: node scripts/browser-modern-ai-vi-papers.mjs
+      - name: Preserve exact reviewed article and results
+        if: always()
+        run: |
+          mkdir -p vi-review
+          git rev-parse HEAD > vi-review/tested-commit.txt
+          cp site/content/posts/modern-artificial-intelligence-6.mdx vi-review/article.mdx
+          cp site/assets/assets/posts/modern-ai-vi-papers/provenance.json vi-review/provenance.json
+          if test -f dist/posts/2026-08-25-modern-artificial-intelligence-6/index.html; then
+            cp dist/posts/2026-08-25-modern-artificial-intelligence-6/index.html vi-review/article.html
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: modern-ai-vi-reading-${{ github.run_id }}
+          path: spaceship-ui/vi-review/
+          retention-days: 14
+          if-no-files-found: error

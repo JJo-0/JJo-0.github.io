@@ -1,0 +1,104 @@
+---
+interface Props { mode: 'hero' | 'calculator' | 'products'; lang?: 'ko' | 'en' }
+const { mode, lang = 'ko' } = Astro.props;
+const t = (ko: string, en: string) => lang === 'ko' ? ko : en;
+const products = [
+  { model: 'EB-P3400', brand: 'Samsung', group: 'daily', specs: '10,000 mAh · 25 W · 210 g', query: '삼성 EB-P3400 보조배터리', price: '₩34,000–38,000', why: t('스마트폰 비상 충전이 목적이라면 20K의 추가 무게보다 휴대성에 투자하는 선택입니다.', 'For phone top-ups, prioritize portability rather than carrying the extra mass of a 20K pack.'), limit: t('Galaxy 45W나 고출력 노트북용이 아닙니다. USB 실효 Wh는 확인 부족입니다.', 'Not for Galaxy 45W or high-power laptops. Measured usable USB Wh was not established.'), source: 'https://www.samsung.com/ae/support/model/EB-P3400XUEGWW/', image: 'https://gdimg.gmarket.co.kr/2925157192/still/600?ver=1775439169', credit: 'Gmarket listing' },
+  { model: 'EB-P4520', brand: 'Samsung', group: 'travel', specs: '20,000 mAh · 45 W · 402 g', query: '삼성 EB-P4520 보조배터리', price: '₩33,990', why: t('Galaxy 중심 여행용 후보입니다. 45W PPS/SFC 2.0 지원과 USB-C 3개를 함께 보는 선택입니다.', 'A travel candidate for Galaxy users, combining 45W PPS/SFC 2.0 support with three USB-C ports.'), limit: t('45W는 각 포트에 동시에 보장되는 출력이 아닙니다. 장시간 온도·실효 Wh 시험은 별도 확인이 필요합니다.', '45W is not guaranteed simultaneously on every port. Check sustained-temperature and usable-Wh tests separately.'), source: 'https://www.samsung.com/us/mobile-accessories/battery-pack-20-000mah-beige-45w-20000-mah-wireless-battery-pack-beige-eb-p4520xuegus-eb-p4520xuegus/', image: 'https://images.samsung.com/is/image/samsung/p6pim/us/eb-p4520xuegus/gallery/us-battery-pack-20000mah-eb-p4520-eb-p4520xuegus-550936263?%24720_576_PNG%24=', credit: 'Samsung' },
+  { model: 'PB200P', brand: 'CUKTECH 15', group: 'laptop', specs: '20,000 mAh · USB-PD 100 W · 452 g', query: 'CUKTECH 15 PB200P 보조배터리', price: '₩72,900', why: t('노트북과 폰을 함께 충전할 때의 후보입니다. 분해 시료에서 셀·보호회로·온도센서 구조가 공개되어 있습니다.', 'A phone-and-laptop candidate with published teardown evidence for cells, protection circuitry and temperature sensing.'), limit: t('150W 총출력과 USB-PD 단일 100W를 구분하세요. 공개 분해가 100W 완전 방전 지속 성능이나 현재 생산분까지 보증하지는 않습니다.', 'Separate 150W combined output from 100W single-port USB-PD. A teardown does not establish 100W endurance to empty or guarantee current production.'), source: 'https://cuktech.com/products/cuktech-15-power-bank-20000mah-150w', image: 'https://www.chargerlab.com/wp-content/uploads/2023/10/2023101109183924.jpeg', credit: 'ChargerLAB' },
+  { model: 'A1638', brand: 'Anker Nano', group: 'daily', specs: '10,000 mAh · 45 W · 230 g', query: 'Anker A1638 Nano 10000 45W', price: '₩57,900', why: t('10K 용량에 내장 케이블 편의를 원하는 경우입니다. 케이블을 따로 챙기는 번거로움을 줄입니다.', 'A 10K option for built-in-cable convenience, reducing the need to pack a separate cable.'), limit: t('케이블은 추가적인 마모 지점입니다. 독립 실효 Wh와 장기 내구성은 확인 부족입니다.', 'The cable adds a wear point. Independently measured usable Wh and long-term durability were not established.'), source: 'https://www.anker.com/products/a1638-10k-45w-power-bank', image: 'https://cdn.shopify.com/s/files/1/0493/9834/9974/files/A1638011_Richimage_TD01_US.png?v=1775967504&width=700', credit: 'Anker' },
+  { model: 'A1695', brand: 'Anker Laptop', group: 'laptop', specs: '25,000 mAh · 90 Wh · 100 W / 165 W total · 595 g', query: 'Anker A1695 25000 165W', price: '₩94,900', why: t('출장 중 여러 기기와 내장 케이블 편의를 우선할 때의 후보입니다. 90Wh 에너지와 휴대 무게를 함께 판단하세요.', 'A candidate for multi-device travel and built-in-cable convenience. Weigh its 90Wh energy against its carry weight.'), limit: t('165W는 총출력입니다. 100W 단일 포트가 완전 방전까지 지속된다고 해석하지 마세요.', '165W is combined output. Do not assume a 100W port sustains that output until empty.'), source: 'https://www.anker.com/products/a1695-anker-power-bank-25000mah-165w', image: 'https://cdn.shopify.com/s/files/1/0493/9834/9974/files/A1695H11_TD01_V1.png?v=1773643751&width=700', credit: 'Anker' },
+  { model: 'LB320', brand: 'ARTMU', group: 'laptop', specs: '25,000 mAh · 90 Wh · 140 W / 145 W total · 495 g', query: '아트뮤 LB320 25000 145W', price: '₩77,700', why: t('140W급 단일 USB-C 출력이 필요한 경우 비교할 국내 유통 후보입니다.', 'A Korean-market candidate to compare when a 140W-class USB-C port is required.'), limit: t('최대 W 대비 가격만으로 열설계나 안전성을 판정하지 마세요. 독립 실효 Wh는 확인 부족입니다.', 'Price per advertised watt does not establish cooling or safety. Independently measured usable Wh was not established.'), source: 'https://artmu.co.kr/product/pd31-145w-초고속충전-보조배터리-25000mah-lb320/2522/', image: 'https://artmu.co.kr/web/product/small/202505/c5fafaa11b6f4bd5a0dd15297420a924.jpg', credit: 'ARTMU' },
+  { model: 'A110A', brand: 'Anker Prime', group: 'laptop', specs: '26,250 mAh · 99.75 Wh · 140 W / 300 W total · 600 g', query: 'Anker Prime A110A 26K 300W', price: '₩189,900', why: t('여러 고출력 기기와 빠른 자체 재충전이 필요한 경우입니다. 제조사는 총 300W와 듀얼 입력 최대 250W를 안내합니다.', 'For several high-power devices and fast recharging of the pack. The manufacturer specifies 300W combined output and up to 250W dual-port input.'), limit: t('이 가이드의 독립 지속출력 시험이 아닙니다. 99.75Wh라는 표시만으로 특정 항공편 반입이 보장되지 않습니다.', 'These are not independent endurance tests by this guide. A 99.75Wh label alone does not guarantee acceptance on a particular flight.'), source: 'https://service.anker.com/product-description/a08J1000000YsC7IAK/anker-prime-power-bank-26k-300w', image: 'https://cdn.shopify.com/s/files/1/0493/9834/9974/files/A110AH11_Richimage_TD01_US_V1_41ed3782-6e72-4335-8e1b-41b2fa7b7d35.png?v=1759116527&width=700', credit: 'Anker' },
+  { model: 'BPD008', brand: 'Belkin', group: 'wireless', specs: '10,000 mAh · Qi2 15 W', query: '벨킨 BPD008 Qi2 10000', price: '—', why: t('케이블 없는 편의가 실효 에너지보다 중요한 사용자에게 비교할 후보입니다.', 'A candidate when cable-free convenience matters more than maximizing usable energy.'), limit: t('이 모델의 Qi2 표기는 15W입니다. 모든 Qi2 제품을 25W로 읽거나 유선과 같은 효율로 계산하지 마세요.', 'This model is specified at Qi2 15W. Do not read every Qi2 product as 25W or assume wired-equivalent efficiency.'), source: 'https://www.belkin.com/id/p/magnetic-power-bank-with-qi2-15w-10k/BPD008btBK.html', image: 'https://www.belkin.com/dw/image/v2/BGBH_PRD/on/demandware.static/-/Sites-master-product-catalog-blk/default/dw3e64a883/images/hi-res/2/514fc36c617f2ca8_BPD008btBK_MagneticQi2PowerBanks_Hero_WEB.jpg?sfrm=png&sh=700&sm=fit&sw=700', credit: 'Belkin' },
+  { model: 'P23', brand: 'CUKTECH 20', group: 'laptop', specs: '25,000 mAh · 140 W / 210 W total', query: 'CUKTECH 20 P23 25000 210W', price: '₩139,000', why: t('100W보다 높은 입력을 실제로 활용하는 노트북이라면 추가 비교할 후보입니다.', 'An additional candidate for laptops that can actually use more than 100W input.'), limit: t('기기가 65W만 요구하면 높은 W의 효용은 줄어듭니다. 정확한 리비전·무게·실효 Wh를 판매 정보와 시험 자료에서 확인하세요.', 'Higher wattage adds less value if the device needs only 65W. Verify revision, weight and usable Wh against listings and test evidence.'), source: 'https://cuktech.com/products/p23-cuktech-p-series-25000mah-210w-power-bank', image: '', credit: '' }
+];
+const groups = [['all',t('전체 9개','All 9')],['daily',t('일상 휴대','Daily carry')],['travel',t('여행·Galaxy','Travel / Galaxy')],['laptop',t('노트북','Laptop')],['wireless',t('무선 편의','Wireless')]];
+---
+{mode === 'hero' && <section class="pb-unit pb-hero">
+  <p class="pb-eyebrow">BUY LESS, CHOOSE BETTER</p>
+  <h2>{t('mAh는 시작일 뿐. Wh · W · g를 함께 보세요.', 'mAh is only the beginning. Read Wh, W and g together.')}</h2>
+  <p>{t('저장한 에너지, 꺼내 쓸 수 있는 출력, 매일 들고 다닐 무게. 세 가지를 맞추면 비싼 제품보다 나에게 맞는 제품이 보입니다.', 'Stored energy, available power and the weight you carry every day. Match all three to find the right pack for you, not simply the most expensive one.')}</p>
+  <div class="pb-triad"><span><b>Wh</b>{t('얼마나 오래?', 'How long?')}</span><span><b>W</b>{t('얼마나 빠르게?', 'How fast?')}</span><span><b>g</b>{t('얼마나 가볍게?', 'How light?')}</span></div>
+  <p class="pb-small">{t('먼저 원리, 마지막에 제품. 이 글은 직접 수행한 제품 시험이 아니라 자료 기반 구매 가이드입니다.', 'Principles first, products last. This is a source-based buying guide, not a report of our own product testing.')}</p>
+</section>}
+{mode === 'calculator' && <section class="pb-unit pb-calc" data-pb-calc data-lang={lang}>
+  <h3>{t('숫자를 바꿔보는 에너지 계산기', 'Try the energy calculation')}</h3>
+  <p>{t('라벨의 기준 전압을 입력하세요. 비율 두 개는 교육용 가정이며 제품 실측값이 아닙니다.', 'Enter the reference voltage on the label. Both percentage inputs are illustrative assumptions, not product measurements.')}</p>
+  <div class="pb-inputs">
+    <label>mAh<input type="number" name="mah" min="1" max="1000000" step="1" value="20000" /></label>
+    <label>{t('기준 전압 V','Reference V')}<input type="number" name="voltage" min="0.1" max="100" step="0.01" value="3.7" /></label>
+    <label>{t('접근 가능 비율 %','Accessible %')}<input type="number" name="accessible" min="1" max="100" step="0.1" value="96" /></label>
+    <label>{t('평균 변환효율 %','Average efficiency %')}<input type="number" name="efficiency" min="1" max="100" step="0.1" value="90" /></label>
+  </div>
+  <output aria-live="polite">74.00 Wh nominal → 63.94 Wh USB ({t('가정 계산', 'assumed')})</output>
+</section>}
+{mode === 'products' && <section id="power-bank-products" class="pb-unit pb-products" data-pb-products data-lang={lang}>
+  <p>{t('가격은 2026-09-25 조사자료의 참고값이며, 현재 판매가·재고를 재확인한 가격표가 아닙니다. 순위 대신 필요한 용도로 비교하세요. 사진은 외부 원본을 불러오며 각 제공자에게 권리가 있습니다.', 'Prices are reference snapshots from the 25 September 2026 research, not freshly verified offers or inventory. Compare by use case rather than rank. Photographs load from external sources and remain the property of their providers.')}</p>
+  <div class="pb-filters" role="group" aria-label={t('용도 필터','Use-case filters')}>{groups.map(([value,label]) => <button type="button" data-filter={value} aria-pressed={value === 'all'}>{label}</button>)}</div>
+  <p class="pb-small" data-pb-count aria-live="polite">{t('9개 후보 표시','Showing 9 candidates')}</p>
+  <div class="pb-cards">{products.map(p => <article class="pb-card" data-pb-product data-group={p.group}>
+    {p.image && <figure><img src={p.image} alt={`${p.brand} ${p.model}`} width="700" height="480" loading="lazy" decoding="async" referrerpolicy="no-referrer"/><figcaption>{t('사진','Photo')}: {p.credit}</figcaption></figure>}
+    <p class="pb-eyebrow">{p.brand}</p><h3>{p.model}</h3><p class="pb-spec">{p.specs}</p>
+    <p><strong>{t('이 용도라면','Why this use case')}</strong><br/>{p.why}</p>
+    <p><strong>{t('놓치면 안 되는 조건','Important limits')}</strong><br/>{p.limit}</p>
+    <p class="pb-small">{t('과거 참고가','Historical reference')}: {p.price} · 2026-09-25<br/><a href={p.source} target="_blank" rel="noopener noreferrer">{t('제품 사양 출처','Product specification source')}</a></p>
+    <label class="pb-small">{t('정확한 모델 검색어','Exact-model search')}<input type="text" value={p.query} readonly /></label>
+    <div class="pb-links"><a data-pb-search href={`https://www.coupang.com/np/search?q=${encodeURIComponent(p.query)}`} target="_blank" rel="noopener noreferrer">{t('쿠팡 검색','Search Coupang')}</a><a data-pb-search href={`https://search.danawa.com/dsearch.php?query=${encodeURIComponent(p.query)}`} target="_blank" rel="noopener noreferrer">{t('다나와 검색','Search Danawa')}</a><button type="button" data-copy>{t('검색어 복사','Copy search')}</button></div>
+    <p class="pb-small" data-pb-copy-status aria-live="polite"></p>
+  </article>)}</div>
+  <p class="pb-small">{t('모든 구매 버튼은 검색 결과로만 이동합니다. 제휴 추적 코드·장바구니·결제 연결은 없습니다. 검색 결과의 다른 리비전·중고·직구·판매자·보증·배송비를 구분하세요. 확인 부족은 안전 불합격도 안전 보증도 아닙니다.', 'All shopping buttons open search results only. There are no affiliate tracking codes, cart actions or checkout links. Distinguish revisions, used stock, imports, sellers, warranties and shipping charges. Missing evidence is neither a safety failure nor a safety guarantee.')}</p>
+</section>}
+<script>
+  function initializePowerBankTools() {
+    document.querySelectorAll<HTMLElement>('[data-pb-products]').forEach(root => {
+      if (root.dataset.ready) return;
+      root.dataset.ready = 'true';
+      const ko = root.dataset.lang === 'ko';
+      const cards = Array.from(root.querySelectorAll<HTMLElement>('[data-pb-product]'));
+      root.querySelectorAll<HTMLButtonElement>('[data-filter]').forEach(button => button.addEventListener('click', () => {
+        root.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+        cards.forEach(card => { card.hidden = button.dataset.filter !== 'all' && card.dataset.group !== button.dataset.filter; });
+        const count = cards.filter(card => !card.hidden).length;
+        const status = root.querySelector('[data-pb-count]');
+        if (status) status.textContent = ko ? `${count}개 후보 표시` : `Showing ${count} candidates`;
+      }));
+      cards.forEach(card => {
+        card.querySelector('[data-copy]')?.addEventListener('click', async () => {
+          const input = card.querySelector<HTMLInputElement>('input');
+          const status = card.querySelector('[data-pb-copy-status]');
+          if (!input || !status) return;
+          try { await navigator.clipboard.writeText(input.value); status.textContent = ko ? '검색어를 복사했습니다.' : 'Search copied.'; }
+          catch { input.focus(); input.select(); status.textContent = ko ? '선택된 검색어를 직접 복사하세요.' : 'Copy the selected search text manually.'; }
+        });
+      });
+    });
+    document.querySelectorAll<HTMLElement>('[data-pb-calc]').forEach(root => {
+      if (root.dataset.ready) return;
+      root.dataset.ready = 'true';
+      const inputs = Array.from(root.querySelectorAll<HTMLInputElement>('input'));
+      const output = root.querySelector('output');
+      const ko = root.dataset.lang === 'ko';
+      const calculate = () => {
+        if (!output) return;
+        if (inputs.some(i => !i.value.trim() || !i.checkValidity() || !Number.isFinite(i.valueAsNumber))) {
+          output.textContent = ko ? '표시된 범위 안의 숫자를 입력하세요.' : 'Enter numbers within the displayed ranges.'; return;
+        }
+        const [mah, voltage, accessible, efficiency] = inputs.map(i => i.valueAsNumber);
+        const nominal = mah * voltage / 1000;
+        const usable = nominal * accessible / 100 * efficiency / 100;
+        output.textContent = `${nominal.toFixed(2)} Wh nominal → ${usable.toFixed(2)} Wh USB (${ko ? '가정 계산' : 'assumed'})`;
+      };
+      inputs.forEach(input => input.addEventListener('input', calculate)); calculate();
+    });
+  }
+  initializePowerBankTools();
+  document.addEventListener('astro:page-load', initializePowerBankTools);
+</script>
+<style>
+  .pb-unit{margin:2rem 0;border:1px solid #cbd5d7;border-radius:18px;padding:clamp(1rem,4vw,2rem);background:#f5f7f4;color:#163239;line-height:1.85}
+  .pb-unit h2,.pb-unit h3,.pb-unit strong{color:#163239}.pb-hero h2{font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.25;margin:.7rem 0 1rem}.pb-eyebrow{font-size:.78rem!important;letter-spacing:.14em;font-weight:750;color:#276f64!important;margin:.5rem 0!important}.pb-small{font-size:.86rem;line-height:1.7}.pb-triad{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;padding:1.2rem 0}.pb-triad span{display:flex;flex-direction:column}.pb-triad b{font-size:2rem;color:#276f64}
+  .pb-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.pb-unit label{display:block}.pb-unit input{box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0;border:1px solid #8aaca5;border-radius:8px;background:white;color:#163239;padding:.6rem;font:inherit}.pb-unit output{display:block;margin-top:1rem;font-weight:750}
+  .pb-filters,.pb-links{display:flex;flex-wrap:wrap;gap:.5rem}.pb-unit button,.pb-links a{min-height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #75988f;background:white;color:#164d43;border-radius:9px;padding:.45rem .7rem;font:inherit;font-size:.86rem;text-decoration:none;cursor:pointer}.pb-unit button[aria-pressed=true]{background:#1b6457;color:white}.pb-unit :is(a,button,input):focus-visible{outline:3px solid #d88232;outline-offset:3px}.pb-unit a{color:#165e52}.pb-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.1rem}.pb-card{min-width:0;border:1px solid #cbd5d7;border-radius:14px;padding:1rem;background:white}.pb-card[hidden]{display:none!important}.pb-card figure{margin:0}.pb-card img{display:block;width:100%;height:220px;object-fit:contain;margin:0}.pb-card figcaption{font-size:.7rem;color:#566764}.pb-card h3{margin:.4rem 0;font-size:1.7rem}.pb-card p{margin:.8rem 0}.pb-spec{font-size:.92rem;font-weight:650;overflow-wrap:anywhere}.pb-links{margin-top:.75rem}
+  @media(max-width:620px){.pb-cards{grid-template-columns:1fr}.pb-hero{padding:1.2rem}.pb-triad{gap:.5rem;font-size:.86rem}.pb-products{padding:.9rem}.pb-card img{height:200px}}
+</style>

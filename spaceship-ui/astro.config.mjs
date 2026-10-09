@@ -17,8 +17,10 @@ import modernAiPartThreeReaderCleanup from './src/lib/remark/modern-ai-part3-rea
 import modernAiPartFourReaderCleanup from './src/lib/remark/modern-ai-part4-reader-cleanup.mjs';
 import modernAiPartFiveReaderCleanup from './src/lib/remark/modern-ai-part5-reader-cleanup.mjs';
 import actsEmphasis from './src/lib/remark/acts-emphasis.mjs';
+import englishCitations from './src/lib/remark/english-citations.mjs';
 import termTooltips from './src/lib/rehype/term-tooltips.mjs';
 import mediaPerformance from './src/lib/rehype/media-performance.mjs';
+import newsSourceDisclosure from './src/lib/rehype/news-source-disclosure.mjs';
 import { isLegacyPathname } from './src/lib/legacy-posts.mjs';
 import {
   transformerNotationDiff,
@@ -34,7 +36,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function includeInSitemap(page) {
   const pathname = new URL(page).pathname;
 
-  if (pathname === '/en/404/' || pathname === '/en/404') return false;
   if (isLegacyPathname(pathname)) return false;
   if (!SITE.publicSections.projects && pathname.startsWith('/projects')) return false;
   if (!SITE.publicSections.appearances && pathname.startsWith('/appearances')) return false;
@@ -73,10 +74,12 @@ export default defineConfig({
       modernAiPartFourReaderCleanup,
       modernAiPartFiveReaderCleanup,
       actsEmphasis,
+      englishCitations,
     ],
     rehypePlugins: [
       termTooltips,
       mediaPerformance,
+      newsSourceDisclosure,
       rehypeSlug,
       [
         rehypeAutolinkHeadings,

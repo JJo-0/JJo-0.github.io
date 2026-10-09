@@ -1,0 +1,88 @@
+name: Wet-lab article reading
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - 'scripts/normalize_tags_current.py'
+      - '.github/workflows/wetlab-reading.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'spaceship-ui/**'
+      - '.github/workflows/wetlab-reading.yml'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Optional deployed site URL for native reading checks'
+        required: false
+        default: ''
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: wetlab-reading-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: spaceship-ui
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: spaceship-ui/pnpm-lock.yaml
+      - name: Dependencies and Korean fonts
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+      - name: Source, original images, calculations and mutations
+        run: |
+          node scripts/news-wetlab-20260919-contract.mjs
+          test ! -e wetlab-review/static.json
+          JJO_WETLAB_REPORT=wetlab-review/static.json node scripts/news-wetlab-20260919-contract.mjs
+      - run: pnpm build
+      - name: Rendered originals, math and ad-free reading boundary
+        env:
+          JJO_WETLAB_REPORT: wetlab-review/static.json
+        run: node scripts/news-wetlab-20260919-contract.mjs
+      - name: Wet-lab native reading matrix
+        timeout-minutes: 6
+        env:
+          JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
+        run: node scripts/browser-wetlab.mjs
+      - name: Preserve tested source and exact renders
+        if: always()
+        run: |
+          mkdir -p wetlab-review
+          git rev-parse HEAD > wetlab-review/tested-head.txt
+          cp site/news-wetlab-20260919.json wetlab-review/edition.json
+          cp site/assets/assets/posts/news-20260919/provenance.json wetlab-review/provenance.json
+          python3 - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          for entry in json.loads(Path('site/news-wetlab-20260919.json').read_text())['entries']:
+              slug=entry['slug']
+              shutil.copyfile(Path('site/content/posts')/(slug+'.mdx'),Path('wetlab-review')/(slug+'.mdx'))
+              html=Path('dist/posts')/slug/'index.html'
+              if html.exists():shutil.copyfile(html,Path('wetlab-review')/(slug+'.html'))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: wetlab-reading-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: spaceship-ui/wetlab-review/
+          retention-days: 14
+          if-no-files-found: error

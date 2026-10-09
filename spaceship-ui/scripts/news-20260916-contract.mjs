@@ -1,3 +1,4 @@
+import { assertNewsProseLength } from './news-prose-policy.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -34,7 +35,7 @@ for (const [index,[slug,key,ids,selection]] of expected.entries()) {
   assert.deepEqual(entry.mediaIds,ids);
   assert.equal([...body.matchAll(/^## [1-9]\. /gm)].length,9);
   assert.equal(sha(post),entry.postSha256,`${slug}: unreviewed body change`);
-  const length=count(body);assert(length>=7000 && length<=10000,`${slug}: ${length} characters`);
+  const length=count(body);assertNewsProseLength(length, "news-20260916-contract.mjs");
   assert.equal(length,entry.bodyCharacters);
   assert(body.includes(entry.source));
   assert.deepEqual(Object.entries(media).filter(([,m])=>m.slug===slug).map(([id])=>id),ids);
@@ -66,4 +67,4 @@ for(const s of ['GLM-4.5-Air','VivaBench','269','272','551','230','49개','0.90'
 const oect=read(`../site/content/posts/${expected[2][0]}.mdx`);
 for(const s of ['순차','0.1ms','140만','PBS','특허','구독 제한'])assert(oect.includes(s));
 assert.equal(edition.reserve[0].status,'reserve-in-top1-section8');
-console.log('news-20260916-contract: PASS 3 published image-first 7,000–10,000-character explainers, 6 licensed images with truthful roles, 3 independent Blogger payloads and explicit evidence boundaries');
+console.log('news-20260916-contract: PASS 3 published image-first 7,000+-character explainers, 6 licensed images with truthful roles, 3 independent Blogger payloads and explicit evidence boundaries');

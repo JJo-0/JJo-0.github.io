@@ -1,0 +1,40 @@
+---
+interface Props { title: string; count: number; description?: string; groupId: string; }
+const { title, count, description, groupId } = Astro.props;
+---
+<details class="series-group" data-series-group={groupId}>
+  <summary><span class="series-group__label"><span class="series-group__title">{title}</span>{description && <span class="series-group__description">{description}</span>}</span><span class="series-group__count">{count}편</span><span class="series-group__arrow" aria-hidden="true">⌄</span></summary>
+  <div class="series-group__contents"><slot /></div>
+</details>
+<script>
+  function bindSeriesGroups() {
+    document.querySelectorAll<HTMLDetailsElement>('details[data-series-group]').forEach((group) => {
+      if (group.dataset.bound) return;
+      group.dataset.bound = 'true';
+      const summary = group.querySelector('summary');
+      if (!summary) return;
+      group.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        group.open = false;
+        summary.focus();
+      });
+    });
+  }
+  bindSeriesGroups();
+  document.addEventListener('astro:page-load', bindSeriesGroups);
+</script>
+<style>
+  .series-group { margin: 1rem 0; border-block: 1px solid var(--color-border); min-width: 0; }
+  summary { display: flex; align-items: center; gap: 1rem; padding: 1.15rem .25rem; cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; }
+  .series-group__label { flex: 1; min-width: 0; }
+  .series-group__title { display: block; font-family: var(--font-editorial); font-size: clamp(1.15rem, 2vw, 1.5rem); line-height: 1.4; color: var(--color-foreground); }
+  .series-group__description { display: block; margin-top: .4rem; font-size: .85rem; line-height: 1.6; color: var(--color-muted-foreground); }
+  .series-group__count { font-size: .8rem; white-space: nowrap; color: var(--color-muted-foreground); }
+  .series-group__arrow { font-size: 1.3rem; transition: transform .15s; }
+  details[open] > summary .series-group__arrow { transform: rotate(180deg); }
+  .series-group__contents { padding: .5rem .75rem 1.5rem; min-width: 0; }
+  @media (prefers-reduced-motion: reduce) { .series-group__arrow { transition: none; } }
+</style>

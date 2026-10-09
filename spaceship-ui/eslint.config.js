@@ -75,6 +75,6 @@ export default [
     },
   },
   {
-    ignores: ['dist/', '.astro/', 'src/env.d.ts', 'tmp/'],
+    ignores: ['dist/', '.astro/', 'src/env.d.ts', 'tmp/', 'site/assets/assets/interactive/acts-native/chart.umd-4.4.8.js'],
   },
 ];

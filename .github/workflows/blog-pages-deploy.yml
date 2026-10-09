@@ -113,6 +113,12 @@ jobs:
       - name: Install browser-smoke dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Korean browser fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          test -n "$(fc-list :lang=ko family)"
+
       - name: Probe deployed routes and release markers
         run: |
           node --input-type=module <<'NODE'
@@ -222,8 +228,141 @@ jobs:
           }
           NODE
 
+      - name: Live September 29 original figures and reading
+        timeout-minutes: 6
+        run: |
+          node scripts/browser-sep29.mjs
+          git rev-parse HEAD > sep29-review/tested-sha.txt
+
+      - name: Live September 28 original figures and reading
+        timeout-minutes: 6
+        run: |
+          node scripts/browser-sep28.mjs
+          git rev-parse HEAD > sep28-review/tested-sha.txt
+
       - name: Live Pages browser smoke
         run: pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs
+
+      - name: Live NEWS citation link browser check
+        timeout-minutes: 4
+        run: pnpm exec node scripts/browser-news-citation-audit.mjs
+
+      - name: Live NEWS source disclosure browser regression
+        timeout-minutes: 5
+        run: pnpm exec node scripts/browser-news-source-disclosure.mjs
+
+      - name: Live candidate article reading
+        timeout-minutes: 6
+        run: node scripts/browser-news-candidates.mjs
+
+      - name: Live Paper2Agent comparison and reading
+        timeout-minutes: 4
+        run: node scripts/browser-paper2agent.mjs
+
+      - name: Live wet-lab article reading
+        timeout-minutes: 4
+        run: node scripts/browser-wetlab.mjs
+
+      - name: Live September 19 candidate reading
+        timeout-minutes: 6
+        run: node scripts/browser-sep19-candidates.mjs
+
+      - name: Live September 20 article reading
+        timeout-minutes: 6
+        run: node scripts/browser-sep20.mjs
+
+      - name: Live September 21 article reading
+        timeout-minutes: 6
+        run: node scripts/browser-sep21.mjs
+
+      - name: Live September 22 article reading
+        timeout-minutes: 6
+        run: node scripts/browser-sep22.mjs
+
+      - name: Preserve live candidate reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: candidates-live-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: spaceship-ui/candidates-review/
+          retention-days: 14
+
+      - name: Preserve live Paper2Agent feedback evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: paper2agent-feedback-live-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: spaceship-ui/paper2agent-review/
+          retention-days: 14
+
+      - name: Preserve live wet-lab reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wetlab-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/wetlab-review/
+          retention-days: 14
+
+      - name: Preserve September 19 live reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep19-candidates-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/sep19-review/
+          retention-days: 14
+
+      - name: Preserve live September 20 reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep20-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/sep20-review/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Preserve live September 21 reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep21-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/sep21-review/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Preserve live September 22 reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep22-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/sep22-review/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Preserve live September 29 reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep29-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/sep29-review/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Preserve live September 28 reading evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sep28-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/sep28-review/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Preserve live NEWS source disclosure evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: source-disclosure-live-${{ github.run_id }}-${{ github.run_attempt }}
+          path: spaceship-ui/source-disclosure-audit/
+          retention-days: 14
 
       - name: Publish Pages live-smoke status
         if: always()

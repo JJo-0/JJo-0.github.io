@@ -1,6 +1,14 @@
 ---
 import Layout from '@/layouts/Layout.astro';
-import { postPath, postAlternates } from '@/lib/i18n';
+import sep25 from '../../../../site/news-edition-20260925.json';
+import oct03 from '../../../../site/news-edition-20261003.json';
+import oct02 from '../../../../site/news-edition-20261002.json';
+import sep22 from '../../../../site/news-edition-20260922.json';
+import sep21 from '../../../../site/news-edition-20260921.json';
+import sep20 from '../../../../site/news-edition-20260920.json';
+import candidates19 from '../../../../site/news-candidates-20260919.json';
+import wetlabEdition from '../../../../site/news-wetlab-20260919.json';
+import candidateEdition from '../../../../site/news-candidates-20260918.json';
 import '@/styles/code-blocks.css';
 import { render, type CollectionEntry } from 'astro:content';
 import { formatDate } from '@/lib/utils/date';
@@ -32,7 +40,7 @@ const post = Astro.props as Props;
 const { Content, headings } = await render(post);
 
 const effectiveSlug = getPostSlug(post);
-const canonicalPostUrl = new URL(postPath(post), Astro.site).toString();
+const canonicalPostUrl = new URL(Astro.url.pathname, Astro.site).toString();
 const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
 const postTransitionName = `post-title-${effectiveSlug.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 const isModernAiSeries = post.data.series?.id === 'modern-artificial-intelligence';
@@ -59,7 +67,6 @@ const schemas = [
     title: displayTitle,
     description: effectiveDescription,
     pubDate: post.data.pubDate,
-    updatedDate: post.data.updatedDate,
     url: canonicalPostUrl,
     lang: post.data.lang,
     image: new URL(`/og/${effectiveSlug}.png`, Astro.site).toString(),
@@ -70,9 +77,13 @@ const schemas = [
     { name: displayTitle, url: canonicalPostUrl },
   ]),
 ];
-// post.data.translatedPosts is resolved against the real published collection.
-const languageAlternates = postAlternates(post, await getPublishedPosts('all'));
-const translationLinks = Object.fromEntries(Object.entries(languageAlternates).filter(([lang]) => lang !== 'x-default' && !lang.startsWith('ko')));
+const languageAlternates = Object.fromEntries(
+  Object.entries(post.data.translatedPosts ?? {}).map(([alternateLang, slug]) => [
+    alternateLang,
+    `/posts/${slug}`,
+  ])
+);
+languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
 ---
 
 <Layout
@@ -82,9 +93,9 @@ const translationLinks = Object.fromEntries(Object.entries(languageAlternates).f
   ogImage={`/og/${effectiveSlug}.png`}
   ogType="article"
   schema={schemas}
+  adsEnabled={!oct02.entries.some((entry) => entry.slug === effectiveSlug) && !oct03.entries.some((entry) => entry.slug === effectiveSlug) && !sep25.entries.some((entry) => entry.slug === effectiveSlug) && !sep22.entries.some((entry) => entry.slug === effectiveSlug) && !sep21.entries.some((entry) => entry.slug === effectiveSlug) && !sep20.entries.some((entry) => entry.slug === effectiveSlug) && !candidates19.entries.some((entry) => entry.slug === effectiveSlug) && !candidateEdition.entries.some((entry) => entry.slug === effectiveSlug) && !wetlabEdition.entries.some((entry) => entry.slug === effectiveSlug)}
   usesChart={post.data.usesChart}
   languageAlternates={languageAlternates}
-  canonicalPath={postPath(post)}
 >
   <Breadcrumbs
     items={[
@@ -101,7 +112,7 @@ const translationLinks = Object.fromEntries(Object.entries(languageAlternates).f
             class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground font-bold uppercase tracking-widest"
           >
             <time datetime={post.data.pubDate.toISOString()}>
-              {formatDate(post.data.pubDate)}
+              {formatDate(post.data.pubDate, post.data.publicationTimeZone)}
             </time>
             {
               post.data.draft && (
@@ -159,7 +170,7 @@ const translationLinks = Object.fromEntries(Object.entries(languageAlternates).f
           )
         }
 
-        {post.data.translatedPosts && <LanguageSelector translations={translationLinks} currentLang="ko" />}
+        {post.data.translatedPosts && <LanguageSelector translations={post.data.translatedPosts} />}
       </div>
 
       <ContentNotice category={post.data.category} />

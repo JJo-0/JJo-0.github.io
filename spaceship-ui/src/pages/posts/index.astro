@@ -1,10 +1,9 @@
 ---
 import Layout from '@/layouts/Layout.astro';
-import WritingListItem from '@/components/WritingListItem.astro';
+import GroupedWritingList from '@/components/GroupedWritingList.astro';
 import ActsShelf from '@/components/ActsShelf.astro';
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
-import { getReadTime } from '@/lib/utils/readTime';
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getPublishedPosts } from '@/lib/utils/posts';
 import { POST_CATEGORIES, getPostCategoryMeta } from '@/lib/taxonomy.mjs';
 import { SITE } from '@/config';
 import { getBreadcrumbSchema } from '@/lib/schemas';
@@ -41,7 +40,7 @@ const categorySections: CategorySection[] = (POST_CATEGORIES as readonly string[
     noticeHref: categoryNoticeLinks[category],
     posts: posts.filter((post) => post.data.category === category),
   }))
-  .filter((section) => section.posts.length > 0 || section.id === 'biblical-studies');
+  .filter((section) => section.posts.length > 0 || section.id === 'biblical-studies' || section.id === 'research-methods-tools');
 
 const tagCounts = posts.reduce(
   (acc, post) => {
@@ -58,7 +57,7 @@ const sortedTags = Object.entries(tagCounts)
   .slice(0, 18);
 ---
 
-<Layout languageAlternates={{"ko-KR":"/posts/",en:"/en/posts/","x-default":"/posts/"}} title="Writing" description={`${SITE.blogDescription} 성경 본문 주해와 신학적 고찰을 함께 기록합니다.`} schema={schema}>
+<Layout title="Writing" description={`${SITE.blogDescription} 성경 본문 주해와 신학적 고찰을 함께 기록합니다.`} schema={schema}>
   <Breadcrumbs items={[{ name: 'Writing', href: '/posts' }]} />
 
   <header class="writing-intro mb-12 sm:mb-16 max-w-4xl">
@@ -162,13 +161,7 @@ const sortedTags = Object.entries(tagCounts)
               <div>
                 {section.id === 'biblical-studies' ? (
                   <ActsShelf />
-                ) : section.posts.map((post) => (
-                  <WritingListItem
-                    {post}
-                    slug={getPostSlug(post)}
-                    readTime={getReadTime(post.body || '')}
-                  />
-                ))}
+                ) : section.posts.length > 0 ? <GroupedWritingList posts={section.posts} /> : <p class="text-sm leading-relaxed text-muted-foreground">현재 공개된 글이 없습니다. Deep Research·프롬프트 설계·검증 가능한 조사 워크플로는 재작성 예정입니다.</p>}
               </div>
             </section>
           ))

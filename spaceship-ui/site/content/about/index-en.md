@@ -12,18 +12,18 @@ I enjoy meaningful work, sustained thinking, and open discussion. Reading and ex
 
 ## 🎓 Education and research experience
 
-**Master's student, [Electrical and Computer Engineering, Sungkyunkwan University](https://ice.skku.edu/ice/grad_ece_intro.do)**  
-March 2025–present · Expected graduation: February 2027  
+**Master's student, [Electrical and Computer Engineering, Sungkyunkwan University](https://ice.skku.edu/ice/grad_ece_intro.do)**<br />
+March 2025–present · Expected graduation: February 2027<br />
 [Control and Robotics Laboratory](https://iconlab.skku.edu/cnrlab/index.do) · Research in collaboration with KITECH
 
-**Intern, [Korea Institute of Industrial Technology](https://www.kitech.re.kr/)**  
+**Intern, [Korea Institute of Industrial Technology](https://www.kitech.re.kr/)**<br />
 December 2024–March 2025
 
-**Undergraduate researcher, [AI Mechatronics Laboratory](http://aml.tukorea.ac.kr/)**  
+**Undergraduate researcher, [AI Mechatronics Laboratory](http://aml.tukorea.ac.kr/)**<br />
 December 2021–March 2024 · Tech University of Korea
 
-**B.S. in Mechatronics Engineering, Tech University of Korea**  
-March 2018–February 2025 · Graduated  
+**B.S. in Mechatronics Engineering, Tech University of Korea**<br />
+March 2018–February 2025 · Graduated<br />
 Minor in Venture Entrepreneurship
 
 ## 📄 Publications
@@ -32,7 +32,7 @@ Minor in Venture Entrepreneurship
 
 **[Analysis and Mitigation of Page Cache Writeback Bottlenecks in High-Bandwidth Sensor Data Logging on Embedded Systems](https://doi.org/10.14372/IEMEK.2026.21.2.83)**
 
-Jinho Kim, Donghyun Son, Junhyun Choi, Yechan Ahn, Taewook Eom, **Jiho Park**, and Taeyong Kuc  
+Jinho Kim, Donghyun Son, Junhyun Choi, Yechan Ahn, Taewook Eom, **Jiho Park**, and Taeyong Kuc<br />
 IEMEK Journal of Embedded Systems and Applications, Vol. 21, No. 2, pp. 83–95, April 2026 · Co-author
 
 This research examines page-cache writeback bottlenecks arising when high-bandwidth sensor data are logged on embedded systems, together with mitigation approaches. The English title above is a descriptive translation of the linked Korean publication title.
@@ -41,7 +41,7 @@ This research examines page-cache writeback bottlenecks arising when high-bandwi
 
 **Markerless RGB-D speed and separation monitoring with directed dynamic safety zones**
 
-**Ji-Ho Park**, Sang-Jun Lee, Kwang-Hee Lee, and Tae-Yong Kuc  
+**Ji-Ho Park**, Sang-Jun Lee, Kwang-Hee Lee, and Tae-Yong Kuc<br />
 ICCAS 2026 · First author
 
 This work estimates human joint positions using RGB-D cameras and constructs dynamic safety zones that account for approach velocity toward the robot and perception uncertainty.
@@ -85,9 +85,9 @@ March 2023–March 2024 · Four-person team · ROS2, Docker, PyQt5, Python, C++
 
 ## 🧰 Skills
 
-**Languages:** Python, C, C++, Java  
-**Robotics & Vision:** ROS2, RGB-D, OpenCV, PyQt5, DeepLabV3/V3+, SAM-Adapter  
-**Data Analysis:** FFT, PCA, t-SNE, machine-learning classification, 1D CNN  
-**Development & Web:** Docker, GitHub, Spring Boot, MyBatis, AWS S3 and Lambda  
-**Devices:** Raspberry Pi 3/4/5, Jetson Nano, AGX Xavier  
+**Languages:** Python, C, C++, Java<br />
+**Robotics & Vision:** ROS2, RGB-D, OpenCV, PyQt5, DeepLabV3/V3+, SAM-Adapter<br />
+**Data Analysis:** FFT, PCA, t-SNE, machine-learning classification, 1D CNN<br />
+**Development & Web:** Docker, GitHub, Spring Boot, MyBatis, AWS S3 and Lambda<br />
+**Devices:** Raspberry Pi 3/4/5, Jetson Nano, AGX Xavier<br />
 **Tools:** Notion, Slack, Figma

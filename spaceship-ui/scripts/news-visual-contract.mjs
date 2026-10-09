@@ -1,3 +1,8 @@
+import './news-wetlab-20260919-contract.mjs';
+import './news-candidates-20260918-contract.mjs';
+import './news-20260918-contract.mjs';
+import './news-20260917-contract.mjs';
+import './news-prose-policy.test.mjs';
 import './news-20260916-contract.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -47,8 +52,16 @@ await import('./news-cover-contract.mjs');
 await import('./news-sep11-release-contract.mjs');
 
 await import('./news-justgrpo-visual-contract.mjs');
+await import('./news-edition-20260930-completion-contract.mjs');
 await import('./news-20260914-candidates-visual-contract.mjs');
 
 await import("./news-20260915-contract.mjs");
+await import('./news-edition-20261001-contract.mjs');
 
 await import('./news-media-visit-plan.test.mjs');
+
+// Check the rendered NEWS roster, not only source strings.
+const { execFileSync } = await import('node:child_process');
+execFileSync(process.execPath, [new URL('./citation-pointer-lifecycle.test.mjs', import.meta.url).pathname], { stdio: 'inherit' });
+execFileSync('python3', [new URL('./news-citation-contract.test.py', import.meta.url).pathname], { stdio: 'inherit' });
+execFileSync('python3', [new URL('./news-citation-contract.py', import.meta.url).pathname], { stdio: 'inherit' });

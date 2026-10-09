@@ -1,0 +1,102 @@
+---
+title: 'How Ataraxos makes decisions when an opponent’s pieces are hidden'
+description: 'Read Ataraxos through the original Stratego board and game graphs. Understand hidden information, beliefs, self-play and the 15–1–4 result without confusing game performance with real-world decision-making.'
+pubDate: 2026-10-01T00:00:00+09:00
+updatedDate: 2026-10-05T00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: ataraxos-hidden-information-games
+category: ai-machine-learning
+subcategory: imperfect-information-agents
+type: paper-review
+tags:
+  - frontier-candidate
+  - reinforcement-learning
+researchFeatured: false
+draft: false
+lang: en
+translationKey: frontier-ataraxos-20261001
+translatedPosts:
+  ko-KR: 2026-10-01-ataraxos-hidden-information-games-news
+---
+
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import BeginnerGuide from '@/components/post/BeginnerGuide.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+**Begin with the practical idea.** In chess, both players can see the type and position of every opposing piece. In Stratego, an opponent's pieces have **visible positions but hidden identities**. Ataraxos is an AI that considers multiple possible identities instead of assuming that one hidden arrangement is certainly correct. The Nature paper reports **15 wins, 1 loss and 4 draws** against a top human player over 20 games. Counting a draw as half a win gives an **effective win rate of 85%**. Strong performance in a particular game, however, is not the same finding as reliable decision-making in every uncertain real-world setting.[1]
+
+<NewsFigure media="oct01-ataraxos-fig2" lang="en" priority />
+
+### Reading original Figure 2: the blue pieces’ identities are the missing information
+
+Panel **a** shows an initial board from the red player's perspective. The red pieces at the bottom carry labels identifying their types, while the opposing blue pieces at the top show their backs. Red knows where an opposing piece stands, but not whether it is a weak scout or a stronger piece. The light-blue areas in the middle are **lakes**, which pieces cannot traverse. Thus, some aspects of the board are public and fixed even though the identities of opposing pieces remain concealed.[1]
+
+Panel **b** illustrates a blue piece moving onto a square occupied by a red piece, causing a battle. The piece identities are then revealed and the rules determine the outcome. The figure is an **original rules illustration from the paper**, not a photograph of one of the 20 evaluation games. It should not be interpreted as providing ground-truth hidden-piece labels for an actual game under evaluation. Its purpose is to make clear what each player can and cannot observe before choosing a move.[1]
+
+<BeginnerGuide lang="en" title="New to hidden information? Compare a card hand with a chessboard">
+
+A **perfect-information game** makes the relevant game state available to both players, as in chess. Card games with concealed hands and games such as Stratego are **imperfect-information games**. That does not mean decisions are driven only by luck. An opponent's actions can reveal clues about information that is not directly visible, and the player has to decide how much those clues should change a prediction.
+
+A <strong>belief distribution</strong> represents the alternatives considered plausible after accounting for those clues. For example, a player might assign a 60% probability that an opposing piece is a scout and a 40% probability that it is a stronger piece. These are illustrative numbers, not a reconstruction of a position from the paper. Instead of pretending that one possibility is known with certainty, a decision procedure can consider the consequences of a move under several possible hidden states.
+
+<strong>Self-play</strong> means that an AI generates experience by repeatedly playing against itself. <strong>Test-time search</strong> means spending additional computation on possible continuations when choosing an actual move after training. Training expense and the computational cost of one move are therefore distinct. Reducing one does not automatically establish that the other is negligible.
+
+</BeginnerGuide>
+
+## Why search that works in chess does not transfer unchanged
+
+In chess, a search can ask how the publicly visible board changes after a candidate move. In Stratego, the outcome of the same move can reverse depending on the concealed identity of the opposing piece. The paper describes **more than 10³³ possible hidden starting configurations**. Expanding every possibility individually would exceed practical search budgets. Moreover, opponents also interpret each other's behavior. Which states remain plausible depends on the strategies that generated the action history, not merely on an isolated snapshot of the board.[1]
+
+Ataraxos separates this problem into several interacting parts. A **policy-and-value network** proposes actions and assesses their prospects. A **belief network** estimates arrangements of the opponent's hidden pieces. **Search during play** evaluates candidate actions across inferred arrangements. The paper also describes separate networks for choosing starting setups and making moves, with outcomes from one stage informing the other. The system generates its own experience through self-play rather than relying on a catalogue of human-labelled correct Stratego moves.[1]
+
+Another important component is **dynamic damping**, which aims to reduce instability during learning. In an imperfect-information game, rapidly adopting one strategy can provoke an opposing response, which then changes what should be learned next. The researchers use stronger regularization and larger policy updates earlier in training, then reduce both over time. Here, damping means controlling how the learning process changes; it is not a mechanism for adding misleading information to the game board.[1]
+
+The distinction between these components matters for understanding the contribution. Beliefs concern what may be hidden, a policy concerns which action to take, a value estimate concerns expected outcomes, and search spends extra effort on the current decision. These roles should not be collapsed into a claim that the model can simply see the hidden state. The paper reports a training cost of a few thousand dollars, but that figure belongs to its simulator, hardware and pricing conditions. It does not guarantee the total cost of developing and operating any later application of the technique.[1]
+
+## What does the actual 20-game result establish?
+
+The researchers evaluated the system against Pim Niemeijer, a multiple-time world champion, over 20 games played across three weeks. The human could observe the AI's tendencies over successive games, while the AI was not retrained specifically to adapt to that individual. Repeated evaluation against a very strong opponent is an important strength. At the same time, the opponent was one person, and these were not 20 independent repetitions of an identical coin toss. Human adaptation, starting configurations and the course of play can create dependencies between observations.[1]
+
+<CandidateEquation lang="en" id="ataraxos-effective-win" title="Why do 15 wins, 1 loss and 4 draws correspond to 85%?" tex={String.raw`\frac{15+4/2}{20}=0.85`}>
+
+This is a **standard way to summarize game results**, not a new equation underlying the AI algorithm. A win receives one point, a draw half a point and a loss zero. The 15 wins contribute 15 points and the four draws contribute two, giving 17 points across 20 games. Dividing 17 by 20 yields 0.85, or 85%. The fraction of games won outright is instead 15/20, or 75%. The two measures are not interchangeable. Neither number on its own captures uncertainty from a small evaluation, nor establishes the score the system would achieve against every other strong player.[1]
+
+</CandidateEquation>
+
+<NewsFigure media="oct01-ataraxos-fig3" lang="en" />
+
+### Reading original Figure 3: the blue line is not an observed win rate
+
+Each small panel represents **one game**. WIN, LOSS or DRAW above it is the actual final result. The line shows how Ataraxos's **value network estimated effective winning prospects** as that game progressed. The horizontal axis records progress through the game, while the vertical axis records the model's estimate at each point. A value of 0.8 does not mean the system had already won 16 of the 20 evaluation games at that moment.[1]
+
+Look at the orange line for the loss in game 6 and the purple lines for draws in games 11, 14, 17 and 19, as well as the blue winning-game traces. An estimate can rise or fall as moves are made and previously concealed pieces are revealed. This is a picture of the model's changing assessment within individual games, not a direct frequency measured over many independent games from every plotted position. A late rise in those curves therefore does not, by itself, establish statistical calibration of the value network.[1]
+
+Beyond the 20-game series, the paper reports a demonstration against tournament participants in 2025 involving 40 games, with 38 wins and two losses. That provides additional evidence, but player selection and the demonstration environment differ from the controlled 20-game evaluation. The two sets should not simply be pooled to manufacture a new, supposedly universal win rate. The paper also reports results in Barrage Stratego, the cooperative game Hanabi and the three-player, two-team game dou dizhu. Opponents and evaluation criteria differ across those settings. None of this means “an 85% win rate against world champions in every game.”[1]
+
+<CandidateTable id="ataraxos-evidence-boundary" label="Ataraxos evaluation results and the limits of their interpretation">
+
+| Question | Directly evaluated in the research | Not established by these results |
+| --- | --- | --- |
+| Play against a leading human | A 20-game series against Pim Niemeijer: 15 wins, 1 loss and 4 draws | A universal win probability against every top human player |
+| Other games | Results under separate evaluation criteria for Barrage Stratego, Hanabi and dou dizhu | Performance in real negotiations or strategic tasks with incompletely specified rules |
+| Cost | Reported Stratego training compute using an available, fast simulator | The complete development, operating and energy costs of every application |
+| Code and game records | Public implementation and records of the 20-game series | A claim that independent researchers have already reproduced every result |
+
+</CandidateTable>
+
+## The largest condition for moving beyond games
+
+Self-play is particularly useful when **the rules and scoring are clearly defined and a fast, repeatable simulator is available**. In real investing, diplomacy, medicine or human–robot collaboration, the problem is not only that a state is hidden. The rules themselves may change, and the consequences of a poor decision cannot necessarily be tested millions of times. Other agents are not always fixed programs, and specifying the wrong objective can produce a strategy that is successful by the chosen score yet inappropriate for the intended purpose. These considerations are limits on generalization, not claims that the study tested each of those real-world applications.[1]
+
+What Ataraxos demonstrates is that self-play learning and search can be effective even when the amount of hidden information in a game is very large. It does not establish a universal decision engine that resolves every source of uncertainty encountered outside a simulator. The useful design pattern is the separation and coordination of a policy, value estimates, beliefs about hidden states and additional search at decision time. A real deployment would still need evidence that its observations, simulator and objective represent the actual decision problem well enough.
+
+For the reader, three distinctions keep the paper interpretable. **Figure 2** explains what information is hidden. **Figure 3** shows how the AI's estimate changes within games while that uncertainty is being resolved. The **15–1–4 record** describes the outcomes actually obtained under the evaluation protocol. A rule illustration, an internal model estimate and an observed match result are different forms of evidence. Treating them separately makes the phrase “superhuman AI” a testable claim tied to a particular evaluation, rather than an assertion of unlimited strategic competence.
+
+## Sources and figure rights
+
+[1] Samuel Sokota et al., “Scalable decision-making for games of imperfect information,” Nature 658, 55–59, published 30 September 2026, DOI 10.1038/s41586-026-11036-y. The Korean source article records checks of the Overview, Evaluation, Methods, Figures 2 and 3, and the CC BY 4.0 statement on 1 October 2026. The publisher's current HTML was retrieved and the main results rechecked for this English update on 5 October 2026. [Original paper](https://www.nature.com/articles/s41586-026-11036-y).
+
+[2] The Ataraxos research team's [official project site](https://ataraxosai.github.io/) provides access to the 20-game records. For implementation, consult the [official GitHub organization](https://github.com/AtaraxosAI) linked by the paper's Code availability statement. This translation does not claim to have retrained the system, replayed the complete evaluation or independently replicated all reported results.
+
+The two reproduced images are the paper's original **Figures 2 and 3**, preserving the panels, axes and colors. The article is licensed under CC BY 4.0; the Korean source records that neither figure caption carries a separate third-party restriction. Each image retains author and paper attribution, a license link and a change notice. This is a full English rendering of the existing October 1 article, including the beginner explanation, worked score calculation, table and evidence boundaries, prepared on 5 October 2026 rather than backdated as an English release on October 1.

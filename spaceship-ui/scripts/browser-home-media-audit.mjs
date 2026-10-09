@@ -50,8 +50,8 @@ export async function auditHomeIdentityMedia(cdp, sessionId) {
   );
 
   assert.match(media.currentSrc, /\/image\/mouse_surprised\.gif(?:[?#].*)?$/);
-  assert.equal(media.loading, 'eager');
-  assert.equal(media.fetchPriority, 'high');
+  assert.equal(media.loading, 'lazy');
+  assert.equal(media.fetchPriority, 'low');
   assert.ok(media.naturalWidth > 0 && media.naturalHeight > 0);
   assert.ok(media.renderedWidth > 20 && media.renderedHeight > 20);
 

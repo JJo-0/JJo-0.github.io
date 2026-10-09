@@ -173,3 +173,22 @@ source를 현재 형식으로 정규화
 따라서 새 content 문제를 해결하기 위해 전역 후처리 plugin이나 source compatibility alias를 다시 추가하지 않습니다. 필요한 수정은 owning source나 명시적 post component에 둡니다.
 
 기존 공개 URL 보존을 위한 static redirect는 별도 compatibility boundary이며, post content parser와 혼동하지 않습니다.
+
+
+## NEWS numeric citations
+
+Use explicit native anchors in MDX. A body citation such as
+`<a href="#news-ref-1" data-news-citation="1" aria-label="참고문헌 1로 이동" data-astro-reload>[1]</a>`
+points to one bibliography anchor with `id="news-ref-1"`, `data-news-reference="1"`,
+and an HTTPS source URL. The source anchor opens in a new tab with
+`target="_blank" rel="noopener noreferrer"`. Source titles may retain their
+existing descriptive links. For `[1,2]`, link each number separately inside
+the original brackets; never convert adjacent `[1][2]` into Markdown reference
+syntax. Preserve code, mathematics and already working named reference links.
+
+The rendered NEWS roster is checked for unique targets, every numeric token,
+source destinations and the dated link-only repair seals. A separate additive
+browser check activates every cited destination by touch/mouse, checks Back,
+and presses Enter with scripting disabled at 390px and 1440px. External HTTP
+reachability is a separate dated receipt: a 403, abuse-detection redirect or
+empty 202 must not be represented as successful source reading.

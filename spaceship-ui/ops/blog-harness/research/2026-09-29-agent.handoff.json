@@ -1,0 +1,567 @@
+{
+  "contentId": "2026-09-29-agent-thermostable-mrna-vaccine-news",
+  "date": "2026-09-29",
+  "timeZone": "Asia/Seoul",
+  "sourcePublished": "2026-09-28",
+  "doi": "10.1038/s41587-026-03331-w",
+  "evidenceGrade": "PEER_REVIEWED_FRONTIER",
+  "engineeringDepthStatus": "PASS_WITH_REPRODUCTION_LIMITATION",
+  "draftLocation": "site/content/posts/2026-09-29-agent-thermostable-mrna-vaccine-news.mdx",
+  "sourceFiles": [
+    "author preprint v1",
+    "published supplementary information",
+    "official AutoOED EI and GP implementations"
+  ],
+  "sourceLocators": [
+    {
+      "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+      "location": "p.4–12 and Figures 1–5",
+      "version": "v1, 2026-09-18",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "url": "https://media.springernature.com/original/springer-static/esm/art:10.1038%2Fs41587-026-03331-w/MediaObjects/41587_2026_3331_MOESM1_ESM.pdf",
+      "location": "Supplementary Table 2; Figure 4c",
+      "version": "Version of Record supplement, 2026-09-28",
+      "checkedAt": "2026-09-29"
+    }
+  ],
+  "equationCards": [
+    {
+      "id": "agent-normalized-activity",
+      "classification": "evaluation-metric",
+      "latex": "R=100 L_{dry}/L_{solution}",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.13 Figure 1 and p.15–16 Figure 3 captions; educational definition, not a numbered paper equation",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "variables": {
+        "R": "dimensionless percent",
+        "Ldry": "luminescence in the corresponding assay units",
+        "Lsolution": "same assay units; matched soluble control"
+      },
+      "assumptions": [
+        "matched dosage, cell context, normalization and measurement time"
+      ],
+      "boundaryConditions": [
+        "not prevention rate; not cross-assay interchangeable"
+      ],
+      "prerequisites": [
+        "ratio",
+        "percent"
+      ],
+      "baselineMethods": [
+        "single-excipient",
+        "manual combination"
+      ],
+      "changedTerm": "No new equation; formulation changes measured activity",
+      "mathematicalConsequence": "dimensionless normalized comparison",
+      "empiricalConsequence": "in-vitro selection readout",
+      "solved": "improved measured recovery within tested conditions",
+      "unsolved": "human efficacy and complete product stability",
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "agent-gp-posterior",
+      "classification": "estimator",
+      "latex": "\\mu=k_x^T(K+\\sigma_n^2I)^{-1}y; s^2=k(x,x)-k_x^T(K+\\sigma_n^2I)^{-1}k_x",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–6 GP use; standard zero-mean independent-Gaussian-noise educational formulation",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "implementationLocator": {
+        "url": "https://github.com/yunshengtian/AutoOED/blob/master/autooed/mobo/surrogate_model/gp.py",
+        "location": "GaussianProcess._evaluate: mean/variance; not an exact AGENT run reconstruction",
+        "checkedAt": "2026-09-29"
+      },
+      "variables": {
+        "x": "5 concentration coordinates; match normalized or physical scale",
+        "y": "n objective values",
+        "K": "n×n covariance; objective units squared",
+        "kx": "n-vector covariance",
+        "sigmaN2": "educational observation-noise variance; not a verified AGENT value",
+        "I": "n×n identity",
+        "mu": "objective units",
+        "s2": "objective units squared"
+      },
+      "assumptions": [
+        "chosen covariance",
+        "zero prior mean",
+        "independent Gaussian observation noise in educational formula"
+      ],
+      "boundaryConditions": [
+        "allowed design domain; not a molecular governing equation"
+      ],
+      "prerequisites": [
+        "vectors",
+        "matrices",
+        "variance"
+      ],
+      "baselineMethods": [
+        "random search",
+        "one-variable-at-a-time"
+      ],
+      "changedTerm": "Experimental data enters the next selection; no new GP theorem",
+      "mathematicalConsequence": "posterior mean and uncertainty",
+      "empiricalConsequence": "data-efficient candidate selection",
+      "solved": "selection under tested budget",
+      "unsolved": "exact run commit, kernel selection and full reproduction",
+      "confidence": "standard mathematical identity; medium for exact run correspondence",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "agent-expected-improvement",
+      "classification": "objective-for-experiment-selection",
+      "latex": "EI=(\\mu-f^*)\\Phi(z)+s\\phi(z); z=(\\mu-f^*)/s",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.6; Figure 2b; standard maximizing expected improvement, educational restatement",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "implementationLocator": {
+        "url": "https://github.com/yunshengtian/AutoOED/blob/master/autooed/mobo/acquisition/ei.py",
+        "location": "ExpectedImprovement._evaluate; minimization sign convention",
+        "checkedAt": "2026-09-29"
+      },
+      "variables": {
+        "mu": "predicted objective",
+        "fBest": "best comparison objective",
+        "s": "objective standard deviation",
+        "z": "dimensionless",
+        "Phi": "standard-normal CDF",
+        "phi": "standard-normal density",
+        "EI": "objective units"
+      },
+      "assumptions": [
+        "Gaussian predictive distribution",
+        "improvement=max(f-fBest,0)"
+      ],
+      "boundaryConditions": [
+        "s=0 uses max(mu-fBest,0)",
+        "constrained domain",
+        "batch/noisy variants not verified"
+      ],
+      "prerequisites": [
+        "probability",
+        "expected value"
+      ],
+      "baselineMethods": [
+        "random search",
+        "greedy predicted mean"
+      ],
+      "changedTerm": "Selection rule uses both model prediction and uncertainty; existing EI algorithm",
+      "mathematicalConsequence": "numerically selects promising improvement",
+      "empiricalConsequence": "Figure 2f matched-sample comparison",
+      "solved": "effective search for this experimental problem",
+      "unsolved": "global optimum proof and universal superiority",
+      "confidence": "high for EI use; exact implementation version not reconstructed",
+      "checkedAt": "2026-09-29"
+    }
+  ],
+  "baselineMethods": [
+    "cold storage",
+    "lyophilization",
+    "single-excipient screening",
+    "one-variable-at-a-time",
+    "random search",
+    "standard GP/EI Bayesian optimization"
+  ],
+  "graphNodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "label": "2026-09-28 publication",
+      "sourceLocator": {
+        "url": "https://www.nature.com/articles/s41587-026-03331-w",
+        "location": "publisher publication date",
+        "version": "Version of Record, 2026-09-28",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "doi:10.1038/s41587-026-03331-w",
+      "type": "paper",
+      "label": "AGENT",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.1–12",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "problem",
+      "type": "concept",
+      "label": "drying recovery and storage stability",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.4–5",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "method",
+      "type": "method",
+      "label": "GP + EI closed-loop experiment selection",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–6",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "claim",
+      "type": "claim",
+      "label": "37°C activity retention is not human prevention rate",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.1 abstract; p.8 immune-response measurements",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "result",
+      "type": "result",
+      "label": "6 rounds/48 LNP A and 3 rounds/12 LNP B",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.6–7",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "limitation",
+      "type": "limitation",
+      "label": "preclinical, no human vaccine efficacy trial",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.8–10",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "article",
+      "type": "article",
+      "label": "2026-09-29-agent-thermostable-mrna-vaccine-news",
+      "sourceLocator": {
+        "url": "https://jjo-0.github.io/posts/2026-09-29-agent-thermostable-mrna-vaccine-news/",
+        "location": "JJo independently written explainer",
+        "version": "2026-09-29",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "agent-normalized-activity",
+      "type": "equation",
+      "label": "agent-normalized-activity",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.13 Figure 1 and p.15–16 Figure 3 captions; educational definition, not a numbered paper equation",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "agent-gp-posterior",
+      "type": "equation",
+      "label": "agent-gp-posterior",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–6 GP use; standard zero-mean independent-Gaussian-noise educational formulation",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "agent-expected-improvement",
+      "type": "equation",
+      "label": "agent-expected-improvement",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.6; Figure 2b; standard maximizing expected improvement, educational restatement",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "sep29-agent-fig1",
+      "type": "figure",
+      "label": "진공건조 뒤 다시 물에 풀어 시험하는 과정과 LNP·첨가제·완충액별 발광 비교 원본 도판",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "bioRxiv v1 PDF p.13, Figure 1",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "sep29-agent-fig2",
+      "type": "figure",
+      "label": "가우시안 과정과 기대 개선량을 이용한 제형 추천·실험·모델 갱신 및 탐색 결과 원본 도판",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "bioRxiv v1 PDF p.14, Figure 2",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "sep29-agent-fig3",
+      "type": "figure",
+      "label": "두 LNP 조성의 세포·동물 발광, RNA 포집률, 실제 cryo-TEM 및 성분 제거 실험 원본 도판",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "bioRxiv v1 PDF p.15, Figure 3",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "id": "sep29-agent-fig5",
+      "type": "figure",
+      "label": "실제 미세바늘 패치와 비인간 영장류 피부 염색 사진 및 쥐·영장류 면역반응 원본 도판",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "bioRxiv v1 PDF p.18, Figure 5",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    }
+  ],
+  "graphEdges": [
+    {
+      "from": "method",
+      "relation": "implemented-by",
+      "to": "doi:10.1038/s41587-026-03331-w",
+      "basis": "direct",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "result",
+      "relation": "supported-by",
+      "to": "doi:10.1038/s41587-026-03331-w",
+      "basis": "direct",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "claim",
+      "relation": "supported-by",
+      "to": "doi:10.1038/s41587-026-03331-w",
+      "basis": "direct",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "high",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "article",
+      "relation": "depends-on",
+      "to": "doi:10.1038/s41587-026-03331-w",
+      "basis": "editorial",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "editorial or standard-formula interpretation",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "method",
+      "relation": "formulated-by",
+      "to": "agent-normalized-activity",
+      "basis": "educational-restatement",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "editorial or standard-formula interpretation",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "method",
+      "relation": "formulated-by",
+      "to": "agent-gp-posterior",
+      "basis": "educational-restatement",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "editorial or standard-formula interpretation",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "method",
+      "relation": "formulated-by",
+      "to": "agent-expected-improvement",
+      "basis": "educational-restatement",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "editorial or standard-formula interpretation",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "method",
+      "relation": "illustrated-by",
+      "to": "sep29-agent-fig1",
+      "basis": "editorial",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "editorial or standard-formula interpretation",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "method",
+      "relation": "illustrated-by",
+      "to": "sep29-agent-fig2",
+      "basis": "editorial",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "editorial or standard-formula interpretation",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "method",
+      "relation": "illustrated-by",
+      "to": "sep29-agent-fig3",
+      "basis": "editorial",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "editorial or standard-formula interpretation",
+      "checkedAt": "2026-09-29"
+    },
+    {
+      "from": "method",
+      "relation": "illustrated-by",
+      "to": "sep29-agent-fig5",
+      "basis": "editorial",
+      "sourceLocator": {
+        "url": "https://www.biorxiv.org/content/10.64898/2026.09.17.752370v1",
+        "location": "p.5–10 and Figure 1–5, p.13–18; see linked cards/figures",
+        "version": "v1, 2026-09-18",
+        "checkedAt": "2026-09-29"
+      },
+      "confidence": "editorial or standard-formula interpretation",
+      "checkedAt": "2026-09-29"
+    }
+  ],
+  "visualPlan": [
+    {
+      "id": "sep29-agent-fig1",
+      "role": "저자 공개 원고 Figure 1 · 연구 설계·측정 도판",
+      "sourceLocator": "bioRxiv v1 PDF p.13, Figure 1",
+      "rightsStatus": "LICENSE_CHECKED"
+    },
+    {
+      "id": "sep29-agent-fig2",
+      "role": "저자 공개 원고 Figure 2 · 연구 설계·측정 도판",
+      "sourceLocator": "bioRxiv v1 PDF p.14, Figure 2",
+      "rightsStatus": "LICENSE_CHECKED"
+    },
+    {
+      "id": "sep29-agent-fig3",
+      "role": "저자 공개 원고 Figure 3 · 실제 측정·현미경 자료",
+      "sourceLocator": "bioRxiv v1 PDF p.15, Figure 3",
+      "rightsStatus": "LICENSE_CHECKED"
+    },
+    {
+      "id": "sep29-agent-fig5",
+      "role": "저자 공개 원고 Figure 5 · 실제 패치 사진·동물 면역반응",
+      "sourceLocator": "bioRxiv v1 PDF p.18, Figure 5",
+      "rightsStatus": "LICENSE_CHECKED"
+    }
+  ],
+  "verificationLimits": [
+    "Publisher subscription full text not read; full author preprint and published supplementary evidence used",
+    "No biological experiment or complete computational reproduction",
+    "No human clinical efficacy inference"
+  ],
+  "candidateStatus": {
+    "lc1": "RESEARCH_PENDING_DEPTH_AND_MEDIA_RIGHTS",
+    "silicon": "RESEARCH_PENDING_DEPTH; CC BY-NC-ND images not reused"
+  },
+  "approval": {
+    "scope": "User requested Sep 29 GitBlog and Blogger publication",
+    "notStandingAuthorization": true
+  }
+}

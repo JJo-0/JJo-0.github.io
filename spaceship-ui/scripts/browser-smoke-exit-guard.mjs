@@ -3,7 +3,10 @@
 // This guard also gives rebased PR runs a deterministic upper bound.
 const SUCCESS_MARKER = 'browser-smoke: PASS complete matrix';
 const FAILURE_MARKER = 'browser-smoke: FAIL';
-const MAX_RUNTIME_MS = Number(process.env.JJO_SMOKE_MAX_RUNTIME_MS || 240_000);
+// The full matrix now covers 60+ news routes, nine Acts dashboards, and
+// trusted-link navigation against both preview and live Pages. Keep the guard
+// finite, but allow slower live-network runs to finish the unchanged matrix.
+const MAX_RUNTIME_MS = Number(process.env.JJO_SMOKE_MAX_RUNTIME_MS || 360_000);
 const LIVE_BASE_URL = process.env.JJO_SMOKE_BASE_URL?.trim().replace(/\/+$/, '') || '';
 const LIVE_HEAD_RETRY_ATTEMPTS = 4;
 const LIVE_HEAD_RETRY_BASE_DELAY_MS = 300;

@@ -4,7 +4,8 @@ import '@/styles/experience.css';
 import '@/styles/transitions.css';
 import '@/styles/performance.css';
 import { SITE } from '@/config';
-import { ogLocale } from '@/lib/i18n';
+import { EN_DESCRIPTION, nativeAlternates } from '@/lib/locales';
+import LanguageHint from '@/components/LanguageHint.astro';
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
 import TransitionRuntime from '@/components/navigation/TransitionRuntime.astro';
@@ -28,7 +29,6 @@ interface Props {
   adsEnabled?: boolean;
   markdownAlternate?: string;
   languageAlternates?: Record<string, string>;
-  canonicalPath?: string;
 }
 
 const {
@@ -42,16 +42,17 @@ const {
   usesChart = false,
   adsEnabled = true,
   markdownAlternate,
-  languageAlternates = {},
-  canonicalPath,
+  languageAlternates: providedAlternates = {},
 } = Astro.props;
 const pageLang = lang || SITE.lang;
-const isEnglish = pageLang.toLowerCase().startsWith('en');
+const isEnglish = Astro.url.pathname.startsWith('/en/');
+const isNotFoundPage = /(?:^|\/)404\/?$/.test(Astro.url.pathname);
+const knownAlternates = nativeAlternates(Astro.url.pathname);
+const languageAlternates = Object.keys(knownAlternates).length ? knownAlternates : providedAlternates;
 const pageTitle = title ? `${title} | ${SITE.author}` : SITE.seoTitle;
-const pageDescription = description || (isEnglish ? 'Research notes on robotics, AI, computer vision, and science by Jiho Park.' : SITE.desc);
+const pageDescription = description || (isEnglish ? EN_DESCRIPTION : SITE.desc);
 const pageOgImage = new URL(ogImage || SITE.ogImage, Astro.site);
-const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, Astro.site);
-const koreanPath = languageAlternates['ko-KR'];
+const canonicalUrl = new URL(languageAlternates[isEnglish ? 'en' : 'ko-KR'] || (isEnglish ? `${Astro.url.pathname.replace(/\/+$/, '')}/` : Astro.url.pathname), Astro.site);
 const englishPath = languageAlternates.en;
 
 const sectionIsPrivate =
@@ -60,7 +61,7 @@ const sectionIsPrivate =
 const shouldNoIndex = noindex || sectionIsPrivate;
 
 const defaultSchemas = [
-  getWebSiteSchema(new URL(isEnglish ? '/en/' : '/', Astro.site).toString(), pageLang),
+  getWebSiteSchema(canonicalUrl.toString(), pageLang, pageDescription),
   getOrganizationSchema(),
   getPersonSchema(),
 ];
@@ -160,8 +161,8 @@ const adsenseLoaderScript = adsenseClientId
     <link
       rel="alternate"
       type="application/rss+xml"
-      title={isEnglish ? 'Jiho Park — English RSS' : `${SITE.seoTitle} RSS Feed`}
-      href={isEnglish ? '/en/rss.xml' : '/rss.xml'}
+      title={`${SITE.seoTitle} RSS Feed`}
+      href={isEnglish ? "/en/rss.xml" : "/rss.xml"}
     />
     {markdownAlternate && <link rel="alternate" type="text/markdown" href={markdownAlternate} />}
 
@@ -208,7 +209,7 @@ const adsenseLoaderScript = adsenseClientId
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:site_name" content={SITE.seoTitle} />
-    <meta property="og:locale" content={ogLocale(pageLang)} />
+    <meta property="og:locale" content={isEnglish ? 'en_US' : pageLang.toLowerCase().startsWith('ko') ? 'ko_KR' : pageLang.replace('-', '_')} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
@@ -243,8 +244,11 @@ const adsenseLoaderScript = adsenseClientId
 
     <JsonLd schema={finalSchema} />
 
-    <ClientRouter fallback="animate" />
-    <base href={SITE.base} />
+    <!-- English documents use native navigation and history; Korean transitions are unchanged. -->
+    {!isEnglish && <ClientRouter fallback="animate" />}
+    <!-- Categories, skip links and citations must resolve on this document, not the home page. -->
+    <!-- A 404 is served at the requested URL, not the build-time /404/ pathname. -->
+    {!isNotFoundPage && <base href={Astro.url.pathname} />}
   </head>
   <body class="site-body bg-background text-foreground min-h-screen">
     <TransitionRuntime />
@@ -252,7 +256,7 @@ const adsenseLoaderScript = adsenseClientId
       href="#main-content"
       class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:shadow-lg"
     >
-      {isEnglish ? 'Skip to content' : '본문으로 건너뛰기'}
+      {isEnglish ? 'Skip to main content' : '본문으로 건너뛰기'}
     </a>
     {
       isGTM && (
@@ -267,12 +271,13 @@ const adsenseLoaderScript = adsenseClientId
       )
     }
     <div class="site-frame mx-auto container-padding">
-      <Header pageLang={pageLang} {englishPath} {koreanPath} />
+      <Header pageLang={pageLang} {englishPath} />
       <main id="main-content" class="py-10 sm:py-14 lg:py-20" tabindex="-1">
+        <LanguageHint lang={isEnglish ? "en" : "ko"} />
         <slot />
       </main>
       {adsenseClientId && <AdSense />}
-      <Footer lang={pageLang} />
+      <Footer lang={isEnglish ? "en" : "ko"} />
     </div>
   </body>
 </html>
