@@ -11,6 +11,13 @@ from normalize_tags import CATEGORY_IDS, POST_TAXONOMY, Taxonomy, main
 # Extend the current registry without rewriting the frozen cutover manifest.
 CATEGORY_IDS.add("biblical-studies")
 
+POST_TAXONOMY.update({
+    f'isaiah-43-18-21-{i}.mdx': Taxonomy(
+        'biblical-studies', 'isaiah-43-18-21', 'research-report',
+        ('isaiah', 'biblical-studies', 'hebrew-exegesis', 'old-testament'),
+    ) for i in (1, 2, 3)
+})
+
 POST_TAXONOMY.update(
     {
         "self-improving-ai-chip-design.md": Taxonomy(
