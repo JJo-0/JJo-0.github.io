@@ -31,6 +31,7 @@ const out = 'source-disclosure-audit';
 fs.mkdirSync(out, { recursive: true });
 const rows = [];
 let preview, chrome, cdp, sessionId;
+let currentCheck;
 const timer = setTimeout(() => { console.error('source-disclosure: FAIL timeout'); process.exit(1); }, 240_000);
 
 async function enter(selector, scriptingDisabled = false) {
@@ -51,7 +52,8 @@ async function enter(selector, scriptingDisabled = false) {
   }
 }
 
-async function visibleTarget(id) {
+async function visibleTarget(id, phase) {
+  currentCheck = { ...currentCheck, id, phase };
   await waitExpression(cdp, sessionId, `(() => {
     const target = document.getElementById(${JSON.stringify(id)});
     const box = target?.getBoundingClientRect();
@@ -68,6 +70,7 @@ try {
   for (const width of [390, 1440]) {
     await viewport(cdp, sessionId, { width, height: 900, mobile: width === 390, touch: width === 390, reduced: true });
     for (const slug of slugs) {
+      currentCheck = { slug, width };
       const route = `/posts/${slug}/`;
       await navigate(cdp, sessionId, route);
       const initial = await evaluate(cdp, sessionId, `(() => {
@@ -101,7 +104,7 @@ try {
       const citation = `article a[data-news-citation][href="#${initial.reference}"]`;
       await enter(citation, true);
       await waitExpression(cdp, sessionId, `location.hash === ${JSON.stringify(`#${initial.reference}`)}`, 'native fragment with page scripting disabled');
-      await visibleTarget(initial.reference);
+      await visibleTarget(initial.reference, 'native-no-script-fragment');
       assert.equal(await evaluate(cdp, sessionId, `document.querySelector('article [data-news-source-disclosure]').open`), true);
       await navigate(cdp, sessionId, route);
       await enter('article [data-news-source-disclosure] > summary');
@@ -115,21 +118,44 @@ try {
         const toc = `nav a[href="#${initial.heading}"]`;
         await waitExpression(cdp, sessionId, `Boolean(document.querySelector(${JSON.stringify(toc)})?.closest('astro-island')?.hasAttribute('ssr') === false)`, 'TOC hydration');
         await enter(toc);
-        await visibleTarget(initial.heading);
+        await visibleTarget(initial.heading, 'hydrated-toc');
         assert.equal(await evaluate(cdp, sessionId, `document.querySelector('article [data-news-source-disclosure]').open`), true);
         tocChecked = true;
       }
       await navigate(cdp, sessionId, `${route}#${initial.reference}`);
-      await visibleTarget(initial.reference);
+      await visibleTarget(initial.reference, 'initial-deep-link');
       assert.equal(await evaluate(cdp, sessionId, `document.querySelector('article [data-news-source-disclosure]').open`), true);
-      rows.push({ slug, width, references: initial.referenceCount, noScriptNativeFragment: true, keyboardDisclosure: true, tocChecked, deepLink: true, keyboardMathScroll: wideEquation?.id || 'NOT_APPLICABLE' });
+      let alreadyOpenPageLoad = false;
+      if (slug === slugs.at(-1)) {
+        // Browsers can open details before Astro's page-load handler. Exercise
+        // that lifecycle with the real rendered page, without closing details
+        // or altering the original native-input/deep-link assertions.
+        await evaluate(cdp, sessionId, `scrollTo({top:0,behavior:'instant'}); document.dispatchEvent(new Event('astro:page-load'))`);
+        await visibleTarget(initial.reference, 'already-open-astro-page-load');
+        alreadyOpenPageLoad = true;
+      }
+      rows.push({ slug, width, references: initial.referenceCount, noScriptNativeFragment: true, keyboardDisclosure: true, tocChecked, deepLink: true, alreadyOpenPageLoad, keyboardMathScroll: wideEquation?.id || 'NOT_APPLICABLE' });
       console.log(`source-disclosure: PASS ${JSON.stringify(rows.at(-1))}`);
     }
   }
   fs.writeFileSync(`${out}/browser.json`, JSON.stringify({ base: BASE, slugs, rows }, null, 2));
 } catch (error) {
   console.error(error);
-  fs.writeFileSync(`${out}/failure.json`, JSON.stringify({ error: String(error), rows }, null, 2));
+  let geometry;
+  try {
+    geometry = await evaluate(cdp, sessionId, `(() => {
+      const target = document.getElementById(${JSON.stringify(currentCheck?.id)});
+      const box = target?.getBoundingClientRect();
+      const header = document.querySelector('header')?.getBoundingClientRect();
+      return {url:location.href,readyState:document.readyState,fontStatus:document.fonts.status,
+        open:target?.closest('details')?.open,connected:target?.isConnected,
+        box:box?.toJSON(),header:header?.toJSON(),scrollY,innerHeight,
+        documentHeight:document.documentElement.scrollHeight};
+    })()`);
+    const {data} = await cdp.send('Page.captureScreenshot', {format:'png'}, sessionId);
+    fs.writeFileSync(`${out}/failure.png`, Buffer.from(data, 'base64'));
+  } catch (diagnosticError) { geometry = {error:String(diagnosticError)}; }
+  fs.writeFileSync(`${out}/failure.json`, JSON.stringify({ error: String(error), currentCheck, geometry, rows }, null, 2));
   process.exitCode = 1;
 } finally {
   cdp?.close();

@@ -99,11 +99,11 @@ PDHG(primal-dual hybrid gradient)는 PDLP의 기반 반복법이다. 원문의 �
 
 이제 조건을 바꿔 보자. 첫 창고 용량이 4로 줄어들면 같은 계산의 해는 `a=4,b=6`, 비용 26이다. 목표는 그대로지만 가능한 해의 범위가 달라졌다. 첫 창고 용량이 1이면 둘째 창고가 최대 8을 보내도 합이 9이므로 수요 10을 채울 수 없다. 이 경우는 비싼 답을 찾는 문제가 아니라 설정한 제약이 함께 만족 가능한지부터 확인하는 문제다.
 
-이 작은 예제를 두 GPU로 나누면 성능이 좋아질까? 산술이 몇 번뿐이므로 실제 통신·설정 비용까지 고려하면 유리하다고 단정할 수 없다. 계산한 24와 26은 최적 목적값의 비교이며 GPU 속도 측정이 아니다. 문제의 답, 답의 허용오차, 답을 구하는 시간을 서로 다른 질문으로 남겨야 한다.
+이 작은 예제를 두 GPU로 나누면 성능이 좋아질까? 산술이 몇 번뿐이므로 실제 통신·설정 비용까지 고려하면 유리하다고 단정할 수 없다. 계산한 24와 26은 최적 목적값의 비교이며 GPU 속도 측정이 아니다. 답·허용오차·실행시간은 서로 다른 질문이다.
 
 ## 8. 반복 단계 11.4배와 전체 실행 4.2배는 왜 다른가?
 
-NVIDIA는 DGX B200에서 100개가 넘는 LP, 목표 허용오차 `10⁻⁶`, 1시간 제한으로 비교했다고 보고한다. `tsp-gaia-10m`에서는 반복 단계 속도 향상이 최대 11.4배였지만 전체 실행의 향상은 4.2배였다. 8개 B200을 사용한 mPDLP와 단일 B200을 비교한 수치다. 발표 HTML에서 이 목표 오차의 구체적 잔차 정의·정규화·정지 판정 구현까지는 확인하지 못했다. 튜토리얼 설정과 같은 의미라고 확정하지 않는다. 반복 단계가 끝났다고 분할·준비·후처리까지 모두 사라지는 것은 아니다.
+NVIDIA는 all-to-all NVLink로 연결한 DGX B200에서 100개가 넘는 LP, 목표 허용오차 `10⁻⁶`, 1시간 제한으로 비교했다고 보고한다. `tsp-gaia-10m`에서는 반복 단계 속도 향상이 최대 11.4배였지만 전체 실행의 향상은 4.2배였다. 8개 B200을 사용한 mPDLP와 단일 B200을 비교한 수치다. 발표 HTML에서 이 목표 오차의 구체적 잔차 정의·정규화·정지 판정 구현까지는 확인하지 못했다. 튜토리얼 설정과 같은 의미라고 확정하지 않는다. 반복 단계가 끝났다고 분할·준비·후처리까지 모두 사라지는 것은 아니다.
 
 <figure>
 <a href="/news/editorial-mpdlp-20261010/speedup.svg" target="_blank" rel="noopener noreferrer"><img src="/news/editorial-mpdlp-20261010/speedup.svg" alt="같은 보고 사례에서 반복 단계의 최대 11.4배와 전체 실행의 4.2배를 별개 막대로 표시" width="960" height="320" /></a>
@@ -125,7 +125,7 @@ NVIDIA는 DGX B200에서 100개가 넘는 LP, 목표 허용오차 `10⁻⁶`, 1�
 
 최소 컷으로 통신을 줄이는 목표만으로 계산 부하까지 균등해지지는 않는다. 데이터의 연결 구조가 달라지면 같은 장치 개수에서도 결과가 달라질 수 있다. NVIDIA는 계산 부하를 고려하는 분할과 다른 개선을 향후 과제로 설명한다. 향후 계획을 이미 구현된 기능으로 소개하지 않는다.
 
-이 글이 읽은 것은 기술 본문, 코드 저장소의 README·LICENSE·VERSION과 예제 노트북 셀이다. GPU에서 솔버를 실행하거나 원시 벤치마크 데이터를 재분석하지 않았다. 원문 도판의 실제 픽셀도 아직 확인하지 못했다. 따라서 도판 안에만 있는 수치·비교 조건을 본문에 채우지 않는다. 아래 그림은 다음 검증을 위한 질문 목록이며 완료 체크리스트가 아니다.
+기술 본문, cuOpt README·LICENSE·VERSION·튜토리얼 셀과 OR-Tools PDLP 정의 파일을 읽었다. GPU에서 솔버를 실행하거나 원시 벤치마크 데이터를 재분석하지 않았다. 원문 도판의 실제 픽셀도 아직 확인하지 못했다. 따라서 도판 안에만 있는 수치·비교 조건을 본문에 채우지 않는다. 아래 그림은 다음 검증을 위한 질문 목록이며 완료 체크리스트가 아니다.
 
 <figure>
 <a href="/news/editorial-mpdlp-20261010/limits.svg" target="_blank" rel="noopener noreferrer"><img src="/news/editorial-mpdlp-20261010/limits.svg" alt="대표 문제 조건, 정확한 구현 버전, 원시 결과, 독립 실행, 실제 제약 검증을 차례로 묻는 검증 질문" width="960" height="300" /></a>
@@ -145,8 +145,8 @@ NVIDIA는 DGX B200에서 100개가 넘는 LP, 목표 허용오차 `10⁻⁶`, 1�
 <summary>원문·코드·권리와 열람 기록</summary>
 
 - [NVIDIA 기술 발표](https://developer.nvidia.com/blog/scaling-decision-optimization-to-100-million-variables-and-beyond-with-mpdlp-in-nvidia-cuopt/): 2026-10-07. HTML 본문의 LP·PDHG 식, 분할 설명, 벤치마크 조건·한계를 실제 확인했다. 원 도판 픽셀·원시 데이터는 미확인이다. 본문의 자체 도식은 원문 Figure를 복제하지 않았다.
-- [NVIDIA cuOpt 소스](https://github.com/NVIDIA/cuopt): README·Apache-2.0 LICENSE·VERSION을 읽었다. 관찰한 main은 `9f1d2c3b1b1606fc9b44bde5c9104ef5dfefa9d7`이며 벤치마크 커밋은 미확인이다. 소프트웨어 라이선스가 기술 블로그 도판의 재사용 권한까지 부여하는 것은 아니다.
-- [공식 다중 GPU 튜토리얼](https://github.com/NVIDIA/cuopt-examples/blob/main/multi_GPU_PDLP_example/mPDLP_tutorial.ipynb): 노트북 셀을 읽었지만 설치·GPU 실행은 하지 않았다. 이 노트북을 실행하지 않았으므로 이 글의 실행 결과로 사용하지 않았다.
-- [Google OR-Tools PDLP 수학](https://developers.google.com/optimization/lp/pdlp_math), [LP 기초 예제](https://developers.google.com/optimization/lp/lp_example): 문제 차원·쌍대 변수·기초 해석의 참고 자료다. 배송 숫자와 장난감 그래프는 이 글이 만든 설명용 예제다.
+- [NVIDIA cuOpt 소스](https://github.com/NVIDIA/cuopt): README·Apache-2.0 LICENSE·VERSION을 읽었다. 벤치마크 커밋은 미확인이다. 소프트웨어 라이선스가 기술 블로그 도판의 재사용 권한까지 부여하는 것은 아니다.
+- [공식 다중 GPU 튜토리얼](https://github.com/NVIDIA/cuopt-examples/blob/main/multi_GPU_PDLP_example/mPDLP_tutorial.ipynb): 노트북 셀을 읽었지만 설치·GPU 실행은 하지 않았다.
+- [Google OR-Tools PDLP](https://github.com/google/or-tools/tree/stable/ortools/pdlp): `solve_log.proto`(main)의 잔차 정의(L143–189)와 `solvers.proto`(stable)의 정지 기준(L82–107)을 참고했다. NVIDIA 벤치마크와 같은 기준이라는 뜻은 아니다. 배송·그래프는 자체 예제다. [LP 기초](https://developers.google.com/optimization/lp/lp_example)도 참고할 수 있다.
 
 </details>
