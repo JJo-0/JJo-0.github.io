@@ -21,6 +21,7 @@ for p in manifest['pairs']:
     check(len(re.findall(r'^## ',a,re.M))==len(re.findall(r'^## ',b,re.M)),p['key']+' H2 coverage')
     check(len(re.findall(r'^### ',a,re.M))==len(re.findall(r'^### ',b,re.M)),p['key']+' H3 coverage')
     check(math(a)==math(b),p['key']+' equations')
+    check(len(re.findall(r'^\|',a,re.M))==len(re.findall(r'^\|',b,re.M)),p['key']+' table row coverage')
     am=re.findall(r'<NewsFigure media="([^"]+)"',a);bm=re.findall(r'<NewsFigure media="([^"]+)"',b)
     check(am==bm,p['key']+' source figures and order')
     refs=re.findall(r'^\[(\d+)\] ',b,re.M)
