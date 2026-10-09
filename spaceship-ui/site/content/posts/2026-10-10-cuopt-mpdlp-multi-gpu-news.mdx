@@ -1,0 +1,92 @@
+---
+title: 'GPU를 늘리면 최적화도 빨라질까: mPDLP'
+description: 'NVIDIA의 다중 GPU 선형계획 솔버 mPDLP를 통해 계산보다 통신이 병목이 되는 이유를 살펴본다. 자체 발표의 반복 단계와 전체 실행시간을 구분하고, 작은 문제와 불균형한 분할에서 속도 향상이 사라지는 조건을 설명한다.'
+pubDate: 2026-10-10
+updatedDate: 2026-10-10
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-10-cuopt-mpdlp-multi-gpu-news
+category: software-engineering-cs
+subcategory: distributed-linear-optimization
+type: research-report
+tags:
+  - frontier-one
+  - linear-programming
+  - gpu-computing
+  - numerical-optimization
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+import Math from '@/components/post/Math.astro';
+
+
+> **연구 초안:** `SELECTED` · 2026-10-10 KST Top 1 · 편집 점수 86/100 · `INDUSTRY_TRIGGER`. NVIDIA 자체 기술 발표이며 독립 재현이나 동료평가 결과가 아니다. 완성 기사와 공개 준비 상태로 승격하지 않은 초안이다.
+
+## 1. 한 문장 결론
+
+다중 GPU 최적화에서는 계산 분담과 장치 사이의 통신을 함께 설계해야 한다. NVIDIA mPDLP는 희소 행렬의 연결 관계를 이용한다. 발표일은 10월 7일이며 정확한 시각·시간대는 미확인이다.
+
+## 2. 왜 어려운가
+
+배송량을 결정할 때 창고 용량과 수요가 제약이 된다. 두 GPU가 상대의 갱신 값을 기다려야 한다면, 계산 장치를 늘려도 대기시간이 늘 수 있다. 계산량과 통신량을 별도로 물어야 하는 이유다.
+
+## 3. 먼저 알아야 할 개념
+
+선형계획(linear programming, LP)은 선형 비용을 최소화하면서 제약을 만족하는 연속 변수 값을 찾는다. 정수 개수만 허용하는 문제는 별도의 정수 제약이 필요하다. 아래는 원문이 사용한 등식 제약 형태다. 부등식까지 포함한 일반 LP와 모든 현실 시스템을 이 한 형태로 동일시하지 않는다.
+
+<Math display label="등식 제약과 변수 경계를 가진 선형계획" tex={"\\min_x c^T x \\quad \\text{s.t.}\\quad Ax=b,\\qquad l\\le x\\le u."} />
+
+`x`는 `n`개 변수, `b`는 `m`개 제약 값이고 `A`는 `m×n` 행렬이다. 비용 계수 `c`의 단위는 문제에 따라 다르다. 배송량·단위 물량당 비용은 설명용 설정이다. `A`의 비영 원소는 변수–제약의 연결이며, 대부분이 0이면 희소(sparse) 행렬이다.
+
+## 4. 기존 방식의 한계
+
+한 GPU의 PDLP는 메모리에 들어가는 문제 크기에 제한을 받는다. 기존 분산 D-PDLP는 행렬을 2차원 블록으로 나누지만 부분 결과를 합치는 통신이 필요하다. Google OR-Tools에도 PDLP가 있지만, 그것을 이번 NVIDIA 다중 GPU 구현과 같은 제품 또는 같은 성능 결과로 취급하지 않는다. 공통 수학과 실제 구현은 구분해야 한다.
+
+## 5. 새 방법을 세 단계로 보기
+
+첫째, 변수와 제약을 두 종류의 노드로 놓고 행렬의 비영 원소를 연결로 생각한다. 둘째, 장치 경계를 넘는 연결을 줄이도록 최소 컷(min-cut) 방식으로 분할한다. 셋째, 각 GPU가 맡은 계산을 하며 필요한 상대 장치의 값만 교환한다. 이 설명은 원문의 도판을 복제한 그림이 아니다. 자체 도식은 아직 제작하지 않았으며, 현재 도판의 실제 픽셀 검토도 완료하지 않았다.
+
+## 6. 식과 시스템의 위치
+
+PDHG(primal-dual hybrid gradient)는 PDLP의 기반 반복법이다. 아래는 발표의 반복식이며 `y`는 등식 제약의 쌍대 변수, `τ,σ`는 스텝 크기다. 이 부호 규약에서 비용·제약 영향은 `c−Aᵀy`로 묶인다.
+
+<Math display label="PDHG primal 변수 갱신" tex={"x^{k+1}=\\operatorname{proj}_{[l,u]}\\!\\left(x^k-\\tau(c-A^Ty^k)\\right),"} />
+
+<Math display label="PDHG dual 변수 갱신" tex={"y^{k+1}=y^k+\\sigma\\left(b-A(2x^{k+1}-x^k)\\right)."} />
+
+첫 식은 값을 허용 범위로 되돌리고 둘째 식은 제약 잔차를 쓴다. `Aᵀy`와 `Ax`의 연결이 통신 설계의 중심이다. 원문의 통신용 단순식은 비용·투영·외삽을 생략한 것으로 완전한 갱신식이 아니다. 임의의 스텝 크기로 수렴을 보장하지 않는다.
+
+## 7. 함께 풀어보는 작은 사례
+
+다음은 **독자가 확인할 설명용 계산**이다. 배송량을 `a,b`, 수요를 10단위, 용량을 6과 8, 단위 비용을 2와 3으로 정하자. 조건은 `a+b=10`, `0≤a≤6`, `0≤b≤8`이다. 용량은 위 일반식의 변수 상한 `u`에 해당한다. 비용 `2a+3b`에 `b=10−a`를 대입하면 `30−a`다. `a`를 가장 크게 잡으면 `a=6,b=4`, 비용 24다.
+
+배송량 합은 10이고 용량을 넘지 않는다. `a`를 1 줄여 `b`를 1 늘리면 비용이 1 늘어나므로 `a=6`이 최적이다. 벤치마크 재현 결과는 아니다.
+
+## 8. 실험 숫자는 어디까지 말하는가
+
+NVIDIA는 DGX B200에서 100개가 넘는 LP, 목표 허용오차 `10⁻⁶`, 1시간 제한을 사용했다고 보고했다. `tsp-gaia-10m`의 반복 단계 속도 향상은 최대 11.4배지만 전체 실행은 4.2배였다. 분할과 전·후처리는 전체 시간에 남는다. 비교는 단일 B200 기준이며 다른 장비·데이터로 일반화하지 않는다.
+
+## 9. 반대 증거와 조건 변경 질문
+
+기존 D-PDLP보다 느린 초대형 사례도 세 개 있었다. 앞의 배송 예에서 첫 창고 용량을 4로 바꾸면 어떤가? 같은 계산으로 `a=4,b=6`, 비용 26이 된다. 문제 조건이 해를 바꾼다. 마찬가지로 GPU 경계를 넘는 연결이나 분할 불균형이 바뀌면 속도도 바뀐다. GPU 개수만 비교하는 표는 이런 조건을 숨길 수 있다.
+
+## 10. 핵심 한계
+
+현재 분할은 GPU 계산 부하를 충분히 반영하지 못한다는 한계가 발표에 있다. 원문 결과는 공급업체의 측정이며 여기서 벤치마크를 실행하지 않았다. 허용오차는 각 문제의 수치 스케일과 함께 해석해야 하며, 목적함수 값이 좋다는 사실만으로 모든 제약이 만족된다고 단정하지 않는다. 근사 해를 실제 배송이나 전력 계획에 쓰기 전에는 원래 제약에 다시 대입해 잔차를 검사해야 한다.
+
+## 11. 실제 변화와 다음 확인
+
+배울 변화는 어떤 정보를 함께 배치할지에 있다. 튜토리얼은 GPU 수와 상대 primal·dual·gap 허용오차를 각각 `10⁻⁶`으로 지정한다. 튜토리얼의 패키지는 26.8.0, README는 26.10.00이다. 이 차이만으로 벤치마크 버전을 추정하지 않는다. 독립 재현, 문제별 전체 시간과 원시 결과가 다음 검토 트리거다.
+
+## 12. 출처와 열람 범위
+
+<details>
+<summary>원문·코드·권리와 열람 기록</summary>
+
+- [NVIDIA 기술 발표](https://developer.nvidia.com/blog/scaling-decision-optimization-to-100-million-variables-and-beyond-with-mpdlp-in-nvidia-cuopt/): 2026-10-07. LP·PDHG 식, 희소 연산·분할 설명, 벤치마크 조건과 한계의 HTML 본문을 읽었다. 도판 실제 픽셀과 원시 데이터는 미확인이다.
+- [NVIDIA cuOpt 소스](https://github.com/NVIDIA/cuopt): README와 Apache-2.0 LICENSE를 읽었다. 관찰한 main 커밋은 `9f1d2c3b1b1606fc9b44bde5c9104ef5dfefa9d7`이다. 발표 벤치마크에 사용된 정확한 커밋은 확인되지 않았다. 코드 라이선스가 블로그 도판 재사용 권한까지 부여하지는 않는다.
+- [공식 다중 GPU 튜토리얼](https://github.com/NVIDIA/cuopt-examples/blob/main/multi_GPU_PDLP_example/mPDLP_tutorial.ipynb): 노트북 셀을 읽었지만 설치·GPU 실행은 하지 않았다. 노트북에 저장된 출력은 이번 실행 결과가 아니다.
+- [Google OR-Tools PDLP 수학](https://developers.google.com/optimization/lp/pdlp_math), [LP 기초 예제](https://developers.google.com/optimization/lp/lp_example): 문제 차원·쌍대 변수·기초 해석을 확인했다. 본문의 배송 숫자는 이 글의 설명용 예제다.
+
+</details>
