@@ -89,10 +89,12 @@ export async function auditMobileMotion(cdp, sessionId) {
       assert.deepEqual(runtime.engineRequests, [], `${pathname}: cold mobile must not fetch motion engine`);
 
       if (pathname === '/') {
-        const gif = await evaluate(cdp, sessionId, `(() => {
+        // The low-priority lazy image may still be loading after native scroll
+        // synchronization. Wait for the real decode within the normal bound.
+        const gif = await waitExpression(cdp, sessionId, `(() => {
           const image = document.querySelector('img[src="/image/mouse_surprised.gif"]');
           return Boolean(image?.complete && image.naturalWidth > 0 && image.getBoundingClientRect().width > 0);
-        })()`);
+        })()`, 'mobile Home identity GIF decoded and visible');
         assert.ok(gif, 'mobile Home identity GIF must still decode and remain visible');
       }
     }
