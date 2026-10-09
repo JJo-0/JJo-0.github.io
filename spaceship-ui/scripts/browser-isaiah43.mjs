@@ -49,6 +49,7 @@ fs.mkdirSync(out, {recursive:true});
     await frame.locator('button[onclick="resetFilters()"]').click();
     assert.equal(await frame.locator('#globalSearch').inputValue(),'');
   }
+  assert.equal(await page.locator('a[href="https://blog.naver.com/jjo_09_/224436720898"]').count(),1);
   const figures = page.locator('figure[data-isaiah-image]');
   assert.equal(await figures.count(),[1,0,2][i-1]);
   for (const figure of await figures.all()) {
