@@ -20,6 +20,7 @@ import actsEmphasis from './src/lib/remark/acts-emphasis.mjs';
 import englishCitations from './src/lib/remark/english-citations.mjs';
 import termTooltips from './src/lib/rehype/term-tooltips.mjs';
 import mediaPerformance from './src/lib/rehype/media-performance.mjs';
+import newsSourceDisclosure from './src/lib/rehype/news-source-disclosure.mjs';
 import { isLegacyPathname } from './src/lib/legacy-posts.mjs';
 import {
   transformerNotationDiff,
@@ -78,6 +79,7 @@ export default defineConfig({
     rehypePlugins: [
       termTooltips,
       mediaPerformance,
+      newsSourceDisclosure,
       rehypeSlug,
       [
         rehypeAutolinkHeadings,

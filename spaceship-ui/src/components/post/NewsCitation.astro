@@ -4,3 +4,49 @@ const { n } = Astro.props;
 if (!Number.isSafeInteger(n) || n < 1) throw new Error('Invalid NEWS reference number');
 ---
 <a href={`#news-ref-${n}`} data-news-citation={String(n)} aria-label={`참고문헌 ${n}로 이동`} data-astro-reload>[{n}]</a>
+
+<script>
+  function revealReference(hash: string) {
+    let id: string;
+    try { id = decodeURIComponent(hash.slice(1)); } catch { return; }
+    const target = document.getElementById(id);
+    if (!target || !target.closest('[data-news-source-disclosure]')) return;
+    let opened = false;
+    for (let ancestor = target.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      if (ancestor instanceof HTMLDetailsElement && !ancestor.open) {
+        ancestor.open = true;
+        opened = true;
+      }
+    }
+    return opened ? target : null;
+  }
+  document.addEventListener('click', event => {
+    const link = event.target instanceof Element ? event.target.closest('a[data-news-citation], a[href^="#"]') : null;
+    if (link instanceof HTMLAnchorElement) revealReference(link.hash);
+  });
+  function revealCurrentReference() {
+    revealReference(location.hash)?.scrollIntoView();
+  }
+  document.addEventListener('astro:page-load', revealCurrentReference);
+  window.addEventListener('hashchange', revealCurrentReference);
+  revealCurrentReference();
+</script>
+
+<style is:global>
+  .news-source-disclosure {
+    margin: 2rem 0 1rem;
+    border-top: 1px solid var(--color-border, #ccd3db);
+    border-bottom: 1px solid var(--color-border, #ccd3db);
+    font-size: .9rem;
+  }
+  .news-source-disclosure > summary {
+    padding: 1rem .25rem;
+    cursor: pointer;
+    font-weight: 600;
+    line-height: 1.6;
+  }
+  .news-source-disclosure > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+  .news-source-disclosure__body { padding: 0 .25rem 1rem; overflow-wrap: anywhere; }
+  .news-source-disclosure__body h2, .news-source-disclosure__body h3 { font-size: 1rem; margin-top: 1rem; }
+  .news-source-disclosure [data-news-reference] { scroll-margin-top: 6rem; }
+</style>

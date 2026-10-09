@@ -28,7 +28,12 @@ const equation = katex.renderToString(tex, {
 <details class="candidate-equation" data-candidate-equation={id}>
   <summary aria-controls={`${id}-explanation`}>
     <span class="candidate-equation__question">{title}</span>
-    <span class="candidate-equation__math" set:html={equation} />
+    <span class="candidate-equation__math" tabindex="0" role="region"
+      aria-label={`${title} — ${lang === 'en' ? 'Equation' : '수식'}`}
+      aria-describedby={`${id}-reading-guide`} set:html={equation} />
+    <span id={`${id}-reading-guide`} class="candidate-equation__reading-guide">
+      {lang === 'en' ? 'Scroll sideways for long equations. Focus the equation and use arrow keys with a keyboard.' : '식이 길면 좌우로 이동해 읽으세요. 키보드는 수식에 초점을 둔 뒤 방향키를 사용합니다.'}
+    </span>
     <span class="candidate-equation__hint">{lang === 'en' ? 'Expand symbols and the worked calculation' : '기호·연산·계산 과정 펼치기'}</span>
   </summary>
   <div id={`${id}-explanation`} class="candidate-equation__explanation">
@@ -58,6 +63,9 @@ const equation = katex.renderToString(tex, {
     color: var(--color-foreground);
   }
   .candidate-equation__math :global(.katex-display) { margin: .35rem 0; }
+  .candidate-equation__math:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; }
+  .candidate-equation__math :global(.katex-display > .katex) { display: block; width: max-content; min-width: 100%; text-align: left; }
+  .candidate-equation__reading-guide { display: block; color: var(--color-muted-foreground); font-size: .85em; line-height: 1.6; }
   .candidate-equation__hint { display: block; color: var(--color-primary); font-size: .85em; }
   details[open] .candidate-equation__hint { visibility: hidden; height: 0; }
   .candidate-equation__explanation {
@@ -69,6 +77,7 @@ const equation = katex.renderToString(tex, {
   .candidate-equation__explanation :global(p:last-child) { margin-bottom: .2rem; }
   @media (max-width: 640px) {
     summary { padding: .85rem; }
+    .candidate-equation__math :global(.katex) { font-size: 1em; }
     .candidate-equation__explanation { padding: .2rem .85rem .85rem; }
   }
 </style>
