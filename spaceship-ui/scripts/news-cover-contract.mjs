@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import { assertPreservedNewsBody } from './news-body-preservation.mjs';
+import './news-body-preservation.test.mjs';
 const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
 const manifest = JSON.parse(read('../site/news-covers-20260912.json'));
+const revisions = JSON.parse(read('../site/news-body-revisions-20261010.json'));
 const media = JSON.parse(read('../site/news-media.json'));
 const postsDir = new URL('../site/content/posts/', import.meta.url);
 const target = fs.readdirSync(postsDir).filter((name) => /^2026-09-0[5678].*\.mdx$/.test(name));
@@ -31,11 +34,12 @@ for (const row of manifest.entries) {
   const hero = `<NewsFigure media="${row.media}" priority />`;
   assert(body.startsWith(hero), `${row.slug}: image must precede prose`);
   assert.equal(body.split(hero).length, 2);
-  assert.equal(sha(body.slice(hero.length).trim()), row.bodyBaselineSha256, `${row.slug}: original body changed`);
+  assertPreservedNewsBody(body.slice(hero.length).trim(), row.bodyBaselineSha256,
+    revisions.entries.find((revision) => revision.slug === row.slug), row.slug);
   assert.equal(row.legacyVisualSuite, row.slug === '2026-09-07-openai-research-automation-frontier-one');
 }
 for (const item of manifest.additionalLocalAssets) {
   assert.equal(media[item.media].src, item.src);
   assert.equal(sha(fs.readFileSync(new URL('../site/assets'+item.src, import.meta.url))), item.assetSha256);
 }
-console.log('news-cover-contract: PASS 19 original-first covers, local image hashes and original prose retained');
+console.log('news-cover-contract: PASS 19 original-first covers, local image hashes and historical prose preservation; explicit revisions checked separately');
