@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { createHash } from 'node:crypto';
 import { parseFragment } from 'parse5';
 import { getIsaiahHtml } from '../src/lib/isaiah43-source.mjs';
+import { illustrateIsaiahReport, isaiahImages } from '../src/lib/isaiah43-images.mjs';
 const root = 'src/data/isaiah43';
 const manifest = JSON.parse(fs.readFileSync(`${root}/manifest.json`));
 const hash = s => createHash('sha256').update(s).digest('hex');
@@ -14,6 +15,12 @@ for (const entry of manifest.reports) {
  assert.equal(raw.length, entry.rawBytes); assert.equal(hash(raw),entry.rawSha256);
  const report = fs.readFileSync(`${root}/reports/${i}.html`,'utf8');
  assert.equal(hash(report),entry.reportSha256);
+ const illustrated = illustrateIsaiahReport(report, i);
+ assert.equal(illustrated.replace(/<figure data-isaiah-image=[\s\S]*?<\/figure>/g, ''), report);
+ for (const image of isaiahImages.filter(image => image.report === i)) {
+  assert(fs.existsSync(`site/assets/assets/posts/ezekiel-2-1-3-11/${image.filename}`));
+  assert(illustrated.indexOf(`data-isaiah-image="${image.id}"`) > illustrated.indexOf(image.heading));
+ }
  const nodes=all(parseFragment(report));
  assert.equal(nodes.filter(n=>n.tagName==='table').length,entry.tables);
  const ids=nodes.flatMap(n=>(n.attrs||[]).filter(a=>a.name==='id').map(a=>a.value));

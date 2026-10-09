@@ -49,6 +49,13 @@ fs.mkdirSync(out, {recursive:true});
     await frame.locator('button[onclick="resetFilters()"]').click();
     assert.equal(await frame.locator('#globalSearch').inputValue(),'');
   }
+  const figures = page.locator('figure[data-isaiah-image]');
+  assert.equal(await figures.count(),[1,0,2][i-1]);
+  for (const figure of await figures.all()) {
+    await figure.scrollIntoViewIfNeeded();
+    await figure.locator('img').evaluate(img => img.decode());
+    assert(await figure.locator('img').evaluate(img => img.naturalWidth > 0));
+  }
   const tables=await page.locator('[data-isaiah-research-body] table').count();assert.equal(tables,[7,4,6][i-1]);
   assert.equal(await page.locator('a[href*="gemini.google.com/app/"]').count(),0);
   const cite=page.locator('[data-isaiah-research-body] sup a').first();const href=await cite.getAttribute('href');await cite.click();assert.equal(await page.locator(href).count(),1);
