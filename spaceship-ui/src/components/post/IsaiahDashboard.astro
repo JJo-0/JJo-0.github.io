@@ -1,0 +1,75 @@
+---
+import manifest from '@/data/isaiah43/manifest.json';
+const series = { entries: manifest.reports.map(r => ({ order:r.number, slug:`isaiah-43-18-21-${r.number}`, sourceTitle:r.title })) };
+interface Props { order: number; }
+const { order } = Astro.props;
+const entry = series.entries.find((item) => item.order === order);
+if (!entry) throw new Error(`Unknown Isaiah dashboard: ${order}`);
+const src = `/assets/interactive/${entry.slug}.html`;
+const next = series.entries.find((item) => item.order === order + 1);
+---
+<jjo-isaiah-dashboard class="not-prose" data-isaiah-dashboard={order} data-isaiah-reader={entry.slug}>
+  <div class="dashboard-toolbar">
+    <a href={src} target="_blank" rel="noopener" data-astro-reload>대시보드 전체 화면 ↗</a>
+    <a href="/bible">전체 학습 순서</a>
+    {next && <a href={`/posts/${next.slug}`}>다음 {next.order}편 →</a>}
+  </div>
+  <iframe data-isaiah-frame src={src} title={entry.sourceTitle} loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe>
+  <noscript><p><a href={src}>대시보드 별도 페이지 열기</a> — 탭·검색·차트는 JavaScript를 사용합니다.</p></noscript>
+</jjo-isaiah-dashboard>
+<script>
+  class IsaiahDashboardElement extends HTMLElement {
+    private controller?: AbortController;
+    private observer?: MutationObserver;
+    connectedCallback() {
+      this.controller?.abort();
+      this.observer?.disconnect();
+      this.controller = new AbortController();
+      const frame = this.querySelector<HTMLIFrameElement>('[data-isaiah-frame]');
+      if (!frame) return;
+      const synchronize = () => {
+        const doc = frame.contentDocument;
+        if (!doc?.body || doc.URL === 'about:blank') return;
+        const site = getComputedStyle(document.documentElement);
+        const pairs: Record<string, string> = {
+          '--jjo-paper': '--color-background', '--jjo-ink': '--color-foreground',
+          '--jjo-card': '--color-card', '--jjo-green': '--color-primary',
+          '--jjo-on-green': '--color-primary-foreground', '--jjo-muted': '--color-muted-foreground',
+          '--jjo-secondary': '--color-secondary', '--jjo-border': '--color-border',
+          '--jjo-focus': '--color-ring',
+        };
+        for (const [target, source] of Object.entries(pairs)) {
+          const value = site.getPropertyValue(source).trim();
+          if (value) doc.documentElement.style.setProperty(target, value);
+        }
+        doc.documentElement.classList.toggle('dark', document.documentElement.classList.contains('dark'));
+        // Only standalone preview chrome is hidden; every source content panel remains intact.
+        if (!doc.getElementById('acts-embed-chrome')) {
+          const style = doc.createElement('style'); style.id = 'acts-embed-chrome';
+          style.textContent = '.jjo-controls,.source-credit,.acts-native-tools,.acts-native-source{display:none!important}@media(max-width:319px){#sec-concept .font-mono{overflow-x:auto}}';
+          doc.head.append(style);
+        }
+        this.dataset.ready = 'true';
+      };
+      frame.addEventListener('load', synchronize, { signal: this.controller.signal });
+      this.observer = new MutationObserver(synchronize);
+      this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+      synchronize();
+    }
+    disconnectedCallback() { this.controller?.abort(); this.observer?.disconnect(); }
+  }
+  if (!customElements.get('jjo-isaiah-dashboard')) customElements.define('jjo-isaiah-dashboard', IsaiahDashboardElement);
+</script>
+<style>
+  jjo-isaiah-dashboard { display:block; width:100%; min-width:0; color:var(--color-foreground); background:var(--color-card); font-family:var(--font-reading); }
+  .dashboard-toolbar { display:flex; flex-wrap:wrap; gap:.75rem 1.25rem; padding:.85rem 1rem; border:1px solid var(--color-border); font-size:.85rem; }
+  a { color:var(--color-primary); text-decoration:underline; text-underline-offset:.2em; }
+  iframe { scroll-margin-top:8rem; display:block; width:100%; height:88svh; min-height:640px; max-height:1200px; border:1px solid var(--color-border); border-top:0; background:var(--color-background); content-visibility:visible!important; }
+  .dashboard-original { padding:.75rem 1rem; border:1px solid var(--color-border); border-top:0; font-size:.85rem; line-height:1.7; }
+  summary { cursor:pointer; font-weight:600; }
+  p { margin:.6rem 0; }
+  :is(a,summary):focus-visible { outline:2px solid var(--color-ring); outline-offset:4px; }
+  :global(.article-layout:has([data-isaiah-dashboard]) > .w-52) { display:none; }
+  :global(.article-prose:has([data-isaiah-dashboard])) { max-width:none; }
+  @media(max-width:639px) { iframe { min-height:640px; height:90svh; } }
+</style>

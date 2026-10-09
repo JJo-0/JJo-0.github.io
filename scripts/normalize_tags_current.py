@@ -11,6 +11,13 @@ from normalize_tags import CATEGORY_IDS, POST_TAXONOMY, Taxonomy, main
 # Extend the current registry without rewriting the frozen cutover manifest.
 CATEGORY_IDS.add("biblical-studies")
 
+POST_TAXONOMY.update({
+    f'isaiah-43-18-21-{i}.mdx': Taxonomy(
+        'biblical-studies', 'isaiah-43-18-21', 'research-report',
+        ('isaiah', 'biblical-studies', 'hebrew-exegesis', 'old-testament'),
+    ) for i in (1, 2, 3)
+})
+
 POST_TAXONOMY.update(
     {
         "self-improving-ai-chip-design.md": Taxonomy(
@@ -381,6 +388,12 @@ POST_TAXONOMY.update({
         'meta', 'publishing-workflow', 'meta',
         ('ai-agents', 'technical-writing', 'publishing-workflow', 'automation'),
     ),
+})
+
+POST_TAXONOMY.update({
+    '2026-10-10-cuopt-mpdlp-multi-gpu-news.mdx': Taxonomy('software-engineering-cs', 'distributed-linear-optimization', 'research-report', ('frontier-one', 'linear-programming', 'gpu-computing', 'numerical-optimization')),
+    '2026-10-10-neural-crest-nuclear-confinement-news.mdx': Taxonomy('health-lifestyle', 'developmental-cell-mechanics', 'paper-review', ('frontier-candidate', 'cell-mechanics', 'developmental-biology')),
+    '2026-10-10-endometriosis-spatial-neuroimmune-news.mdx': Taxonomy('health-lifestyle', 'spatial-transcriptomics-endometriosis', 'paper-review', ('frontier-candidate', 'spatial-transcriptomics', 'endometriosis')),
 })
 
 if __name__ == "__main__":
