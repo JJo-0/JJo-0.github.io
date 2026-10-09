@@ -365,9 +365,22 @@ POST_TAXONOMY.update({
 })
 
 POST_TAXONOMY.update({
-    '2026-10-09-sando-safe-dynamic-trajectory-news.mdx': Taxonomy('ai-machine-learning', 'safe-autonomous-robotics', 'paper-review', ('frontier-one', 'robotics', 'safety-critical-planning', 'trajectory-optimization')),
-    '2026-10-09-tongue-controlled-fes-exoskeleton-news.mdx': Taxonomy('health-lifestyle', 'assistive-robotics-fes', 'paper-review', ('frontier-candidate', 'assistive-robotics', 'human-robot-interaction', 'functional-electrical-stimulation')),
-    '2026-10-09-feather-star-soft-swimmer-news.mdx': Taxonomy('robotics-embedded', 'minimal-actuation-soft-swimmers', 'paper-review', ('frontier-candidate', 'soft-robotics', 'underwater-robotics', 'mechanical-intelligence')),
+    '2026-10-09-feather-star-soft-swimmer-news.mdx': Taxonomy(
+        'robotics-embedded', 'minimal-actuation-soft-swimmers', 'paper-review',
+        ('frontier-candidate', 'soft-robotics', 'underwater-robotics', 'mechanical-intelligence'),
+    ),
+    '2026-10-09-sando-safe-dynamic-trajectory-news.mdx': Taxonomy(
+        'ai-machine-learning', 'safe-autonomous-robotics', 'paper-review',
+        ('frontier-one', 'robotics', 'safety-critical-planning', 'trajectory-optimization'),
+    ),
+    '2026-10-09-tongue-controlled-fes-exoskeleton-news.mdx': Taxonomy(
+        'health-lifestyle', 'assistive-robotics-fes', 'paper-review',
+        ('frontier-candidate', 'assistive-robotics', 'human-robot-interaction', 'functional-electrical-stimulation'),
+    ),
+    '2026-10-09-blog-automation-living-guide.mdx': Taxonomy(
+        'meta', 'publishing-workflow', 'meta',
+        ('ai-agents', 'technical-writing', 'publishing-workflow', 'automation'),
+    ),
 })
 
 if __name__ == "__main__":
