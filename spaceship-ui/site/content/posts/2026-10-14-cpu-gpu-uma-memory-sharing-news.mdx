@@ -1,0 +1,56 @@
+---
+title: CPU와 GPU가 같은 메모리를 써도 느린 이유
+description: 네 UMA 플랫폼과 아홉 실제 시스템을 비교한 연구가 복사 없는 공유메모리의 정확성·동기화 비용을 분리하고 portable library 설계를 제안한다.
+pubDate: 2026-10-14T00:02:00+09:00
+updatedDate: 2026-10-14
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-14-cpu-gpu-uma-memory-sharing-news
+category: software-engineering-cs
+subcategory: heterogeneous-memory-systems
+type: paper-review
+tags:
+  - frontier-candidate
+  - heterogeneous-computing
+  - unified-memory
+  - systems
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+> **후보 상태:** `BACKLOG_CANDIDATE` · 2026-10-14 Top 3 · 88/100 · `PEER_REVIEWED_FRONTIER`.
+>
+> **검토 범위:** arXiv metadata와 abstract, PDF의 공개 범위를 후보 수준에서 확인했다. arXiv는 EuroSys 2027 채택을 표기하지만 최종 proceedings 판본은 대조하지 않았다.
+
+## 한 문장 결론
+
+Unified Memory Architecture(UMA)는 CPU와 GPU가 물리 메모리를 공유해도, cache coherence·visibility·synchronization 규칙이 플랫폼마다 달라 잘못된 direct access나 불필요한 copy를 만들 수 있다. 연구진은 그 차이를 portable library `libumsh`로 감쌌다.
+
+## 왜 중요한가
+
+노트북 SoC와 edge AI 장치는 CPU와 GPU가 하나의 DRAM을 공유하는 경우가 많다. “같은 메모리”라는 말은 copy가 자동으로 사라지거나 두 processor가 항상 최신 값을 본다는 뜻이 아니다. Data plane의 이동과 control plane의 완료 신호를 함께 맞춰야 한다.
+
+## 차이와 가장 강한 증거
+
+연구는 네 UMA platform에서 correctness와 performance를 특성화하고, 아홉 실제 system에 `libumsh`를 적용했다고 보고한다. Abstract 기준 data-plane time은 16~75%, control-plane overhead는 7~90% 줄었다. 하나의 평균값이 아니라 platform과 workload에 따른 범위다.
+
+핵심 차별점은 특정 vendor API 하나의 최적화가 아니라 공유 메모리의 전달·동기화 경로를 분리하고 portable rule로 정리했다는 점이다. NVIDIA DGX Spark 같은 emerging platform으로 확장 가능하다고 주장한다.
+
+## 한계와 반대 증거
+
+수치 범위가 넓어 특정 장치의 개선량을 다른 SoC에 그대로 옮길 수 없다. UMA의 coherence protocol, page placement, driver와 runtime version이 다르면 최적 경로도 달라진다. 최종 proceedings 판본, 세부 workload별 분모, tail latency와 energy 효과는 후보 단계에서 완전 대조하지 않았다.
+
+## Code/data·이해관계
+
+arXiv landing page에서 공식 code/data link는 확인되지 않았다. 공개 artifact와 raw measurement의 범위는 미확인이다. 저자 소속과 자금·산업 이해관계는 최종 판본에서 재확인해야 한다.
+
+## 재검토 트리거
+
+EuroSys 2027 최종판과 artifact badge, 공개 `libumsh` code, 독립 platform 재현, 성능뿐 아니라 correctness failure와 energy 측정이 공개되면 대표 기사 승격을 다시 판단한다.
+
+## 출처와 식별자
+
+- [Characterizing CPU-GPU Memory Sharing over Unified Memory Architecture](https://arxiv.org/abs/2610.13125), arXiv:2610.13125v1, 2026-10-09 제출·10월 12일 신규 목록 공지.
+- arXiv 표기: Accepted to EuroSys 2027, 22 pages, 21 figures.
+- 점수: 중요도 18/20, 새로움 13/15, 증거·재현성 22/25, 파급력 17/20, 최신성 9/10, 설명 가능성 9/10 = 88/100.
+
