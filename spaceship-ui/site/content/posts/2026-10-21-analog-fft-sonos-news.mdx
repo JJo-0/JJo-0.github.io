@@ -1,0 +1,93 @@
+---
+title: 메모리 안에서 6만5536점 FFT를 계산하다
+description: Cooley–Tukey 분할을 SONOS 인메모리 배열에 옮겨, 직접 행렬곱의 제곱 스케일링을 피한 아날로그 FFT의 실제 칩 증거와 한계를 분석한다.
+pubDate: 2026-10-21T00:00:00+09:00
+updatedDate: 2026-10-21
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-21-analog-fft-sonos-news
+category: software-engineering-cs
+subcategory: analog-in-memory-computing
+type: paper-review
+tags:
+  - frontier-one
+  - in-memory-computing
+  - signal-processing
+  - semiconductor
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+import Math from '@/components/post/Math.astro';
+
+> **SELECTED · 연구 작업본.** 기준일 2026-10-21 KST, 점수 95/100(문제 19·새로움 15·증거 24·파급 18·최신성 10·설명성 9, 감점 0), 증거 등급 `PEER_REVIEWED_FRONTIER`. Nature Electronics 최종판은 2026년 10월 19일 공개됐다. 아래 실험 수치는 저자 칩과 저자 시뮬레이션의 범위를 넘겨 일반화하지 않는다.
+
+## 1. 한 문장 결론
+
+**이 연구는 Cooley–Tukey FFT의 분할 구조를 SONOS(charge-trapping flash) 인메모리 배열에 옮겨, 직접 DFT 행렬곱이 큰 변환에서 겪는 에너지·면적의 제곱 증가를 피하고 65,536점 아날로그 FFT를 실제 배열에서 계산했다.** 다만 대규모 응용의 전력·면적 우위는 완성 제품 측정이 아니라 보정된 코어 모델에 의존한다.
+
+## 2. 왜 어려운가
+
+센서 신호를 주파수로 바꾸는 DFT는 레이더, 음성, 통신의 공통 전처리다. 아날로그 인메모리 컴퓨팅(analogue in-memory computing, IMC)은 저항성 배열에서 행렬–벡터곱을 병렬로 수행하지만, N점 DFT 행렬 전체를 저장하면 배열과 ADC 변환 수가 빠르게 불어난다.
+
+디지털 FFT는 대칭을 이용해 연산량을 줄인다. 그런데 아날로그 칩의 비용 중심은 곱셈 횟수보다 배열 밖 ADC, 버퍼, 중간 결과 이동이다. 디지털에서 최적인 작은 radix를 그대로 복사하면 오히려 변환과 저장 단계가 늘 수 있다.
+
+## 3. 기초 개념
+
+N점 DFT의 k번째 출력은 다음과 같다.
+
+<Math display tex={"X_k=\\sum_{n=0}^{N-1}x_n e^{-i2\\pi nk/N}"} />
+
+직접 방식은 이 식을 복소 DFT 행렬과 입력 벡터의 한 번의 큰 행렬곱으로 본다. 연구진은 <Math tex={"N=N_1N_2"} />로 쪼개 두 개의 작은 DFT와 원소별 twiddle factor 곱으로 바꿨다. 배열 하나가 처리할 수 있는 최대 radix를 K라 하면 큰 변환의 ADC·에너지 경향은 직접 방식의 <Math tex={"O(N^2)"} />에서 아날로그 FFT의 <Math tex={"O(N\\log_K N)"} />로 바뀐다. 이는 측정값 하나가 아니라 저자 시스템 모델의 점근식이다.
+
+## 4. 기존 방식의 한계
+
+직접 MVM은 작은 DFT가 한 배열에 맞을 때는 단순하고 효율적이다. 그러나 행렬이 배열보다 커지면 여러 배열의 부분합을 각각 digitize하고 다시 더해야 한다. 반대로 radix-2·4 디지털 FFT는 산술 연산은 최소화하지만 아날로그에서는 중간 ADC와 buffer가 늘어난다.
+
+따라서 이 논문의 선택은 “최소 radix”가 아니라 **한 배열에 맞는 큰 radix에서 분할을 멈추는 것**이다. 저자 분석의 교차점은 대략 <Math tex={"N=2K"} />다.
+
+## 5. 새 방법의 세 단계
+
+첫째, 복소 DFT 가중치의 실수·허수와 양·음을 SONOS 셀의 차동 conductance로 프로그램한다. 둘째, 입력을 bit-serial 전압으로 넣어 작은 DFT를 current-mode MVM으로 계산하고 12-bit on-chip ADC로 읽는다. 셋째, reshape와 twiddle factor 곱을 거쳐 다음 작은 DFT를 반복한다. 2차원 영상에는 두 축을 함께 분할하는 vector-radix FFT를 사용한다.
+
+실험 배열은 DFT-16에 2,048개, DFT-256에 524,288개 소자를 썼다.
+
+## 6. 핵심 수식과 시스템 경계
+
+핵심은 알고리즘–소자 공동설계다. 배열 내 곱셈보다 ADC가 에너지를 지배한다는 가정 아래, 분할 깊이와 radix K를 정한다. 원문 Equation 1은 DFT, Equations 2–3은 Cooley–Tukey 재배열과 twiddle 결합, Equation 4는 2D DFT를 정의한다.
+
+큰 전류에서는 parasitic IR drop이 음의 오차를 만들고, 작은 전류에서는 셀 변동과 read noise가 상대적으로 커진다. 가장 큰 전류는 ADC clipping에 닿는다. 즉 “아날로그 병렬성”만으로 정확도가 보장되지 않는다.
+
+## 7. 실험과 수치
+
+65,536-sample, 16kHz 음성을 512점 STFT로 처리했을 때 SONOS spectrogram의 FP32 대비 PSNR은 55.97dB였다. 전체 음성을 한 번에 변환한 65,536점 FFT는 256×256 factorization을 썼고 주파수 해상도는 0.244Hz, spectrum PSNR은 41.01dB였다. 저자 기준 이전 최대 아날로그 DFT보다 500배 넘는 크기다.
+
+256×256 RGB 위성 영상에서는 analog VR-FFT와 VR-IFFT를 연결했다. 시각적 구조는 보존됐지만 IR drop이 저주파 성분을 더 약화시켜 윤곽이 인위적으로 날카로워지고 graininess가 남았다.
+
+2048×2048 SAR와 음성인식은 실제 제작 칩이 아니라 검증된 error model을 40nm SONOS core와 8-bit ADC에 적용한 시뮬레이션이다. SAR SSIM은 0.8558±0.006, LibriSpeech FP32 WER 7.44% 대비 analog STFT 8-bit는 9.53%였다.
+
+## 8. 반대 증거
+
+가장 강한 반대 증거는 Figure 2f와 Figure 4다. DFT-256은 DFT-16보다 오차가 컸고, 고전류에서 parasitic resistance와 ADC clipping이 뚜렷했다. 영상 복원은 DC 성분 분리와 Parseval 기반 밝기 보정을 사용했다.
+
+Figure 5의 에너지·면적 비교도 동일 공정의 두 실리콘을 직접 대조한 결과가 아니다. 디지털 ASIC의 word length를 8-bit로 선형 환산하고, 저자 프로토타입보다 효율적인 가상 코어를 사용했다. 저자도 개선폭이 “orders of magnitude”는 아니라고 적었다.
+
+## 9. 한계
+
+소스 데이터는 공개 저장소가 아니라 합리적 요청 시 제공된다. 공개 CrossSim 도구는 있지만 논문 전체 재현 패키지나 제작 칩 원자료 공개는 확인되지 않았다. 장기 retention, refresh 비용, 온도·공정 편차, 양산 수율, 실제 edge SoC에 ADC·buffer·control을 모두 넣은 총전력은 독립 검증이 필요하다. 저자들은 경쟁 이해관계가 없다고 선언했으며 Sandia와 미국 DOE 지원을 받았다.
+
+## 10. 실제 변화
+
+이번 결과의 핵심은 “FFT도 아날로그로 했다”보다, 디지털 알고리즘의 분할 기준을 아날로그 하드웨어의 진짜 비용인 ADC와 데이터 이동에 맞춰 다시 정했다는 점이다. 같은 배열을 FFT와 신경망 MVM 사이에서 재프로그램할 수 있다는 설계도 단일기능 ASIC과 다른 가치다.
+
+## 11. 다음 재검토 트리거
+
+독립 연구자의 칩 재현, source data와 전체 code 공개, 동일 공정·동일 정밀도의 digital FFT 실리콘 비교, 온도·drift·refresh를 포함한 장기 시험, ADC·buffer·interconnect를 포함한 edge SoC 데모가 나오면 결론을 갱신해야 한다.
+
+## 12. 출처
+
+- [Nature Electronics 최종판](https://doi.org/10.1038/s41928-026-01725-x) — 2026-10-19 공개, 동료평가.
+- [arXiv 2409.19071 v3](https://arxiv.org/abs/2409.19071) — 61쪽, 본문과 Supplementary 1–14 확인.
+- 원문 확인 위치: p.3 Fig.1·Eq.1, pp.4–5 Eq.2–3, p.6 Fig.2, p.8 Fig.3·Eq.4, pp.9–10 Fig.4, p.11 Fig.5, p.12 Conclusion, pp.22–61 Supplementary.
+- [CrossSim](https://www.cross-sim.sandia.gov/) — 공개 simulator; 이번 작업에서는 실행하지 않음.
+
