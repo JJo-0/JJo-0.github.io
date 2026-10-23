@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {serializeGraphPayload} from '../src/lib/experience/graph-json.mjs';
+import {serializeGraphPayload, parseGraphPayload} from '../src/lib/experience/graph-json.mjs';
 const input={nodes:[{id:'post-0',title:'한국어 <script> & "quoted" </script><img src=x>',href:'/posts/test/',x:1.1234,y:-2,z:0,tags:['a','b']}],edges:[{source:'post-0',target:'post-1',weight:1.2,reasons:['shared category']}]};
 const encoded=serializeGraphPayload(input);
-assert.deepEqual(JSON.parse(encoded),input,'Transport must preserve every value');
+assert.deepEqual(parseGraphPayload(encoded),input,'Transport must preserve every value');
+assert.deepEqual(parseGraphPayload(JSON.stringify(input)),input,'Legacy transport remains readable');
+assert.equal(parseGraphPayload('null'),null);
+const repeated={nodes:input.nodes,edges:Array(100).fill(input.edges[0])};
+assert(serializeGraphPayload(repeated).length < JSON.stringify(repeated).length,'Compact transport saves bytes');
 assert(!encoded.includes('<')&&!encoded.includes('</script>'),'JSON cannot terminate its inert script');
 const component=fs.readFileSync(new URL('../src/components/experience/ExperienceCanvas.astro',import.meta.url),'utf8');
 assert(component.includes('type="application/json" data-post-graph-source set:html={serializeGraphPayload(graph)}'));

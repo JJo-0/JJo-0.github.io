@@ -2,7 +2,7 @@
 title: L2 캐시를 작업공간으로 바꾸는 CacheFlex
 description: 넓어진 CPU 벡터가 L1 용량에 막힐 때, private L2 일부를 소프트웨어 관리 scratchpad로 바꿔 데이터 이동과 에너지를 줄이는 구조를 분석한다.
 pubDate: 2026-10-14T00:00:00+09:00
-updatedDate: 2026-10-14
+updatedDate: 2026-10-21
 publicationTimeZone: Asia/Seoul
 slug: 2026-10-14-cacheflex-l2-scratchpad-news
 category: software-engineering-cs
@@ -14,11 +14,13 @@ tags:
   - cache
   - cpu-inference
 researchFeatured: false
-draft: true
+draft: false
 lang: ko
 ---
 
-> **연구 작업본 · MICRO 2026 게재 예정.** arXiv v1은 2026년 10월 9일 제출됐고 10월 12일 신규 목록에 공지됐다. 아래 수치는 실제 상용 CPU 실리콘의 측정값이 아니라 단일 코어 gem5 시뮬레이션과 상용 12nm 공정의 post-layout 평가를 결합한 저자 보고다.
+import Math from '@/components/post/Math.astro';
+
+> **연구 뉴스 · 시뮬레이션 기반 설계.** 2026년 10월 9일 제출된 arXiv v1을 다룬다. 아래 수치는 실제 상용 CPU 실리콘의 측정값이 아니라 단일 코어 gem5 시뮬레이션과 상용 12nm 공정의 post-layout 평가를 결합한 저자 보고다.
 
 ## 1. 한 문장 결론
 
@@ -34,7 +36,16 @@ L1은 core pipeline과 강하게 결합되어 단순히 키우기 어렵다. 반
 
 Cache는 하드웨어가 자동 관리하지만 scratchpad는 프로그램이 데이터의 배치와 수명을 정한다. GEMM처럼 reuse pattern을 아는 작업에서 불필요한 교체를 피할 수 있다.
 
-CacheFlex의 핵심은 SRAM을 새로 붙이는 것이 아니다. 기존 512KB private L2의 일부 way를 SPM으로 바꾸고, 나머지는 일반 cache로 유지한다. `spm_cp`는 coherent memory에서 SPM으로, `spm_wb`는 반대 방향으로 데이터를 옮긴다. `spm_ld`와 `spm_st`는 L1 pipeline을 거치지 않고 SPM을 직접 사용한다.
+캐시는 주기억장치보다 가까운 곳에 최근 쓴 데이터를 보관하는 작은 저장소다. L1·L2·L3는 그 계층을 가리킨다. 여기서 private L2는 해당 코어에 속한 L2이고, way는 같은 위치 후보에 데이터를 놓을 수 있는 캐시의 여러 통로 중 하나다. 이 연구는 그 일부를 프로그램이 직접 관리하는 작업공간으로 전환한다. 모든 L2를 없애거나 컴퓨터의 주기억장치를 바꾸는 설계가 아니다.
+
+GEMM은 행렬곱 계산이다. 큰 행렬을 작은 타일(tile)로 나누면 한 번 가져온 조각을 여러 계산에 재사용할 수 있다. SIMD는 한 명령으로 여러 데이터에 같은 연산을 적용하는 방식이다. 연산 폭만 커져도 재사용할 타일을 가까운 저장소에 두지 못하면 데이터 이동을 기다릴 수 있다는 것이 이번 문제의 출발점이다.
+
+<span id="cacheflex-gemm-shape" />
+<Math display label="원문 Table III: 행렬곱과 배열 크기" tex={String.raw`C_{M\times N}=A_{M\times K}\cdot B_{K\times N}`} />
+
+A의 열 수와 B의 행 수가 같은 K여야 곱할 수 있고, 결과 C는 M행 N열이다. M·N·K는 원소의 개수를 세는 무차원 정수이며, 아래첨자는 원소 하나의 값이 아니라 배열의 크기다. 타일링은 이 곱을 작은 조각으로 계산해 재사용할 데이터를 가까이 두는 방법이다. 이 식은 논문 Table III(PDF 8쪽)에 인쇄된 계산 정의이지 CacheFlex가 새로 제안한 수학 공식이나 속도 향상 보장식이 아니다.
+
+CacheFlex의 핵심은 SRAM을 새로 붙이는 것이 아니다. 기존 512KB private L2의 일부 way를 SPM으로 바꾸고, 나머지는 일반 cache로 유지한다. `spm_cp`는 일반 메모리의 원본을 유지하면서 SPM으로 복사하고, `spm_wb`는 SPM의 결과를 일반 메모리에 다시 쓴다. `spm_ld`와 `spm_st`는 L1 pipeline을 거치지 않고 SPM을 직접 사용한다.
 
 ## 4. 기존 방식의 한계
 
@@ -56,11 +67,21 @@ Hardware prefetch와 L2 hint는 데이터를 미리 가져오지만 residency를
 
 ## 7. 실험과 수치
 
-일곱 GEMM shape를 양쪽 설계에 맞게 각각 tuning했다. 512-bit에서는 기하평균 1.12배 성능과 memory-subsystem energy 26% 감소를, 2048-bit에서는 1.44배와 40% 감소를 보고했다.
+행렬곱(GEMM)의 일곱 가지 크기·형태를 양쪽 설계에 맞게 각각 최적화했다. 비교 기준은 하드웨어 프리페치를 켠 일반 캐시 설계다. 512-bit에서는 기하평균 1.12배 성능과 memory-subsystem energy 26% 감소를, 2048-bit에서는 1.44배와 40% 감소를 보고했다.
 
-Full layer에서는 LLaMA-3.2-1B와 BERT-Base의 prefill을 평가했다. FlashAttention과 결합한 BERT-Base, sequence length 4096, vector length 2048-bit에서 최대 1.78배 성능과 45% memory-subsystem energy 절감을 보고했다. LLaMA 조건의 대표 최대치는 1.64배와 38%였다. 이 에너지는 전체 시스템 전력이 아니라 cache·SPM·DRAM을 합친 memory subsystem 범위다.
+전체 레이어에서는 LLaMA-3.2-1B와 BERT-Base 형태의 prefill, 즉 입력 문장을 한꺼번에 처리하는 단계를 평가했다. BERT의 기본 길이 한계를 넘는 4096-token 조건은 BERT-Base 형태의 레이어로 용량 확장을 시험한 것이지, 기본 BERT 모델의 실사용 정확도를 검증한 결과는 아니다. FlashAttention과 결합한 설계는 이 조건과 2048-bit 벡터에서 일반 캐시 기준 설계 대비 최대 1.78배 성능과 45% memory-subsystem energy 절감을 보고했다. FlashAttention만 적용한 설계 대비 1.78배라는 뜻은 아니다. LLaMA 조건의 대표 최대치는 1.64배와 38%였다. 이 에너지는 전체 시스템 전력이 아니라 cache·SPM·DRAM을 합친 memory subsystem 범위다.
 
 12nm post-place-and-route에서 추가 SPM LSQ와 control logic은 8,377µm²였다. L2 자체 증가는 0.31%, SPM LSQ까지 L2 면적 기준 총 overhead는 2.02%다.
+
+### 「에너지 감소」는 어떻게 계산했나
+
+에너지는 전력과 다르다. 같은 전력으로도 작업을 더 빨리 끝내면 소비 에너지가 줄 수 있다. 이 연구의 공개 계산 스크립트는 L1·L2·L3의 읽기·쓰기 횟수에 각 접근의 에너지를 곱하고, SPM 접근과 DRAM 에너지를 더한다. 캐시의 유휴·누설 성분에는 유휴 전력과 측정 구간의 실행시간을 사용한다. 따라서 메모리 접근 횟수와 작업 시간이 모두 계산 결과에 영향을 준다.
+
+단위를 맞추는 일도 중요하다. 코드의 접근당 에너지는 nJ, 유휴 전력은 mW, DRAM 통계는 pJ로 주어져 최종 mJ로 환산된다. 또 SPM 읽기 통계는 명령 횟수인 반면 접근당 에너지의 기준은 64바이트 캐시라인이다. 벡터가 512·1024·2048비트일 때 코드가 읽기 항에 각각 1·2·4의 배수를 적용하는 이유다. 명령 한 번을 항상 캐시라인 한 개로 세면 넓은 벡터의 에너지 경계를 잘못 잡을 수 있다.
+
+이 내용은 [검토한 커밋의 에너지 모형](https://github.com/JingqunZhang/cacheflex-ae/blob/96084d8f693a87e13efaa1bcd9fec24f52c57643/scripts/energy_model.py)에서 확인한 계산 방식이다. 이번에 시뮬레이터를 실행하거나 전체 보고값을 재산출한 것은 아니다. 코드가 합산하는 범위도 메모리 하위시스템이며, CPU의 모든 실행 유닛·보드·전원장치 소비를 측정한 값이 아니다.
+
+**확인 질문:** 캐시 접근 횟수가 같으면 계산 에너지도 같을까? 반드시 그렇지는 않다. 실행시간이 다르면 유휴 에너지 항이 달라질 수 있고, SPM·DRAM의 접근과 벡터 폭도 함께 맞춰야 한다.
 
 ## 8. 반대 증거
 
@@ -73,6 +94,14 @@ Full layer에서는 LLaMA-3.2-1B와 BERT-Base의 prefill을 평가했다. FlashA
 평가는 single-core mechanism-level 범위다. Thread 간 SPM scheduling, shared contention, 보안·side-channel, 잦은 preemption의 spill/fill 비용은 검증되지 않았다. Graph analytics와 sparse linear algebra 확장은 전망일 뿐 측정 결과가 아니다.
 
 공개 artifact에는 gem5 model, benchmark, measurement와 재현 스크립트가 있지만 이번 작업에서는 직접 실행하지 않았다.
+
+### 그림을 다시 그린 것과 실험을 다시 한 것은 다르다
+
+고정 커밋의 README와 `reproduce.sh`는 제공된 측정자료를 읽어 그림 2·7·8·9와 표 IV를 생성하는 경로를 설명한다. 이 경로는 gem5나 벤치마크 실행 파일을 새로 빌드하지 않아도 된다. 스크립트가 성공하더라도 우선 확인한 것은 **공급된 자료에서 같은 그래프·표를 생성할 수 있는가**다.
+
+반면 시뮬레이터를 빌드하고 벤치마크를 다시 실행해 접근 횟수와 실행시간을 새로 얻는 경로는 별도다. 여기에는 실행 환경·설정·측정 구간과 결과의 대응을 확인하는 일이 더 필요하다. 그림의 재생성, 시뮬레이션 재실행, 실제 칩 측정은 세 단계로 구분해야 한다. 이번 검토에서는 스크립트를 읽었을 뿐 어느 경로도 실행하지 않았다.
+
+**확인 질문:** 제공된 자료로 만든 막대그래프가 논문과 같다면 실제 CPU에서 성능을 재현한 것일까? 아니다. 입력 자료와 그리는 과정의 대응을 확인한 것이며, 새 실행이나 실리콘 측정을 대신하지 않는다.
 
 ## 10. 실제 변화
 

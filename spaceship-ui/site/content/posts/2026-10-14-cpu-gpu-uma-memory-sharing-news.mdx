@@ -2,7 +2,7 @@
 title: CPU와 GPU가 같은 메모리를 써도 느린 이유
 description: 네 UMA 플랫폼과 아홉 실제 시스템을 비교한 연구가 복사 없는 공유메모리의 정확성·동기화 비용을 분리하고 portable library 설계를 제안한다.
 pubDate: 2026-10-14T00:02:00+09:00
-updatedDate: 2026-10-14
+updatedDate: 2026-10-21
 publicationTimeZone: Asia/Seoul
 slug: 2026-10-14-cpu-gpu-uma-memory-sharing-news
 category: software-engineering-cs
@@ -14,35 +14,77 @@ tags:
   - unified-memory
   - systems
 researchFeatured: false
-draft: true
+draft: false
 lang: ko
 ---
 
 > **후보 상태:** `BACKLOG_CANDIDATE` · 2026-10-14 Top 3 · 88/100 · `PEER_REVIEWED_FRONTIER`.
 >
-> **검토 범위:** arXiv metadata와 abstract, PDF의 공개 범위를 후보 수준에서 확인했다. arXiv는 EuroSys 2027 채택을 표기하지만 최종 proceedings 판본은 대조하지 않았다.
+> **검토 범위:** arXiv v1의 초록·서론, 공유 정확성·성능 및 사례 연구 일부, Artifact Appendix A와 DGX Spark 부록 일부를 대조했다. 전체 본문·도판·코드 검토와 최종 proceedings 판본 대조는 미완료다.
 
 ## 한 문장 결론
 
-Unified Memory Architecture(UMA)는 CPU와 GPU가 물리 메모리를 공유해도, cache coherence·visibility·synchronization 규칙이 플랫폼마다 달라 잘못된 direct access나 불필요한 copy를 만들 수 있다. 연구진은 그 차이를 portable library `libumsh`로 감쌌다.
+CPU와 GPU가 같은 메모리 칩을 쓰더라도, 서로가 방금 쓴 값을 곧바로 읽을 수 있는 것은 아니다. 이 연구는 통합 메모리 구조(Unified Memory Architecture, UMA)에서 장치별로 다른 읽기·쓰기 규칙과 전달 비용을 비교하고, 그 차이를 공통 인터페이스로 다루는 라이브러리 `libumsh`를 제안한다.
 
 ## 왜 중요한가
 
-노트북 SoC와 edge AI 장치는 CPU와 GPU가 하나의 DRAM을 공유하는 경우가 많다. “같은 메모리”라는 말은 copy가 자동으로 사라지거나 두 processor가 항상 최신 값을 본다는 뜻이 아니다. Data plane의 이동과 control plane의 완료 신호를 함께 맞춰야 한다.
+노트북의 시스템 반도체(SoC)와 현장에서 AI를 실행하는 장치는 CPU와 GPU가 하나의 주기억장치(DRAM)를 공유하는 경우가 많다. “같은 메모리”라는 말은 복사가 자동으로 사라지거나 두 처리장치가 항상 최신 값을 본다는 뜻이 아니다. 이미지·텐서 같은 데이터 자체를 전달하는 경로와, “쓰기가 끝났으니 읽어도 된다”는 완료 신호를 전달하는 경로를 함께 맞춰야 한다. 논문은 앞을 데이터 평면(data plane), 뒤를 제어 평면(control plane)으로 구분한다.
+
+## 같은 메모리인데 왜 서로 다른 값을 볼까
+
+비유하자면 공용 원본과 각자의 작업용 사본을 함께 쓰는 상황이다. CPU가 자기 캐시에 새 값을 써도 GPU가 읽는 경로에 그 변경이 아직 반영되지 않을 수 있다. 반대로 GPU가 쓴 값을 CPU의 오래된 캐시가 가릴 수도 있다. 이 비유는 최신 값의 가시성을 설명할 뿐, 실제 캐시 프로토콜의 구현이나 시간 순서를 대신하지 않는다.
+
+원문은 공유 영역을 연결하는 bind, 데이터를 쓰는 write, 상대가 읽는 read, 연결을 해제하는 unbind를 구분한다. 같은 주소에 접근할 수 있다는 조건과 올바른 시점에 최신 데이터를 읽는 조건은 다르다. 캐시를 사용하지 않는 방식은 단순할 수 있지만 성능 비용이 있고, 캐시를 사용하는 방식에는 플랫폼에 맞는 일관성·갱신 처리가 필요하다. 독자가 임의로 캐시나 보안 설정을 끄라는 운영 지침은 아니다.
+
+## 정확성 실험은 무엇을 보장했나
+
+§4.1은 송신자 하나와 수신자 하나가 정해진 데이터를 주고받게 하고, 수신한 각 단어가 예상값과 일치하는지 검사했다. 시간 초과나 장치 오류는 불일치로 확정하지 않고 결론 불충분으로 처리했다. 같은 메모리를 여러 쓰기 주체가 동시에 갱신하는 문제는 이 검사 밖이며 동기화·경합 실험과 별도로 봐야 한다. 즉 시험한 장치·설정의 경험적 근거이지 임의의 공유 프로그램 전체에 대한 수학적 증명은 아니다.
+
+## 최신 값을 읽는 것과 동시에 갱신하는 것은 다르다
+
+읽은 값이 최신이라는 조건만으로 여러 처리장치의 동시 갱신이 안전해지는 것은 아니다. 원문 §4.1.4는 상태를 확인하고 소유권을 얻는 acquire와, 소유권을 돌려주는 release를 따로 다룬다. 이를 여러 장치가 쓰는 잠금장치의 역할이라고 생각할 수 있지만, 실제 동작에는 플랫폼이 해당 공유 메모리에서 보장하는 원자성(atomicity)이 필요하다.
+
+이 차이는 오류 검출 방식에도 나타난다. 저자들의 별도 이산 GPU 검사에서는 원자 연산 호출이 실행됐어도 CPU가 동시에 같은 카운터를 늘리면 일부 갱신이 유실됐다. 따라서 ‘API가 오류 없이 끝났다’와 ‘모든 참여자의 갱신이 보존됐다’는 다른 검사다. 이 관찰을 모든 GPU나 모든 메모리 종류의 실패로 확대하지 않는다. 논문의 대상 UMA 잠금 구현은 지원되는 CPU–GPU 원자 연산과 메모리 설정을 전제로 한다.
+
+**확인 질문:** 한 송신자가 쓴 값을 한 수신자가 정확히 읽었다면 여러 송신자의 카운터도 안전할까? 아니다. 단일 송수신의 가시성 검사와 동시 읽기–수정–쓰기의 원자성 검사는 분리해야 한다.
 
 ## 차이와 가장 강한 증거
 
-연구는 네 UMA platform에서 correctness와 performance를 특성화하고, 아홉 실제 system에 `libumsh`를 적용했다고 보고한다. Abstract 기준 data-plane time은 16~75%, control-plane overhead는 7~90% 줄었다. 하나의 평균값이 아니라 platform과 workload에 따른 범위다.
+연구는 Raptor·Arrow·Lunar·Orin 네 UMA platform에서 correctness와 performance를 특성화하고, 아홉 실제 소프트웨어 system에 `libumsh`를 적용했다고 보고한다. ‘아홉’은 아홉 대의 서로 다른 물리 장치를 뜻하는 것이 아니라 응용·시스템 사례의 수다. Abstract 기준 data-plane time은 16~75%, control-plane overhead는 7~90% 줄었다. 측정 구간과 비교 기준이 다른 사례들을 묶은 범위이며, 모든 응용의 전체 실행 시간이 75% 또는 90% 줄었다는 뜻은 아니다.
 
 핵심 차별점은 특정 vendor API 하나의 최적화가 아니라 공유 메모리의 전달·동기화 경로를 분리하고 portable rule로 정리했다는 점이다. NVIDIA DGX Spark 같은 emerging platform으로 확장 가능하다고 주장한다.
 
-## 한계와 반대 증거
+## 전송 단계 개선과 응용 전체 개선을 나누어 읽기
 
-수치 범위가 넓어 특정 장치의 개선량을 다른 SoC에 그대로 옮길 수 없다. UMA의 coherence protocol, page placement, driver와 runtime version이 다르면 최적 경로도 달라진다. 최종 proceedings 판본, 세부 workload별 분모, tail latency와 energy 효과는 후보 단계에서 완전 대조하지 않았다.
+§6의 Arrow 사례에서는 OpenCV 이미지 전처리에서 처리와 전송을 합친 시간이 16% 줄었다고 보고한다. 다른 사례인 PyTorch 모델 로딩의 75% 감소를 여기에 합쳐 ‘모든 추론이 75% 빨라졌다’고 쓰면 안 된다. 모델을 처음 읽는 시간, 반복 추론 중의 출력 처리 시간, 동기화 대기 시간은 서로 다른 측정 구간이다.
+
+**확인 질문:** 복사 호출을 없앴다면 CPU와 GPU가 주고받는 비용도 0이 될까? 아니다. 공유 영역 연결·캐시 처리·완료 확인과 경합 비용이 남을 수 있다. 실제로 어느 구간을 줄였는지와 정확성을 어떻게 확인했는지를 함께 읽어야 한다.
+
+## 전체 요청 시간도 ‘추정’과 ‘연속 측정’을 구분하자
+
+§6.3은 작업 순서를 관리하는 모델과 세 도구의 시간을 따로 측정한 뒤, 각각의 평균을 더해 요청당 시간을 추정한다. 모델은 필요할 때 다시 읽지만 실행 환경은 이미 준비된 조건이다. 그러므로 실제 서비스에서 요청 하나가 도착해 끝날 때까지 연속 관측한 지연 분포나 최악 지연과 같지 않다.
+
+Arrow에서 이 추정치는 43.78초에서 37.65초로 줄었다. 차이는 6.13초이고, 원래 시간 43.78초를 기준으로 약 14.0% 감소다. 이는 논문 수치의 검산이지 별도 실험이 아니다. 75%라는 모델 로딩 구간의 감소율과 분모가 다르므로 바꿔 쓸 수 없다.
+
+**확인 질문:** 평균을 더해 요청 시간을 추정했다면 느린 요청의 상위 1% 지연도 알 수 있을까? 아니다. 개별 요청의 분포와 단계 사이 대기·변동을 별도로 측정해야 한다. 이 결과가 보여 주는 것은 명시한 구성과 측정 방식에서의 평균 시간 절감이다.
+
+## 그림의 세로 구간이 모두 오차막대는 아니다
+
+고정 커밋의 공개 참조자료는 그림 6의 일부 세로 구간을 일관성 처리(CC)의 추가 비용으로 정의한다. 기준 처리시간에서 추가 비용을 반영한 끝점까지를 나타낸 것이며, 반복 측정의 변동이나 95% 신뢰구간이 아니다. CSV의 `y_lower`·`y_upper`라는 이름만 보고 통계적 하한·상한으로 읽으면 안 된다.
+
+또 공개된 원본 입력 CSV는 대부분 이미 집계된 측정값이다. 각 반복의 기록이나 모든 실행의 목록·신뢰구간을 제공하는 자료와는 다르다. 어떤 플랫폼의 패널이 없다는 것도 시간이 0이거나 시험에 실패했다는 뜻은 아니다. 실제로 참조자료는 그림 7에 Raptor·Lunar 패널이 없고, 그림 8에는 Raptor 패널이 없다고 명시한다.
+
+따라서 다른 장치에서 비교할 때는 같은 버퍼 크기·캐시 정책·페이지 조건·동기화 방법을 먼저 맞추어야 한다. 제공된 표가 다시 그려진다고 새로운 장치에서 전송 정확성이나 절대 실행시간이 재현된 것은 아니다. 이 내용은 [공개 참조자료의 단위·선택 규칙](https://github.com/XpuOS/libumsh-artifacts/blob/880d535a86c3d82277f4c546edf386ef16ef7380/reference_results/README.md)을 확인한 범위다.
+
+**확인 질문:** 세로 선이 길다면 측정이 불안정했다는 뜻일까? 이 그림에서는 반드시 그렇지 않다. 먼저 범례와 자료 정의에서 그 선이 비용 차이인지 통계적 변동인지 확인해야 한다.
+
+## 한계와 다음 검증 범위
+
+수치 범위가 넓어 특정 장치의 개선량을 다른 SoC에 그대로 옮길 수 없다. UMA의 coherence protocol, page placement, driver와 runtime version이 다르면 최적 경로도 달라진다. 최종 proceedings 판본, 세부 workload별 분모, tail latency와 energy 효과는 후보 단계에서 완전 대조하지 않았다. §5는 Arrow·Lunar에서 세밀한 일관성 제어를 노출하기 위한 런타임 수정이 필요했다고 설명한다. 모든 플랫폼에서 기존 실행환경을 바꾸지 않고 바로 쓸 수 있는 일반 API라고 소개하면 안 된다.
 
 ## Code/data·이해관계
 
-arXiv landing page에서 공식 code/data link는 확인되지 않았다. 공개 artifact와 raw measurement의 범위는 미확인이다. 저자 소속과 자금·산업 이해관계는 최종 판본에서 재확인해야 한다.
+본문 Appendix A는 [libumsh artifact 저장소](https://github.com/XpuOS/libumsh-artifacts)와 [보존 DOI](https://doi.org/10.5281/zenodo.22909405)를 명시한다. 소스·정확성 테스트·microbenchmark·참조 측정·plot script를 제공하고 두 artifact badge를 받았다는 것이 논문의 설명이다. 이번 검토는 그 안내를 확인한 것이며 저장소 전체 내용·라이선스·정확한 실행 버전을 대조하거나 재현 실행하지 않았다. 저자 소속과 자금·산업 이해관계는 최종 판본에서 재확인해야 한다.
 
 ## 재검토 트리거
 
@@ -50,7 +92,6 @@ EuroSys 2027 최종판과 artifact badge, 공개 `libumsh` code, 독립 platform
 
 ## 출처와 식별자
 
-- [Characterizing CPU-GPU Memory Sharing over Unified Memory Architecture](https://arxiv.org/abs/2610.13125), arXiv:2610.13125v1, 2026-10-09 제출·10월 12일 신규 목록 공지.
+- [Characterizing CPU-GPU Memory Sharing over Unified Memory Architecture](https://arxiv.org/abs/2610.13125), arXiv:2610.13125v1, 2026-10-09 제출. 별도 목록 공지 날짜는 이번에 확인한 공식 기록에서 확정하지 않았다.
 - arXiv 표기: Accepted to EuroSys 2027, 22 pages, 21 figures.
 - 점수: 중요도 18/20, 새로움 13/15, 증거·재현성 22/25, 파급력 17/20, 최신성 9/10, 설명 가능성 9/10 = 88/100.
-

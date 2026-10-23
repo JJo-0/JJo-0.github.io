@@ -2,7 +2,7 @@
 title: 'GPU를 늘리면 최적화도 빨라질까: mPDLP'
 description: 'NVIDIA의 다중 GPU 선형계획 솔버 mPDLP를 통해 계산보다 통신이 병목이 되는 이유를 살펴본다. 자체 발표의 반복 단계와 전체 실행시간을 구분하고, 작은 문제와 불균형한 분할에서 속도 향상이 사라지는 조건을 설명한다.'
 pubDate: 2026-10-10
-updatedDate: 2026-10-10
+updatedDate: 2026-10-21
 publicationTimeZone: Asia/Seoul
 slug: 2026-10-10-cuopt-mpdlp-multi-gpu-news
 category: software-engineering-cs
@@ -14,12 +14,12 @@ tags:
   - gpu-computing
   - numerical-optimization
 researchFeatured: false
-draft: true
+draft: false
 lang: ko
 ---
 import Math from '@/components/post/Math.astro';
 
-> **제작 중인 해설:** `SELECTED` · 2026-10-10 KST Top 1 · 편집 점수 86/100 · `INDUSTRY_TRIGGER`. NVIDIA 자체 발표를 검토한 글이다. 독립 재현·원 도판 픽셀·실제 검색 데이터 검토가 끝나지 않아 공개 준비 완료로 표시하지 않는다.
+> **제작 중인 해설:** `SELECTED` · 2026-10-10 KST Top 1 · 편집 점수 86/100 · `INDUSTRY_TRIGGER`. NVIDIA 자체 발표를 검토한 글이다. 독립 재현·원 도판 전수 대조·실제 검색 데이터 검토가 끝나지 않아 공개 준비 완료로 표시하지 않는다.
 
 ## 1. GPU를 더 붙이면 답도 더 빨리 나올까?
 
@@ -39,6 +39,8 @@ GPU가 맡은 산술을 빨리 마쳤는데 다음 입력이 다른 장치에서
 
 NVIDIA 본문은 다음 등식 제약 형태로 설명한다. 부등식과 목적함수의 다른 형태를 포함하는 모든 현실 문제를 이 표기 그대로라고 단정하지 않는다.
 
+<span id="mpdlp-lp" />
+
 <Math display label="원문: 등식 제약과 변수 경계를 가진 선형계획" tex={"\\min_x c^T x \\quad \\text{s.t.}\\quad Ax=b,\\qquad l\\le x\\le u."} />
 
 `x`는 결정할 `n`개 값, `c`는 그 값의 비용 계수다. `b`는 맞춰야 할 `m`개 제약 값이고, `A`는 변수와 제약을 잇는 `m×n` 행렬이다. `l,u`는 각 변수의 하한과 상한이다. 변수의 단위는 모델이 정한다. 배송량을 물량 단위로 잡고 `c`를 물량당 비용으로 잡으면 목적함수는 비용 단위가 된다. 서로 다른 행의 제약은 다른 단위를 가질 수도 있으므로 행렬 전체를 단일 물리량이라고 읽어서는 안 된다.
@@ -47,7 +49,7 @@ NVIDIA 본문은 다음 등식 제약 형태로 설명한다. 부등식과 목�
 
 ## 4. 그림을 먼저 관찰하자: 무엇을 나누고 무엇을 주고받나?
 
-입력 모델, 반복 계산, 해 확인이 서로 다른 역할을 맡는다는 그림이다. 반복 계산만 빨라져도 나머지 두 구간은 전체 시간에 남는다. 분할과 데이터 준비도 필요하다.
+입력 모델, 반복 계산, 해 확인이 서로 다른 역할을 맡는다는 그림이다. 반복 계산만 빨라져도 나머지 두 구간은 전체 시간에 남는다. 분할과 데이터 준비도 필요하다. 특히 발표가 제시한 전체 실행시간에는 전처리(presolve), CPU에서 행렬 A를 전치하는 작업, 그래프 분할, 후처리(postsolve)가 포함된다. GPU 반복 단계의 가속과 이 준비·정리 시간을 따로 읽는 이유다.
 
 <figure>
 <a href="/news/editorial-mpdlp-20261010/system.svg" target="_blank" rel="noopener noreferrer"><img src="/news/editorial-mpdlp-20261010/system.svg" alt="입력 모델, 분할과 반복, 반복 중 종료 판정과 최종 해 확인의 역할" width="960" height="260" /></a>
@@ -73,11 +75,17 @@ mPDLP의 설명을 세 단계로 따라가자. 첫째, 변수와 제약을 서�
 
 ## 6. 식을 따라가면 통신의 위치가 보인다
 
-PDHG(primal-dual hybrid gradient)는 PDLP의 기반 반복법이다. 원문의 부호 규약에 맞춘 두 갱신식은 다음과 같다. 여기서 `k`는 반복 번호이며 물리적 시간이 아니다. `y`는 등식 제약의 쌍대 변수, `τ,σ`는 스텝 크기다. 수치 스케일과 스텝 선택 조건 없이 이 식을 임의 값으로 반복하면 반드시 수렴한다고 주장할 수 없다.
+PDHG(primal-dual hybrid gradient)는 PDLP의 기반 반복법이다. 원문의 부호 규약에 맞춘 두 갱신식은 다음과 같다. 여기서 `k`는 반복 번호이며 물리적 시간이 아니다. `y`는 등식 제약의 쌍대 변수, `τ,σ`는 스텝 크기다. 수치 스케일과 스텝 선택 조건 없이 이 식을 임의 값으로 반복하면 반드시 수렴한다고 주장할 수 없다. 비용 계수 c와 Aᵀy는 같은 변수당 비용 단위를 가져야 하고, b와 Ax는 각 제약 행의 단위가 맞아야 한다. τ와 σ는 이 스케일에 맞춰 갱신량을 조절하는 수치적 계수이지 초 단위의 물리적 시간이 아니다.
+
+<span id="mpdlp-primal" />
 
 <Math display label="원문: PDHG primal 변수 갱신" tex={"x^{k+1}=\\operatorname{proj}_{[l,u]}\\!\\left(x^k-\\tau(c-A^Ty^k)\\right),"} />
 
 첫 식은 비용과 제약의 영향을 반영해 `x`를 움직이고, 투영(projection)으로 변수별 허용 구간 `[l,u]`에 돌려놓는다. 상한을 넘어간 값을 상한으로 되돌리는 단순한 예를 떠올릴 수 있다. 이것만으로 등식 제약까지 모두 만족했다고 말할 수는 없다. 그 부분은 `Ax`와 `b`의 차이를 함께 검사해야 한다.
+
+뒤에서 풀 배송 예제의 숫자를 미리 사용해 보자. 두 창고의 상한이 각각 6과 8이고, 임시로 계산한 배송량이 7과 3이라면 변수 범위로의 투영은 이를 6과 3으로 바꾼다. 각각의 용량 제한은 지켰지만 합은 9라서 수요 10을 채우지 못한다. 이는 투영의 역할만 보이는 **가상 계산**이며 실제 mPDLP 반복에서 얻은 중간값이나 수렴 실험이 아니다. ‘범위 안에 있음’과 ‘모든 제약을 만족함’은 별개다.
+
+<span id="mpdlp-dual" />
 
 <Math display label="원문: PDHG dual 변수 갱신" tex={"y^{k+1}=y^k+\\sigma\\left(b-A(2x^{k+1}-x^k)\\right)."} />
 
@@ -89,7 +97,7 @@ PDHG(primal-dual hybrid gradient)는 PDLP의 기반 반복법이다. 원문의 �
 <figcaption>설명용 재구성 도식 · JJo. 두 원문 식의 역할을 설명하며 단계별 실행 순서 최적화나 실제 커널 구조를 증명하지 않는다.</figcaption>
 </figure>
 
-원문에는 통신을 설명하려고 비용·투영·외삽을 생략한 단순식도 있다. 그것을 완전한 솔버 갱신식처럼 옮기면 문제의 의미가 달라진다. 수식을 읽을 때에는 무엇이 생략됐는지와 어떤 설명을 위한 식인지까지 함께 확인해야 한다.
+원문에는 통신 의존성만 보이려고 Aᵀy를 계산한 다음 Ax를 계산하는 두 행렬–벡터 곱으로 줄인 표기도 있다. 비용 항 c, 변수 범위로의 투영, 스텝 크기 τ·σ, 외삽을 생략한 설명용 축약이다. 따라서 이 두 곱만 반복하는 것을 위의 완전한 PDHG 솔버나 실행 가능성 판정으로 읽으면 안 된다. 축약 표기는 어떤 값이 장치 경계를 넘어 필요해지는지 보여주고, 전체 갱신식은 그 값이 최적화 문제에 어떻게 쓰이는지 설명한다.
 
 ## 7. 함께 풀어보자: 배송 계획은 어떻게 바뀌나?
 
@@ -113,7 +121,17 @@ NVIDIA는 all-to-all NVLink로 연결한 DGX B200에서 100개가 넘는 LP, 목
 
 막대가 길수록 기준 대비 보고된 속도 향상이 크다는 뜻이다. 11.4배를 다른 문제의 기대 성능으로 사용하거나 두 막대를 서로 다른 장비의 절대 실행시간처럼 비교하지 않는다. 보고된 전체 시간의 4.2배와 반복 시간의 11.4배만으로 준비 과정이 정확히 몇 초 걸렸는지도 계산할 수 없다. 각 구간의 원래 시간이 별도로 필요하다.
 
+### 원본 산점도의 축과 기준선 읽기
+
+[발표의 그림 5](https://developer-blogs.nvidia.com/wp-content/uploads/2026/10/wall-clock-speedup-comparison-cuopt-mpdlp-versus-single-gpu-cuopt.webp)는 가로축에 행렬의 비영 원소 수(nnz)를 놓는다. 변수 개수와는 다른 양이다. 세로축은 단일 GPU 실행시간을 다중 GPU 실행시간으로 나눈 비다. 1보다 크면 그 문제에서는 다중 GPU가 빨랐고, 1보다 작으면 단일 GPU가 빨랐다는 뜻이다. 가로축은 로그 눈금이므로 같은 간격이 같은 개수 증가를 뜻하지 않는다.
+
+[그림 6](https://developer-blogs.nvidia.com/wp-content/uploads/2026/10/performance-comparison-cuopt-mpdlp-d-pdlp-benchmark-datasets.webp)은 두 방식 모두 8개 B200을 쓴 비교다. 분자는 D-PDLP 시간, 분모는 mPDLP 시간이다. 따라서 그림 5와 6의 같은 높이가 같은 기준 장치 대비 성능을 뜻하지 않는다. 각 점은 문제 하나의 관찰이며, 큰 nnz에서도 기준선 아래 점이 보인다. nnz만 알면 속도 향상을 보장할 수 있다는 그래프가 아니다.
+
+**확인 질문:** 두 그래프에서 모두 2배인 점을 보면 같은 실행시간이라고 말할 수 있을까? 아니다. 각각 다른 기준 실행시간으로 나눈 비이며, 절대 시간은 이 비만으로 알 수 없다.
+
 ## 9. 반대 사례와 허용오차를 어떻게 읽을까?
+
+통신을 줄이는 분할이 모든 병목을 없애는 것은 아니다. 발표의 향후 개선 절은 현재 분할이 GPU별 계산 부하를 고려하지 않고, 핵심 행렬–벡터 계산의 통신과 연산도 순차적으로 수행한다고 밝힌다. 부하를 반영한 분할과 통신·계산의 겹쳐 실행은 앞으로 개선할 항목이다. 따라서 이미 두 기능까지 적용해 모든 GPU를 균등하게 활용했다고 설명하면 안 된다. 연결을 적게 자르는 일과 각 GPU의 일을 고르게 나누는 일은 서로 관련되지만 같은 목표는 아니다. [공식 발표, Continuing to improve cuOpt mPDLP]
 
 초대형 문제에서도 기존 D-PDLP보다 느린 사례가 세 개 있었다. 이것은 큰 문제라면 자동으로 유리하다는 해석을 막는다. 장치 경계를 넘는 연결, GPU별 계산량, 분할과 전처리 부담이 서로 달라질 수 있다. GPU 개수와 가장 좋은 사례만 표시하면 이 차이를 숨기게 된다. 다음 검토에서는 좋아진 문제와 느려진 문제의 조건을 함께 비교해야 한다.
 
@@ -125,13 +143,11 @@ NVIDIA는 all-to-all NVLink로 연결한 DGX B200에서 100개가 넘는 LP, 목
 
 최소 컷으로 통신을 줄이는 목표만으로 계산 부하까지 균등해지지는 않는다. 데이터의 연결 구조가 달라지면 같은 장치 개수에서도 결과가 달라질 수 있다. NVIDIA는 계산 부하를 고려하는 분할과 다른 개선을 향후 과제로 설명한다. 향후 계획을 이미 구현된 기능으로 소개하지 않는다.
 
-기술 본문, cuOpt README·LICENSE·VERSION·튜토리얼 셀과 OR-Tools PDLP 정의 파일을 읽었다. GPU에서 솔버를 실행하거나 원시 벤치마크 데이터를 재분석하지 않았다. 원문 도판의 실제 픽셀도 아직 확인하지 못했다. 따라서 도판 안에만 있는 수치·비교 조건을 본문에 채우지 않는다. 아래 그림은 다음 검증을 위한 질문 목록이며 완료 체크리스트가 아니다.
+계산과 통신을 겹쳐 실행하는 것도 아직 향후 개선 항목이다. 발표는 현재 핵심 SpMV 반복이 통신과 계산을 순차 수행한다고 설명한다. 데이터를 기다리는 동안 장치 내부 계산을 먼저 하는 개선안을 현재 구현의 성과로 섞으면 안 된다. 마찬가지로 실행 가능한 해를 더 빨리 얻기 위해 최적성을 일부 양보하는 feasibility polishing도 향후 항목이다. ‘조건을 만족하는 해’와 ‘최적값에 충분히 가까운 해’는 같은 판정이 아니다.
 
-<figure>
-<a href="/news/editorial-mpdlp-20261010/limits.svg" target="_blank" rel="noopener noreferrer"><img src="/news/editorial-mpdlp-20261010/limits.svg" alt="대표 문제 조건, 정확한 구현 버전, 원시 결과, 독립 실행, 실제 제약 검증을 차례로 묻는 검증 질문" width="960" height="300" /></a>
-<p><a href="/news/editorial-mpdlp-20261010/limits.svg" target="_blank" rel="noopener noreferrer">그림 크게 보기 · 새 탭</a></p>
-<figcaption>설명용 검증 질문 도식 · JJo. 상용화 단계나 검수 완료 상태를 나타내지 않는다.</figcaption>
-</figure>
+기술 본문, cuOpt README·LICENSE·VERSION·튜토리얼 셀과 OR-Tools PDLP 정의 파일을 읽었다. GPU에서 솔버를 실행하거나 원시 벤치마크 데이터를 재분석하지 않았다. 원본 그림 5·6의 픽셀은 추가로 확인해 축·비교 기준을 대조했다. 원 도판의 재사용 권리와 원시 시간 자료 검토는 미완료이며, 눈금에서 읽은 근삿값을 정밀 측정값처럼 추가하지 않는다. 다음 검증에서는 문제별 입력, 정확한 구현 버전, 원시 시간과 실패 결과를 함께 확보해야 한다.
+
+
 
 ## 11. 실제 변화와 다음 확인 질문
 
@@ -144,9 +160,10 @@ NVIDIA는 all-to-all NVLink로 연결한 DGX B200에서 100개가 넘는 LP, 목
 <details>
 <summary>원문·코드·권리와 열람 기록</summary>
 
-- [NVIDIA 기술 발표](https://developer.nvidia.com/blog/scaling-decision-optimization-to-100-million-variables-and-beyond-with-mpdlp-in-nvidia-cuopt/): 2026-10-07. HTML 본문의 LP·PDHG 식, 분할 설명, 벤치마크 조건·한계를 실제 확인했다. 원 도판 픽셀·원시 데이터는 미확인이다. 본문의 자체 도식은 원문 Figure를 복제하지 않았다.
+- [NVIDIA 기술 발표](https://developer.nvidia.com/blog/scaling-decision-optimization-to-100-million-variables-and-beyond-with-mpdlp-in-nvidia-cuopt/): 2026-10-07. HTML 본문의 LP·PDHG 식, 분할 설명, 벤치마크 조건·한계를 실제 확인했다. 2026년 10월 22일 원본 그림 5·6의 축·범례·비교 조건을 추가로 확인했다. 2026년 10월 23일 병렬 미디어 검토에서는 원본 그림 1–4의 픽셀과 설명도 대조했다. 공개 재사용을 허용하는 도판별 라이선스나 서면 허가는 확인되지 않아 이 글에는 삽입하지 않는다. 원시 벤치마크 데이터는 미확인이다. 본문의 자체 도식은 원문 Figure를 복제하지 않았다.
 - [NVIDIA cuOpt 소스](https://github.com/NVIDIA/cuopt): README·Apache-2.0 LICENSE·VERSION을 읽었다. 벤치마크 커밋은 미확인이다. 소프트웨어 라이선스가 기술 블로그 도판의 재사용 권한까지 부여하는 것은 아니다.
 - [공식 다중 GPU 튜토리얼](https://github.com/NVIDIA/cuopt-examples/blob/main/multi_GPU_PDLP_example/mPDLP_tutorial.ipynb): 노트북 셀을 읽었지만 설치·GPU 실행은 하지 않았다.
 - [Google OR-Tools PDLP](https://github.com/google/or-tools/tree/stable/ortools/pdlp): `solve_log.proto`(main)의 잔차 정의(L143–189)와 `solvers.proto`(stable)의 정지 기준(L82–107)을 참고했다. NVIDIA 벤치마크와 같은 기준이라는 뜻은 아니다. 배송·그래프는 자체 예제다. [LP 기초](https://developers.google.com/optimization/lp/lp_example)도 참고할 수 있다.
 
 </details>
+

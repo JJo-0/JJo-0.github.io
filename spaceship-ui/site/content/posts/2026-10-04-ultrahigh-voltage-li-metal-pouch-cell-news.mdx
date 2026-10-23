@@ -1,8 +1,8 @@
 ---
-title: '628 Wh/kg 리튬금속 파우치셀, 무엇이 아직 부족한가'
-description: '분자 라이브러리와 비지도 학습으로 찾은 LiDPFP 첨가제가 4.7V 파우치셀 628Wh/kg을 가능하게 했다. 다만 수명은 112회 수준이다.'
+title: '628 Wh/kg 리튬금속 파우치셀, 숫자의 분모까지 읽기'
+description: 'LiDPFP 첨가제 연구의 에너지 밀도와 수명을 셀 질량·전압·충방전율·온도 조건에 연결해 읽는다.'
 pubDate: 2026-10-04T00:01:00+09:00
-updatedDate: 2026-10-08
+updatedDate: 2026-10-21
 publicationTimeZone: Asia/Seoul
 slug: 2026-10-04-ultrahigh-voltage-li-metal-pouch-cell-news
 category: finance-industry
@@ -13,44 +13,163 @@ tags:
   - lithium-metal-battery
   - machine-learning
 researchFeatured: false
-draft: true
+draft: false
 lang: ko
 ---
 
-> **후보 상태:** `BACKLOG_CANDIDATE` · 2026-10-04 Top 2
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
 
-## 한 문장 결론
+## 30초 결론
 
-연구진은 15,200개의 phosphorus-centered 분자 후보를 구성하고 비지도 학습으로 LiDPFP 전해질 첨가제를 선별해 **4.7V, 628Wh/kg 리튬금속 파우치셀**을 시연했다. 그러나 80% 용량 유지 시점이 **112 cycles**라는 점에서 장수명 상용 배터리의 증거는 아니다.
+연구진은 전해질 첨가제 LiDPFP와 셀 설계를 결합한 파우치셀에서 **628 Wh/kg**을 보고했다. 보충표 S5의 셀은 방전 용량 6.19 Ah, 충전 상한 4.7 V이며, 질량 분모 37.800 g에는 포장재와 탭도 포함된다. 이 셀 기준 값은 0.2 C 방전에서 보고된 것으로, 자동차 배터리 팩의 값과는 다르다. 수명 시험에서는 **112회 충방전 뒤 초기 용량의 80%를 유지했다.** 실험실에서 직접 만든 셀의 결과이며 양산 수명이 아니다. [<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13632741/">1</a>, Pouch cell performance;<a href="https://pmc-oa-opendata.s3.amazonaws.com/PMC13632741.1/sciadv.aei9659_sm.pdf">2</a>, Table S5]
 
-## 기존 방식과 무엇이 다른가
+핵심은 분자 탐색, 전극 표면의 보호 반응, 셀 질량 절감을 연결한 것이다. 다만 **−40°C 시험과 628 Wh/kg 파우치셀 시험은 같은 시험이 아니다.** 전압·온도·충방전 속도를 나누어 읽어야 한다.
 
-고전압 lithium-metal battery의 전해질 첨가제는 시행착오에 크게 의존해 왔다. 이번 연구는 electron-withdrawing group과 electron-donating group을 함께 배치해 분자 내부의 charge redistribution을 조절하는 설계 공간을 만들고, machine-learning-assisted screening으로 후보를 좁혔다.
+## 숫자가 크면 바로 제품에 쓸 수 있을까
 
-선정된 lithium diperfluoropinacolatophosphate(LiDPFP)는 양극 쪽에 phosphorus–oxygen polymer-rich cathode electrolyte interphase를, lithium metal 쪽에는 Li₂O-rich solid electrolyte interphase를 형성하도록 유도했다. 목표는 고전압 양극 열화와 lithium dendrite를 동시에 줄이는 것이다.
+배터리는 전기를 많이 저장하는 것뿐 아니라 필요한 속도로 내보내고 다시 받아야 한다. 이 과정을 반복해도 구조와 안전성을 유지해야 한다. 같은 무게에 더 많은 에너지를 담아도 수명이 짧거나 보호 장치가 크게 늘어나면 제품 전체의 이점은 달라진다.
 
-## 가장 강한 증거
+Wh는 에너지의 단위다. 전력 W에 시간 h를 곱한 값으로, 일정한 전력을 얼마 동안 공급하는지에 연결된다. Wh/kg은 그 에너지를 질량으로 나눈 값이다. 따라서 먼저 물어야 할 것은 “숫자가 얼마나 큰가?”보다 “무엇의 질량으로 나눴는가?”다.
 
-- NCM811||Li cell이 **4.8V**에서 동작
-- 시험 온도 범위 **−40°C~80°C**
-- practical-format **4.7V pouch cell**
-- gravimetric energy density **628Wh/kg**
-- **112 cycles 후 80% capacity retention**
+## 628 Wh/kg의 분모를 확인하기
 
-## 가장 큰 한계
+<figure style="margin:1.5rem 0">
+  <div role="img" aria-label="방전 전압과 전하량으로 셀의 방전 에너지를 구하고, 포장재와 탭을 포함한 셀 질량으로 나누어 셀 에너지 밀도를 계산한다. 팩 보조장치 질량은 별도다." style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center">
+    <span style="border:1px solid #ccd2d8;padding:0.7rem;flex:1 1 150px">① 에너지 구하기<br />방전 전압·전하량 → Wh</span>
+    <span style="border:1px solid #ccd2d8;padding:0.7rem;flex:1 1 150px">② 분모 정하기<br />포장재·탭 포함 셀 질량(kg)</span>
+    <span style="border:1px solid #ccd2d8;padding:0.7rem;flex:1 1 150px">③ ①을 ②로 나누기<br />셀 에너지 밀도(Wh/kg)</span>
+  </div>
+  <figcaption style="font-size:0.8rem;line-height:1.6">설명용 계산 경계도. 원 논문 도판·측정 그래프가 아니라 아래 재표현식의 입력과 분모를 연결했다. 팩의 냉각·연결·관리 장치 질량은 이 셀 분모에 포함되지 않는다.</figcaption>
+</figure>
 
-628Wh/kg은 강한 수치지만 pack-level energy density가 아니다. 또한 112 cycles는 EV나 ESS의 요구 수명과 큰 거리가 있다. 전해질 안전성, lithium inventory, 제조수율, abuse test, 대면적 셀의 반복 생산도 추가 검증이 필요하다.
+보충표 S5에는 셀의 구성 질량이 나온다. 양극 28.969 g, 리튬박 0.543 g, 전해질 4.952 g, 분리막 0.576 g, 포장재와 탭 2.760 g을 합하면 37.800 g이다. 탭은 전류를 셀 밖으로 연결하는 금속 단자다. 이 표의 분모는 양극 활물질만이 아니라 포장재와 탭까지 포함한 셀 질량이다.
 
-따라서 이 결과는 “600Wh/kg 배터리가 상용화됐다”가 아니라 **고전압 cathode와 lithium-metal anode 양쪽 계면을 하나의 분자 첨가제로 동시에 제어할 수 있다는 practical pouch-cell proof**로 읽는 것이 정확하다.
+반면 자동차 배터리 팩에는 연결 부품, 냉각 장치, 구조물과 관리 전자장치도 들어간다. 그 무게까지 포함한 팩의 값이 그대로 628 Wh/kg이라는 뜻은 아니다.
 
-## 재검토 트리거
+표의 값으로 검산해 보자. 방전 용량 6.19 Ah에 평균 전압 3.832 V를 곱하면 약 23.72 Wh다. 이를 0.037800 kg으로 나누면 약 627.5 Wh/kg으로, 보고값 628과 반올림 범위에서 맞는다. 원시 로그를 재분석한 것이 아니라 표의 산술 점검이다.
 
-- 300~1,000 cycle 이상의 pouch-cell 수명
-- pack-level energy density 공개
-- independent replication
-- fast charge와 safety test
-- pilot manufacturing yield
+<details>
+<summary>대학생부터: 용량·전압·질량을 식으로 연결하기</summary>
 
-## 출처
+<CandidateEquation id="specific-energy-table-check" title="표 S5의 보고값을 같은 분모로 검산하기" tex={String.raw`e_{\mathrm{cell}}=\frac{\bar V Q_{\mathrm{dis}}}{m_{\mathrm{cell}}}`}>
 
-1. Xie, B. et al., “Intramolecular charge redistribution of phosphate anions enabling ultrahigh-voltage lithium metal battery of 600 Wh kg−1,” *Science Advances* 12, eaei9659, 2 October 2026. DOI: 10.1126/sciadv.aei9659.
+이 식은 표 S5의 값 사이 관계를 설명하기 위한 재표현이다. 논문에 새로 제안된 방정식이 아니다. Q_dis는 방전 용량(Ah), V̄는 그 방전 용량에 대응하는 평균 전압(V), m_cell은 포장재·탭을 포함한 셀 질량(kg)이다. V×Ah=Wh이므로 결과 e_cell의 단위는 Wh/kg이다.
+
+평균 전압은 방전 시작·종료 전압의 단순 중간값이라는 뜻이 아니다. 방전 전하량에 걸쳐 변화하는 전압을 평균한 값이어야 용량과 곱해 실제 방전 에너지를 얻을 수 있다. 여기서는 저자들이 표에 제공한 평균 전압을 사용하며, 시간별 전압·전류 로그를 적분해 다시 구한 것은 아니다.
+
+표의 수치를 넣으면 3.832×6.19÷0.037800≈627.5 Wh/kg이다. 반면 충전 상한 4.7 V를 잘못 대신 넣으면 약 769.7 Wh/kg이 된다. 뒤의 값은 성능 보고가 아니라 **서로 다른 전압을 혼동했을 때 생기는 계산 오류**를 보여준다. 두 계산에서 셀 질량과 방전 용량은 바꾸지 않았다. [보충표 S5]
+
+</CandidateEquation>
+
+</details>
+
+여기서 **4.7 V는 충전 상한, 3.832 V는 방전 평균 전압**이다. 방전 중 전압은 변하므로 상한 전압에 용량을 곱하면 실제 에너지를 과대평가할 수 있다.
+
+## 전해질과 전극 사이의 얇은 층
+
+셀 안에서는 리튬 이온이 전해질을 통해 움직이고 전자는 외부 회로로 흐른다. 전해질이 전극 표면에서 계속 분해되면 저장에 쓸 리튬과 전해질이 소모되고 저항도 커진다.
+
+음극의 고체 전해질 계면층(SEI)과 양극의 전해질 계면층(CEI)은 이런 반응을 제어하는 데 중요하다. 단순히 두꺼우면 좋은 것이 아니다. 불필요한 반응은 줄이면서 리튬 이온은 통과시켜야 한다.
+
+리튬금속 음극에서는 리튬이 고르게 쌓이고 벗겨지는지도 중요하다. 국소적으로 뾰족한 구조가 자라면 사용 가능한 리튬이 손실되고 내부 단락 위험으로 이어질 수 있다. 높은 전압의 양극에서는 전해질 산화와 전극 구조 변화가 문제가 된다. 한쪽 전극만 보호해서는 전체 수명을 확보하기 어렵다.
+
+## 분자 15,200개를 전부 배터리에 넣었나
+
+아니다. Methods의 라이브러리는 공개 화학 데이터에서 가져온 구조 14,779개와 연구진이 설계한 구조 421개로 구성됐다. 원소·전하·크기와 반응하기 쉬운 수소 등의 조건으로 걸러 343개 후보를 남겼다. 15,200은 실제로 합성해 셀을 제작한 첨가제의 수가 아니다.
+
+이후 K-means 군집화를 사용했다. 분자의 성질을 수치로 표현하고 비슷한 후보끼리 묶는 방법이다. 정답 수명표를 학습해 모든 후보의 배터리 수명을 직접 예측한 것과는 다르다. 원문은 군집 수 5–15를 비교하고 실루엣 계수가 가장 큰 값을 선택했다고 설명한다. 이 계수는 군집 내부의 유사성과 군집 간 분리를 평가하지, 배터리 성능을 검증하지는 않는다.
+
+연구자가 설계한 점수도 들어갔다. 계면층 형성 관련 항과 작용기 점수의 가중치는 각각 4, 합성 용이성은 2다. 따라서 “AI가 혼자 최적 분자를 발견했다”기보다 **화학 지식으로 후보를 만들고 군집화와 점수로 좁힌 뒤 실험으로 확인했다**고 읽는 편이 정확하다. 다른 가중치와 분자 집합에서도 같은 선택이 나오는지는 추가 검증 대상이다.
+
+### 비슷한 분자를 묶는 것과 좋은 배터리를 고르는 것은 다르다
+
+실제로 선택한 군집 수는 5개였다. 연구진은 그중 전기적 퍼텐셜의 범위가 넓고 분극률이 큰 2번 군집에 주목했고, 후속 점수화에서 후보 번호 334번인 LiDPFP를 1위로 선정했다. 분극률은 외부 전기장에 따라 분자의 전자 분포가 얼마나 변하기 쉬운지를 나타낸다. 전기적 퍼텐셜의 최댓값·최솟값인 ESPmax·ESPmin은 분자 주변의 전기적 특성을 요약한 계산 지표다. 이 세 특징이 군집화의 입력이었다. [<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13632741/">1</a>, Results;<a href="https://pmc-oa-opendata.s3.amazonaws.com/PMC13632741.1/sciadv.aei9659_sm.pdf">2</a>, Fig. S10]
+
+<details>
+<summary>대학생부터: 군집의 중심은 무엇의 평균인가</summary>
+
+<CandidateEquation id="kmeans-centroid" title="원문 Methods의 군집 중심식" tex={String.raw`u_C=\frac{1}{D}\sum_{i=1}^{D}x_i`}>
+
+원문 Methods의 중심식을 읽기 쉬운 첨자로 옮겼다. C는 한 군집, D는 그 군집에 속한 분자의 개수, x_i는 i번째 분자의 특징 벡터, u_C는 중심 벡터다. 벡터는 여러 숫자를 묶은 것이다. 여기서는 ESPmin·ESPmax·분극률 세 좌표를 생각하면 된다. Σ는 같은 군집에 속한 벡터들을 더하고, 1/D는 분자 수로 나누어 평균을 구한다는 뜻이다. D가 343 전체 후보 수와 항상 같다는 뜻은 아니다.
+
+각 좌표의 평균은 같은 좌표끼리 구한다. 원문 표 S1의 ESP는 kcal/mol, 분극률은 원자단위(a.u.)다. 서로 단위가 다른 특징을 그대로 거리 계산에 넣으면 수치 척도가 군집에 영향을 줄 수 있다. 공개 코드의 `main.py` 39–44행은 세 특징에 `StandardScaler`를 적용한 뒤 군집화한다. 실제 거리 계산은 표준화된 특징 공간에서 이루어지고, 78–83행은 군집 중심을 원래 단위로 되돌린다. 본문만으로 불분명했던 전처리를 코드에서 확인한 것이며, 군집 배정을 독립 실행으로 재현한 것은 아니다. 실루엣 점수가 높은 것도 긴 셀 수명을 직접 예측·검증했다는 뜻은 아니다. [<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13632741/">1</a>, K-means clustering;<a href="https://pmc-oa-opendata.s3.amazonaws.com/PMC13632741.1/sciadv.aei9659_sm.pdf">2</a>, Table S1;<a href="https://zenodo.org/records/21700225">3</a>, main.py]
+
+</CandidateEquation>
+
+</details>
+
+<details>
+<summary>연구자 수준: 최종 순위에는 어떤 선택이 들어갔나</summary>
+
+<CandidateEquation id="candidate-weighted-score" title="원문의 점수 설명을 대수식으로 풀어 쓰기" tex={String.raw`S=4s_{\mathrm{interface}}+4s_{\mathrm{group}}+2s_{\mathrm{synthesis}}`}>
+
+이 식은 Methods의 문장 설명을 대수식으로 재표현한 것이다. 원문에 인쇄된 새 목적함수라고 소개하지 않는다. 공개 `final_score.py`는 계면 관련 네 특징의 정규화 점수에 각각 1, 작용기 점수에 4, 합성 용이성에 2를 곱해 더한다. 위 식과 연결해 읽으려면 s_interface를 네 정규화 특징의 평균으로 정의해야 한다. 별도로 합친 계면 점수를 다시 정규화한 것으로 가정하지 않는다. s_group과 s_synthesis도 코드가 정규화한 무차원 점수다. 확률이 아니며, 합계 10으로 다시 나누는 절차도 코드에 없다. [<a href="https://zenodo.org/records/21700225">3</a>, final_score.py 104–163행]
+
+계면막 형성 점수에는 ESPmax·ESPmin과 분극률·쌍극자 모멘트가 언급된다. 쌍극자 모멘트는 전하 분포의 치우침을 나타내며 표 S1의 단위는 Debye다. 작용기 점수는 F에 +1, H에 −1, −NO₂와 C─O─C에 각각 +0.5, ═O에 +2, −CN에 +1, 그 밖에는 0을 부여한다. 이는 물리 법칙에서 자동으로 정해진 상수가 아니라 계면 반응에 대한 저자들의 반경험적 설계 기준이다.
+
+공개 코드에서는 2번 군집만 골라 그 안의 각 특징 최솟값·최댓값으로 점수를 정규화한다. ESPmin은 작을수록, 나머지 물성·작용기·합성 용이성은 클수록 높은 점수를 주며, 분모에는 0으로 나누는 것을 막는 작은 값 `1e-8`을 더한다. 후보 집합이 바뀌면 같은 분자의 점수도 바뀔 수 있다. 작용기는 코드의 나열 순서대로 검사하고, 이미 사용한 원자가 포함된 중복 일치는 제외한다. 본문에서 미확인이라고 남겼던 세부사항 중 이 범위는 코드로 확인됐지만, 원시 물성 계산부터 최종 순위까지 독립 재현한 것은 아니다. ‘4점짜리 특성’을 실제 전압·에너지 밀도·수명 단위로 해석해서도 안 된다. [<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13632741/">1</a>, Scoring;<a href="https://zenodo.org/records/21700225">3</a>, final_score.py 23–45, 83–84, 118–163행]
+
+</CandidateEquation>
+
+공개된 중간 CSV로 최종 점수의 산술만 별도 점검했다. 2번 군집의 104개 후보에 코드의 정규화·가중합을 적용하자 저장된 순위 104행과 순서가 모두 같았고, 1위는 후보 334번이었다. 재계산 점수는 약 6.4622185로 저장값 6.4622와 반올림 범위에서 맞았다. 이는 저자가 제공한 중간 물성·작용기·합성 점수를 받아 계산한 확인이다. 원시 분자의 물성 계산, 군집 배정, 작용기 검출이나 외부 합성 복잡도 서비스를 독립 재현한 것은 아니다. [<a href="https://zenodo.org/records/21700225">3</a>, score_output의 두 CSV]
+
+<CandidateEquation id="synthesis-ability" title="합성 복잡도에서 합성 용이성 점수로" tex={String.raw`A_{\mathrm{synthesis}}=5.0-\mathrm{SCScore}(\mathrm{molecule})`}>
+
+이 관계는 원문 Scoring 절에 명시돼 있다. SCScore는 분자의 합성 복잡도를 추정하는 기계학습 점수이고, A_synthesis는 그 값을 반대 방향으로 바꾼 합성 용이성 지표다. 둘 다 무차원 점수다. 저자들은 5.0을 팔리톡신의 SCScore에 대응하는 높은 합성 난도 기준으로 설명한다. 복잡도 점수가 커지면 이 식의 용이성 점수는 작아진다. 이 계산이 실제 합성 성공률이나 제조 원가를 측정한 것은 아니며, 종합점수에 들어갈 때의 추가 정규화와도 구분한다. [<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13632741/">1</a>, Scoring]
+
+</CandidateEquation>
+
+</details>
+
+선택된 LiDPFP는 합성·분석하고, 첨가한 전해질과 기준 전해질을 셀에서 비교했다. 반면 15,200개 또는 343개 후보 모두를 합성해 셀 수명을 측정한 것은 아니다. 여러 인계열 후보의 계산된 전자구조 비교와, 선택 물질의 실제 배터리 검증은 증거의 종류가 다르다. 이 구분이 있어야 선별 알고리즘의 성공 범위와 다음 재현 과제를 따로 평가할 수 있다.
+
+## 첨가제 외에 함께 바뀐 설계
+
+기준 전해질은 TFA와 FEC를 섞은 용매에 LiPF₆를 넣은 것이며, 개선 전해질에는 LiDPFP를 질량 기준 1% 추가했다. 전극 분석에서 저자들은 양극의 인–산소 고분자 성분이 풍부한 CEI와 음극의 산화리튬이 풍부한 SEI를 제시한다. 표면 보호의 작동 근거를 전극별로 비교하려는 접근이다.
+
+그러나 628 Wh/kg 전체를 첨가제 하나의 효과로 돌리면 안 된다. 파우치셀에서는 음극 구리 집전체를 없애고 용량당 전해질 양을 줄였으며 충전 상한도 높였다. 보충표 S5의 전해질/용량 비는 0.8 g/Ah이다. 628 Wh/kg 셀은 526 Wh/kg 셀보다 얇은 포장재와 작은 탭도 사용한다. 전해질 개선과 질량 절감의 기여를 분리해 봐야 한다.
+
+## 기준 전해질과 비교한 수명은 어떤 조건인가
+
+첨가제의 효과를 볼 때는 서로 다른 논문의 최고 기록보다 같은 연구의 비교 시험을 먼저 보는 편이 낫다. 원문 Fig. 3A–B의 NCM811∥Li 셀은 4.7 V 상한에서 0.2 C로 충전하고 0.3 C로 방전했다. 양극의 면적당 용량은 3.8 mAh/cm², 리튬금속 음극 두께는 20 μm였다. 면적당 용량은 전극 1 cm²에 얼마의 전하를 저장하는지 나타내며, 셀 전체의 Ah와는 다른 지표다.
+
+이 조건에서 LiDPFP를 넣은 전해질은 222회 뒤 용량 유지율 80%를, 기준 LiPF₆ 전해질은 71회 뒤 80%를 보고했다. 이는 해당 시험에서 수명 개선을 뒷받침하는 비교다. 다만 **628 Wh/kg 파우치셀이 222회 수명을 보였다는 뜻은 아니다.** 셀 구조·전해질 양·충방전 조건을 바꾼 결과를 하나의 성능으로 합치지 않는다. 또한 여기서 확인한 문단만으로 여러 셀의 수명 분포나 통계적 불확실성까지 확정할 수는 없다. [<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13632741/">1</a>, Results의 Fig. 3A–B 설명; Fig. 7 파우치셀 시험과 구분]
+
+## 서로 다른 시험 조건을 합치지 않기
+
+| 시험 | Methods에서 확인한 조건 | 확대하면 안 되는 해석 |
+|---|---|---|
+| 저온 코인셀 | −40°C, 2.8–4.3 V, 충전·방전 각각 0.05 C | −40°C에서 4.8 V 파우치셀이 같은 성능을 냈다는 뜻 아님 |
+| 실온·80°C 코인셀 | 상한 4.7 V 또는 4.8 V, 0.2 C 충전·0.3 C 방전 | 고온 팩의 안전성·수명 인증이 아님 |
+| 628 Wh/kg 파우치셀 | 2.8–4.7 V, 초기 1회 0.2 C, 이후 0.1 C 충전·0.2 C 방전 | 급속충전이나 모든 온도에서의 112회 수명이 아님 |
+
+C-rate는 셀 용량을 기준으로 정한 충·방전 전류의 비율이다. 0.1 C는 0.2 C보다 전류가 낮은 조건이다. 표 S5의 6.19 Ah와 628 Wh/kg은 0.2 C에서 보고됐다. 파우치셀 수명 시험은 0.2 C로 한 번 사전 충·방전한 뒤 0.1 C 충전·0.2 C 방전으로 진행됐다. 실제 시간은 전압 제한과 제어 구간에도 좌우된다. 낮은 C-rate의 결과만으로 급속충전 성능을 주장할 수 없다. 이 파우치셀 시험의 온도는 해당 Methods 문장에 명시되지 않아 저온 코인셀 조건을 옮겨 쓰지 않는다. [<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13632741/">1</a>, Cell assembling and testing;<a href="https://pmc-oa-opendata.s3.amazonaws.com/PMC13632741.1/sciadv.aei9659_sm.pdf">2</a>, Table S5]
+
+**확인해 보자.** ‘−40°C, 628 Wh/kg, 222회 뒤 80%’를 한 셀의 성능으로 소개해도 될까? 안 된다. 저온 코인셀, 높은 에너지 밀도의 파우치셀, 기준 전해질과 비교한 수명 시험은 서로 다른 조건이다. 어느 한 결과가 좋아도 다른 시험의 숫자를 가져와 빈 조건을 채울 수 없다.
+
+## 112회 뒤 80%가 말해 주는 것
+
+초기 용량의 80%가 남았다는 것은 저장하던 전하량의 약 5분의 1을 잃었다는 뜻이다. 셀이 그 순간 갑자기 작동을 멈췄다는 말도, 그 전까지 열화가 없었다는 말도 아니다. 높은 에너지 밀도와 수명을 함께 추구한 증거지만 제품의 요구 수명을 충족했다는 증거는 아니다.
+
+다른 셀의 결과도 섞지 않아야 한다. 본문은 526 Wh/kg 셀의 두께가 장기 반복 중 3.01 mm에서 4.31 mm로 늘어났다고 보고한다. 이 값을 628 Wh/kg 셀에서 직접 측정한 팽창량처럼 옮겨 쓰면 안 된다. 눈에 띄는 가스 발생이 없었다는 관찰 역시 모든 열화·안전 위험이 없었다는 뜻은 아니다.
+
+다음에 필요한 것은 같은 설계의 여러 셀에서 얻은 수명 분포, 전해질과 포장재를 줄였을 때의 신뢰성, 급속충전·안전 시험과 반복 생산 결과다. 팩의 질량과 보조 장치까지 공개돼야 제품의 실제 이점을 비교할 수 있다.
+
+**마지막 검산 질문:** 셀의 방전 에너지는 같고, 팩 구성에 필요한 추가 질량만 생긴다면 Wh/kg은 어떻게 될까? 분자는 같고 분모가 커지므로 값은 낮아진다. 여기서는 추가 질량을 실제로 측정하지 않았으므로 팩의 새 수치를 계산하지 않는다. 이 질문에 답할 수 있으면 ‘셀 기록’과 ‘제품 성능’을 구분하는 핵심을 이해한 것이다.
+
+<details>
+<summary>출처·이해관계·현재 검토 범위</summary>
+
+1. Zhang, S., Meng, F., Yang, L. 외, Science Advances 12, eaei9659 (2026). [원문](https://pmc.ncbi.nlm.nih.gov/articles/PMC13632741/), DOI 10.1126/sciadv.aei9659.
+2. 같은 논문의 [보충자료](https://pmc-oa-opendata.s3.amazonaws.com/PMC13632741.1/sciadv.aei9659_sm.pdf), Tables S4–S5.
+3. 논문이 안내한 [Zenodo 코드 기록 21700225](https://zenodo.org/records/21700225), `Diperfluoropinacolatophosphate-main.zip`의 README, `main.py`, `final_score.py`. 파일 체크섬을 대조하고 코드 텍스트를 읽었으며, 실행하지 않았다.
+
+Pouch cell performance, Cell assembling and testing, Unsupervised ML clustering, Scoring, 이해관계·데이터 안내와 보충표 S4–S5를 실제 확인했다. S5는 보충 PDF 61쪽의 표 배치와 값도 직접 확인했다. 전체 본문·보충자료 정독 완료를 뜻하지 않는다.
+
+저자 일부는 관련 출원 특허의 발명자다. 군집화 코드의 [Zenodo 주소](https://doi.org/10.5281/zenodo.21700225)는 제공되지만 실행 재현은 하지 않았다.
+
+코드의 합성 복잡도 계산은 외부 ASKCOS 서비스에 요청하도록 되어 있다. 이번에는 그 요청을 실행하지 않았고 새 분자 자료를 전송하지 않았다. 따라서 코드 열람과 전체 계산 재현을 구분한다.
+
+원문 도판은 CC BY-NC이며 광고형 채널의 재사용 허가는 미확인이다. 비공개 검수용 표 이미지를 이 원고에 삽입하지 않았다. 전체 수식·도판 지도, 남은 원문 검토, 미디어 제작·권리 등록, 독자·화면 검수와 발행 승인은 남아 있다.
+
+</details>

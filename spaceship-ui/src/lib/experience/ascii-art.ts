@@ -1,3 +1,5 @@
+import { parseGraphPayload } from './graph-json.mjs';
+
 type Point3 = { x: number; y: number; z: number; edge: boolean };
 type GraphNode = {
   id: string;
@@ -55,7 +57,7 @@ const artifact = buildArtifact();
 
 function readGraph(host: HTMLElement): PostGraph | null {
   try {
-    const graph = JSON.parse(host.querySelector<HTMLScriptElement>('script[data-post-graph-source]')?.textContent ?? host.dataset.postGraph ?? 'null');
+    const graph = parseGraphPayload(host.querySelector<HTMLScriptElement>('script[data-post-graph-source]')?.textContent ?? host.dataset.postGraph ?? 'null');
     return graph && Array.isArray(graph.nodes) && Array.isArray(graph.edges) ? graph : null;
   } catch {
     return null;
