@@ -31,6 +31,8 @@ for (const char of 'ε₂μπα₃①②③') {
   assert(parsed.some(font => font.charToGlyphIndex(char) > 0), `Missing scientific/series glyph ${char}`);
 }
 const layout = fs.readFileSync('src/layouts/Layout.astro', 'utf8');
+assert(fs.readFileSync('src/pages/og/[slug].png.ts', 'utf8').includes("timeZone: post.data.publicationTimeZone ?? 'UTC'"));
+assert.equal(new Date('2026-10-08T00:00:00+09:00').toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'Asia/Seoul' }), 'October 8, 2026');
 assert(layout.includes("pageOgImage.pathname.startsWith('/og/')"));
 assert(layout.includes("pageOgImage.searchParams.set('v', 'ko-font-20261024')"));
 console.log('OG Korean font: PASS 11,172 Hangul glyphs, cached offline fonts, upstream hash/license, both renderers and cache refresh');

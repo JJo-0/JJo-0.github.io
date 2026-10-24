@@ -67,7 +67,7 @@ export const GET: APIRoute = async ({ props }) => {
         <span style="margin-right: 16px;">${SITE.website.replace(/^https?:\/\//, '')}</span>
         <span>•</span>
         <span style="margin-left: 16px;"
-          >${post.data.pubDate.toLocaleDateString('en-US', { dateStyle: 'long' })}</span
+          >${post.data.pubDate.toLocaleDateString('en-US', { dateStyle: 'long', timeZone: post.data.publicationTimeZone ?? 'UTC' })}</span
         >
       </div>
     </div>
