@@ -435,5 +435,12 @@ POST_TAXONOMY.update({
     '2026-10-23-t-wla-vision-touch-news.mdx': Taxonomy(category='robotics-embedded', subcategory='robot-manipulation', content_type='research-report', tags=('frontier-candidate', 'robotics', 'tactile-sensing', 'vision-language-action'), research_area=None, research_featured=False, research_order=None),
 })
 
+# Register the incoming drafts without changing their text or publication state.
+POST_TAXONOMY.update({
+    '2026-10-24-flora-robotics-data-engine-news.mdx': Taxonomy(category='robotics-embedded', subcategory='robotics-data-engine', content_type='research-report', tags=('frontier-candidate', 'robotics', 'dataset-annotation', 'vision-language-model'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-24-nexus-ai-tb-screening-news.mdx': Taxonomy(category='health-lifestyle', subcategory='tuberculosis-screening', content_type='research-report', tags=('frontier-candidate', 'tuberculosis', 'medical-imaging', 'health-ai'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-24-sequential-diagnosis-benchmark-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='clinical-ai', content_type='paper-review', tags=('frontier-one', 'clinical-ai', 'diagnostic-reasoning', 'ai-agents'), research_area=None, research_featured=False, research_order=None),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
