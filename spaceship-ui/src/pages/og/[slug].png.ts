@@ -6,7 +6,7 @@ import { Resvg } from '@resvg/resvg-js';
 import { SITE } from '@/config';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import { resolveSeriesPostTitle } from '@/lib/modern-ai-series';
-import { getOgBoldFont } from '@/lib/og-font';
+import { getOgFonts } from '@/lib/og-font';
 
 export async function getStaticPaths() {
   const posts = await getPublishedPosts();
@@ -18,7 +18,7 @@ export async function getStaticPaths() {
 
 export const GET: APIRoute = async ({ props }) => {
   const { post } = props;
-  const fontData = await getOgBoldFont();
+  const fonts = await getOgFonts();
   const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
 
   const markup = html`
@@ -32,7 +32,7 @@ export const GET: APIRoute = async ({ props }) => {
       justify-content: center;
       background-color: #0d1117;
       color: #fff;
-      font-family: 'Outfit';
+      font-family: Outfit, NanumGothic, NotoSans, NotoSansSymbols;
       padding: 40px;
       text-align: center;
     "
@@ -76,14 +76,7 @@ export const GET: APIRoute = async ({ props }) => {
   const svg = await satori(markup, {
     width: 1200,
     height: 630,
-    fonts: [
-      {
-        name: 'Outfit',
-        data: fontData,
-        weight: 700,
-        style: 'normal',
-      },
-    ],
+    fonts,
   });
 
   const resvg = new Resvg(svg, {
