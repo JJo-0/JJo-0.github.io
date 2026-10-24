@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { groupMediaByPost } from './news-media-visit-plan.mjs';
+import { loadApprovedVisualInventory } from './news-approved-visual-inventory.mjs';
 import { BASE, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
 export async function auditNewsMedia(cdp, sessionId) {
@@ -10,6 +11,7 @@ export async function auditNewsMedia(cdp, sessionId) {
   const covers = JSON.parse(
     fs.readFileSync(new URL('../site/news-covers-20260912.json', import.meta.url), 'utf8')
   );
+  const approvedInventory = loadApprovedVisualInventory(media);
   assert.equal(covers.entries.length, 19);
   const sep11 = JSON.parse(
     fs.readFileSync(new URL('../site/news-sep11-release.json', import.meta.url), 'utf8')
@@ -201,11 +203,13 @@ export async function auditNewsMedia(cdp, sessionId) {
       const [, item] = registeredMedia[0];
       const declaredSource = sourceFigurePosts.get(item.slug);
       const visualPolicy = visualPolicies.get(item.slug);
+      const approved = approvedInventory.get(item.slug);
       const minFigures =
+        approved?.mediaIds.length ??
         visualPolicy?.minFigures ??
         (declaredSource ? declaredSource.mediaIds.length : coverOnly.has(item.slug) ? 1 : 3);
       const minDiagrams =
-        visualPolicy?.minDiagrams ?? (declaredSource ? 0 : coverOnly.has(item.slug) ? 0 : 2);
+        approved?.newsDiagramCount ?? visualPolicy?.minDiagrams ?? (declaredSource ? 0 : coverOnly.has(item.slug) ? 0 : 2);
       const route = `/posts/${item.slug}/`;
       const response = await fetch(new URL(route, BASE));
       assert.equal(response.status, 200, `Published route ${route}`);
@@ -255,6 +259,7 @@ export async function auditNewsMedia(cdp, sessionId) {
         return { slug: ${JSON.stringify(item.slug)}, viewport: innerWidth, imageCount: images.length,
           diagramCount: document.querySelectorAll('article [data-news-diagram]').length,
           decoded: images.every((image) => image.naturalWidth > 0 && image.naturalHeight > 0),
+          visible: images.every((image) => image.visible),
           captions: images.every((image) => image.caption),
           overflow: document.documentElement.scrollWidth > innerWidth + 2,
           newsActive: Boolean(document.querySelector('header a[href="/news"][aria-current="page"]')) };
@@ -264,6 +269,7 @@ export async function auditNewsMedia(cdp, sessionId) {
         result.imageCount >= minFigures &&
           result.diagramCount >= minDiagrams &&
           result.decoded &&
+          result.visible &&
           result.captions &&
           !result.overflow &&
           result.newsActive,
@@ -279,6 +285,11 @@ export async function auditNewsMedia(cdp, sessionId) {
           declaredWidth: Number(img?.getAttribute('width')), declaredHeight: Number(img?.getAttribute('height')) };
       })`
       );
+      if (approved) {
+        assert.equal(result.imageCount, approved.mediaIds.length, 'Rendered count must match approved inventory');
+        assert.equal(result.diagramCount, approved.newsDiagramCount, 'Rendered diagrams must match approved inventory');
+        assert.deepEqual(registeredDetails.map((figure) => figure.id), approved.mediaIds, 'Approved images must render exactly once in order');
+      }
       for (const [id, expected] of registeredMedia) {
         const matches = registeredDetails.filter((figure) => figure.id === id);
         assert.equal(matches.length, 1, `${item.slug}: exactly one registered figure ${id}`);
