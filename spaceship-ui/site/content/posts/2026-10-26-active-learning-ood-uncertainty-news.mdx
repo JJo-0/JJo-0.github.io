@@ -1,0 +1,81 @@
+---
+title: "OOD 불확실성 보정이 액티브러닝을 망칠 때"
+description: "분포 밖 데이터에서는 잘 보정된 불확실성도 유용한 샘플을 고르지 못할 수 있다. 재료과학 세 과제와 네 모델 계열이 드러낸 실패 조건을 검토한다."
+pubDate: 2026-10-26T00:00:00+09:00
+updatedDate: 2026-10-26
+publicationTimeZone: Asia/Seoul
+slug: active-learning-ood-uncertainty-failure
+category: ai-machine-learning
+subcategory: uncertainty-quantification
+type: paper-review
+tags:
+  - frontier-one
+  - active-learning
+  - uncertainty-quantification
+  - out-of-distribution
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+import Math from '@/components/post/Math.astro';
+
+> **SELECTED · 연구 초안**  
+> 기준일: 2026-10-26 KST · 점수: **94/100** · 증거 등급: **PEER_REVIEWED_FRONTIER**  
+> 검토 범위: 2026년 10월 24일 출판 메타데이터와 공개 사전원고(arXiv:2511.17760) 42쪽을 정독했다. Nature 최종 조판 PDF는 직접 열지 못했으므로 페이지 번호는 사전원고 기준이다.
+
+## 1. 한 문장 결론
+
+액티브러닝에서 예측 불확실성을 더 정교하게 보정했다고 해서 분포 밖(out-of-distribution, OOD) 샘플을 더 잘 고르는 것은 아니며, 불확실성이 **무엇을 모르는지** 대신 기존 오차분포의 모양만 닮게 되면 무작위 선택보다 낫지 않을 수 있다.
+
+## 2. 왜 어려운가
+
+재료 탐색은 한 번의 합성·측정 비용이 크다. 그래서 작은 초기 데이터로 모델을 학습한 뒤, 가장 불확실한 후보를 다음 실험으로 골라 학습시키는 전략이 매력적이다. 문제는 학습 데이터 안에서 잘 맞는 신뢰구간이 새 화학 조성에도 그대로 유효하다고 보장할 수 없다는 점이다. 보정(calibration)은 예측 오차와 신뢰구간을 맞추지만, OOD 입력에서 모델에 빠진 정보가 무엇인지는 알려주지 않는다.
+
+## 3. 기초 개념
+
+연구팀은 같은 데이터로 학습한 다섯 모델의 예측 표준편차인 random ensemble과, 한 모델의 가중치를 헤시안 고유벡터 방향으로 흔들어 만든 loss-landscape(LL) ensemble을 비교했다. 잘 보정된 불확실성이라면 90% 신뢰구간 밖에 실제값이 약 10% 놓여야 한다. 하지만 여기서 필요한 것은 절대 크기만 맞는 신뢰구간이 아니라, 다음 학습에 가장 도움이 될 샘플의 **순위**다.
+
+## 4. 기존 방식의 한계
+
+보통 ID 검증셋의 잔차를 기준으로 불확실성을 선형 보정하거나 작은 신경망으로 재매핑한다. 이는 ID에서는 합리적이지만, OOD 잔차분포가 이봉형이거나 loss landscape의 최소점이 이동한 경우에는 ID에서 배운 매핑을 OOD에 옮기는 순간 가정이 깨진다. 논문에서도 calibration factor는 잔차가 정규분포가 아닌 bandgap 과제에서 붕괴했고, ID 보정 개선이 OOD 보정 개선으로 일관되게 이어지지 않았다.
+
+## 5. 새 방법을 읽는 세 단계
+
+첫째, ESOL 용해도와 JARVIS-22의 형성에너지·밴드갭을 대상으로 ID/OOD를 분리했다. 재료 과제에서는 F 또는 Fe가 든 조성을 통째로 제외해 화학적 이동을 만들었다. 둘째, ALIGNN·MLP·Random Forest·XGBoost에서 ensemble 불확실성을 만들고 ID 잔차로 원본(OG), 선형 calibration factor(CF), 신경망 보정(NN)을 비교했다. 셋째, OOD pool의 상위 불확실성 샘플을 5~100% 순차 투입하고 무작위 선택과 다섯 seed 평균 성능을 맞대었다.
+
+## 6. 핵심 수식과 시스템 위치
+
+가중치 <Math tex={String.raw`\theta`} />에서 두 헤시안 고유벡터 <Math tex={String.raw`\eta,\delta`} /> 방향의 손실은 다음처럼 계산한다.
+
+<Math display tex={String.raw`\mathcal{L}(\theta+\alpha\eta+\beta\delta)=\frac{1}{N}\sum_{i=1}^{N}\ell(x_i,y_i;\theta+\alpha\eta+\beta\delta)`} label="사전원고 식 (1), p.12" />
+
+여기서 <Math tex={String.raw`N`} />은 샘플 수, <Math tex={String.raw`\ell`} />은 샘플 손실, <Math tex={String.raw`\alpha,\beta`} />는 무차원 가중치 공간 보간 계수다. 손실 임계값 아래 모델들의 평균과 표준편차로 <Math tex={String.raw`\mathcal{N}(\mu_\Theta,\sigma_\Theta)`} />를 만들고 다시 표본화한다. 이 분포의 예측 표준편차가 acquisition score가 된다. 즉 보정은 모델 뒤의 숫자 장식이 아니라, 실제 실험 후보를 고르는 제어 신호다.
+
+## 7. 실험과 수치
+
+가장 강한 반례는 F를 학습에서 뺀 형성에너지 과제다. 단일 ALIGNN의 OOD MAE는 **1.091 eV/atom**, OOD <Math tex={String.raw`R^2`} />는 **-0.641**로 ID-test의 0.036 eV/atom, 0.996과 크게 벌어졌다. OOD pool의 20%까지는 무작위 선택이 불확실성 최대화와 비슷하거나 더 좋았고, LL 기반 선택은 약 50%를 넣을 때까지 무작위를 넘지 못했다. RF와 XGBoost에서도 무작위가 같거나 더 나았다. 반면 Fe 제외 조건은 OOD MAE 0.064 eV/atom, <Math tex={String.raw`R^2`} /> 0.992로 사실상 ID에 가까웠고 방법 차이는 오차막대 안이었다.
+
+## 8. 반대 증거와 통제
+
+실패가 보편 법칙은 아니다. bandgap의 Fe 제외 조건에서는 ensemble 계열이 평균적으로 무작위를 앞섰지만 오차막대가 겹쳤다. 또한 LL ensemble의 폭은 손실 임계값 선택에 민감하며, random ensemble보다 넓은 오차막대를 만들 수 있다. 연구팀은 동일 데이터에서 RF·XGBoost를 반복하고 F를 강한 OOD, Fe를 통제로 사용했지만, 모든 보정·모델 조합을 독립 연구팀이 재현한 것은 아니다.
+
+## 9. 한계
+
+세 과제와 특정 화학적 이동에 국한되고, acquisition은 최대 불확실성 하나만 다룬다. ESOL OOD-test는 56개로 작다. 본문은 LL ensemble을 500개 모델이라고 설명하지만 Methods는 정규분포를 50회 표본화했다고 적어 공개본 내부 수치가 일치하지 않는다. 최종 조판본에서 수정됐는지는 확인하지 못했다. 보정 실패가 곧 active learning 전체의 실패를 뜻하지도 않는다.
+
+## 10. 실제로 바뀌는 것
+
+실험 자동화 파이프라인은 calibration error가 낮다는 이유만으로 다음 실험을 맡기면 안 된다. 최소한 무작위 acquisition, 입력공간 거리·밀도, target 분포 변화, OOD별 learning curve를 함께 기록해야 한다. 불확실성의 절대값보다 후보 순위가 실제 개선량과 연결되는지 먼저 확인해야 한다.
+
+## 11. 다음 재검토 트리거
+
+최종 출판 PDF와 사전원고의 모델 수 불일치 해소, 공개 코드의 고정 seed 재현, 다른 재료·약물 데이터에서의 독립 반복, 입력공간 불확실성이나 counterfactual acquisition과의 비교가 나오면 `RESEARCH_READY` 승격을 다시 판단한다.
+
+## 12. 출처
+
+- Dale et al., *npj Computational Materials*, 2026-10-24, DOI: [10.1038/s41524-026-02368-4](https://doi.org/10.1038/s41524-026-02368-4)
+- 공개 사전원고: [arXiv:2511.17760](https://arxiv.org/abs/2511.17760)
+- 코드: [paper_when_active_learning_fails](https://github.com/TRustworthy-AI-Tools-for-Science/paper_when_active_learning_fails)
+- 데이터·모델 산출물: [Zenodo 20754201](https://zenodo.org/records/20754201)
+
