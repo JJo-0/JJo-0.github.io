@@ -7,12 +7,18 @@ const attr = (node, name) => node.attrs?.find(a => a.name === name)?.value;
 const text = node => node.nodeName === '#text' ? node.value : (node.childNodes || []).map(text).join('');
 for (const route of ['bible', 'posts']) {
   const tree = nodes(parse(read(`dist/${route}/index.html`)));
-  for (const [id, count] of Object.entries({ overview: 3, 'acts-1-1-14': 6, 'acts-2-14-37': 3, 'ezekiel-2-1-3-11': 3, ...(route === 'posts' ? { 'modern-artificial-intelligence': 8, 'ai-consciousness-deep-research': 3, 'data-structures-coding-tests': 7, supplements: 3 } : {}) })) {
+  for (const [id, count] of Object.entries({ overview: 3, 'acts-1-1-14': 6, 'acts-2-14-37': 3, 'ezekiel-2-1-3-11': 3, ...(route === 'posts' ? { 'modern-artificial-intelligence': 8, 'ai-consciousness-deep-research': 3, 'human-motion-study': 1, 'data-structures-coding-tests': 7, supplements: 3 } : {}) })) {
     const group = tree.find(n => attr(n, 'data-series-group') === id);
     assert(group && group.tagName === 'details', `Missing accessible details group ${id} at ${route}`);
     assert(!group.attrs.some(a => a.name === 'open'), `Group must start collapsed: ${id}`);
     assert.equal(nodes(group).filter(n => n.tagName === 'article').length, count, `${id} member count`);
     assert(group.childNodes.some(n => n.tagName === 'summary'));
+    if (id === 'human-motion-study') {
+      const category = tree.find(n => attr(n, 'id') === 'vision-perception-neuroscience');
+      assert(category && nodes(category).includes(group), 'Motion study belongs in Vision');
+      assert(nodes(group).some(n => attr(n, 'href')?.replace(/\/$/, '') === '/posts/human-motion-study-0'));
+      assert(text(group).includes('0편'), 'The series starts with episode zero');
+    }
     if (id === 'ezekiel-2-1-3-11') {
       const copy = text(group).replace(/\s+/g, ' ');
       assert(copy.includes('블로그 본문에서 읽는 전체 연구 · 세 연구 관점'));

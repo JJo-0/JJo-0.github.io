@@ -20,6 +20,11 @@ POST_TAXONOMY.update({
 
 POST_TAXONOMY.update(
     {
+        "human-motion-study-0.md": Taxonomy(
+            "vision-perception-neuroscience", "human-motion", "study-note",
+            ("human-pose-estimation", "motion-prediction", "human-robot-interaction", "uncertainty"),
+            "vision-pose-human-perception", True, 5,
+        ),
         "self-improving-ai-chip-design.md": Taxonomy(
             "ai-machine-learning", "semiconductor-ai", "research-report",
             ("ai-for-eda", "reinforcement-learning", "chip-design", "openroad", "semiconductor"),
