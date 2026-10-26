@@ -3,6 +3,14 @@
 Date: 2026-10-26. Base: `8fce2ea677a9d1c518d802746e3abc7c8a43598c`.
 Branch: `content/human-motion-study-00`. 검증 대상은 아래 해시의 작업 트리다.
 
+## 0편 문장 축약 (2026-10-26 후속 수정)
+
+사용자 요청으로 공개 본문에서 작업 폴더 이름, 자료 관리 절차, 신경과학 관련 단서와 반복 설명을 삭제했다. 연구 시작, 저작권 안내, 분야별 지도와 수식 정독 방식만 남겼다. 본문은 7,095자에서 1,450자로 줄었다. 아래 최초 제작 기록은 이전 버전의 이력이며, 현재 본문의 범위 설명과 해시는 이 수정 기록이 우선한다.
+
+- 현재 0편 SHA-256: `192b39e9bae530115f9c08666e0b73bff37c5765d61501e580f2e0a707fad1c4`
+- post-content-contract / taxonomy-contract / diff whitespace 검사: PASS.
+- 최종 `npm run build`: PASS (694 pages, rendered Markdown audit 통과). 로그: `/tmp/motion-study-short-build.log`.
+
 ## 결과와 범위
 
 - Vision, Perception & Neuroscience 아래 기존 SeriesGroup을 재사용해 접이식 연재를 추가했다. 현재 0편 하나도 접혀 표시된다. 다른 단일 글의 표시 방식은 유지한다.
