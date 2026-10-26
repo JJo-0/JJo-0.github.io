@@ -20,6 +20,11 @@ POST_TAXONOMY.update({
 
 POST_TAXONOMY.update(
     {
+        "human-motion-study-0.md": Taxonomy(
+            "vision-perception-neuroscience", "human-motion", "study-note",
+            ("human-pose-estimation", "motion-prediction", "human-robot-interaction", "uncertainty"),
+            "vision-pose-human-perception", True, 5,
+        ),
         "self-improving-ai-chip-design.md": Taxonomy(
             "ai-machine-learning", "semiconductor-ai", "research-report",
             ("ai-for-eda", "reinforcement-learning", "chip-design", "openroad", "semiconductor"),
@@ -440,6 +445,16 @@ POST_TAXONOMY.update({
     '2026-10-24-flora-robotics-data-engine-news.mdx': Taxonomy(category='robotics-embedded', subcategory='robotics-data-engine', content_type='research-report', tags=('frontier-candidate', 'robotics', 'dataset-annotation', 'vision-language-model'), research_area=None, research_featured=False, research_order=None),
     '2026-10-24-nexus-ai-tb-screening-news.mdx': Taxonomy(category='health-lifestyle', subcategory='tuberculosis-screening', content_type='research-report', tags=('frontier-candidate', 'tuberculosis', 'medical-imaging', 'health-ai'), research_area=None, research_featured=False, research_order=None),
     '2026-10-24-sequential-diagnosis-benchmark-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='clinical-ai', content_type='paper-review', tags=('frontier-one', 'clinical-ai', 'diagnostic-reasoning', 'ai-agents'), research_area=None, research_featured=False, research_order=None),
+})
+
+
+POST_TAXONOMY.update({
+    '2026-10-25-chemistry-infused-bandit-electrocatalysis-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='autonomous-laboratory', content_type='research-report', tags=('frontier-candidate', 'autonomous-lab', 'electrocatalysis', 'bandit-learning'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-25-circular-oligodisulfide-flow-battery-news.mdx': Taxonomy(category='finance-industry', subcategory='grid-energy-storage', content_type='paper-review', tags=('frontier-one', 'flow-battery', 'energy-storage', 'circular-chemistry'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-25-slow-light-silicon-modulator-news.mdx': Taxonomy(category='finance-industry', subcategory='silicon-photonics', content_type='research-report', tags=('frontier-candidate', 'silicon-photonics', 'optical-interconnect', 'semiconductors'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-26-active-learning-ood-uncertainty-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='uncertainty-quantification', content_type='paper-review', tags=('frontier-one', 'active-learning', 'uncertainty-quantification', 'out-of-distribution'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-26-agentic-rl-interference-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='agentic-reinforcement-learning', content_type='research-report', tags=('frontier-candidate', 'agentic-ai', 'reinforcement-learning', 'tool-use'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-26-traceweaver-web-agent-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='web-agents', content_type='research-report', tags=('frontier-candidate', 'web-agents', 'episodic-memory', 'action-selection'), research_area=None, research_featured=False, research_order=None),
 })
 
 if __name__ == "__main__":
