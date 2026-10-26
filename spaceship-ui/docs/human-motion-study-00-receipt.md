@@ -11,6 +11,10 @@ Branch: `content/human-motion-study-00`. 검증 대상은 아래 해시의 작�
 - post-content-contract / taxonomy-contract / diff whitespace 검사: PASS.
 - 최종 `npm run build`: PASS (694 pages, rendered Markdown audit 통과). 로그: `/tmp/motion-study-short-build.log`.
 
+## 배포 준비 후속 검증 (2026-10-26)
+
+사용자의 배포 요청에 따라 기존 뉴스 6개의 canonical taxonomy 등록을 각 글의 기존 frontmatter 그대로 추가했다. 뉴스 본문과 분류 값은 바꾸지 않았다. `python3 scripts/normalize_tags_current.py --check`는 223 posts PASS, 최종 `pnpm content:check` 전체 통과. 따라서 아래 최초 기록의 통합 게이트 차단 상태는 해결되었다. 로그: `/tmp/motion-deploy-content.log`.
+
 ## 결과와 범위
 
 - Vision, Perception & Neuroscience 아래 기존 SeriesGroup을 재사용해 접이식 연재를 추가했다. 현재 0편 하나도 접혀 표시된다. 다른 단일 글의 표시 방식은 유지한다.
