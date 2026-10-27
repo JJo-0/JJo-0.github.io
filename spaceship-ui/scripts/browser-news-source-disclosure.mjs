@@ -17,6 +17,7 @@ const slugs = [
   '2026-10-02-glassrecon-depth-prior-news',
   '2026-10-02-lace-complementary-heuristics-news',
   '2026-10-02-perturbation-benchmark-calibration-news',
+  '2026-10-05-inspire-photonic-in-situ-learning-news',
 ];
 // Pages live QA has the exact source checkout but no local dist. Preview CI
 // also checks that this explicitly reviewed roster covers every folded article.
