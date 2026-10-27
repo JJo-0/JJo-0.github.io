@@ -457,5 +457,11 @@ POST_TAXONOMY.update({
     '2026-10-26-traceweaver-web-agent-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='web-agents', content_type='research-report', tags=('frontier-candidate', 'web-agents', 'episodic-memory', 'action-selection'), research_area=None, research_featured=False, research_order=None),
 })
 
+POST_TAXONOMY.update({
+    '2026-10-27-late-mt-news.mdx': Taxonomy('health-lifestyle', 'stroke-thrombectomy', 'paper-review', ('frontier-one', 'stroke', 'thrombectomy', 'clinical-trial')),
+    '2026-10-27-saffron-nsclc-news.mdx': Taxonomy('health-lifestyle', 'lung-cancer', 'research-report', ('frontier-candidate', 'lung-cancer', 'targeted-therapy', 'clinical-trial')),
+    '2026-10-27-volga-bladder-cancer-news.mdx': Taxonomy('health-lifestyle', 'bladder-cancer', 'research-report', ('frontier-candidate', 'bladder-cancer', 'immunotherapy', 'clinical-trial')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

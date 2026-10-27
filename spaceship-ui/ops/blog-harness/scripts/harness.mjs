@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { checkApprovedVisualInventory } from './approved-visual-inventory.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const configPath = path.join(root, 'harness.config.json');
@@ -58,7 +59,7 @@ function checkConfig(config) {
   return issues;
 }
 
-function checkJob(job, { publish }) {
+function checkJob(job, { publish, artifactBase = process.cwd() }) {
   const issues = [];
   requireText(job.contentId, 'contentId', issues);
   requireText(job.title, 'title', issues);
@@ -100,6 +101,7 @@ function checkJob(job, { publish }) {
   }
   for (const channel of ['gitblog', 'blogger']) {
     if (!job.channels?.includes(channel) || !config.channels?.[channel]?.enabled) continue;
+    if (job.approvedVisualInventory !== undefined) continue;
     const target = visualRange(config, channel);
     if (!target) continue;
     const channelMedia = (job.media ?? []).filter((asset) => asset.channels?.includes(channel));
@@ -113,6 +115,7 @@ function checkJob(job, { publish }) {
         `${channel} requires at least ${target.minimum} distinct media roles; got ${roles.size}`
       );
   }
+  issues.push(...checkApprovedVisualInventory(job, { artifactBase }));
   if (publish && job.humanApproval !== true)
     issues.push('humanApproval must be true before publishing');
   return issues;
@@ -134,7 +137,7 @@ const jobPath = path.resolve(process.cwd(), jobArgument);
 const job = readJson(jobPath);
 const publish = command === 'publish-gate';
 if (!['plan-gate', 'publish-gate'].includes(command)) fail([`unknown command: ${command}`]);
-const jobIssues = checkJob(job, { publish });
+const jobIssues = checkJob(job, { publish, artifactBase: path.dirname(jobPath) });
 if (jobIssues.length) fail(jobIssues);
 
 const pendingRights = (job.media ?? []).filter((asset) => asset.rightsStatus !== 'cleared').length;
