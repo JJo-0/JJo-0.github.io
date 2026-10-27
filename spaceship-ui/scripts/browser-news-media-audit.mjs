@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { groupMediaByPost } from './news-media-visit-plan.mjs';
 import { loadApprovedVisualInventory } from './news-approved-visual-inventory.mjs';
+import { newsSourceFilename, newsSourceIdentity } from './news-media-source-file.mjs';
 import { BASE, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
 export async function auditNewsMedia(cdp, sessionId) {
@@ -108,13 +111,13 @@ export async function auditNewsMedia(cdp, sessionId) {
   // then require published images and reject draft listing/route exposure.
   const draftSlugs = new Set();
   const publicationState = new Map();
+  const postsDirectory = fileURLToPath(new URL('../site/content/posts/', import.meta.url));
   for (const item of Object.values(media)) {
     assert.match(item.slug, /^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'News media slug must be path-safe');
     if (publicationState.has(item.slug)) continue;
-    const source = fs.readFileSync(
-      new URL(`../site/content/posts/${item.slug}.mdx`, import.meta.url),
-      'utf8'
-    );
+    const sourceFile = newsSourceFilename(item);
+    const source = fs.readFileSync(path.join(postsDirectory, sourceFile), 'utf8');
+    newsSourceIdentity(item, source);
     const frontmatter = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     assert(frontmatter, `${item.slug}: missing source frontmatter`);
     const draftFields = [...frontmatter[1].matchAll(/^draft:\s*(true|false)\s*$/gm)];
