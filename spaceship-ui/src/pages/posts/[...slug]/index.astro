@@ -40,6 +40,17 @@ const post = Astro.props as Props;
 const { Content, headings } = await render(post);
 
 const effectiveSlug = getPostSlug(post);
+const reviewedBatchStages: Record<string, string> = {
+  '2026-10-06-shotgun-mammalian-metabolic-engineering-news': '실험 단계: 세포주에서의 개념증명',
+  '2026-10-07-deterministic-2d-semiconductor-nucleation-news': '실험 범위: 반도체 성장 공정·소자',
+  '2026-09-13-rentosertib-phase3-news': '임상 단계: 3상 시험 시작 · 3상 결과 미발표',
+};
+const reviewedBatchStage = reviewedBatchStages[effectiveSlug];
+const reviewedBatchDescriptions: Record<string, string> = {
+  '2026-10-06-shotgun-mammalian-metabolic-engineering-news': '유전자 조각을 조합하고 기능이 남은 세포를 선별해 새로운 대사경로를 탐색했다. 세포주에서의 결과이며 치료나 산업 생산 공정의 완성은 아니다.',
+  '2026-10-07-deterministic-2d-semiconductor-nucleation-news': '성장과 식각을 조절해 정해진 구역의 가운데에 결정핵 하나가 남도록 했다. 성장 공정과 소자에서 확인한 결과이며 대규모 완성 칩 제조의 검증은 아니다.',
+  '2026-09-13-rentosertib-phase3-news': 'AI로 발굴한 폐섬유증 치료 후보가 임상 3상 시험을 시작했다. 앞선 소규모 2a상의 신호와 3상에서 효과를 입증한 결과는 구분해야 한다.',
+};
 const canonicalPostUrl = new URL(Astro.url.pathname, Astro.site).toString();
 const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
 const postTransitionName = `post-title-${effectiveSlug.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
@@ -67,10 +78,11 @@ const modernAiReaderDescriptions: Record<number, string> = {
   5: '2D convolution과 ImageNet에서 AlexNet·VGG·GoogLeNet·ResNet·WRN·DenseNet·SE Network를 거쳐 현대 이미지 분류의 발전 흐름을 정리한다.',
 };
 const seriesOrder = isModernAiSeries ? post.data.series?.order : undefined;
-const effectiveDescription =
+const effectiveDescription = reviewedBatchDescriptions[effectiveSlug] ?? (
   typeof seriesOrder === 'number' && modernAiReaderDescriptions[seriesOrder]
     ? modernAiReaderDescriptions[seriesOrder]
-    : post.data.description;
+    : post.data.description
+);
 
 const schemas = [
   getBlogPostingSchema({
@@ -169,6 +181,8 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
             {displayTitle}
           </h1>
 
+          {reviewedBatchStage && <p class="mb-3 text-sm font-semibold text-foreground" data-research-stage>{reviewedBatchStage}</p>}
+
           <p class="article-deck text-lg text-muted-foreground border-l border-primary pl-5 py-1">
             {effectiveDescription}
           </p>
@@ -183,7 +197,7 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
         {post.data.translatedPosts && <LanguageSelector translations={post.data.translatedPosts} />}
       </div>
 
-      <ContentNotice category={post.data.category} />
+      <ContentNotice category={post.data.category} compact={Boolean(reviewedBatchStage)} />
 
       <article
         class:list={[

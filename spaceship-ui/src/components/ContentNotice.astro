@@ -1,9 +1,11 @@
 ---
 interface Props {
   category?: string;
+  compact?: boolean;
 }
 
-const { category = '' } = Astro.props;
+const { category = '', compact = false } = Astro.props;
+const NoticeElement = compact ? 'details' : 'aside';
 const isBible = category === 'biblical-studies';
 const fieldNotices: Record<string, string> = {
   'finance-industry': '투자·산업 글은 정보와 학습을 위한 개인 분석이며 매수·매도 권유나 개인별 투자자문이 아닙니다. 전망과 과거 성과는 수익을 보장하지 않습니다.',
@@ -13,10 +15,14 @@ const fieldNotices: Record<string, string> = {
 };
 ---
 
-<aside lang="ko" class="content-notice my-6 rounded-xl border border-border bg-secondary/30 p-5" aria-label={isBible ? '성경 글을 읽기 전 안내' : '콘텐츠 이용 안내'}>
-  <p class="mb-2 text-sm font-bold text-foreground">
-    {isBible ? '성경 글을 읽기 전에' : '이 글을 활용하기 전에'}
-  </p>
+<NoticeElement lang="ko" class:list={['content-notice my-6 rounded-xl border border-border bg-secondary/30', compact ? 'p-3' : 'p-5']} aria-label={isBible ? '성경 글을 읽기 전 안내' : '콘텐츠 이용 안내'}>
+  {compact ? (
+    <summary class="cursor-pointer text-xs font-semibold text-muted-foreground">자료 이용 안내</summary>
+  ) : (
+    <p class="mb-2 text-sm font-bold text-foreground">
+      {isBible ? '성경 글을 읽기 전에' : '이 글을 활용하기 전에'}
+    </p>
+  )}
   {
     isBible ? (
       <div class="space-y-2 text-sm leading-relaxed text-muted-foreground">
@@ -40,4 +46,4 @@ const fieldNotices: Record<string, string> = {
     {' · '}
     <a class="underline underline-offset-4" href="/policies/copyright">저작권·재사용 안내</a>
   </p>
-</aside>
+</NoticeElement>
