@@ -485,5 +485,12 @@ POST_TAXONOMY.update({
     '2026-11-02-skillharm-agent-skills-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='agent-security', content_type='research-report', tags=('frontier-candidate', 'agent-security', 'llm-agents', 'benchmark'), research_area=None, research_featured=False, research_order=None),
 })
 
+# Register November 3 drafts without changing their existing taxonomy or draft status.
+POST_TAXONOMY.update({
+    "2026-11-03-povorcitinib-stop-v-vitiligo-news.mdx": Taxonomy("health-lifestyle", "vitiligo-treatment", "paper-review", ("frontier-one", "clinical-trials", "vitiligo", "jak1-inhibitor")),
+    "2026-11-03-tribo-seq-active-trna-news.mdx": Taxonomy("research-methods-tools", "nanopore-trna-profiling", "paper-review", ("frontier-candidate", "nanopore-sequencing", "trna", "translation")),
+    "2026-11-03-unicorn-colon-cancer-news.mdx": Taxonomy("health-lifestyle", "colorectal-cancer-immunotherapy", "paper-review", ("frontier-candidate", "clinical-oncology", "colon-cancer", "immunotherapy")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
