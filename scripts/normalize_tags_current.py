@@ -499,5 +499,9 @@ POST_TAXONOMY.update({
     '2026-11-04-millisecond-in-sensor-olfaction-news.mdx': Taxonomy('robotics-embedded', 'in-sensor-computing', 'paper-review', ('frontier-candidate', 'in-sensor-computing', 'gas-sensors', 'edge-ai')),
 })
 
+POST_TAXONOMY.update({
+    "rl-robot-learning-ch01-introduction.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "eth-zurich", "study")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
