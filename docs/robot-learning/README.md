@@ -14,3 +14,6 @@
 4. [강화학습 04 — 가치에서 행동으로, Q-learning과 DQN](https://jjo-0.github.io/posts/rl-robot-learning-ch04-value-learning/) · [출처와 대조 범위](source-assets/ch04/README.md) · [실행 예제](labs/04-value-learning/README.md)
 
 04장은 기술 슬라이드43장, 보충 그림4개, 독립수식20개·본문수학92곳이다. ETH·Silver·Berkeley 시간 자막과 원 논문을 설명에 통합하고 별도 수치 검사18개를 실행했다.
+
+
+- 05장: [정책 경사에서 PPO·SAC까지](../../spaceship-ui/site/content/posts/rl-robot-learning-ch05-policy-gradients.mdx) · [출처](source-assets/ch05/README.md) · [직접 실행](labs/05-policy-gradients/README.md)
