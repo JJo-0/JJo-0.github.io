@@ -133,7 +133,8 @@ for (const [label, file, budget] of [
   // Sep 29 completion adds two legitimate NEWS nodes to the existing graph.
   // The integrated build measures 256512 B; retain <2 KiB headroom.
   ['Home HTML', homeHtmlPath, 252 * 1024],
-  ['Writing HTML', writingHtmlPath, 260 * 1024],
+  // Chapter 03 adds a published series entry; keep the archive budget finite.
+  ['Writing HTML', writingHtmlPath, 264 * 1024],
 ]) {
   if (!fs.existsSync(file)) {
     issues.push(`${label}: rendered file missing`);

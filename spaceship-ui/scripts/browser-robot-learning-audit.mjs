@@ -60,4 +60,28 @@ export async function auditRobotLearning(cdp, sessionId) {
     console.log(`robot-learning-ch02: PASS ${width}px, 42 decoded slides, 5 decoded figures, 23 accessible display equations, ${inline.count} inline equations`);
   }
 
+  for (const width of [320, 390, 1440]) {
+    await viewport(cdp, sessionId, {width, height:900, mobile:width<500, touch:width<500, reduced:true});
+    await navigate(cdp, sessionId, '/posts/rl-robot-learning-ch03-imitation-learning/');
+    await waitExpression(cdp, sessionId, `document.querySelectorAll('.math-display .katex').length === 18`, 'Chapter 03 equations rendered');
+    const structure = await evaluate(cdp,sessionId,`({slides:[...document.querySelectorAll('[data-lecture-number="3"]')].map(e=>e.dataset.lectureSlide),figures:document.querySelectorAll('[data-learning-figure]').length,errors:document.querySelectorAll('.katex-error').length,display:document.querySelectorAll('.math-display math').length,inline:document.querySelectorAll('.math-inline math').length,labels:[...document.querySelectorAll('.math-display')].every(e=>e.getAttribute('aria-label')),literal:document.body.innerText.includes('**'),oversize:[...document.querySelectorAll('.math-inline')].filter(e=>e.getBoundingClientRect().width>innerWidth-30).map(e=>e.querySelector('annotation')?.textContent)})`);
+    assert.deepEqual(structure.slides,Array.from({length:45},(_,i)=>i+1).filter(n=>![2,32,44,45].includes(n)).map(n=>'P'+String(n).padStart(3,'0')));
+    assert.equal(structure.figures,4); assert.equal(structure.errors,0); assert.equal(structure.display,18); assert.equal(structure.inline,98);
+    assert(structure.labels&&!structure.literal); assert.deepEqual(structure.oversize,[],'Chapter 03 inline mathematics fits phones');
+    const count=await evaluate(cdp,sessionId,`document.querySelectorAll('.lecture-slide img,[data-learning-figure] img').length`);
+    assert.equal(count,45);
+    for (let i=0;i<count;i++) {
+      await evaluate(cdp,sessionId,`document.querySelectorAll('.lecture-slide img,[data-learning-figure] img')[${i}].scrollIntoView({block:'center',behavior:'instant'})`);
+      await waitExpression(cdp,sessionId,`(()=>{const e=document.querySelectorAll('.lecture-slide img,[data-learning-figure] img')[${i}];return e.complete&&e.naturalWidth>0;})()`,'Chapter 03 image decoded');
+    }
+    const geometry=await evaluate(cdp,sessionId,`({overflow:document.documentElement.scrollWidth>innerWidth+2,captions:[...document.querySelectorAll('.lecture-slide')].every(e=>{const im=e.querySelector('img'),cap=e.querySelector('figcaption');return !im.closest('a')&&getComputedStyle(cap).fontSize==='12px'&&cap.getBoundingClientRect().top>=im.getBoundingClientRect().bottom-1;}),credits:[...document.querySelectorAll('[data-learning-figure]')].every(e=>!e.querySelector('img').closest('a')&&e.querySelector('figcaption a[href^="https://"]')),series:[...document.querySelectorAll('a')].some(a=>a.href.includes('/posts/rl-robot-learning-ch02-control-mdp/'))})`);
+    assert(!geometry.overflow&&geometry.captions&&geometry.credits&&geometry.series,'Chapter 03 layout, credits and series link');
+    for (const [name,selector] of [['bc','[data-lecture-slide="P005"]'],['mixture','[data-lecture-slide="P025"]'],['latent','[data-learning-figure] img[src$="play-lmp-training-inference.png"]'],['elbo','[data-lecture-slide="P040"]'],['aggregation','[data-learning-figure] img[src$="data-aggregation.png"]']]) {
+      await evaluate(cdp,sessionId,`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'start',behavior:'instant'})`);
+      const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
+      fs.writeFileSync(`citation-audit/robot-learning-ch03-${name}-${width}.png`,Buffer.from(shot.data,'base64'));
+    }
+    console.log(`robot-learning-ch03: PASS ${width}px, 41 decoded slides, 4 decoded figures, 18 accessible display equations, ${structure.inline} inline equations`);
+  }
+
 }
