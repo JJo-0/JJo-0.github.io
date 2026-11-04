@@ -47,7 +47,7 @@ export async function auditRobotLearning(cdp, sessionId) {
     const geometry = await evaluate(cdp, sessionId, `({overflow:document.documentElement.scrollWidth>innerWidth+2,captions:[...document.querySelectorAll('.lecture-slide')].every(e=>{const im=e.querySelector('img'),cap=e.querySelector('figcaption');return !im.closest('a')&&getComputedStyle(cap).fontSize==='12px'&&cap.getBoundingClientRect().top>=im.getBoundingClientRect().bottom-1;}),series:[...document.querySelectorAll('a')].some(a=>a.href.includes('/posts/rl-robot-learning-ch01-introduction/'))})`);
     assert(!geometry.overflow && geometry.captions && geometry.series, 'Chapter 02 slide-first layout and chapter link');
     for (const [name, selector] of [['ik','[data-lecture-slide="P021"]'],['math','.math-display'],['simulation','[data-learning-figure] img[src$="pendulum-zero.gif"]']]) {
-      await evaluate(cdp,sessionId,`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'start',behavior:'instant'})`);
+      await evaluate(cdp,sessionId,`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center',behavior:'instant'})`);
       const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
       fs.writeFileSync(`citation-audit/robot-learning-ch02-${name}-${width}.png`,Buffer.from(shot.data,'base64'));
     }
