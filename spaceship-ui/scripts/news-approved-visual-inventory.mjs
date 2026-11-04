@@ -7,6 +7,7 @@ const inventoryBatches = new Map([
   ['2026-10-25', { count: 9, path: '../site/news-approved-visual-inventory-20261025.json' }],
   ['2026-10-28', { count: 3, path: '../site/news-approved-visual-inventory-20261028.json' }],
   ['2026-11-04', { count: 3, path: '../site/news-approved-visual-inventory-20261104.json' }],
+  ['2026-11-05', { count: 3, path: '../site/news-approved-visual-inventory-20261105.json' }],
 ]);
 
 export function validateVisualInventory(inventory, catalogue, readSource, { approvalDate = inventory.approvalDate } = {}) {
