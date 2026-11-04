@@ -51,4 +51,11 @@ for (const [id, item] of oct20) {
   checkedPosts.set(item.slug, filename);
 }
 assert.equal(checkedPosts.size, 3, 'Eight media rows resolve to three source posts');
-console.log('news-media-source-file: PASS custom/legacy resolution, invalid paths, slug matching, and 8 current registry records');
+// Every new registration must resolve before it reaches browser smoke checks.
+for (const [id, item] of Object.entries(media)) {
+  const filename = newsSourceFilename(item);
+  const source = fs.readFileSync(path.join(postsDirectory, filename), 'utf8');
+  assert.equal(newsSourceIdentity(item, source).effectiveSlug, item.slug,
+    `${id}: source frontmatter must establish the registered public route`);
+}
+console.log(`news-media-source-file: PASS custom/legacy resolution, invalid paths, and ${Object.keys(media).length} registry source identities`);
