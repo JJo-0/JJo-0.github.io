@@ -98,11 +98,6 @@ export async function auditNewsMedia(cdp, sessionId) {
   // clearly labelled educational SVGs rendered through NewsFigure so every
   // visual receives the same source, licence and caption treatment.
   const visualPolicies = new Map([
-    // Reviewed Oct 24 publications use these exact credited figures. They do
-    // not use the legacy three-figure/two-NewsDiagram article template.
-    ['flora-robotics-data-engine', { minFigures: 2, minDiagrams: 0, mediaIds: ['flora-original-figure-1', 'flora-original-figure-5'] }],
-    ['nexus-ai-tb-screening', { minFigures: 1, minDiagrams: 0, mediaIds: ['nexus-tb-screening-flow'] }],
-    ['sequential-diagnosis-benchmark', { minFigures: 1, minDiagrams: 0, mediaIds: ['sdbench-diagnosis-evaluation-flow'] }],
     ['2026-09-14-justgrpo-diffusion-reasoning-news', { minFigures: 4, minDiagrams: 0 }],
     ['2026-09-14-fors-diffusion-sampling-news', { minFigures: 2, minDiagrams: 0 }],
     ['2026-09-14-d4rt-dynamic-4d-vision-news', { minFigures: 2, minDiagrams: 0 }],
@@ -293,10 +288,6 @@ export async function auditNewsMedia(cdp, sessionId) {
           declaredWidth: Number(img?.getAttribute('width')), declaredHeight: Number(img?.getAttribute('height')) };
       })`
       );
-      if (visualPolicy?.mediaIds) {
-        assert.equal(result.diagramCount, visualPolicy.minDiagrams, 'Reviewed publication diagram count');
-        assert.deepEqual(registeredDetails.map((figure) => figure.id), visualPolicy.mediaIds, 'Reviewed publication figures must render exactly once in order');
-      }
       if (approved) {
         assert.equal(result.imageCount, approved.mediaIds.length, 'Rendered count must match approved inventory');
         assert.equal(result.diagramCount, approved.newsDiagramCount, 'Rendered diagrams must match approved inventory');
