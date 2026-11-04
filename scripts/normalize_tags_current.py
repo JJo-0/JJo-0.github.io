@@ -492,5 +492,12 @@ POST_TAXONOMY.update({
     "2026-11-03-unicorn-colon-cancer-news.mdx": Taxonomy("health-lifestyle", "colorectal-cancer-immunotherapy", "paper-review", ("frontier-candidate", "clinical-oncology", "colon-cancer", "immunotherapy")),
 })
 
+# Register November 4 drafts using their existing frontmatter.
+POST_TAXONOMY.update({
+    '2026-11-04-alscn-igo-mfmis-fefet-news.mdx': Taxonomy('finance-industry', 'ferroelectric-memory', 'paper-review', ('frontier-one', 'ferroelectric-memory', 'oxide-semiconductors', 'neuromorphic-computing')),
+    '2026-11-04-cryogenic-gaa-interconnect-news.mdx': Taxonomy('finance-industry', 'cryogenic-computing', 'paper-review', ('frontier-candidate', 'cryogenic-computing', 'gate-all-around', 'superconducting-interconnects')),
+    '2026-11-04-millisecond-in-sensor-olfaction-news.mdx': Taxonomy('robotics-embedded', 'in-sensor-computing', 'paper-review', ('frontier-candidate', 'in-sensor-computing', 'gas-sensors', 'edge-ai')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
