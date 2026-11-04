@@ -51,4 +51,13 @@ for (const [id, item] of oct20) {
   checkedPosts.set(item.slug, filename);
 }
 assert.equal(checkedPosts.size, 3, 'Eight media rows resolve to three source posts');
-console.log('news-media-source-file: PASS custom/legacy resolution, invalid paths, slug matching, and 8 current registry records');
+// Reviewed Oct 24 posts have short public slugs and dated source basenames.
+const oct24Ids = ['flora-original-figure-1', 'flora-original-figure-5', 'nexus-tb-screening-flow', 'sdbench-diagnosis-evaluation-flow'];
+for (const id of oct24Ids) {
+  const item = media[id];
+  const sourceFile = newsSourceFilename(item);
+  assert.deepEqual(newsSourceIdentity(item, fs.readFileSync(path.join(postsDirectory, sourceFile), 'utf8')), {
+    sourceFile, effectiveSlug: item.slug,
+  }, `${id}: reviewed publication route matches its source`);
+}
+console.log('news-media-source-file: PASS custom/legacy resolution, invalid paths, slug matching, and 12 Oct 20/24 registry records');
