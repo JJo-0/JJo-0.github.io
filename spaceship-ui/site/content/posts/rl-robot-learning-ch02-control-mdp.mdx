@@ -44,6 +44,8 @@ import Math from '@/components/post/Math.astro';
 
 평면 이동은 보통 위치 두 개 `(x, y)`와 방향 하나 `θ`로 표현한다. 이 자세들의 공간이 <strong>SE(2)</strong>다. 공간에서 움직이면 위치 `(x, y, z)`와 방향의 세 자유도가 필요하며 <strong>SE(3)</strong>를 사용한다. 여기서 자세(pose)는 위치(position)와 방향(orientation)을 함께 뜻한다. 드론의 높이만 알아서는 기울어진 방향까지 알 수 없다.
 
+[ETH 2강 2:17–5:35](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=137s)에서는 몸체가 늘어나지 않는다는 가정에서 출발해 이 표현을 만든다. 그래서 강체 모델은 단순한 그림이 아니라 예측에 쓰는 가정이다. 휘는 케이블이나 부드러운 물체를 다루면 변형을 별도로 모델링해야 한다. 또 자세의 자유도가 6이라는 말은 여섯 방향으로 원하는 만큼 즉시 움직일 수 있다는 뜻이 아니다. 실제 가능한 운동은 구동기와 접촉 제약에도 달려 있다.
+
 <LectureSlide lecture={2} page={5} caption="변환 행렬의 숫자는 무엇을 뜻하는가" />
 
 평면의 회전과 이동을 한 번에 계산하는 <strong>동차 변환 행렬</strong>은 다음과 같다. 슬라이드의 평면 식을 다시 적었다.
@@ -65,6 +67,12 @@ import Math from '@/components/post/Math.astro';
 여기서는 위 첨자가 도착 좌표계, 아래 첨자가 출발 좌표계다. 오른쪽 변환부터 적용하면 중간의 sensor가 맞물린다. 순서를 뒤집으면 일반적으로 다른 결과가 나온다. 로봇 팔에서도 베이스→어깨→팔꿈치→손목의 변환을 연결하는 같은 원리를 쓴다.
 
 센서와 베이스 사이의 관계를 알아내는 것이 외부 파라미터 보정의 한 역할이다. [Modern Robotics의 동차 변환 영상·스크립트](https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/) ([영상 1:51–2:49](https://www.youtube.com/watch?v=vlb3P7arbkU&t=111s))도 좌표 표현과 변환의 합성을 설명한다. 행렬을 곱할 때는 단위와 어느 방향의 변환인지부터 적어 두자.
+
+방향을 거꾸로 바꿀 때는 이동 벡터의 부호만 뒤집으면 될까? [Modern Robotics 1:24–2:49](https://www.youtube.com/watch?v=vlb3P7arbkU&t=84s)의 좌표계 설명을 따라가면, 먼저 역회전을 적용해야 함을 알 수 있다. 3차원 변환의 역은 다음과 같다.
+
+<Math tex={String.raw`T=\begin{bmatrix}R&t\\0&1\end{bmatrix},\qquad T^{-1}=\begin{bmatrix}R^\top&-R^\top t\\0&1\end{bmatrix}`} display label="역변환에서는 회전을 전치하고 이동 벡터에도 역회전을 적용한다" />
+
+`t`는 이동 벡터이며 시간 변수가 아니다. 앞의 90° 회전·`(1m, 2m)` 이동 예에서 A의 `(1m, 3m)`를 역변환하면 B의 `(1m, 0m)`로 돌아온다. 좌표가 맞지 않는지 점검할 때 알려진 점 하나를 왕복 변환해 보는 이유다. 위치를 나타내는 점에는 마지막 좌표 1을 붙이지만, 순수한 방향 벡터에는 0을 붙여 이동 성분이 더해지지 않도록 한다.
 
 <LectureSlide lecture={2} page={7} caption="링크·관절·말단 장치" />
 
@@ -114,6 +122,10 @@ import Math from '@/components/post/Math.astro';
 
 어떤 점이 이 영역 안에 있어도 원하는 방향으로 잡을 수 있는지, 장애물 없이 접근할 수 있는지는 별도 문제다. “컵이 팔 길이 안에 있다”는 조건만으로 집기가 가능한 것은 아니다. 손목 방향, 관절 한계, 팔꿈치와 테이블의 충돌도 확인해야 한다.
 
+두 링크 길이가 `l₁, l₂`인 이상적인 평면 2R 팔을 떠올려 보자. 관절 제한과 자기 충돌을 무시하면 손끝과 베이스 사이 거리는 `|l₁−l₂|`에서 `l₁+l₂` 사이다. 두 길이가 각각 1m라면 반지름 2m 원 안의 위치에 도달할 수 있지만, 그 모든 점에서 원하는 손 방향까지 만들 수 있는 것은 아니다.
+
+이 예에서 C-space의 두 숫자는 <strong>두 관절 각도</strong>이고, workspace의 두 숫자는 <strong>손끝의 평면 위치</strong>다. 차원이 둘로 같아도 서로 다른 공간이다. 뒤의 FK가 두 공간을 연결하며, IK에서 여러 답이 나오는 이유도 이 연결에 있다. [ETH 13:58–14:41](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=838s)의 “눈으로 본 컵은 작업 영역에, 실행은 관절 구성에 있다”는 설명을 이 예에 대응시킬 수 있다.
+
 <LectureSlide lecture={2} page={14} caption="물리 공간의 장애물이 관절 공간의 금지 영역이 되기까지" />
 
 왼쪽 파란 원은 실제 공간의 장애물이다. 오른쪽은 두 관절 각도의 조합 중 팔이 장애물과 부딪히는 영역을 칠한 것이다. 장애물 모양을 그대로 옮긴 그림이 아니라, <strong>팔 전체의 형상과 충돌 여부를 각도별로 계산한 결과</strong>다.
@@ -138,6 +150,10 @@ Franka의 팔 관절 구성은 7차원이고, 손의 위치·방향을 모두 �
 
 [강의 18:20–19:17](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1100s)의 커피잔 예처럼 손을 고정하고도 팔꿈치를 움직일 여지가 있다. <strong>널 공간(null space) 운동</strong>은 미소 운동의 관점에서 현재 과업 출력을 바꾸지 않는 관절 운동이다. 이 여유를 관절 한계 회피나 장애물과 거리 확보에 사용할 수 있다. 단순한 차원 차이 계산은 특이 자세나 추가 접촉 제약에서는 달라질 수 있다.
 
+손끝 위치를 `x=f(q)`라 할 때 미소 변화는 `Δx ≈ J(q)Δq`로 근사된다. 따라서 `J(q)Δq=0`인 관절 변화는 1차 근사에서 손끝을 움직이지 않는다. 널 공간이라는 말은 이 식의 0을 만드는 방향을 가리킨다. 유한한 크기로 한 번 움직였을 때도 손끝이 정확히 고정된다는 보장은 없으므로, 실제 제어에서는 현재 자세에서 다시 계산하며 목표를 유지한다.
+
+팔꿈치를 옮길 여지가 있다는 사실과 모든 장애물을 피할 수 있다는 사실도 구별하자. 충분한 여유 공간이나 가동 범위가 없다면 중복성이 있어도 충돌 없는 해를 찾지 못할 수 있다.
+
 <LectureSlide lecture={2} page={18} caption="순기구학: 관절에서 손끝으로" />
 
 <strong>순기구학(forward kinematics, FK)</strong>은 관절 구성 `q`를 알고 있을 때 말단 장치의 위치·방향을 계산한다. 링크 길이와 관절 축이 정해진 모델에서는 각 구성이 하나의 손 자세를 만든다. 기호로는 `x = f(q)`다.
@@ -160,6 +176,10 @@ Franka의 팔 관절 구성은 7차원이고, 손의 위치·방향을 모두 �
 
 [강의 20:42–21:30](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1242s)는 이를 오차를 줄이는 최적화 문제로 설명한다. 수치 해법은 초기 자세와 보폭에 따라 다른 결과를 낼 수 있다. 작은 손끝 오차를 얻었다고 해서 이동 경로의 충돌까지 해결된 것은 아니다.
 
+[Modern Robotics의 수치 IK 1:55–2:19, 4:24–4:42](https://www.youtube.com/watch?v=VhUA0jf7tI8&t=115s)는 시작 추정값에 따라 다른 해로 가거나, 기울기가 작은 곳에서 지나치게 큰 갱신이 생길 수 있음을 설명한다. 그래서 연속된 손끝 목표를 따라갈 때는 매번 임의의 관절 각도에서 다시 시작하기보다 <strong>직전에 구한 해를 다음 목표의 시작값으로 사용</strong>할 수 있다.
+
+예를 들어 손을 1cm씩 옮기는 동안 이전 목표와 다음 목표가 가깝다면, 이전 관절 구성도 다음 해의 좋은 출발점일 가능성이 크다. 다만 관절 한계나 특이 자세, 새 장애물 때문에 이 연속성이 깨질 수 있다. 초기화·종료 오차·최대 반복 횟수와 함께 목표 도달 여부를 확인해야 한다.
+
 <LectureSlide lecture={2} page={21} caption="야코비안으로 목표 쪽으로 조금씩 움직이기" />
 
 먼저 <strong>위치 목표만</strong> 다루어 `f(q)`와 목표 `x*`를 같은 유클리드 좌표의 벡터로 두자. 슬라이드의 `θ`를 관절 변수 `q`로 통일해 쓰면 다음과 같다.
@@ -171,6 +191,24 @@ Franka의 팔 관절 구성은 7차원이고, 손의 위치·방향을 모두 �
 오차가 `f(q)−x*`이므로 <strong>빼는 방향</strong>으로 갱신한다. 이는 야코비안 <strong>전치</strong>를 쓰는 경사 하강이며, 역행렬이나 의사역행렬을 바로 쓰는 방법과 다르다. 손의 회전까지 포함하려면 SE(3) 행렬을 무작정 빼기보다 회전 오차의 표현과 위치·회전의 상대 가중치를 정해야 한다.
 
 [강의 21:31–22:19](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1291s)와 아래 실행 예제의 수치 미분 대조를 함께 보면, 이 식이 단지 기호 조작이 아니라 관절을 어느 쪽으로 바꿀지 계산하는 규칙임을 확인할 수 있다.
+
+같은 야코비안을 쓰더라도 무엇을 계산하려는지에 따라 갱신식이 달라진다. [Modern Robotics 2:21–4:23](https://www.youtube.com/watch?v=VhUA0jf7tI8&t=141s)는 손끝 오차를 국소적인 선형 문제로 보고 의사역행렬로 풀어 나간다. 현재 절의 오차 `e=f(q)−x*`와 부호를 맞추기 위해 여기서는 목표 쪽의 변화량을 `Δx=x*−f(q)=−e`로 정의하자.
+
+<Math tex={String.raw`\begin{aligned}\Delta q_{\mathrm{pinv}}&=J^\dagger\Delta x\\\Delta q_{\mathrm{DLS}}&=J^\top(JJ^\top+\lambda^2I)^{-1}\Delta x\end{aligned}`} display label="목표 방향 오차에 의사역행렬 또는 감쇠 최소제곱 행렬을 적용해 관절 변화량을 구한다" />
+
+`J†`는 무어–펜로즈 의사역행렬이다. 국소 선형식의 해가 여러 개이면 가장 작은 유클리드 길이의 관절 변화를 고르고, 정확히 맞출 수 없으면 선형 잔차를 최소화한다. 이것은 전체 비선형 IK의 전역 최적해를 보장한다는 뜻이 아니다. DLS의 `λ`는 약한 방향의 과도한 갱신을 줄이는 감쇠 계수이며, `I`는 과업 차원에 맞는 단위 행렬이다.
+
+[NVIDIA Isaac Lab 공식 구현](https://github.com/isaac-sim/IsaacLab/blob/dc01ec356052f2acd04246752a92a55162f6cd68/source/isaaclab/isaaclab/controllers/differential_ik.py#L225)은 전치(`trans`), 의사역행렬(`pinv`), DLS(`dls`)를 서로 다른 선택지로 구현한다. 손끝 위치 오차와 야코비안을 받아 관절 변화량을 구한 뒤 현재 관절값에 더한다. 수식과 실제 코드가 만나는 부분이다.
+
+직접 계산한 2R 팔 예에서 두 링크는 각각 1m, 첫 관절은 0rad, 목표 변화량은 x축 −1mm로 두었다. DLS의 `λ=0.05`를 사용한 <strong>한 번의 선형 계산</strong> 결과는 다음과 같다.
+
+| 두 번째 관절 | 의사역행렬의 관절 변화 크기(rad) | DLS의 관절 변화 크기(rad) |
+|---|---:|---:|
+| π/2rad로 굽힘 | 0.001000 | 0.000995 |
+| 0.001rad로 거의 폄 | 2.236068 | 0.000179 |
+| 0rad로 완전히 폄 | 0 | 0 |
+
+거의 편 팔에서는 작은 손끝 변화를 선형식에 정확히 맞추려다 큰 관절 변화가 나올 수 있다. DLS는 이를 완화하는 대신 손끝 오차를 남길 수 있다. 완전히 편 경우 x축 안쪽 움직임은 이 자세의 1차 야코비안에 나타나지 않아 두 계산이 모두 0을 냈다. 목표가 물리적으로 불가능해서가 아니라, 해당 자세의 <strong>국소 선형화가 그 방향의 변화를 표현하지 못한 것</strong>이다. 작은 초기 굽힘이나 다른 탐색이 필요한 이유를 보여 준다. 이 표는 Isaac Lab을 실행한 결과가 아니라 공개 식을 별도 NumPy 계산으로 확인한 결과다.
 
 <LectureSlide lecture={2} page={22} caption="목표 관절 각도를 찾는 것과 실제로 가는 것은 다르다" />
 
@@ -187,6 +225,8 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 `sᵢ`는 0에서 1까지의 진행률이다. 한 관절을 0rad에서 1rad로 1초 동안 움직이고 `f=100Hz`라면 `N=100`, 양 끝을 포함한 지점은 101개다. 첫 목표는 0, 중간 목표는 0.5, 마지막 목표는 1rad다. 반올림 때문에 시간이 조정되는 구현에서는 실제 `Δt`도 함께 정해야 한다.
 
 모든 로봇의 `q`가 슬라이드 예처럼 6차원인 것은 아니다. 관절 수에 맞는 벡터를 사용하며, 회전 제한이나 각도 경계도 고려해야 한다. 이 단계는 목표 궤적을 만드는 것이지 실제 모터가 그 궤적을 따라갔다는 측정이 아니다.
+
+[ETH 22:22–23:54](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1342s)의 1cm 예제에서 확인할 연결은 <strong>손끝 목표 → IK 관절 목표 → 중간 관절 목표</strong>다. 중간 목표를 촘촘하게 만든다고 관측과 목표의 시간 정렬 문제가 사라지는 것은 아니다. 예를 들어 10Hz 정책이 내린 목표를 100Hz 제어기가 추종한다면 그 사이 열 번의 제어에서 어떤 목표를 쓰는지 정해야 한다. 목표를 유지할 수도 있고, 시간에 맞춰 보간할 수도 있다.
 
 <LectureSlide lecture={2} page={24} caption="위치는 이어져도 속도가 갑자기 바뀔 수 있다" />
 
@@ -214,6 +254,10 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 관절별 최대 속도와 가속도를 보고 `T`를 늘리거나 다른 시간 스케일링을 선택한다. 위치·속도·가속도가 연속이어도 저크까지 연속인 것은 아니므로 요구하는 운동 품질에 맞게 판단해야 한다.
 
+앞의 1rad 이동에서 허용 최고 속도가 1rad/s라면, 5차식의 속도 조건만 놓고 보아도 이동 시간은 최소 1.875초가 필요하다. 가속도나 토크 한계까지 넣으면 시간이 더 길어질 수 있다. [Modern Robotics 2:40–2:49](https://www.youtube.com/watch?v=0ZqeBEa_MWo&t=160s)가 강조하듯 운동의 빠르기는 곡선 모양뿐 아니라 이동 거리와 전체 시간에 달려 있다.
+
+따라서 같은 경로의 LERP와 5차식을 비교할 때는 시간과 이동량을 같게 두어야 한다. 표본을 더 많이 저장했다는 이유만으로 더 느리거나 부드럽게 움직였다고 해석할 수는 없다.
+
 <LectureSlide lecture={2} page={27} caption="PID: 계획한 궤적과 실제 측정의 차이를 고치기" />
 
 중력, 마찰, 하중 때문에 실제 관절은 목표 궤적에서 벗어난다. <strong>PID 제어</strong>는 목표와 측정의 차이를 반복해서 읽고 보정 명령을 계산한다. 여기서 오차는 목표에서 측정값을 뺀 값이다.
@@ -231,6 +275,14 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 이득을 무작정 크게 하면 진동하거나 구동 한계에 닿을 수 있다. 적분은 명령이 포화된 동안 계속 쌓이는 와인드업을 다뤄야 하고, 미분은 센서 잡음을 증폭할 수 있다. 제어 빈도를 바꾸면 `Δt`가 달라지므로 같은 이득 숫자의 결과도 다시 확인해야 한다.
 
 정책이 목표 관절 위치를 비교적 느리게 정하고, 하위 제어기가 더 빠르게 이를 추종하는 구성이 흔하다. 아래 공식 ETH 과제에서도 정책 호출과 물리 시뮬레이션 주기가 분리된다.
+
+적분항의 역할을 더 구체적으로 보자. [Modern Robotics의 토크 제어 강의 0:09–1:36](https://www.youtube.com/watch?v=992hdsGgVlE&t=9s)는 중력이 있는 한 관절의 고정 목표 추종을 다룬다. 제어기가 PD만 사용하고 정지한 채 중력 토크 `τg`를 버틴다고 하면, 미분항은 0이 되어 다음 평형 관계가 필요하다.
+
+<Math tex={String.raw`K_p e_{\mathrm{ss}}=\tau_g,\qquad e_{\mathrm{ss}}=\frac{\tau_g}{K_p}`} display label="중력 보상 없는 PD의 정지 평형에서는 비례항이 중력 토크를 만들기 위해 정상상태 오차가 남을 수 있다" />
+
+`e_ss`는 충분히 시간이 지난 뒤 남는 정상상태 오차다. 해당 자세에서 필요한 토크를 1N·m, `Kp=20N·m/rad`로 놓은 예에서는 0.05rad의 오차가 있어야 비례항이 그 토크를 낸다. 적분항은 과거 오차가 쌓인 값을 유지하므로 현재 오차가 0이 되어도 토크를 낼 수 있다. 이 설명은 고정 목표·포화 없는 안정된 평형을 위한 것이며 모든 로봇의 중력 효과를 상수 하나로 대체하는 모델은 아니다.
+
+[같은 영상 4:32–5:10](https://www.youtube.com/watch?v=992hdsGgVlE&t=272s)에서는 적분항을 넣은 뒤 정상상태 오차가 줄어들지만 오버슈트가 생기는 예를 보여 준다. 중력 모델로 필요한 토크를 미리 더하는 방법도 있다. 이처럼 오차를 줄이는 방법과 안정적으로 움직이는 조건을 함께 보아야 PID의 세 글자를 실제 움직임과 연결할 수 있다.
 
 <LectureSlide lecture={2} page={30} caption="움직일 줄 아는 것에서 다음 행동을 고르는 것으로" />
 
@@ -250,6 +302,8 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 [강의 30:45–33:23](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1845s)의 차이는 실행 뒤에 드러난다. 사진을 잘못 분류해도 사진 속 고양이는 바뀌지 않지만, 자동차가 잘못 꺾으면 다음 카메라 영상부터 달라진다. 그래서 정답 데이터에서 출력 하나를 맞히는 평가와, 실제 폐루프에서 계속 행동하는 평가는 다르다.
 
+[NTU의 RL 기초 5:00–6:28](https://www.youtube.com/watch?v=0oucZNfBXlI&t=300s)은 이 관측→행동 함수를 <strong>Actor</strong>라고 부른다. 여기서 함수를 찾는다는 말은 입력 한 장의 정답을 찾는 데서 끝나지 않는다. 그 함수로 환경에 행동하고, 바뀐 관측을 다시 받으며, 여러 단계의 보상 합을 높이는 규칙을 찾는 것이다. ETH의 `πθ`, NTU의 Actor, 아래 실습의 관측을 받아 토크를 계산하는 함수는 이 입출력 관점에서 연결할 수 있다. 다만 고정 PD 함수가 같은 인터페이스를 가진다고 보상으로 학습된 정책인 것은 아니다.
+
 <LectureSlide lecture={2} page={33} caption="상태를 받는 정책과 관측을 받는 정책" />
 
 시점 `t`의 상태를 `sₜ`, 관측을 `oₜ`, 행동을 `aₜ`라고 쓰자. 신경망 가중치 `θ`로 정의한 확률적 정책은 다음처럼 적을 수 있다.
@@ -268,6 +322,12 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 [DeepMind/UCL 1강 43:52–45:17](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2632s)의 벽을 바라보는 카메라 로봇도 같은 문제다. 뒤쪽을 조금 전에 봤다는 이력이 다음 행동에 중요할 수 있다. 이때 다루는 확장은 <strong>부분 관측 MDP(POMDP)</strong>다.
 
+다음은 [UCL 1강 PDF 38쪽](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=38)의 실제 도식이다. 전체 지도를 보는 대신 주변 일부만 관측하면 두 위치를 구분하지 못할 수 있다.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch02-control-mdp/ucl-observation-aliasing.png" alt="UCL 미로의 서로 다른 두 위치에서 같은 모양의 국소 관측이 나타나는 원본 도식" caption="UCL 1강 38쪽 — 서로 다른 위치가 구분되지 않는 관측을 만들 수 있다. 원본 도식 부분 발췌." source="https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=38" credit="Hado van Hasselt, DeepMind × UCL 및 해당 권리자" width={640} height={680} maxWidth={420} />
+
+[영상 47:31–51:08](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2851s)은 오른쪽 위에서 출발해 왼쪽 위로 가는 과제를 제시한다. 강조된 두 관측은 같지만, 오른쪽 위치에서는 아래로 돌아가야 하고 왼쪽 위치에서는 위로 가야 한다. 관측 하나만 받는 함수는 두 상황에 서로 다른 답을 낼 근거가 없다. 이전 관측을 하나 붙이는 방법도 이 미로에서는 항상 충분하지 않다. 필요한 것은 프레임 수를 기계적으로 늘리는 일이 아니라, <strong>현재 상황을 구별하는 데 필요한 이력을 상태 표현에 담는 일</strong>이다.
+
 <LectureSlide lecture={2} page={35} caption="마르코프 성질은 과거를 무시하라는 말이 아니다" />
 
 현재 상태와 행동을 알고 있을 때, 더 오래된 이력을 추가해도 다음 상태의 조건부 분포가 달라지지 않으면 마르코프 성질을 만족한다. 제어된 과정의 형태로 쓰면 다음과 같다.
@@ -277,6 +337,10 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 예를 들어 관절 <strong>각도만</strong> 같아도 관절 속도가 다르면 다음 위치가 달라진다. 이 모델에서 각도만 상태로 두는 것은 정보가 부족할 수 있다. 각도와 속도, 관련 물체 상태 등을 함께 넣어야 하는 이유다. 필요 정보가 현재 상태에 압축돼 있다는 조건이며, 과거 관측을 버리는 것이 언제나 옳다는 명령이 아니다.
 
 [강의 34:52–36:00](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2092s)와 [UCL 40:49–43:17](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2449s)은 이 조건을 설명한다. 마르코프성이 성립해도 전이가 확률적일 수 있다. <strong>현재 정보가 충분하다</strong>와 <strong>미래 결과가 하나로 결정된다</strong>는 다른 주장이다.
+
+제어기의 기억도 같은 관점에서 읽을 수 있다. 현재 관절 각도와 속도가 같아도 적분기 안에 쌓인 값이 다르면 PID가 다른 명령을 낸다. PID 자체를 현재 관절 측정만 받는 무기억 함수라고 모델링하면 이 차이를 놓친다. 제어기까지 포함한 시스템을 예측할 때는 적분 누적값이나 필요한 이전 오차도 상태에 포함할지 검토해야 한다.
+
+즉 “충분한 상태”는 항상 세계 전체를 문자 그대로 복사한 것이 아니라, <strong>무슨 시스템을 어느 시간 간격으로 예측할지에 맞춘 정보의 선택</strong>이다. [ETH 34:52–36:00](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2092s)의 상태·행동 그래프를 실제 제어 코드에 적용하면 이 질문으로 이어진다.
 
 <LectureSlide lecture={2} page={36} caption="상태·행동·비용의 다른 표기 만나기" />
 
@@ -301,6 +365,18 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 다른 책에서 같은 전이의 보상을 `rₜ₊₁`이라고 부를 수 있다. 계산 전에 첨자의 약속을 맞추면 된다. 보상이 확률적으로 발생하는 더 일반적인 모델도 가능하다. MDP를 정의했다고 좋은 정책을 이미 구한 것은 아니다. 이 틀 안에서 어떤 경험을 모으고 정책을 어떻게 개선할지가 학습 알고리즘의 몫이다.
 
+[David Silver 2강의 학생 마르코프 연쇄](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf#page=7)는 상태와 전이를 읽는 연습에 좋다.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch02-control-mdp/silver-student-chain.png" alt="Class 1·Class 2·Class 3·Facebook·Pub·Pass·Sleep 사이의 전이 확률을 표시한 David Silver 학생 마르코프 연쇄 원본 도식" caption="David Silver 2강 7쪽 — 행동을 도입하기 전의 마르코프 연쇄. 화살표 숫자는 다음 상태의 조건부 확률이다. 원본 도식 부분 발췌." source="https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf#page=7" credit="David Silver, UCL · 저자 강의 자료 CC BY-NC 4.0, 포함 제3자 자료 제외" width={834} height={624} />
+
+[영상 7:28–8:55](https://www.youtube.com/watch?v=lfHX2hHRMVQ&t=448s)에서 Class 2에 있으면 Class 3으로 갈 확률은 0.8, Sleep으로 갈 확률은 0.2다. 이 그림에는 아직 행동 선택이 없다. [같은 강의 43:37–46:24](https://www.youtube.com/watch?v=lfHX2hHRMVQ&t=2617s)는 Study·Sleep 같은 선택을 넣어 MDP로 확장한다. 에이전트가 무엇을 선택했는지에 따라 다음 상태의 분포가 달라지는 것이다.
+
+정책까지 고정하면 그 정책이 만드는 전이를 계산할 수 있다. 이산 행동에서 다음 식은 행동별 전이를 정책의 행동 확률로 가중 평균한다.
+
+<Math tex={String.raw`P^\pi(s^\prime\mid s)=\sum_a\pi(a\mid s)P(s^\prime\mid s,a)`} display label="고정 정책 아래의 상태 전이는 각 행동의 선택 확률로 행동별 전이를 평균한 것이다" />
+
+별도 예를 들어, 상태 A에서 왼쪽 행동은 A/B로 0.8/0.2, 오른쪽 행동은 A/B로 0.1/0.9의 확률로 옮긴다고 하자. 정책이 왼쪽을 0.75, 오른쪽을 0.25로 고르면 다음 상태 A의 확률은 `0.75×0.8 + 0.25×0.1 = 0.625`, B는 0.375다. <strong>정책의 무작위 선택과 환경의 무작위 결과를 나누어 적고 합치는 예</strong>다.
+
 <LectureSlide lecture={2} page={38} caption="연속 상태 공간에서는 모든 경우를 표로 저장할 수 없다" />
 
 격자 칸이나 보드 게임의 경우 상태를 이산적인 경우들로 나타낼 수 있다. 반면 관절 각도·속도와 물체 위치는 연속적인 값으로 모델링하는 경우가 많다. 센서 숫자가 유한 정밀도로 저장된다는 사실과, 문제를 연속 공간으로 다룬다는 선택은 양립한다.
@@ -312,6 +388,14 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 왼쪽·오른쪽 중 하나를 고르는 것은 이산 행동이다. 관절 토크를 실수로 고르는 것은 연속 행동이다. 같은 로봇도 인터페이스에 따라 어느 쪽을 쓸 수 있다. 환경이 행동을 어떻게 해석하는지 알아야 정책 출력을 읽을 수 있다.
 
 `0.5`가 0.5rad의 목표인지, 정규화된 범위의 중간값인지, 0.5N·m의 토크인지 구분하자. 같은 위치 변화량을 매 0.01초 적용하는 것과 매 0.1초 적용하는 것도 다르다. 정책 주기, 하위 제어 주기, 물리 계산 간격을 함께 기록해야 움직임을 재현할 수 있다.
+
+ETH HW2의 [행동 처리 함수 설명](https://github.com/mees-robot-learning-course/ethz-course-2026/blob/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw2_robot_control_mdps/exercises/ex3.py)은 정규화된 `a∈[−1,1]`을 관절 범위로 바꾼다. 한 관절의 허용 하한·상한이 `q_min, q_max`라면 선형 대응은 다음처럼 적을 수 있다.
+
+<Math tex={String.raw`q_{\mathrm{target}}=q_{\min}+\frac{a+1}{2}(q_{\max}-q_{\min})`} display label="정규화된 행동 -1, 0, 1을 관절 범위의 하한, 중간, 상한으로 대응시킨다" />
+
+예제 범위가 `[−1rad, 2rad]`라면 행동 `−1, 0, 1`은 각각 목표 `−1rad, 0.5rad, 2rad`다. 이때 행동 0은 관절 각도 0도, 토크 0도 아니다. 입력이 범위를 벗어날 수 있다면 제한 처리도 필요하다.
+
+[MuJoCo의 구동기 문서](https://mujoco.readthedocs.io/en/stable/XMLreference.html#actuator-position)는 위치 서보가 위치 목표를 받아 힘을 계산하는 구조를 설명한다. 단위 기어비의 단순 회전 관절이라면 위치 이득이 목표와 현재 각도의 차이에 작용하고, 감쇠 항은 운동을 줄인다. 따라서 같은 `data.ctrl`에 숫자를 써도 XML의 motor와 position 설정에 따라 뜻이 달라진다. 정책 출력이 실제 입력으로 바뀌는 경계를 확인해야 한다.
 
 <LectureSlide lecture={2} page={40} caption="전이의 불확실성과 센서의 불확실성" />
 
@@ -331,6 +415,10 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 [강의 40:29–41:48](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2429s)의 두 시연은 해당 실험에서 보상 신호가 학습에 영향을 준다는 예다. 밀집 보상이 모든 문제에서 더 좋은 최종 정책을 보장한다거나 희소 보상이 학습 불가능하다는 결론은 아니다. 보상을 측정할 성공 판정기와 센서가 있는지도 실제 시스템에서는 중요한 조건이다.
 
+[NTU 모방학습 강의 3:29–4:36](https://www.youtube.com/watch?v=9H3ShV57lHs&t=209s)은 접시를 지정 위치에 옮겼지만 거칠게 던져 깨뜨리는 사례를 설명한다. 위치 도달만 보상하면 파손을 피하는 조건은 목적에 들어가지 않는다. 이는 “강화학습이 실수를 했다”는 한 문장보다 <strong>원하는 작업과 숫자로 적은 목적이 일치하는가</strong>라는 질문으로 읽는 편이 유용하다.
+
+컵 집기에서도 손–컵 거리는 가까워지기만 하면 좋아지지만, 컵을 들었는지·기울여 흘렸는지·옮긴 뒤 놓았는지까지 표현하지 못한다. 보상 항을 더할 때는 서로 다른 단위와 크기도 보아야 한다. 미터 단위 거리를 센티미터로 바꾸면서 계수를 유지하면 수치 비중이 달라진다. 어떤 보상이 오르는지와 별도로 성공률, 접촉·충돌, 소요 시간을 측정하면 목적에 빠진 행동을 발견하기 쉽다.
+
 <LectureSlide lecture={2} page={42} caption="궤적의 확률은 어디에서 생기는가" />
 
 하나의 궤적은 시작 상태에서 행동하고 다음 상태로 이동한 기록의 연속이다. `H`번 행동한 기록을 `τ=(s₀,a₀,s₁,…,aₕ₋₁,sₕ)`라고 쓰자. 슬라이드의 곱을 같은 의미로 적으면 다음과 같다.
@@ -341,6 +429,10 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 [강의 41:51–43:02](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2511s)처럼 정책만 바꿔도 궤적의 분포가 달라진다. 연속 변수에서는 위 기호를 확률 <strong>밀도</strong>로 해석해야 하며, 정확한 실수 좌표 한 점의 확률과 혼동하면 안 된다. 현재 식은 상태를 조건으로 행동하는 정책에 대한 식이다. 관측을 사용하는 POMDP에서는 관측 생성 과정과 정책의 이력 의존성도 포함해야 한다.
 
+여기서 전이 `P`가 어느 한 단계의 전이인지도 명시해야 한다. 정책이 목표를 내고 하위 제어기가 여러 번 실행한 뒤 다음 관측을 받는다면, 정책이 보는 한 단계의 전이는 그 사이 제어·물리 계산을 모두 포함한다. 물리 시뮬레이터의 1회 적분과 정책의 1회 의사결정이 같은 단위라는 보장은 없다.
+
+같은 하드웨어라도 하위 제어 이득이나 행동 유지 시간을 바꾸면 정책이 겪는 전이도 달라질 수 있다. 따라서 궤적 데이터를 비교할 때 상태·행동 열 이름뿐 아니라 명령 단위, 시간 간격, 실행 제어기를 함께 기록해야 한다.
+
 <LectureSlide lecture={2} page={43} caption="시간 제한과 할인율도 문제 정의의 일부다" />
 
 유한 구간 문제에서는 `H`단계 안에 작업을 끝내야 한다. 같은 위치라도 100단계가 남았을 때와 1단계가 남았을 때 최선의 행동은 다를 수 있다. 남은 시간을 상태에 넣거나 시간에 따라 달라지는 정책을 사용해야 이 차이를 표현할 수 있다.
@@ -348,6 +440,16 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 종료 시간을 미리 정하지 않은 문제에는 <strong>할인율 γ</strong>를 사용할 수 있다. `0≤γ<1`이면 먼 미래의 보상을 점점 작게 가중한다. 보상이 유계이면 무한 합을 유한하게 만드는 역할도 한다. `γ=0`은 즉시 보상만 보고, 1에 가까울수록 먼 미래를 더 크게 반영한다. 종료가 보장되는 에피소드에서는 `γ=1`인 비할인 합을 쓰기도 한다.
 
 [강의 43:06–44:47](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2586s)의 5초 제한 예는 시간 자체가 전략을 바꾼다는 설명이다. 실습 API에서도 <strong>과업의 종료(terminated)</strong>와 <strong>외부 시간 제한으로 중단(truncated)</strong>을 구분한다. “200번 실행했으니 성공했다”처럼 해석해서는 안 된다.
+
+제어 빈도와 할인율도 연결된다. 10Hz에서 `γ=0.99`를 쓰면 1초 뒤 보상의 가중치는 `0.99¹⁰ ≈ 0.9044`다. 이를 100Hz로 바꾸고 같은 숫자 0.99를 유지하면 1초 뒤 가중치는 `0.99¹⁰⁰ ≈ 0.3660`이 된다. 초당 행동 횟수를 바꾸는 것만으로 실제 시간에 대한 선호가 크게 달라질 수 있다.
+
+1초 뒤의 할인 가중치를 맞추려면 새 단계 할인율을 다음처럼 대응시킬 수 있다. 이는 지수 할인에 대한 설명용 환산식이다.
+
+<Math tex={String.raw`\gamma_{\mathrm{new}}=\gamma_{\mathrm{old}}^{\Delta t_{\mathrm{new}}/\Delta t_{\mathrm{old}}}`} display label="시간 간격이 달라질 때 같은 물리적 시간의 할인 가중치를 유지하도록 단계 할인율을 환산한다" />
+
+위 예에서는 `γ_new=0.99⁰·¹ ≈ 0.998995`다. 이것만으로 서로 다른 시뮬레이션 설정의 목적 전체가 같아지는 것은 아니다. 한 단계 보상이 시간당 비용인지, 성공 이벤트인지에 따라 보상 누적 방식과 종료 조건도 함께 맞춰야 한다.
+
+[Gymnasium의 시간 제한 설명](https://gymnasium.farama.org/tutorials/gymnasium_basics/handling_time_limits/)은 과업에 내재한 유한 시간과 외부에서 실행을 자르는 제한도 구별한다. 남은 시간이 과업 결과를 바꾸는 경우에는 그 정보를 상태 표현에 담아야 한다. 반면 평가 편의를 위해 외부에서 자른 마지막 관측을 원래 과업의 종료 상태로 단정해서는 안 된다.
 
 <LectureSlide lecture={2} page={44} caption="한 번 받은 점수에서 좋은 정책의 정의로" />
 
@@ -360,6 +462,10 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 세 단계의 보상이 `[0, 0, 1]`이고 `γ=0.9`이면 리턴은 <strong>0.81</strong>이다. 당장 0점을 받은 첫 행동도 마지막 성공을 준비했을 수 있다. 무작위성이 있는 문제에서는 운 좋게 한 번 성공한 실행과 평균적으로 잘하는 정책을 구분해야 한다. [강의 44:51–45:57](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2691s)는 이 기대값을 학습 목표로 연결한다.
 
 보상을 어떻게 정했는지가 여기까지 그대로 이어진다. 빠르기만 보상하면 충돌이 목적에서 빠질 수 있고, 손의 거리만 보상하면 실제 집기가 목적에서 빠질 수 있다. <strong>좋은 정책은 우리가 적어 둔 문제의 목적에 대해 좋은 정책</strong>이므로, 수식을 최적화하기 전에 목적이 원하는 행동을 표현하는지 확인해야 한다.
+
+`J(π)`가 정책 전체를 비교하는 점수라면, 가치 함수는 특정 상태에서 시작했을 때의 기대 리턴을 묻는다. [David Silver PDF 28쪽](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf#page=28)의 `vπ(s)`는 상태 s에서 이후 정책 π를 따르는 경우, `qπ(s,a)`는 첫 행동 a를 지정하고 이후 π를 따르는 경우다. 보상, 한 번의 리턴, 기대 리턴을 같은 숫자로 읽지 않는 것이 이후 알고리즘의 출발점이다.
+
+이 장에서는 최적 정책이 무엇을 뜻하는지까지 문제를 정의했다. 최댓값을 나타내는 수식을 썼다는 사실만으로 그 정책을 계산할 수 있게 된 것은 아니다. 다음 장의 시연을 이용하는 학습과 뒤의 강화학습 알고리즘들은 이 입출력과 목적을 가진 정책을 구하는 서로 다른 방법으로 이어진다.
 
 ## 실제 시뮬레이션에서 관측·행동·보상 확인하기
 
@@ -398,7 +504,7 @@ for _ in range(200):
 env.close()
 ```
 
-[실행 파일·환경 버전·CSV·수치 검증 결과](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/02-control-mdp)를 함께 공개했다. 좌표 변환 예제, 2R 팔의 두 IK 해, 야코비안 기울기의 수치 미분, 5차식의 경계 조건, PID 계산, 궤적 확률과 리턴을 검사한 결과도 들어 있다.
+[실행 파일·환경 버전·CSV·수치 검증 결과](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/02-control-mdp)를 함께 공개했다. 좌표 변환 예제, 2R 팔의 두 IK 해, 야코비안 기울기의 수치 미분, 5차식의 경계 조건, PID 계산, 궤적 확률과 리턴을 검사한 결과도 들어 있다. 추가 계산 파일 `supplement_checks.py`에는 특이 자세의 의사역행렬·DLS 비교, 역변환, 정책 전이 혼합, 행동 범위와 할인율 환산의 수치 검사 8개를 남겼다.
 
 ## 로봇 팔 실습으로 이어가기
 
@@ -412,7 +518,7 @@ ETH의 [공식 HW2](https://github.com/mees-robot-learning-course/ethz-course-20
 
 공식 설명에서 Exercise 3의 정책은 <strong>10Hz</strong>, 물리 계산은 <strong>500Hz</strong>이며 한 정책 행동 사이에 물리 계산을 50번 한다. <strong>Exercise 2의 `data.ctrl`은 토크 입력이고 Exercise 3에서는 관절 목표로 해석된다.</strong> 같은 변수 이름이라도 로드된 구동기 모델에 따라 뜻이 달라진다. 위 표는 공개 과제와 코드를 읽는 안내이며, 이 글에서 공식 SO-101 과제를 훈련하거나 실물 로봇을 구동한 결과는 아니다.
 
-더 큰 병렬 시뮬레이션 환경은 [NVIDIA Isaac Lab 공식 튜토리얼](https://isaac-sim.github.io/IsaacLab/main/source/tutorials/index.html)에서 이어갈 수 있다. 먼저 관측·행동·물리 계산·보상의 경계를 읽을 수 있게 된 뒤 규모를 늘리면, 설정이 바뀌어도 문제의 구조를 따라가기 쉽다.
+더 큰 병렬 시뮬레이션 환경은 [NVIDIA Isaac Lab 공식 실습 안내](https://isaac-sim.github.io/IsaacLab/main/source/how-to/index.html)에서 이어갈 수 있다. 먼저 관측·행동·물리 계산·보상의 경계를 읽을 수 있게 된 뒤 규모를 늘리면, 설정이 바뀌어도 문제의 구조를 따라가기 쉽다.
 
 다음 03장에서는 보상으로 시행착오를 시작하기 전에 <strong>전문가의 행동을 보고 정책을 배우는 모방학습</strong>을 살펴본다. 현재 관측에서 시연 행동을 맞히는 학습이 실제 실행에서 왜 어려워지는지가 이번 장의 순차적 의사결정과 연결된다.
 
@@ -422,6 +528,10 @@ ETH의 [공식 HW2](https://github.com/mees-robot-learning-course/ethz-course-20
 - [강의 슬라이드 이미지 사본](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-02). P번호는 이 사본의 파일 순서다. 운영 안내와 전환·마무리 전용 장은 생략했다.
 - [Lynch·Park — Modern Robotics, 동차 변환](https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/) · [시간 스케일링](https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/). 영상과 공식 스크립트를 함께 제공한다.
 - [Hado van Hasselt — DeepMind × UCL 2021, Introduction to RL](https://www.youtube.com/watch?v=TCCjZe0y4Qc) · [강의 PDF](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf)
+- [Modern Robotics — 수치 역기구학](https://modernrobotics.northwestern.edu/nu-gm-book-resource/6-2-numerical-inverse-kinematics-part-1-of-2/) · [중력 아래 PD/PID 토크 제어](https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-2-of-3/)
+- [David Silver — UCL 2015 MDP 원본 강의 PDF](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf) · [Google DeepMind 공개 강의 영상](https://www.youtube.com/watch?v=lfHX2hHRMVQ) · [저자 강의·이용 조건](https://www.davidsilver.uk/teaching/)
+- [NVIDIA Isaac Lab — Differential IK](https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.controllers.html#differential-inverse-kinematics) · [MuJoCo — 구동기 설정](https://mujoco.readthedocs.io/en/stable/XMLreference.html#actuator-position)
+- [Hung-yi Lee — NTU RL 기초](https://www.youtube.com/watch?v=0oucZNfBXlI) · [보상 설계·모방학습](https://www.youtube.com/watch?v=9H3ShV57lHs)
 - [Farama Foundation — Gymnasium Pendulum 문서](https://gymnasium.farama.org/environments/classic_control/pendulum/) · [ETH HW2 원본 코드](https://github.com/mees-robot-learning-course/ethz-course-2026/tree/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw2_robot_control_mdps)
 
 강의 슬라이드의 저작권은 <strong>Oier Mees 및 각 자료의 해당 권리자</strong>에게 있다. 슬라이드에 포함된 Modern Robotics, ABB, Latombe, LaValle 등의 도표·사진은 각 원저작자의 자료다. 이 글의 설명용 2R 팔, 보상·확률 계산과 직접 생성한 그래프는 개념을 풀어 쓴 별도 예제다.
