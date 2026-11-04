@@ -500,6 +500,7 @@ POST_TAXONOMY.update({
 })
 
 POST_TAXONOMY.update({
+    "rl-robot-learning-ch02-control-mdp.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "robot-control", "mdp", "eth-zurich")),
     "rl-robot-learning-ch01-introduction.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "eth-zurich", "study")),
 })
 
