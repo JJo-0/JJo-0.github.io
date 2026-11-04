@@ -1,8 +1,8 @@
 ---
-title: 메모리 안에서 6만5536점 FFT를 계산하다
-description: Cooley–Tukey 분할을 SONOS 인메모리 배열에 옮겨, 직접 행렬곱의 제곱 스케일링을 피한 아날로그 FFT의 실제 칩 증거와 한계를 분석한다.
-pubDate: 2026-10-21T00:00:00+09:00
-updatedDate: 2026-10-21
+title: "메모리 안에서 6만5536점 FFT를 계산하다"
+description: "전하 포획형 비휘발성 SONOS 메모리에서 FFT(고속 푸리에 변환)를 계산한 연구를 살펴본다. 실제 칩의 오디오·영상 변환과 모델 기반 응용 결과를 나눠, ADC 비용과 정확도 한계를 설명한다."
+pubDate: 2026-10-21
+updatedDate: 2026-10-28
 publicationTimeZone: Asia/Seoul
 slug: 2026-10-21-analog-fft-sonos-news
 category: software-engineering-cs
@@ -14,80 +14,125 @@ tags:
   - signal-processing
   - semiconductor
 researchFeatured: false
-draft: true
+featured: false
+draft: false
 lang: ko
 ---
 
+import NewsFigure from '@/components/post/NewsFigure.astro';
 import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
 
-> **SELECTED · 연구 작업본.** 기준일 2026-10-21 KST, 점수 95/100(문제 19·새로움 15·증거 24·파급 18·최신성 10·설명성 9, 감점 0), 증거 등급 `PEER_REVIEWED_FRONTIER`. Nature Electronics 최종판은 2026년 10월 19일 공개됐다. 아래 실험 수치는 저자 칩과 저자 시뮬레이션의 범위를 넘겨 일반화하지 않는다.
+## 한 문장 결론
 
-## 1. 한 문장 결론
+이산 푸리에 변환(DFT)은 시간 신호의 표본을 주파수 성분으로 바꾸는 계산이다. 고속 푸리에 변환(FFT)은 같은 DFT를 더 작은 단계로 나누어 계산하는 알고리즘이다. SONOS는 실리콘·산화막·질화막·산화막·실리콘 적층을 이용해 전하를 저장하는 비휘발성 플래시 메모리다. 이 연구는 SONOS 메모리 배열에서 FFT 단계를 수행해, 한 배열에 직접 담기 어려운 큰 변환을 처리했다. 실제 제작 배열에서 최대 65,536점 FFT를 시연했고 1D 음성과 2D 영상 변환도 측정했다. 다만 큰 응용의 정확도·전력·면적 결과는 동일한 칩에서 완성 제품 조건으로 잰 값이 아니라 검증된 오차 모델과 설계 코어의 시뮬레이션이다.
 
-**이 연구는 Cooley–Tukey FFT의 분할 구조를 SONOS(charge-trapping flash) 인메모리 배열에 옮겨, 직접 DFT 행렬곱이 큰 변환에서 겪는 에너지·면적의 제곱 증가를 피하고 65,536점 아날로그 FFT를 실제 배열에서 계산했다.** 다만 대규모 응용의 전력·면적 우위는 완성 제품 측정이 아니라 보정된 코어 모델에 의존한다.
+이 기술 해설은 공개 arXiv v3와 출판사 보충자료를 바탕으로 하며, 최종 출판본의 음성 실험 조건과 핵심 수식을 추가 대조했다.
 
-## 2. 왜 어려운가
+## 파형을 주파수로 바꾸는 일
 
-센서 신호를 주파수로 바꾸는 DFT는 레이더, 음성, 통신의 공통 전처리다. 아날로그 인메모리 컴퓨팅(analogue in-memory computing, IMC)은 저항성 배열에서 행렬–벡터곱을 병렬로 수행하지만, N점 DFT 행렬 전체를 저장하면 배열과 ADC 변환 수가 빠르게 불어난다.
+마이크와 센서는 시간에 따라 달라지는 신호를 기록한다. 소리라면 공기의 압력이 표본마다 달라지고, 영상이라면 위치마다 밝기가 달라진다. 신호를 주파수 성분으로 옮기면 어떤 빠르기의 진동이 얼마나 들어 있는지 볼 수 있다. DFT는 음성 인식, 레이더, 통신처럼 시간 신호에서 구조를 찾는 계산의 앞단에 자주 놓인다.
 
-디지털 FFT는 대칭을 이용해 연산량을 줄인다. 그런데 아날로그 칩의 비용 중심은 곱셈 횟수보다 배열 밖 ADC, 버퍼, 중간 결과 이동이다. 디지털에서 최적인 작은 radix를 그대로 복사하면 오히려 변환과 저장 단계가 늘 수 있다.
+그림 1은 N=64인 실수 합성 신호 x[n]=0.7 sin(2π·4n/64)+0.4 sin(2π·11n/64)의 설명용 예다. 위쪽은 표본, 아래쪽은 실수 입력에서 양의 주파수만 보인 단측 DFT 크기(|Xₖ|, k=0…32)를 최댓값 기준으로 표시했다. 봉우리 k=4와 11은 각각 관찰 창 안의 4회·11회 진동이다. 논문 측정 데이터는 아니다.
 
-## 3. 기초 개념
+<NewsFigure media="oct21-analog-fftsonos-dft-intuition" />
 
-N점 DFT의 k번째 출력은 다음과 같다.
+DFT는 입력 표본에 복소수 가중치를 곱해 더한다. 복소수는 실수부와 허수부를 함께 적는 수로, 크기와 위상을 한 번에 다룰 수 있게 한다. 여기서 복소 가중치는 주파수마다 다른 회전량을 뜻한다. 결과 X의 k번째 값은 관찰 창에 k주기가 놓이는 성분이다. N은 표본 수이고 n과 k는 표본·주파수의 번호다. 원문 식은 정규화하지 않으므로 x가 전압이면 X도 전압 단위이며, 평균 진폭을 말할 때에는 별도로 N으로 나눈다.
 
-<Math display tex={"X_k=\\sum_{n=0}^{N-1}x_n e^{-i2\\pi nk/N}"} />
+<CandidateEquation id="analog-fft-eq1-dft" title="원문 식 1 · 표본을 주파수 성분으로 합산" tex={"X_k=\\sum_{n=0}^{N-1}x_n e^{-i2\\pi nk/N}"}>
+<p>이 식은 각 표본 x<sub>n</sub>에 주파수 k에 맞는 복소 회전량을 곱해 모두 더한다. i는 i²=−1인 허수 단위이고, 지수의 각도 −2πnk/N은 무차원 라디안이므로 e<sup>−i2πnk/N</sup>는 크기 1인 복소 회전수다. x<sub>n</sub>과 X<sub>k</sub>는 표본 진폭과 같은 종류·단위이며, 원문 식에는 1/N 정규화가 없다. 식 자체는 논문에 적힌 DFT 정의이며, 이번 연구의 새 알고리즘은 다음 식들처럼 이를 잘게 나누어 배열에 올리는 데 있다.</p>
+</CandidateEquation>
 
-직접 방식은 이 식을 복소 DFT 행렬과 입력 벡터의 한 번의 큰 행렬곱으로 본다. 연구진은 <Math tex={"N=N_1N_2"} />로 쪼개 두 개의 작은 DFT와 원소별 twiddle factor 곱으로 바꿨다. 배열 하나가 처리할 수 있는 최대 radix를 K라 하면 큰 변환의 ADC·에너지 경향은 직접 방식의 <Math tex={"O(N^2)"} />에서 아날로그 FFT의 <Math tex={"O(N\\log_K N)"} />로 바뀐다. 이는 측정값 하나가 아니라 저자 시스템 모델의 점근식이다.
+**표본에서 주파수까지 계산해 보자.** 초당 8,000번 표본을 받고, 2,000 Hz 코사인을 8개 기록한다고 하자. 표본 사이 간격은 1/8,000초이고 전체 기록은 1 ms다. 이 구간에는 코사인 두 주기가 들어간다. 표본은 `x[n]=cos(2π·2000n/8000)=[1, 0, −1, 0, 1, 0, −1, 0]`이다. 8점 DFT의 주파수 간격은 `fₛ/N=8,000/8=1,000 Hz`이므로 k=2가 2,000 Hz를 나타낸다. 식 1에서 k=2일 때, 0이 아닌 표본 n=0,2,4,6은 각각 복소 회전 가중치와 곱해 `+1`이 된다. 나머지 네 표본 값은 0이므로 `X₂=1+1+1+1=4`다. 실수 신호라 반대편 k=6에도 켤레 성분 4가 나타난다. 이 정규화하지 않은 DFT에서 코사인 진폭은 `2|X₂|/N=2·4/8=1`이다. 일반적으로 주파수 눈금은 `fₖ=k fₛ/N`; 이 예의 Nyquist 주파수는 `fₛ/2=4,000 Hz`다. 이는 설명용 합성 입력이며 논문 데이터가 아니다.
 
-## 4. 기존 방식의 한계
+FFT는 위 DFT 결과를 다른 값으로 바꾸는 것이 아니라, 반복되는 계산을 더 적은 단계로 구하는 방법이다. Cooley와 Tukey의 고전 논문은 이 분할 계산법을 체계화했다. DFT의 표본·주파수 눈금을 단계별로 더 읽고 싶다면 Linford와 Gerashchenko가 스펙트럼 잡음 제거를 맥락으로 쓴 2026년 튜토리얼도 참고할 수 있다.
 
-직접 MVM은 작은 DFT가 한 배열에 맞을 때는 단순하고 효율적이다. 그러나 행렬이 배열보다 커지면 여러 배열의 부분합을 각각 digitize하고 다시 더해야 한다. 반대로 radix-2·4 디지털 FFT는 산술 연산은 최소화하지만 아날로그에서는 중간 ADC와 buffer가 늘어난다.
+실제 논문에서는 512점 단시간 푸리에 변환(STFT)과 65,536점 전체 파형 변환을 따로 시험했다.
 
-따라서 이 논문의 선택은 “최소 radix”가 아니라 **한 배열에 맞는 큰 radix에서 분할을 멈추는 것**이다. 저자 분석의 교차점은 대략 <Math tex={"N=2K"} />다.
+## 디지털 FFT를 아날로그 배열에 옮기기
 
-## 5. 새 방법의 세 단계
+N개 표본을 직접 변환하면 복소 DFT 행렬의 크기는 N×N이다. 하나의 메모리 배열이 이 행렬을 감당할 수 있으면 행렬–벡터곱(MVM) 한 번으로 계산할 수 있다. 하지만 행렬이 배열의 행·열 한도를 넘으면 여러 배열이 나눠 처리하고, 각 부분 결과를 디지털로 읽어 더해야 한다. 논문은 이때 ADC(아날로그-디지털 변환기) 변환과 중간 결과 이동이 비용을 키운다고 설명한다. ADC는 배열에서 나온 전류를 숫자로 바꾸는 회로다.
 
-첫째, 복소 DFT 가중치의 실수·허수와 양·음을 SONOS 셀의 차동 conductance로 프로그램한다. 둘째, 입력을 bit-serial 전압으로 넣어 작은 DFT를 current-mode MVM으로 계산하고 12-bit on-chip ADC로 읽는다. 셋째, reshape와 twiddle factor 곱을 거쳐 다음 작은 DFT를 반복한다. 2차원 영상에는 두 축을 함께 분할하는 vector-radix FFT를 사용한다.
+FFT는 DFT 행렬의 반복 구조를 이용해 큰 변환을 작은 DFT 여러 단계로 분해한다. Cooley–Tukey 방식에서 N=N₁N₂로 놓고 표본 순서를 바꾸면, N점 DFT를 N₁점과 N₂점 DFT, 그리고 twiddle factor라는 복소 회전 곱으로 표현할 수 있다. 원문 식 2는 인덱스가 포함된 합이고 식 3은 같은 계산을 행렬로 쓴 것이다.
 
-실험 배열은 DFT-16에 2,048개, DFT-256에 524,288개 소자를 썼다.
+<CandidateEquation id="analog-fft-eq2-indexed" title="원문 식 2 · 표본 순서를 바꾼 Cooley–Tukey 분해" tex={"\\tilde X_{k_2,k_1}=\\sum_{n_2=0}^{N_2-1}\\omega_{N_2}^{n_2k_1}\\omega_N^{n_2k_2}\\sum_{n_1=0}^{N_1-1}\\omega_{N_1}^{n_1k_2}\\tilde x_{n_1,n_2}"}>
+<p>N=N₁N₂이며 n₁=0,…,N₁−1, n₂=0,…,N₂−1이다. 입력과 출력의 재배열은 x̃<sub>n₁,n₂</sub>=x<sub>N₂n₁+n₂</sub>, X̃<sub>k₂,k₁</sub>=X<sub>k₂+N₁k₁</sub>이고 k₂=0,…,N₁−1, k₁=0,…,N₂−1이다. ω<sub>M</sub>=e<sup>−i2π/M</sup>는 무차원 M차 단위근이다. 각 합은 한 축의 작은 DFT이며, 중간의 ω<sub>N</sub> 항이 두 단계를 잇는다. 입력과 출력은 복소 진폭이라 입력에 단위가 있다면 X에도 같은 진폭 단위가 남는다.</p>
+</CandidateEquation>
 
-## 6. 핵심 수식과 시스템 경계
+<CandidateEquation id="analog-fft-eq3-matrix" title="원문 식 3 · twiddle 행렬을 포함한 행렬 표현" tex={"\\tilde{\\mathbf X}=\\left(\\mathbf W_{N_2}\\left[\\mathbf T\\odot(\\mathbf W_{N_1}\\tilde{\\mathbf x})\\right]^T\\right)^T"}>
+<p>x̃와 X̃는 각각 N₁×N₂ 배열이고 W<sub>N₁</sub>은 N₁×N₁, W<sub>N₂</sub>는 N₂×N₂ DFT 행렬이다. T도 N₁×N₂이며 행·열 지수는 m=0,…,N₁−1, n=0,…,N₂−1이고 T<sub>m,n</sub>=ω<sub>N</sub><sup>mn</sup>이다. W<sub>N₁</sub>x̃와 T의 원소별 곱은 N₁×N₂, 전치 뒤는 N₂×N₁이므로 W<sub>N₂</sub>를 왼쪽에서 곱하고 마지막에 다시 전치한다. 이 차원 검산으로 식 3의 괄호와 전치 순서를 읽을 수 있다. W와 T는 무차원, 결과 진폭은 입력 진폭과 같은 단위를 갖는다. 주 실험의 단계 사이 twiddle 곱은 디지털 FP32였다. SI의 folded-twiddle 시험은 별도 변형이다.</p>
+</CandidateEquation>
 
-핵심은 알고리즘–소자 공동설계다. 배열 내 곱셈보다 ADC가 에너지를 지배한다는 가정 아래, 분할 깊이와 radix K를 정한다. 원문 Equation 1은 DFT, Equations 2–3은 Cooley–Tukey 재배열과 twiddle 결합, Equation 4는 2D DFT를 정의한다.
+이 분해는 곱셈 수만 줄이는 알고리즘 트릭에서 끝나지 않는다. 어디까지 큰 DFT를 한 번에 배열에 맞추고 어디서 나눌지 결정해야 한다. 논문은 한 배열이 처리할 수 있는 최대 DFT 크기를 K로 둔다. 저자는 배열 한계와 변환 크기를 함께 고려해 분할 radix를 선택하며, 대략적인 분기점 N≈2K를 제시한다. 이는 모든 배열·회로에 공통인 측정 최적점이 아니다. 에너지와 면적도 별도 비용식으로 읽어야 한다.
 
-큰 전류에서는 parasitic IR drop이 음의 오차를 만들고, 작은 전류에서는 셀 변동과 read noise가 상대적으로 커진다. 가장 큰 전류는 ADC clipping에 닿는다. 즉 “아날로그 병렬성”만으로 정확도가 보장되지 않는다.
+## 2차원 영상은 두 축을 나눠 계산한다
 
-## 7. 실험과 수치
+한 장의 영상은 행과 열, 두 방향의 표본을 가진다. 2차원 DFT는 먼저 한 축을 변환하고 결과의 다른 축을 변환한다. 논문 식 4가 이 분리 가능한 형태를 적는다. 이미지에 쓰인 vector-radix FFT는 두 축을 동시에 여러 하위 배열로 나눈 뒤, 재배열하고 다음 단계로 넘긴다.
 
-65,536-sample, 16kHz 음성을 512점 STFT로 처리했을 때 SONOS spectrogram의 FP32 대비 PSNR은 55.97dB였다. 전체 음성을 한 번에 변환한 65,536점 FFT는 256×256 factorization을 썼고 주파수 해상도는 0.244Hz, spectrum PSNR은 41.01dB였다. 저자 기준 이전 최대 아날로그 DFT보다 500배 넘는 크기다.
+<CandidateEquation id="analog-fft-eq4-2d" title="원문 식 4 · 행과 열을 잇는 2차원 DFT" tex={"\\mathbf X=\\left[\\mathbf W_N(\\mathbf W_M\\mathbf x)^T\\right]^T"}>
+<p>x와 X는 각각 M×N 입력 영상과 변환 결과다. W<sub>M</sub>, W<sub>N</sub>는 각 축에 적용하는 DFT 행렬이다. 전치 기호는 먼저 계산한 축을 바꾸어 다음 축을 계산하게 한다. 이 식은 separable한 2D DFT를 나타내고, vector-radix의 세부 배열 배치는 Methods 식 5–6에 적혀 있다.</p>
+</CandidateEquation>
 
-256×256 RGB 위성 영상에서는 analog VR-FFT와 VR-IFFT를 연결했다. 시각적 구조는 보존됐지만 IR drop이 저주파 성분을 더 약화시켜 윤곽이 인위적으로 날카로워지고 graininess가 남았다.
+<CandidateEquation id="analog-fft-eq5-vrfft-stage1" title="Methods 식 5 · 2D 하위 블록의 첫 vector-radix 단계" tex={"\\mathbf y_{r,s}=\\mathbf T_{r,s}\\odot\\left[\\mathbf W_Q\\left(\\mathbf W_P\\tilde{\\mathbf x}_{r,s}\\right)^T\\right]^T"}>
+<p>논문은 M=PR, N=QS인 입력 x를 R×S×P×Q 배열 x̃로 다시 배열하며, x̃<sub>r,s</sub>(p,q)=x<sub>r+Rp,s+Sq</sub>다. 범위는 r=0,…,R−1, s=0,…,S−1, p=0,…,P−1, q=0,…,Q−1이다. (r,s)는 submatrix 위치, (p,q)는 그 안의 위치이고 고정된 (r,s)의 블록은 P×Q다. 각 블록에서 두 개의 작은 DFT를 수행하고 블록마다 달라지는 twiddle 행렬 T<sub>r,s</sub>를 곱해 같은 R×S×P×Q 크기의 중간 배열 y를 만든다. 이 공식은 방법 설명이며 별도 성능 수치를 뜻하지 않는다.</p>
+</CandidateEquation>
 
-2048×2048 SAR와 음성인식은 실제 제작 칩이 아니라 검증된 error model을 40nm SONOS core와 8-bit ADC에 적용한 시뮬레이션이다. SAR SSIM은 0.8558±0.006, LibriSpeech FP32 WER 7.44% 대비 analog STFT 8-bit는 9.53%였다.
+<CandidateEquation id="analog-fft-eq6-vrfft-stage2" title="Methods 식 6 · 축을 바꾼 두 번째 단계" tex={"\\tilde{\\mathbf X}_{p,q}=\\left[\\mathbf W_S\\left(\\mathbf W_R\\tilde{\\mathbf y}_{p,q}\\right)^T\\right]^T"}>
+<p>첫 단계 뒤에는 (p,q)와 (r,s) 축 쌍을 교환해 ỹ의 크기를 P×Q×R×S로 바꾼다. 고정된 (p,q)에서 ỹ<sub>p,q</sub>는 R×S 블록이고, 각 지수는 위와 같은 범위에 있다. 식 6은 이 블록에 W<sub>R</sub>, W<sub>S</sub>를 적용한다. 마지막에는 X<sub>q+Qs,p+Pr</sub>=X̃<sub>p,q</sub>(r,s)로 4차원 결과를 2차원 주파수 배열에 다시 놓는다. 본문은 이를 “vector-radix FFT”로 요약하고 Methods가 두 단계의 수학적 정의를 제공한다.</p>
+</CandidateEquation>
 
-## 8. 반대 증거
+## 어떤 결과가 실제 측정인가
 
-가장 강한 반대 증거는 Figure 2f와 Figure 4다. DFT-256은 DFT-16보다 오차가 컸고, 고전류에서 parasitic resistance와 ADC clipping이 뚜렷했다. 영상 복원은 DC 성분 분리와 Parseval 기반 밝기 보정을 사용했다.
+논문은 40 nm 공정으로 만든 SONOS 인메모리 칩을 사용했다. 셀의 conductance(전기가 얼마나 잘 통하는지를 나타내는 값)에 복소 가중치의 실수·허수 성분을 차동 방식으로 저장하고, 입력은 bit-serial 전압으로 넣는다. 배열에서 합쳐진 전류는 on-chip 12-bit ADC로 읽는다. DFT-16에는 2,048개, DFT-256에는 최대 524,288개 소자를 사용했다. 하나의 실험에서 큰 전체 변환을 한 번에 저장한 것이 아니라 작은 DFT 단계를 반복했다.
 
-Figure 5의 에너지·면적 비교도 동일 공정의 두 실리콘을 직접 대조한 결과가 아니다. 디지털 ASIC의 word length를 8-bit로 선형 환산하고, 저자 프로토타입보다 효율적인 가상 코어를 사용했다. 저자도 개선폭이 “orders of magnitude”는 아니라고 적었다.
+<NewsFigure media="oct21-analog-fftsonos-array-boundary" />
 
-## 9. 한계
+FP32는 32비트 부동소수점 계산이다. PSNR(최대 신호 대 잡음비)은 기준 배열과 비교 배열의 원소별 오차를 하나의 dB 값으로 요약한다. 선택한 피크 기준에 대해 값이 높을수록 오차가 작다는 뜻이지만, 이 숫자 하나가 모든 주파수 원소의 오차가 작거나 청감상 차이가 없음을 보장하지는 않는다. SSIM은 영상 구조 유사도라 높을수록 가깝고, WER은 단어 오류율이라 낮을수록 좋다.
 
-소스 데이터는 공개 저장소가 아니라 합리적 요청 시 제공된다. 공개 CrossSim 도구는 있지만 논문 전체 재현 패키지나 제작 칩 원자료 공개는 확인되지 않았다. 장기 retention, refresh 비용, 온도·공정 편차, 양산 수율, 실제 edge SoC에 ADC·buffer·control을 모두 넣은 총전력은 독립 검증이 필요하다. 저자들은 경쟁 이해관계가 없다고 선언했으며 Sandia와 미국 DOE 지원을 받았다.
+음성 실험의 PSNR은 Flickr8k Audio Caption에서 가져온 약 4초 음성 한 개(16 kHz, 65,536 표본으로 패딩)를 대상으로 한다. 저자들은 Hamming 창 512 표본, 128 표본 간격의 STFT로 만든 아날로그 스펙트로그램을 CPU FP32 스펙트로그램과 비교해 원소별 오차 PSNR 55.97 dB를 보고했다. 따라서 이는 이 입력·창·정밀도·비교 방식의 결과이지, 음성 전반이나 각 주파수 칸마다 같은 정확도가 보장된다는 뜻은 아니다. 값만으로 청감 품질, 지연 시간, 전력, 혹은 앱에서 재생되는 결과를 평가할 수도 없다. 파형 전체의 65,536점 변환은 256점 아날로그 DFT들(N₁=N₂=256)로 분해했고, 주파수 간격은 0.244 Hz, spectrum PSNR은 41.01 dB였다. [arXiv v2 §4](https://arxiv.org/pdf/2409.19071v2)는 같은 두 지표를 각각 56.99 dB와 41.10 dB로 보고했다. 최종 출판본도 Figure 3 본문에서 각각 55.97 dB와 41.01 dB를 보고한다. 아래 표는 arXiv v3 기준이다. 논문은 두 PSNR에 실수 입력의 양·음 주파수 복소 켤레쌍을 평균한 뒤 크기를 취한 스펙트럼 `|(X_k + X*_{-k})/2|`을 썼다고 SI §7.5에서 밝힌다. 개별 크기 `|X_k|`, `|X_{-k}|`를 구해 평균한 것은 아니다. “이전보다 500배 이상”은 저자들이 기존 아날로그 DFT 시연과 비교해 주장한 크기다. Nature 초록에는 이 비교가 없고, arXiv v3 초록과 본문에는 저자 비교로 적혀 있다.
 
-## 10. 실제 변화
+저자 SI Section 14의 에너지 점근식은 직접 MVM에서 <Math tex={"O(N^2/K)"} />, 아날로그 FFT에서 <Math tex={"O(N\\log_K N)"} />다. 배열 한계 K를 고정하면 직접 MVM의 식은 <Math tex={"O(N^2)"} />로 단순화된다. 이는 특정 칩의 전력 그래프가 아니라 출력 변환 에너지와 버퍼 비용을 두는 가정 아래 얻은 점근식이며, 면적은 저장 소자와 주변 회로 중 무엇이 지배적인지에 따라 별도 식으로 제시된다.
 
-이번 결과의 핵심은 “FFT도 아날로그로 했다”보다, 디지털 알고리즘의 분할 기준을 아날로그 하드웨어의 진짜 비용인 ADC와 데이터 이동에 맞춰 다시 정했다는 점이다. 같은 배열을 FFT와 신경망 MVM 사이에서 재프로그램할 수 있다는 설계도 단일기능 ASIC과 다른 가치다.
+256×256 RGB 위성 영상 변환도 실험했다. 아날로그 vector-radix FFT 뒤에 inverse transform을 이어 붙여 영상을 복원했다. 연구진은 큰 전류가 모이는 저주파 성분이 배선의 IR drop으로 더 약해지면서 경계가 상대적으로 선명해지는 효과를 설명했다. 소자 전도도 오차와 회로 잡음은 영상에 미세한 입자처럼 거친 느낌을 더했다. 연구진은 밝기 손실을 보정하기 위해 Parseval 정리를 이용해 영상 전체에 하나의 스칼라를 곱했다. 이 보정은 PSNR을 높일 수 있지만 공간 구조는 바꾸지 않으므로 SSIM까지 항상 좋아지는 것은 아니다.
 
-## 11. 다음 재검토 트리거
+SAR와 음성 인식 결과는 다른 증거 단계다. 이는 제작 칩에서 응용 전체를 실시간 실행한 시험이 아니다. 연구진은 칩 오차 특성을 반영한 CrossSim 모델을 사용하고, 더 효율적이라고 가정한 40 nm 코어와 8-bit ADC에 대규모 입력을 넣었다. SAR 2048×2048 영상 형성은 10회 시뮬레이션 평균 SSIM 0.8558±0.006이었다. LibriSpeech 음성의 RNNT 파이프라인에서는 FP32 WER 7.44%, 아날로그 STFT 8-bit 모델 WER 9.53%를 보고했다. 아래 표에서 실제 칩 변환과 모델 응용을 따로 본다.
 
-독립 연구자의 칩 재현, source data와 전체 code 공개, 동일 공정·동일 정밀도의 digital FFT 실리콘 비교, 온도·drift·refresh를 포함한 장기 시험, ADC·buffer·interconnect를 포함한 edge SoC 데모가 나오면 결론을 갱신해야 한다.
+<table>
+<thead><tr><th>증거 단계</th><th>실제 입력·조건</th><th>보고 결과</th><th>읽는 범위</th></tr></thead>
+<tbody>
+<tr><td>제작 칩 실험</td><td>40 nm SONOS 배열; 512점 STFT, 65,536점 1D FFT, 256×256 RGB 2D FFT/IFFT</td><td>STFT PSNR 55.97 dB; 전체 FFT 0.244 Hz 간격·41.01 dB; 이미지 복원 시연<br/><small>두 스펙트럼 PSNR은 복소 켤레쌍 평균 후 크기 기준</small></td><td>배열 단계별 DFT와 변환 결과 측정</td></tr>
+<tr><td>응용 시뮬레이션</td><td>오차 모델을 적용한 효율형 40 nm 코어, 8-bit ADC; SAR 2048×2048 및 LibriSpeech/RNNT</td><td>SAR SSIM 0.8558±0.006 (10회); WER FP32 7.44%, 아날로그 모델 9.53%</td><td>실제 칩 응용 시험이나 제품 총전력 측정이 아님</td></tr>
+</tbody>
+</table>
 
-## 12. 출처
+### 더 읽을 자료
 
-- [Nature Electronics 최종판](https://doi.org/10.1038/s41928-026-01725-x) — 2026-10-19 공개, 동료평가.
-- [arXiv 2409.19071 v3](https://arxiv.org/abs/2409.19071) — 61쪽, 본문과 Supplementary 1–14 확인.
-- 원문 확인 위치: p.3 Fig.1·Eq.1, pp.4–5 Eq.2–3, p.6 Fig.2, p.8 Fig.3·Eq.4, pp.9–10 Fig.4, p.11 Fig.5, p.12 Conclusion, pp.22–61 Supplementary.
-- [CrossSim](https://www.cross-sim.sandia.gov/) — 공개 simulator; 이번 작업에서는 실행하지 않음.
+- DFT 기초와 스펙트럼 잡음 제거를 다룬 튜토리얼: [Linford & Gerashchenko, *A tutorial on the Fourier transform and discrete Fourier transform, with comments on the Hilbert transform, in the context of denoising spectra* (2026)](https://doi.org/10.1116/6.0005675).
+- DFT를 작은 변환으로 나누는 FFT의 고전 논문: [Cooley & Tukey, *An Algorithm for the Machine Calculation of Complex Fourier Series* (1965)](https://doi.org/10.1090/S0025-5718-1965-0178586-1).
 
+## 어디서 정확도가 흔들리는가
+
+기록된 셀 conductance가 목표와 정확히 같지 않으면 작은 가중치에서 상대 오차가 커진다. 낮은 입력 전류에서는 셀 간 변동과 read noise가 신호에 비해 커질 수 있다. 반대로 큰 conductance를 써서 신호를 키우면 배열 배선의 parasitic resistance 때문에 IR drop이 늘고, 합산 전류가 ADC의 입력 범위 밖으로 나가면 clipping된다. 그래서 연구진은 가중치 상한 Gmax를 고를 때 clipping과 conductance 양자화 오차를 함께 시뮬레이션했다. DFT 크기가 커지면 이 조건도 달라진다.
+
+보충자료의 drift 분석은 셀 상태가 시간에 따라 변할 수 있음을 보인다. 연구진 모델은 실험 재현 모드에서 프로그램 뒤 하루 또는 사흘 drift를 설정했고, 응용 코어 모드에서는 하루 drift를 가정했다. 이는 수년 retention, 주기적 refresh의 전력·지연, 온도와 공정 분포를 실제 제품에서 측정한 결과와 같지 않다. 마찬가지로 성능 비교는 동일 공정에서 완성한 두 실리콘을 맞대어 잰 것이 아니라, 디지털 기준을 8-bit로 환산하고 설계 모델을 이용해 추정했다.
+
+## 지금 말할 수 있는 것
+
+이 작업의 가장 강한 증거는 큰 변환에서 매 단계의 DFT를 실제 SONOS 배열에 올리고 음성·영상 변환을 측정했다는 점이다. 알고리즘은 복소 DFT의 구조를 쪼개 배열 용량에 맞추고, 시스템 비용은 곱셈만이 아니라 ADC·부분합·버퍼가 좌우할 수 있음을 보여 준다. 그러나 “아날로그 FFT가 일반적인 디지털 FFT보다 더 빠르고 효율적”이라는 제품 수준 결론은 논문의 시뮬레이션 경계를 넘는다. 모델이 예측한 응용 성능과 측정된 배열 단위 변환은 분리해 읽어야 한다.
+
+후속 판단을 바꿀 증거는 같은 정밀도·공정의 디지털 FFT와 실제 칩 비교, 온도와 drift·refresh를 포함한 장기 측정, 배열·ADC·버퍼·제어기를 함께 넣은 시스템 전력, 다른 연구팀의 칩 재현이다. 논문 자료는 합리적 요청에 따라 제공된다고 밝히고, CrossSim 공개 코드는 있지만 연구 전용 전체 코드는 Sandia 관리 승인을 받은 뒤 요청해야 한다고 명시한다. 이번 분석에서 CrossSim 실행이나 독립 재현은 하지 않았다.
+
+## 출처와 확인 범위
+
+- Xiao 외, “Analogue fast Fourier transforms for scalable and efficient signal processing,” *Nature Electronics*, 2026-10-19. [출판사 페이지](https://www.nature.com/articles/s41928-026-01725-x) · [DOI](https://doi.org/10.1038/s41928-026-01725-x)
+- 공개 preprint: [arXiv:2409.19071 v3](https://arxiv.org/abs/2409.19071), 2026-06-24 수정본. 아래 상세 위치는 arXiv PDF 실제 쪽수이며, 출판사 본문과 수식·Methods 문구가 모두 동일하다고 확인한 것은 아니다.
+
+<details>
+<summary>원문 위치와 읽은 범위</summary>
+
+- arXiv v3 본문 PDF 1–12쪽과 Methods 18–21쪽을 읽었다. 본문 식 1은 p.3, 식 2–3은 p.4, 식 4는 p.8, Methods 식 5–6은 p.19다. Fig.1은 p.3, Fig.2는 p.6, Fig.3은 p.8, Fig.4는 pp.9–10, Fig.5는 p.11. 참고문헌 pp.13–17은 읽지 않았다. 별도로 묶인 arXiv v3 Supplementary Information 실제 PDF pp.22–61은 이번에 읽었다. Nature 출판사 SI와 주제·구성은 대응하지만 페이지/그림 번호가 다르고 문서 해시도 다르므로 같은 파일이나 문구로 간주하지 않는다; 이번 기사에는 양쪽에서 확인한 범위의 사실만 반영했다.
+- Nature 출판사 보충자료는 별도 PDF로 받았다. 실제 PDF pp.3–42의 Supplementary Sections 1–14를 읽었고, pp.43–44 참고문헌은 읽지 않았다. 예를 들어 Parseval 식 I11–I12와 Fig.18은 실제 PDF p.23(인쇄 쪽수 22), Section14 Table9는 실제 PDF p.41(인쇄 쪽수 40)에 있다. 이것을 arXiv PDF의 Supplementary 22–61쪽 검토로 바꾸어 말하지 않는다.
+- Nature 최종판은 기관 접근으로 음성 실험의 PSNR과 입력·창 조건(PDF pp.4–6), 식 1–6과 관련 Methods(PDF pp.2, 4, 10–11)를 추가 대조했다. 이는 해당 주장과 수식의 대조이며 최종판 전체·문장별 동일성을 확인한 것은 아니다. 데이터는 교신저자에게 합리적 요청 시 제공, 연구 전용 전체 코드는 요청과 Sandia 관리 승인 시 제공된다는 문구를 확인했다.
+- 본문의 두 그림은 합성 신호의 주파수 성분과 배열·ADC의 역할을 설명하도록 독립 제작한 도식이다. 논문 원도판이나 측정 그래프를 복제·추적하지 않았다. 상세한 원본 도판은 권리 확인 전에는 링크만 제공한다.
+
+</details>
