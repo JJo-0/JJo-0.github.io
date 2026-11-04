@@ -53,7 +53,8 @@ function buildArtifact(): Point3[] {
   return points;
 }
 
-const artifact = buildArtifact();
+// Graph pages do not use the fallback geometry. Allocate it only on demand.
+let artifact: Point3[] | undefined;
 
 function readGraph(host: HTMLElement): PostGraph | null {
   try {
@@ -62,6 +63,20 @@ function readGraph(host: HTMLElement): PostGraph | null {
   } catch {
     return null;
   }
+}
+
+function buildAdjacency(edges: GraphEdge[]): Map<string, GraphEdge[]> {
+  const adjacency = new Map<string, GraphEdge[]>();
+  const append = (id: string, edge: GraphEdge): void => {
+    const list = adjacency.get(id);
+    if (list) list.push(edge);
+    else adjacency.set(id, [edge]);
+  };
+  for (const edge of edges) {
+    append(edge.source, edge);
+    append(edge.target, edge);
+  }
+  return adjacency;
 }
 
 function installGraphCanvas(
@@ -82,11 +97,7 @@ function installGraphCanvas(
   );
   const tooltip = host.querySelector<HTMLOutputElement>('[data-post-graph-tooltip]');
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
-  const adjacency = new Map<string, GraphEdge[]>();
-  for (const edge of graph.edges) {
-    adjacency.set(edge.source, [...(adjacency.get(edge.source) ?? []), edge]);
-    adjacency.set(edge.target, [...(adjacency.get(edge.target) ?? []), edge]);
-  }
+  const adjacency = buildAdjacency(graph.edges);
   let width = 1,
     height = 1,
     dpr = 1,
@@ -352,6 +363,7 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
   if (graph) return installGraphCanvas(host, canvas, graph);
   const context = canvas.getContext('2d', { alpha: true });
   if (!context) return () => {};
+  const points = (artifact ??= buildArtifact());
 
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const finePointer = matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)');
@@ -415,7 +427,7 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
     const centerY = height * 0.51;
     const projected: Array<{ x: number; y: number; z: number; edge: boolean }> = [];
 
-    for (const point of artifact) {
+    for (const point of points) {
       const x1 = point.x * cosineY - point.z * sineY;
       const z1 = point.x * sineY + point.z * cosineY;
       const y1 = point.y * cosineX - z1 * sineX;
@@ -530,21 +542,41 @@ function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () => void
 
 export function installAsciiArtRuntime(): void {
   if (typeof window === 'undefined' || window.__jjoAsciiRuntime) return;
-  let cleanups: Array<() => void> = [];
+  const instances = new Map<
+    HTMLElement,
+    { canvas: HTMLCanvasElement; dispose: () => void }
+  >();
+  let destroyed = false;
 
   const cleanup = (): void => {
-    cleanups.forEach((dispose) => dispose());
-    cleanups = [];
+    instances.forEach(({ dispose }) => dispose());
+    instances.clear();
   };
   const init = (): void => {
-    cleanup();
-    document.querySelectorAll<HTMLElement>(HOST_SELECTOR).forEach((host) => {
+    if (destroyed) return;
+    const hosts = new Set(document.querySelectorAll<HTMLElement>(HOST_SELECTOR));
+    for (const [host, instance] of instances) {
+      if (
+        !hosts.has(host) ||
+        host.querySelector<HTMLCanvasElement>('[data-ascii-art]') !== instance.canvas
+      ) {
+        instance.dispose();
+        instances.delete(host);
+      }
+    }
+    // DOMContentLoaded and astro:page-load may both announce the same document.
+    // Keep an installed canvas instead of parsing its graph and wiring it twice.
+    for (const host of hosts) {
+      if (instances.has(host)) continue;
       const canvas = host.querySelector<HTMLCanvasElement>('[data-ascii-art]');
-      if (canvas) cleanups.push(installCanvas(host, canvas));
-    });
+      if (canvas) instances.set(host, { canvas, dispose: installCanvas(host, canvas) });
+    }
   };
   const destroy = (): void => {
+    if (destroyed) return;
+    destroyed = true;
     cleanup();
+    document.removeEventListener('DOMContentLoaded', init);
     document.removeEventListener('astro:page-load', init);
     document.removeEventListener('astro:before-swap', cleanup);
     window.__jjoAsciiRuntime = undefined;
