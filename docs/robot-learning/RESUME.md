@@ -1,6 +1,8 @@
-# Robot Learning 시리즈 — 이어쓰기 진입점
+# 강화학습 시리즈 — 이어쓰기 진입점
 
 최종 게시 대상은 이 블로그지만, 원고는 아직 비공개 작업본이다. 이 파일은 콘텐츠가 아니라 승인된 작업자가 다시 시작할 위치만 안내한다.
+
+시리즈의 주제목은 **강화학습**이며 각 장의 제목은 **강화학습 NN — 부제** 형식으로 작성한다. 원본 강의명은 출처 표기에서 유지한다.
 
 ## 작업 원본
 
@@ -9,7 +11,7 @@
 - Directory: `blog/robot-learning/`
 - [이어쓰기 규칙](https://github.com/JJo-0/Onto_base/blob/blog-rl-series/blog/robot-learning/RESUME.md)
 - [진행 상태](https://github.com/JJo-0/Onto_base/blob/blog-rl-series/blog/robot-learning/state.json)
-- 이번에 확인한 private checkpoint: `5fa4af3a93f9712256b1409a7b6a0e0c7dd1484e`
+- 이번에 확인한 private checkpoint: `c80b0a7f3ac20f8444c2c902e0b9f61ca9a53846`
 - 갱신일: 2026-11-04 (Asia/Seoul)
 
 위 링크는 해당 비공개 저장소의 접근 권한이 필요하다. 향후 작업에서는 고정 checkpoint만 보지 말고 비공개 브랜치의 최신 상태를 읽는다.
