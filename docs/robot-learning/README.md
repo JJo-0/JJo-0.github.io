@@ -10,3 +10,7 @@
 3. [강화학습 03 — 시연에서 배우는 모방학습](https://jjo-0.github.io/posts/rl-robot-learning-ch03-imitation-learning/) · [출처와 대조 범위](source-assets/ch03/README.md) · [실행 예제](labs/03-imitation-learning/README.md)
 
 03장은 ETH 슬라이드 41장, 보충 그림 4개, 독립 수식 18개와 본문 수학 표기 98개를 제공한다. ETH·Berkeley·NTU 자막과 원 논문을 관련 설명에 연결했다. 자체 스칼라 예제와 수치 검사 15개를 실행했다.
+
+4. [강화학습 04 — 가치에서 행동으로, Q-learning과 DQN](https://jjo-0.github.io/posts/rl-robot-learning-ch04-value-learning/) · [출처와 대조 범위](source-assets/ch04/README.md) · [실행 예제](labs/04-value-learning/README.md)
+
+04장은 기술 슬라이드43장, 보충 그림4개, 독립수식20개·본문수학92곳이다. ETH·Silver·Berkeley 시간 자막과 원 논문을 설명에 통합하고 별도 수치 검사18개를 실행했다.
