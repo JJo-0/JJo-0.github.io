@@ -18,3 +18,13 @@ python3 -m venv .venv
 각도 범위 ±0.2rad, 초기 각속도 0, seed=7. PD는 `clip(-15*theta-3*velocity,-2,2)`이며 위쪽 근처 유지 예다. 전체 무작위 초기 상태에서의 스윙업 능력을 주장하지 않는다. 마지막 위치만 비슷해도 전체 리턴과 운동은 다를 수 있다. 두 실행은 과업 종료가 아니라 200단계 시간 제한으로 중단된다. 기대 리턴이나 여러 시드의 통계적 성능을 추정한 결과가 아니다.
 
 [Gymnasium 원본 환경 설명](https://gymnasium.farama.org/environments/classic_control/pendulum/). 환경 렌더러의 저작권은 Farama Foundation 등 해당 권리자에게 있으며, 자체 계산과 실행 기록은 JJo 작성이다.
+
+## 원본·보충 강의 대조 뒤 추가 계산
+
+`supplement_checks.py`는 NumPy만으로 역변환, 정책 전이 혼합, 정규화 행동의 관절 범위 대응, 시간 간격별 할인율, PD 평형 오차, 거의 편 2R 팔의 의사역행렬·DLS 계산을 검사한다.
+
+```sh
+.venv/bin/python supplement_checks.py
+```
+
+추가 검사 8개를 통과했으며 결과는 `results/supplement-checks.json`에 저장한다. 한 번의 국소 선형 계산을 비교한 것으로 Isaac Lab 실행·로봇 움직임·RL 훈련 또는 IK 수렴 결과가 아니다. DLS는 큰 갱신을 줄이는 대신 선형 잔차를 남길 수 있다.
