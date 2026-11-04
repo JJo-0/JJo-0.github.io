@@ -1,15 +1,16 @@
 ---
 interface Props {
   page: number;
+  lecture?: 1 | 2;
   caption: string;
   priority?: boolean;
 }
-const { page, caption, priority = false } = Astro.props;
-if (!Number.isInteger(page) || page < 1 || page > 44) throw new Error('Invalid lecture slide page');
+const { page, lecture = 1, caption, priority = false } = Astro.props;
+if (!Number.isInteger(page) || page < 1 || page > (lecture === 1 ? 44 : 46)) throw new Error('Invalid lecture slide page');
 const label = `P${String(page).padStart(3, '0')}`;
-const src = `https://raw.githubusercontent.com/SRA-VJTI/robotics-study-group/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-01/slide-${page}.jpg`;
+const src = `https://raw.githubusercontent.com/SRA-VJTI/robotics-study-group/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-${String(lecture).padStart(2, '0')}/slide-${page}.jpg`;
 ---
-<figure class="lecture-slide" data-lecture-slide={label} aria-labelledby={`slide-${label}`}>
+<figure class="lecture-slide" data-lecture-slide={label} data-lecture-number={lecture} aria-labelledby={`slide-${label}`}>
   <img src={src} alt={`${label} — ${caption}. Oier Mees, ETH Zurich Robot Learning 2026.`} width="1600" height="900" loading={priority ? 'eager' : 'lazy'} decoding="async" fetchpriority={priority ? 'high' : 'auto'} referrerpolicy="no-referrer" />
   <figcaption id={`slide-${label}`}>{label} — {caption}</figcaption>
 </figure>
