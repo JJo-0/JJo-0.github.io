@@ -506,5 +506,12 @@ POST_TAXONOMY.update({
     "rl-robot-learning-ch01-introduction.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "eth-zurich", "study")),
 })
 
+# Register November 5 drafts from their existing frontmatter; keep them private.
+POST_TAXONOMY.update({
+    "2026-11-05-anode-free-sodium-battery-news.mdx": Taxonomy("finance-industry", "anode-free-sodium-battery", "paper-review", ("frontier-candidate", "sodium-ion-battery", "anode-free-battery", "energy-storage")),
+    "2026-11-05-conjugation-regulated-tandem-solar-news.mdx": Taxonomy("finance-industry", "tandem-solar-interface", "paper-review", ("frontier-one", "tandem-photovoltaics", "self-assembled-monolayer", "solar-energy")),
+    "2026-11-05-metallomesogen-tandem-solar-news.mdx": Taxonomy("finance-industry", "perovskite-grain-boundary", "paper-review", ("frontier-candidate", "tandem-photovoltaics", "perovskite-stability", "grain-boundary-engineering")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
