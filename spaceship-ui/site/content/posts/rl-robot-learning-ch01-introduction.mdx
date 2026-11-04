@@ -19,6 +19,8 @@ series:
 ---
 
 import LectureSlide from '@/components/post/LectureSlide.astro';
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
 
 로봇이 컵을 집는 영상을 보면 무엇을 배웠는지 알 수 있을까? 로봇이 보는 정보, 선택하는 행동, 학습에 쓰는 신호를 따라가며 로봇 학습의 기본 개념을 살펴보자.
 
@@ -70,6 +72,16 @@ import LectureSlide from '@/components/post/LectureSlide.astro';
 [DeepMind/UCL 1강 33:59–36:21](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2039s)은 정책, 가치 함수, 환경 모델을 나누어 설명한다. 정책은 행동을 고르고, 가치 함수는 앞으로 얻을 보상의 합을 예상하며, 환경 모델은 행동 뒤의 변화를 예상한다. 가령 컵을 오른쪽으로 밀지 결정하는 것이 정책, 그 선택이 최종 정리에 얼마나 도움이 될지 평가하는 것이 가치, 컵이 어디로 이동할지 예측하는 것이 모델이다. 에이전트가 반드시 세 가지를 모두 학습해야 하는 것은 아니다. 무작위로 행동하는 규칙도 정책이며, 가치 함수나 학습된 환경 모델 없이 동작하는 정책도 있다.
 
 [NTU 기초 강의 5:00–6:28](https://www.youtube.com/watch?v=0oucZNfBXlI&t=300s)에서 부르는 **Actor**도 관측을 받아 행동을 내는 함수라는 출발점에서 이해할 수 있다. 서로 다른 강의의 용어를 만났을 때 이름보다 입출력을 먼저 대응시키면 된다. 여기서 배우려는 대상은 정답 문장 하나가 아니라, 환경과 반복해서 상호작용하는 행동 규칙이다.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/ntu-policy-network.png" alt="게임 화면 픽셀이 정책 신경망에 들어가 왼쪽 0.7, 오른쪽 0.2, 발사 0.1의 행동 분포를 내는 NTU 원본 도식" caption="NTU DRL 11쪽 — 화면에서 행동 분포를 계산하는 정책 신경망. 원본 도식 부분 발췌." source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/drl_v5.pdf#page=11" credit="Hung-yi Lee, NTU ML 2021 및 포함 이미지의 해당 권리자" width={1372} height={506} />
+
+그림을 왼쪽부터 읽으면 화면의 픽셀, 학습할 신경망, 가능한 행동과 확률이 이어진다. 여기서 0.7은 ‘왼쪽으로 가면 보상 0.7점을 받는다’는 뜻이 아니다. 현재 화면에서 왼쪽 행동을 선택할 확률로 읽는다. [NTU 영상 13:27–15:24](https://www.youtube.com/watch?v=0oucZNfBXlI&t=807s)도 분류 신경망과 비슷한 입출력 구조에서 출발한다. 하지만 분류에서 고양이라는 정답을 주는 것과, 행동의 장기 결과로 정책을 개선하는 것은 학습 신호가 다르다.
+
+이 확률적 선택을 관측 중심의 표기로 쓰면 다음과 같다. 아래 식은 그림을 설명하기 위한 표기이며, 원본의 화면 입력을 관측 `o`로 적었다.
+
+<Math tex={String.raw`a_t \sim \pi_\theta(\,\cdot\mid o_t)`} display label="관측 o_t에서 정책 pi_theta가 정한 분포에 따라 행동 a_t를 선택한다" />
+
+`t`는 행동을 고르는 시점, `o_t`는 그때의 관측, `a_t`는 선택한 행동, `θ`는 신경망의 학습 가능한 파라미터다. `∼`는 분포에서 뽑는다는 뜻이다. 같은 화면에서 100번 뽑는다고 정확히 70번 왼쪽이 나오는 것은 아니지만, 많은 반복에서는 0.7의 비율에 가까워진다. 항상 가장 큰 값의 행동만 고르는 실행 방식도 가능하며, 확률에서 뽑는 방식과는 구분한다. 연속적인 로봇 팔 명령에서는 세 버튼 대신 이동량이나 관절 목표의 분포를 다룰 수 있다.
 
 <LectureSlide page={8} caption="로봇 공학에도 ‘ChatGPT의 순간’이 올까" />
 
@@ -151,6 +163,8 @@ Shakey는 카메라와 센서를 사용해 주변을 파악하고, 이동 경로
 
 로봇 학습이 지향하는 것은 물리적 행동 능력과 상황에 따른 판단을 결합하는 일이다. 추론 결과가 실제 행동으로 이어지고, 행동 결과를 다시 관측하는 연결이 필요하다.
 
+[ETH 영상 38:05–40:35](https://www.youtube.com/watch?v=X0k14u6pSxw&t=2285s)의 토론에서 중요한 것은 세 기계에 이름표를 붙이는 일보다 어떤 능력을 결합하려는지다. 강의는 가전제품의 신뢰성, 수술 팔의 정교한 물리적 조작, 파운데이션 모델의 폭넓은 의미 이해를 함께 지향한다. 예를 들어 ‘컵을 치워 줘’라는 요청을 이해하는 능력만으로는 컵을 깨뜨리지 않는 힘 조절이나 반복 가능한 동작이 따라오지 않는다. 성공적인 시스템에는 이 능력들의 연결이 필요하다.
+
 <LectureSlide page={24} caption="원격 조작으로 가능했던 일을 자율적으로 만들기" />
 
 2007년 Stanford의 PR1 영상은 로봇이 방 안의 물건을 정리하는 모습을 보여준다. 슬라이드의 말풍선은 이 로봇을 사람이 **원격 조작**(Teleoperation)하고 있었다고 명시한다.
@@ -197,6 +211,8 @@ Shakey는 카메라와 센서를 사용해 주변을 파악하고, 이동 경로
 
 [ETH 1강 47:20–48:10](https://www.youtube.com/watch?v=X0k14u6pSxw&t=2840s)의 범용 정책 구상은 데이터 수집과 이질적인 분포의 모델링을 함께 묻는다. 이를 평가 질문으로 바꾸면 ‘어떤 조합을 학습에서 보았고, 어떤 조합을 시험에서 처음 만났는가’가 된다. 빨간 컵과 파란 그릇으로 학습한 뒤 파란 컵을 시험하는 것과, 처음 보는 집게 구조로 옮기는 것은 다른 능력을 시험한다. 여러 작업에서 성공했다는 문장만으로 모든 로봇에 바로 적용된다고 결론 내릴 수 없는 이유다.
 
+[RT-2 논문 2쪽](https://proceedings.mlr.press/v229/zitkovich23a/zitkovich23a.pdf#page=2)은 웹에서 배운 의미 이해를 기존 로봇 기술의 새로운 조합에 활용하는 것과, 새로운 물리 기술 자체를 습득하는 것을 구분한다. 물건을 집어 놓는 기술을 배웠다면 ‘그 숫자 옆에 놓아라’처럼 새로운 의미의 지시에 그 기술을 활용할 수 있다. 그렇다고 학습 데이터에 없던 모든 도구 사용이나 복잡한 접촉 기술까지 생겼다는 뜻은 아니다. 범용성을 읽을 때는 ‘무엇을 가리키는지 이해했는가’와 ‘필요한 동작을 실제로 할 수 있는가’를 따로 확인하자.
+
 <LectureSlide page={29} caption="로봇의 두뇌를 내려받는다는 목표" />
 
 소프트웨어 패키지를 설치하듯 학습된 정책을 받아 로봇에 연결할 수 있다면 어떨까? 슬라이드의 `robot-brain` 명령은 그 미래를 표현하는 예시다. 그대로 설치해서 쓰는 실제 패키지 안내로 읽을 필요는 없다.
@@ -225,6 +241,12 @@ Shakey는 카메라와 센서를 사용해 주변을 파악하고, 이동 경로
 
 우리의 숟가락 예제에서도 손이 숟가락을 가리면 현재 영상만으로 잡았는지 놓쳤는지 판단하기 어렵다. 직전 영상, 집게가 닫힌 정도, 힘 센서 등을 함께 쓰면 판단에 필요한 정보를 보완할 수 있다. 여기서 **에이전트의 내부 상태**는 이렇게 이용 가능한 정보를 다음 순간으로 이어가기 위한 표현이다. 물리 세계 전체의 상태와 카메라 한 장, 모델 내부의 기억을 같은 뜻의 ‘상태’로 섞어 쓰지 않는 것이 중요하다.
 
+<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/ucl-observation-aliasing.png" alt="서로 다른 미로 위치에 똑같이 보이는 국소 관측 두 개가 표시된 UCL 원본 그림" caption="DeepMind/UCL 1강 38쪽 — 위치는 다른데 로봇이 보는 작은 주변 모습은 같다. 원본 미로 부분 발췌." source="https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=38" credit="Hado van Hasselt, DeepMind × UCL 2021" width={640} height={680} maxWidth={420} />
+
+[UCL 영상 47:31–51:08](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2851s)의 미로에서는 로봇이 자기 주변의 작은 칸들만 본다. 위 그림의 밝게 드러난 두 영역은 서로 다른 위치지만 같은 국소 모양을 보여준다. 오른쪽 위에서 왼쪽 위의 목표로 가려면 아래로 돌아가야 하는 반면, 왼쪽 통로에서는 위로 가야 한다. 현재 영상만 입력으로 쓰는 결정적 정책은 두 장면을 구별할 정보가 없으므로 같은 행동을 내게 되고, 두 상황 모두에서 최단 경로 행동을 선택할 수 없다.
+
+이 때문에 ‘최근 영상 두 장을 넣으면 해결된다’고도 바로 결론 내릴 수 없다. 비슷한 통로를 연속해서 지나면 두 장을 함께 보아도 모양이 같을 수 있다. 이동 이력이나 위치 추정, 추가 센서처럼 상황을 구별하는 정보가 필요하다. 기억의 길이를 늘리는 것과 문제에 필요한 정보를 실제로 확보하는 것은 다르다.
+
 <LectureSlide page={32} caption="같은 입력 구조로 장면을 설명한다면" />
 
 이번에는 로봇 앞의 영상 대신 자유의 여신상 사진을 주고 ‘이 장면을 설명해 달라’고 요청한다. 입력이 이미지와 언어 지시라는 점은 앞의 로봇 정책과 비슷하지만, 출력은 행동이 아니라 문장이다.
@@ -250,6 +272,12 @@ Shakey는 카메라와 센서를 사용해 주변을 파악하고, 이동 경로
 표현 형식을 맞춰도 행동의 물리적 의미는 남는다. 출력값을 위치·회전·집게 명령으로 해석하는 역변환과 제어 인터페이스가 있어야 실제 로봇이 움직인다.
 
 [ETH 1강 50:12–52:20](https://www.youtube.com/watch?v=X0k14u6pSxw&t=3012s)의 전개는 로봇 정책의 이미지·지시·행동을 장면 설명 모델의 이미지·질문·문장과 대응시킨다. 입력과 출력을 시퀀스로 다룬다는 계산 틀을 공유하면 영상·언어 분야의 학습 기법을 가져올 수 있다. 다만 예측한 행동은 다시 세계를 바꾸고 다음 관측을 만든다. 예를 들어 ‘집게 닫기’를 맞혔더라도 닫는 시점이 늦어 숟가락을 놓쳤다면, 다음 단계에서는 성공 시연과 다른 입력을 처리해야 한다. 행동 토큰의 예측 정확도와 작업 전체의 성공률을 함께 보는 이유다.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/rt2-figure1.png" alt="시각 언어 데이터와 로봇 행동 데이터를 함께 미세조정하고 출력 토큰을 행동으로 복원해 폐루프 제어하는 RT-2 그림 1" caption="RT-2 논문 그림 1 — 공동 미세조정, 행동 토큰의 복원, 실제 로봇의 폐루프 실행. 원본 그림 영역 발췌." source="https://proceedings.mlr.press/v229/zitkovich23a/zitkovich23a.pdf#page=2" credit="Zitkovich et al., RT-2, CoRL 2023 및 포함 이미지의 해당 권리자" width={1588} height={588} />
+
+원본 그림에서 왼쪽은 학습 데이터의 두 종류다. 사진에 문장으로 답하는 시각·언어 데이터와, 로봇 카메라·지시에 행동으로 답하는 데이터가 함께 들어간다. 가운데는 이 데이터를 이용해 미세조정하는 모델이다. 여기서 ViT는 이미지를 모델이 처리할 표현으로 바꾸는 시각 인코더다. 보라색 출력 토큰은 다시 이동·회전 같은 로봇 명령으로 복원된다.
+
+오른쪽의 폐루프 실행은 명령을 한 번 만든 뒤 작업이 끝날 때까지 눈을 감는 구조가 아니다. 행동 뒤의 새 관측을 다시 모델에 넣어 다음 명령을 계산한다. 다만 토큰을 행동으로 바꾸는 과정에는 학습 때 사용한 행동 형식과 로봇 인터페이스가 필요하다. 문자열로 ‘132’를 출력했다는 사실만으로 그 숫자의 단위나 물리적 의미가 정해지는 것은 아니다.
 
 <LectureSlide page={35} caption="큰 Transformer를 학습하면 끝일까" />
 
@@ -288,6 +316,28 @@ Shakey는 카메라와 센서를 사용해 주변을 파악하고, 이동 경로
 보상에 빠진 조건은 실제 성공과 학습 목표를 어긋나게 만들 수 있다. [NTU 모방학습 강의 3:29–4:36](https://www.youtube.com/watch?v=9H3ShV57lHs&t=209s)은 접시를 목표 위치로 옮기되 깨뜨리는 사례로 이를 설명한다. 위치만 평가하면 다루는 과정의 손상이 목적에 반영되지 않는다. 컵 옮기기에서도 목표 위치, 파손, 흘림, 소요 시간 중 무엇을 성공 조건과 보상으로 다룰지 정해야 한다. 모방학습은 이런 행동의 예를 시연으로 제공하는 길을 열지만, 시연 밖 상황까지 자동으로 해결해 주는 것은 아니다.
 
 [NTU의 행동 복제 설명 7:54–9:01](https://www.youtube.com/watch?v=9H3ShV57lHs&t=474s)은 전문가가 늘 잘 운전했다면 벽에 가까워졌을 때의 복구 행동은 기록에 없을 수 있다고 지적한다. 로봇에서도 성공 시연을 더 많이 모으는 것과, 정책이 실제로 방문하는 어긋난 상태에서 어떻게 회복할지 알려주는 것은 서로 다른 데이터 수집 과제다. 어떤 상황이 부족한지 먼저 찾고, 그 상태에서의 시연이나 교정 데이터를 보완해야 한다.
+
+NTU 원본 PPTX 13쪽의 수식을 PDF와 대조하면 리턴의 가장 단순한 형태를 확인할 수 있다.
+
+<Math tex={String.raw`R = \sum_{t=1}^{T} r_t`} display label="에피소드의 전체 보상 R은 1부터 T까지 각 단계 보상 r_t의 합이다" />
+
+`T`는 한 번의 시도가 끝나는 단계이고, `r_t`는 각 단계에서 받은 보상이다. `Σ`는 그 값들을 모두 더하라는 기호다. 원본의 `R`은 이 합을 가리키며, 다른 강의가 순간 보상에 쓰는 대문자 `R_t`와 표기가 다를 수 있다. 글자 모양보다 각 식에서 정의한 의미를 확인해야 한다. 예를 들어 보상이 `[0, 0, 1]`이면 합은 1이다. 이 기록만으로 세 행동 중 어느 것이 성공에 얼마나 기여했는지까지 알 수는 없다. 여러 실행 결과를 이용해 어떤 선택이 이후 성공 가능성을 높였는지 배우는 문제가 남는다.
+
+[UCL 원본 46쪽](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=46)은 미래 보상에 할인율을 적용하고, 그 리턴의 기댓값을 가치로 정의한다. 다음 식은 종료되는 에피소드에 맞춰 합의 끝을 적은 표현이다.
+
+<Math tex={String.raw`G_t = \sum_{k=0}^{T-t-1}\gamma^k r_{t+k+1}`} display label="현재 이후의 보상을 할인율 감마의 거듭제곱으로 가중해 더한 리턴 G_t" />
+
+<Math tex={String.raw`V^\pi(s) = \mathbb{E}_{\pi}[G_t\mid S_t=s]`} display label="상태 s에서 정책 pi를 따를 때 리턴 G_t의 기댓값인 가치 함수" />
+
+`γ`는 0부터 1 사이의 할인율이다. `γ=0.9`이고 다음 보상들이 `[0, 0, 1]`이라면 지금 기준 리턴은 `0 + 0.9×0 + 0.9²×1 = 0.81`이다. 할인하지 않는 경우에는 1이다. `E`는 가능한 실행 결과를 평균적으로 고려한다는 뜻이다. 지금의 보상, 한 번 실행해 얻은 리턴, 같은 상태에서 정책을 반복 실행했을 때의 기대 리턴인 가치는 서로 다른 값이다. 보상은 과제에서 정하는 신호이며, 할인된 값은 그 신호를 어떤 시간적 기준으로 평가할지를 나타낸다.
+
+행동 복제는 다른 목적함수에서 출발한다. 아래 식은 연속적인 로봇 명령을 설명하기 위한 제곱오차 예시이며, NTU 원본 수식을 그대로 옮긴 것은 아니다.
+
+<Math tex={String.raw`\mathcal{L}_{\mathrm{BC}}(\theta)=\frac{1}{N}\sum_{i=1}^{N}\lVert f_\theta(o_i)-a_i^*\rVert^2`} display label="N개 시연에서 예측 행동과 전문가 행동의 제곱 차이를 평균한 행동 복제 손실" />
+
+`N`은 시연에서 만든 관측–행동 쌍의 수, `a_i*`는 그 관측에서 전문가가 내린 행동이다. `f_θ`가 그 행동에 가까워지도록 파라미터를 바꾼다. 위치 이동량·회전량·집게 명령을 함께 예측한다면 단위와 범위가 다르므로, 실제 구현에서는 정규화나 항별 가중치를 정해야 한다. 이 손실이 작아지는 것과 로봇이 방문하는 모든 상태에서 성공하는 것은 동일하지 않다.
+
+[DAgger 원문 2쪽 식 (1)·(2)](https://proceedings.mlr.press/v15/ross11a/ross11a.pdf#page=2)은 전문가가 방문한 상태에서의 손실과 학습 정책이 스스로 방문하는 상태에서의 손실을 나누어 쓴다. 실행 중 컵에서 비껴난 정책은 시연에 없던 관측을 만들 수 있다. 그래서 시험 데이터에서 행동을 잘 맞히는지에 더해, 정책을 끝까지 실행했을 때 어떤 상태를 방문하고 어디에서 복구에 실패하는지 확인해야 한다.
 
 <LectureSlide page={38} caption="시뮬레이션에서 제어·MDP·학습을 연결하기" />
 
@@ -365,8 +415,8 @@ python3 feedback_loop.py --out results
 
 - [Oier Mees — Robot Learning: From Fundamentals to Foundation Models, ETH Zurich, Lecture 1](https://cvg.ethz.ch/lectures/Robot-Learning/) · [강의 영상](https://www.youtube.com/watch?v=X0k14u6pSxw)
 - [강의 슬라이드 이미지 제공 경로](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-01) · [출처 안내](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/ATTRIBUTION.md)
-- [Hado van Hasselt — DeepMind × UCL, Introduction to Reinforcement Learning (2021)](https://www.youtube.com/watch?v=TCCjZe0y4Qc)
-- [Hung-yi Lee — NTU ML 2021: RL Basics](https://www.youtube.com/watch?v=0oucZNfBXlI) · [Imitation Learning](https://www.youtube.com/watch?v=9H3ShV57lHs) · [공식 강의 목차](https://speech.ee.ntu.edu.tw/~hylee/ml/2021-spring.php)
+- [Hado van Hasselt — DeepMind × UCL, Introduction to Reinforcement Learning (2021)](https://www.youtube.com/watch?v=TCCjZe0y4Qc) · [원본 슬라이드](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf)
+- [Hung-yi Lee — NTU ML 2021: RL Basics](https://www.youtube.com/watch?v=0oucZNfBXlI) · [Imitation Learning](https://www.youtube.com/watch?v=9H3ShV57lHs) · [공식 강의 목차](https://speech.ee.ntu.edu.tw/~hylee/ml/2021-spring.php) · [원본 PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/drl_v5.pptx)
 - [RT-2: Vision-Language-Action Models](https://robotics-transformer2.github.io/) · [Open X-Embodiment](https://robotics-transformer-x.github.io/)
 - [DAgger — A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning](https://proceedings.mlr.press/v15/ross11a.html)
 - [SRI — Shakey the Robot](https://www.sri.com/hoi/shakey-the-robot/)
