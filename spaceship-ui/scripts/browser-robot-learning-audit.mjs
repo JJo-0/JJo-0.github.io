@@ -208,7 +208,7 @@ async function auditEquationGuides(cdp, sessionId, chapter, width) {
     const notation=await evaluate(cdp,sessionId,`document.querySelector('[data-equation-guide="rl07-e04"]').textContent`);
     assert(notation.includes('숨은 기억 벡터')&&notation.includes('이전·현재'));
   }
-  await evaluate(cdp,sessionId,`document.querySelectorAll('[data-equation-guide]').forEach(e=>e.open=false);const e=document.querySelector('[data-equation-guide="rl${String(chapter).padStart(2,'0')}-e${chapter===7?'04':'01'}"]');e.open=true;e.scrollIntoView({block:'start',behavior:'instant'})`);
+  await evaluate(cdp,sessionId,`(() => {document.querySelectorAll('[data-equation-guide]').forEach(e=>e.open=false);const guide=document.querySelector('[data-equation-guide="rl${String(chapter).padStart(2,'0')}-e${chapter===7?'04':'01'}"]');guide.open=true;guide.scrollIntoView({block:'start',behavior:'instant'});})()`);
   const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
   fs.writeFileSync(`citation-audit/robot-learning-ch${String(chapter).padStart(2,'0')}-guide-${width}.png`,Buffer.from(shot.data,'base64'));
   await evaluate(cdp,sessionId,`document.querySelectorAll('[data-equation-guide]').forEach(e=>e.open=false)`);
