@@ -17,3 +17,5 @@
 
 
 - 05장: [정책 경사에서 PPO·SAC까지](../../spaceship-ui/site/content/posts/rl-robot-learning-ch05-policy-gradients.mdx) · [출처](source-assets/ch05/README.md) · [직접 실행](labs/05-policy-gradients/README.md)
+
+- 06장: [행동 생성](../../spaceship-ui/site/content/posts/rl-robot-learning-ch06-generative-models.mdx) · [출처](source-assets/ch06/README.md) · [수치 예제](labs/06-generative-models/README.md)

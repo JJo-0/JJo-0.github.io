@@ -503,6 +503,7 @@ POST_TAXONOMY.update({
     "rl-robot-learning-ch02-control-mdp.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "robot-control", "mdp", "eth-zurich")),
     "rl-robot-learning-ch03-imitation-learning.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "imitation-learning", "behavioral-cloning", "dagger", "latent-plans")),
     "rl-robot-learning-ch05-policy-gradients.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "policy-gradients", "ppo", "sac")),
+    "rl-robot-learning-ch06-generative-models.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "generative-models", "diffusion-policy", "flow-matching")),
     "rl-robot-learning-ch04-value-learning.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "q-learning", "dqn", "value-functions")),
     "rl-robot-learning-ch01-introduction.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "eth-zurich", "study")),
 })
