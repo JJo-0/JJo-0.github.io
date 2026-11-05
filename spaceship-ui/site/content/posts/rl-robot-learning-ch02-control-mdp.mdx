@@ -21,6 +21,7 @@ series:
 import LectureSlide from '@/components/post/LectureSlide.astro';
 import LearningFigure from '@/components/post/LearningFigure.astro';
 import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
 
 컵으로 손을 옮기는 명령은 어떻게 모터의 움직임이 될까? 좌표계부터 제어까지 따라간 다음, 로봇의 행동을 평가하고 학습하는 수학적 틀로 연결해 보자.
 
@@ -53,17 +54,19 @@ import Math from '@/components/post/Math.astro';
 강체 모델을 쓰면 한 몸체에 속한 점들이 함께 움직인다는 관계를 이용해 다음 자세를 예측할 수 있다. 휘는 케이블이나 부드러운 물체를 다루면 변형을 별도로 모델링해야 한다. 또 자세의 자유도가 6이라는 말은 여섯 방향으로 원하는 만큼 즉시 움직일 수 있다는 뜻이 아니다. 실제 가능한 운동은 구동기와 접촉 제약에도 달려 있다.
 
 
-평면 자동차 그림에서 두 직선 화살표는 앞뒤·좌우 위치를, 원호 화살표는 차체가 바라보는 방향을 나타낸다. 드론 그림의 roll·pitch·yaw는 각각 x·y·z축을 중심으로 도는 회전을 가리킨다. 기체가 옆으로 기우는 동작, 앞뒤로 숙이는 동작, 위에서 보았을 때 방향을 트는 동작을 구별하는 이름이다. 여러 회전을 합칠 때는 적용 순서도 필요하다. 자세를 숫자로 적는 일과 그 자세로 이동할 추력을 만드는 일은 별개다. [강체 운동 설명 2:17–5:35](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=137s).
+평면 자동차 그림에서 두 직선 화살표는 앞뒤·좌우 위치를, 원호 화살표는 차체가 바라보는 방향을 나타낸다. 드론 그림의 roll·pitch·yaw는 각각 <Math tex={String.raw`x`} />·<Math tex={String.raw`y`} />·<Math tex={String.raw`z`} />축을 중심으로 도는 회전을 가리킨다. 기체가 옆으로 기우는 동작, 앞뒤로 숙이는 동작, 위에서 보았을 때 방향을 트는 동작을 구별하는 이름이다. 여러 회전을 합칠 때는 적용 순서도 필요하다. 자세를 숫자로 적는 일과 그 자세로 이동할 추력을 만드는 일은 별개다. [강체 운동 설명 2:17–5:35](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=137s).
 
 <LectureSlide lecture={2} page={5} caption="변환 행렬의 숫자는 무엇을 뜻하는가" />
 
-회전은 좌표축의 방향을, 이동은 원점의 위치를 바꾼다. 이 두 계산을 행렬 곱 하나로 묶은 것이 <strong>동차 변환 행렬</strong>이다. 아래 식은 B 좌표계로 적은 점을 A 좌표계로 바꾸는 평면 변환이다.
+회전은 좌표축의 방향을, 이동은 원점의 위치를 바꾼다. 이 두 계산을 행렬 곱 하나로 묶은 것이 <strong>동차 변환 행렬</strong>이다. 아래 식은 <Math tex={String.raw`B`} /> 좌표계로 적은 점을 <Math tex={String.raw`A`} /> 좌표계로 바꾸는 평면 변환이다.
 
 <Math tex={String.raw`T=\begin{bmatrix}\cos\theta&-\sin\theta&x\\\sin\theta&\cos\theta&y\\0&0&1\end{bmatrix},\qquad \tilde p_A=T^A_B\tilde p_B`} display label="평면 동차 변환: B 좌표계의 점을 회전하고 이동해 A 좌표계로 표현한다" />
 
+<RobotEquationGuide id="rl02-e01" />
+
 왼쪽 위 2×2 부분은 회전, 오른쪽 열의 <Math tex={String.raw`(x,y)`} />는 이동이다. 점을 <Math tex={String.raw`(p_x,p_y,1)`} />로 늘려 쓰면 행렬 곱 하나에 두 계산이 들어간다. 물결표는 마지막에 1을 붙인 <strong>동차 좌표</strong>를 뜻한다. 3차원에서는 회전 부분이 3×3, 전체가 4×4가 된다.
 
-예를 들어 B 좌표계를 A에서 반시계 방향 90° 돌리고 원점을 <Math tex={String.raw`(1\,\mathrm m,2\,\mathrm m)`} />로 옮겼다고 하자. B의 점 <Math tex={String.raw`(1\,\mathrm m,0\,\mathrm m)`} />는 A에서 <Math tex={String.raw`(1\,\mathrm m,3\,\mathrm m)`} />가 된다. 좌표계가 다르면 같은 두 숫자가 같은 장소를 뜻하지 않는다.
+예를 들어 <Math tex={String.raw`B`} /> 좌표계를 <Math tex={String.raw`A`} />에서 반시계 방향 90° 돌리고 원점을 <Math tex={String.raw`(1\,\mathrm m,2\,\mathrm m)`} />로 옮겼다고 하자. <Math tex={String.raw`B`} />의 점 <Math tex={String.raw`(1\,\mathrm m,0\,\mathrm m)`} />는 <Math tex={String.raw`A`} />에서 <Math tex={String.raw`(1\,\mathrm m,3\,\mathrm m)`} />가 된다. 좌표계가 다르면 같은 두 숫자가 같은 장소를 뜻하지 않는다.
 
 회전 행렬 <Math tex={String.raw`R`} />은 <Math tex={String.raw`R^\top R=I`} />, <Math tex={String.raw`\det R=1`} />을 만족한다. 첫 조건은 길이와 각도를 보존하고, 두 번째는 거울 반사를 제외한다. 행렬에 원소 9개가 있다고 방향의 자유도가 9개인 것은 아니다. 제약을 만족하는 3차원 회전은 자유도 3개다.
 
@@ -72,9 +75,11 @@ import Math from '@/components/post/Math.astro';
 
 <LectureSlide lecture={2} page={6} caption="센서 좌표를 로봇 좌표로 옮기기" />
 
-자동차 지붕의 센서가 보행자를 찾으면 “센서에서 앞으로 몇 m”처럼 센서 기준 위치를 얻는다. 하지만 주행 제어기는 차체 중심 기준 위치를 사용할 수 있다. 지붕 센서와 차체 중심은 원점도 다르고 축 방향도 다를 수 있으므로, 감지한 숫자를 그대로 넘기면 다른 장소를 가리킬 수 있다. 센서와 차체의 상대 위치·방향을 이용해 같은 보행자를 차체 기준으로 다시 표현해야 한다. [좌표 연결 예 5:37–7:09](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=337s).
+자동차 지붕의 센서가 보행자를 찾으면 “센서에서 앞으로 몇 <Math tex={String.raw`m`} />”처럼 센서 기준 위치를 얻는다. 하지만 주행 제어기는 차체 중심 기준 위치를 사용할 수 있다. 지붕 센서와 차체 중심은 원점도 다르고 축 방향도 다를 수 있으므로, 감지한 숫자를 그대로 넘기면 다른 장소를 가리킬 수 있다. 센서와 차체의 상대 위치·방향을 이용해 같은 보행자를 차체 기준으로 다시 표현해야 한다. [좌표 연결 예 5:37–7:09](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=337s).
 
 <Math tex={String.raw`T^{\mathrm{base}}_{\mathrm{ped}}=T^{\mathrm{base}}_{\mathrm{sensor}}T^{\mathrm{sensor}}_{\mathrm{ped}}`} display label="보행자에서 센서, 센서에서 로봇 기준 좌표계로 변환을 순서대로 연결한다" />
+
+<RobotEquationGuide id="rl02-e02" />
 
 여기서는 위 첨자가 도착 좌표계, 아래 첨자가 출발 좌표계다. 오른쪽 변환부터 적용하면 중간의 sensor가 맞물린다. 순서를 뒤집으면 일반적으로 다른 결과가 나온다. 로봇 팔에서도 베이스→어깨→팔꿈치→손목의 변환을 연결하는 같은 원리를 쓴다.
 
@@ -84,7 +89,9 @@ import Math from '@/components/post/Math.astro';
 
 <Math tex={String.raw`T=\begin{bmatrix}R&t\\0&1\end{bmatrix},\qquad T^{-1}=\begin{bmatrix}R^\top&-R^\top t\\0&1\end{bmatrix}`} display label="역변환에서는 회전을 전치하고 이동 벡터에도 역회전을 적용한다" />
 
-<Math tex={String.raw`t`} />는 이동 벡터이며 시간 변수가 아니다. 앞의 90° 회전·<Math tex={String.raw`(1\,\mathrm m,2\,\mathrm m)`} /> 이동 예에서 A의 <Math tex={String.raw`(1\,\mathrm m,3\,\mathrm m)`} />를 역변환하면 B의 <Math tex={String.raw`(1\,\mathrm m,0\,\mathrm m)`} />로 돌아온다. 좌표가 맞지 않는지 점검할 때 알려진 점 하나를 왕복 변환해 보는 이유다. 위치를 나타내는 점에는 마지막 좌표 1을 붙이지만, 순수한 방향 벡터에는 0을 붙여 이동 성분이 더해지지 않도록 한다.
+<RobotEquationGuide id="rl02-e03" />
+
+<Math tex={String.raw`t`} />는 이동 벡터이며 시간 변수가 아니다. 앞의 90° 회전·<Math tex={String.raw`(1\,\mathrm m,2\,\mathrm m)`} /> 이동 예에서 <Math tex={String.raw`A`} />의 <Math tex={String.raw`(1\,\mathrm m,3\,\mathrm m)`} />를 역변환하면 <Math tex={String.raw`B`} />의 <Math tex={String.raw`(1\,\mathrm m,0\,\mathrm m)`} />로 돌아온다. 좌표가 맞지 않는지 점검할 때 알려진 점 하나를 왕복 변환해 보는 이유다. 위치를 나타내는 점에는 마지막 좌표 1을 붙이지만, 순수한 방향 벡터에는 0을 붙여 이동 성분이 더해지지 않도록 한다.
 
 <LectureSlide lecture={2} page={7} caption="관절형 로봇: 링크·관절·말단 장치가 몸체를 이루는 방식" />
 
@@ -130,12 +137,12 @@ Franka의 팔 관절은 7개이고, 이 SO-101 그림에서는 집게를 옮기�
 
 | 관절 | 허용하는 상대 운동 | 자유도 | 움직임을 떠올리는 예 |
 |---|---|---:|---|
-| 회전 관절, revolute (R) | 한 축을 중심으로 회전 | 1 | 문 경첩처럼 각도 하나가 변한다. |
-| 직동 관절, prismatic (P) | 한 축을 따라 직선 이동 | 1 | 레일 위 슬라이더처럼 거리 하나가 변한다. |
-| 나선 관절, helical (H) | 같은 축의 회전과 이동이 일정 비율로 묶임 | 1 | 나사를 돌리면 정해진 피치만큼 전진한다. |
-| 원통 관절, cylindrical (C) | 같은 축의 회전과 직선 이동을 각각 허용 | 2 | 축을 돌리는 정도와 미는 거리를 따로 정한다. |
-| 유니버설 관절, universal (U) | 교차하는 두 축을 중심으로 회전 | 2 | 두 방향으로 꺾이는 십자 연결을 생각할 수 있다. |
-| 구면 관절, spherical (S) | 한 점을 중심으로 세 방향 회전 | 3 | 볼 조인트처럼 중심은 유지하고 방향을 바꾼다. |
+| 회전 관절, revolute (<Math tex={String.raw`R`} />) | 한 축을 중심으로 회전 | 1 | 문 경첩처럼 각도 하나가 변한다. |
+| 직동 관절, prismatic (<Math tex={String.raw`P`} />) | 한 축을 따라 직선 이동 | 1 | 레일 위 슬라이더처럼 거리 하나가 변한다. |
+| 나선 관절, helical (<Math tex={String.raw`H`} />) | 같은 축의 회전과 이동이 일정 비율로 묶임 | 1 | 나사를 돌리면 정해진 피치만큼 전진한다. |
+| 원통 관절, cylindrical (<Math tex={String.raw`C`} />) | 같은 축의 회전과 직선 이동을 각각 허용 | 2 | 축을 돌리는 정도와 미는 거리를 따로 정한다. |
+| 유니버설 관절, universal (<Math tex={String.raw`U`} />) | 교차하는 두 축을 중심으로 회전 | 2 | 두 방향으로 꺾이는 십자 연결을 생각할 수 있다. |
+| 구면 관절, spherical (<Math tex={String.raw`S`} />) | 한 점을 중심으로 세 방향 회전 | 3 | 볼 조인트처럼 중심은 유지하고 방향을 바꾼다. |
 
 나선 관절은 회전도 하고 이동도 하지만 두 운동이 서로 묶여 있으므로 자유도 1이다. 원통 관절은 같은 두 종류의 운동을 독립적으로 정할 수 있어 자유도 2다. 모터가 보이는 수를 세는 것보다 <strong>독립적으로 선택할 수 있는 운동이 몇 개인지</strong>를 물어야 하는 이유다. 수동 관절이나 여러 관절을 연결한 구동도 있을 수 있으므로 모터 수와 기구학적 자유도는 항상 같지 않다.
 
@@ -144,6 +151,8 @@ Franka의 팔 관절은 7개이고, 이 SO-101 그림에서는 집게를 옮기�
 <strong>자유도(DoF)</strong>는 로봇의 기하학적 구성(configuration)을 정하는 데 필요한 독립적인 변수의 수다. 슬라이드는 강체가 원래 가진 자유도에서 관절 제약을 빼는 계산을 소개한다.
 
 <Math tex={String.raw`\mathrm{DoF}=m(N-1)-\sum_{i=1}^{J}c_i`} display label="강체들의 자유도에서 관절이 부과하는 독립 제약을 뺀다" />
+
+<RobotEquationGuide id="rl02-e04" />
 
 <Math tex={String.raw`m`} />은 평면 강체라면 3, 공간 강체라면 6이다. <Math tex={String.raw`N`} />은 고정 베이스를 포함한 링크 수, <Math tex={String.raw`J`} />는 관절 수, <Math tex={String.raw`c_i`} />는 각 관절이 없애는 상대 자유도다. 제약들이 독립적이라는 조건에서 쓰는 계산이며, 특수한 기구에서는 단순 대입만으로 맞지 않을 수 있다. 평면 2R 직렬 팔은 링크 3개와 회전 관절 2개이므로 <Math tex={String.raw`3(3-1)-2-2=2`} />다.
 
@@ -224,6 +233,8 @@ Franka의 팔 관절 구성은 7차원이고, 손의 위치·방향을 모두 �
 
 <Math tex={String.raw`\begin{aligned}x&=l_1\cos q_1+l_2\cos(q_1+q_2)\\y&=l_1\sin q_1+l_2\sin(q_1+q_2)\end{aligned}`} display label="평면 2R 팔의 손끝 위치는 두 링크의 회전한 길이 벡터를 더해 구한다" />
 
+<RobotEquationGuide id="rl02-e05" />
+
 두 번째 링크의 방향이 <Math tex={String.raw`q_2`} />가 아니라 <Math tex={String.raw`q_1+q_2`} />인 이유는 두 번째 각도를 첫 번째 링크에 대해 재기 때문이다. 각 링크가 1m이고 <Math tex={String.raw`(q_1,q_2)=(0^\circ,90^\circ)`} />이면 손끝은 <Math tex={String.raw`(1\,\mathrm m,1\,\mathrm m)`} />다. FK는 힘이나 가속도를 계산하는 동역학과 구별한다.
 
 
@@ -254,6 +265,8 @@ Franka의 팔 관절 구성은 7차원이고, 손의 위치·방향을 모두 �
 
 <Math tex={String.raw`\begin{aligned}e(q)&=f(q)-x^*\\L(q)&=\tfrac12\lVert e(q)\rVert^2\\J(q)&=\frac{\partial f}{\partial q}\\q_{k+1}&=q_k-\alpha J(q_k)^\top e(q_k)\end{aligned}`} display label="위치 IK의 제곱 오차를 야코비안 전치와 경사 하강으로 줄인다" />
 
+<RobotEquationGuide id="rl02-e06" />
+
 <Math tex={String.raw`J`} />는 <strong>야코비안(Jacobian)</strong>이다. 관절을 아주 조금 바꾸었을 때 손끝 위치가 어느 방향으로 얼마나 바뀌는지 나타낸다. 과업 좌표가 <Math tex={String.raw`m`} />개, 관절 변수가 <Math tex={String.raw`n`} />개라면 <Math tex={String.raw`J`} />는 <Math tex={String.raw`m\times n`} />이고, <Math tex={String.raw`J^\top e`} />는 관절 변수와 같은 <Math tex={String.raw`n`} />차원이다. <Math tex={String.raw`\alpha`} />는 한 번에 얼마나 움직일지 정하는 보폭, <Math tex={String.raw`k`} />는 최적화 반복 번호다.
 
 오차가 <Math tex={String.raw`f(q)-x^*`} />이므로 <strong>빼는 방향</strong>으로 갱신한다. 이는 야코비안 <strong>전치</strong>를 쓰는 경사 하강이며, 역행렬이나 의사역행렬을 바로 쓰는 방법과 다르다. 손의 회전까지 포함하려면 SE(3) 행렬을 무작정 빼기보다 회전 오차의 표현과 위치·회전의 상대 가중치를 정해야 한다.
@@ -264,40 +277,46 @@ Franka의 팔 관절 구성은 7차원이고, 손의 위치·방향을 모두 �
 
 <Math tex={String.raw`\begin{aligned}\Delta q_{\mathrm{pinv}}&=J^\dagger\Delta x\\\Delta q_{\mathrm{DLS}}&=J^\top(JJ^\top+\lambda^2I)^{-1}\Delta x\end{aligned}`} display label="목표 방향 오차에 의사역행렬 또는 감쇠 최소제곱 행렬을 적용해 관절 변화량을 구한다" />
 
+<RobotEquationGuide id="rl02-e07" />
+
 <Math tex={String.raw`J^\dagger`} />는 무어–펜로즈 의사역행렬이다. 국소 선형식의 해가 여러 개이면 가장 작은 유클리드 길이의 관절 변화를 고르고, 정확히 맞출 수 없으면 선형 잔차를 최소화한다. 이것은 전체 비선형 IK의 전역 최적해를 보장한다는 뜻이 아니다. DLS의 <Math tex={String.raw`\lambda`} />는 약한 방향의 과도한 갱신을 줄이는 감쇠 계수이며, <Math tex={String.raw`I`} />는 과업 차원에 맞는 단위 행렬이다.
 
 [NVIDIA Isaac Lab 공식 구현](https://github.com/isaac-sim/IsaacLab/blob/dc01ec356052f2acd04246752a92a55162f6cd68/source/isaaclab/isaaclab/controllers/differential_ik.py#L225)은 전치(`trans`), 의사역행렬(`pinv`), DLS(`dls`)를 서로 다른 선택지로 구현한다. 손끝 위치 오차와 야코비안을 받아 관절 변화량을 구한 뒤 현재 관절값에 더한다. 수식과 실제 코드가 만나는 부분이다.
 
-직접 계산한 2R 팔 예에서 두 링크는 각각 1m, 첫 관절은 0rad, 목표 변화량은 x축 −1mm로 두었다. DLS의 <Math tex={String.raw`\lambda=0.05`} />를 사용한 <strong>한 번의 선형 계산</strong> 결과는 다음과 같다.
+직접 계산한 2R 팔 예에서 두 링크는 각각 1m, 첫 관절은 0rad, 목표 변화량은 <Math tex={String.raw`x`} />축 −1mm로 두었다. DLS의 <Math tex={String.raw`\lambda=0.05`} />를 사용한 <strong>한 번의 선형 계산</strong> 결과는 다음과 같다.
 
 | 두 번째 관절 | 의사역행렬의 관절 변화 크기(rad) | DLS의 관절 변화 크기(rad) |
 |---|---:|---:|
-| π/2rad로 굽힘 | 0.001000 | 0.000995 |
+| <Math tex={String.raw`\pi`} />/2rad로 굽힘 | 0.001000 | 0.000995 |
 | 0.001rad로 거의 폄 | 2.236068 | 0.000179 |
 | 0rad로 완전히 폄 | 0 | 0 |
 
-거의 편 팔에서는 작은 손끝 변화를 선형식에 정확히 맞추려다 큰 관절 변화가 나올 수 있다. DLS는 이를 완화하는 대신 손끝 오차를 남길 수 있다. 완전히 편 경우 x축 안쪽 움직임은 이 자세의 1차 야코비안에 나타나지 않아 두 계산이 모두 0을 냈다. 목표가 물리적으로 불가능해서가 아니라, 해당 자세의 <strong>국소 선형화가 그 방향의 변화를 표현하지 못한 것</strong>이다. 작은 초기 굽힘이나 다른 탐색이 필요한 이유를 보여 준다. 이 표는 Isaac Lab을 실행한 결과가 아니라 공개 식을 별도 NumPy 계산으로 확인한 결과다.
+거의 편 팔에서는 작은 손끝 변화를 선형식에 정확히 맞추려다 큰 관절 변화가 나올 수 있다. DLS는 이를 완화하는 대신 손끝 오차를 남길 수 있다. 완전히 편 경우 <Math tex={String.raw`x`} />축 안쪽 움직임은 이 자세의 1차 야코비안에 나타나지 않아 두 계산이 모두 0을 냈다. 목표가 물리적으로 불가능해서가 아니라, 해당 자세의 <strong>국소 선형화가 그 방향의 변화를 표현하지 못한 것</strong>이다. 작은 초기 굽힘이나 다른 탐색이 필요한 이유를 보여 준다. 이 표는 Isaac Lab을 실행한 결과가 아니라 공개 식을 별도 NumPy 계산으로 확인한 결과다.
 
 
-식의 네 줄을 순서대로 읽어 보자. 먼저 FK로 구한 현재 손끝에서 목표 손끝을 빼 오차를 만든다. 이 오차의 각 성분을 제곱해 더한 값이 손실이다. 예를 들어 평면에서 현재 손끝이 목표보다 x방향으로 2cm 멀고 y방향은 같다면 오차 벡터는 <Math tex={String.raw`e=(0.02,0)^\top`} />m이다. 앞의 1/2은 미분할 때 제곱에서 나오는 2를 지우기 위한 계수이며, 손실을 최소로 만드는 위치는 바꾸지 않는다.
+식의 네 줄을 순서대로 읽어 보자. 먼저 FK로 구한 현재 손끝에서 목표 손끝을 빼 오차를 만든다. 이 오차의 각 성분을 제곱해 더한 값이 손실이다. 예를 들어 평면에서 현재 손끝이 목표보다 <Math tex={String.raw`x`} />방향으로 2cm 멀고 <Math tex={String.raw`y`} />방향은 같다면 오차 벡터는 <Math tex={String.raw`e=(0.02,0)^\top`} /><Math tex={String.raw`m`} />이다. 앞의 1/2은 미분할 때 제곱에서 나오는 2를 지우기 위한 계수이며, 손실을 최소로 만드는 위치는 바꾸지 않는다.
 
 야코비안의 <strong>한 열은 한 관절의 영향</strong>이다. 다른 관절을 고정하고 첫 관절만 조금 돌리면 손끝이 어떻게 움직이는지, 둘째 관절만 돌리면 어떻게 움직이는지를 나란히 적는다. 두 위치 성분과 두 관절을 쓰는 경우 행렬은 다음처럼 읽는다.
 
 <Math tex={String.raw`J(q)=\begin{bmatrix}\dfrac{\partial x}{\partial q_1}&\dfrac{\partial x}{\partial q_2}\\[4pt]\dfrac{\partial y}{\partial q_1}&\dfrac{\partial y}{\partial q_2}\end{bmatrix}`} display label="평면 두 관절 팔의 야코비안: 열은 각 관절의 영향, 행은 손끝 x와 y의 변화를 나타낸다" />
 
-첫 행은 x좌표, 둘째 행은 y좌표의 변화다. <Math tex={String.raw`\partial x/\partial q_1`} />는 첫 관절 각도만 조금 바꾸었을 때 x위치가 얼마나 변하는지를 뜻한다. 이 행렬을 현재 손끝 오차와 연결하면, 오차를 줄이려면 관절들을 어느 방향으로 바꿀지 계산할 수 있다. <Math tex={String.raw`J^\top e`} />는 손끝 좌표로 적힌 오차를 관절별 손실 기울기로 옮긴 값이다. 따라서 같은 오차라도 팔이 펴졌는지 굽었는지에 따라 관절 갱신이 달라진다. [야코비안의 열을 관절별 기여로 읽는 설명](https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-1-1-space-jacobian/).
+<RobotEquationGuide id="rl02-e08" />
+
+첫 행은 <Math tex={String.raw`x`} />좌표, 둘째 행은 <Math tex={String.raw`y`} />좌표의 변화다. <Math tex={String.raw`\partial x/\partial q_1`} />는 첫 관절 각도만 조금 바꾸었을 때 <Math tex={String.raw`x`} />위치가 얼마나 변하는지를 뜻한다. 이 행렬을 현재 손끝 오차와 연결하면, 오차를 줄이려면 관절들을 어느 방향으로 바꿀지 계산할 수 있다. <Math tex={String.raw`J^\top e`} />는 손끝 좌표로 적힌 오차를 관절별 손실 기울기로 옮긴 값이다. 따라서 같은 오차라도 팔이 펴졌는지 굽었는지에 따라 관절 갱신이 달라진다. [야코비안의 열을 관절별 기여로 읽는 설명](https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-1-1-space-jacobian/).
 
 <LectureSlide lecture={2} page={22} caption="목표 관절 각도를 찾는 것과 실제로 가는 것은 다르다" />
 
 IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 수 없다. 시작과 끝 사이에 관절이 지나갈 순서와 시간을 정하고, 실제 측정값을 보며 구동해야 한다. 목표 자세만 정한 문제에서 <strong>움직임을 실행하는 문제</strong>로 넘어가는 지점이다.
 
-슬라이드의 “Y 방향 1cm”도 좌표계가 정해져야 의미가 있다. 손 기준 Y와 베이스 기준 Y는 다를 수 있다. 손의 직선 이동을 원한다면 과업 공간 경로를 먼저 정해 IK를 반복할 수 있다. 시작·끝의 관절 각도만 직선으로 보간하면 손끝 경로는 일반적으로 직선이 아니다.
+슬라이드의 “<Math tex={String.raw`Y`} /> 방향 1cm”도 좌표계가 정해져야 의미가 있다. 손 기준 <Math tex={String.raw`Y`} />와 베이스 기준 <Math tex={String.raw`Y`} />는 다를 수 있다. 손의 직선 이동을 원한다면 과업 공간 경로를 먼저 정해 IK를 반복할 수 있다. 시작·끝의 관절 각도만 직선으로 보간하면 손끝 경로는 일반적으로 직선이 아니다.
 
 <LectureSlide lecture={2} page={23} caption="선형 보간: 중간 목표를 시간에 따라 만들기" />
 
 이동 시간 <Math tex={String.raw`T`} />초, 제어 빈도 <Math tex={String.raw`f`} />Hz라면 시간 간격은 약 <Math tex={String.raw`1/f`} />초다. 설명용으로 <Math tex={String.raw`N=\lceil Tf\rceil`} />를 <strong>구간 수</strong>라 정의하고 양 끝을 포함해 <Math tex={String.raw`N+1`} />개 지점을 만든다고 하자. 슬라이드의 보간식을 이 규칙으로 쓰면 다음과 같다.
 
 <Math tex={String.raw`s_i=\frac{i}{N},\quad i=0,\ldots,N,\qquad q_i=q_{\mathrm{start}}+s_i(q_{\mathrm{target}}-q_{\mathrm{start}})`} display label="선형 보간은 정규화된 진행률에 따라 시작 관절과 목표 관절 사이의 중간값을 만든다" />
+
+<RobotEquationGuide id="rl02-e09" />
 
 <Math tex={String.raw`s_i`} />는 0에서 1까지의 진행률이다. 한 관절을 0rad에서 1rad로 1초 동안 움직이고 <Math tex={String.raw`f=100\,\mathrm{Hz}`} />라면 <Math tex={String.raw`N=100`} />, 양 끝을 포함한 지점은 101개다. 첫 목표는 0, 중간 목표는 0.5, 마지막 목표는 1rad다. 반올림 때문에 시간이 조정되는 구현에서는 실제 <Math tex={String.raw`\Delta t`} />도 함께 정해야 한다.
 
@@ -320,7 +339,9 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 <Math tex={String.raw`\dot q=\frac{dq}{dt},\qquad \ddot q=\frac{d^2q}{dt^2},\qquad \dddot q=\frac{d^3q}{dt^3}`} display label="위치의 시간 미분을 차례로 속도, 가속도, 저크라고 부른다" />
 
-이 그림처럼 위치를 m로 적으면 단위는 차례로 m/s, m/s², m/s³다. 관절 회전각을 rad로 적는 문제에서는 rad/s, rad/s², rad/s³가 된다. 급격한 가감속은 구동기에 큰 힘·토크를 요구하고 기구의 진동을 일으킬 수 있다. 그래서 다음 단계에서는 단순히 중간 위치를 많이 만드는 데서 나아가, <strong>정지에서 서서히 속도를 올리고 목표 앞에서 미리 줄이는 시간표</strong>를 만든다. [관련 영상 23:58–24:48](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1438s).
+<RobotEquationGuide id="rl02-e10" />
+
+이 그림처럼 위치를 <Math tex={String.raw`m`} />로 적으면 단위는 차례로 m/s, m/s², m/s³다. 관절 회전각을 rad로 적는 문제에서는 rad/s, rad/s², rad/s³가 된다. 급격한 가감속은 구동기에 큰 힘·토크를 요구하고 기구의 진동을 일으킬 수 있다. 그래서 다음 단계에서는 단순히 중간 위치를 많이 만드는 데서 나아가, <strong>정지에서 서서히 속도를 올리고 목표 앞에서 미리 줄이는 시간표</strong>를 만든다. [관련 영상 23:58–24:48](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1438s).
 
 <LectureSlide lecture={2} page={25} caption="5차 시간 스케일링으로 출발과 도착을 부드럽게" />
 
@@ -328,9 +349,11 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 <Math tex={String.raw`\begin{aligned}h(s)&=10s^3-15s^4+6s^5,\quad 0\le s\le1\\q(t)&=q_0+(q_1-q_0)h(t/T)\end{aligned}`} display label="5차 시간 스케일링은 시작과 끝에서 위치 조건과 속도·가속도 0 조건을 만족한다" />
 
+<RobotEquationGuide id="rl02-e11" />
+
 <Math tex={String.raw`q_0,q_1`} />은 시작과 끝 관절 벡터다. <Math tex={String.raw`h(0)=0`} />, <Math tex={String.raw`h(1)=1`} />이고 양 끝에서 <Math tex={String.raw`h',h''`} />가 0이다. 같은 관절 공간 경로를 이동하되 시간에 따른 진행 속도를 바꾼다. 작은 속도로 출발하고 가운데에서 빨라졌다가 천천히 멈춘다.
 
-[Modern Robotics의 궤적 영상·스크립트](https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/) ([영상 1:19–2:49](https://www.youtube.com/watch?v=0ZqeBEa_MWo&t=79s))는 3차·5차·사다리꼴·S자 시간 스케일링의 차이도 비교한다. 5차식은 이 경계 조건을 만족하지만, 모든 구동기의 속도·가속도 한계를 자동으로 만족시키는 것은 아니다.
+[Modern Robotics의 궤적 영상·스크립트](https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/) ([영상 1:19–2:49](https://www.youtube.com/watch?v=0ZqeBEa_MWo&t=79s))는 3차·5차·사다리꼴·<Math tex={String.raw`S`} />자 시간 스케일링의 차이도 비교한다. 5차식은 이 경계 조건을 만족하지만, 모든 구동기의 속도·가속도 한계를 자동으로 만족시키는 것은 아니다.
 
 
 여섯 경계 조건은 시작 위치·끝 위치, 시작 속도·끝 속도, 시작 가속도·끝 가속도다. 위치가 어디서 출발해 어디에 도착하는지뿐 아니라, 그 앞뒤의 정지 구간과 얼마나 부드럽게 이어지는지까지 정하는 것이다. 5차식의 계수 여섯 개를 이 조건에 맞추면 앞뒤 정지 구간과 위치·속도·가속도가 이어진다. 저크까지 앞뒤에서 0으로 이어진다는 조건은 여기 포함되어 있지 않다.
@@ -358,16 +381,18 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 <Math tex={String.raw`\begin{aligned}e_k&=q_k^{\mathrm{desired}}-q_k^{\mathrm{measured}}\\u_k&=K_p e_k+K_i\sum_{j=0}^{k}e_j\Delta t+K_d\frac{e_k-e_{k-1}}{\Delta t}\end{aligned}`} display label="이산 PID 제어는 현재 오차, 누적 오차, 오차 변화율로 구동 명령을 만든다" />
 
-<Math tex={String.raw`K_p,K_i,K_d`} />는 세 항의 이득이고 <Math tex={String.raw`\Delta t`} />는 측정·명령 간격이다. 비례(P)는 지금의 오차, 적분(I)은 지속해서 쌓인 오차, 미분(D)은 오차가 변하는 빠르기에 반응한다. 이득의 단위는 입력 오차와 출력 명령이 각도·속도·토크 중 무엇인지에 따라 달라진다.
+<RobotEquationGuide id="rl02-e12" />
+
+<Math tex={String.raw`K_p,K_i,K_d`} />는 세 항의 이득이고 <Math tex={String.raw`\Delta t`} />는 측정·명령 간격이다. 비례(<Math tex={String.raw`P`} />)는 지금의 오차, 적분(<Math tex={String.raw`I`} />)은 지속해서 쌓인 오차, 미분(<Math tex={String.raw`D`} />)은 오차가 변하는 빠르기에 반응한다. 이득의 단위는 입력 오차와 출력 명령이 각도·속도·토크 중 무엇인지에 따라 달라진다.
 
 수치 예를 들면 현재 오차 0.1, 직전 오차 0.12, <Math tex={String.raw`\Delta t=0.02`} />, 누적 적분값 0.2에서 <Math tex={String.raw`K_p=10,\;K_i=0.5,\;K_d=2`} />라면 세 항은 <Math tex={String.raw`1`} />, <Math tex={String.raw`0.1`} />, <Math tex={String.raw`-2`} />로 명령은 <strong>−0.9</strong>다. 현재 목표에 못 미쳐도 이미 빠르게 가까워지는 중이면 미분항이 제동 방향으로 작용할 수 있다. 이 숫자는 계산 이해를 위한 예제이며 실제 로봇의 이득 추천값은 아니다.
 
 
-적분 기호는 지금까지 쌓인 오차의 넓이를 더한다는 뜻이다. 실제 컴퓨터에서는 매번 읽은 오차에 시간 간격을 곱해 더하므로 합 기호로 바뀐다. 미분항도 순간 변화율 대신 이번 오차와 직전 오차의 차이를 시간 간격으로 나누어 근사한다. 측정이 목표보다 낮다는 사실만 보는 P항과, 계속 뒤처지는지 보는 I항, 이미 빠르게 목표에 접근하는지 보는 D항은 서로 다른 정보를 쓴다. 계산한 명령을 보낸 뒤 새 측정을 받고 같은 과정을 반복해야 <strong>피드백(feedback)</strong>이 된다.
+적분 기호는 지금까지 쌓인 오차의 넓이를 더한다는 뜻이다. 실제 컴퓨터에서는 매번 읽은 오차에 시간 간격을 곱해 더하므로 합 기호로 바뀐다. 미분항도 순간 변화율 대신 이번 오차와 직전 오차의 차이를 시간 간격으로 나누어 근사한다. 측정이 목표보다 낮다는 사실만 보는 <Math tex={String.raw`P`} />항과, 계속 뒤처지는지 보는 <Math tex={String.raw`I`} />항, 이미 빠르게 목표에 접근하는지 보는 <Math tex={String.raw`D`} />항은 서로 다른 정보를 쓴다. 계산한 명령을 보낸 뒤 새 측정을 받고 같은 과정을 반복해야 <strong>피드백(feedback)</strong>이 된다.
 
 <LectureSlide lecture={2} page={28} caption="스프링·누적 보정·댐퍼로 PID 읽기" />
 
-목표에서 멀수록 더 세게 당기는 스프링을 생각하면 P항을 이해하기 쉽다. I항은 계속 남는 오차를 누적해 보정을 더하고, D항은 오차의 빠른 변화에 반응해 과도한 접근을 줄일 수 있다. 이런 이유로 P항을 스프링, D항을 댐퍼에 비유한다. [PID 비유 설명 25:55–27:51](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1555s). 적분항이 중력을 직접 알아내는 것은 아니다. 지속되는 오차를 누적해 보정하는 것이므로, 동역학 모델을 쓰는 중력 보상과는 원리가 다르다.
+목표에서 멀수록 더 세게 당기는 스프링을 생각하면 <Math tex={String.raw`P`} />항을 이해하기 쉽다. <Math tex={String.raw`I`} />항은 계속 남는 오차를 누적해 보정을 더하고, <Math tex={String.raw`D`} />항은 오차의 빠른 변화에 반응해 과도한 접근을 줄일 수 있다. 이런 이유로 <Math tex={String.raw`P`} />항을 스프링, <Math tex={String.raw`D`} />항을 댐퍼에 비유한다. [PID 비유 설명 25:55–27:51](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1555s). 적분항이 중력을 직접 알아내는 것은 아니다. 지속되는 오차를 누적해 보정하는 것이므로, 동역학 모델을 쓰는 중력 보상과는 원리가 다르다.
 
 이득을 무작정 크게 하면 진동하거나 구동 한계에 닿을 수 있다. 적분은 명령이 포화된 동안 계속 쌓이는 와인드업을 다뤄야 하고, 미분은 센서 잡음을 증폭할 수 있다. 제어 빈도를 바꾸면 <Math tex={String.raw`\Delta t`} />가 달라지므로 같은 이득 숫자의 결과도 다시 확인해야 한다.
 
@@ -377,12 +402,14 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 <Math tex={String.raw`K_p e_{\mathrm{ss}}=\tau_g,\qquad e_{\mathrm{ss}}=\frac{\tau_g}{K_p}`} display label="중력 보상 없는 PD의 정지 평형에서는 비례항이 중력 토크를 만들기 위해 정상상태 오차가 남을 수 있다" />
 
-<Math tex={String.raw`e_{\mathrm{ss}}`} />는 충분히 시간이 지난 뒤 남는 정상상태 오차다. 해당 자세에서 필요한 토크를 1N·m, <Math tex={String.raw`K_p=20\,\mathrm{N\,m/rad}`} />로 놓은 예에서는 0.05rad의 오차가 있어야 비례항이 그 토크를 낸다. 적분항은 과거 오차가 쌓인 값을 유지하므로 현재 오차가 0이 되어도 토크를 낼 수 있다. 이 설명은 고정 목표·포화 없는 안정된 평형을 위한 것이며 모든 로봇의 중력 효과를 상수 하나로 대체하는 모델은 아니다.
+<RobotEquationGuide id="rl02-e13" />
+
+<Math tex={String.raw`e_{\mathrm{ss}}`} />는 충분히 시간이 지난 뒤 남는 정상상태 오차다. 해당 자세에서 필요한 토크를 1N·<Math tex={String.raw`m`} />, <Math tex={String.raw`K_p=20\,\mathrm{N\,m/rad}`} />로 놓은 예에서는 0.05rad의 오차가 있어야 비례항이 그 토크를 낸다. 적분항은 과거 오차가 쌓인 값을 유지하므로 현재 오차가 0이 되어도 토크를 낼 수 있다. 이 설명은 고정 목표·포화 없는 안정된 평형을 위한 것이며 모든 로봇의 중력 효과를 상수 하나로 대체하는 모델은 아니다.
 
 [같은 영상 4:32–5:10](https://www.youtube.com/watch?v=992hdsGgVlE&t=272s)에서는 적분항을 넣은 뒤 정상상태 오차가 줄어들지만 오버슈트가 생기는 예를 보여 준다. 중력 모델로 필요한 토크를 미리 더하는 방법도 있다. 이처럼 오차를 줄이는 방법과 안정적으로 움직이는 조건을 함께 보아야 PID의 세 글자를 실제 움직임과 연결할 수 있다.
 
 
-경로 그림의 초록 표식은 따라가야 할 목표 지점들이다. 실제 팔이 목표보다 처져 있으면 P항이 그 차이를 줄이는 방향으로 당긴다. 중력 때문에 계속 아래로 처진다면 I항이 지속적인 오차를 쌓아 추가 보정을 만든다. 목표를 향해 너무 빠르게 접근해 지나치는 현상이 <strong>오버슈트(overshoot)</strong>이며, D항은 그 변화에 제동을 거는 역할을 할 수 있다. 다만 목표 자체가 움직일 때 D항의 반응도 목표 속도에 영향을 받으므로, “언제나 브레이크”라는 말만으로 모든 PID 동작을 설명할 수는 없다.
+경로 그림의 초록 표식은 따라가야 할 목표 지점들이다. 실제 팔이 목표보다 처져 있으면 <Math tex={String.raw`P`} />항이 그 차이를 줄이는 방향으로 당긴다. 중력 때문에 계속 아래로 처진다면 <Math tex={String.raw`I`} />항이 지속적인 오차를 쌓아 추가 보정을 만든다. 목표를 향해 너무 빠르게 접근해 지나치는 현상이 <strong>오버슈트(overshoot)</strong>이며, <Math tex={String.raw`D`} />항은 그 변화에 제동을 거는 역할을 할 수 있다. 다만 목표 자체가 움직일 때 <Math tex={String.raw`D`} />항의 반응도 목표 속도에 영향을 받으므로, “언제나 브레이크”라는 말만으로 모든 PID 동작을 설명할 수는 없다.
 
 <LectureSlide lecture={2} page={30} caption="움직일 줄 아는 것에서 다음 행동을 고르는 것으로" />
 
@@ -425,12 +452,14 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 <Math tex={String.raw`a_t\sim\pi_\theta(\cdot\mid o_t)\quad\text{or}\quad a_t\sim\pi_\theta(\cdot\mid s_t)`} display label="정책은 현재 관측 또는 접근 가능한 상태를 조건으로 행동 분포를 만든다" />
 
+<RobotEquationGuide id="rl02-e14" />
+
 세로줄 <Math tex={String.raw`\mid`} />은 “이 정보가 주어졌을 때”, <Math tex={String.raw`\sim`} />는 “분포에서 뽑는다”는 뜻이다. 연속 행동에서는 버튼별 확률 목록 대신 토크나 위치 변화량의 분포를 출력할 수 있다. 결정적 정책은 주어진 입력에서 하나의 행동을 낸다.
 
 관측 하나만 쓰는 정책은 부분 관측 문제를 표현하는 가장 단순한 선택이다. 과거 영상과 행동을 모은 이력이나 내부 메모리를 이용하는 정책도 있다. 현재 관측을 <Math tex={String.raw`s`} />라고 이름만 바꿔 붙여도 필요한 정보가 저절로 생기지는 않는다.
 
 
-빨간 아래쪽 화살표는 출력한 행동이 환경을 바꾸어 다음 영상으로 돌아오는 경로다. 신경망 그림만 보면 입력에서 출력으로 한 번 계산하는 함수처럼 보이지만, 실제 로봇에서는 이 계산을 시간에 따라 반복한다. 아래첨자 t는 이 반복의 몇 번째 시점인지 표시한다. 정책의 아래첨자 θ는 시간 대신 학습으로 조정하는 가중치 묶음을 뜻한다. 두 첨자의 역할을 나누어 읽으면 “시간에 따라 들어오는 정보”와 “그 정보로 행동을 정하는 규칙”을 구별할 수 있다.
+빨간 아래쪽 화살표는 출력한 행동이 환경을 바꾸어 다음 영상으로 돌아오는 경로다. 신경망 그림만 보면 입력에서 출력으로 한 번 계산하는 함수처럼 보이지만, 실제 로봇에서는 이 계산을 시간에 따라 반복한다. 아래첨자 <Math tex={String.raw`t`} />는 이 반복의 몇 번째 시점인지 표시한다. 정책의 아래첨자 <Math tex={String.raw`\theta`} />는 시간 대신 학습으로 조정하는 가중치 묶음을 뜻한다. 두 첨자의 역할을 나누어 읽으면 “시간에 따라 들어오는 정보”와 “그 정보로 행동을 정하는 규칙”을 구별할 수 있다.
 
 
 이 글의 시간 첨자 0, 1, 2는 초가 아니라 의사결정의 단계 번호다. 정책이 10Hz로 호출되면 한 단계는 0.1초이고, 100Hz라면 0.01초다. 같은 세 단계라도 물리적으로 흐른 시간은 다르다. 뒤에서 궤적 확률과 할인율을 읽을 때도 이 약속을 유지해야 한다.
@@ -455,6 +484,8 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 <Math tex={String.raw`P(s_{t+1}\mid s_0,a_0,\ldots,s_t,a_t)=P(s_{t+1}\mid s_t,a_t)`} display label="현재 상태와 행동이 주어지면 더 오래된 이력이 다음 상태 분포 예측에 추가 정보를 주지 않는다" />
 
+<RobotEquationGuide id="rl02-e15" />
+
 예를 들어 관절 <strong>각도만</strong> 같아도 관절 속도가 다르면 다음 위치가 달라진다. 이 모델에서 각도만 상태로 두는 것은 정보가 부족할 수 있다. 각도와 속도, 관련 물체 상태 등을 함께 넣어야 하는 이유다. 필요 정보가 현재 상태에 압축돼 있다는 조건이며, 과거 관측을 버리는 것이 언제나 옳다는 명령이 아니다.
 
 마르코프성이 성립해도 전이가 확률적일 수 있다. [ETH 34:52–36:00](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2092s) · [UCL 40:49–43:17](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2449s). <strong>현재 정보가 충분하다</strong>와 <strong>미래 결과가 하나로 결정된다</strong>는 다른 주장이다.
@@ -478,14 +509,16 @@ IK가 목표 각도를 주어도 로봇은 현재 자세에서 순간 이동할 
 
 | 요소 | 뜻 | 컵 집기에서 확인할 내용 |
 |---|---|---|
-| 상태 공간 S | 가능한 상태들의 집합 | 관절 각도·속도, 컵 위치, 접촉 등 무엇을 넣는가? |
-| 행동 공간 A | 가능한 명령들의 집합 | 손끝 목표인가, 관절 목표인가, 토크인가? |
-| 전이 P | 상태와 행동에서 다음 상태가 생기는 규칙 | 중력·마찰·접촉과 하위 제어가 어떻게 작용하는가? |
-| 보상 R | 행동 결과를 평가하는 수치 규칙 | 집기 성공·이동 시간·충돌을 어떻게 반영하는가? |
+| 상태 공간 <Math tex={String.raw`S`} /> | 가능한 상태들의 집합 | 관절 각도·속도, 컵 위치, 접촉 등 무엇을 넣는가? |
+| 행동 공간 <Math tex={String.raw`A`} /> | 가능한 명령들의 집합 | 손끝 목표인가, 관절 목표인가, 토크인가? |
+| 전이 <Math tex={String.raw`P`} /> | 상태와 행동에서 다음 상태가 생기는 규칙 | 중력·마찰·접촉과 하위 제어가 어떻게 작용하는가? |
+| 보상 <Math tex={String.raw`R`} /> | 행동 결과를 평가하는 수치 규칙 | 집기 성공·이동 시간·충돌을 어떻게 반영하는가? |
 
 슬라이드에는 보상을 <Math tex={String.raw`r(s,a)`} />와 <Math tex={String.raw`R(s,a,s^\prime)`} />로 적은 표기가 함께 나온다. 이 글에서는 <strong>행동 <Math tex={String.raw`a_t`} />로 <Math tex={String.raw`s_t`} />에서 <Math tex={String.raw`s_{t+1}`} />로 이동하며 얻는 보상을 <Math tex={String.raw`r_t`} /></strong>라고 정하고, 다음처럼 쓴다.
 
 <Math tex={String.raw`s_{t+1}\sim P(\cdot\mid s_t,a_t),\qquad r_t=R(s_t,a_t,s_{t+1})`} display label="행동 후 다음 상태를 전이 분포에서 얻고, 해당 전이의 보상을 계산한다" />
+
+<RobotEquationGuide id="rl02-e16" />
 
 다른 책에서 같은 전이의 보상을 <Math tex={String.raw`r_{t+1}`} />이라고 부를 수 있다. 계산 전에 첨자의 약속을 맞추면 된다. 보상이 확률적으로 발생하는 더 일반적인 모델도 가능하다. MDP를 정의했다고 좋은 정책을 이미 구한 것은 아니다. 이 틀 안에서 어떤 경험을 모으고 정책을 어떻게 개선할지가 학습 알고리즘의 몫이다.
 
@@ -499,7 +532,9 @@ Class 2에서 나가는 화살표 두 개를 따라가면 Class 3으로 갈 확�
 
 <Math tex={String.raw`P^\pi(s^\prime\mid s)=\sum_a\pi(a\mid s)P(s^\prime\mid s,a)`} display label="고정 정책 아래의 상태 전이는 각 행동의 선택 확률로 행동별 전이를 평균한 것이다" />
 
-별도 예를 들어, 상태 A에서 왼쪽 행동은 A/B로 0.8/0.2, 오른쪽 행동은 A/B로 0.1/0.9의 확률로 옮긴다고 하자. 정책이 왼쪽을 0.75, 오른쪽을 0.25로 고르면 다음 상태 A의 확률은 <Math tex={String.raw`0.75\times0.8+0.25\times0.1=0.625`} />, B는 0.375다. <strong>정책의 무작위 선택과 환경의 무작위 결과를 나누어 적고 합치는 예</strong>다.
+<RobotEquationGuide id="rl02-e17" />
+
+별도 예를 들어, 상태 <Math tex={String.raw`A`} />에서 왼쪽 행동은 <Math tex={String.raw`A`} />/<Math tex={String.raw`B`} />로 0.8/0.2, 오른쪽 행동은 <Math tex={String.raw`A`} />/<Math tex={String.raw`B`} />로 0.1/0.9의 확률로 옮긴다고 하자. 정책이 왼쪽을 0.75, 오른쪽을 0.25로 고르면 다음 상태 <Math tex={String.raw`A`} />의 확률은 <Math tex={String.raw`0.75\times0.8+0.25\times0.1=0.625`} />, <Math tex={String.raw`B`} />는 0.375다. <strong>정책의 무작위 선택과 환경의 무작위 결과를 나누어 적고 합치는 예</strong>다.
 
 
 상호작용 고리는 다음 순서로 읽는다. 로봇은 현재 사용할 수 있는 정보를 받고 정책으로 행동을 정한다. 환경이 그 행동을 실행해 다음 상태를 만들고 결과에 대한 보상을 돌려준다. 그다음 단계에서는 새 상태를 기준으로 다시 행동한다. 보상은 “앞으로 이렇게 하라”는 정답 명령이 아니라, 이미 일어난 결과를 목적에 비추어 평가한 숫자다. 학습 알고리즘은 이 기록을 이용해 다음 선택을 개선한다.
@@ -520,11 +555,13 @@ Class 2에서 나가는 화살표 두 개를 따라가면 Class 3으로 갈 확�
 
 왼쪽·오른쪽 중 하나를 고르는 것은 이산 행동이다. 관절 토크를 실수로 고르는 것은 연속 행동이다. 같은 로봇도 인터페이스에 따라 어느 쪽을 쓸 수 있다. 환경이 행동을 어떻게 해석하는지 알아야 정책 출력을 읽을 수 있다.
 
-<Math tex={String.raw`0.5`} />가 0.5rad의 목표인지, 정규화된 범위의 중간값인지, 0.5N·m의 토크인지 구분하자. 같은 위치 변화량을 매 0.01초 적용하는 것과 매 0.1초 적용하는 것도 다르다. 정책 주기, 하위 제어 주기, 물리 계산 간격을 함께 기록해야 움직임을 재현할 수 있다.
+<Math tex={String.raw`0.5`} />가 0.5rad의 목표인지, 정규화된 범위의 중간값인지, 0.5N·<Math tex={String.raw`m`} />의 토크인지 구분하자. 같은 위치 변화량을 매 0.01초 적용하는 것과 매 0.1초 적용하는 것도 다르다. 정책 주기, 하위 제어 주기, 물리 계산 간격을 함께 기록해야 움직임을 재현할 수 있다.
 
 ETH HW2의 [행동 처리 함수 설명](https://github.com/mees-robot-learning-course/ethz-course-2026/blob/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw2_robot_control_mdps/exercises/ex3.py)은 정규화된 <Math tex={String.raw`a\in[-1,1]`} />을 관절 범위로 바꾼다. 한 관절의 허용 하한·상한이 <Math tex={String.raw`q_{\min},q_{\max}`} />라면 선형 대응은 다음처럼 적을 수 있다.
 
 <Math tex={String.raw`q_{\mathrm{target}}=q_{\min}+\frac{a+1}{2}(q_{\max}-q_{\min})`} display label="정규화된 행동 -1, 0, 1을 관절 범위의 하한, 중간, 상한으로 대응시킨다" />
+
+<RobotEquationGuide id="rl02-e18" />
 
 예제 범위가 <Math tex={String.raw`[-1,2]\,\mathrm{rad}`} />라면 행동 <Math tex={String.raw`-1,0,1`} />은 각각 목표 <Math tex={String.raw`-1,\;0.5,\;2\,\mathrm{rad}`} />다. 이때 행동 0은 관절 각도 0도, 토크 0도 아니다. 입력이 범위를 벗어날 수 있다면 제한 처리도 필요하다.
 
@@ -547,6 +584,8 @@ ETH HW2의 [행동 처리 함수 설명](https://github.com/mees-robot-learning-
 
 <Math tex={String.raw`r_t=-\lVert p_{\mathrm{hand}}-p_{\mathrm{object}}\rVert`} display label="거리의 음수를 보상으로 쓰면 더 작은 거리일수록 더 높은 보상이 된다" />
 
+<RobotEquationGuide id="rl02-e19" />
+
 거리가 0.2m일 때 −0.2, 0.05m일 때 −0.05이므로 더 가까운 쪽의 보상이 크다. 그러나 가까이 있기만 하고 집지 않는 행동도 높은 점수를 얻을 수 있다. 성공 조건, 접촉·충돌, 물체 이동 등을 목적에 맞게 설계해야 한다.
 
 보상 신호가 드물면 성공으로 이어지는 중간 행동들을 알아내기 어려울 수 있고, 거리 신호를 계속 주면 접근 방향을 평가하기 쉬워질 수 있다. [집기 실험 설명 40:29–41:48](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2429s). 밀집 보상이 모든 문제에서 더 좋은 최종 정책을 보장한다거나 희소 보상이 학습 불가능하다는 결론은 아니다. 보상을 측정할 성공 판정기와 센서가 있는지도 실제 시스템에서는 중요한 조건이다.
@@ -564,6 +603,8 @@ ETH HW2의 [행동 처리 함수 설명](https://github.com/mees-robot-learning-
 
 <Math tex={String.raw`p_\pi(\tau)=\rho_0(s_0)\prod_{t=0}^{H-1}\pi(a_t\mid s_t)P(s_{t+1}\mid s_t,a_t)`} display label="궤적의 확률은 시작 상태 확률과 각 단계의 행동 확률·전이 확률을 곱해 구한다" />
 
+<RobotEquationGuide id="rl02-e20" />
+
 <Math tex={String.raw`\rho_0`} />는 시작 상태 분포이고, <Math tex={String.raw`\prod`} />는 각 단계 값을 곱한다는 기호다. 이산적인 설명 예에서 시작 상태 확률이 0.5, 첫 행동 확률 0.8, 다음 상태 확률 0.9, 둘째 행동 확률 0.6, 마지막 상태 확률 0.7이라면 이 특정 궤적의 확률은 <strong>0.1512</strong>다. 시간 단계들이 서로 독립이라는 가정으로 곱한 것이 아니라, 앞선 상태·행동에 조건부인 값들을 순서대로 곱한 것이다.
 
 물리 환경을 그대로 두고 정책만 바꾸어도 선택하는 행동이 달라지므로 궤적의 분포가 달라진다. [궤적 확률 설명 41:51–43:02](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2511s). 연속 변수에서는 위 기호를 확률 <strong>밀도</strong>로 해석해야 하며, 정확한 실수 좌표 한 점의 확률과 혼동하면 안 된다. 현재 식은 상태를 조건으로 행동하는 정책에 대한 식이다. 관측을 사용하는 POMDP에서는 관측 생성 과정과 정책의 이력 의존성도 포함해야 한다.
@@ -573,7 +614,7 @@ ETH HW2의 [행동 처리 함수 설명](https://github.com/mees-robot-learning-
 같은 하드웨어라도 하위 제어 이득이나 행동 유지 시간을 바꾸면 정책이 겪는 전이도 달라질 수 있다. 따라서 궤적 데이터를 비교할 때 상태·행동 열 이름뿐 아니라 명령 단위, 시간 간격, 실행 제어기를 함께 기록해야 한다.
 
 
-아래 갈라지는 경로들은 같은 시작점에서도 서로 다른 기록이 나올 수 있음을 나타낸다. 시작 상태가 다르게 뽑힐 수도 있고, 정책이 다른 행동을 고를 수도 있으며, 같은 행동 뒤 환경의 다음 상태가 달라질 수도 있다. 이 세 출처의 무작위성을 순서대로 곱한 것이 위 식이다. 곱 안의 P는 한 단계의 전이이고, 곱 전체는 여러 단계를 이어 붙인 기록의 가능성을 나타낸다.
+아래 갈라지는 경로들은 같은 시작점에서도 서로 다른 기록이 나올 수 있음을 나타낸다. 시작 상태가 다르게 뽑힐 수도 있고, 정책이 다른 행동을 고를 수도 있으며, 같은 행동 뒤 환경의 다음 상태가 달라질 수도 있다. 이 세 출처의 무작위성을 순서대로 곱한 것이 위 식이다. 곱 안의 <Math tex={String.raw`P`} />는 한 단계의 전이이고, 곱 전체는 여러 단계를 이어 붙인 기록의 가능성을 나타낸다.
 
 <LectureSlide lecture={2} page={43} caption="시간 제한과 할인율도 문제 정의의 일부다" />
 
@@ -589,6 +630,8 @@ ETH HW2의 [행동 처리 함수 설명](https://github.com/mees-robot-learning-
 
 <Math tex={String.raw`\gamma_{\mathrm{new}}=\gamma_{\mathrm{old}}^{\Delta t_{\mathrm{new}}/\Delta t_{\mathrm{old}}}`} display label="시간 간격이 달라질 때 같은 물리적 시간의 할인 가중치를 유지하도록 단계 할인율을 환산한다" />
 
+<RobotEquationGuide id="rl02-e21" />
+
 위 예에서는 <Math tex={String.raw`\gamma_{\mathrm{new}}=0.99^{0.1}\approx0.998995`} />다. 이것만으로 서로 다른 시뮬레이션 설정의 목적 전체가 같아지는 것은 아니다. 한 단계 보상이 시간당 비용인지, 성공 이벤트인지에 따라 보상 누적 방식과 종료 조건도 함께 맞춰야 한다.
 
 [Gymnasium의 시간 제한 설명](https://gymnasium.farama.org/tutorials/gymnasium_basics/handling_time_limits/)은 과업에 내재한 유한 시간과 외부에서 실행을 자르는 제한도 구별한다. 남은 시간이 과업 결과를 바꾸는 경우에는 그 정보를 상태 표현에 담아야 한다. 반면 평가 편의를 위해 외부에서 자른 마지막 관측을 원래 과업의 종료 상태로 단정해서는 안 된다.
@@ -599,28 +642,32 @@ ETH HW2의 [행동 처리 함수 설명](https://github.com/mees-robot-learning-
 
 <Math tex={String.raw`\begin{aligned}G(\tau)&=\sum_{t=0}^{H-1}\gamma^t r_t\\J(\pi)&=\mathbb E_{\tau\sim p_\pi}[G(\tau)]\\\pi^*&\in\operatorname*{arg\,max}_{\pi}J(\pi)\end{aligned}`} display label="한 궤적의 할인 보상 합을 리턴으로 정하고 그 기대값을 최대화하는 정책을 찾는다" />
 
+<RobotEquationGuide id="rl02-e22" />
+
 <Math tex={String.raw`G`} />는 한 번 실행한 궤적의 점수다. <Math tex={String.raw`J`} />는 시작 상태·정책·전이에서 발생하는 가능한 여러 궤적에 대한 기대 리턴이다. <Math tex={String.raw`\arg\max`} />는 최대 점수 자체가 아니라 그 값을 이루는 정책을 찾는다는 뜻이다. 여러 최적 정책이 있을 수 있어 <Math tex={String.raw`\in`} />로 적었다.
 
 세 단계의 보상이 <Math tex={String.raw`[0,0,1]`} />이고 <Math tex={String.raw`\gamma=0.9`} />이면 리턴은 <strong>0.81</strong>이다. 당장 0점을 받은 첫 행동도 마지막 성공을 준비했을 수 있다. 무작위성이 있는 문제에서는 운 좋게 한 번 성공한 실행과 평균적으로 잘하는 정책을 구분해야 한다. 학습 목표는 한 번의 운 좋은 성공이 아니라 이 평균적인 리턴을 높이는 정책을 찾는 것이다. [목적 함수 설명 44:51–45:57](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2691s).
 
 보상을 어떻게 정했는지가 여기까지 그대로 이어진다. 빠르기만 보상하면 충돌이 목적에서 빠질 수 있고, 손의 거리만 보상하면 실제 집기가 목적에서 빠질 수 있다. <strong>좋은 정책은 우리가 적어 둔 문제의 목적에 대해 좋은 정책</strong>이므로, 수식을 최적화하기 전에 목적이 원하는 행동을 표현하는지 확인해야 한다.
 
-<Math tex={String.raw`J(\pi)`} />가 정책 전체를 비교하는 점수라면, 가치 함수는 특정 상태에서 시작했을 때의 기대 리턴을 묻는다. [David Silver PDF 28쪽](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf#page=28)의 <Math tex={String.raw`v_\pi(s)`} />는 상태 s에서 이후 정책 π를 따르는 경우, <Math tex={String.raw`q_\pi(s,a)`} />는 첫 행동 a를 지정하고 이후 π를 따르는 경우다. 보상, 한 번의 리턴, 기대 리턴을 같은 숫자로 읽지 않는 것이 이후 알고리즘의 출발점이다.
+<Math tex={String.raw`J(\pi)`} />가 정책 전체를 비교하는 점수라면, 가치 함수는 특정 상태에서 시작했을 때의 기대 리턴을 묻는다. [David Silver PDF 28쪽](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf#page=28)의 <Math tex={String.raw`v_\pi(s)`} />는 상태 <Math tex={String.raw`s`} />에서 이후 정책 <Math tex={String.raw`\pi`} />를 따르는 경우, <Math tex={String.raw`q_\pi(s,a)`} />는 첫 행동 <Math tex={String.raw`a`} />를 지정하고 이후 <Math tex={String.raw`\pi`} />를 따르는 경우다. 보상, 한 번의 리턴, 기대 리턴을 같은 숫자로 읽지 않는 것이 이후 알고리즘의 출발점이다.
 
 이 장에서는 최적 정책이 무엇을 뜻하는지까지 문제를 정의했다. 최댓값을 나타내는 수식을 썼다는 사실만으로 그 정책을 계산할 수 있게 된 것은 아니다. 다음 장의 시연을 이용하는 학습과 뒤의 강화학습 알고리즘들은 이 입출력과 목적을 가진 정책을 구하는 서로 다른 방법으로 이어진다.
 
 
-기댓값은 가능한 실행들을 발생 가능성으로 가중해 평균한 것이다. 매번 성공 점수가 같은 결정적 문제라면 한 실행과 평균이 같을 수 있지만, 시작점이나 행동·접촉 결과가 달라지면 여러 실행을 보아야 한다. 또 이 절의 J는 정책을 입력받아 점수를 내는 함수이고, 앞의 IK에서 J는 관절 변화와 손끝 변화를 잇는 행렬이었다. 같은 문자를 다시 쓰는 관례 때문에 생기는 혼동이므로, 괄호 안 입력이 정책인지 관절인지와 계산 결과가 숫자인지 행렬인지를 함께 확인하자.
+기댓값은 가능한 실행들을 발생 가능성으로 가중해 평균한 것이다. 매번 성공 점수가 같은 결정적 문제라면 한 실행과 평균이 같을 수 있지만, 시작점이나 행동·접촉 결과가 달라지면 여러 실행을 보아야 한다. 또 이 절의 <Math tex={String.raw`J`} />는 정책을 입력받아 점수를 내는 함수이고, 앞의 IK에서 <Math tex={String.raw`J`} />는 관절 변화와 손끝 변화를 잇는 행렬이었다. 같은 문자를 다시 쓰는 관례 때문에 생기는 혼동이므로, 괄호 안 입력이 정책인지 관절인지와 계산 결과가 숫자인지 행렬인지를 함께 확인하자.
 
 ## 실제 시뮬레이션에서 관측·행동·보상 확인하기
 
 작은 예제로 [Gymnasium의 Pendulum-v1](https://gymnasium.farama.org/environments/classic_control/pendulum/)을 사용했다. 회전 관절 하나를 가진 역진자를 위로 세워 두는 환경이다. 아래 결과는 <strong>위쪽 근처에서 시작하는 고정 PD 제어기</strong>를 실행한 것이다. 시연 데이터나 보상으로 파라미터를 훈련하는 단계는 포함하지 않는다.
 
-관측은 <Math tex={String.raw`[\cos\theta,\sin\theta,\dot\theta]`} />, 행동은 −2에서 +2N·m 사이의 토크 하나다. 원래 모델의 상태 <Math tex={String.raw`(\theta,\dot\theta)`} />를 이 관측으로 표현하면 각도 경계의 주기성을 다룰 수 있다. 보상은 각도의 제곱, 각속도의 제곱, 토크의 제곱을 가중해 더한 비용의 음수다. 세워져 있고 움직이지 않으며 토크가 0이면 보상이 가장 높다.
+관측은 <Math tex={String.raw`[\cos\theta,\sin\theta,\dot\theta]`} />, 행동은 −2에서 +2N·<Math tex={String.raw`m`} /> 사이의 토크 하나다. 원래 모델의 상태 <Math tex={String.raw`(\theta,\dot\theta)`} />를 이 관측으로 표현하면 각도 경계의 주기성을 다룰 수 있다. 보상은 각도의 제곱, 각속도의 제곱, 토크의 제곱을 가중해 더한 비용의 음수다. 세워져 있고 움직이지 않으며 토크가 0이면 보상이 가장 높다.
 
 실행에서는 `seed=7`, 초기 각도 범위 ±0.2rad, 초기 각속도 0으로 같은 초기 조건을 만들고, 토크 0인 경우와 다음 PD 토크를 쓰는 경우를 각각 200단계 비교했다.
 
 <Math tex={String.raw`u=\operatorname{clip}(-15\theta-3\dot\theta,-2,2)`} display label="각도와 각속도로 PD 토크를 계산하고 마이너스 2에서 플러스 2 뉴턴미터로 제한한다" />
+
+<RobotEquationGuide id="rl02-e23" />
 
 clip은 계산 결과를 지정한 하한과 상한 사이로 제한하는 함수다. 이 제어기는 위쪽 근처의 유지 예제다. 아래쪽에서 시작해 진자를 들어 올리는 스윙업 능력은 이 결과로 입증하지 않는다.
 

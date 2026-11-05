@@ -21,6 +21,7 @@ series:
 import LectureSlide from '@/components/post/LectureSlide.astro';
 import LearningFigure from '@/components/post/LearningFigure.astro';
 import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
 
 행동을 평가하는 데서 한 걸음 더 나아가, 좋은 결과를 만드는 행동의 확률을 직접 바꿔 보자. 이번 장은 정책의 기울기를 구하는 방법과, 그 기울기를 실제 로봇 학습에 쓰기 위해 필요한 장치를 다룬다.
 
@@ -30,7 +31,7 @@ import Math from '@/components/post/Math.astro';
 
 컵을 향해 손을 뻗는 로봇이 매번 조금 다른 방향으로 움직인다고 하자. 우연히 컵을 잘 잡았던 움직임은 더 자주 선택하고, 컵을 넘어뜨렸던 움직임은 덜 선택하면 어떨까? 이번 장은 이 직관을 신경망 가중치의 미분으로 바꾸는 과정이다.
 
-[04장](/posts/rl-robot-learning-ch04-value-learning/)에서는 행동의 점수인 Q 함수를 배우고, 그 점수가 큰 행동을 골랐다. 이번에는 <strong>정책(policy)</strong> 자체를 조절한다. 정책은 상태를 보고 행동을 선택하는 규칙이며, 확률적 정책은 가능한 행동마다 선택 확률 또는 확률밀도를 내놓는다. “정책을 개선한다”는 말은 그 분포를 더 좋은 결과가 나오는 방향으로 바꾼다는 뜻이다.
+[04장](/posts/rl-robot-learning-ch04-value-learning/)에서는 행동의 점수인 <Math tex={String.raw`Q`} /> 함수를 배우고, 그 점수가 큰 행동을 골랐다. 이번에는 <strong>정책(policy)</strong> 자체를 조절한다. 정책은 상태를 보고 행동을 선택하는 규칙이며, 확률적 정책은 가능한 행동마다 선택 확률 또는 확률밀도를 내놓는다. “정책을 개선한다”는 말은 그 분포를 더 좋은 결과가 나오는 방향으로 바꾼다는 뜻이다.
 
 REINFORCE의 유도에서 시작해 흔들리는 학습 신호를 기준값·어드밴티지로 다듬고, 과거 자료 재사용의 조건을 거쳐 PPO와 SAC까지 간다. 같은 actor–critic 구조라도 자료를 어떻게 수집하고 어떤 목표를 최적화하는지가 다르다.
 
@@ -64,6 +65,8 @@ DDPG에도 actor가 있으므로 “04장은 가치만 있고 05장에서 처음
 
 <Math display tex={String.raw`G(\tau)=\sum_{t=0}^{T-1}r_t,\qquad J(\theta)=\mathbb E_{\tau\sim p_\theta}[G(\tau)]`} label="수익과 기대 수익" />
 
+<RobotEquationGuide id="rl05-e01" />
+
 <Math tex={String.raw`\tau`} />는 실행 전체인 궤적, <Math tex={String.raw`p_\theta`} />는 현재 정책이 만드는 궤적 분포다. <Math tex={String.raw`J(\theta)`} />는 그 분포에서 얻는 평균 수익이다. 오른쪽의 여러 갈래 선은 같은 시작점에서도 정책의 무작위 선택과 환경의 불확실성 때문에 서로 다른 결과가 나온다는 뜻이다. 가장 좋은 한 경로가 아니라 그 경로들이 나오는 확률까지 고려해야 한다.
 
 이후 유도를 읽기 쉽게 본문은 유한 길이 <Math tex={String.raw`T`} />와 할인 없는 수익을 사용한다. 할인된 목표를 정확히 미분하려면 시간별 할인 가중치도 일관되게 넣어야 한다. <Math tex={String.raw`G_t=\sum_{k=t}^{T-1}\gamma^{k-t}r_k`} />라고 정의하면 기울기의 해당 시점 앞에는 <Math tex={String.raw`\gamma^t`} />도 붙는다. 단순히 보상 합의 기호만 바꾸어 두 목표를 섞지 않는다.
@@ -76,6 +79,8 @@ DDPG에도 actor가 있으므로 “04장은 가치만 있고 05장에서 처음
 
 <Math display tex={String.raw`p_\theta(\tau)=\rho_0(s_0)\prod_{t=0}^{T-1}\pi_\theta(a_t\mid s_t)P(s_{t+1}\mid s_t,a_t)`} label="궤적 확률 분해" />
 
+<RobotEquationGuide id="rl05-e02" />
+
 <Math tex={String.raw`\rho_0`} />는 시작 상태 분포이고 <Math tex={String.raw`P`} />는 환경의 전이다. 여러 단계가 모두 일어나야 한 궤적이 만들어지므로 항들을 곱한다. 이 곱을 로그로 바꾸면 합이 된다는 사실이 뒤에서 긴 실행의 기울기를 계산하게 해 준다.
 
 모델 프리 정책 경사에서도 환경은 이 확률에 포함된다. 다만 정책 가중치를 바꿀 때 시작 분포와 환경 법칙 자체는 바뀌지 않는다고 가정한다. 이 가정 덕분에 나중에 그 두 항의 직접적인 가중치 미분이 사라진다. 상태 분포가 정책에 따라 달라지는 효과까지 무시한다는 뜻은 아니다. 그 효과는 전체 궤적 분포에 이미 들어 있다.
@@ -87,6 +92,8 @@ DDPG에도 actor가 있으므로 “04장은 가치만 있고 05장에서 처음
 같은 정책으로 로봇을 여러 번 실행한 뒤 각각의 수익을 구하면 정책의 평균적인 성능을 추정할 수 있다. 몬테카를로(Monte Carlo)라는 이름은 무작위 표본으로 평균이나 적분을 계산하는 방법을 가리킨다. 정책 신경망의 가중치를 눈으로 보는 대신 실제 결과를 평가하는 것이다.
 
 <Math display tex={String.raw`\widehat J(\theta)=\frac1N\sum_{i=1}^N G(\tau_i),\qquad \tau_i\sim p_\theta`} label="몬테카를로 기대 수익 추정" />
+
+<RobotEquationGuide id="rl05-e03" />
 
 여기서 <Math tex={String.raw`N`} />은 궤적 수다. 10번 실행해 성공한 횟수만 세는 평가도, 매 궤적의 에너지 비용까지 합하는 평가도 같은 틀에 넣을 수 있다. 표본이 많으면 추정이 보통 더 안정되지만, 한 로봇에서 연속 수집한 자료는 서로 상관될 수 있고 모든 초기 조건을 충분히 대표하지 못할 수도 있다.
 
@@ -110,9 +117,13 @@ DDPG에도 actor가 있으므로 “04장은 가치만 있고 05장에서 처음
 
 <Math display tex={String.raw`\nabla_\theta p_\theta(\tau)=p_\theta(\tau)\nabla_\theta\log p_\theta(\tau)`} label="로그 미분 항등식" />
 
+<RobotEquationGuide id="rl05-e04" />
+
 이를 기대 수익의 미분에 넣으면 아래처럼 궤적 분포에서 표집할 수 있는 기대값이 된다.
 
 <Math display tex={String.raw`\nabla_\theta J(\theta)=\mathbb E_{\tau\sim p_\theta}[G(\tau)\nabla_\theta\log p_\theta(\tau)]`} label="점수 함수 정책 경사" />
+
+<RobotEquationGuide id="rl05-e05" />
 
 <Math tex={String.raw`p_\theta`} />에서 실제로 궤적을 얻고, 각 표본에 대해 <Math tex={String.raw`\nabla_\theta \log p_\theta(\tau)`} />를 계산해 수익으로 가중한다. <Math tex={String.raw`\nabla`} />는 모든 가중치에 대한 편미분을 모은 벡터다. 수익은 이 계산에서 숫자로 취급하므로, 보상 함수가 매끈하지 않더라도 확률 분포에 관한 조건이 맞으면 이 방법을 사용할 수 있다.
 
@@ -126,6 +137,8 @@ DDPG에도 actor가 있으므로 “04장은 가치만 있고 05장에서 처음
 
 <Math display tex={String.raw`\nabla_\theta\log p_\theta(\tau)=\sum_{t=0}^{T-1}\nabla_\theta\log\pi_\theta(a_t\mid s_t)`} label="행동 로그 확률의 기울기 합" />
 
+<RobotEquationGuide id="rl05-e06" />
+
 이제 모델 프리로 실행할 수 있다. 로봇에서 상태·행동·보상을 기록하고, 정책이 기록된 행동에 부여한 로그 확률을 계산한다. 이미지가 입력이든 관절 상태가 입력이든 원리는 같다.
 
 연속 행동에서 <Math tex={String.raw`\pi_\theta(a_t\mid s_t)`} />는 특정 실수 행동을 정확히 뽑을 확률이 아니라 확률밀도다. 밀도 값은 1보다 클 수 있으며, 로그 밀도를 사용하는 것은 정상이다. 가우시안의 분산이 0으로 무너지거나 로그 확률 계산에 수치 오류가 생기면 이 추정도 불안정해질 수 있다.
@@ -137,6 +150,8 @@ DDPG에도 actor가 있으므로 “04장은 가치만 있고 05장에서 처음
 REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집하고, 각 궤적의 수익을 구하고, 행동 로그 확률의 기울기에 그 수익을 곱해 평균낸다. 마지막으로 그 방향으로 정책 가중치를 갱신한다.
 
 <Math display tex={String.raw`\widehat g=\frac1N\sum_i G(\tau_i)\sum_t\nabla_\theta\log\pi_\theta(a_{i,t}\mid s_{i,t}),\quad\theta\leftarrow\theta+\eta\widehat g`} label="REINFORCE 경사 상승" />
+
+<RobotEquationGuide id="rl05-e07" />
 
 <Math tex={String.raw`\eta`} />는 학습률이다. 수익을 최대화하므로 위 식은 더하기다. 최소화하는 최적화 도구를 쓴다면 손실을 음의 로그 확률과 수익의 곱으로 만들고 경사 하강을 적용해야 한다. 수익 가중치까지 정책과 함께 미분해 버리면 의도한 점수 함수 추정과 다른 계산이 될 수 있어, 보통 그 가중치에는 역전파를 흘리지 않는다.
 
@@ -160,6 +175,8 @@ REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집
 
 <Math display tex={String.raw`G_t=\sum_{k=t}^{T-1}r_k,\quad\nabla_\theta J=\mathbb E[\sum_t\nabla_\theta\log\pi_\theta(a_t\mid s_t)G_t]`} label="미래 수익의 정책 경사" />
 
+<RobotEquationGuide id="rl05-e08" />
+
 <Math tex={String.raw`G_t`} />는 그 시점부터 남은 보상을 더한 <strong>reward-to-go</strong>다. <Math tex={String.raw`t`} /> 뒤의 보상만 곱해도, 행동 전의 역사에 조건부로 점수 함수의 평균이 0이라는 성질 때문에 기대 기울기는 유지된다. 과거에서 온 불필요한 잡음을 덜어 내는 것이다.
 
 이 수정이 “초반 접근 동작은 언제나 잘했다고 판정한다”는 뜻은 아니다. 나중에 컵을 놓쳐 받은 벌점은 초반 행동의 미래에도 속하므로 여전히 그 행동의 <Math tex={String.raw`G_t`} />에 들어간다. reward-to-go는 과거 보상을 제거할 뿐, 행동별 책임을 완벽하게 찾아 주는 장치는 아니다. 이 구별을 해야 컵 그림의 직관과 실제 수식을 함께 이해할 수 있다.
@@ -182,9 +199,11 @@ REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집
 
 <Math display tex={String.raw`\mathbb E_{a\sim\pi_\theta}[b(s)\nabla_\theta\log\pi_\theta(a\mid s)]=b(s)\nabla_\theta\sum_a\pi_\theta(a\mid s)=0`} label="기준값 항의 기댓값이 0인 이유" />
 
+<RobotEquationGuide id="rl05-e09" />
+
 [Silver 강의의 기준값 설명](https://www.youtube.com/watch?v=KHZVXao4qXs&t=4069s)처럼, 이 항의 기대값이 0이므로 정책 경사에 <Math tex={String.raw`G_t-b(s_t)`} />를 써도 같은 기대 기울기를 얻는다. 핵심은 기준값이 <strong>현재 표집한 행동에 의존하지 않는 것</strong>이다. 상태별로 달라도 된다. 기준 신경망을 함께 학습하더라도 actor 갱신에서는 그 값을 고정한 가중치로 취급한다.
 
-강의 그림처럼 같은 미니배치의 수익 평균을 기준으로 쓰는 구현에는 작은 주의점이 있다. 자기 표본이 자기 기준값에도 포함되면 독립성 논증이 그대로 성립하지 않는다. 독립 궤적 N개인 단순 문제에서는 기대 추정치가 <Math tex={String.raw`1-1/N`} />배로 줄어드는 효과가 있다. 별도 자료로 학습한 기준값이나 자기 표본을 제외한 평균을 쓰면 이 문제를 피할 수 있다. 실제 예제에서 N=2를 전수 계산해 확인했다.
+강의 그림처럼 같은 미니배치의 수익 평균을 기준으로 쓰는 구현에는 작은 주의점이 있다. 자기 표본이 자기 기준값에도 포함되면 독립성 논증이 그대로 성립하지 않는다. 독립 궤적 <Math tex={String.raw`N`} />개인 단순 문제에서는 기대 추정치가 <Math tex={String.raw`1-1/N`} />배로 줄어드는 효과가 있다. 별도 자료로 학습한 기준값이나 자기 표본을 제외한 평균을 쓰면 이 문제를 피할 수 있다. 실제 예제에서 <Math tex={String.raw`N`} />=2를 전수 계산해 확인했다.
 
 [원강의 19:39부터](https://www.youtube.com/watch?v=AdTGz8YnnlE&t=1179s).
 
@@ -192,13 +211,15 @@ REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집
 
 같은 수익 10이라도 쉬운 시작점에서는 실망스러운 결과이고, 거의 실패할 상황에서는 훌륭한 결과일 수 있다. 따라서 모든 상태에서 상수 100을 빼는 것보다, 현재 상태에서 정책이 원래 기대하는 성적을 기준으로 삼는 편이 유용하다.
 
-<Math tex={String.raw`Q^\pi(s,a)`} />는 지금 행동 <Math tex={String.raw`a`} />를 하고 이후 정책 <Math tex={String.raw`\pi`} />를 따를 때의 기대 수익이다. <Math tex={String.raw`V^\pi(s)`} />는 그 상태에서 정책대로 행동했을 때의 평균 수익이다. reward-to-go는 이 Q 값의 잡음 있는 표본이라고 볼 수 있다. 상태 가치 신경망은 그 표본들에서 평균을 배우는 기준값 역할을 한다.
+<Math tex={String.raw`Q^\pi(s,a)`} />는 지금 행동 <Math tex={String.raw`a`} />를 하고 이후 정책 <Math tex={String.raw`\pi`} />를 따를 때의 기대 수익이다. <Math tex={String.raw`V^\pi(s)`} />는 그 상태에서 정책대로 행동했을 때의 평균 수익이다. reward-to-go는 이 <Math tex={String.raw`Q`} /> 값의 잡음 있는 표본이라고 볼 수 있다. 상태 가치 신경망은 그 표본들에서 평균을 배우는 기준값 역할을 한다.
 
 <strong>상태 가치가 모든 정책에서 분산을 최소화하는 최적 기준값인 것은 아니다.</strong> 한 상태의 기울기 제곱 크기까지 고려하면 최적 상수는 다음처럼 가중 평균이 된다.
 
 <Math display tex={String.raw`b^*(s)=\frac{\mathbb E[\|g(a)\|^2Q^\pi(s,a)\mid s]}{\mathbb E[\|g(a)\|^2\mid s]}`} label="분산 최소 기준값" />
 
-<Math tex={String.raw`g(a)=\nabla_\theta \log \pi_\theta(a\mid s)`} />다. 점수 함수의 크기가 행동마다 다르면 이 값은 단순 평균인 <Math tex={String.raw`V^\pi(s)`} />와 다를 수 있다. Silver 7강도 V를 “좋은 기준값”으로 소개한다. 아래 그래프는 이 차이를 일부러 분리한 예다.
+<RobotEquationGuide id="rl05-e10" />
+
+<Math tex={String.raw`g(a)=\nabla_\theta \log \pi_\theta(a\mid s)`} />다. 점수 함수의 크기가 행동마다 다르면 이 값은 단순 평균인 <Math tex={String.raw`V^\pi(s)`} />와 다를 수 있다. Silver 7강도 <Math tex={String.raw`V`} />를 “좋은 기준값”으로 소개한다. 아래 그래프는 이 차이를 일부러 분리한 예다.
 
 <LearningFigure src="/assets/posts/rl-robot-learning-ch05-policy-gradients/baseline-variance.png" alt="기준값 변화에 따른 정확한 정책 경사 분산. 상태 가치99.6과 분산 최소 기준100.4를 구별한다" caption="두 행동의 선택 확률이0.7과0.3일 때 계산한 결과. V는 유용하지만 이 예의 최적 기준은 아니다." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/05-policy-gradients" credit="JJo, 실행 코드와 수치 CSV 공개" width={1200} height={555} />
 
@@ -210,7 +231,9 @@ REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집
 
 <Math display tex={String.raw`A^\pi(s,a)=Q^\pi(s,a)-V^\pi(s),\quad\mathbb E_{a\sim\pi}[A^\pi(s,a)]=0`} label="어드밴티지 정의와 평균" />
 
-두 행동의 Q 값이 4와 10이고 정책이 각각 75%와 25%로 선택한다면 V는 5.5다. 어드밴티지는 −1.5와 +4.5가 된다. 두 값의 단순 평균은 0이 아니지만 정책 확률로 가중한 평균은 0이다. 이것이 비교의 기준이 “가능한 모든 행동의 산술 평균”이 아니라 “현재 정책의 평균”이라는 뜻이다.
+<RobotEquationGuide id="rl05-e11" />
+
+두 행동의 <Math tex={String.raw`Q`} /> 값이 4와 10이고 정책이 각각 75%와 25%로 선택한다면 <Math tex={String.raw`V`} />는 5.5다. 어드밴티지는 −1.5와 +4.5가 된다. 두 값의 단순 평균은 0이 아니지만 정책 확률로 가중한 평균은 0이다. 이것이 비교의 기준이 “가능한 모든 행동의 산술 평균”이 아니라 “현재 정책의 평균”이라는 뜻이다.
 
 표본 수익에서 학습한 상태 가치를 빼면 어드밴티지의 추정치를 얻는다. 정확한 <Math tex={String.raw`A^\pi`} /> 대신 근사 critic을 쓸 때에는 그 오차도 actor에 전달된다. 낮은 분산을 얻는 대신 오차·편향을 관리해야 한다는 문제가 actor–critic의 핵심으로 이어진다.
 
@@ -232,6 +255,8 @@ REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집
 
 <Math display tex={String.raw`\mathbb E_{x\sim p}[f(x)]=\mathbb E_{x\sim q}[\frac{p(x)}{q(x)}f(x)]`} label="중요도 표집 항등식" />
 
+<RobotEquationGuide id="rl05-e12" />
+
 두 행동의 수집 확률이 0.8과 0.2, 새 정책 확률이 0.4와 0.6이라고 하자. 두 번째 행동의 보상만 1이면 수집 평균은 0.2지만 목표 평균은 0.6이다. 두 번째 행동에 3을 곱하고 첫 번째 행동에 0.5를 곱하면 수집 분포의 가중 평균이 정확히 0.6으로 바뀐다.
 
 이 항등식에는 목표 분포가 양수인 곳에서 수집 분포도 양수라는 <strong>지지집합(support)</strong> 조건이 필요하다. 이전 정책이 어떤 행동을 정말 확률 0으로 배제했다면 그 행동의 결과는 자료에서 복원할 수 없다. 유한 표본에서 우연히 한 번도 관찰하지 못했다는 사실과, 분포가 원천적으로 확률 0을 준다는 사실도 구분하자.
@@ -243,6 +268,8 @@ REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집
 이전 정책을 <Math tex={String.raw`\pi_{\rm old}`} />, 바꾸려는 정책을 <Math tex={String.raw`\pi_\theta`} />라고 쓰자. 같은 초기 분포와 같은 MDP에서 수집한 동일 궤적의 확률비를 만들면 시작 확률과 환경 전이가 분자·분모에서 약분된다.
 
 <Math display tex={String.raw`w_\theta(\tau)=\frac{p_\theta(\tau)}{p_{\rm old}(\tau)}=\prod_{t=0}^{T-1}\frac{\pi_\theta(a_t\mid s_t)}{\pi_{\rm old}(a_t\mid s_t)}`} label="궤적 중요도 비율" />
+
+<RobotEquationGuide id="rl05-e13" />
 
 정책이 각 기록된 행동에 부여한 로그 확률만 저장해도, 새 정책의 로그 확률과 비교해 이 비율을 계산할 수 있다. 로봇의 접촉 동역학을 정확히 몰라도 되는 이유다.
 
@@ -266,6 +293,8 @@ REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집
 
 <Math display tex={String.raw`\frac{d_\theta(s)\pi_\theta(a\mid s)}{d_{\rm old}(s)\pi_{\rm old}(a\mid s)}=\frac{d_\theta(s)}{d_{\rm old}(s)}\frac{\pi_\theta(a\mid s)}{\pi_{\rm old}(a\mid s)}`} label="상태와 행동 분포비" />
 
+<RobotEquationGuide id="rl05-e14" />
+
 행동 확률비는 두 정책 신경망으로 계산할 수 있다. 반면 <Math tex={String.raw`d_\theta(s)`} />는 정책이 환경에서 어느 상태를 얼마나 자주 방문하는지에 관한 분포라, 신경망의 한 번 출력만으로는 알 수 없다. 이 비율을 1로 놓으면 현재 배치가 대표하는 상태들에서 새 정책의 행동을 평가하는 <strong>대리 목적(surrogate objective)</strong>을 얻는다.
 
 여기에 이전 정책 아래에서 추정한 어드밴티지를 고정해 사용하는 것이 TRPO·PPO로 이어지는 실용적인 구성이다. 새 정책이 아직 크게 바뀌지 않은 지점에서 유용하지만, 임의의 과거 버퍼를 넣어도 정확한 현재 정책 경사가 되는 것은 아니다. 상태 분포 근사와 미래 수익 평가의 차이를 모두 생각해야 한다.
@@ -288,6 +317,8 @@ REINFORCE의 순서는 간단하다. 현재 정책으로 여러 궤적을 수집
 
 <Math display tex={String.raw`H(\pi(\cdot\mid s))=-\sum_a\pi(a\mid s)\log\pi(a\mid s)`} label="이산 엔트로피" />
 
+<RobotEquationGuide id="rl05-e15" />
+
 연속 행동의 대각 가우시안에서는 미분 엔트로피가 표준편차의 로그 합에 비례한다. 미분 엔트로피는 음수도 가능하고 단위·좌표변환에 따라 값이 달라지므로, 이산 엔트로피와 숫자만 직접 비교하지 않는다.
 
 엔트로피를 더한다고 가보지 못한 상태가 모두 방문되거나 importance sampling의 지지집합 문제가 자동으로 해결되지는 않는다. 상태별 행동 분포를 퍼뜨리는 효과와 환경에서 그 상태까지 도달할 수 있는가는 별개다. 위험 행동의 확률이 늘 수도 있으므로 물리 로봇에서는 명령 제한·중단 조건 같은 별도의 설계가 필요하다.
@@ -302,6 +333,8 @@ KL 발산은 두 분포가 얼마나 다른지 재는 양이다. 이전 정책�
 
 <Math display tex={String.raw`D_{\rm KL}(\pi_{\rm old}\Vert\pi_\theta)=\sum_a\pi_{\rm old}(a\mid s)\log\frac{\pi_{\rm old}(a\mid s)}{\pi_\theta(a\mid s)}`} label="이전 정책에서 새 정책으로의 KL" />
 
+<RobotEquationGuide id="rl05-e16" />
+
 KL은 방향을 바꾸면 보통 값이 달라져 일반적인 거리와 같지 않다. 여러 상태에서 평균 KL이 작다는 조건도 모든 상태·모든 행동의 확률비가 일정 범위 안에 있다는 뜻은 아니다. 평균적인 정책 변화를 억제하는 통계적 장치로 이해하는 것이 정확하다.
 
 [원강의 35:31부터](https://www.youtube.com/watch?v=AdTGz8YnnlE&t=2131s).
@@ -311,6 +344,8 @@ KL은 방향을 바꾸면 보통 값이 달라져 일반적인 거리와 같지 
 TRPO는 이전 정책이 수집한 상태·행동에서 새 정책의 확률비와 이전 어드밴티지의 곱을 크게 만든다. 동시에 이전 상태 분포에서 평균낸 KL이 허용량을 넘지 않도록 제한한다. 이 허용량이 신뢰 영역(trust region)의 크기 역할을 한다.
 
 <Math display tex={String.raw`\max_\theta\ \mathbb E_{\rm old}[u_t(\theta)\widehat A_t],\quad u_t(\theta)=\frac{\pi_\theta(a_t\mid s_t)}{\pi_{\rm old}(a_t\mid s_t)}`} label="TRPO 대리 목적" />
+
+<RobotEquationGuide id="rl05-e17" />
 
 TRPO 원 논문은 정책 성능의 하한을 바탕으로 개선을 보장하는 이론을 유도한 뒤, 실용 알고리즘에서 평균 KL과 표본 추정·지역 근사를 사용한다. 따라서 그림의 “단조 개선 보장”을 실제 신경망의 모든 실행에서 수익이 반드시 증가한다는 약속으로 읽지는 않는다.
 
@@ -333,6 +368,8 @@ Lee·Hwangbo 등의 2020년 연구는 시뮬레이션에서 지형·접촉 정�
 PPO-Clip은 복잡한 KL 제약 최적화 대신 확률비와 어드밴티지로 만든 목적을 잘라 쓴다. <Math tex={String.raw`u_t`} />는 새 행동 확률을 수집 당시 확률로 나눈 값이다. <Math tex={String.raw`\epsilon`} />이 0.2면 잘린 비율의 구간은 0.8부터 1.2다.
 
 <Math display tex={String.raw`L^{\rm clip}(\theta)=\mathbb E_{\rm old}[\min(u_t\widehat A_t,\operatorname{clip}(u_t,1-\epsilon,1+\epsilon)\widehat A_t)]`} label="PPO 잘린 대리 목적" />
+
+<RobotEquationGuide id="rl05-e18" />
 
 어드밴티지가 +2라면 비율 1.5가 원래 주는 목적값은 3이지만, 잘린 항은 2.4이므로 더 작은 2.4를 쓴다. 좋은 행동을 이미 충분히 늘렸다면 그 표본에서는 더 늘릴 유인이 사라진다. 반대로 어드밴티지가 −2이고 비율이 0.5라면 원래 항 −1보다 잘린 항 −1.6이 작으므로 −1.6을 쓴다. 나쁜 행동을 이미 충분히 줄인 뒤의 추가 이득을 끊는다.
 
@@ -360,6 +397,8 @@ OpenAI의 2019년 연구는 PPO 기반의 기억을 가진 제어 정책과, 카
 
 <Math display tex={String.raw`L^{\rm total}=L^{\rm clip}-c_V\mathbb E[(V_\phi(s)-V^{\rm target})^2]+c_H\mathbb E[H(\pi_\theta(\cdot\mid s))]`} label="PPO 전체 최대화 목적" />
 
+<RobotEquationGuide id="rl05-e19" />
+
 위 식은 <strong>최대화</strong>하는 목적이므로 가치 오차 앞에 마이너스가 붙는다. 최소화하는 손실로 구현한다면 첫째와 셋째 항의 부호를 뒤집고 가치 오차는 양수로 둔다. <Math tex={String.raw`c_V`} />와 <Math tex={String.raw`c_H`} />는 서로 단위가 다른 항의 크기를 조절하는 계수다.
 
 <Math tex={String.raw`V^{\rm target}`} />은 critic이 맞히려는 목표 값이다. 끝까지 관측한 수익, 부트스트랩한 수익 등 구현에 따라 구성 방법이 달라진다. actor의 어드밴티지 추정과 critic의 목표는 구별해 저장하고, 보통 actor 갱신에서 어드밴티지를 고정한다. 같은 앞부분 신경망을 공유하면 세 항의 기울기가 그 표현을 함께 바꾸므로 한 표본의 클리핑만으로 전체 정책 변화가 엄격히 제한되지는 않는다.
@@ -374,6 +413,8 @@ actor는 정책이고 critic은 가치 추정기다. critic이 평가한 기대�
 
 <Math display tex={String.raw`\delta_t=r_t+\gamma(1-d_t)V_\phi(s_{t+1})-V_\phi(s_t)`} label="종료를 반영한 TD 오차" />
 
+<RobotEquationGuide id="rl05-e20" />
+
 <Math tex={String.raw`d_t`} />는 실제 종료일 때 1이다. critic이 정확하고 상태가 충분한 정보를 담으면 이 오차는 행동에 따른 상대적인 가치를 알려 준다. critic이 부정확하면 편향이 작다는 보장까지 자동으로 생기지는 않는다. 에피소드가 실제 끝난 경우에는 이후 가치가 0이고, 단지 수집 길이가 잘린 경우에는 적절히 부트스트랩해야 한다.
 
 여러 단계 TD 오차를 결합하는 일반화 어드밴티지 추정(GAE)은 <Math tex={String.raw`\lambda`} />로 단기 부트스트랩과 긴 표본 수익의 비중을 조절한다. <Math tex={String.raw`\lambda=0`} />이면 한 단계 TD, 길게 합하면 표본 수익 쪽에 가까워진다. 분산과 가치 근사 오차 사이의 절충을 조절하는 것이다. [GAE 원 논문](https://arxiv.org/abs/1506.02438)은 PPO 구현을 읽기 전 연결 자료로 유용하다.
@@ -386,17 +427,21 @@ actor는 정책이고 critic은 가치 추정기다. critic이 평가한 기대�
 
 SAC는 재현 버퍼에서 과거 전이를 꺼내 critic을 학습한다. actor를 갱신할 때도 과거 상태를 사용하지만, 그 상태에서의 행동은 <strong>현재 정책</strong>에서 새로 뽑는다. 버퍼에 저장된 옛 행동을 그대로 따라 하도록 학습하는 방식과 다르다. critic은 이 현재 행동의 가치를 추정해 actor에 신호를 준다.
 
-SAC는 보상뿐 아니라 정책 엔트로피도 높이는 최대 엔트로피 강화학습 목표를 사용한다. 최대화하는 actor 목표는 기대 Q와 엔트로피의 합이다. 이를 최소화 손실로 바꾸면 다음 부호가 된다.
+SAC는 보상뿐 아니라 정책 엔트로피도 높이는 최대 엔트로피 강화학습 목표를 사용한다. 최대화하는 actor 목표는 기대 <Math tex={String.raw`Q`} />와 엔트로피의 합이다. 이를 최소화 손실로 바꾸면 다음 부호가 된다.
 
 <Math display tex={String.raw`L_\pi(\theta)=\mathbb E_{s\sim D,a\sim\pi_\theta}[\alpha\log\pi_\theta(a\mid s)-\min_{j=1,2}Q_{\phi_j}(s,a)]`} label="최소화하는 SAC actor 손실" />
 
+<RobotEquationGuide id="rl05-e21" />
+
 엔트로피는 기대 로그 확률의 음수이므로 <Math tex={String.raw`\alpha \log \pi-Q`} />를 최소화하는 것이 <Math tex={String.raw`Q+\alpha H`} />를 최대화하는 것과 맞다. 사진의 actor 식에 있는 <Math tex={String.raw`+\alpha H-Q`} />를 그대로 최소화하면 오히려 엔트로피를 줄이는 방향이 되므로, 본문은 원 논문의 로그 확률 형태로 부호를 분명히 쓴다.
 
-아래 식에서 세타는 actor의 가중치, 피는 critic의 가중치다. 아래첨자 j는 두 critic 중 어느 것인지 구분하는 번호이고, 피 위의 막대는 target 복사본을 뜻한다. D는 과거 전이를 저장한 재현 버퍼다. 실용적인 연속 행동 SAC에서는 두 Q 추정기와 천천히 갱신하는 target 복사본을 사용한다. 다음 상태의 현재 정책 행동을 뽑아 아래 목표를 만들고, 각 critic은 이 목표와의 제곱 오차를 줄인다.
+아래 식에서 세타는 actor의 가중치, 피는 critic의 가중치다. 아래첨자 <Math tex={String.raw`j`} />는 두 critic 중 어느 것인지 구분하는 번호이고, 피 위의 막대는 target 복사본을 뜻한다. <Math tex={String.raw`D`} />는 과거 전이를 저장한 재현 버퍼다. 실용적인 연속 행동 SAC에서는 두 <Math tex={String.raw`Q`} /> 추정기와 천천히 갱신하는 target 복사본을 사용한다. 다음 상태의 현재 정책 행동을 뽑아 아래 목표를 만들고, 각 critic은 이 목표와의 제곱 오차를 줄인다.
 
 <Math display tex={String.raw`y=r+\gamma(1-d)[\min_j Q_{\bar\phi_j}(s',a')-\alpha\log\pi_\theta(a'\mid s')],\quad a'\sim\pi_\theta(\cdot\mid s')`} label="SAC soft TD 목표" />
 
-작은 쪽의 Q를 쓰는 것은 과대평가를 완화하려는 구성이다. <Math tex={String.raw`\alpha`} />는 온도로, 엔트로피와 보상의 상대적 비중을 정한다. 보상 크기를 바꾸면 적절한 온도도 달라진다. 자동 온도 조절은 목표 엔트로피에 맞춰 이 계수를 배우는 방법이지, 모든 상태에서 무작위성을 같게 만드는 장치는 아니다. [SAC Algorithms and Applications](https://arxiv.org/abs/1812.05905)의 갱신식을 함께 대조했다.
+<RobotEquationGuide id="rl05-e22" />
+
+작은 쪽의 <Math tex={String.raw`Q`} />를 쓰는 것은 과대평가를 완화하려는 구성이다. <Math tex={String.raw`\alpha`} />는 온도로, 엔트로피와 보상의 상대적 비중을 정한다. 보상 크기를 바꾸면 적절한 온도도 달라진다. 자동 온도 조절은 목표 엔트로피에 맞춰 이 계수를 배우는 방법이지, 모든 상태에서 무작위성을 같게 만드는 장치는 아니다. [SAC Algorithms and Applications](https://arxiv.org/abs/1812.05905)의 갱신식을 함께 대조했다.
 
 [원강의 46:57부터](https://www.youtube.com/watch?v=AdTGz8YnnlE&t=2817s).
 
@@ -406,11 +451,15 @@ SAC는 보상뿐 아니라 정책 엔트로피도 높이는 최대 엔트로피 
 
 <Math display tex={String.raw`\epsilon\sim\mathcal N(0,I),\quad u=\mu_\theta(s)+\sigma_\theta(s)\odot\epsilon`} label="가우시안 재매개변수화" />
 
+<RobotEquationGuide id="rl05-e23" />
+
 <Math tex={String.raw`\epsilon`} />을 이번 표본에서 고정하면 평균·표준편차에서 행동으로 이어지는 계산을 미분할 수 있다. <Math tex={String.raw`\odot`} />는 각 성분끼리 곱한다는 뜻이다. 이 경로로 critic의 행동 미분이 actor에 전달된다. REINFORCE가 로그 확률을 미분했던 것과 달리, 여기서는 미분 가능한 critic과 연속 행동 생성 함수를 활용한다. 실제 환경의 접촉을 역전파하는 것은 아니다.
 
 실제 명령 범위가 제한돼 있으면 <Math tex={String.raw`a=\tanh(u)`} />처럼 가우시안 표본을 압축하는 정책을 자주 쓴다. 이때 행동 로그 밀도에는 좌표변환의 야코비안 보정이 필요하다.
 
 <Math display tex={String.raw`\log\pi(a\mid s)=\log p_U(u\mid s)-\sum_i\log(1-\tanh^2u_i)`} label="tanh 로그 밀도 보정" />
+
+<RobotEquationGuide id="rl05-e24" />
 
 단순히 행동만 잘라 놓고 원래 가우시안 로그 밀도를 그대로 엔트로피 항에 쓰면 분포가 맞지 않는다. 포화 근처의 수치 안정성도 구현에서 확인해야 한다. 아래 예제는 재매개변수화한 한 표본의 미분을 유한 차분과 비교하고, tanh 밀도 보정의 수치를 별도로 확인한다.
 
@@ -430,13 +479,13 @@ SAC 원 논문과 후속 Applications 논문은 재현 버퍼·확률적 actor·
 
 REINFORCE는 현재 정책이 만든 실행 결과로 행동 로그 확률을 가중한다. reward-to-go는 과거 보상을 제거하고, baseline은 현재 행동과 독립적인 기준을 빼며, 어드밴티지는 현재 상태의 평균 기대와 비교한다. 이 과정의 공통 목표는 더 정확하고 덜 흔들리는 정책 개선 신호를 만드는 것이다.
 
-TRPO와 PPO는 이전 배치에서 추정한 개선을 믿을 수 있도록 정책 변화를 조절한다. PPO는 같은 최근 배치로 몇 번 학습하지만, 오래된 자료를 무제한 재사용하는 방식은 아니다. SAC는 과거 전이로 Q를 배우고 현재 정책의 새 행동을 critic에 물으며, 엔트로피까지 포함한 목표를 최적화한다.
+TRPO와 PPO는 이전 배치에서 추정한 개선을 믿을 수 있도록 정책 변화를 조절한다. PPO는 같은 최근 배치로 몇 번 학습하지만, 오래된 자료를 무제한 재사용하는 방식은 아니다. SAC는 과거 전이로 <Math tex={String.raw`Q`} />를 배우고 현재 정책의 새 행동을 critic에 물으며, 엔트로피까지 포함한 목표를 최적화한다.
 
 | 방법 | actor가 쓰는 신호 | 자료 사용에서 볼 점 |
 | --- | --- | --- |
 | REINFORCE | 표본 수익 × 로그 확률 기울기 | 현재 정책의 실행 자료 |
 | PPO | 고정 어드밴티지와 잘린 확률비 목적 | 최근 배치의 제한된 반복 갱신 |
-| SAC | 현재 정책 행동의 soft Q와 로그 확률 | 과거 전이 재현 버퍼, 현재 행동 재표집 |
+| SAC | 현재 정책 행동의 soft <Math tex={String.raw`Q`} />와 로그 확률 | 과거 전이 재현 버퍼, 현재 행동 재표집 |
 
 어떤 알고리즘이든 상태·행동·보상의 의미가 먼저다. 논문에 적힌 성공률을 읽을 때에도 관측, 하드웨어, 학습 자료량, 평가 조건을 함께 확인하자. 다음 코드를 통해 이 장의 핵심 수식이 실제 숫자로 어떻게 달라지는지 확인할 수 있다.
 
@@ -448,7 +497,7 @@ TRPO와 PPO는 이전 배치에서 추정한 개선을 믿을 수 있도록 정�
 
 <LearningFigure src="/assets/posts/rl-robot-learning-ch05-policy-gradients/policy-and-entropy.png" alt="직접 실행한 REINFORCE 기대 보상 곡선과 온도에 따른 두 행동 엔트로피 목적의 최적 확률" caption="왼쪽은96,000개 표본을 사용한 자체 REINFORCE 실행,오른쪽은 알려진 두 Q 값의 최대 엔트로피 목적을 정확히 계산한 결과다." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/05-policy-gradients" credit="JJo, 실행 코드와 수치 CSV 공개" width={1350} height={525} />
 
-선택 확률 0.3, 수익 99와 101인 계산에서 정확한 정책 경사는 0.42였다. V 기준값은 99.6, 이 문제의 분산 최소 기준값은 100.4다. N=2인 같은 배치 평균을 빼면 기대 기울기는0.21로 줄고, 자기 표본을 제외한 기준값은0.42를 유지했다. 이 차이는 “baseline을 빼면 언제나 아무 편향이 없다”는 문장을 구현 조건과 함께 읽어야 하는 이유다.
+선택 확률 0.3, 수익 99와 101인 계산에서 정확한 정책 경사는 0.42였다. <Math tex={String.raw`V`} /> 기준값은 99.6, 이 문제의 분산 최소 기준값은 100.4다. <Math tex={String.raw`N`} />=2인 같은 배치 평균을 빼면 기대 기울기는0.21로 줄고, 자기 표본을 제외한 기준값은0.42를 유지했다. 이 차이는 “baseline을 빼면 언제나 아무 편향이 없다”는 문장을 구현 조건과 함께 읽어야 하는 이유다.
 
 SAC 목표 계산에서는 보상0.2,할인율0.9,다음 Q1.5,온도0.2,로그 확률−0.7일 때 목표가1.676이다. 실제 종료라면 이후 항을 제거해0.2가 된다. 이 숫자는 알고리즘의 부호와 종료 처리를 확인하는 계산이며 실제 로봇의 성적이 아니다.
 
@@ -458,7 +507,7 @@ SAC 목표 계산에서는 보상0.2,할인율0.9,다음 Q1.5,온도0.2,로그 �
 - [David Silver 7강 슬라이드](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-7-policy-gradient-methods.pdf)와 [공개 녹화](https://www.youtube.com/watch?v=KHZVXao4qXs): 점수 함수, REINFORCE, actor–critic, 기준값의 연결을 보완한다.
 - [Berkeley CS285 2023 자료](https://rail.eecs.berkeley.edu/deeprlcourse-fa23/): 5강 정책 경사,6강 actor–critic,9강 고급 정책 경사를 같은 주제별로 대조했다.
 - [TRPO 원 논문](https://arxiv.org/abs/1502.05477), [PPO 원 논문](https://arxiv.org/abs/1707.06347), [GAE 원 논문](https://arxiv.org/abs/1506.02438): 이론적 보장과 실용 근사,클리핑 목적과 가치 목표의 구분에 사용했다.
-- [SAC 초기 논문](https://arxiv.org/abs/1801.01290), [SAC Algorithms and Applications](https://arxiv.org/abs/1812.05905): 엔트로피 목표·재현 버퍼·두 Q·온도 조절·재매개변수화의 기준이다.
+- [SAC 초기 논문](https://arxiv.org/abs/1801.01290), [SAC Algorithms and Applications](https://arxiv.org/abs/1812.05905): 엔트로피 목표·재현 버퍼·두 <Math tex={String.raw`Q`} />·온도 조절·재매개변수화의 기준이다.
 - [험지 사족 보행](https://arxiv.org/abs/2010.11251), [루빅스 큐브 로봇 손](https://arxiv.org/abs/1910.07113): 시뮬레이션과 실제 로봇의 연결 조건을 설명한다.
 
 원본 슬라이드의 권리는 Oier Mees와 각 자료의 원저작자·권리자에게 있다. 본문 그림은 고정된 [공개 사본](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-05)을 사용했다. 자체 계산 그래프와 설명은 JJo가 작성했다. [페이지·자막·출처 대조 기록](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/source-assets/ch05)에 자료별 출처와 검토 범위를 남겼다.
