@@ -193,11 +193,11 @@ async function auditEquationGuides(cdp, sessionId, chapter, width) {
   const count=[5,23,18,20,24,23,18][chapter-1];
   const initial=await evaluate(cdp,sessionId,`(() => {const all=[...document.querySelectorAll('[data-equation-guide]')];return {count:all.length,closed:all.every(e=>!e.open),adjacent:all.every(e=>e.previousElementSibling?.classList.contains('math-display')&&e.previousElementSibling.querySelector('annotation')?.textContent===decodeURIComponent(e.dataset.equationTex))};})()`);
   assert.equal(initial.count,count);assert(initial.closed&&initial.adjacent,'Every equation has its own initially collapsed guide');
-  await evaluate(cdp,sessionId,`document.querySelector('[data-equation-guide] summary').focus()`);
-  await cdp.send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
+  assert(await evaluate(cdp,sessionId,`(() => {const s=document.querySelector('[data-equation-guide] summary');s.scrollIntoView({block:'center',behavior:'instant'});s.focus();return document.activeElement===s;})()`),'Equation summary owns keyboard focus');
+  await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'},sessionId);
   await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
   await waitExpression(cdp,sessionId,`document.querySelector('[data-equation-guide]').open`,'Equation guide opens with Enter');
-  await cdp.send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
+  await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'},sessionId);
   await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
   await waitExpression(cdp,sessionId,`!document.querySelector('[data-equation-guide]').open`,'Equation guide closes with Enter');
   await evaluate(cdp,sessionId,`document.querySelectorAll('[data-equation-guide]').forEach(e=>e.open=true)`);
