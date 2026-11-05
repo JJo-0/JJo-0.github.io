@@ -112,6 +112,9 @@ export async function auditNewsMedia(cdp, sessionId) {
     // still has to be present, decoded and credited in the loop below.
     ['doe-grid-resilience-funding', { minFigures: 2, minDiagrams: 0 }],
     ['spectral-swarm-arena-shape', { minFigures: 3, minDiagrams: 0 }],
+    // The RAIBO2 methods explainer uses one credited preprint photograph;
+    // its equations are Math/CandidateEquation, not legacy NewsDiagram art.
+    ['2026-09-24-raibo2-marathon-news', { minFigures: 1, minDiagrams: 0 }],
   ]);
   // Media registration does not publish a post. Validate source state first,
   // then require published images and reject draft listing/route exposure.
