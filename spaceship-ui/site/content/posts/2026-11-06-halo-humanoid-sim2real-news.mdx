@@ -1,0 +1,87 @@
+---
+title: "HALO, 시뮬레이션에서 실제 집으로"
+description: "절차적으로 생성한 1,000개 가상 주택에서 휴머노이드의 시각·언어·동작을 학습하고, 사전 지도 없이 실제 주택으로 옮긴 HALO의 구조와 검증 경계를 분석한다."
+pubDate: 2026-11-06T06:40:00+09:00
+updatedDate: 2026-11-06T06:40:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: 2026-11-06-halo-humanoid-sim2real-news
+category: robotics-embedded
+subcategory: humanoid-sim-to-real
+type: paper-review
+tags:
+  - frontier-one
+  - humanoid-robotics
+  - sim-to-real
+  - embodied-ai
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+> **SELECTED · 기준일 2026-11-06 KST · 96/100 · EARLY_SIGNAL**  
+> arXiv:2611.06908 v1의 HTML 전문에서 Introduction, Figure 1–10 설명, Methods, Table I–III, ablation, limitations, 부록 수식과 하이퍼파라미터를 확인했다. 동료평가와 독립 재현은 아직 없으며 PDF 실제 페이지는 확인하지 못했다. 따라서 이 글은 연구 초안이지 확정 성능 보도가 아니다.
+
+## 1. 한 문장 결론
+
+HALO는 사람이 원격조종으로 매 장면을 시연하는 대신 1,000개 절차 생성 주택에서 시각·언어·전신동작 데이터를 합성하고, 의미 계획·동작 생성·깊이 기반 추적을 서로 다른 주기로 연결해 학습 때 보지 않은 실제 주택 6곳의 단일 기술 360회에서 저자 보고 평균 성공률 91%를 기록했다.
+
+## 2. 왜 어려운가
+
+휴머노이드가 낯선 방에서 “의자에 앉아”라는 말을 실행하려면 의자를 고르는 의미 판단과 몸을 실제 좌석에 맞추는 물리 제어가 동시에 필요하다. 언어와 이미지, 29개 관절과 골반 자세가 짝지어진 데이터는 웹에 자연스럽게 쌓이지 않는다. 원격조종은 한 시간의 데이터를 만들기 위해 최소 한 시간의 사람이 필요하고, 미리 스캔한 공간에 의존하면 새 집으로 바로 옮길 수 없다.
+
+시뮬레이션도 답을 자동으로 주지는 않는다. 운동학적 생성기는 발 미끄러짐이나 바닥 관통을 만들 수 있고, 합성 영상에서 만든 궤적은 실제 모터의 지연·토크·마찰과 다르다. 긴 동작은 앞 기술의 종료 자세가 다음 기술의 시야를 망가뜨리는 연쇄 실패도 만든다.
+
+## 3. 기초 개념
+
+Sim-to-real은 가상환경에서 학습한 정책을 실제 하드웨어로 옮기는 문제다. Domain randomization은 마찰, 질량, 카메라 오차, 지연 등을 학습 중 흔들어 현실의 차이를 흡수한다. Receding horizon은 긴 궤적 전체를 한 번에 고정하지 않고 짧은 미래를 반복 생성한다. HALO는 5초 계획을 만들지만 약 3 Hz로 다시 계산하고, 50 Hz 추적기가 깊이와 관절 상태로 실제 동작을 보정한다.
+
+## 4. 기존 방식의 한계
+
+원격조종·웨어러블 캡처는 정확하지만 노동량에 비례해 비용이 늘어난다. 재구성 기반 방법은 알려진 공간에는 강하지만 배치 전에 촬영·스캔이 필요하다. 맹목적 motion tracker는 생성된 궤적을 잘 따라도 실제 의자와 장애물의 위치 차이를 보지 못한다. 반대로 단일 end-to-end 정책은 의미 판단과 실시간 제어를 한 모델 주기에 묶어 지연과 실패 원인을 분리하기 어렵다.
+
+## 5. 새 방법의 세 단계
+
+첫째, Kimodo로 텍스트·waypoint·keyframe 제약을 만족하는 전신동작을 만들고 기하 검증기로 발 미끄러짐, 관통, 비행 구간, 관절 한계를 걸러낸다. 이 동작을 Infinigen 주택 1,000곳에 배치해 300시간의 egocentric vision-language-motion 자료를 렌더링한다.
+
+둘째, frozen Qwen3.5-2B encoder와 DiT decoder가 RGB와 subtask에서 5초·150프레임·프레임당 36차원의 계획을 만든다. 이미 실행을 약속한 앞 15프레임은 깨끗한 prefix로 고정해 비동기 계획 교체 때 궤적이 튀지 않도록 학습한다.
+
+셋째, 50 Hz tracker가 깊이와 proprioception으로 29개 관절 목표를 출력한다. 기술별 privileged PPO expert를 먼저 만들고, DAgger로 하나의 depth-based student에 증류한 뒤, 기술별 critic을 둔 PPO로 보정한다. 상위 orchestrator는 약 0.5 Hz로 자연어를 subtask로 나눈다.
+
+## 6. 핵심 수식과 시스템
+
+Flow matching은 깨끗한 계획 $x_1$과 잡음 $x_0$ 사이를 다음처럼 섞는다.
+
+$$x_s=sx_1+(1-s)x_0$$
+
+생성기는 prefix 이후 구간에서 $x_1-x_0$ 방향을 예측한다. $H=150$, $P=15$, $D=36$이며, 첫 0.5초는 이미 실행 중인 계획과 일치시키고 나머지 4.5초만 생성한다. 이는 추론 때 두 궤적을 사후 보간하는 대신 학습 단계에서 연속성을 조건으로 준다는 뜻이다.
+
+실행 경로는 `VLM orchestrator(~0.5 Hz) → motion generator(~3 Hz) → depth/proprioception tracker(50 Hz) → joint target`이다. RGB는 Mac mini M4 Pro에서 의미·계획에 쓰고, RealSense stereo depth와 Jetson Orin NX는 실시간 추적에 쓴다.
+
+## 7. 실험과 수치
+
+훈련 자료는 1,000개 주택의 약 300시간이며, 생성에는 저자 기준 250개 H100을 48시간 사용했다. 단일 기술은 100개 held-out simulation 환경과 실제 주택 6곳에서 평가했다. 실제 성공률은 Go-To 92%, Sit 85%, Door 93%, Crouch 100%, Crawl 90%, Push 88%, 평균 91%다.
+
+Ablation에서 Sit 성공률은 주택 수를 1개에서 1,000개로 늘릴 때 43%에서 84%로 상승했다. training-time prefix conditioning을 빼면 24%, inference-time chunking은 66%였다. flow-matching decoder를 regression으로 바꾸면 19%, tracker에서 depth를 빼면 74%로 내려갔다. 각 구성요소가 결과에 기여한다는 직접 근거다.
+
+## 8. 반대 증거와 실패조건
+
+여러 기술을 잇는 실제 평가는 단 한 곳의 실제 환경, 각 시퀀스 10회에 불과하다. Crouch→Go-To→Push는 실제 성공률 50%였고, 실패 5회 중 3회는 crouch 종료 때 머리가 상자 반대쪽을 향해 다음 목표가 시야 밖으로 나갔다. 단일 기술 평균 91%를 장기 자율성 91%로 읽으면 안 된다.
+
+## 9. 한계
+
+새 기술을 추가하려면 사람이 prompt와 keyframe을 작성해야 한다. 시각 중심이라 접촉과 가림을 직접 느끼지 못하고 tactile sensing이 없다. tracker는 계획의 목적을 모른 채 운동학적 기준을 추종한다. 실제 주택은 6곳, 하드웨어는 개조한 Unitree G1 한 종류이며 동료평가·독립 재현·안전 인증은 없다. 저자 이해관계 문구도 확인되지 않았다.
+
+## 10. 실제로 바뀌는 것
+
+핵심 변화는 “실제 로봇 데이터가 전혀 필요 없다”는 보편 명제가 아니다. 사람이 만든 기술 정의와 대규모 compute는 여전히 필요하다. 다만 paired whole-body data를 공간마다 다시 수집하지 않고, 절차 생성 공간·합성 동작·물리 추적을 분리해 확대하는 실용적인 데이터 엔진을 제시했다. 사용자의 HRI 연구 관점에서는 의미 계획을 느리게, 안전 추적을 빠르게 분리하는 구조와 depth 기반 fail-safe 층이 특히 참고할 만하다.
+
+## 11. 다음 재검토 트리거
+
+동료평가 채택, 코드·학습자료·checkpoint의 실제 공개, 다른 연구실의 G1 재현, 다른 휴머노이드로의 이전, tactile sensing 추가, 장기 복합 작업을 여러 실제 환경에서 반복한 결과, 충돌·낙상·복구율과 latency 분포 공개가 필요하다.
+
+## 12. 출처
+
+- 논문: https://arxiv.org/abs/2611.06908
+- 프로젝트·코드·영상 링크: https://apple-aiml-research.github.io/ml-halo/
+- 식별자: arXiv:2611.06908
+
