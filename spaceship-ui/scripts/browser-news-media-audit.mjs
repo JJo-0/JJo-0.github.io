@@ -106,6 +106,12 @@ export async function auditNewsMedia(cdp, sessionId) {
     ['2026-09-30-wrn-inhibitor-phase1-news', { minFigures: 3, minDiagrams: 0 }],
     ['2026-09-30-rbn-sliding-ferroelectric-memory-news', { minFigures: 2, minDiagrams: 0 }],
     ['2026-09-30-trans-interface-perovskite-solar-news', { minFigures: 2, minDiagrams: 0 }],
+    // These published layouts render their educational SVG through NewsFigure:
+    // DOE has a funding-flow SVG and source photo; spectral swarm has a
+    // diffusion SVG and two credited experiment frames. Every catalogue ID
+    // still has to be present, decoded and credited in the loop below.
+    ['doe-grid-resilience-funding', { minFigures: 2, minDiagrams: 0 }],
+    ['spectral-swarm-arena-shape', { minFigures: 3, minDiagrams: 0 }],
   ]);
   // Media registration does not publish a post. Validate source state first,
   // then require published images and reject draft listing/route exposure.
