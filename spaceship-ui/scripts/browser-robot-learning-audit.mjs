@@ -142,7 +142,7 @@ export async function auditRobotLearning(cdp, sessionId) {
     await waitExpression(cdp, sessionId, `document.querySelectorAll('.math-display .katex').length === 23`, 'Chapter 06 equations rendered');
     const structure = await evaluate(cdp,sessionId,`({slides:[...document.querySelectorAll('[data-lecture-number="6"]')].map(e=>e.dataset.lectureSlide),figures:document.querySelectorAll('[data-learning-figure]').length,errors:document.querySelectorAll('.katex-error').length,display:document.querySelectorAll('.math-display math').length,inline:document.querySelectorAll('.math-inline math').length,labels:[...document.querySelectorAll('.math-display')].every(e=>e.getAttribute('aria-label')),literal:document.body.innerText.includes('**'),oversize:[...document.querySelectorAll('.math-inline')].filter(e=>e.getBoundingClientRect().width>innerWidth-30).map(e=>e.querySelector('annotation')?.textContent)})`);
     assert.deepEqual(structure.slides,Array.from({length:39},(_,i)=>i+1).filter(n=>![38,39].includes(n)).map(n=>'P'+String(n).padStart(3,'0')));
-    assert.equal(structure.figures,3); assert.equal(structure.errors,0); assert.equal(structure.display,23); assert.equal(structure.inline,134);
+    assert.equal(structure.figures,3); assert.equal(structure.errors,0); assert.equal(structure.display,23); assert.equal(structure.inline,136);
     assert(structure.labels&&!structure.literal); assert.deepEqual(structure.oversize,[],'Chapter 06 inline mathematics fits phones');
     const count=await evaluate(cdp,sessionId,`document.querySelectorAll('.lecture-slide img,[data-learning-figure] img').length`);
     assert.equal(count,40);
