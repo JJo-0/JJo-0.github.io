@@ -9,8 +9,8 @@ const catalogue = JSON.parse(fs.readFileSync(new URL('../site/news-media.json', 
 const read = (slug) => fs.readFileSync(new URL(`../site/content/posts/${slug}.mdx`, import.meta.url), 'utf8');
 const readByFile = (_slug, sourceFile) => fs.readFileSync(new URL(`../site/content/posts/${sourceFile}`, import.meta.url), 'utf8');
 const actual = loadApprovedVisualInventory(catalogue);
-assert.equal(actual.size, 18);
-assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 35);
+assert.equal(actual.size, 21);
+assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 41);
 assert.equal(actual.get('2026-10-09-sando-safe-dynamic-trajectory-news').mediaIds.length, 5);
 assert.deepEqual(actual.get('2026-10-07-deterministic-2d-semiconductor-nucleation-news').mediaIds, ['nucleation-current-fig1', 'nucleation-current-fig3', 'nucleation-current-fig4']);
 assert.equal([...inventory.entries].length, 9, 'October 25 batch remains nine entries');
@@ -69,10 +69,18 @@ const browser = fs.readFileSync(new URL('./browser-news-media-audit.mjs', import
 for (const check of ['img.complete && img.naturalWidth > 0', 'result.decoded', 'result.visible', 'result.captions', '!result.overflow', 'exactly one registered figure', 'matches[0].src, expected.src']) assert(browser.includes(check), `Retain existing validation: ${check}`);
 
 const nov5Inventory = JSON.parse(fs.readFileSync(new URL('../site/news-approved-visual-inventory-20261105.json', import.meta.url)));
-assert.deepEqual(nov5Inventory.entries.map(row => row.mediaIds.length), [2, 3, 3]);
+assert.deepEqual(nov5Inventory.entries.map(row => row.mediaIds.length), [2, 3, 3, 2, 3, 1]);
 assert.deepEqual([...validateVisualInventory(nov5Inventory, catalogue, readByFile).keys()], nov5Inventory.entries.map(row => row.slug));
 for (const mutate of [(v) => v.entries.pop(), (v) => v.entries[0].mediaIds.pop(), (v) => { v.entries[0].mediaMetadataSha256 = '0'.repeat(64); }]) {
   const altered = structuredClone(nov5Inventory); mutate(altered);
   assert.throws(() => validateVisualInventory(altered, catalogue, readByFile));
 }
-console.log('Approved visual inventory: PASS 18 unique posts and 35 exact media across four fixed batches; existing image checks retained');
+for (const index of [3, 4, 5]) {
+  const omitted = structuredClone(nov5Inventory);
+  omitted.entries[index].mediaIds.pop();
+  assert.throws(() => validateVisualInventory(omitted, catalogue, readByFile));
+  const alteredRights = structuredClone(catalogue);
+  alteredRights[nov5Inventory.entries[index].mediaIds[0]].rights = 'unverified-rights';
+  assert.throws(() => validateVisualInventory(nov5Inventory, alteredRights, readByFile));
+}
+console.log('Approved visual inventory: PASS 21 unique posts and 41 exact media across four fixed batches; existing image checks retained');
