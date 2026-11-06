@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import katex from 'katex';
 const guides=JSON.parse(fs.readFileSync('src/data/robot-equation-guides.json','utf8'));
-const expected=[5,23,18,20,24,23,18];
+const expected=[5,23,18,20,24,23,18,9];
 let total=0,parsed=0;
-for(let ch=1;ch<=7;ch++){
+for(let ch=1;ch<=expected.length;ch++){
  const file=fs.readdirSync('site/content/posts').find(f=>f.startsWith(`rl-robot-learning-ch${String(ch).padStart(2,'0')}-`));
  const source=fs.readFileSync(path.join('site/content/posts',file),'utf8');
  const pattern=/<Math\b(?:(?!\/>)[\s\S])*?\/>/g;
@@ -29,7 +29,7 @@ for(let ch=1;ch<=7;ch++){
  }
  assert(!/여기서 u는/.test(source),'RNN symbol must render with a defined time index');
 }
-assert.equal(total,131);assert.equal(Object.keys(guides).length,131);
+assert.equal(total,140);assert.equal(Object.keys(guides).length,140);
 // Independent arithmetic checks for examples with sign, scaling or weighting traps.
 const near=(a,b,tol=1e-9)=>assert(Math.abs(a-b)<tol);
 near((1*2+3*1)/3,5/3);

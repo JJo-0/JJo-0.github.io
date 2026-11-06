@@ -507,6 +507,7 @@ POST_TAXONOMY.update({
     "2026-11-06-asynchronous-robot-policies-news.mdx": Taxonomy("robotics-embedded", "asynchronous-vla-control", "research-report", ("frontier-candidate", "vision-language-action", "real-time-control", "robot-manipulation")),
     "2026-11-06-curobov2-fast-motion-planning-news.mdx": Taxonomy("robotics-embedded", "gpu-motion-planning", "research-report", ("frontier-candidate", "motion-planning", "gpu-robotics", "robot-control")),
     "2026-11-06-halo-humanoid-sim2real-news.mdx": Taxonomy("robotics-embedded", "humanoid-sim-to-real", "paper-review", ("frontier-one", "humanoid-robotics", "sim-to-real", "embodied-ai")),
+    "rl-robot-learning-ch08-world-models.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "world-models", "model-based-rl")),
     "rl-robot-learning-ch07-sequence-transformers.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "transformers", "sequence-modeling", "action-tokenization")),
     "rl-robot-learning-ch04-value-learning.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "q-learning", "dqn", "value-functions")),
     "rl-robot-learning-ch01-introduction.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "eth-zurich", "study")),

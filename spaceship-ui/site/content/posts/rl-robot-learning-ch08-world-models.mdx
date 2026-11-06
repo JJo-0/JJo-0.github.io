@@ -1,0 +1,349 @@
+---
+title: "강화학습 08 — 월드 모델로 행동의 결과를 예측하기"
+description: "월드 모델로 로봇 행동의 결과를 예측하는 법."
+pubDate: 2026-11-06T00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch08-world-models
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags: ["robot-learning", "reinforcement-learning", "world-models", "model-based-rl"]
+draft: false
+lang: ko
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 8
+---
+
+import LectureSlide from '@/components/post/LectureSlide.astro';
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+로봇이 컵을 집으려면 팔을 움직이기 전에 그 행동의 결과를 예상할 수 있어야 한다. [7장](/posts/rl-robot-learning-ch07-sequence-transformers/)이 여러 관측과 명령을 시간순으로 읽는 법이었다면, 이번 장은 아직 실행하지 않은 명령을 넣어 미래를 시험하는 법이다.
+
+슬라이드의 저작권은 Oier Mees와 각 그림·영상의 원저작권자에게 있다. PDF 페이지 순서로 번호를 붙였으며, 강의 영상의 자동 자막을 대조해 운영 안내를 건너뛰고 기술 설명을 정리했다. 슬라이드 아래 영상 링크는 해당 설명이 나오는 구간으로 이동한다. [ETH Zurich 공식 강의](https://cvg.ethz.ch/lectures/Robot-Learning/) · [공식 PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture8_world_models.pdf) · [8강 영상](https://www.youtube.com/watch?v=cTTmUZlOF2s)
+
+## 행동을 입력하면 무엇을 예측할까
+
+<LectureSlide lecture={8} page={10} caption="로봇은 행동하기 전에 결과를 가늠할 수 있을까" priority />
+
+컵을 밀어서 접시 위에 올린다고 해 보자. 손을 1cm 더 움직였을 때 컵이 접시에 안착할지, 테두리에 걸려 넘어질지는 명령만 봐서는 알 수 없다. 월드 모델은 지금까지 본 것과 앞으로 취할 행동을 바탕으로 그 다음에 일어날 일을 예측한다. 이 예측은 후보 행동을 고를 때도, 정책을 학습시킬 때도 쓸 수 있다.
+
+[원강의 12:26](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=746s)
+
+<LectureSlide lecture={8} page={11} caption="타자는 공이 도착할 지점을 예상한다" />
+
+그림의 공 위치와 배트가 지나갈 위치 사이에는 시간 차가 있다. 타자는 몇 번 본 공의 위치로부터 방향과 속도를 가늠하고, 배트를 휘두르는 데 걸리는 시간까지 고려한다. 로봇도 한 프레임에서 같은 곳에 보이는 공이 왼쪽에서 들어오는지 오른쪽에서 들어오는지에 따라 다른 명령을 내려야 한다.
+
+[원강의 13:25](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=805s)
+
+<LectureSlide lecture={8} page={12} caption="정책은 행동을 고르고 월드 모델은 그 결과를 예측한다" />
+
+왼쪽 화살표는 현재 상태와 목표에서 행동으로 이어진다. “컵을 접시로 옮겨라”라는 지시에 대해 손을 어느 방향으로 움직일지 고르는 정책이다. 오른쪽은 현재 상태와 후보 행동에서 다음 상태로 이어진다. 같은 컵에 왼쪽과 오른쪽 밀기를 각각 넣어 결과를 비교할 수 있다. 영상 이력을 쓰는 VLA도 움직임의 규칙을 학습할 수 있다. 여기서 나누는 기준은 외부에 제공하는 입력과 출력이다.
+
+<Math display tex={String.raw`\pi_\theta(a_t\mid s_t,g),\qquad p_\phi(s_{t+1}\mid s_t,a_t)`} label="정책과 월드 모델이 받는 질문" />
+
+<RobotEquationGuide id="rl08-e01" />
+
+[원강의 14:40](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=880s)
+
+<LectureSlide lecture={8} page={13} caption="같은 출발점에서 여러 계획을 미리 시험한다" />
+
+가운데 상자에서 나온 갈래 하나가 행동을 여러 번 연결해 본 예측 궤적, 즉 롤아웃이다. 첫 동작이 쉬워도 이후 컵이 벽에 막히면 계획 전체의 점수는 낮을 수 있다. 오른쪽으로 먼저 돌아가는 후보가 더 길어도 최종 목표까지 닿는다면 선택할 만하다. 실제 실행 후에는 새 관측으로 출발점을 갱신한다.
+
+[원강의 16:22](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=982s)
+
+<LectureSlide lecture={8} page={14} caption="물리 엔진과 데이터로 배운 시뮬레이터" />
+
+왼쪽 시뮬레이터는 질량·마찰·접촉 규칙을 지정해 다음 상태를 계산한다. 오른쪽 모델은 관측과 로봇 명령이 짝지어진 경험에서 변화 규칙을 추정한다. 천이 접히는 모양처럼 모델링하기 까다로운 장면을 배울 수 있지만, 훈련에서 거의 본 적 없는 재질이나 접촉은 잘못 예측하기 쉽다. 두 접근은 결합할 수 있다.
+
+[원강의 17:15](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1035s)
+
+<LectureSlide lecture={8} page={15} caption="다음 상태는 하나의 값일 수도, 여러 결과의 분포일 수도 있다" />
+
+컵을 같은 속도로 밀어도 바닥에 물기가 있으면 더 멀리 미끄러질 수 있다. 이럴 때 조건부 분포는 지금 아는 정보를 기준으로 어느 결과가 얼마나 가능할지 나타낸다. 강의에서 쓰는 행동 조건부 월드 모델은 미래를 예측할 때 구체적인 후보 행동을 바꿔 넣을 수 있다. 텍스트로 장면을 생성하는 영상 모델은 그 자체로는 이 입력을 제공하지 않는다.
+
+<Math display tex={String.raw`p_\phi(s_{t+1}\mid s_t,a_t,h_t)`} label="현재 상태·행동·기억을 조건으로 한 전이" />
+
+<RobotEquationGuide id="rl08-e02" />
+
+[원강의 18:50](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1130s)
+
+## 영상으로 계획하기
+
+<LectureSlide lecture={8} page={16} caption="픽셀의 색을 새로 칠하기보다 이동을 예측한다" />
+
+왼쪽 카메라 프레임이 주황색 경로를 통해 오른쪽까지 이어진다. Finn 등의 CDNA 모델은 이전 영상에 여러 이동 변환을 적용하고, 마스크로 어느 영역에 어떤 변환을 섞을지 정한다. 로봇 팔과 컵은 서로 다른 방향으로 움직이고 배경은 그대로일 수 있다. 이전 프레임에 없던 가려진 표면의 색과 모양은 이동만으로 알기 어렵다. [Finn 외, Video Prediction](https://arxiv.org/abs/1605.07157)
+
+[원강의 20:37](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1237s)
+
+<LectureSlide lecture={8} page={17} caption="그림 위에 찍은 점이 로봇의 목표가 된다" />
+
+옷과 접시 예시처럼 사용자는 영상에서 옮길 점과 도착점을 고를 수 있다. 카메라 영상에서 해당 점이 도착점 쪽으로 움직인 후보에 낮은 비용을 준다. 원하는 완성 사진을 줄 수도 있고, 분류기가 “서랍이 닫혔다”고 판단하는 점수를 쓸 수도 있다. 성공을 어느 방식으로 정하느냐에 따라 같은 월드 모델로 다른 작업을 계획한다. [Ebert 외, Visual Foresight](https://arxiv.org/abs/1812.00568)
+
+[원강의 22:14](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1334s)
+
+<LectureSlide lecture={8} page={18} caption="CEM으로 후보를 좁히고 MPC로 다시 확인한다" />
+
+왼쪽은 모델 학습이다. 로봇이 실행한 명령과 그 전후 영상을 모으면 다음 프레임이 학습 표적이 된다. 오른쪽은 실행이다. 교차 엔트로피 방법(CEM)은 후보 행동열을 샘플링하고, 예상 비용이 낮은 상위 후보를 골라 다음 샘플링 분포를 업데이트한다. 모델 예측 제어(MPC)는 고른 행동열의 앞부분만 실행한 뒤 실제 장면을 보고 다시 계획한다. CEM은 후보를 찾는 절차이고 MPC는 관측으로 계획을 고치는 실행 방식이다.
+
+Berkeley CS285에서는 몇 스텝마다 계획을 다시 풀면 각 계획의 정확도에 덜 의존하고 더 짧은 구간만 내다볼 수 있다고 설명한다. 예를 들어 첫 동작 뒤 컵이 예상보다 적게 미끄러졌다면, 현재 위치에서 남은 명령을 다시 계산한다. [Sergey Levine · CS285 모델 기반 강화학습 슬라이드](https://berkeleydeeprlcourse.github.io/deeprlcourse/static/slides/lec-11.pdf)
+
+<Math display tex={String.raw`a^\star_{t:t+H-1}=\operatorname*{arg\,min}_{a_{t:t+H-1}}\sum_{k=1}^{H}c(\hat{s}_{t+k},g)`} label="예측 비용이 작은 행동열 선택" />
+
+<RobotEquationGuide id="rl08-e03" />
+
+[원강의 22:43](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1363s)
+
+## 잠재공간에서 상상하기
+
+<LectureSlide lecture={8} page={19} caption="예측할 때마다 화면 전체를 그려야 할까" />
+
+후보 수와 예측 길이가 커지면 매번 영상 전체를 생성하는 비용이 늘어난다. 대신 컵의 위치와 움직임처럼 행동 선택에 중요한 정보를 짧은 숫자 벡터에 담을 수 있다. 이 압축 표현을 잠재 표현이라고 한다. 압축 과정에서 컵이 손에 잡혔는지 같은 정보가 사라지면 계산이 빨라도 잘못된 계획을 고르게 된다.
+
+[원강의 25:13](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1513s)
+
+<LectureSlide lecture={8} page={20} caption="압축 상태에서 정책을 연습시킨다" />
+
+왼쪽 인코더는 관측을 숫자 벡터로 바꾼다. 가운데 동역학 모델은 행동을 받으면 벡터와 보상을 예측한다. 정책은 그 다음 행동을 고르고 다시 동역학 모델에 넣는다. 아래 루프는 이런 예측 경험으로 정책을 개선하는 과정이다. 모델 학습에 쓰이는 환경 데이터와 모델 안에서 만들어 낸 정책 학습 데이터를 구분하면 그림의 두 경로가 보인다.
+
+[원강의 25:46](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1546s)
+
+<LectureSlide lecture={8} page={21} caption="V는 보고, M은 기억하고, C는 행동을 고른다" />
+
+Ha와 Schmidhuber 그림에서 V는 현재 프레임을 압축하고 M은 이전 장면과 행동을 기억한다. C는 지금 본 것과 기억을 함께 읽어 행동을 선택한다. 도로 굽이가 화면에서 사라져도 직전에 어느 쪽으로 꺾였는지 기억하면 조향에 활용할 수 있다. [Ha와 Schmidhuber, World Models](https://worldmodels.github.io/)
+
+[원강의 27:05](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1625s)
+
+<LectureSlide lecture={8} page={22} caption="재구성 그림이 보여 주는 압축의 손익" />
+
+왼쪽 게임 화면을 VAE 인코더로 압축하고 디코더로 다시 그린 것이 오른쪽이다. 복도와 밝은 물체는 남지만 표면 무늬가 흐려진다. 벽을 피하는 과제에서는 충분할 수 있고, 벽의 작은 표지판이 목적지라면 문제가 된다. 재구성 품질과 행동에 필요한 정보의 보존을 따로 평가할 이유다.
+
+[원강의 27:38](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1658s)
+
+<LectureSlide lecture={8} page={23} caption="미래를 하나의 평균으로 뭉개지 않는다" />
+
+그림의 RNN은 기억을 다음 시점으로 넘긴다. 위쪽 혼합 밀도망(MDN)은 다음 잠재값의 분포를 여러 가우시안 성분으로 표현한다. 공이 장애물의 양쪽 중 하나로 튀는데 평균만 예측하면 장애물 한가운데로 들어가는 결과를 낼 수 있다. 두 위치 주변의 가능성을 각각 남기면 양쪽 미래를 따로 평가할 수 있다.
+
+<Math display tex={String.raw`p(z_{t+1}\mid z_t,a_t,h_t)=\sum_{j=1}^{K}w_j\,\mathcal{N}(z_{t+1};\mu_j,\Sigma_j),\qquad \sum_{j=1}^{K}w_j=1`} label="여러 미래를 섞어 표현하는 혼합 분포" />
+
+<RobotEquationGuide id="rl08-e04" />
+
+[원강의 28:19](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1699s)
+
+<LectureSlide lecture={8} page={24} caption="CMA-ES는 정책의 가중치를 후보로 시험한다" />
+
+CMA-ES는 여러 제어기 가중치를 뽑아 각 제어기로 에피소드를 실행하고, 높은 보상을 얻은 후보가 다음 세대에 더 자주 나오도록 평균과 공분산을 고친다. P018의 CEM과 비슷하게 후보를 평가하지만, 여기서 최적화하는 것은 지금 당장 실행할 명령열이 아니라 여러 장면에서 계속 쓸 제어기 가중치다. 원 논문에서는 과제에 따라 원래 환경과 학습된 꿈의 환경을 달리 사용했다.
+
+[원강의 29:34](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1774s)
+
+<LectureSlide lecture={8} page={25} caption="기억을 빼면 왜 코너에서 어려워질까" />
+
+오른쪽 그림은 기억의 역할을 묻는다. 현재 화면에 도로가 일부만 보여도 이전 프레임에서 곡선이 어떻게 이어졌는지 알면 조향할 근거가 생긴다. 모듈 하나를 빼고 같은 과제에서 성능이 얼마나 바뀌는지 보는 절차가 제거 실험이다. 이 사례의 결과를 기억이 충분히 들어 있는 관측을 쓰는 다른 로봇까지 그대로 일반화할 필요는 없다.
+
+[원강의 30:58](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1858s)
+
+<LectureSlide lecture={8} page={26} caption="꿈에서 얻은 정책을 원래 환경에서 시험한다" />
+
+왼쪽은 Doom 계열 환경, 오른쪽은 CarRacing이다. 원 논문의 Doom 실험에서는 학습된 환경 안에서 제어기를 훈련한 뒤 원래 게임에서 검증했다. 꿈속 모델이 놓친 허점을 정책이 이용하면 원래 게임에서는 성능이 떨어질 수 있다. 저자들이 꿈 환경의 샘플링 온도를 바꾼 이유도 예측을 지나치게 확신하는 상황을 피하기 위해서였다.
+
+[원강의 31:44](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1904s)
+
+<LectureSlide lecture={8} page={27} caption="한 걸음의 오차가 다음 걸음의 입력이 된다" />
+
+위쪽에는 실제 화면을 인코딩한 값이 들어가지만 아래쪽은 모델이 스스로 만든 잠재값을 다시 입력한다. 예측된 컵이 조금 옆으로 틀어졌다면 다음 예측은 그 틀어진 위치에서 시작한다. 기존 MDN-RNN에도 미래를 샘플링할 전이 분포는 있다. 다음 장의 RSSM은 같은 시점에 대해 관측 전의 추정과 관측을 반영한 추정을 별도로 두고 함께 학습한다.
+
+[원강의 32:40](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=1960s)
+
+## PlaNet과 Dreamer
+
+<LectureSlide lecture={8} page={28} caption="RSSM은 예상과 관측 반영값을 함께 배운다" />
+
+주황색 RNN 경로는 이전 잠재 상태와 행동에서 얻은 기억을 이어 간다. 녹색 사전분포는 새 사진을 보기 전의 추정이고, 보라색 사후분포는 새 사진을 본 뒤의 추정이다. 예를 들어 손을 내밀었다는 기억만으로는 집기가 성공했는지 모른다. 사진에서 컵이 들린 것을 확인하면 새 추정에 그 정보가 들어간다. 학습 중에는 두 분포를 가깝게 하고 관측과 보상도 설명하도록 훈련한다. [Hafner 외, PlaNet](https://arxiv.org/abs/1811.04551)
+
+<Math display tex={String.raw`h_t=f_\phi(h_{t-1},z_{t-1},a_{t-1}),\qquad p_\phi(z_t\mid h_t),\quad q_\phi(z_t\mid h_t,o_t)`} label="RSSM의 예측과 관측 보정" />
+
+<RobotEquationGuide id="rl08-e05" />
+
+[원강의 34:36](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2076s)
+
+<LectureSlide lecture={8} page={29} caption="상상 안의 피드백과 실제 환경의 피드백" />
+
+그림 아래에서 정책은 예측 상태를 읽어 다음 행동을 고르고, 모델은 그 행동으로 다시 상태를 예측한다. 이 고리는 상상 안에서 닫혀 있다. 새 실제 관측이 없으므로 미래 잠재값은 사전분포에서 뽑는다. 실제 로봇을 움직일 때는 센서 관측이 들어와 상태 추정을 고친다. 두 고리를 구분하면 RSSM을 써도 긴 상상에서 오차가 남는 이유를 이해할 수 있다.
+
+[원강의 36:27](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2187s)
+
+<LectureSlide lecture={8} page={30} caption="Dreamer는 매번 계획을 풀던 계산을 학습에 옮긴다" />
+
+왼쪽 PlaNet은 새 관측마다 잠재공간에서 CEM으로 행동열을 찾는다. 오른쪽 Dreamer는 상상 궤적으로 행동을 내는 actor와 앞으로의 보상을 평가하는 critic을 학습한다. 실행 때 actor를 호출하면 매 순간 후보를 처음부터 많이 뽑는 비용을 줄일 수 있다. 대신 actor가 모델이 과대평가하는 행동을 배울 수 있으므로 실제 환경에서의 검증이 중요하다. [Hafner 외, Dream to Control](https://arxiv.org/abs/1912.01603)
+
+<Math display tex={String.raw`\hat{G}_t=\sum_{k=0}^{H-1}\gamma^k\hat{r}_{t+k}`} label="상상 궤적의 할인 보상" />
+
+<RobotEquationGuide id="rl08-e06" />
+
+[원강의 37:50](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2270s)
+
+<LectureSlide lecture={8} page={31} caption="DayDreamer는 센서와 모터가 있는 실제 로봇에 적용했다" />
+
+네 사진은 A1 사족 보행, UR5 물체 옮기기, XArm 집기, Sphero 주행이다. 사족 로봇이 약 한 시간의 실제 경험으로 일어서고 걷는 행동을 배운 사례와 팔의 조작 실험은 서로 다른 과제다. 물리 로봇에서는 모터 제어 주기와 학습 연산이 동시에 진행되어야 하므로 저자들은 데이터 수집과 학습을 비동기로 실행했다. [Wu 외, DayDreamer](https://arxiv.org/abs/2206.14176)
+
+[원강의 39:33](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2373s)
+
+<LectureSlide lecture={8} page={32} caption="영화 속 훈련장 비유가 설명하는 계산의 위치" />
+
+왼쪽 인물은 가상 도장에서 연습하고 오른쪽은 현실에 남아 있다. 월드 모델의 상상 훈련에서는 GPU가 과거 데이터로 배운 변화 규칙을 빠르게 되풀이한다. 가상 도장의 바닥이 현실보다 덜 미끄럽다면 그 안에서만 익힌 걸음걸이는 위험할 수 있다. 비유에서 중요한 점은 연습을 옮길 수 있다는 것과 연습 결과를 현실에서 확인해야 한다는 것이다.
+
+[원강의 40:55](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2455s)
+
+<LectureSlide lecture={8} page={33} caption="World Models에서 Dreamer V4까지 무엇이 바뀌었나" />
+
+카드를 왼쪽부터 읽으면 압축과 기억을 분리한 V/M/C, RSSM에서 계획하는 PlaNet, 상상으로 정책을 학습하는 Dreamer V1, 범주형 잠재값을 쓰는 V2, 보상 규모가 다른 과제의 학습을 안정화하는 V3, 더 큰 영상 데이터로 확장한 V4가 이어진다. 뒤의 모델이 앞의 모델과 모든 벤치마크에서 같은 조건으로 겨룬 표는 아니므로, 카드의 성과는 각 논문의 과제와 함께 읽는다. [Dreamer V2](https://arxiv.org/abs/2010.02193) · [Dreamer V3](https://arxiv.org/abs/2301.04104)
+
+[원강의 41:50](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2510s)
+
+<LectureSlide lecture={8} page={34} caption="Dreamer V4는 영상 예습과 행동 학습을 분리한다" />
+
+Minecraft 화면 왼쪽은 오프라인 데이터에서 배운 에이전트의 예다. 행동 기록이 없는 영상으로도 장면이 시간에 따라 어떻게 변하는지는 예습할 수 있다. 이후 행동이 기록된 데이터가 있어야 특정 명령이 어떤 변화를 만들었는지 구분할 수 있다. V4의 Minecraft 성과는 해당 데이터·행동 공간·평가 설정에 해당한다. 오른쪽 로봇 이미지는 강의에서 언급한 별도의 데이터 적용 사례다. [Hafner 외, Dreamer V4](https://arxiv.org/abs/2509.24527)
+
+<Math display tex={String.raw`p_\phi(z_{t+1}\mid z_{\le t})\quad\longrightarrow\quad p_{\phi'}(z_{t+1}\mid z_{\le t},a_{\le t})`} label="행동 라벨 없이 예습하고 행동 조건을 추가한다" />
+
+<RobotEquationGuide id="rl08-e07" />
+
+[원강의 43:19](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2599s)
+
+## 대규모 영상과 로봇 행동
+
+<LectureSlide lecture={8} page={35} caption="특정 게임에서 배운 잠재 표현을 인터넷 영상으로 넓히려면" />
+
+게임 안에서는 자주 만나는 물체와 카메라 움직임이 제한적이다. 인터넷 영상은 더 다양한 움직임과 물체를 보여 주지만 촬영 자세와 배경, 영상의 목적도 제각각이다. 큰 영상 모델을 활용하는 발상은 여기서 나온다. 로봇이 쓸 표현을 만들려면 인터넷 영상에서 익힌 패턴을 로봇 시점과 조작 데이터에 연결해야 한다.
+
+[원강의 45:15](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2715s)
+
+<LectureSlide lecture={8} page={36} caption="10초짜리 영상에 왜 토큰이 51,200개나 생길까" />
+
+왼쪽 격자의 한 칸은 한 패치다. 256×256 픽셀을 16×16 픽셀 패치로 나누면 가로와 세로에 각각 16칸이 생긴다. 이를 초당 20장씩 10초 동안 각각 세면 256개 패치가 200번 반복된다. 모든 토큰 쌍을 비교하는 일반적인 밀집 attention에서는 토큰 수가 두 배일 때 비교할 쌍이 약 네 배로 늘어난다.
+
+Stanford CS231n의 ViT 설명에서는 각 이미지 패치를 벡터 하나로 투영하고, 그 벡터들을 Transformer에 입력한다. 영상에서 같은 절차를 프레임마다 반복하면 아래 식처럼 이미지 한 장의 패치 수에 프레임 수가 곱해진다. [Justin Johnson · CS231n 1:04:44](https://www.youtube.com/watch?v=RQowiOF_FvQ&t=3884s) · [강의 슬라이드](https://cs231n.stanford.edu/slides/2025/lecture_8.pdf)
+
+<Math display tex={String.raw`N=\left(\frac{256}{16}\right)^2(20\cdot10)=51{,}200`} label="패치 수와 프레임 수를 곱한다" />
+
+<RobotEquationGuide id="rl08-e08" />
+
+[원강의 47:01](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2821s)
+
+<LectureSlide lecture={8} page={37} caption="공간과 시간을 줄이고 중요한 부분에 토큰을 배분한다" />
+
+첫 열은 한 프레임의 인접 위치를 묶는 공간 압축이다. 둘째는 여러 프레임에 걸친 변화를 한 단위로 묶는 시간 압축이다. 셋째는 장면에 따라 토큰 수를 다르게 배정하는 적응 압축이다. 멈춰 있는 벽은 강하게 압축해도 되지만, 손가락이 컵 손잡이에 처음 닿는 장면을 너무 거칠게 줄이면 접촉 시점을 잃는다. 슬라이드의 압축 수치는 원리를 보여 주는 예다.
+
+[원강의 48:30](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=2910s)
+
+<LectureSlide lecture={8} page={38} caption="행동이 모델의 입력인지 출력인지 먼저 보자" />
+
+왼쪽 행동 조건부 모델은 “오른쪽으로 2cm 밀면?”이라는 질문에 미래 상태를 답한다. 오른쪽 위 DreamZero는 미래 영상과 행동을 함께 내고, 아래 mimic-video는 영상 모델의 중간 표현에서 행동 디코더가 명령을 읽는다. 모두 영상을 쓰지만, 후보 행동을 미리 주어야 하는지와 실행 명령이 어디서 나오는지가 다르다.
+
+[원강의 52:55](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3175s)
+
+<LectureSlide lecture={8} page={39} caption="영상 계산이 비싸도 사전학습에 쓰는 이유" />
+
+영상 모델은 사전학습 단계에서 물체가 구르거나 손을 따라 이동하는 장면을 많이 볼 수 있다. 실행 중에는 그 학습에서 얻은 특징만 꺼내 쓸 수도 있다. 그래서 영상 학습에 든 비용과 모터에 명령을 한 번 내리는 데 걸리는 시간을 분리해 비교해야 한다.
+
+[원강의 55:15](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3315s)
+
+<LectureSlide lecture={8} page={40} caption="정지 화면의 의미와 움직임의 규칙은 다르다" />
+
+당근 그림과 설명으로 칼과 당근을 알아볼 수 있다. 칼을 누르는 순서와 방향, 잘린 조각이 어디로 움직일지는 연속 프레임이 더 직접적인 단서를 준다. 강의의 VLA 비교는 정지 이미지·텍스트 위주로 사전학습한 VLM을 로봇으로 옮기는 설정이다. 이미 영상이나 로봇 경험을 포함한 모델이라면 어떤 학습 자료를 썼는지부터 살펴봐야 한다.
+
+[원강의 55:41](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3341s)
+
+<LectureSlide lecture={8} page={41} caption="영상에서 운동을 익히고 로봇 데이터에서 명령을 익힌다" />
+
+그림의 영상-텍스트 입력에는 보통 로봇의 관절 각도나 모터 토크가 붙어 있지 않다. 그래도 물체가 손을 따라 움직이는 장면에서 시간적 단서를 학습할 수 있다. 실제 로봇에 맞춘 행동은 카메라 영상과 명령이 함께 기록된 자료에서 배운다. 사람 손의 동작을 그대로 로봇의 모터 명령으로 복사할 수 없는 이유다.
+
+[원강의 57:15](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3435s)
+
+<LectureSlide lecture={8} page={42} caption="mimic-video는 영상 특징에 행동 디코더를 붙인다" />
+
+위쪽은 VLM을 로봇 행동으로 적응시키는 경로이고 아래는 생성 영상 모델을 뼈대로 쓰는 경로다. mimic-video에서 행동 디코더는 예상된 시각적 변화에 대응하는 로봇 명령을 낸다. 결과의 방향에서 행동을 추정하므로 역동역학 모델(IDM)이라고 부른다. 같은 장면 변화에 여러 관절 동작이 가능하며, 학습 데이터가 어느 명령을 고를지에 영향을 준다. [Pai 외, mimic-video](https://arxiv.org/abs/2512.15692)
+
+[원강의 58:25](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3505s)
+
+<LectureSlide lecture={8} page={43} caption="전문가 영상을 주면 어느 부분이 개선되는가" />
+
+그래프의 가로축은 디코더가 예측 영상을 받았는지 전문가 영상을 받았는지를 나눈다. 전문가 영상은 실행 때 미리 알 수 없는 결과를 주는 실험용 기준이다. 그 입력에서 성공률이 높아지면 영상 예측 오차를 줄일 여지가 있다는 뜻이다. 전문가 영상을 주어도 남는 실패는 행동 디코더와 로봇 실행까지 살펴봐야 한다. 사본에서 막대가 보이지 않아 실험의 비교 대상과 해석을 영상 설명과 논문으로 보완했다. [mimic-video](https://arxiv.org/abs/2512.15692)
+
+[원강의 59:43](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3583s)
+
+<LectureSlide lecture={8} page={44} caption="완성 영상 대신 denoiser의 중간 표현을 쓴다" />
+
+분홍색 언어 모델은 지시를, 파란색 영상 모델은 현재 화면과 부분적으로 정제된 미래 표현을 다룬다. 부분적으로 노이즈가 남아 있어도 특징에는 물체의 움직임과 작업의 방향을 결정할 정보가 들어 있을 수 있다. 디코더는 그 특징으로 행동 묶음을 만든다. 이렇게 하면 화면으로 보기 좋은 완성본까지 생성하는 작업을 평소 제어 경로에서 줄일 수 있다.
+
+[원강의 61:36](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3696s)
+
+<LectureSlide lecture={8} page={45} caption="가상 벤치마크와 실제 양팔 조작은 다른 질문을 검사한다" />
+
+SIMPLER-Bridge는 시뮬레이션에서 조작을 비교한다. 가운데는 실제 양팔 조작이고, LIBERO의 Object·Spatial·Goal 분할은 물체·배치·목표를 바꿨을 때의 일반화를 나눠 본다. 같은 성공률이라도 무엇을 바꿨고 몇 번 시험했는지 알아야 비교할 수 있다.
+
+[원강의 62:37](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3757s)
+
+<LectureSlide lecture={8} page={46} caption="데이터 효율과 학습 속도는 서로 다른 축이다" />
+
+왼쪽 그래프는 로봇 데이터 비율, 오른쪽은 학습 스텝 수를 가로축으로 둔다. 강의의 약 10배 데이터 효율과 2배 빠른 학습은 저자들이 비교한 mimic-video와 <Math tex={String.raw`\pi_{0.5}`} /> 계열 기준의 실험 결과다. 스텝을 줄였다는 보고를 장비와 배치 크기가 다른 실행의 실제 소요 시간까지 줄었다는 뜻으로 읽을 수는 없다. 사본의 축과 영상 설명을 논문과 함께 읽었다. [mimic-video](https://arxiv.org/abs/2512.15692)
+
+[원강의 62:55](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3775s)
+
+<LectureSlide lecture={8} page={47} caption="왼쪽은 실제 실행, 오른쪽은 모델이 그린 영상" />
+
+두 장면이 비슷해 보여도 왼쪽은 로봇 모터가 명령을 받은 결과이고 오른쪽은 영상 생성 결과다. 슬라이드는 이 영상 렌더링을 정규 정책 추론에서 생략한다고 표시한다. 512 에피소드 표기는 화면 속 시연의 조건이다. 로봇이 작업을 끝냈는지는 실제 실행 결과로 확인한다.
+
+[원강의 63:10](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3790s)
+
+<LectureSlide lecture={8} page={48} caption="DreamZero는 영상과 행동을 한 모델에서 함께 예측한다" />
+
+왼쪽 그림에서 영상과 행동에 노이즈를 넣고 같은 모델에서 두 출력을 학습한다. 오른쪽에서 로봇은 행동 묶음을 실행하고 실제 프레임을 다시 받아 다음 묶음을 만든다. 이전 프레임의 attention 정보를 KV 캐시에 저장해 매번 전부 다시 계산하는 부담을 줄인다. [Ye 외, DreamZero](https://dreamzero0.github.io/DreamZero.pdf)
+
+[원강의 63:24](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3804s)
+
+<LectureSlide lecture={8} page={49} caption="새 작업과 소량 적응 결과는 평가 조건으로 읽는다" />
+
+사진에는 사과 옮기기, 셔츠 접기, 끈 풀기, 원 그리기가 나온다. 장면이 익숙해 보여도 행동의 순서와 필요한 접촉은 과제마다 다르다. 제로샷은 해당 시험 과제로 추가 학습을 하지 않는 설정이고, 소량 적응은 적은 추가 데이터로 모델을 조정하는 설정이다. 데모 사진을 읽을 때도 어느 조건에 해당하는지 구분해야 한다.
+
+[원강의 65:04](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3904s)
+
+<LectureSlide lecture={8} page={50} caption="논문마다 이름이 다를 때는 입력과 출력으로 비교한다" />
+
+이 표는 DreamZero와 mimic-video를 같은 쪽에 묶고 Dreamer류를 반대편에 둔다. P038의 세분류에서는 DreamZero를 WAM, mimic-video를 VAM으로 나눴다. 여기서는 모델에 후보 명령을 바꿔 넣어 결과를 비교할 수 있는지, 목표를 주면 명령이 직접 나오는지, 어떤 단계에 로봇 데이터가 필요한지를 비교하면 분류가 달라져도 이해할 수 있다.
+
+[원강의 65:49](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=3949s)
+
+## 픽셀을 그리지 않는 예측
+
+<LectureSlide lecture={8} page={51} caption="접촉을 예측하려고 배경까지 다시 그려야 할까" />
+
+컵이 이미 들렸는지 판단할 때 벽의 무늬까지 정확히 예측할 필요는 없다. 반면 손과 컵 사이의 틈을 압축에서 잃으면 잡기 계획이 틀어진다. 이 질문은 예측 목표를 픽셀에서 과제에 맞는 표현으로 옮기는 JEPA로 이어진다.
+
+[원강의 68:07](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=4087s)
+
+<LectureSlide lecture={8} page={52} caption="JEPA는 미래 화면 대신 미래 화면의 표현을 맞춘다" />
+
+위쪽 예측기는 현재 표현과 행동에서 다음 표현을 예상하고, 아래쪽 인코더는 학습 중 실제 다음 프레임을 숫자 벡터로 만든다. 둘을 비교하면 매번 RGB를 복원할 필요가 없다. 두 경로가 모든 장면을 같은 벡터로 보내면 오차는 작아져도 계획에는 쓸 수 없다. 이를 표현 붕괴라고 한다. 아래 세 상자는 느리게 갱신하는 표적 인코더, 사전학습 후 고정한 인코더, 표현 분포를 퍼뜨리는 정규화라는 설계들을 보여 준다. 각 방식이 보존하는 정보와 보장 범위는 다르다. [V-JEPA 2](https://arxiv.org/abs/2506.09985) · [DINO-WM](https://arxiv.org/abs/2411.04983) · [LeWorldModel](https://arxiv.org/abs/2603.19312)
+
+<Math display tex={String.raw`\hat{z}_{t+1}=f_\phi(z_t,a_t),\qquad \mathcal{L}_{\mathrm{pred}}=\|\hat{z}_{t+1}-z_{t+1}\|_2^2`} label="미래 장면의 임베딩에서 예측 오차 계산" />
+
+<RobotEquationGuide id="rl08-e09" />
+
+[원강의 68:50](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=4130s)
+
+<LectureSlide lecture={8} page={53} caption="픽셀에서 잠재값까지 같은 컵 옮기기로 비교하기" />
+
+픽셀 모델에서는 컵 위치가 영상 어디로 옮겨 가는지 보고, Dreamer류는 압축 상태에서 여러 걸음의 보상이나 행동을 평가한다. DreamZero는 미래 영상과 명령을 함께 내고, mimic-video는 영상 특징으로 명령을 낸다. JEPA 계열의 계획에서는 예상 미래와 목표를 벡터로 비교할 수 있다. 어느 구조에서든 실제 로봇을 움직인 뒤 새 관측을 다시 읽는 과정이 예측과 현실을 이어 준다.
+
+[원강의 71:12](https://www.youtube.com/watch?v=cTTmUZlOF2s&t=4272s)
+
+## 직접 실행해 보기
+
+가상 로봇의 위치가 0이고 목표가 1이라고 하자. 모델은 명령 1을 주면 1만큼 움직인다고 예측한다. 실제 예제에서는 같은 명령으로 0.8만큼만 움직이도록 설정했다. 처음 계획을 그대로 따르면 위치 0.8에 멈춘다. 새 위치를 읽어 남은 거리 0.2를 다시 명령하면 0.96까지 이동하고, 한 번 더 반복하면 0.992에 도달한다.
+
+이 예제는 모델을 바꾸지 않고도 관측을 받아 다시 계획할 때 어떤 차이가 생기는지 보여 준다. 파이썬 표준 라이브러리만 사용했으며, 물리 로봇과 Dreamer 학습은 포함하지 않는다. [실행 파일과 결과](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/08-world-models)

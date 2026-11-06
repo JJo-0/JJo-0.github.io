@@ -186,11 +186,26 @@ export async function auditRobotLearning(cdp, sessionId) {
     console.log(`robot-learning-ch07: PASS ${width}px, 36 decoded slides, 2 decoded figures, 18 accessible display equations, ${structure.inline} inline equations`);
   }
 
+
+  for (const width of [320, 390, 1440]) {
+    await viewport(cdp, sessionId, {width, height:900, mobile:width<500, touch:width<500, reduced:true});
+    await navigate(cdp, sessionId, '/posts/rl-robot-learning-ch08-world-models/');
+    await waitExpression(cdp, sessionId, "document.querySelectorAll('.math-display math').length === 9", 'Chapter 08 equations rendered');
+    const slides = await evaluate(cdp, sessionId, "[...document.querySelectorAll('[data-lecture-number=\"8\"]')].map(slide => slide.dataset.lectureSlide)");
+    assert.deepEqual(slides, Array.from({length:44}, (_, i) => 'P' + String(i + 10).padStart(3, '0')));
+    for (const page of ['P010', 'P028', 'P046', 'P052']) {
+      const image = "document.querySelector('[data-lecture-slide=\"" + page + "\"] img')";
+      await evaluate(cdp, sessionId, image + ".scrollIntoView({block:'center',behavior:'instant'})");
+      await waitExpression(cdp, sessionId, image + '.complete && ' + image + '.naturalWidth > 0', 'Chapter 08 slide decoded');
+    }
+    await auditEquationGuides(cdp, sessionId, 8, width);
+  }
+
 }
 
 // Exercise native disclosure keyboard behavior, then check every expanded guide.
 async function auditEquationGuides(cdp, sessionId, chapter, width) {
-  const count=[5,23,18,20,24,23,18][chapter-1];
+  const count=[5,23,18,20,24,23,18,9][chapter-1];
   const initial=await evaluate(cdp,sessionId,`(() => {const all=[...document.querySelectorAll('[data-equation-guide]')];return {count:all.length,closed:all.every(e=>!e.open),adjacent:all.every(e=>e.previousElementSibling?.classList.contains('math-display')&&e.previousElementSibling.querySelector('annotation')?.textContent===decodeURIComponent(e.dataset.equationTex))};})()`);
   assert.equal(initial.count,count);assert(initial.closed&&initial.adjacent,'Every equation has its own initially collapsed guide');
   assert(await evaluate(cdp,sessionId,`(() => {const s=document.querySelector('[data-equation-guide] summary');s.scrollIntoView({block:'center',behavior:'instant'});s.focus();return document.activeElement===s;})()`),'Equation summary owns keyboard focus');
