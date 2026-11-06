@@ -21,3 +21,5 @@
 - 06장: [행동 생성](../../spaceship-ui/site/content/posts/rl-robot-learning-ch06-generative-models.mdx) · [출처](source-assets/ch06/README.md) · [수치 예제](labs/06-generative-models/README.md)
 
 - 07장: [Transformer와 행동 시퀀스](../../spaceship-ui/site/content/posts/rl-robot-learning-ch07-sequence-transformers.mdx) · [출처](source-assets/ch07/README.md) · [계산](labs/07-sequence-transformers/README.md)
+
+- 08장: [월드 모델](../../spaceship-ui/site/content/posts/rl-robot-learning-ch08-world-models.mdx) · [출처](source-assets/ch08/README.md) · [직접 실행](labs/08-world-models/README.md)
