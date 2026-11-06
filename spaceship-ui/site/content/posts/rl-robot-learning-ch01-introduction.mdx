@@ -21,6 +21,7 @@ series:
 import LectureSlide from '@/components/post/LectureSlide.astro';
 import LearningFigure from '@/components/post/LearningFigure.astro';
 import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
 
 로봇이 컵을 집는 영상을 보면 무엇을 배웠는지 알 수 있을까? 로봇이 보는 정보, 선택하는 행동, 학습에 쓰는 신호를 따라가며 로봇 학습의 기본 개념을 살펴보자.
 
@@ -77,11 +78,13 @@ import Math from '@/components/post/Math.astro';
 
 그림을 왼쪽부터 읽으면 화면의 픽셀, 학습할 신경망, 가능한 행동과 확률이 이어진다. 여기서 0.7은 ‘왼쪽으로 가면 보상 0.7점을 받는다’는 뜻이 아니다. 현재 화면에서 왼쪽 행동을 선택할 확률로 읽는다. [NTU 영상 13:27–15:24](https://www.youtube.com/watch?v=0oucZNfBXlI&t=807s)도 분류 신경망과 비슷한 입출력 구조에서 출발한다. 하지만 분류에서 고양이라는 정답을 주는 것과, 행동의 장기 결과로 정책을 개선하는 것은 학습 신호가 다르다.
 
-이 확률적 선택을 관측 중심의 표기로 쓰면 다음과 같다. 아래 식은 그림을 설명하기 위한 표기이며, 원본의 화면 입력을 관측 `o`로 적었다.
+이 확률적 선택을 관측 중심의 표기로 쓰면 다음과 같다. 아래 식은 그림을 설명하기 위한 표기이며, 원본의 화면 입력을 관측 <Math tex={String.raw`o`} />로 적었다.
 
 <Math tex={String.raw`a_t \sim \pi_\theta(\,\cdot\mid o_t)`} display label="관측 o_t에서 정책 pi_theta가 정한 분포에 따라 행동 a_t를 선택한다" />
 
-`t`는 행동을 고르는 시점, `o_t`는 그때의 관측, `a_t`는 선택한 행동, `θ`는 신경망의 학습 가능한 파라미터다. `∼`는 분포에서 뽑는다는 뜻이다. 같은 화면에서 100번 뽑는다고 정확히 70번 왼쪽이 나오는 것은 아니지만, 많은 반복에서는 0.7의 비율에 가까워진다. 항상 가장 큰 값의 행동만 고르는 실행 방식도 가능하며, 확률에서 뽑는 방식과는 구분한다. 연속적인 로봇 팔 명령에서는 세 버튼 대신 이동량이나 관절 목표의 분포를 다룰 수 있다.
+<RobotEquationGuide id="rl01-e01" />
+
+<Math tex={String.raw`t`} />는 행동을 고르는 시점, <Math tex={String.raw`o_t`} />는 그때의 관측, <Math tex={String.raw`a_t`} />는 선택한 행동, <Math tex={String.raw`\theta`} />는 신경망의 학습 가능한 파라미터다. <Math tex={String.raw`\sim`} />는 분포에서 뽑는다는 뜻이다. 같은 화면에서 100번 뽑는다고 정확히 70번 왼쪽이 나오는 것은 아니지만, 많은 반복에서는 0.7의 비율에 가까워진다. 항상 가장 큰 값의 행동만 고르는 실행 방식도 가능하며, 확률에서 뽑는 방식과는 구분한다. 연속적인 로봇 팔 명령에서는 세 버튼 대신 이동량이나 관절 목표의 분포를 다룰 수 있다.
 
 <LectureSlide page={8} caption="로봇 공학에도 ‘ChatGPT의 순간’이 올까" />
 
@@ -117,7 +120,7 @@ Shakey는 카메라와 센서를 사용해 주변을 파악하고, 이동 경로
 
 어려움은 예상하지 못한 변화에서 나타난다. 부품의 위치가 달라지거나, 사람이 물체를 옮기거나, 집게가 미끄러지면 정해 둔 순서만으로는 복구하기 어렵다. 필요한 것은 현재 관측에 따라 다음 행동을 수정하는 능력이다.
 
-작은 예로 현재 위치가 0.2 m, 목표가 1.0 m라고 하자. 고정된 피드백 규칙이 `2 × (1.0 − 0.2) = 1.6 m/s`를 요청하더라도, 환경이 속도를 0.5 m/s로 제한하면 0.1초 뒤 위치는 `0.2 + 0.1 × 0.5 = 0.25 m`가 된다. 다음 행동은 새 위치를 다시 보고 계산한다. 이 순환 자체는 피드백 제어이며, 그 규칙을 경험으로 개선하는 학습은 별도의 단계다.
+작은 예로 현재 위치가 0.2 m, 목표가 1.0 m라고 하자. 고정된 피드백 규칙이 <Math tex={String.raw`2 \times (1.0-0.2)=1.6\,\mathrm{m/s}`} />를 요청하더라도, 환경이 속도를 0.5 m/s로 제한하면 0.1초 뒤 위치는 <Math tex={String.raw`0.2+0.1\times0.5=0.25\,\mathrm m`} />가 된다. 다음 행동은 새 위치를 다시 보고 계산한다. 이 순환 자체는 피드백 제어이며, 그 규칙을 경험으로 개선하는 학습은 별도의 단계다.
 
 직접 실행할 수 있는 [Python 파일](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/robot-learning/labs/01-feedback-loop/feedback_loop.py), [13개 테스트](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/robot-learning/labs/01-feedback-loop/test_feedback_loop.py), [CSV·결과 파일](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/01-feedback-loop/results)을 공개했다. 이 예제는 1차원 위치 전이 계산이며, 로봇 팔 물리 시뮬레이션은 뒤의 MuJoCo·Isaac Lab 예제로 연결한다.
 
@@ -225,7 +228,7 @@ Shakey는 카메라와 센서를 사용해 주변을 파악하고, 이동 경로
 
 [Open X-Embodiment](https://robotics-transformer-x.github.io/)는 여러 로봇에서 모은 데이터를 함께 이용하는 연구의 대표적인 사례다. 서로 다른 로봇의 관측과 행동을 공통 형식으로 연결하면, 한 플랫폼의 경험을 다른 작업과 로봇에도 활용할 기반이 생긴다.
 
-슬라이드 오른쪽에는 Octo, Isaac GR00T, π₀, RT-2 등의 모델이 등장한다. 모두를 하나의 알고리즘으로 묶기보다, 어떤 데이터를 쓰며 어떤 행동을 출력하는지 비교하면 차이가 보인다.
+슬라이드 오른쪽에는 Octo, Isaac GR00T, <Math tex={String.raw`\pi_0`} />, RT-2 등의 모델이 등장한다. 모두를 하나의 알고리즘으로 묶기보다, 어떤 데이터를 쓰며 어떤 행동을 출력하는지 비교하면 차이가 보인다.
 
 [공개 데이터·코드](https://github.com/google-deepmind/open_x_embodiment)를 읽을 때는 행동 차원과 단위, 카메라 구성, 궤적의 시작·종료 기준부터 살펴보자. 여러 데이터셋을 모았다는 것과 그 의미까지 자동으로 같아졌다는 것은 다르다.
 
@@ -321,21 +324,29 @@ NTU 원본 PPTX 13쪽의 수식을 PDF와 대조하면 리턴의 가장 단순�
 
 <Math tex={String.raw`R = \sum_{t=1}^{T} r_t`} display label="에피소드의 전체 보상 R은 1부터 T까지 각 단계 보상 r_t의 합이다" />
 
-`T`는 한 번의 시도가 끝나는 단계이고, `r_t`는 각 단계에서 받은 보상이다. `Σ`는 그 값들을 모두 더하라는 기호다. 원본의 `R`은 이 합을 가리키며, 다른 강의가 순간 보상에 쓰는 대문자 `R_t`와 표기가 다를 수 있다. 글자 모양보다 각 식에서 정의한 의미를 확인해야 한다. 예를 들어 보상이 `[0, 0, 1]`이면 합은 1이다. 이 기록만으로 세 행동 중 어느 것이 성공에 얼마나 기여했는지까지 알 수는 없다. 여러 실행 결과를 이용해 어떤 선택이 이후 성공 가능성을 높였는지 배우는 문제가 남는다.
+<RobotEquationGuide id="rl01-e02" />
+
+<Math tex={String.raw`T`} />는 한 번의 시도가 끝나는 단계이고, <Math tex={String.raw`r_t`} />는 각 단계에서 받은 보상이다. <Math tex={String.raw`\sum`} />는 그 값들을 모두 더하라는 기호다. 원본의 <Math tex={String.raw`R`} />은 이 합을 가리키며, 다른 강의가 순간 보상에 쓰는 대문자 <Math tex={String.raw`R_t`} />와 표기가 다를 수 있다. 글자 모양보다 각 식에서 정의한 의미를 확인해야 한다. 예를 들어 보상이 `[0, 0, 1]`이면 합은 1이다. 이 기록만으로 세 행동 중 어느 것이 성공에 얼마나 기여했는지까지 알 수는 없다. 여러 실행 결과를 이용해 어떤 선택이 이후 성공 가능성을 높였는지 배우는 문제가 남는다.
 
 [UCL 원본 46쪽](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=46)은 미래 보상에 할인율을 적용하고, 그 리턴의 기댓값을 가치로 정의한다. 다음 식은 종료되는 에피소드에 맞춰 합의 끝을 적은 표현이다.
 
 <Math tex={String.raw`G_t = \sum_{k=0}^{T-t-1}\gamma^k r_{t+k+1}`} display label="현재 이후의 보상을 할인율 감마의 거듭제곱으로 가중해 더한 리턴 G_t" />
 
+<RobotEquationGuide id="rl01-e03" />
+
 <Math tex={String.raw`V^\pi(s) = \mathbb{E}_{\pi}[G_t\mid S_t=s]`} display label="상태 s에서 정책 pi를 따를 때 리턴 G_t의 기댓값인 가치 함수" />
 
-`γ`는 0부터 1 사이의 할인율이다. `γ=0.9`이고 다음 보상들이 `[0, 0, 1]`이라면 지금 기준 리턴은 `0 + 0.9×0 + 0.9²×1 = 0.81`이다. 할인하지 않는 경우에는 1이다. `E`는 가능한 실행 결과를 평균적으로 고려한다는 뜻이다. 지금의 보상, 한 번 실행해 얻은 리턴, 같은 상태에서 정책을 반복 실행했을 때의 기대 리턴인 가치는 서로 다른 값이다. 보상은 과제에서 정하는 신호이며, 할인된 값은 그 신호를 어떤 시간적 기준으로 평가할지를 나타낸다.
+<RobotEquationGuide id="rl01-e04" />
+
+<Math tex={String.raw`\gamma`} />는 0부터 1 사이의 할인율이다. <Math tex={String.raw`\gamma=0.9`} />이고 다음 보상들이 `[0, 0, 1]`이라면 지금 기준 리턴은 <Math tex={String.raw`0+0.9\times0+0.9^2\times1=0.81`} />이다. 할인하지 않는 경우에는 1이다. <Math tex={String.raw`\mathbb E`} />는 가능한 실행 결과를 평균적으로 고려한다는 뜻이다. 지금의 보상, 한 번 실행해 얻은 리턴, 같은 상태에서 정책을 반복 실행했을 때의 기대 리턴인 가치는 서로 다른 값이다. 보상은 과제에서 정하는 신호이며, 할인된 값은 그 신호를 어떤 시간적 기준으로 평가할지를 나타낸다.
 
 행동 복제는 다른 목적함수에서 출발한다. 아래 식은 연속적인 로봇 명령을 설명하기 위한 제곱오차 예시이며, NTU 원본 수식을 그대로 옮긴 것은 아니다.
 
 <Math tex={String.raw`\mathcal{L}_{\mathrm{BC}}(\theta)=\frac{1}{N}\sum_{i=1}^{N}\lVert f_\theta(o_i)-a_i^*\rVert^2`} display label="N개 시연에서 예측 행동과 전문가 행동의 제곱 차이를 평균한 행동 복제 손실" />
 
-`N`은 시연에서 만든 관측–행동 쌍의 수, `a_i*`는 그 관측에서 전문가가 내린 행동이다. `f_θ`가 그 행동에 가까워지도록 파라미터를 바꾼다. 위치 이동량·회전량·집게 명령을 함께 예측한다면 단위와 범위가 다르므로, 실제 구현에서는 정규화나 항별 가중치를 정해야 한다. 이 손실이 작아지는 것과 로봇이 방문하는 모든 상태에서 성공하는 것은 동일하지 않다.
+<RobotEquationGuide id="rl01-e05" />
+
+<Math tex={String.raw`N`} />은 시연에서 만든 관측–행동 쌍의 수, <Math tex={String.raw`a_i^*`} />는 그 관측에서 전문가가 내린 행동이다. <Math tex={String.raw`f_\theta`} />가 그 행동에 가까워지도록 파라미터를 바꾼다. 위치 이동량·회전량·집게 명령을 함께 예측한다면 단위와 범위가 다르므로, 실제 구현에서는 정규화나 항별 가중치를 정해야 한다. 이 손실이 작아지는 것과 로봇이 방문하는 모든 상태에서 성공하는 것은 동일하지 않다.
 
 [DAgger 원문 2쪽 식 (1)·(2)](https://proceedings.mlr.press/v15/ross11a/ross11a.pdf#page=2)은 전문가가 방문한 상태에서의 손실과 학습 정책이 스스로 방문하는 상태에서의 손실을 나누어 쓴다. 실행 중 컵에서 비껴난 정책은 시연에 없던 관측을 만들 수 있다. 그래서 시험 데이터에서 행동을 잘 맞히는지에 더해, 정책을 끝까지 실행했을 때 어떤 상태를 방문하고 어디에서 복구에 실패하는지 확인해야 한다.
 
@@ -407,7 +418,7 @@ python3 -m unittest -v
 python3 feedback_loop.py --out results
 ```
 
-위치에 +0.4 m의 변화를 한 번 넣은 조건에서, 60회 계산 후 개방루프의 최종 오차는 0.4 m, 피드백의 최종 오차는 약 8.92×10⁻⁷ m였다. 이 값은 정해진 1차원 모델의 계산 결과다. 학습으로 정책을 갱신하는 예제가 아니라 **실행 중 새 관측을 사용하는 효과**를 보여준다. [정확한 결과](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/robot-learning/labs/01-feedback-loop/results/summary.json)와 [실행·검사 방법](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/robot-learning/labs/01-feedback-loop/README.md)을 함께 볼 수 있다.
+위치에 +0.4 m의 변화를 한 번 넣은 조건에서, 60회 계산 후 개방루프의 최종 오차는 0.4 m, 피드백의 최종 오차는 약 8.92×10⁻⁷ <Math tex={String.raw`m`} />였다. 이 값은 정해진 1차원 모델의 계산 결과다. 학습으로 정책을 갱신하는 예제가 아니라 **실행 중 새 관측을 사용하는 효과**를 보여준다. [정확한 결과](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/robot-learning/labs/01-feedback-loop/results/summary.json)와 [실행·검사 방법](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/robot-learning/labs/01-feedback-loop/README.md)을 함께 볼 수 있다.
 
 로봇 팔 물리 시뮬레이션은 [ETH MuJoCo 과제](https://github.com/mees-robot-learning-course/ethz-course-2026/tree/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw2_robot_control_mdps), 더 다양한 로봇 학습 환경은 [NVIDIA Isaac Lab](https://github.com/isaac-sim/IsaacLab)과 [공식 문서](https://isaac-sim.github.io/IsaacLab/)로 이어서 살펴볼 수 있다.
 

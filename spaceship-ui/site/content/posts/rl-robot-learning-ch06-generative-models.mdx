@@ -21,6 +21,7 @@ series:
 import LectureSlide from '@/components/post/LectureSlide.astro';
 import LearningFigure from '@/components/post/LearningFigure.astro';
 import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
 
 장애물을 왼쪽으로 돌아도, 오른쪽으로 돌아도 성공할 수 있다. 그런데 두 시범을 평균내면 장애물 한가운데로 향한다. 이번 장은 여러 정답을 하나로 뭉개지 않고, 그중 실행 가능한 행동을 만들어 내는 방법을 다룬다.
 
@@ -50,6 +51,8 @@ import Math from '@/components/post/Math.astro';
 
 <Math display tex={String.raw`a^*(o)=\mathbb E[a\mid o]`} label="제곱 오차 회귀가 지향하는 조건부 평균" />
 
+<RobotEquationGuide id="rl06-e01" />
+
 <LearningFigure src="/assets/posts/rl-robot-learning-ch06-generative-models/multimodal-paths.png" alt="장애물 위아래로 우회하는 두 경로와 장애물을 통과하는 평균 경로" caption="두 경로와 점별 평균을 직접 계산했다. 분홍색 원은 장애물이며 실제 로봇의 충돌 실험은 아니다." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/06-generative-models" credit="JJo, 직접 실행한 수치 예제" width={1350} height={525} />
 
 [원강의 1:45부터](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=105s).
@@ -76,6 +79,8 @@ import Math from '@/components/post/Math.astro';
 
 <Math display tex={String.raw`\pi_\theta(a\mid o)=\int p_\theta(a\mid o,z)p(z)\,dz`} label="잠재변수를 평균내어 얻는 조건부 행동 분포" />
 
+<RobotEquationGuide id="rl06-e02" />
+
 적분은 가능한 잠재변수마다 만들어지는 분포를 그 빈도에 맞춰 합한다는 뜻이다. 각 조건부 분포가 단순해도 이들을 합한 전체 분포는 여러 봉우리를 가질 수 있다. 신경망과 잠재공간이 충분히 유연할 때 얻는 표현력과, 제한된 자료로 실제 학습한 성능은 구별해야 한다.
 
 한 행동 묶음 안에서는 선택한 방식을 유지하는 것이 중요하다. 제어 순간마다 독립적으로 왼쪽·오른쪽 방식을 바꾸면 손이 흔들릴 수 있다. 분포를 잘 맞추는 문제와 시간에 걸쳐 일관된 행동을 만드는 문제는 함께 고려해야 한다.
@@ -88,7 +93,9 @@ import Math from '@/components/post/Math.astro';
 
 <Math display tex={String.raw`z=f_\phi(x),\quad \widehat x=g_\theta(z),\quad \mathcal L_{\mathrm{AE}}=\lVert x-\widehat x\rVert_2^2`} label="오토인코더의 인코딩·복원·손실" />
 
-인코더의 가중치는 φ, 디코더의 가중치는 θ로 구별한다. 병목(bottleneck)은 중간 표현의 용량을 제한하는 부분이다. 너무 작으면 필요한 정보도 잃고, 너무 넓으면 입력을 단순히 외울 수 있다. 복원을 잘한다고 반드시 로봇 제어에 중요한 접촉이나 안전 정보를 보존했다고 볼 수는 없다. 무엇을 입력으로 쓰고 어떤 복원 목표를 주었는지가 중요하다.
+<RobotEquationGuide id="rl06-e03" />
+
+인코더의 가중치는 <Math tex={String.raw`\phi`} />, 디코더의 가중치는 <Math tex={String.raw`\theta`} />로 구별한다. 병목(bottleneck)은 중간 표현의 용량을 제한하는 부분이다. 너무 작으면 필요한 정보도 잃고, 너무 넓으면 입력을 단순히 외울 수 있다. 복원을 잘한다고 반드시 로봇 제어에 중요한 접촉이나 안전 정보를 보존했다고 볼 수는 없다. 무엇을 입력으로 쓰고 어떤 복원 목표를 주었는지가 중요하다.
 
 [원강의 5:00부터](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=300s).
 
@@ -106,7 +113,11 @@ VAE(변분 오토인코더)의 인코더는 코드 하나 대신 평균과 분�
 
 <Math display tex={String.raw`\mathcal L_{\mathrm{ELBO}}=\mathbb E_{q_\phi(z\mid x)}[\log p_\theta(x\mid z)]-D_{\mathrm{KL}}(q_\phi(z\mid x)\Vert p(z))`} label="복원 항과 사전분포 정규화 항" />
 
+<RobotEquationGuide id="rl06-e04" />
+
 <Math display tex={String.raw`\log p_\theta(x)=\mathcal L_{\mathrm{ELBO}}+D_{\mathrm{KL}}(q_\phi(z\mid x)\Vert p_\theta(z\mid x))`} label="ELBO가 로그 가능도의 하한인 이유" />
+
+<RobotEquationGuide id="rl06-e05" />
 
 첫 식의 기대값은 “뽑은 코드로 입력을 얼마나 잘 설명하는가”를 평가한다. KL 발산은 두 분포의 어긋남을 재는 비음수량이다. 두 번째 식의 KL이 0 이상이므로 ELBO는 로그 가능도보다 클 수 없다. 이름 그대로 evidence lower bound, 즉 관측 자료의 로그 가능도에 대한 하한이다. <strong>사전분포와 비교하는 KL</strong>과 <strong>실제 사후분포와 비교해 하한의 간격을 나타내는 KL</strong>을 혼동하지 말자.
 
@@ -120,9 +131,11 @@ VAE(변분 오토인코더)의 인코더는 코드 하나 대신 평균과 분�
 
 <Math display tex={String.raw`\epsilon\sim\mathcal N(0,I),\qquad z=\mu_\phi(x)+\sigma_\phi(x)\odot\epsilon`} label="가우시안 잠재변수의 재매개변수화" />
 
+<RobotEquationGuide id="rl06-e06" />
+
 가운데 곱 기호는 같은 위치 원소끼리 곱한다는 뜻이다. 역전파 한 번에서는 뽑아 놓은 잡음 값을 고정하고, 평균과 표준편차를 바꿀 때 복원 결과가 어떻게 달라지는지 미분한다. 무작위성을 없애는 것이 아니라 무작위 수의 출처를 가중치 밖으로 옮긴 것이다.
 
-분산과 표준편차도 구별해야 한다. 그림의 σ²가 분산이라면 위 식에는 그 제곱근인 σ가 들어간다. 구현에서 로그 분산을 출력했다면 절반으로 나눈 뒤 지수 함수를 적용해 표준편차를 얻는다. 05장의 SAC에서도 같은 경로 미분 아이디어를 행동 표본에 적용했다.
+분산과 표준편차도 구별해야 한다. 그림의 <Math tex={String.raw`\sigma^2`} />가 분산이라면 위 식에는 그 제곱근인 <Math tex={String.raw`\sigma`} />가 들어간다. 구현에서 로그 분산을 출력했다면 절반으로 나눈 뒤 지수 함수를 적용해 표준편차를 얻는다. 05장의 SAC에서도 같은 경로 미분 아이디어를 행동 표본에 적용했다.
 
 [원강의 8:10부터](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=490s).
 
@@ -131,6 +144,8 @@ VAE(변분 오토인코더)의 인코더는 코드 하나 대신 평균과 분�
 왼쪽은 분포가 바뀔 때 각 결과의 가중치가 어떻게 바뀌는지 계산하는 score-function 방식이다. REINFORCE에서 사용한 로그 확률 미분이 여기에 속한다. 오른쪽은 고정 잡음에서 결과를 만드는 함수를 통과해 직접 미분하는 pathwise 방식이다.
 
 <Math display tex={String.raw`\nabla_\phi\mathbb E_{q_\phi(z)}[f(z)]=\mathbb E_{\epsilon}[\nabla_\phi f(g_\phi(\epsilon))]`} label="미분 가능한 재매개변수화의 경로 미분" />
+
+<RobotEquationGuide id="rl06-e07" />
 
 이 식은 잡음 분포가 가중치와 무관하고 기대값과 미분을 교환할 수 있는 조건에서 쓴다. 단순히 기대값의 선형성만으로 모든 무작위 계산을 미분할 수 있는 것은 아니다. 경로 방식은 많은 연속 잠재모델에서 유용하지만, 항상 더 낮은 분산을 보장하거나 이산 표본에도 곧바로 적용되는 만능 해법은 아니다. 출력까지 이어지는 미분 가능한 경로가 필요하다.
 
@@ -158,6 +173,8 @@ VQ는 vector quantization, 벡터 양자화다. 인코더가 연속 벡터를 �
 
 <Math display tex={String.raw`k^*=\arg\min_{k\in\{1,\ldots,K\}}\lVert z_e(x)-e_k\rVert_2^2,\qquad z_q=e_{k^*}`} label="최근접 코드북 항목 선택" />
 
+<RobotEquationGuide id="rl06-e08" />
+
 번호는 이산적이지만 선택된 벡터의 원소는 실수다. “코드 7”과 “7차원 벡터”는 전혀 다른 말이다. 코드북 항목 수와 각 항목의 차원도 별개다. 영상은 위치별로 코드를 골라 여러 토큰으로 표현할 수 있다. VQ-VAE의 기본 학습은 VAE처럼 매 입력에 가우시안 평균과 분산을 내고 KL을 계산하는 구조와 다르다.
 
 [원강의 13:00부터](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=780s).
@@ -167,6 +184,8 @@ VQ는 vector quantization, 벡터 양자화다. 인코더가 연속 벡터를 �
 인코더 출력이 조금 움직여도 같은 대표 벡터가 선택되는 동안 양자화 결과는 변하지 않는다. 따라서 그 영역에서 실제 미분은 0이고 경계에서는 미분이 정의되지 않을 수 있다. 이 상태로 복원 오차를 그대로 역전파하면 인코더가 충분한 학습 신호를 받기 어렵다.
 
 <Math display tex={String.raw`z_{\mathrm{ST}}=z_e+\operatorname{sg}(z_q-z_e)`} label="Straight-through estimator의 계산 표현" />
+
+<RobotEquationGuide id="rl06-e09" />
 
 Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, 뒤로 미분할 때 그 경로의 기울기를 0으로 취급한다. 위 식의 순전파 결과는 양자화된 코드이고, 인코더 출력에 대한 역전파는 항등함수처럼 전달된다. STE는 실제 양자화 함수의 미분을 정확히 구한 결과가 아니라 <strong>학습을 위한 대체 기울기</strong>다. 그래서 이산 선택을 지나 학습할 수 있지만 편향이 없는 추정이라고 주장해서는 안 된다.
 
@@ -178,7 +197,9 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 
 <Math display tex={String.raw`\mathcal L=\lVert x-D(z_q)\rVert^2+\lVert\operatorname{sg}(z_e)-e_k\rVert^2+\beta\lVert z_e-\operatorname{sg}(e_k)\rVert^2`} label="VQ-VAE의 세 학습 항" />
 
-가운데 항에서는 인코더 쪽을 고정하고 코드북을 바꾼다. 마지막 항에서는 코드북 쪽을 고정하고 인코더를 바꾼다. 복원 오차는 디코더를 직접 학습하고, STE를 통해 인코더에도 전달된다. β는 커밋먼트의 가중치이며 뒤에서 확산에 쓰는 잡음 분산 기호와 역할이 다르다.
+<RobotEquationGuide id="rl06-e10" />
+
+가운데 항에서는 인코더 쪽을 고정하고 코드북을 바꾼다. 마지막 항에서는 코드북 쪽을 고정하고 인코더를 바꾼다. 복원 오차는 디코더를 직접 학습하고, STE를 통해 인코더에도 전달된다. <Math tex={String.raw`\beta`} />는 커밋먼트의 가중치이며 뒤에서 확산에 쓰는 잡음 분산 기호와 역할이 다르다.
 
 학습된 코드북만으로 “어떤 번호 조합을 얼마나 자주 뽑아야 할까?”까지 해결되지는 않는다. 이 질문이 다음 생성 단계로 이어진다. 코드북을 손실의 직접 기울기 대신 이동평균으로 갱신하는 변형도 있다.
 
@@ -189,6 +210,8 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 첫 단계에서 인코더·코드북·디코더를 학습한 뒤, 자료를 코드 번호의 배열로 바꾼다. 두 번째 단계에서는 그 번호 배열의 분포를 별도 모델로 학습할 수 있다. 생성 때는 번호를 뽑고 해당 벡터를 찾아 디코더에 전달한다.
 
 <Math display tex={String.raw`p(k_1,\ldots,k_M)=\prod_{j=1}^{M}p(k_j\mid k_1,\ldots,k_{j-1})`} label="자기회귀 방식의 코드 배열 분포" />
+
+<RobotEquationGuide id="rl06-e11" />
 
 앞 번호들을 보고 다음 번호를 고르는 방식은 토큰 사이의 관계를 보존한다. 서로 다른 위치에 쓰이는 코드를 독립 균등하게 뽑으면 학습 자료에 없던 조합이 생길 수 있다. 예를 들어 두 토큰이 언제나 같은 접근 방향을 나타냈는데 하나는 왼쪽, 하나는 오른쪽으로 뽑으면 일관되지 않은 행동 묶음이 된다. 양자화는 표현을 이산화하는 도구이며, 그 표현의 올바른 공동분포를 배우는 단계는 따로 필요하다.
 
@@ -224,7 +247,9 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 
 <Math display tex={String.raw`q(x_i\mid x_{i-1})=\mathcal N(\sqrt{1-\beta_i}x_{i-1},\beta_i I)`} label="확산의 한 단계 정방향 전이" />
 
-β는 추가하는 잡음의 분산이고, 실제 잡음 표본 앞에는 그 제곱근이 곱해진다. 작은 β를 여러 번 적용하면 원본의 특징이 점차 약해진다. 어느 단계에 얼마나 잡음을 섞을지 정한 목록이 noise schedule이다.
+<RobotEquationGuide id="rl06-e12" />
+
+<Math tex={String.raw`\beta`} />는 추가하는 잡음의 분산이고, 실제 잡음 표본 앞에는 그 제곱근이 곱해진다. 작은 <Math tex={String.raw`\beta`} />를 여러 번 적용하면 원본의 특징이 점차 약해진다. 어느 단계에 얼마나 잡음을 섞을지 정한 목록이 noise schedule이다.
 
 여기서 단계 번호는 실제 로봇이 움직이는 시간과 다르다. 제어 시점 하나에서 행동 묶음을 만들기 위해 내부 잡음 제거 계산을 수십 번 수행할 수 있다. 로봇의 미래 행동 길이와 신경망을 호출하는 잡음 제거 횟수를 같은 숫자로 혼동하지 말자.
 
@@ -248,6 +273,8 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 
 <Math display tex={String.raw`\mathcal L_{\mathrm{simple}}=\mathbb E_{x_0,i,\epsilon}[\lVert\epsilon-\epsilon_\theta(x_i,i)\rVert_2^2]`} label="DDPM의 단순화된 잡음 예측 손실" />
 
+<RobotEquationGuide id="rl06-e13" />
+
 원래 변분 목표를 유도하면 단계별 가중치가 생길 수 있다. 가중치를 단순화한 위 손실이 원래 가능도 목적과 항별로 완전히 같다고 말해서는 안 된다. 그리고 이 모델도 MSE를 쓴다. 앞의 평균 행동 문제는 MSE라는 연산 자체의 금지가 아니라, 행동 전체를 한 번에 평균으로 예측하는 구조의 문제였다. 잡음 수준별 예측을 생성 과정에 반복 적용하면 다봉 분포를 만들 수 있다. [DDPM 원논문](https://arxiv.org/abs/2006.11239).
 
 [원강의 25:50부터](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1550s).
@@ -258,7 +285,11 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 
 <Math display tex={String.raw`\alpha_i=1-\beta_i,\quad \bar\alpha_i=\prod_{j=1}^{i}\alpha_j`} label="누적 신호 계수의 정의" />
 
+<RobotEquationGuide id="rl06-e14" />
+
 <Math display tex={String.raw`x_i=\sqrt{\bar\alpha_i}x_0+\sqrt{1-\bar\alpha_i}\epsilon,\quad\epsilon\sim\mathcal N(0,I)`} label="원하는 잡음 단계의 직접 표본 생성" />
+
+<RobotEquationGuide id="rl06-e15" />
 
 이 식 덕분에 학습 때 800단계 표본 하나를 만들려고 앞의 799개를 모두 계산할 필요가 없다. 누적 계수를 준비해 두면 선택한 단계로 직접 갈 수 있다. “한 번에 간다”는 말은 잡음 단계 수에 대한 계산의 이점이며, 자료 차원이나 신경망 계산까지 없어지는 뜻은 아니다.
 
@@ -274,7 +305,9 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 
 <Math display tex={String.raw`x_{i-1}=\frac{1}{\sqrt{\alpha_i}}\left(x_i-\frac{\beta_i}{\sqrt{1-\bar\alpha_i}}\epsilon_\theta(x_i,i)\right)+\sigma_i z`} label="DDPM의 역방향 표본 갱신" />
 
-여기서 새 잡음은 표준정규분포에서 뽑고 마지막 단계에서는 0으로 둔다. σ는 역과정의 표준편차이며, β의 제곱근을 쓰거나 원논문의 다른 분산 선택을 사용할 수 있다. 예측된 평균만 보는 것과 그 평균 주변에서 표본을 뽑는 것은 다르다.
+<RobotEquationGuide id="rl06-e16" />
+
+여기서 새 잡음은 표준정규분포에서 뽑고 마지막 단계에서는 0으로 둔다. <Math tex={String.raw`\sigma`} />는 역과정의 표준편차이며, <Math tex={String.raw`\beta`} />의 제곱근을 쓰거나 원논문의 다른 분산 선택을 사용할 수 있다. 예측된 평균만 보는 것과 그 평균 주변에서 표본을 뽑는 것은 다르다.
 
 다만 매 단계 새 잡음을 넣어야만 다양한 결과가 나온다고 일반화하면 안 된다. 초기 잡음이 달라지는 것만으로도 결정론적 변환은 여러 결과를 낼 수 있다. 다음 DDIM이 그 사례다. 또한 이 DDPM 식에서 잡음 항만 지운 것을 모든 결정론적 샘플러와 같다고 볼 수는 없다. 각 샘플러는 자신이 근사하려는 역과정에 맞는 갱신식을 가진다. 여기서 score는 자료 로그 밀도의 공간 기울기이며, 강화학습의 보상 점수가 아니다.
 
@@ -286,9 +319,13 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 
 <Math display tex={String.raw`\widehat x_0=\frac{x_i-\sqrt{1-\bar\alpha_i}\epsilon_\theta(x_i,i)}{\sqrt{\bar\alpha_i}}`} label="현재 표본에서 원본 추정" />
 
+<RobotEquationGuide id="rl06-e17" />
+
 <Math display tex={String.raw`x_j=\sqrt{\bar\alpha_j}\widehat x_0+\sqrt{1-\bar\alpha_j}\epsilon_\theta(x_i,i),\quad j<i`} label="새 잡음을 넣지 않는 DDIM 갱신" />
 
-위 식은 η를 0으로 둔 결정론적 DDIM이다. <strong>같은 조건과 같은 초기 잡음</strong>이면 같은 결과가 나온다. 초기 잡음을 바꾸면 다른 결과가 나올 수 있으므로 분포의 다봉성이 사라지는 것은 아니다. 단계 수를 줄이면 빠르지만 예측과 이산화 오차의 영향이 달라진다. 1,000단계를 20단계로 줄이는 예시는 모든 작업에서 품질이 그대로라는 보장이 아니다.
+<RobotEquationGuide id="rl06-e18" />
+
+위 식은 <Math tex={String.raw`\eta`} />를 0으로 둔 결정론적 DDIM이다. <strong>같은 조건과 같은 초기 잡음</strong>이면 같은 결과가 나온다. 초기 잡음을 바꾸면 다른 결과가 나올 수 있으므로 분포의 다봉성이 사라지는 것은 아니다. 단계 수를 줄이면 빠르지만 예측과 이산화 오차의 영향이 달라진다. 1,000단계를 20단계로 줄이는 예시는 모든 작업에서 품질이 그대로라는 보장이 아니다.
 
 [Berkeley 확산 강의 52:11부터](https://www.youtube.com/watch?v=DsEDMjdxOv4&t=3131s)는 학습 목적과 실행 샘플러의 선택을 분리해 설명한다. DDPM과 같은 정방향 주변분포를 사용한다는 성질을, 유한 횟수로 생성한 분포·표본 경로까지 항상 동일하다는 뜻으로 확대하지 말자. [DDIM 원논문](https://arxiv.org/abs/2010.02502).
 
@@ -308,7 +345,9 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 
 <Math display tex={String.raw`\widehat\epsilon=\epsilon_u+w(\epsilon_c-\epsilon_u)`} label="Classifier-free guidance의 예측 결합" />
 
-여기서 u는 조건을 비운 예측, c는 조건을 준 예측이다. 이 표기에서 w가 0이면 무조건 예측, 1이면 원래 조건부 예측, 1보다 크면 그 차이를 더 밀어 주는 외삽이 된다. 조건이 원하는 방향을 강조할 수 있지만 결과의 다양성이 줄거나 왜곡될 수 있다.
+<RobotEquationGuide id="rl06-e19" />
+
+여기서 <Math tex={String.raw`\epsilon_u`} />는 조건을 비운 잡음 예측, <Math tex={String.raw`\epsilon_c`} />는 조건을 준 잡음 예측이다. 아래첨자 <Math tex={String.raw`u`} />와 <Math tex={String.raw`c`} />는 두 종류의 예측을 구별하는 이름이다. 이 표기에서 <Math tex={String.raw`w`} />가 0이면 무조건 예측, 1이면 원래 조건부 예측, 1보다 크면 그 차이를 더 밀어 주는 외삽이 된다. 조건이 원하는 방향을 강조할 수 있지만 결과의 다양성이 줄거나 왜곡될 수 있다.
 
 별도 분류기를 학습하는 classifier guidance와 달리, CFG는 조건을 지운 학습을 통해 같은 예측 모델 안에서 두 경우를 다룬다. “분류기 없이”라는 이름이 조건 없이 생성한다는 뜻은 아니다. 모든 Diffusion Policy가 반드시 CFG를 쓴다는 뜻도 아니다. 로봇에서 어떤 조건을 지울지는 설계해야 하며, 필요한 상태 정보까지 무작정 없앤다고 안전한 행동이 되는 것은 아니다. [CFG 논문](https://arxiv.org/abs/2207.12598).
 
@@ -316,11 +355,13 @@ Stop-gradient 연산은 앞으로 계산할 때 값을 그대로 전달하고, �
 
 <LectureSlide lecture={6} page={29} caption="Diffusion Policy는 픽셀 대신 미래 행동 묶음을 생성한다" />
 
-탁자 위 T자 물체를 목표 윤곽에 맞춰 미는 작업을 보자. 물체 중심만 가까워서는 충분하지 않고 방향과 접촉 위치도 맞아야 한다. 같은 목표를 향해 여러 접촉 순서를 선택할 수 있어, 시연의 다봉성을 표현하는 일이 유용하다.
+탁자 위 <Math tex={String.raw`T`} />자 물체를 목표 윤곽에 맞춰 미는 작업을 보자. 물체 중심만 가까워서는 충분하지 않고 방향과 접촉 위치도 맞아야 한다. 같은 목표를 향해 여러 접촉 순서를 선택할 수 있어, 시연의 다봉성을 표현하는 일이 유용하다.
 
 Diffusion Policy는 시연에서 얻은 행동 묶음에 잡음을 넣고, 현재 관측을 조건으로 그 잡음을 예측하도록 학습한다. 행동 묶음은 앞으로 여러 제어 시점에 보낼 명령을 이어 붙인 배열이다. 이 기본 학습은 시연을 배우는 모방 학습이며, 보상을 최대화하는 강화학습을 자동으로 수행하는 것은 아니다.
 
 <Math display tex={String.raw`A_i=\sqrt{\bar\alpha_i}A+\sqrt{1-\bar\alpha_i}\epsilon,\quad \epsilon_\theta(A_i,i,o)`} label="관측에 조건화한 행동 묶음의 잡음 예측" />
+
+<RobotEquationGuide id="rl06-e20" />
 
 슬라이드의 “행동에 잡음 추가”는 위처럼 계수를 포함한 과정을 간추린 표현으로 읽으면 된다. 출력은 미래 행동이지 반드시 미래 영상이나 세계 상태 예측은 아니다. 긴 행동 묶음을 예측하더라도 일부만 실행하고 새 관측으로 다시 계획하는 receding horizon 방식을 사용할 수 있다. [Diffusion Policy 논문·영상·코드](https://diffusion-policy.cs.columbia.edu/).
 
@@ -368,11 +409,17 @@ Diffusion Policy는 시연에서 얻은 행동 묶음에 잡음을 넣고, 현�
 
 <Math display tex={String.raw`x_\tau=(1-\tau)\epsilon+\tau x_{\mathrm{data}},\quad u=x_{\mathrm{data}}-\epsilon`} label="직선 확률 경로와 표본 쌍의 목표 속도" />
 
+<RobotEquationGuide id="rl06-e21" />
+
 <Math display tex={String.raw`\mathcal L_{\mathrm{FM}}=\mathbb E[\lVert v_\theta(x_\tau,\tau)-u\rVert^2]`} label="Flow matching의 속도 회귀 목적" />
+
+<RobotEquationGuide id="rl06-e22" />
 
 속도장(vector field)은 현재 위치와 생성 시간을 보고 어느 방향으로 얼마나 움직일지 알려 주는 함수다. 생성 때는 새 잡음에서 시작해 그 함수를 따라 적분한다. 가장 간단한 Euler 방식은 현재 속도에 작은 시간 간격을 곱해 위치에 더한다.
 
 <Math display tex={String.raw`x_{\tau+\Delta\tau}=x_\tau+\Delta\tau\,v_\theta(x_\tau,\tau)`} label="Euler 적분 한 단계" />
+
+<RobotEquationGuide id="rl06-e23" />
 
 한 잡음–자료 쌍의 목표 속도는 일정하지만, <strong>학습된 전체 속도장이 어디서나 일정한 것은 아니다.</strong> 여러 쌍이 같은 중간 위치 부근을 지나면 모델은 그 조건에서의 평균 속도를 배우고, 그 장을 적분한 실제 경로는 휠 수 있다. 이 역시 MSE를 쓰지만 한 번에 평균 행동을 출력하는 것과 다른 생성 구조다. 여기의 생성 시간은 실제 로봇의 이동 시간이 아니다. 생성 경로의 중간 행동 배열을 모두 로봇에 실행하지는 않는다.
 
@@ -398,7 +445,7 @@ Diffusion Policy는 시연에서 얻은 행동 묶음에 잡음을 넣고, 현�
 
 학습 시간을 균등하게 뽑는 대신 잡음이 큰 작은 시간 쪽을 강조하는 shifted Beta 분포를 사용한다. 부록의 설정은 상한 0.999와 변환된 Beta(1.5,1)를 사용한다. 이 선택은 관측에서 행동을 예측하기 어려운 구간에 학습 비중을 주려는 설계이지, 모든 flow 모델이 따라야 하는 필수 규칙은 아니다.
 
-그림의 모델 크기와 모듈 이름은 이 강의에 인용된 원래 π₀ 구성의 설명이다. 언어·영상 사전학습이 있다고 해서 인터넷 이미지에 실제 모터 명령 라벨이 붙어 있는 것은 아니다. 로봇 행동 자료와 flow 학습이 그 연결을 담당한다. 여러 로봇을 함께 학습하려면 행동 차원·정규화·입출력 대응도 맞춰야 한다.
+그림의 모델 크기와 모듈 이름은 이 강의에 인용된 원래 <Math tex={String.raw`\pi_0`} /> 구성의 설명이다. 언어·영상 사전학습이 있다고 해서 인터넷 이미지에 실제 모터 명령 라벨이 붙어 있는 것은 아니다. 로봇 행동 자료와 flow 학습이 그 연결을 담당한다. 여러 로봇을 함께 학습하려면 행동 차원·정규화·입출력 대응도 맞춰야 한다.
 
 [원강의 48:01부터](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2881s).
 

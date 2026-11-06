@@ -24,6 +24,7 @@ export async function auditRobotLearning(cdp, sessionId) {
     fs.mkdirSync('citation-audit', { recursive: true });
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, sessionId);
     fs.writeFileSync(`citation-audit/robot-learning-${width}.png`, Buffer.from(shot.data, 'base64'));
+    await auditEquationGuides(cdp, sessionId, 1, width);
     console.log(`robot-learning: PASS ${width}px, 33 slides, 3 decoded source figures, 5 accessible equations`);
   }
   for (const width of [320, 390, 1440]) {
@@ -57,6 +58,7 @@ export async function auditRobotLearning(cdp, sessionId) {
       const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
       fs.writeFileSync(`citation-audit/robot-learning-ch02-${name}-${width}.png`,Buffer.from(shot.data,'base64'));
     }
+    await auditEquationGuides(cdp, sessionId, 2, width);
     console.log(`robot-learning-ch02: PASS ${width}px, 42 decoded slides, 5 decoded figures, 23 accessible display equations, ${inline.count} inline equations`);
   }
 
@@ -66,7 +68,7 @@ export async function auditRobotLearning(cdp, sessionId) {
     await waitExpression(cdp, sessionId, `document.querySelectorAll('.math-display .katex').length === 18`, 'Chapter 03 equations rendered');
     const structure = await evaluate(cdp,sessionId,`({slides:[...document.querySelectorAll('[data-lecture-number="3"]')].map(e=>e.dataset.lectureSlide),figures:document.querySelectorAll('[data-learning-figure]').length,errors:document.querySelectorAll('.katex-error').length,display:document.querySelectorAll('.math-display math').length,inline:document.querySelectorAll('.math-inline math').length,labels:[...document.querySelectorAll('.math-display')].every(e=>e.getAttribute('aria-label')),literal:document.body.innerText.includes('**'),oversize:[...document.querySelectorAll('.math-inline')].filter(e=>e.getBoundingClientRect().width>innerWidth-30).map(e=>e.querySelector('annotation')?.textContent)})`);
     assert.deepEqual(structure.slides,Array.from({length:45},(_,i)=>i+1).filter(n=>![2,32,44,45].includes(n)).map(n=>'P'+String(n).padStart(3,'0')));
-    assert.equal(structure.figures,4); assert.equal(structure.errors,0); assert.equal(structure.display,18); assert.equal(structure.inline,98);
+    assert.equal(structure.figures,4); assert.equal(structure.errors,0); assert.equal(structure.display,18); assert.equal(structure.inline,218);
     assert(structure.labels&&!structure.literal); assert.deepEqual(structure.oversize,[],'Chapter 03 inline mathematics fits phones');
     const count=await evaluate(cdp,sessionId,`document.querySelectorAll('.lecture-slide img,[data-learning-figure] img').length`);
     assert.equal(count,45);
@@ -81,6 +83,7 @@ export async function auditRobotLearning(cdp, sessionId) {
       const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
       fs.writeFileSync(`citation-audit/robot-learning-ch03-${name}-${width}.png`,Buffer.from(shot.data,'base64'));
     }
+    await auditEquationGuides(cdp, sessionId, 3, width);
     console.log(`robot-learning-ch03: PASS ${width}px, 41 decoded slides, 4 decoded figures, 18 accessible display equations, ${structure.inline} inline equations`);
   }
   for (const width of [320, 390, 1440]) {
@@ -89,7 +92,7 @@ export async function auditRobotLearning(cdp, sessionId) {
     await waitExpression(cdp, sessionId, `document.querySelectorAll('.math-display .katex').length === 20`, 'Chapter 04 equations rendered');
     const structure = await evaluate(cdp,sessionId,`({slides:[...document.querySelectorAll('[data-lecture-number="4"]')].map(e=>e.dataset.lectureSlide),figures:document.querySelectorAll('[data-learning-figure]').length,errors:document.querySelectorAll('.katex-error').length,display:document.querySelectorAll('.math-display math').length,inline:document.querySelectorAll('.math-inline math').length,labels:[...document.querySelectorAll('.math-display')].every(e=>e.getAttribute('aria-label')),literal:document.body.innerText.includes('**'),oversize:[...document.querySelectorAll('.math-inline')].filter(e=>e.getBoundingClientRect().width>innerWidth-30).map(e=>e.querySelector('annotation')?.textContent)})`);
     assert.deepEqual(structure.slides,Array.from({length:45},(_,i)=>i+1).filter(n=>![44,45].includes(n)).map(n=>'P'+String(n).padStart(3,'0')));
-    assert.equal(structure.figures,4); assert.equal(structure.errors,0); assert.equal(structure.display,20); assert.equal(structure.inline,92);
+    assert.equal(structure.figures,4); assert.equal(structure.errors,0); assert.equal(structure.display,20); assert.equal(structure.inline,258);
     assert(structure.labels&&!structure.literal); assert.deepEqual(structure.oversize,[],'Chapter 04 inline mathematics fits phones');
     const count=await evaluate(cdp,sessionId,`document.querySelectorAll('.lecture-slide img,[data-learning-figure] img').length`);
     assert.equal(count,47);
@@ -104,6 +107,7 @@ export async function auditRobotLearning(cdp, sessionId) {
       const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
       fs.writeFileSync(`citation-audit/robot-learning-ch04-${name}-${width}.png`,Buffer.from(shot.data,'base64'));
     }
+    await auditEquationGuides(cdp, sessionId, 4, width);
     console.log(`robot-learning-ch04: PASS ${width}px, 43 decoded slides, 4 decoded figures, 20 accessible display equations, ${structure.inline} inline equations`);
   }
 
@@ -113,7 +117,7 @@ export async function auditRobotLearning(cdp, sessionId) {
     await waitExpression(cdp, sessionId, `document.querySelectorAll('.math-display .katex').length === 24`, 'Chapter 05 equations rendered');
     const structure = await evaluate(cdp,sessionId,`({slides:[...document.querySelectorAll('[data-lecture-number="5"]')].map(e=>e.dataset.lectureSlide),figures:document.querySelectorAll('[data-learning-figure]').length,errors:document.querySelectorAll('.katex-error').length,display:document.querySelectorAll('.math-display math').length,inline:document.querySelectorAll('.math-inline math').length,labels:[...document.querySelectorAll('.math-display')].every(e=>e.getAttribute('aria-label')),literal:document.body.innerText.includes('**'),oversize:[...document.querySelectorAll('.math-inline')].filter(e=>e.getBoundingClientRect().width>innerWidth-30).map(e=>e.querySelector('annotation')?.textContent)})`);
     assert.deepEqual(structure.slides,Array.from({length:36},(_,i)=>i+1).filter(n=>![35,36].includes(n)).map(n=>'P'+String(n).padStart(3,'0')));
-    assert.equal(structure.figures,3); assert.equal(structure.errors,0); assert.equal(structure.display,24); assert.equal(structure.inline,49);
+    assert.equal(structure.figures,3); assert.equal(structure.errors,0); assert.equal(structure.display,24); assert.equal(structure.inline,217);
     assert(structure.labels&&!structure.literal); assert.deepEqual(structure.oversize,[],'Chapter 05 inline mathematics fits phones');
     const count=await evaluate(cdp,sessionId,`document.querySelectorAll('.lecture-slide img,[data-learning-figure] img').length`);
     assert.equal(count,37);
@@ -128,6 +132,7 @@ export async function auditRobotLearning(cdp, sessionId) {
       const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
       fs.writeFileSync(`citation-audit/robot-learning-ch05-${name}-${width}.png`,Buffer.from(shot.data,'base64'));
     }
+    await auditEquationGuides(cdp, sessionId, 5, width);
     console.log(`robot-learning-ch05: PASS ${width}px, 34 decoded slides, 3 decoded figures, 24 accessible display equations, ${structure.inline} inline equations`);
   }
 
@@ -137,7 +142,7 @@ export async function auditRobotLearning(cdp, sessionId) {
     await waitExpression(cdp, sessionId, `document.querySelectorAll('.math-display .katex').length === 23`, 'Chapter 06 equations rendered');
     const structure = await evaluate(cdp,sessionId,`({slides:[...document.querySelectorAll('[data-lecture-number="6"]')].map(e=>e.dataset.lectureSlide),figures:document.querySelectorAll('[data-learning-figure]').length,errors:document.querySelectorAll('.katex-error').length,display:document.querySelectorAll('.math-display math').length,inline:document.querySelectorAll('.math-inline math').length,labels:[...document.querySelectorAll('.math-display')].every(e=>e.getAttribute('aria-label')),literal:document.body.innerText.includes('**'),oversize:[...document.querySelectorAll('.math-inline')].filter(e=>e.getBoundingClientRect().width>innerWidth-30).map(e=>e.querySelector('annotation')?.textContent)})`);
     assert.deepEqual(structure.slides,Array.from({length:39},(_,i)=>i+1).filter(n=>![38,39].includes(n)).map(n=>'P'+String(n).padStart(3,'0')));
-    assert.equal(structure.figures,3); assert.equal(structure.errors,0); assert.equal(structure.display,23); assert.equal(structure.inline,0);
+    assert.equal(structure.figures,3); assert.equal(structure.errors,0); assert.equal(structure.display,23); assert.equal(structure.inline,136);
     assert(structure.labels&&!structure.literal); assert.deepEqual(structure.oversize,[],'Chapter 06 inline mathematics fits phones');
     const count=await evaluate(cdp,sessionId,`document.querySelectorAll('.lecture-slide img,[data-learning-figure] img').length`);
     assert.equal(count,40);
@@ -152,6 +157,7 @@ export async function auditRobotLearning(cdp, sessionId) {
       const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
       fs.writeFileSync(`citation-audit/robot-learning-ch06-${name}-${width}.png`,Buffer.from(shot.data,'base64'));
     }
+    await auditEquationGuides(cdp, sessionId, 6, width);
     console.log(`robot-learning-ch06: PASS ${width}px, 37 decoded slides, 3 decoded figures, 23 accessible display equations, ${structure.inline} inline equations`);
   }
 
@@ -161,7 +167,7 @@ export async function auditRobotLearning(cdp, sessionId) {
     await waitExpression(cdp, sessionId, `document.querySelectorAll('.math-display .katex').length === 18`, 'Chapter 07 equations rendered');
     const structure = await evaluate(cdp,sessionId,`({slides:[...document.querySelectorAll('[data-lecture-number="7"]')].map(e=>e.dataset.lectureSlide),figures:document.querySelectorAll('[data-learning-figure]').length,errors:document.querySelectorAll('.katex-error').length,display:document.querySelectorAll('.math-display math').length,inline:document.querySelectorAll('.math-inline math').length,labels:[...document.querySelectorAll('.math-display')].every(e=>e.getAttribute('aria-label')),literal:document.body.innerText.includes('**'),oversize:[...document.querySelectorAll('.math-inline')].filter(e=>e.getBoundingClientRect().width>innerWidth-30).map(e=>e.querySelector('annotation')?.textContent)})`);
     assert.deepEqual(structure.slides,Array.from({length:39},(_,i)=>i+1).filter(n=>![1,38,39].includes(n)).map(n=>'P'+String(n).padStart(3,'0')));
-    assert.equal(structure.figures,2); assert.equal(structure.errors,0); assert.equal(structure.display,18); assert.equal(structure.inline,0);
+    assert.equal(structure.figures,2); assert.equal(structure.errors,0); assert.equal(structure.display,18); assert.equal(structure.inline,145);
     assert(structure.labels&&!structure.literal); assert.deepEqual(structure.oversize,[],'Chapter 07 inline mathematics fits phones');
     const count=await evaluate(cdp,sessionId,`document.querySelectorAll('.lecture-slide img,[data-learning-figure] img').length`);
     assert.equal(count,38);
@@ -176,7 +182,35 @@ export async function auditRobotLearning(cdp, sessionId) {
       const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
       fs.writeFileSync(`citation-audit/robot-learning-ch07-${name}-${width}.png`,Buffer.from(shot.data,'base64'));
     }
+    await auditEquationGuides(cdp, sessionId, 7, width);
     console.log(`robot-learning-ch07: PASS ${width}px, 36 decoded slides, 2 decoded figures, 18 accessible display equations, ${structure.inline} inline equations`);
   }
 
+}
+
+// Exercise native disclosure keyboard behavior, then check every expanded guide.
+async function auditEquationGuides(cdp, sessionId, chapter, width) {
+  const count=[5,23,18,20,24,23,18][chapter-1];
+  const initial=await evaluate(cdp,sessionId,`(() => {const all=[...document.querySelectorAll('[data-equation-guide]')];return {count:all.length,closed:all.every(e=>!e.open),adjacent:all.every(e=>e.previousElementSibling?.classList.contains('math-display')&&e.previousElementSibling.querySelector('annotation')?.textContent===decodeURIComponent(e.dataset.equationTex))};})()`);
+  assert.equal(initial.count,count);assert(initial.closed&&initial.adjacent,'Every equation has its own initially collapsed guide');
+  assert(await evaluate(cdp,sessionId,`(() => {const s=document.querySelector('[data-equation-guide] summary');s.scrollIntoView({block:'center',behavior:'instant'});s.focus();return document.activeElement===s;})()`),'Equation summary owns keyboard focus');
+  await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'},sessionId);
+  await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
+  await waitExpression(cdp,sessionId,`document.querySelector('[data-equation-guide]').open`,'Equation guide opens with Enter');
+  await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'},sessionId);
+  await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
+  await waitExpression(cdp,sessionId,`!document.querySelector('[data-equation-guide]').open`,'Equation guide closes with Enter');
+  await evaluate(cdp,sessionId,`document.querySelectorAll('[data-equation-guide]').forEach(e=>e.open=true)`);
+  const expanded=await evaluate(cdp,sessionId,`(() => {const all=[...document.querySelectorAll('[data-equation-guide]')];return {overflow:document.documentElement.scrollWidth>innerWidth+2,errors:document.querySelectorAll('.katex-error').length,complete:all.every(e=>e.querySelectorAll('dt math').length>=2&&e.querySelectorAll('ol li').length>=2&&e.querySelector('.worked-example')?.textContent.length>30),tooWide:[...document.querySelectorAll('[data-equation-guide] .math-inline')].filter(e=>e.getBoundingClientRect().width>e.closest('.guide-body,summary').clientWidth-8).map(e=>e.querySelector('annotation')?.textContent)};})()`);
+  assert(!expanded.overflow&&expanded.errors===0&&expanded.complete,'Expanded guides contain readable mathematics, definitions, steps and examples');
+  assert.deepEqual(expanded.tooWide,[],'Guide inline formulas fit the expanded phone content');
+  if(chapter===7){
+    const notation=await evaluate(cdp,sessionId,`document.querySelector('[data-equation-guide="rl07-e04"]').textContent`);
+    assert(notation.includes('숨은 기억 벡터')&&notation.includes('이전·현재'));
+  }
+  await evaluate(cdp,sessionId,`(() => {document.querySelectorAll('[data-equation-guide]').forEach(e=>e.open=false);const guide=document.querySelector('[data-equation-guide="rl${String(chapter).padStart(2,'0')}-e${chapter===7?'04':'01'}"]');guide.open=true;guide.scrollIntoView({block:'start',behavior:'instant'});})()`);
+  const shot=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},sessionId);
+  fs.writeFileSync(`citation-audit/robot-learning-ch${String(chapter).padStart(2,'0')}-guide-${width}.png`,Buffer.from(shot.data,'base64'));
+  await evaluate(cdp,sessionId,`document.querySelectorAll('[data-equation-guide]').forEach(e=>e.open=false)`);
+  console.log(`robot-equation-guides: PASS chapter${chapter} ${width}px, ${count} paired guides, native keyboard toggling and expanded layout`);
 }

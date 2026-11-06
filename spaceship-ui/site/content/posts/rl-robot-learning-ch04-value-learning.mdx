@@ -21,6 +21,7 @@ series:
 import LectureSlide from '@/components/post/LectureSlide.astro';
 import LearningFigure from '@/components/post/LearningFigure.astro';
 import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
 
 컵을 집기 직전에 팔을 어느 쪽으로 움직여야 할까? 지금 손끝이 컵에 가까워지는지만 보면, 잠시 돌아가더라도 충돌을 피하는 행동의 이점을 놓친다. 강화학습에서는 행동 뒤에 이어질 결과까지 한 숫자로 평가하고, 그 평가를 이용해 행동을 바꾼다. 이번 장은 그 숫자인 가치를 어떻게 계산하고 배울지 다룬다.
 
@@ -55,6 +56,8 @@ import Math from '@/components/post/Math.astro';
 
 <Math tex={String.raw`(s_t,a_t,r_t,s_{t+1})`} display label="한 번의 전이는 현재 상태, 실행한 행동, 받은 보상, 다음 상태로 기록한다" />
 
+<RobotEquationGuide id="rl04-e01" />
+
 
 <Math tex={String.raw`t`} />는 물리적인 실행 순서다. 이후 식의 <Math tex={String.raw`k`} />는 계산을 반복한 횟수이므로 서로 구별한다. 보상은 다음 상태에 따라 달라질 수도 있어 <Math tex={String.raw`r_t=r(s_t,a_t,s_{t+1})`} />로 쓴다. 간단히 <Math tex={String.raw`r(s,a)`} />라고 쓰는 식에서는 그 전이에 대한 기대 즉시 보상으로 이해한다. 원본의 보상 함수 표기도 이 두 관례가 섞여 있다.
 
@@ -69,6 +72,8 @@ import Math from '@/components/post/Math.astro';
 
 
 <Math tex={String.raw`G_0=\sum_{t=0}^{T-1}\gamma^t r_t,\qquad J(\pi)=\mathbb E_{\tau\sim p_\pi}[G_0]`} display label="정책의 성능은 그 정책이 만들 수 있는 여러 궤적의 할인 리턴을 평균하여 정의한다" />
+
+<RobotEquationGuide id="rl04-e02" />
 
 
 <Math tex={String.raw`\tau`} />는 시간 순서의 상태와 행동인 궤적, <Math tex={String.raw`\pi`} />는 정책이다. <Math tex={String.raw`\mathbb E`} />는 가능한 결과들의 확률을 고려한 평균이다. 오른쪽의 갈라지는 경로처럼 같은 정책도 환경 외란이나 확률적인 행동 때문에 여러 실행을 만들 수 있다. 한 번 성공한 영상만으로 기대 성능을 알 수는 없다.
@@ -95,6 +100,8 @@ import Math from '@/components/post/Math.astro';
 
 
 <Math tex={String.raw`J(\theta)=(-1)p_\theta(s)+(+1)(1-p_\theta(s))=1-2p_\theta(s)`} display label="실패 확률이 작아지면 이진 보상의 기대값은 커진다" />
+
+<RobotEquationGuide id="rl04-e03" />
 
 
 실패 확률이 0.1이면 기대 보상은 0.8이다. 실제 한 번 실행에서 0.8점을 받는다는 뜻은 아니다. 실행 결과는 여전히 +1 또는 −1이지만, 많은 실행을 평균한 값이 0.8이라는 뜻이다.
@@ -133,6 +140,8 @@ import Math from '@/components/post/Math.astro';
 
 <Math tex={String.raw`V^\pi(s)=\mathbb E_\pi\!\left[\sum_{k=0}^{\infty}\gamma^k r_{t+k}\,\middle|\,s_t=s\right]`} display label="상태 가치는 그 상태에서 특정 정책을 따를 때 앞으로 받을 할인 보상의 기대 합이다" />
 
+<RobotEquationGuide id="rl04-e04" />
+
 
 컵에 가까운 상태라도 집게가 엉뚱하게 움직이는 정책을 쓰면 가치가 낮을 수 있다. 따라서 가치는 위치만의 고유한 점수가 아니라 환경·보상·할인율·정책이 함께 정하는 숫자다. 성공 확률과도 일반적으로 다르며 음수가 되거나 1을 넘을 수 있다.
 
@@ -147,6 +156,8 @@ import Math from '@/components/post/Math.astro';
 
 
 <Math tex={String.raw`V^\pi(s)=\sum_a\pi(a\mid s)\sum_{s'}P(s'\mid s,a)\left[r(s,a,s')+\gamma V^\pi(s')\right]`} display label="벨만 기대 방정식은 정책의 행동과 환경의 다음 상태를 모두 평균한다" />
+
+<RobotEquationGuide id="rl04-e05" />
 
 
 바깥 합은 정책이 고를 수 있는 행동들의 평균, 안쪽 합은 그 행동 뒤 환경이 만들 수 있는 다음 상태들의 평균이다. “다음 상태 가치가 이미 현재 보상까지 포함한다”고 읽으면 보상을 두 번 세게 된다. 여기서 <Math tex={String.raw`V^\pi(s')`} />는 <strong>다음 상태에 도착한 뒤의</strong> 보상을 요약한다.
@@ -165,6 +176,8 @@ import Math from '@/components/post/Math.astro';
 
 <Math tex={String.raw`\begin{aligned}V^*(s)&=\max_a\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V^*(s')]\\\pi^*(s)&\in\arg\max_a\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V^*(s')]\end{aligned}`} display label="최적 벨만 방정식은 미래의 최적 성능을 포함한 한 단계 선택을 한다" />
 
+<RobotEquationGuide id="rl04-e06" />
+
 
 첫 줄은 최대 <strong>가치</strong>, 둘째 줄은 그 가치를 만드는 <strong>행동</strong>이다. 동점 행동이 여럿일 수 있어 원소라는 기호 <Math tex={String.raw`\in`} />를 썼다. 위 식은 여기서 다루는 유한 상태·행동, 할인 MDP의 조건에서 읽는다.
 
@@ -179,6 +192,8 @@ import Math from '@/components/post/Math.astro';
 
 
 <Math tex={String.raw`V_{k+1}(s)=\max_a\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V_k(s')]`} display label="가치 반복은 이전 계산 단계의 값으로 각 상태의 최선의 한 단계 목표를 계산한다" />
+
+<RobotEquationGuide id="rl04-e07" />
 
 
 한 번의 <strong>스윕(sweep)</strong>은 표에 있는 모든 상태를 한 차례 갱신하는 것이다. 동기식 계산에서는 스윕을 마칠 때까지 이전 표를 그대로 읽고 새 표에 쓴다. <Math tex={String.raw`k`} />가 증가해도 실제 로봇이 한 발 움직인 것은 아니다. 모델 위에서 계산을 반복한 횟수다.
@@ -209,6 +224,8 @@ import Math from '@/components/post/Math.astro';
 
 <Math tex={String.raw`V_{k+1}(s)=\sum_a\pi(a\mid s)\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V_k(s')]`} display label="정책 평가는 고정된 정책의 행동 확률로 가중 평균하며 값을 반복 갱신한다" />
 
+<RobotEquationGuide id="rl04-e08" />
+
 
 가령 어떤 상태에서 두 행동의 한 단계 예상 결과가 각각 0과 1이고 정책이 반반 선택하면, 평가값은 0.5다. 최선 행동만 고르는 연산이라면 1이겠지만, 그것은 현재 정책을 평가하는 질문과 다르다.
 
@@ -234,6 +251,8 @@ import Math from '@/components/post/Math.astro';
 
 
 <Math tex={String.raw`\pi_{j+1}(s)\in\arg\max_a\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V^{\pi_j}(s')]`} display label="정책 개선은 현재 정책의 미래 가치를 기준으로 더 유리한 행동을 고른다" />
+
+<RobotEquationGuide id="rl04-e09" />
 
 
 <Math tex={String.raw`j`} />는 정책을 바꾼 횟수다. 그 안에서 가치 평가를 반복하는 <Math tex={String.raw`k`} />와 다르다. 원본의 평가 줄 하나는 보통 수렴할 때까지 반복하는 안쪽 계산을 줄여 적은 것이다. 평가를 한 번만 하고 바로 개선하는 변형은 일반화된 정책 반복과 관련되지만, 여기서의 정확한 평가 절차와 구별한다.
@@ -274,25 +293,29 @@ import Math from '@/components/post/Math.astro';
 
 <Math tex={String.raw`\begin{aligned}Q^*(s,a)&=\sum_{s'}P(s'\mid s,a)\left[r(s,a,s')+\gamma\max_{a'}Q^*(s',a')\right]\\V^*(s)&=\max_a Q^*(s,a)\end{aligned}`} display label="최적 행동 가치는 첫 행동의 결과와 다음 상태의 최적 행동 가치를 합한다" />
 
+<RobotEquationGuide id="rl04-e10" />
 
-<Math tex={String.raw`a'`} />는 다음 상태에서 고려하는 행동이므로 지금 실행한 <Math tex={String.raw`a`} />와 다르다. “컵 앞에서 왼쪽으로 1cm 움직인다”와 “오른쪽으로 1cm 움직인다”에 서로 다른 Q 값을 둘 수 있다. 좋은 Q 함수는 어느 명령이 장기적으로 유리한지를 압축해 저장한다.
 
-위 식을 전이 모델로 직접 반복 계산하는 <strong>Q 값 반복</strong>은 학습·계산 중 모델을 쓴다. Q 함수라는 표현 자체가 모델을 필요로 한다는 뜻은 아니다. 다음 장면의 Q-learning은 같은 관계를 실제 표본으로 학습한다.
+<Math tex={String.raw`a'`} />는 다음 상태에서 고려하는 행동이므로 지금 실행한 <Math tex={String.raw`a`} />와 다르다. “컵 앞에서 왼쪽으로 1cm 움직인다”와 “오른쪽으로 1cm 움직인다”에 서로 다른 <Math tex={String.raw`Q`} /> 값을 둘 수 있다. 좋은 <Math tex={String.raw`Q`} /> 함수는 어느 명령이 장기적으로 유리한지를 압축해 저장한다.
+
+위 식을 전이 모델로 직접 반복 계산하는 <strong><Math tex={String.raw`Q`} /> 값 반복</strong>은 학습·계산 중 모델을 쓴다. <Math tex={String.raw`Q`} /> 함수라는 표현 자체가 모델을 필요로 한다는 뜻은 아니다. 다음 장면의 Q-learning은 같은 관계를 실제 표본으로 학습한다.
 
 
 [원강의 23:17부터](https://www.youtube.com/watch?v=90raNpc11tQ&t=1397s).
 
 <LectureSlide lecture={4} page={20} caption="Q 값이 준비되면 상태별 행동 비교로 실행할 수 있다" />
 
-행동이 유한 개라면 그 행동들의 Q 값을 읽고 가장 큰 값을 주는 행동을 고른다.
+행동이 유한 개라면 그 행동들의 <Math tex={String.raw`Q`} /> 값을 읽고 가장 큰 값을 주는 행동을 고른다.
 
 
 <Math tex={String.raw`\pi_{\mathrm{greedy}}(s)\in\arg\max_a Q(s,a)`} display label="탐욕적 정책은 현재 추정한 행동 가치가 가장 큰 행동을 선택한다" />
 
+<RobotEquationGuide id="rl04-e11" />
 
-아래 그림의 짧아진 경로는 배포 때 전이 모델을 시뮬레이션하는 대신, 이미 학습한 Q 함수를 평가한다는 뜻이다. 이때 <strong>탐욕적(greedy)</strong>이라는 말은 Q 추정치에 대한 최댓값 선택을 말한다. Q가 긴 미래를 반영하므로 즉시 보상만 탐낸다는 의미는 아니다.
 
-Q 추정치가 틀리면 이 선택도 틀릴 수 있다. 또한 연속 행동에서는 후보를 전부 나열할 수 없어 <Math tex={String.raw`\arg\max`} /> 자체가 어려워진다. 식 한 줄로 적었다고 실제 계산 비용까지 사라지는 것은 아니며, 이 문제는 뒤의 CEM과 DDPG로 이어진다.
+아래 그림의 짧아진 경로는 배포 때 전이 모델을 시뮬레이션하는 대신, 이미 학습한 <Math tex={String.raw`Q`} /> 함수를 평가한다는 뜻이다. 이때 <strong>탐욕적(greedy)</strong>이라는 말은 <Math tex={String.raw`Q`} /> 추정치에 대한 최댓값 선택을 말한다. <Math tex={String.raw`Q`} />가 긴 미래를 반영하므로 즉시 보상만 탐낸다는 의미는 아니다.
+
+<Math tex={String.raw`Q`} /> 추정치가 틀리면 이 선택도 틀릴 수 있다. 또한 연속 행동에서는 후보를 전부 나열할 수 없어 <Math tex={String.raw`\arg\max`} /> 자체가 어려워진다. 식 한 줄로 적었다고 실제 계산 비용까지 사라지는 것은 아니며, 이 문제는 뒤의 CEM과 DDPG로 이어진다.
 
 
 [원강의 24:39부터](https://www.youtube.com/watch?v=90raNpc11tQ&t=1479s).
@@ -304,19 +327,21 @@ Q 추정치가 틀리면 이 선택도 틀릴 수 있다. 또한 연속 행동�
 
 <Math tex={String.raw`\begin{aligned}y_t&=r_t+\gamma(1-d_t)\max_{a'}Q(s_{t+1},a')\\\delta_t&=y_t-Q(s_t,a_t)\\Q(s_t,a_t)&\leftarrow Q(s_t,a_t)+\alpha_t\delta_t\end{aligned}`} display label="Q-learning은 종료 여부를 반영한 TD 목표와 현재 값의 차이만큼 해당 표 항목을 갱신한다" />
 
+<RobotEquationGuide id="rl04-e12" />
+
 
 <Math tex={String.raw`d_t=1`} />이면 과업이 실제로 끝났다는 뜻이고 미래 항은 사라진다. <Math tex={String.raw`\delta_t`} />는 <strong>TD 오차</strong>, <Math tex={String.raw`\alpha_t`} />는 얼마나 많이 갱신할지 정하는 학습률이다. 나머지 상태–행동 표는 이 한 번의 표형 갱신에서 그대로 둔다.
 
 현재 값 0.4, 보상 0.2, 다음 최댓값 0.8, 할인율 0.9, 학습률 0.25라면 목표는 0.92, 새 값은 0.53이다. 과업이 끝났다면 목표는 0.2만 남아 새 값은 0.35가 된다. 보상과 목표, 목표와 갱신 뒤 값을 서로 구별하자.
 
-한 전이가 현재 Q에 대한 벨만 목표의 표본이라는 것과, 그것이 이미 참 최적 가치 <Math tex={String.raw`Q^*`} />의 정확한 정답이라는 것은 다르다. 다음 상태 추정의 오차도 목표에 들어간다. 시간이 길어 강제로 잘린 실행은 실제 과업 종료와 다를 수 있으므로, 구현에서는 종료와 시간 제한을 구별해 미래 항을 정해야 한다.
+한 전이가 현재 <Math tex={String.raw`Q`} />에 대한 벨만 목표의 표본이라는 것과, 그것이 이미 참 최적 가치 <Math tex={String.raw`Q^*`} />의 정확한 정답이라는 것은 다르다. 다음 상태 추정의 오차도 목표에 들어간다. 시간이 길어 강제로 잘린 실행은 실제 과업 종료와 다를 수 있으므로, 구현에서는 종료와 시간 제한을 구별해 미래 항을 정해야 한다.
 
 
 [원강의 25:04부터](https://www.youtube.com/watch?v=90raNpc11tQ&t=1504s).
 
 <LectureSlide lecture={4} page={22} caption="모델로 모든 칸을 계산하는 것과 경험한 칸을 배우는 것" />
 
-각 칸의 네 삼각형은 네 방향 행동의 Q 추정치를 나타낸다. 가치 반복에서는 상태마다 최선 값 하나를 표시했지만, Q-learning은 같은 칸에서도 행동마다 다른 숫자를 유지한다. 탐색한 경로 주변의 값이 먼저 바뀌는 이유다.
+각 칸의 네 삼각형은 네 방향 행동의 <Math tex={String.raw`Q`} /> 추정치를 나타낸다. 가치 반복에서는 상태마다 최선 값 하나를 표시했지만, Q-learning은 같은 칸에서도 행동마다 다른 숫자를 유지한다. 탐색한 경로 주변의 값이 먼저 바뀌는 이유다.
 
 현재 정보로 가장 좋아 보이는 행동만 반복하면 다른 행동의 장점을 발견하지 못할 수 있다. <strong>탐색(exploration)</strong>은 새로운 정보를 얻기 위해 덜 확실한 행동도 시도하는 것이고, <strong>활용(exploitation)</strong>은 이미 좋다고 추정한 행동을 고르는 것이다. <Math tex={String.raw`\epsilon`} />-greedy는 일정 확률로 무작위 행동을 고르는 단순한 절충이다.
 
@@ -329,7 +354,7 @@ Q 추정치가 틀리면 이 선택도 틀릴 수 있다. 또한 연속 행동�
 
 <strong>행동 정책(behavior policy)</strong>은 실제 전이를 수집할 때 행동을 고르는 규칙이다. <strong>목표 정책(target policy)</strong>은 지금 그 성능을 평가하거나 개선하려는 규칙이다. 둘이 다를 수 있는 학습을 <strong>오프폴리시(off-policy)</strong>라고 한다.
 
-Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math tex={String.raw`r_t`} />를 사용하면서도, 다음 단계에서는 현재 Q 기준의 최선 행동을 가정한다. 그래서 오래된 정책이나 탐색 정책이 모은 기록도 재사용할 수 있다. 다음 장의 목표 네트워크에서 쓰는 “목표”와는 다른 구분이다.
+Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math tex={String.raw`r_t`} />를 사용하면서도, 다음 단계에서는 현재 <Math tex={String.raw`Q`} /> 기준의 최선 행동을 가정한다. 그래서 오래된 정책이나 탐색 정책이 모은 기록도 재사용할 수 있다. 다음 장의 목표 네트워크에서 쓰는 “목표”와는 다른 구분이다.
 
 “어떤 데이터든 쓸 수 있다”는 말은 데이터 품질과 범위를 무시해도 된다는 뜻이 아니다. 같은 환경·보상 정의의 유효한 전이가 필요하고, 필요한 행동을 관찰하지 못했다면 그 영역의 가치도 알기 어렵다. 신경망으로 미관찰 행동의 큰 값을 만들어 버리는 문제는 오프라인 강화학습에서 특히 중요해진다.
 
@@ -344,6 +369,8 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 
 <Math tex={String.raw`\begin{aligned}y_t^{\mathrm{Q}}&=r_t+\gamma(1-d_t)\max_{a'}Q(s_{t+1},a')\\y_t^{\mathrm{SARSA}}&=r_t+\gamma(1-d_t)Q(s_{t+1},a_{t+1})\end{aligned}`} display label="Q-learning은 다음 행동의 최댓값을, SARSA는 현재 정책이 실제 선택한 다음 행동의 값을 쓴다" />
+
+<RobotEquationGuide id="rl04-e13" />
 
 
 다음 상태의 두 행동 가치가 0.8과 −0.4인데 탐색 때문에 둘째 행동을 택했다고 하자. Q-learning 목표에는 0.8이 들어가지만 SARSA 목표에는 −0.4가 들어간다. SARSA는 탐색 행동까지 포함한 현재 정책의 결과를 배운다.
@@ -382,6 +409,8 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <Math tex={String.raw`256^{84\cdot84\cdot4}`} display label="픽셀 값의 가능한 조합을 그대로 표로 나열하면 상태 수가 지수적으로 커진다" />
 
+<RobotEquationGuide id="rl04-e14" />
+
 
 모든 조합이 실제 게임에서 나오는 유효한 장면이라는 뜻은 아니다. 그렇더라도 관찰한 영상마다 독립적인 표 항목을 두고 충분히 방문하겠다는 전략은 비현실적이다. 비슷한 장면에서 배운 것을 새 장면에도 활용하는 <strong>일반화</strong>가 필요하다.
 
@@ -392,7 +421,7 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <LectureSlide lecture={4} page={28} caption="DQN: 픽셀에서 행동별 가치를 예측하는 신경망" />
 
-<strong>DQN(Deep Q-Network)</strong>은 Q 표를 신경망으로 바꾼다. 영상 속 지역 패턴을 읽는 <strong>합성곱(CNN)</strong> 층과 특징을 모으는 층을 거쳐, 왼쪽 이동·오른쪽 이동·발사 같은 이산 행동마다 Q 값을 출력한다. 이 출력은 행동의 성공 확률이나 분류 확률이 아니다.
+<strong>DQN(Deep Q-Network)</strong>은 <Math tex={String.raw`Q`} /> 표를 신경망으로 바꾼다. 영상 속 지역 패턴을 읽는 <strong>합성곱(CNN)</strong> 층과 특징을 모으는 층을 거쳐, 왼쪽 이동·오른쪽 이동·발사 같은 이산 행동마다 <Math tex={String.raw`Q`} /> 값을 출력한다. 이 출력은 행동의 성공 확률이나 분류 확률이 아니다.
 
 같은 구조와 학습 규칙을 여러 게임에 적용했다는 것이 핵심이다. 하나의 동일한 가중치 정책이 49개 게임을 동시에 마스터했다는 뜻은 아니며, 게임별로 각각 학습한 결과다. 원본은 2013년 논문 이미지와 49개 게임 설명을 함께 놓았지만, <strong>2013년 논문은 7개 게임, 2015년 Nature 논문은 49개 게임</strong> 결과를 보고한다. 두 시점의 범위를 나누어 읽어야 한다.
 
@@ -406,10 +435,10 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <LectureSlide lecture={4} page={29} caption="DQN 의사코드를 데이터의 이동 순서로 읽기" />
 
-작은 글씨의 알고리즘은 크게 <strong>수집 → 저장 → 표본 추출 → 목표 계산 → 신경망 갱신</strong> 순서다. <Math tex={String.raw`\phi(s)`} />는 프레임 축소·회색화·쌓기처럼 입력을 만드는 전처리이며, 이 페이지에서의 <Math tex={String.raw`\theta`} />는 Q 네트워크의 가중치다.
+작은 글씨의 알고리즘은 크게 <strong>수집 → 저장 → 표본 추출 → 목표 계산 → 신경망 갱신</strong> 순서다. <Math tex={String.raw`\phi(s)`} />는 프레임 축소·회색화·쌓기처럼 입력을 만드는 전처리이며, 이 페이지에서의 <Math tex={String.raw`\theta`} />는 <Math tex={String.raw`Q`} /> 네트워크의 가중치다.
 
-1. 경험 메모리와 Q 네트워크를 초기화한다.
-2. 현재 Q로부터 탐색 행동 또는 최선 행동을 선택한다. 행동을 반환하는 연산은 <Math tex={String.raw`\arg\max`} />이며 최대 Q 숫자 자체를 모터 명령으로 쓰는 것이 아니다.
+1. 경험 메모리와 <Math tex={String.raw`Q`} /> 네트워크를 초기화한다.
+2. 현재 <Math tex={String.raw`Q`} />로부터 탐색 행동 또는 최선 행동을 선택한다. 행동을 반환하는 연산은 <Math tex={String.raw`\arg\max`} />이며 최대 <Math tex={String.raw`Q`} /> 숫자 자체를 모터 명령으로 쓰는 것이 아니다.
 3. 게임에서 전이를 얻어 메모리에 넣는다.
 4. 메모리의 여러 과거 전이에서 작은 묶음인 미니배치를 뽑는다.
 5. 각 전이에 TD 목표를 만들고, 현재 예측과 목표의 제곱 차이를 줄이도록 가중치를 바꾼다.
@@ -441,6 +470,8 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <Math tex={String.raw`\begin{aligned}y_i&=r_i+\gamma(1-d_i)\max_{a'}Q_{\theta^-}(s_i',a')\\L(\theta)&=\frac1B\sum_{i=1}^{B}\left(Q_\theta(s_i,a_i)-\operatorname{stopgrad}(y_i)\right)^2\end{aligned}`} display label="DQN은 고정한 목표 네트워크로 TD 목표를 만들고 그 목표를 통한 미분 없이 현재 예측을 맞춘다" />
 
+<RobotEquationGuide id="rl04-e15" />
+
 
 <Math tex={String.raw`B`} />는 미니배치 크기다. <Math tex={String.raw`\operatorname{stopgrad}`} />는 목표를 상수처럼 취급해 그 경로로 기울기를 보내지 않는다는 표시다. 이 때문에 “벨만 오차의 양쪽을 전부 미분하는 것”과 구현이 다르다. 목표 네트워크를 만든다고 신경망 Q-learning의 전역 수렴이 보장되는 것은 아니다.
 
@@ -471,6 +502,8 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <Math tex={String.raw`\begin{aligned}a_{\mathrm{sel}}&\in\arg\max_{a'}Q_\theta(s',a')\\y^{\mathrm{Double}}&=r+\gamma(1-d)Q_{\theta^-}(s',a_{\mathrm{sel}})\end{aligned}`} display label="Double DQN은 행동을 고르는 네트워크와 그 행동을 평가하는 네트워크를 분리한다" />
 
+<RobotEquationGuide id="rl04-e16" />
+
 
 현재 네트워크의 두 출력이 2·1이고 목표 네트워크가 0.5·1.5라고 하자. 일반 DQN은 목표에서 큰1.5를 쓰지만, Double DQN은 현재 네트워크가 고른 첫 행동을 목표 네트워크로 평가해0.5를 쓴다. 실제 두 네트워크는 서로 상관될 수 있으므로 이 분리만으로 모든 편향이 사라지거나 항상 더 나은 정책을 얻는 것은 아니다.
 
@@ -485,7 +518,7 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 로봇 팔의 일곱 관절에 각기 토크를 명령한다면 행동은 실수 일곱 개의 벡터다. <Math tex={String.raw`a\in\mathbb R^7`} />처럼 적지만 실제 장비에는 허용 범위와 단위가 있다. 차원이7이라는 것과 가능한 행동 수가7이라는 것은 전혀 다르다.
 
-각 관절을10개 값으로만 나누어도 조합은 <Math tex={String.raw`10^7`} />개다. 모든 조합을 Q에 넣어 비교하는 방식은 차원이 늘 때 급격히 비싸진다. 신경망이 가치를 빠르게 계산해도, 좋은 행동을 찾는 계산이 남는다.
+각 관절을10개 값으로만 나누어도 조합은 <Math tex={String.raw`10^7`} />개다. 모든 조합을 <Math tex={String.raw`Q`} />에 넣어 비교하는 방식은 차원이 늘 때 급격히 비싸진다. 신경망이 가치를 빠르게 계산해도, 좋은 행동을 찾는 계산이 남는다.
 
 이번 장은 세 가지 접근을 비교한다. 문제의 기하를 이용해 행동을 <strong>이산화</strong>하거나, 후보를 뽑아 <strong>탐색</strong>하거나, 최선 행동을 내는 <strong>별도 정책</strong>을 학습한다. “연속 함수에는 최댓값을 구할 방법이 없다”는 뜻은 아니다. 일반적인 비선형 신경망의 최댓값을 빠르고 정확히 구하기가 어렵다는 뜻이다.
 
@@ -494,11 +527,11 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <LectureSlide lecture={4} page={35} caption="밀기·집기의 행동을 영상의 위치와 방향으로 표현하기" />
 
-왼쪽의 RGB-D 카메라는 색과 깊이를 함께 측정한다. 이 데이터를 위에서 내려다본 <strong>높이 지도(heightmap)</strong>로 바꾸면, 각 픽셀이 작업대의 위치와 그곳의 높이에 대응한다. 사진의 원근 때문에 같은 픽셀 간격이 실제 거리와 달라지는 일반 영상과 구별된다.
+왼쪽의 RGB-<Math tex={String.raw`D`} /> 카메라는 색과 깊이를 함께 측정한다. 이 데이터를 위에서 내려다본 <strong>높이 지도(heightmap)</strong>로 바꾸면, 각 픽셀이 작업대의 위치와 그곳의 높이에 대응한다. 사진의 원근 때문에 같은 픽셀 간격이 실제 거리와 달라지는 일반 영상과 구별된다.
 
-가운데의 두 네트워크는 <strong>밀기</strong>와 <strong>집기</strong>를 각각 평가한다. 완전 합성곱 네트워크(FCN)는 출력 하나만 만드는 대신 위치별로 촘촘한 Q 지도를 만든다. 밝은 위치는 그 위치에서 해당 동작을 시작했을 때 더 좋은 결과를 예상한다는 뜻이다.
+가운데의 두 네트워크는 <strong>밀기</strong>와 <strong>집기</strong>를 각각 평가한다. 완전 합성곱 네트워크(FCN)는 출력 하나만 만드는 대신 위치별로 촘촘한 <Math tex={String.raw`Q`} /> 지도를 만든다. 밝은 위치는 그 위치에서 해당 동작을 시작했을 때 더 좋은 결과를 예상한다는 뜻이다.
 
-×16과 여러 작은 지도는16개 방향을 고려한다는 표시다. 원 논문은 입력 높이 지도를22.5도 간격으로 회전시켜 평가하고, 밀기16개·집기16개의 총32개 Q 지도를 비교한다. 최종 행동은 <strong>동작 종류·위치·방향</strong>의 조합이다. 오른쪽 점과 선은 선택된 동작의 위치와 방향을 나타낸다.
+×16과 여러 작은 지도는16개 방향을 고려한다는 표시다. 원 논문은 입력 높이 지도를22.5도 간격으로 회전시켜 평가하고, 밀기16개·집기16개의 총32개 <Math tex={String.raw`Q`} /> 지도를 비교한다. 최종 행동은 <strong>동작 종류·위치·방향</strong>의 조합이다. 오른쪽 점과 선은 선택된 동작의 위치와 방향을 나타낸다.
 
 이 방법이 일곱 관절의 모든 토크 조합을 직접 출력하는 것은 아니다. 사람은 밀기·집기라는 <strong>동작 프리미티브</strong>와 작업 공간을 정해 주고, 아래 수준에서는 역기구학과 움직임 계획이 사용된다. 학습하는 것은 그 준비된 동작을 언제 어디서 선택해야 좋은가다. [Zeng et al. 원 논문 3–4쪽](https://arxiv.org/pdf/1803.09956#page=3).
 
@@ -518,17 +551,19 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <LectureSlide lecture={4} page={37} caption="후보 행동을 무작위로 뽑아 비교하기" />
 
-가장 단순한 연속 최적화는 유효한 범위에서 행동 후보 <Math tex={String.raw`N`} />개를 뽑고 Q를 비교하는 것이다. <strong>몬테카를로 표본 추출</strong>이라는 말은 여기서 무작위 표본을 이용한다는 뜻이다.
+가장 단순한 연속 최적화는 유효한 범위에서 행동 후보 <Math tex={String.raw`N`} />개를 뽑고 <Math tex={String.raw`Q`} />를 비교하는 것이다. <strong>몬테카를로 표본 추출</strong>이라는 말은 여기서 무작위 표본을 이용한다는 뜻이다.
 
 
 <Math tex={String.raw`\hat a\in\arg\max_{a\in\{a^{(1)},\ldots,a^{(N)}\}}Q(s,a)`} display label="표본 기반 선택은 연속 공간 전체가 아닌 실제 뽑은 후보들 중에서 가장 좋은 행동을 반환한다" />
 
+<RobotEquationGuide id="rl04-e17" />
 
-그래프의 높은 봉우리는 Q가 큰 행동 영역이다. 후보가 그 근처에 있어야 좋은 행동을 고를 수 있다. 단지 Q가 매끄럽다는 이유로 유한한 무작위 후보가 반드시 전역 최댓값 근처에 놓이는 것은 아니다. 좋은 영역이 좁거나 차원이 높으면 놓치기 쉽다.
+
+그래프의 높은 봉우리는 <Math tex={String.raw`Q`} />가 큰 행동 영역이다. 후보가 그 근처에 있어야 좋은 행동을 고를 수 있다. 단지 <Math tex={String.raw`Q`} />가 매끄럽다는 이유로 유한한 무작위 후보가 반드시 전역 최댓값 근처에 놓이는 것은 아니다. 좋은 영역이 좁거나 차원이 높으면 놓치기 쉽다.
 
 좋은 영역에 들어갈 확률이 한 번에1%라면, 독립적으로100번 뽑아 적어도 한 번 들어갈 확률은 약63.4%다. 꽤 많이 뽑아도 실패할 수 있다는 자체 예다. 확률은 <Math tex={String.raw`1-(1-0.01)^{100}`} />으로 계산한다.
 
-후보 <Math tex={String.raw`N`} />개에는 대략 <Math tex={String.raw`N`} />개의 Q 평가가 필요하다. 다만 후보들을 한 미니배치로 병렬 처리할 수 있으므로 “신경망 호출을 반드시 <Math tex={String.raw`N`} />번 직렬로 기다린다”와는 다르다. [Berkeley의 연속 행동 설명 1:57부터](https://www.youtube.com/watch?v=Q-Qwjz8Zmh0&t=117s)도 정확도와 병렬 계산의 절충을 함께 설명한다.
+후보 <Math tex={String.raw`N`} />개에는 대략 <Math tex={String.raw`N`} />개의 <Math tex={String.raw`Q`} /> 평가가 필요하다. 다만 후보들을 한 미니배치로 병렬 처리할 수 있으므로 “신경망 호출을 반드시 <Math tex={String.raw`N`} />번 직렬로 기다린다”와는 다르다. [Berkeley의 연속 행동 설명 1:57부터](https://www.youtube.com/watch?v=Q-Qwjz8Zmh0&t=117s)도 정확도와 병렬 계산의 절충을 함께 설명한다.
 
 
 [원강의 43:16부터](https://www.youtube.com/watch?v=90raNpc11tQ&t=2596s).
@@ -538,13 +573,13 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 <strong>교차 엔트로피 방법(Cross-Entropy Method, CEM)</strong>은 후보 분포를 갱신하는 반복 최적화다. 이번에는 모든 범위에서 계속 똑같이 뽑는 대신, 점수가 높았던 후보 주변으로 다음 추출을 집중한다.
 
 1. 현재 평균과 분산을 가진 분포에서 행동 후보를 뽑는다.
-2. Q가 높은 상위 후보인 <strong>엘리트 집합</strong>을 고른다.
+2. <Math tex={String.raw`Q`} />가 높은 상위 후보인 <strong>엘리트 집합</strong>을 고른다.
 3. 그 후보들의 평균·표준편차로 분포를 다시 맞춘다.
 4. 정해진 횟수만큼 반복하고 행동을 반환한다.
 
 원본의 <Math tex={String.raw`\mu_k`} />와 <Math tex={String.raw`\sigma_k`} />는 현재 후보 분포의 중심과 퍼짐이다. 이는 환경 상태의 불확실성이나 정책의 성공 확률이 아니다. 분산이 너무 빨리0에 가까워지면 탐색이 멈출 수 있어 하한 등을 둘 수 있고, 실제 행동 범위도 지켜야 한다.
 
-단일 가우시안 분포를 쓰는 이 형태는 여러 봉우리 중 한쪽으로 몰리거나 중간으로 잘못 모일 수 있다. CEM 전체가 반드시 한 종류의 분포만 써야 하는 것은 아니지만, 이 단순한 형태에 전역 최적 보장은 없다. 후보 수 <Math tex={String.raw`N`} />, 반복 수 <Math tex={String.raw`K`} />이면 선택 때 대략 <Math tex={String.raw`N K`} />개 Q 평가를 지불한다.
+단일 가우시안 분포를 쓰는 이 형태는 여러 봉우리 중 한쪽으로 몰리거나 중간으로 잘못 모일 수 있다. CEM 전체가 반드시 한 종류의 분포만 써야 하는 것은 아니지만, 이 단순한 형태에 전역 최적 보장은 없다. 후보 수 <Math tex={String.raw`N`} />, 반복 수 <Math tex={String.raw`K`} />이면 선택 때 대략 <Math tex={String.raw`N K`} />개 <Math tex={String.raw`Q`} /> 평가를 지불한다.
 
 <LearningFigure src="/assets/posts/rl-robot-learning-ch04-value-learning/cem-search.png" alt="알려진1차원 이차 Q 함수에서CEM이5회에 걸쳐 후보64개씩을 선택한 직접 계산 그래프. 표본들이 최댓값0.65 근처로 모인다" caption="직접 실행한 CEM 계산. 이미 정해 둔 이차 함수를 최적화한 예이며 학습된 로봇 Q 함수의 성능 결과가 아니다." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/04-value-learning" credit="JJo, 후보 CSV와 설정 공개" width={1184} height={608} />
 
@@ -555,7 +590,7 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <LectureSlide lecture={4} page={39} caption="QT-Opt: 실제 로봇 데이터를 재사용하며 행동을 탐색하기" />
 
-사진 속 여러 로봇은 서로 다른 집기 경험을 모으는 장치들이다. <strong>QT-Opt</strong>는 영상에 조건을 둔 Q 함수를 학습하고 CEM으로 연속 행동을 찾는 구성을 큰 실물 데이터에 적용했다. 비싼 로봇 전이를 리플레이 버퍼에서 여러 번 사용한다는 의미가 여기서 중요하다.
+사진 속 여러 로봇은 서로 다른 집기 경험을 모으는 장치들이다. <strong>QT-Opt</strong>는 영상에 조건을 둔 <Math tex={String.raw`Q`} /> 함수를 학습하고 CEM으로 연속 행동을 찾는 구성을 큰 실물 데이터에 적용했다. 비싼 로봇 전이를 리플레이 버퍼에서 여러 번 사용한다는 의미가 여기서 중요하다.
 
 원 논문은58만 회가 넘는 실물 집기 시도와, 연구의 미관찰 물체 평가에서96% 집기 성공률을 보고한다. 이것은 학습 데이터 수가58만 장의 사진이라는 뜻도 아니고, 모든 로봇·모든 물체·모든 작업의 성공률이96%라는 뜻도 아니다. 물체·장비·평가 절차가 정해진 실험 결과다.
 
@@ -566,10 +601,12 @@ Q-learning은 실제 실행한 <Math tex={String.raw`a_t`} />와 받은 <Math te
 
 <LectureSlide lecture={4} page={40} caption="DDPG: 행동을 찾는 계산 자체를 신경망으로 학습하기" />
 
-CEM은 로봇이 행동할 때마다 후보를 다시 비교한다. <strong>DDPG(Deep Deterministic Policy Gradient)</strong>는 그 대신 상태에서 좋은 연속 행동을 바로 출력하는 네트워크를 학습한다. 이 네트워크가 <strong>액터(actor)</strong>다. 행동을 평가하는 Q 네트워크는 <strong>크리틱(critic)</strong>이다.
+CEM은 로봇이 행동할 때마다 후보를 다시 비교한다. <strong>DDPG(Deep Deterministic Policy Gradient)</strong>는 그 대신 상태에서 좋은 연속 행동을 바로 출력하는 네트워크를 학습한다. 이 네트워크가 <strong>액터(actor)</strong>다. 행동을 평가하는 <Math tex={String.raw`Q`} /> 네트워크는 <strong>크리틱(critic)</strong>이다.
 
 
 <Math tex={String.raw`a=\mu_\phi(s),\qquad \mu_\phi(s)\approx\arg\max_a Q_\theta(s,a)`} display label="액터는 상태에서 행동을 직접 출력하고 크리틱은 그 행동의 장기 가치를 평가한다" />
+
+<RobotEquationGuide id="rl04-e18" />
 
 
 <Math tex={String.raw`\phi`} />는 액터 가중치, <Math tex={String.raw`\theta`} />는 크리틱 가중치다. 같은 상태에서 액터가 명령을 제안하면, 크리틱은 그 명령이 얼마나 좋은지를 추정한다. 액터는 크리틱이 높은 값을 주는 방향으로 바뀌고, 크리틱은 보상·다음 상태를 이용한 TD 목표로 바뀐다.
@@ -579,6 +616,8 @@ CEM은 로봇이 행동할 때마다 후보를 다시 비교한다. <strong>DDPG
 
 <Math tex={String.raw`y=r+\gamma(1-d)Q_{\theta^-}(s',\mu_{\phi^-}(s'))`} display label="DDPG의 목표는 다음 상태의 목표 액터 행동을 목표 크리틱으로 평가하여 만든다" />
 
+<RobotEquationGuide id="rl04-e19" />
+
 
 배포할 때 액터 순전파 한 번으로 행동을 제안할 수 있다는 장점이 있다. <Math tex={String.raw`\approx`} />는 근사라는 뜻이며, 액터가 매 상태에서 진짜 전역 최댓값을 찾아낸다는 증명은 아니다. [Berkeley의 액터 도입과 목표 복사본 설명 6:15–9:42](https://www.youtube.com/watch?v=Q-Qwjz8Zmh0&t=375s).
 
@@ -587,10 +626,12 @@ CEM은 로봇이 행동할 때마다 후보를 다시 비교한다. <strong>DDPG
 
 <LectureSlide lecture={4} page={41} caption="액터의 기울기는 크리틱과 액터의 미분을 이어 붙인다" />
 
-크리틱이 “행동을 조금 이쪽으로 바꾸면 Q가 커진다”는 방향을 알려 주면, 그 방향으로 액터의 가중치를 바꾼다. <strong>연쇄 법칙(chain rule)</strong>은 이 두 변화의 민감도를 연결한다.
+크리틱이 “행동을 조금 이쪽으로 바꾸면 <Math tex={String.raw`Q`} />가 커진다”는 방향을 알려 주면, 그 방향으로 액터의 가중치를 바꾼다. <strong>연쇄 법칙(chain rule)</strong>은 이 두 변화의 민감도를 연결한다.
 
 
 <Math tex={String.raw`\nabla_\phi J\approx\mathbb E_s\!\left[\left.\nabla_a Q_\theta(s,a)\right|_{a=\mu_\phi(s)}\nabla_\phi\mu_\phi(s)\right]`} display label="액터 갱신은 행동에 대한 가치의 변화와 가중치에 대한 행동의 변화를 연쇄 법칙으로 연결한다" />
+
+<RobotEquationGuide id="rl04-e20" />
 
 
 <Math tex={String.raw`\nabla_a Q`} />는 행동을 바꾸었을 때 점수가 얼마나 바뀌는지, <Math tex={String.raw`\nabla_\phi\mu_\phi`} />는 가중치를 바꾸었을 때 행동이 얼마나 바뀌는지를 나타낸다. 벡터에서는 알맞은 야코비안 곱으로 계산한다. 이때 액터 손실의 기울기를 계산하며 크리틱의 가중치 자체를 액터와 함께 갱신하는 것은 아니다.
@@ -608,7 +649,7 @@ CEM은 로봇이 행동할 때마다 후보를 다시 비교한다. <strong>DDPG
 
 로봇이 문이나 손잡이를 조작하는 사진은 연속 제어 적용을 보여 준다. 액터가 있으므로 CEM 후보 검색을 매번 하지 않아도 된다. 그렇다고 <strong>어떤 제어 주파수에서도 항상 실행된다</strong>는 뜻은 아니다. 모델 크기, 영상 처리, 하드웨어, 통신 지연까지 전체 시간을 재야 한다.
 
-DDPG는 크리틱 오차, 액터의 그 오차 활용, 탐색 범위, 학습률 같은 요소에 민감할 수 있다. 크리틱이 실제보다 높게 평가한 행동을 액터가 적극적으로 찾으면, 예측 Q는 높아지는데 실제 리턴은 떨어지는 상황도 생길 수 있다.
+DDPG는 크리틱 오차, 액터의 그 오차 활용, 탐색 범위, 학습률 같은 요소에 민감할 수 있다. 크리틱이 실제보다 높게 평가한 행동을 액터가 적극적으로 찾으면, 예측 <Math tex={String.raw`Q`} />는 높아지는데 실제 리턴은 떨어지는 상황도 생길 수 있다.
 
 원본 영상의 “작업자2대·2.5시간” 같은 표시는 특정 연구 설정의 실험 문맥이다. 내 로봇에서도 같은 시간에 학습된다는 보편적 사양이 아니다. [Gu et al.의 비동기 오프폴리시 로봇 학습](https://arxiv.org/abs/1610.00633)을 실물 사례로 읽되, 이 글에서 그 훈련을 수행한 결과와는 구별한다.
 
@@ -623,11 +664,11 @@ DDPG는 크리틱 오차, 액터의 그 오차 활용, 탐색 범위, 학습률 
 |---|---|---|---|---|
 | 전이 모델을 직접 계산하는가 | 그렇다 | 표본 경험 사용 | 표본 경험 사용 | 표본 경험 사용 |
 | 상태를 어떻게 표현하는가 | 작은 상태 표 | 작은 상태–행동 표 | 신경망 특징, 영상 등 | 신경망 특징, 영상·벡터 등 |
-| 행동을 어떻게 고르는가 | 모델로 개선하거나 정책 표 저장 | Q 표 비교 | 유한 행동 출력 비교 | 후보 검색 또는 액터 |
+| 행동을 어떻게 고르는가 | 모델로 개선하거나 정책 표 저장 | <Math tex={String.raw`Q`} /> 표 비교 | 유한 행동 출력 비교 | 후보 검색 또는 액터 |
 | 오래된 경험 재사용 | 모델 자체로 계산 | Q-learning 가능, SARSA는 정책 일치 고려 | 리플레이 활용 | 오프폴리시 리플레이 활용 |
 | 보장의 핵심 조건 | 유한 할인 MDP·정확한 계산 등 | 방문·학습률·정책 변화 조건 | 일반적인 전역 수렴 보장 없음 | 일반적인 전역 수렴 보장 없음 |
 
-원본 표를 엄밀한 배타적 분류로 외우지는 말자. Q 값 반복은 학습 때 모델을 사용해도 저장한 Q로 실행할 수 있다. 연속 행동 열에서도 QT-Opt는 액터로 행동을 바로 내는 DDPG와 달리 검색 비용을 지불한다. 영상만 가능한 것도 아니다. DQN은 연속 벡터 상태와 이산 행동에도 사용할 수 있다.
+원본 표를 엄밀한 배타적 분류로 외우지는 말자. <Math tex={String.raw`Q`} /> 값 반복은 학습 때 모델을 사용해도 저장한 <Math tex={String.raw`Q`} />로 실행할 수 있다. 연속 행동 열에서도 QT-Opt는 액터로 행동을 바로 내는 DDPG와 달리 검색 비용을 지불한다. 영상만 가능한 것도 아니다. DQN은 연속 벡터 상태와 이산 행동에도 사용할 수 있다.
 
 같은 “모델 프리”라도 필요한 데이터, 실행 시간, 행동 표현은 다르다. 로봇 문제를 고를 때는 모델을 아는가, 관측에 필요한 정보가 있는가, 행동을 나열할 수 있는가, 얼마나 비싼 경험을 얼마나 많이 모을 수 있는가를 함께 물어야 한다.
 
@@ -640,7 +681,7 @@ DDPG는 크리틱 오차, 액터의 그 오차 활용, 탐색 범위, 학습률 
 
 Q-learning 쪽에는 미리 계산한 전이 행렬의 평균을 목표로 넣지 않고, 시뮬레이터가 뽑은 다음 상태와 보상 하나씩을 사용했다. 방문 범위를 통제하려고 유효한 상태와 행동을 균등하게 골라 질의했다. 따라서 에피소드 처음부터 탐색한 학습의 표본 효율과 비교하는 실험은 아니다.
 
-검사한 내용은 전이 확률 합, 종료 보상 중복 방지, 벨만 고정점, 정확한 정책 평가, 가치 반복과 정책 반복의 일치, 개선의 비감소, 상태–행동 방문 범위, 학습 Q 오차, 학습 정책의 가치 차이, TD 수치, 종료 목표, Double DQN의 선택/평가 분리, 잡음 최대값 편향, CEM, 액터 연쇄 미분 등18개다. 이번 실행의 최대 Q 추정 오차는 약0.0269였고, 학습된 탐욕적 정책의 가치는 이 작은 환경에서 최적 정책과 수치 오차 범위 내에서 일치했다. 설정·seed·모든 수치는 [실행 코드와 결과 JSON·CSV](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/04-value-learning)에 함께 남겼다.
+검사한 내용은 전이 확률 합, 종료 보상 중복 방지, 벨만 고정점, 정확한 정책 평가, 가치 반복과 정책 반복의 일치, 개선의 비감소, 상태–행동 방문 범위, 학습 <Math tex={String.raw`Q`} /> 오차, 학습 정책의 가치 차이, TD 수치, 종료 목표, Double DQN의 선택/평가 분리, 잡음 최대값 편향, CEM, 액터 연쇄 미분 등18개다. 이번 실행의 최대 <Math tex={String.raw`Q`} /> 추정 오차는 약0.0269였고, 학습된 탐욕적 정책의 가치는 이 작은 환경에서 최적 정책과 수치 오차 범위 내에서 일치했다. 설정·seed·모든 수치는 [실행 코드와 결과 JSON·CSV](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/04-value-learning)에 함께 남겼다.
 
 DQN·DDPG 신경망이나 실제 로봇을 훈련한 결과는 아니다. CEM은 미리 정한 이차 함수를 검색한 예이고, 두 추정치의 잡음 실험도 실제 Double DQN 결과와 구별한다.
 

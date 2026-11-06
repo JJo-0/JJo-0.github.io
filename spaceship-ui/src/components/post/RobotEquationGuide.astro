@@ -1,0 +1,58 @@
+---
+import Math from './Math.astro';
+import GuideMathText from './GuideMathText.astro';
+import guides from '@/data/robot-equation-guides.json';
+interface Props { id: string }
+const { id } = Astro.props;
+const guide = (guides as Record<string, {
+  title: string; tex: string; reading: string;
+  symbols: { tex: string; meaning: string }[];
+  steps: string[]; example: string;
+}>)[id];
+if (!guide) throw new Error(`Missing robot equation guide: ${id}`);
+---
+
+<details class="robot-equation-guide" data-equation-guide={id} data-equation-tex={encodeURIComponent(guide.tex)}>
+  <summary aria-controls={`${id}-body`}>
+    <span>기호 뜻과 계산 과정 자세히 보기</span>
+    <small><GuideMathText text={guide.title} /></small>
+  </summary>
+  <div id={`${id}-body`} class="guide-body">
+    <p class="guide-label">이 식을 말로 읽으면</p>
+    <p><GuideMathText text={guide.reading} /></p>
+    <p class="guide-label">기호 하나씩 이해하기</p>
+    <dl>
+      {guide.symbols.map(symbol => <div>
+        <dt><Math tex={symbol.tex} /></dt>
+        <dd><GuideMathText text={symbol.meaning} /></dd>
+      </div>)}
+    </dl>
+    <p class="guide-label">계산을 따라가는 순서</p>
+    <ol>{guide.steps.map(step => <li><GuideMathText text={step} /></li>)}</ol>
+    <div class="worked-example">
+      <p class="guide-label">작은 예시로 확인하기</p>
+      <p><GuideMathText text={guide.example} /></p>
+      <p class="example-note">식을 이해하기 위한 설명용 예시입니다.</p>
+    </div>
+  </div>
+</details>
+
+<style>
+  details { margin: -.5rem 0 1.8rem; min-width: 0; max-width: 100%; border: 1px solid var(--color-border); border-radius: .5rem; background: var(--color-card); }
+  summary { cursor: pointer; min-height: 44px; padding: .85rem 1rem; line-height: 1.6; overflow-wrap: anywhere; }
+  summary span { font-weight: 650; }
+  summary small { display: block; margin-top: .2rem; color: var(--color-muted-foreground); font-size: .8em; }
+  summary:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+  .guide-body { padding: .4rem 1rem 1rem; border-top: 1px solid var(--color-border); line-height: 1.85; overflow-wrap: anywhere; }
+  .guide-body p { margin: .65rem 0 1rem; }
+  .guide-body .guide-label { margin: 1.15rem 0 .35rem; font-weight: 700; font-size: .88em; color: var(--color-primary); }
+  dl { margin: .5rem 0 1rem; }
+  dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: .4rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--color-border); }
+  dt { min-width: 0; overflow-x: auto; padding: .1rem 0; }
+  dd { min-width: 0; margin: 0; }
+  ol { margin: .5rem 0 1rem; padding-left: 1.5rem; }
+  li { padding: .25rem 0; }
+  .worked-example { padding: .2rem .9rem .5rem; border-left: 3px solid var(--color-primary); background: color-mix(in srgb, var(--color-muted) 40%, transparent); }
+  .guide-body .example-note { margin-bottom: .2rem; font-size: .78em; color: var(--color-muted-foreground); }
+  @media (max-width: 640px) { dl > div { grid-template-columns: minmax(0, 1fr); } .guide-body { padding-inline: .75rem; } }
+</style>
