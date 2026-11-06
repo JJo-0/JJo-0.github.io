@@ -82,11 +82,15 @@ import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
 
 실험실마다 기록 방법이 다르더라도 한 에피소드에서 시간순 관측과 행동을 읽게 만들 수 있다. 이때 공통 저장 형식은 데이터에 접근하는 방법을 맞추고, 좌표와 의미 변환은 별도로 적용한다.
 
+강의의 촉각 연구실 예처럼, 개별 논문을 위해 모은 작은 자료도 다른 실험실 기록과 함께 쓸 수 있다. Mees는 박사과정에서 Franka를 직접 원격 조작하던 경험을 떠올리며, 새 과제마다 모든 시연을 다시 찍는 비용에서 이 아이디어가 출발했다고 설명한다.
+
 [원강의 8:21](https://www.youtube.com/watch?v=dtofzDY9zuo&t=501s)
 
 <LectureSlide lecture={9} page={10} caption="Open X-Embodiment" />
 
 여러 기관이 모은 조작 기록을 공동 학습에 쓴다. 어떤 부분이 공유되는지 보려면 에피소드 수와 함께 로봇 종류, 작업의 중복, 카메라 구성을 살펴야 한다. [프로젝트](https://robotics-transformer-x.github.io/)
+
+Open X-Embodiment 논문은 22종 로봇의 실제 에피소드 100만 개 이상을 보고한다. 이 숫자는 모아 놓은 자료 전체의 규모다. 아래 Octo의 약 80만은 그중 해당 모델의 사전학습에 쓰인 에피소드 수다. [Open X-Embodiment 논문](https://arxiv.org/abs/2310.08864)
 
 [원강의 9:20](https://www.youtube.com/watch?v=dtofzDY9zuo&t=560s)
 
@@ -150,6 +154,8 @@ Octo는 OXE에서 선별한 약 80만 에피소드로 학습한 공개 정책이
 
 칼을 접시 위에 놓으라는 문장은 목표를, 외부·손목 영상은 현재 위치를 알려 준다. 그림의 두 줄을 따라가면 무엇을 할지와 지금 어디에 있는지가 따로 들어간다.
 
+언어는 사전학습된 T5가 표현하고, 영상은 작은 합성곱 인코더에서 관측 토큰으로 바뀐다. Transformer는 둘을 함께 읽으며 보라색 리드아웃 토큰에 행동을 생성하는 데 필요한 정보를 모은다. 이 토큰 자체의 숫자를 모터에 보내는 대신 확산 헤드에 전달한다. [Octo 논문](https://arxiv.org/abs/2405.12213)
+
 [원강의 15:13](https://www.youtube.com/watch?v=dtofzDY9zuo&t=913s)
 
 <LectureSlide lecture={9} page={21} caption="시간 방향과 읽는 범위" />
@@ -194,6 +200,8 @@ Octo는 블록 단위의 인과 어텐션을 사용한다. 현재 시점의 행�
 
 영상으로 집게가 닫히는 위치와 물체가 빠지는 시점을 살펴보면 성공률 숫자만으로 찾기 어려운 오류를 알 수 있다. 여러 장비를 평가할수록 조건별 반복과 실패 기록이 필요하다.
 
+강연자가 보여 준 첫 Google 로봇 파지에서는 원격 서버에서 정책을 실행했고 Quan Vuong이 현장 평가를 도왔다. 학습에 Google 로봇 기록이 들어 있었지만, 테스트 장소는 수집 때와 다른 건물이었다. 한 번 성공한 영상은 낯선 장소에서도 작동한 사례이며 성공률은 반복 시험으로 따로 계산한다.
+
 [원강의 21:20](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1280s)
 
 <LectureSlide lecture={9} page={27} caption="새 카메라와 새 명령 형식" />
@@ -232,6 +240,8 @@ CrossFormer는 약 90만 궤적을 모아 여러 장비를 하나의 정책 구�
 
 CrossFormer는 Transformer 본체를 공유하고 장비마다 출력 헤드를 둔다. 헤드는 공유 표현을 해당 장비의 제어 벡터로 바꾸는 마지막 모듈이다. 드론과 양팔의 행동 차원을 억지로 맞추지 않고도 본체를 공동 학습할 수 있다. [CrossFormer 프로젝트](https://crossformer-model.github.io/)
 
+강의의 예에서 WidowX는 5Hz, 양팔 정교 조작 장비는 50Hz로 제어한다. 같은 1초를 예측하려 해도 각각 다섯 개와 쉰 개의 명령이 필요하다. 장비별 헤드는 행동 벡터의 차원뿐 아니라 이런 시간 해상도도 맞출 수 있다.
+
 [원강의 27:05](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1625s)
 
 <LectureSlide lecture={9} page={33} caption="한 모델의 여러 실행 장면" />
@@ -249,6 +259,8 @@ CrossFormer는 Transformer 본체를 공유하고 장비마다 출력 헤드를 
 <LectureSlide lecture={9} page={35} caption="사전학습이 주는 시연 절약" />
 
 TRI는 29개 작업에서 사전학습 정책과 처음부터 학습한 정책을 비교했다. 환경 변화에 대응해야 하는 일부 설정에서는 새 작업에 필요한 데이터가 3~5배 적었다. 모든 작업의 성공률이 그 배수만큼 높아졌다는 수치는 아니다. [TRI 원자료](https://toyotaresearchinstitute.github.io/lbm1/)
+
+블라인드 A/B 실험에서는 운영자가 어느 정책을 평가하는지 모른 채 결과를 판정했다. 사후학습 자료가 적을 때 사전학습의 이점이 컸고, 데이터 정규화 선택도 결과에 영향을 줬다. 서로 다른 정책의 차이를 해석할 때 데이터 전처리까지 실험 조건으로 남겨야 하는 이유다. [TRI 연구](https://arxiv.org/abs/2507.05331)
 
 [원강의 30:57](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1857s)
 
@@ -292,6 +304,8 @@ VLM에 행동 학습을 더하면 지시와 영상에서 행동을 예측하는 
 
 정답 칸과 바로 옆 칸을 고른 경우도 토큰 정확도에는 오답으로 들어간다. 실제 명령으로 되돌린 뒤 얼마나 벗어났는지도 함께 본다. 아래는 평균 절대 오차이며, 서로 다른 단위의 행동을 합칠 때는 차원별 값이나 정규화 기준을 함께 보고한다.
 
+강연에서 제시한 약 95%는 자기회귀형 모델의 학습 진행을 볼 때 쓴 경험칙이다. 정답 토큰을 앞에 넣는 교사 강요로 계산하므로, 모델이 자기 예측과 실제 센서 입력으로 이어가는 롤아웃의 성공률과는 측정 조건이 다르다. 같은 체크포인트에서 역변환한 제어 오차도 함께 보는 이유다.
+
 <Math display tex={String.raw`\mathrm{MAE}=\frac{1}{n}\sum_{i=1}^{n}\lvert\hat a_i-a_i\rvert`} label="명령의 평균 절대 오차" />
 
 <RobotEquationGuide id="rl09-e04" />
@@ -330,6 +344,8 @@ VLM에 행동 학습을 더하면 지시와 영상에서 행동을 예측하는 
 
 순차 읽기는 저장 장치에 유리하지만 버퍼가 작으면 같은 시연의 이웃 프레임이 배치에 몰린다. 무작위 읽기는 섞기 쉽지만 저장 장치 탐색이 늘어난다. 실제 선택은 처리량과 배치 내 장비·과제 비율을 함께 재어 정한다.
 
+Mees는 초기 Octo 실험에서 약 2만 표본의 버퍼와 궤적 단위 섞기를 함께 사용했을 때 일반화가 나빴다고 회고한다. 이미지 디코딩 전에 여러 궤적의 프레임을 섞고 버퍼를 약 50만 표본으로 늘렸다. 두 변경을 함께 적용한 경험이므로 버퍼 크기 하나만의 효과로 볼 수는 없다.
+
 [원강의 42:49](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2569s)
 
 <LectureSlide lecture={9} page={46} caption="여러 출력 헤드와 하나의 행동 모듈" />
@@ -354,6 +370,8 @@ VLM에 행동 학습을 더하면 지시와 영상에서 행동을 예측하는 
 
 FAST는 여러 시점의 움직임을 압축한 토큰으로 학습 신호를 준다. 연속 행동 모듈은 flow matching으로 실행할 수치 묶음을 만들고, 정지된 기울기 경로는 연속 행동 손실이 본체를 직접 바꾸지 않게 한다. 본체는 토큰과 웹 데이터 손실을 통해 여전히 학습한다. [Knowledge Insulation](https://www.pi.website/research/knowledge_insulation)
 
+논문의 행동 전문가는 VLM의 관측 표현을 읽고, 학습 표적으로 사용한 FAST 정답 행동 토큰은 직접 읽지 않는다. 이 참조 제한과 기울기 차단은 역할이 다르다. 전자는 행동을 예측할 때 읽을 정보를 정하고, 후자는 연속 행동 손실로 어느 파라미터를 갱신할지 정한다. [연구팀 설명](https://www.pi.website/research/knowledge_insulation)
+
 <Math display tex={String.raw`\mathcal L=\mathcal L_{\rm token}(\theta)+\lambda\mathcal L_{\rm act}(\phi,\operatorname{sg}(h_\theta))`} label="연속 행동 손실의 기울기 차단" />
 
 <RobotEquationGuide id="rl09-e07" />
@@ -371,6 +389,8 @@ FAST는 여러 시점의 움직임을 압축한 토큰으로 학습 신호를 �
 <LectureSlide lecture={9} page={51} caption="실물 시험에서 변하는 조건" />
 
 사람이 카메라에 부딪히거나 물체 위치가 달라지면 같은 체크포인트도 다른 결과를 낸다. 시뮬레이터는 초기 위치를 반복하기 쉽고, 실물 시험은 실제 접촉과 마찰을 반영한다.
+
+강연의 다른 예는 고장 난 모터를 교체하는 상황이다. 같은 팔 자세에서도 관절 영점이나 센서값이 바뀌면 기존 정책이 다른 자세로 읽을 수 있다. 카메라 위치가 바뀌는 경우와 마찬가지로 체크포인트를 비교하기 전에 장비 설정과 보정을 기록해 둬야 결과를 해석할 수 있다.
 
 [원강의 54:50](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3290s)
 
@@ -399,6 +419,8 @@ SIMPLER는 기존 Google Robot과 WidowX 평가 장면을 대응시킨다. 정�
 <LectureSlide lecture={9} page={55} caption="카메라에서 보이는 장면도 맞춘다" />
 
 실물 작업대와 가상 작업대의 배경·질감 차이만으로도 정책의 입력이 달라진다. Visual Matching은 외형 차이를 줄여 제어 비교에 집중하도록 돕는다. 접촉이나 관절 지연은 앞 슬라이드의 동역학과 관련된 문제다.
+
+그린 스크린 방식은 시뮬레이터에서 움직이는 로봇과 물체를 분리해 실제 작업대 배경 위에 합성한다. 텍스처 매칭은 실제 캔의 무늬를 가상 캔의 표면에 입힌다. 전자는 배경, 후자는 물체 외형에 주로 작용한다. [SIMPLER 프로젝트](https://simpler-env.github.io/)
 
 [원강의 59:40](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3580s)
 
