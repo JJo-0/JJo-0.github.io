@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import katex from 'katex';
 const guides=JSON.parse(fs.readFileSync('src/data/robot-equation-guides.json','utf8'));
-const expected=[5,23,18,20,24,23,18,9,8];
+const expected=[5,23,18,20,24,23,18,9,8,6,4];
 let total=0,parsed=0;
 for(let ch=1;ch<=expected.length;ch++){
  const file=fs.readdirSync('site/content/posts').find(f=>f.startsWith(`rl-robot-learning-ch${String(ch).padStart(2,'0')}-`));
@@ -29,7 +29,7 @@ for(let ch=1;ch<=expected.length;ch++){
  }
  assert(!/여기서 u는/.test(source),'RNN symbol must render with a defined time index');
 }
-assert.equal(total,148);assert.equal(Object.keys(guides).length,148);
+assert.equal(total,158);assert.equal(Object.keys(guides).length,158);
 // Independent arithmetic checks for examples with sign, scaling or weighting traps.
 const near=(a,b,tol=1e-9)=>assert(Math.abs(a-b)<tol);
 near((1*2+3*1)/3,5/3);
@@ -38,4 +38,5 @@ near(1+0.9*(4-0.2*(-1)),4.78);near((1.1-0.6*0.5)/0.8,1);
 near(0.7*0.8+0.3*0.4,0.68);near(2/(4+1)*0.1,0.04);
 near(-15*0.1-3*0.2,-2.1);near(Math.min(255,Math.floor(256*(1+1)/2)),255);
 near((2+6*Math.E)/(1+Math.E),4.92423431452,1e-8);
+near(1-Math.pow(0.8,3),0.488);near(3/(6+5-3),0.375);near((18-12)/20,0.3);near(600*(2+0.01),1206);
 console.log(`Robot equation guides PASS: ${total} adjacent guides, ${parsed} parsed math expressions, complete explanations and checked arithmetic.`);

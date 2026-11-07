@@ -1,0 +1,136 @@
+---
+title: "강화학습 10 — 로봇은 언제 더 오래 생각해야 할까"
+description: "ECoT와 추론 시 연산 확장을 통해 로봇이 판단에 시간을 쓰는 방법을 살펴본다."
+pubDate: 2026-11-08T00:15:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch10-embodied-reasoning
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags: ["robot-learning", "reinforcement-learning", "vision-language-action"]
+draft: false
+lang: ko
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 10
+---
+
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+로봇에게 “수박 조각을 그릇에 넣어”라고 말한다. 탁자 위에 수박처럼 보이는 장난감과 진짜 수박이 나란히 있다면, 손을 뻗기 전에 어떤 물체가 목표인지 판단해야 한다. 반대로 수박을 집은 손이 미끄러지는 순간에는 긴 설명을 기다릴 시간이 없다. 이번 장에서는 <strong>무엇을 할지 판단하는 시간</strong>과 <strong>그 동작을 제어하는 주기</strong>를 어떻게 나눌지 살펴본다. [이전 장 · 범용 로봇 정책](/posts/rl-robot-learning-ch09-generalist-policies/)
+
+ETH 공식 일정의 10주차다. 녹화에서 강사는 11회라고 소개한다. 한국어 전사와 영어 자막을 대조했고, 아래 P 번호는 표지를 포함한 슬라이드 사본의 페이지다. 슬라이드는 링크로 열 수 있다. [ETH 일정](https://cvg.ethz.ch/lectures/Robot-Learning/) · [공식 PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture10_reasoning.pdf) · [슬라이드 사본 목록](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10)
+
+## 더 많은 시연이 로봇에게 주는 것
+
+시연이 많을수록 로봇은 어떤 장면에서 어떤 행동이 흔한지 더 잘 배울 수 있다. 이 기대를 <strong>사전 지식(prior)</strong>이라고 한다. 그런데 한 번도 배치해 보지 않은 탁자에서 목표를 찾거나 손잡이를 잡는 순서를 새로 조합하려면, 알고 있는 물체와 동작을 현재 장면에 연결해야 한다. 강의에서 말하는 <strong>체화된 추론(embodied reasoning)</strong>은 계획을 실제 시야, 손끝 위치, 물체와의 상호작용에 연결하는 과정이다. [원강의 0:20](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=20s) · [슬라이드 P002](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-2.jpg)
+
+## ECoT는 행동 전에 무엇을 쓰는가
+
+ECoT(Embodied Chain-of-Thought)는 사진과 지시를 받은 시각·언어·행동 모델(VLA)이 곧장 모터 명령을 예측하는 대신, 계획과 관찰을 중간에 출력하게 한다. 수박 예라면 ‘수박 쪽으로 이동’이라는 하위 과제와 화면 속 목표의 경계 상자, 현재 그리퍼 위치, 손이 움직일 방향이 차례로 나온다. 계획은 목표를 좁히고 경계 상자는 그 목표가 화면 어디에 있는지 가리킨다. [원강의 5:16](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=316s) · [슬라이드 P005](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-5.jpg) · [ECoT 논문](https://arxiv.org/abs/2407.08693)
+
+기존 시연에는 사진과 실제 행동이 들어 있지만, 사람이 매 순간 계획과 상자를 써 두지는 않는다. 연구진은 사전 학습 모델과 궤적에서 얻을 수 있는 위치·움직임 정보를 활용해 추론 주석을 추가했다. 이를 간단히 표현하면, 한 번의 정책 호출에서 추론과 행동의 결합 확률을 아래처럼 나눌 수 있다.
+
+<Math tex={String.raw`p_\theta(r,a\mid o,g)=p_\theta(r\mid o,g)\,p_\theta(a\mid o,g,r)`} display />
+<RobotEquationGuide id="rl10-e01" />
+
+새 지시와 물체, 공간 관계를 시험한 논문은 기준 OpenVLA 대비 <strong>성공률 28%p 상승</strong>을 보고한다. 강의에서 약 30이라고 반올림한 차이다. 비교에 사용한 로봇 시연을 추가로 찍지 않았고, 기존 시연에 합성 주석을 붙였다. 7B ECoT가 55B RT-2-X를 앞섰다는 설명도 이 평가의 비교 범위에서 읽어야 한다. [원강의 8:05](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=485s) · [슬라이드 P008](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-8.jpg) · [ECoT 논문](https://arxiv.org/abs/2407.08693)
+
+모델이 엉뚱한 물체의 상자를 표시하면 사람이 실행 전에 계획을 고칠 수 있다. 추론 주석을 WidowX 데이터에서만 학습한 모델이 다른 로봇과 카메라에서도 그럴듯한 추론을 생성한 사례는 <strong>중간 표현의 전이</strong>를 보여 준다. 새 로봇의 동작까지 검증하려면 해당 장비에서 별도의 조작 평가가 필요하다. 공간 정보를 더 직접적으로 담는 MolmoAct의 깊이 토큰과 수정 가능한 손끝 경로도 이 흐름의 한 예다. [원강의 9:14](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=554s) · [슬라이드 P009](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-9.jpg) · [슬라이드 P010](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-10.jpg) · [MolmoAct 논문](https://arxiv.org/abs/2508.07917)
+
+### 사람이 고칠 수 있는 중간 표현
+
+수박으로 가려는 하위 계획 자체는 맞아도 경계 상자가 옆의 장난감을 가리킬 수 있다. 이 경우 목표 상자만 고치면 그 뒤 행동이 바뀌는지 시험할 수 있다. 반대로 상자는 맞는데 손을 뒤로 빼야 하는 상황에서 앞으로 밀겠다고 쓰면 움직임 계획을 고칠 수 있다. ECoT가 제공하는 상호작용 창구는 어느 단계에서 오류가 시작됐는지 나눠 확인하게 한다.
+
+새 로봇 영상에서 그럴듯한 추론을 생성한 전이 실험도 같은 구분으로 읽을 수 있다. 물체와 공간 관계에 대한 언어 지식은 카메라나 팔이 바뀌어도 사용할 수 있다. 실제 팔의 제어 범위와 집게가 허용하는 자세는 장비마다 다르다. 평가에서는 중간 설명의 정확도와 최종 조작 성공률을 각각 확인한다. [ECoT 논문](https://arxiv.org/abs/2407.08693)
+
+## 첫 WidowX 롤아웃이 보여 준 지연
+
+강의 슬라이드는 예시 설정에서 기본 OpenVLA가 초당 약 4개 행동을, 전체 ECoT가 약 4초에 행동 하나를 내는 것으로 비교한다. Mees는 팀이 처음 실제 WidowX에 올렸을 때, 한 과제를 끝까지 기다리는 일이 고역이었다고 회고한다. 같은 설정에서 행동 하나의 간격으로 바꾸면 0.25초와 4초다. 카메라 전송과 모터 제어에 걸리는 시간은 별도로 측정해야 한다. [원강의 13:49](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=829s) · [슬라이드 P013](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-13.jpg)
+
+<Math tex={String.raw`\Delta t=\frac{1}{f}`} display />
+<RobotEquationGuide id="rl10-e02" />
+
+### 추론은 어디에서 도움이 됐을까
+
+ECoT-Lite는 세 가지 가능성을 분리해 시험했다. 모델이 물체 위치처럼 중요한 특징을 <strong>표현</strong>하는 법을 배웠는지, 중간 설명이 픽셀에서 동작으로 넘어가는 <strong>학습 발판</strong>이 되는지, 추가 토큰이 내용과 관계없이 <strong>계산 공간</strong>을 늘려 주는지의 차이다. LIBERO-90 시뮬레이션 비교에서는 추론으로 먼저 학습하거나 추론을 가끔 생략하며 학습하는 방식이 전체 ECoT에 가까웠다. 의미 없는 토큰을 채우는 변형에서는 이득이 확인되지 않았다. 표현을 잘 학습하는 것과 그 정보를 행동 예측 때 읽어 오는 것 모두에 실험 근거가 있다. [원강의 15:49](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=949s) · [슬라이드 P015](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-15.jpg) · [슬라이드 P019](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-19.jpg) · [ECoT-Lite 논문](https://arxiv.org/abs/2505.08243)
+
+| 학습 방식 | 배포할 때 | 강의에서 제시한 선택 기준 |
+| --- | --- | --- |
+| 전체 ECoT | 중간 추론을 생성하고 행동을 출력한다 | 설명을 사람이 확인하거나 수정할 때 |
+| 추론 사전 학습 | 먼저 추론만 학습한 가중치를 물려받아 행동을 곧바로 출력한다 | 추론 자료와 행동 자료가 서로 짝지어 있지 않을 때 |
+| 추론 드롭아웃 | 학습 중 일정 확률로 추론 부분을 생략해, 배포 때 두 경로를 선택할 수 있다 | 낯선 장면에서만 긴 판단이 필요할 때 |
+
+논문은 ECoT-Lite에서 표준 추론 정책보다 약 3배 빠른 추론을 보고한다. 강의 앞부분의 초당 4개 대 4초당 1개는 다른 비교의 예이므로 두 배율을 합쳐 읽으면 안 된다. [원강의 22:18](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=1338s) · [슬라이드 P020](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-20.jpg) · [슬라이드 P034](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-34.jpg) · [슬라이드 P035](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-35.jpg) · [ECoT-Lite 논문](https://arxiv.org/abs/2505.08243)
+
+### 추론 사전 학습과 드롭아웃의 계산 순서
+
+추론 사전 학습에서는 첫 단계가 물체 위치와 계획을 설명하도록 VLM을 훈련한다. 두 번째 단계는 그 가중치에서 출발해 실제 행동을 예측한다. 첫 단계가 남긴 내부 특징이 행동 학습의 출발점이다. 추론 주석이 있는 사람 영상과 행동 값이 있는 로봇 데이터가 서로 다른 자료여도 이 두 단계로 연결할 수 있다.
+
+드롭아웃 방식에서는 추론과 행동을 함께 훈련하면서 일부 예시에 추론 부분을 생략한다. 그러면 모델은 추론 맥락을 읽는 경우와 관측에서 직접 행동하는 경우를 모두 연습한다. 슬라이드 P020~P033은 이 두 방식에서 어느 입력과 손실이 남는지 단계별로 보여 주는 애니메이션이다. 사진과 목표를 고정한 뒤 추론 토큰을 켜고 끄며 행동 출력과 실행 시간을 비교하면 이 차이를 볼 수 있다. [슬라이드 P020~P033](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10) · [ECoT-Lite 논문](https://arxiv.org/abs/2505.08243)
+
+세 가설의 결과를 한 문장으로 단정하기보다, 어떤 정보를 학습 손실에 넣고 행동 예측 때 무엇을 읽게 했는지를 함께 비교해야 한다. 추론을 생성하도록 학습한 표현은 도움이 됐고, 그 표현을 활용하는 경로도 중요했다. 의미 없는 토큰을 추가한 결과는 이 벤치마크에서 단순 계산량 증가만으로 같은 개선을 설명하기 어렵게 했다.
+
+## 실행할 때 계산을 더 쓰기
+
+<strong>테스트 타임 스케일링</strong>은 모델의 가중치를 업데이트하지 않고, 문제를 받았을 때 후보를 더 만들거나 이전 답을 수정하거나 후보를 더 오래 비교하는 방식이다. 바둑에서 정책망이 유망한 수를 제시하면 몬테카를로 트리 탐색(MCTS)이 뒤이을 수를 살펴본다. 강의의 약 3,000·5,000 Elo는 AlphaGo Zero 비교 그림의 수치다. 규칙과 승패가 명확한 게임의 예이며, 수치에는 해당 평가 체계가 반영돼 있다. [원강의 26:35](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=1595s) · [슬라이드 P037](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-37.jpg) · [슬라이드 P038](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-38.jpg) · [AlphaGo Zero 논문](https://doi.org/10.1038/nature24270)
+
+언어 모델에서는 후보 답안을 판별하는 <strong>검증기(verifier)</strong>가 필요하다. 예를 들어 서랍 여는 계획을 세 개 만들고 카메라에서 확인한 손잡이 위치와 맞는 계획에 높은 점수를 준다. 후보 중 적어도 하나가 맞을 확률과 검증기가 실제로 맞는 후보를 고를 확률은 서로 다르다. 다음은 후보들이 서로 독립이고 각 후보의 성공 확률이 같다고 단순화한 교육용 계산이다.
+
+<Math tex={String.raw`P(\text{at least one})=1-(1-p)^N`} display />
+<RobotEquationGuide id="rl10-e03" />
+
+Snell 등의 실험은 동일 FLOPs 조건에서 쉬운 문제나 중간 난도의 문제에 추론 연산을 배분한 작은 모델이 약 14배 큰 모델을 앞설 수 있음을 보였다. 어려운 문제에서는 더 큰 기반 모델이 유리한 조건도 있었다. 같은 오답을 되풀이하면 후보를 추가해도 위 식의 독립 가정이 깨진다. 로봇에서는 검증기가 접촉 결과를 잘못 예측해도 후보 선택이 틀릴 수 있다. [원강의 30:56](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=1856s) · [슬라이드 P040](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-40.jpg) · [Snell 외 논문](https://arxiv.org/abs/2408.03314)
+
+자기회귀 트랜스포머는 중간 토큰을 출력하고 그 결과를 다음 계산의 입력으로 다시 쓸 수 있다. Li 등의 이론 연구는 일정한 가정에서 이 방식이 순차 계산 능력을 늘릴 수 있음을 보인다. Wei 등의 초기 CoT는 풀이가 붙은 몇 개의 예시를 프롬프트에 넣어 이 방식을 유도했다. 강의에 나온 모델 크기별 그래프는 해당 실험 조건에 따라 달라지며, 어느 로봇 모델에나 적용되는 크기 기준을 제공하지는 않는다. [원강의 33:21](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=2001s) · [슬라이드 P041](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-41.jpg) · [슬라이드 P044](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-44.jpg) · [Li 외 논문](https://arxiv.org/abs/2402.12875) · [Wei 외 논문](https://arxiv.org/abs/2201.11903)
+
+### 한 줄을 길게 쓸지, 여러 후보를 볼지
+
+추론 시간을 늘리는 방식에도 차이가 있다. 한 답을 낸 뒤 이전 답의 오류를 지적받아 수정하는 것은 순차적 연산이다. 여러 답을 독립적으로 만들고 검증기가 고르는 것은 병렬 후보 탐색이다. 전자는 앞선 시도의 정보를 쓸 수 있고, 후자는 여러 방향을 함께 시도할 수 있다. 둘 다 검증 점수가 실제 과제와 얼마나 맞는지에 영향을 받는다.
+
+로봇에서는 생각하는 동안 실제 장면이 계속 변한다. 사람이 컵을 치우거나 물체가 굴러가면, 처음 사진을 기준으로 만든 긴 계획은 새 상황에 맞춰 갱신해야 한다. 그래서 후보 수와 정확도에 더해 관측 시각, 판단 완료 시각과 실제 실행 시작 시각을 기록하면 추가 연산이 어디에 도움이 됐는지 읽을 수 있다.
+
+## 정답 보상으로 추론을 학습시키기
+
+GRPO(Group Relative Policy Optimization)는 같은 질문에 대한 여러 답을 뽑아 <strong>그룹 안에서</strong> 비교한다. [5장의 PPO](/posts/rl-robot-learning-ch05-policy-gradients/)와 비슷하게 정책을 갱신하되, 별도 가치 추정기 대신 그 답들의 점수 평균을 기준으로 쓴다. 다음은 결과 점수 하나를 답변마다 부여하는 단순화된 예다. PPO와 유사한 확률비 클리핑 등 전체 목적함수의 다른 항은 여기서 생략했다. [원강의 40:18](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=2418s) · [슬라이드 P047](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-47.jpg) · [DeepSeek-R1 논문](https://doi.org/10.1038/s41586-025-09422-z)
+
+<Math tex={String.raw`A_i=\frac{r_i-\bar r}{\sigma_r+\varepsilon}`} display />
+<RobotEquationGuide id="rl10-e04" />
+
+정답 보상을 줘도 네 답이 모두 오답이면 그 묶음에는 상대적으로 좋은 답이 없다. Mees는 이를 기반 모델이 어려운 문제를 가끔이라도 맞혀야 하는 이유로 설명한다. R1-Zero 논문의 학습 중간 예시에는 모델이 스스로 풀이를 다시 검토하는 문구가 등장한다. 이 문구의 등장은 관찰된 행동이며, 모든 풀이가 정확해졌다는 측정값과는 구분된다. [원강의 42:45](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=2565s) · [슬라이드 P048](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-48.jpg) · [슬라이드 P049](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-49.jpg) · [DeepSeek-R1 논문](https://doi.org/10.1038/s41586-025-09422-z)
+
+### GRPO가 줄이는 것과 남겨 두는 것
+
+가치 추정 네트워크를 줄여도 답을 평가하는 신호는 필요하다. 수학에서는 정답 일치 여부를 확인할 수 있고, 코드는 테스트 실행 결과를 사용할 수 있다. 이런 검증 가능한 보상 설정에서는 사람의 풀이마다 등급을 붙이는 비용을 줄일 수 있다. GRPO라는 알고리즘 자체는 주어진 보상 신호를 사용하므로, 보상 규칙을 어떻게 정했는지가 학습 결과에 직접 영향을 준다.
+
+예를 들어 같은 질문의 답 네 개가 모두 틀렸다면 이 그룹은 무엇을 더 선호할지 알려 주지 못한다. 다음 샘플에서 일부가 맞으면 맞은 답에 상대적으로 좋은 점수가 주어진다. 강의의 기반 모델 능력 논의는 이런 발견 가능한 출발점과 연결된다. 더 긴 답을 생성했다는 사실과 정답을 찾은 빈도는 각각 측정할 수 있다.
+
+## 답이 맞아도 장면을 틀리게 읽을 수 있다
+
+Visual-RFT에서 물체 탐지 상자를 채점할 때 쓰는 IoU는 예측과 정답의 겹친 면적을 두 영역을 합친 면적으로 나눈 값이다. 예측 상자가 제대로 놓여도 설명에서 색이나 위치를 잘못 말할 수 있다. 이 경우 상자 점수만으로 설명 오류를 걸러내기 어렵다. [원강의 46:31](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=2791s) · [슬라이드 P051](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-51.jpg) · [슬라이드 P052](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-52.jpg) · [Visual-RFT 논문](https://arxiv.org/abs/2503.01785)
+
+<Math tex={String.raw`\operatorname{IoU}(B,\widehat B)=\frac{|B\cap\widehat B|}{|B\cup\widehat B|}`} display />
+<RobotEquationGuide id="rl10-e05" />
+
+Argos는 최종 답안, 이미지 속 위치, 영상 속 관련 시간 구간, 추론 품질에 대해 샘플마다 평가 도구를 선택해 보상을 구성한다. 강의는 ALFRED 계열의 시뮬레이션 고수준 계획에서 어려운 조건의 큰 개선을 소개한다. 여기서 확인한 것은 과제 분해와 계획 지표다. 물체가 미끄러질 때 그리퍼가 즉시 힘을 조절하는 문제는 다른 속도와 검증이 필요하다. [원강의 49:38](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=2978s) · [슬라이드 P053](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-53.jpg) · [슬라이드 P054](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-54.jpg) · [Argos 논문](https://arxiv.org/abs/2512.03438)
+
+### 중간 과정을 검증하는 비용
+
+영상에서 ‘사람이 왼쪽 상자를 잡았다’고 쓴 문장은 어느 시간 구간과 어느 상자를 가리키는지 확인할 수 있어야 한다. Argos는 샘플에 맞춰 위치 추정 모델이나 분할 모델, 규칙 기반 채점과 언어 평가 등을 조합한다. 한 도구의 점수만 높이는 방식이 다른 평가에서도 맞는지 확인하는 구조다. 자동 검증 결과에도 오차가 있을 수 있어 최종 과제의 성공률과 함께 평가한다. [Argos 연구팀 설명](https://www.microsoft.com/en-us/research/blog/multimodal-reinforcement-learning-with-agentic-verifier-for-ai-agents/)
+
+ALFRED 같은 시뮬레이션 계획에서는 다음 방으로 이동하거나 물건을 집기 전에 어떤 하위 과제를 선택할지 시험할 수 있다. 연속적인 팔 제어에서는 수십 Hz로 새 명령이 필요할 수 있으므로, 긴 추론을 매번 수행하는 데 드는 시간도 계획 성능의 일부가 된다. 이 차이가 ECoT-Lite를 함께 논의하는 이유다.
+
+## 계획과 제어에 서로 다른 시간을 주기
+
+정리하면 <strong>상위 계획기</strong>는 ‘손잡이를 찾아 문을 열고 안을 확인하라’처럼 다음 하위 과제를 정하고, <strong>하위 정책</strong>은 센서가 갱신될 때마다 빠르게 손의 움직임을 조절할 수 있다. 아래 식은 검증 점수와 실행 전 대기 시간을 함께 보려는 교육용 설계 예다. 속도를 점수에 반영하기 전에 충돌이나 작업 한계를 넘는 후보를 먼저 제외한다. 강의가 제안한 두 수준의 구조는 연구 방향이며, ECoT-Lite와 Argos를 합친 완성 시스템의 실험 결과로 읽으면 안 된다. [원강의 52:43](https://www.youtube.com/watch?v=CxhrjQuGEuE&t=3163s) · [슬라이드 P055](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-10/slide-55.jpg)
+
+<Math tex={String.raw`J_i=v_i-\lambda d_i`} display />
+<RobotEquationGuide id="rl10-e06" />
+
+ETH는 같은 주에 맥락에 시연을 넣는 In-Context Imitation Learning과, Minecraft에서 코드 기술을 저장하며 계획을 갱신하는 Voyager를 토론 자료로 제시한다. 두 연구를 함께 읽으면 가중치의 학습, 실행 중 후보의 탐색, 실행 경험의 재사용을 구분할 수 있다. [In-Context Imitation Learning](https://arxiv.org/abs/2408.15980) · [Voyager](https://arxiv.org/abs/2305.16291) · [Archit Sharma 초청 강연](https://youtu.be/oBEkY6NeE_o)
+
+다음 장에서는 낯선 환경에서 연산을 늘릴 순간과 사람에게 넘길 순간을 어떻게 구분할지 살펴본다. [11장 · 로봇 학습의 미해결 문제](/posts/rl-robot-learning-ch11-frontiers-open-problems/)

@@ -194,7 +194,7 @@ export async function auditRobotLearning(cdp, sessionId) {
   for (const {chapter, slug, equations, first, last, sample} of laterChapters) {
     for (const width of [320, 390, 1440]) {
       await viewport(cdp, sessionId, {width, height:900, mobile:width<500, touch:width<500, reduced:true});
-      await navigate(cdp, sessionId, '/posts/rl-robot-learning-ch0' + chapter + '-' + slug + '/');
+      await navigate(cdp, sessionId, '/posts/rl-robot-learning-ch' + String(chapter).padStart(2, '0') + '-' + slug + '/');
       await waitExpression(cdp, sessionId, "document.querySelectorAll('.math-display math').length === " + equations, 'Lecture equations rendered');
       const selector = '[data-lecture-number="' + chapter + '"]';
       const slides = await evaluate(cdp, sessionId, '[...document.querySelectorAll(' + JSON.stringify(selector) + ')].map(slide => slide.dataset.lectureSlide)');
@@ -208,11 +208,28 @@ export async function auditRobotLearning(cdp, sessionId) {
     }
   }
 
+  const finalChapters = [
+    {chapter: 10, slug: 'embodied-reasoning', equations: 6},
+    {chapter: 11, slug: 'frontiers-open-problems', equations: 4},
+  ];
+  for (const {chapter, slug, equations} of finalChapters) {
+    for (const width of [320, 390, 1440]) {
+      await viewport(cdp, sessionId, {width, height:900, mobile:width<500, touch:width<500, reduced:true});
+      await navigate(cdp, sessionId, '/posts/rl-robot-learning-ch' + chapter + '-' + slug + '/');
+      await waitExpression(cdp, sessionId, "document.querySelectorAll('.math-display math').length === " + equations, 'Final chapter equations rendered');
+      const links = await evaluate(cdp, sessionId, "[...document.querySelectorAll('article a')].map(a => a.getAttribute('href'))");
+      assert(links.some(href => href?.includes('cvg.ethz.ch/lectures/Robot-Learning/')));
+      assert(links.filter(href => href?.includes('youtube.com/watch?')).length >= 10);
+      assert(links.filter(href => href?.includes('assets/lectures/week-' + chapter)).length >= 15);
+      await auditEquationGuides(cdp, sessionId, chapter, width);
+    }
+  }
+
 }
 
 // Exercise native disclosure keyboard behavior, then check every expanded guide.
 async function auditEquationGuides(cdp, sessionId, chapter, width) {
-  const count=[5,23,18,20,24,23,18,9,8][chapter-1];
+  const count=[5,23,18,20,24,23,18,9,8,6,4][chapter-1];
   const initial=await evaluate(cdp,sessionId,`(() => {const all=[...document.querySelectorAll('[data-equation-guide]')];return {count:all.length,closed:all.every(e=>!e.open),adjacent:all.every(e=>e.previousElementSibling?.classList.contains('math-display')&&e.previousElementSibling.querySelector('annotation')?.textContent===decodeURIComponent(e.dataset.equationTex))};})()`);
   assert.equal(initial.count,count);assert(initial.closed&&initial.adjacent,'Every equation has its own initially collapsed guide');
   assert(await evaluate(cdp,sessionId,`(() => {const s=document.querySelector('[data-equation-guide] summary');s.scrollIntoView({block:'center',behavior:'instant'});s.focus();return document.activeElement===s;})()`),'Equation summary owns keyboard focus');
