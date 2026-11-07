@@ -9,8 +9,8 @@ const catalogue = JSON.parse(fs.readFileSync(new URL('../site/news-media.json', 
 const read = (slug) => fs.readFileSync(new URL(`../site/content/posts/${slug}.mdx`, import.meta.url), 'utf8');
 const readByFile = (_slug, sourceFile) => fs.readFileSync(new URL(`../site/content/posts/${sourceFile}`, import.meta.url), 'utf8');
 const actual = loadApprovedVisualInventory(catalogue);
-assert.equal(actual.size, 21);
-assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 41);
+assert.equal(actual.size, 23);
+assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 45);
 assert.equal(actual.get('2026-10-09-sando-safe-dynamic-trajectory-news').mediaIds.length, 5);
 assert.deepEqual(actual.get('2026-10-07-deterministic-2d-semiconductor-nucleation-news').mediaIds, ['nucleation-current-fig1', 'nucleation-current-fig3', 'nucleation-current-fig4']);
 assert.equal([...inventory.entries].length, 9, 'October 25 batch remains nine entries');
