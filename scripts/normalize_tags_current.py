@@ -521,5 +521,12 @@ POST_TAXONOMY.update({
     "2026-11-05-metallomesogen-tandem-solar-news.mdx": Taxonomy("finance-industry", "perovskite-grain-boundary", "paper-review", ("frontier-candidate", "tandem-photovoltaics", "perovskite-stability", "grain-boundary-engineering")),
 })
 
+# Register existing November 7 drafts without changing article content.
+POST_TAXONOMY.update({
+    '2026-11-07-autodna-autonomous-lab-news.mdx': Taxonomy('ai-machine-learning', 'autonomous-laboratory', 'paper-review', ('frontier-one', 'autonomous-lab', 'ai-for-science', 'laboratory-robotics')),
+    '2026-11-07-rybrevant-faspro-hnscc-news.mdx': Taxonomy('health-lifestyle', 'head-neck-cancer-treatment', 'research-report', ('frontier-candidate', 'oncology', 'accelerated-approval', 'bispecific-antibody')),
+    '2026-11-07-smartwatch-hypertension-screening-news.mdx': Taxonomy('health-lifestyle', 'wearable-hypertension-screening', 'research-report', ('frontier-candidate', 'wearable-health', 'hypertension', 'clinical-ai')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
