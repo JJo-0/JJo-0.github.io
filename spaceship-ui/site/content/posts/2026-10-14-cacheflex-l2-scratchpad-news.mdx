@@ -1,8 +1,8 @@
 ---
 title: L2 캐시를 작업공간으로 바꾸는 CacheFlex
-description: 넓어진 CPU 벡터가 L1 용량에 막힐 때, private L2 일부를 소프트웨어 관리 scratchpad로 바꿔 데이터 이동과 에너지를 줄이는 구조를 분석한다.
+description: 왜 계산이 빨라도 CPU는 기다릴까요? 필요한 데이터가 늦게 오기 때문입니다. CacheFlex는 코어 가까운 저장공간 일부를 프로그램이 관리하는 작업공간으로 바꾸는 설계입니다.
 pubDate: 2026-10-14T00:00:00+09:00
-updatedDate: 2026-10-21
+updatedDate: 2026-11-08
 publicationTimeZone: Asia/Seoul
 slug: 2026-10-14-cacheflex-l2-scratchpad-news
 category: software-engineering-cs
@@ -18,103 +18,150 @@ draft: false
 lang: ko
 ---
 
-import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
 
-> **연구 뉴스 · 시뮬레이션 기반 설계.** 2026년 10월 9일 제출된 arXiv v1을 다룬다. 아래 수치는 실제 상용 CPU 실리콘의 측정값이 아니라 단일 코어 gem5 시뮬레이션과 상용 12nm 공정의 post-layout 평가를 결합한 저자 보고다.
+> <strong>평가 경계:</strong> 성능은 컴퓨터 모형에서 계산한 값이고, 일부 회로 특성은 설계 평가 값입니다. 완성된 CPU 칩에서 측정한 결과는 아닙니다.
 
-## 1. 한 문장 결론
+## 1. 계산이 빨라도 데이터가 늦으면 기다린다
 
-**CacheFlex는 private L2 캐시의 일부 way를 실행 중 software-managed scratchpad memory(SPM)로 전환해, 넓은 SIMD 벡터가 L1 용량 한계 때문에 반복하는 데이터 이동을 줄인다.** 논문의 대표 조건에서 커널 기하평균 성능은 512-bit에서 1.12배, 2048-bit에서 1.44배로 커졌지만, 모든 CPU 작업이 같은 이득을 얻는다는 뜻은 아니다.
+CPU 안에서 명령을 처리하는 단위가 코어다. 그 안의 벡터 연산 장치는 한 명령으로 여러 숫자를 동시에 처리한다. 그런데 계산 폭을 넓혀도 재사용할 데이터를 가까운 곳에 두지 못하면 연산 장치는 다음 값을 기다린다. CacheFlex 논문은 이 상황을 행렬곱 같은 규칙적인 AI 계산에서 살핀다.
 
-## 2. 왜 어려운가
+캐시는 자주 쓰는 데이터를 코어 가까이에 자동으로 보관하는 저장공간이다. L1은 코어에 가까운 작은 캐시이고, private L2는 해당 코어에 속한 더 큰 캐시다.
 
-CPU의 벡터 폭을 넓혀도 L1 data cache의 크기는 그대로다. 재사용할 tile이 L1에 머물지 못하면 L1과 L2 사이 traffic이 늘고 실행 유닛은 데이터를 기다린다.
+<strong>핵심 아이디어:</strong> CacheFlex는 private L2의 일부를 프로그램이 직접 관리하는 임시 작업공간(scratchpad memory, SPM)으로 바꾸고, 나머지는 기존 캐시로 둔다.
 
-L1은 core pipeline과 강하게 결합되어 단순히 키우기 어렵다. 반면 더 큰 private L2는 하드웨어가 replacement와 coherence를 관리하므로 일반 프로그램이 데이터를 고정하거나 직접 읽을 수 없다.
+이 글에서 말하는 이득은 모든 CPU 프로그램의 보편적 성능 향상이 아니다. 논문이 모델링한 특정 벡터 폭, 행렬 모양, 타일링, 단일 코어 조건에서 나온 결과다.
 
-## 3. 기초 개념
+## 2. 캐시와 작업공간부터
 
-Cache는 하드웨어가 자동 관리하지만 scratchpad는 프로그램이 데이터의 배치와 수명을 정한다. GEMM처럼 reuse pattern을 아는 작업에서 불필요한 교체를 피할 수 있다.
+이 연구의 gem5 모델은 L1 데이터 캐시 64 KB, private L2 512 KB, 공유 L3 4 MB를 사용했다. L3는 여러 코어가 함께 쓰는 저장공간이다.
 
-캐시는 주기억장치보다 가까운 곳에 최근 쓴 데이터를 보관하는 작은 저장소다. L1·L2·L3는 그 계층을 가리킨다. 여기서 private L2는 해당 코어에 속한 L2이고, way는 같은 위치 후보에 데이터를 놓을 수 있는 캐시의 여러 통로 중 하나다. 이 연구는 그 일부를 프로그램이 직접 관리하는 작업공간으로 전환한다. 모든 L2를 없애거나 컴퓨터의 주기억장치를 바꾸는 설계가 아니다.
+캐시는 데이터가 들어갈 자리를 하드웨어가 고르고 필요하면 다른 항목으로 교체한다. 반면 <strong>scratchpad memory(SPM, 소프트웨어 관리 작업공간)</strong>는 프로그램이 데이터의 위치와 사용 기간을 직접 정한다. CacheFlex는 SRAM을 새로 붙이지 않고 기존 L2의 일부 <strong>way</strong>를 SPM으로 바꾼다. 캐시는 주소에 따라 정해지는 자리 묶음인 세트(set)로 나뉜다. Way는 한 세트 안에서 데이터를 놓을 수 있는 여러 자리의 한 갈래다. 별도의 데이터 이동 통로 자체를 뜻하는 말과는 구분해야 한다.
 
-GEMM은 행렬곱 계산이다. 큰 행렬을 작은 타일(tile)로 나누면 한 번 가져온 조각을 여러 계산에 재사용할 수 있다. SIMD는 한 명령으로 여러 데이터에 같은 연산을 적용하는 방식이다. 연산 폭만 커져도 재사용할 타일을 가까운 저장소에 두지 못하면 데이터 이동을 기다릴 수 있다는 것이 이번 문제의 출발점이다.
+왜 작업공간이 필요할까? 큰 행렬곱을 한꺼번에 계산하기보다 작은 <strong>타일(tile)</strong>로 나누면, 한 번 가져온 숫자를 여러 계산에 재사용할 수 있다. 타일을 어디에 두는지가 중요하다. 너무 작아 가까운 캐시에 잘 들어가면 기존 방식도 충분하고, 너무 크면 새 작업공간에 넣어도 데이터가 다 들어가지 않는다.
 
-<span id="cacheflex-gemm-shape" />
-<Math display label="원문 Table III: 행렬곱과 배열 크기" tex={String.raw`C_{M\times N}=A_{M\times K}\cdot B_{K\times N}`} />
+일반 행렬곱(General Matrix Multiplication, GEMM)은 다음처럼 나타낸다. 이 식은 논문 Table III에 실린 행렬 크기 표기다.
 
-A의 열 수와 B의 행 수가 같은 K여야 곱할 수 있고, 결과 C는 M행 N열이다. M·N·K는 원소의 개수를 세는 무차원 정수이며, 아래첨자는 원소 하나의 값이 아니라 배열의 크기다. 타일링은 이 곱을 작은 조각으로 계산해 재사용할 데이터를 가까이 두는 방법이다. 이 식은 논문 Table III(PDF 8쪽)에 인쇄된 계산 정의이지 CacheFlex가 새로 제안한 수학 공식이나 속도 향상 보장식이 아니다.
+<CandidateEquation id="cacheflex-gemm-shape" title="행렬곱의 크기는 어떻게 맞춰지나" tex={String.raw`C_{M\times N}=A_{M\times K}\cdot B_{K\times N}`}>
 
-CacheFlex의 핵심은 SRAM을 새로 붙이는 것이 아니다. 기존 512KB private L2의 일부 way를 SPM으로 바꾸고, 나머지는 일반 cache로 유지한다. `spm_cp`는 일반 메모리의 원본을 유지하면서 SPM으로 복사하고, `spm_wb`는 SPM의 결과를 일반 메모리에 다시 쓴다. `spm_ld`와 `spm_st`는 L1 pipeline을 거치지 않고 SPM을 직접 사용한다.
+A의 크기는 M행 K열, B는 K행 N열이며, 안쪽 차원 K가 맞아야 결과 C가 M행 N열이 된다. M·K·N은 데이터의 물리 단위가 아니라 원소 개수를 세는 정수다. 논문은 행렬 계산 소프트웨어 BLIS의 GEMM 표기 관례를 따른다. 평가에 쓰인 GEMM 마이크로커널은 FP16 SVE였지만, 이 식 자체는 행렬의 크기 관계를 적은 것이므로 CacheFlex가 새로 만든 공식도, 속도 향상식도 아니다.
 
-## 4. 기존 방식의 한계
+</CandidateEquation>
 
-Hardware prefetch와 L2 hint는 데이터를 미리 가져오지만 residency를 보장하거나 L1 pipeline을 우회하지 못한다. 별도 scratchpad SRAM은 명시적 제어가 가능하지만 면적을 고정적으로 지불한다.
+### 벡터 폭과 바이트 수
 
-이상화한 L2 pinning+non-temporal load도 L1 pipeline은 우회하지 못한다. CacheFlex는 W3·W5에서 이 비교군보다 1.63배·1.34배 빨랐지만, 모델링된 단일 코어 결과다.
+SVE(Scalable Vector Extension)는 Arm의 확장 가능한 벡터 명령 체계다. 이 논문이 쓰는 VL 표기는 128비트의 배수로 벡터 길이를 나타낸다. 아래는 단순한 단위 변환이며, 실험 결과나 처리량을 뜻하지 않는다.
 
-## 5. 새 방법의 세 단계
+| 벡터 길이 표기 | 비트 | 바이트 환산 |
+|---|---:|---:|
+| VL=4 | 512 bit | 64 B |
+| VL=8 | 1024 bit | 128 B |
+| VL=16 | 2048 bit | 256 B |
 
-운영체제나 runtime이 thread-private SPM을 할당한다. 프로그램은 반복 사용할 tile을 `spm_cp`로 stage하고 `spm_ld`로 읽은 뒤, `spm_wb`로 결과를 돌려보내거나 해당 way를 cache로 반환한다.
+논문 모델의 캐시라인은 64 B다. 따라서 2048-bit 벡터 접근 하나는 네 캐시라인 분량의 데이터 폭이다. 이 폭이 커질수록 같은 L1 크기에서 계산이 요구하는 재사용 데이터가 더 빨리 공간 한계에 닿을 수 있다.
 
-일반 memory와 SPM은 ordering 규칙이 다르다. 연구진은 bridge 명령을 일반 LSQ와 SPM LSQ 양쪽에 넣어 hazard를 조정한다. Context switch 때는 진행 중 접근을 drain하고 owner-thread ID로 다른 thread의 resident SPM 접근을 막는다.
+<NewsFigure media="cacheflex-vector-width-unit" />
 
-## 6. 시스템 경계와 물리량
+## 3. CacheFlex가 바꾸는 데이터 경로
 
-이 논문의 중심은 하나의 닫힌 수식보다 **working-set 크기, cache 용량, vector length, 데이터 이동량**의 관계다. 모델은 2.5GHz Armv8-A out-of-order core, 64KB L1D, 512KB L2와 4MB L3를 사용했고 vector length는 512·1024·2048-bit로 바꿨다.
+논문이 제안하는 설계는 크게 세 단계다.
 
-핵심 경계조건은 재사용할 데이터가 SPM에 맞고 접근 패턴을 software가 미리 안다는 것이다. 작업집합이 너무 작으면 기존 cache가 이미 잘 동작하고, 너무 크면 SPM도 병목을 없애지 못한다. 실제로 unfused attention의 4096-token score matrix는 32MB여서 L2와 SPM을 모두 훨씬 넘었고, attention 자체의 속도 향상은 거의 없었다.
+1. 운영체제 또는 런타임이 관리 인터페이스를 통해 private L2의 일부 way를 해당 스레드의 SPM으로 할당한다. 논문 설계에서 way 할당·반환 명령은 특권 명령이다.
+2. 프로그램은 `spm_cp`로 일반 메모리의 데이터를 SPM 쪽에 복사하고, 반복 계산에서 `spm_ld`·`spm_st`로 직접 읽고 쓴다. `spm_cp`는 원래 메모리의 값을 옮겨 없애는 명령이 아니라 SPM 슬롯으로 복사하는 명령이다. 결과를 일반 메모리로 내보낼 때는 `spm_wb`를 쓴다.
+3. 일반 캐시와 SPM 사이에서 복사·쓰기 순서가 어긋나지 않도록 논문은 일반 LSQ와 별도의 SPM LSQ를 함께 쓰는 구조를 설계한다. LSQ는 load/store queue, 즉 메모리 읽기·쓰기 명령의 순서와 충돌을 추적하는 대기열이다.
 
-## 7. 실험과 수치
+SPM 접근은 일반 캐시의 태그 검색, 가상주소 변환, 캐시 일관성 확인 경로를 우회하도록 설계됐다. 대신 SPM은 스레드 전용이며 일반 캐시와 같은 일관성(coherence) 규칙을 쓰지 않는다. SPM이 아닌 L2 way는 일반 캐시로 계속 작동한다. 따라서 이는 L2 전체를 지우거나 주기억장치를 교체하는 설계가 아니다.
 
-행렬곱(GEMM)의 일곱 가지 크기·형태를 양쪽 설계에 맞게 각각 최적화했다. 비교 기준은 하드웨어 프리페치를 켠 일반 캐시 설계다. 512-bit에서는 기하평균 1.12배 성능과 memory-subsystem energy 26% 감소를, 2048-bit에서는 1.44배와 40% 감소를 보고했다.
+<strong>운영체제 경계:</strong> 논문은 스레드 전환 때 진행 중인 SPM·복사 작업을 비우고(thread ownership을 확인하고) 상태를 저장·재할당하는 프로토콜을 제안한다. SPM 데이터를 L2에 남겨 다음에 재사용하거나, backing 영역에 저장할 수 있다는 정책도 설명한다. 이는 논문에 기술된 아키텍처 규칙이다. 실제 운영체제 커널·스케줄러와 결합한 시험 결과나 보안·side-channel 검증 결과로 읽으면 안 된다.
 
-전체 레이어에서는 LLaMA-3.2-1B와 BERT-Base 형태의 prefill, 즉 입력 문장을 한꺼번에 처리하는 단계를 평가했다. BERT의 기본 길이 한계를 넘는 4096-token 조건은 BERT-Base 형태의 레이어로 용량 확장을 시험한 것이지, 기본 BERT 모델의 실사용 정확도를 검증한 결과는 아니다. FlashAttention과 결합한 설계는 이 조건과 2048-bit 벡터에서 일반 캐시 기준 설계 대비 최대 1.78배 성능과 45% memory-subsystem energy 절감을 보고했다. FlashAttention만 적용한 설계 대비 1.78배라는 뜻은 아니다. LLaMA 조건의 대표 최대치는 1.64배와 38%였다. 이 에너지는 전체 시스템 전력이 아니라 cache·SPM·DRAM을 합친 memory subsystem 범위다.
+## 4. 어떤 계산을 어떻게 비교했나
 
-12nm post-place-and-route에서 추가 SPM LSQ와 control logic은 8,377µm²였다. L2 자체 증가는 0.31%, SPM LSQ까지 L2 면적 기준 총 overhead는 2.02%다.
+평가 대상은 2026년 10월 9일 제출된 arXiv v1이다. 성능은 단일 코어 gem5 컴퓨터 모형에서 계산했다. 일부 회로 면적·접근 에너지는 상용 12 nm 공정의 RTL 구현을 합성·배치배선한 post-layout 평가에서 얻었다. 완성된 CPU 실리콘에서 잰 성능 결과는 아니다.
 
-### 「에너지 감소」는 어떻게 계산했나
+논문은 7개 GEMM 모양을 사용해 LLaMA 계열의 attention·feed-forward 연산, BERT attention, 합성곱 형태 등을 다룬다. 각 모양마다 기본 캐시 설계와 CacheFlex 설계의 타일 크기를 따로 탐색했다. 양쪽의 코어·캐시·메모리 설정은 같고, CacheFlex 쪽에는 SPM 명령과 관련 제어·대기열이 추가된다.
 
-에너지는 전력과 다르다. 같은 전력으로도 작업을 더 빨리 끝내면 소비 에너지가 줄 수 있다. 이 연구의 공개 계산 스크립트는 L1·L2·L3의 읽기·쓰기 횟수에 각 접근의 에너지를 곱하고, SPM 접근과 DRAM 에너지를 더한다. 캐시의 유휴·누설 성분에는 유휴 전력과 측정 구간의 실행시간을 사용한다. 따라서 메모리 접근 횟수와 작업 시간이 모두 계산 결과에 영향을 준다.
+비교 기준은 일반 SVE 메모리 명령과 하드웨어 프리페치가 켜진 캐시-only 구성이다. <strong>프리페치(prefetch)</strong>는 데이터가 필요해지기 전에 미리 가져오는 기능이다. 논문은 L1 소프트웨어 프리페치와 Arm의 `PLDL2KEEP` L2 힌트도 시험했다. `PLDL2KEEP`는 재사용 힌트를 주지만 L2 상주를 고정하지 못한다. 하드웨어 프리페치가 켜진 상태에서 손으로 조정한 L1 프리페치는 추가 이득이 작아 별도 그래프에 표시하지 않았다.
 
-단위를 맞추는 일도 중요하다. 코드의 접근당 에너지는 nJ, 유휴 전력은 mW, DRAM 통계는 pJ로 주어져 최종 mJ로 환산된다. 또 SPM 읽기 통계는 명령 횟수인 반면 접근당 에너지의 기준은 64바이트 캐시라인이다. 벡터가 512·1024·2048비트일 때 코드가 읽기 항에 각각 1·2·4의 배수를 적용하는 이유다. 명령 한 번을 항상 캐시라인 한 개로 세면 넓은 벡터의 에너지 경계를 잘못 잡을 수 있다.
+또 한 가지 비교는 논문이 직접 <strong>이상화한 구성</strong>이라고 부른다. 하드웨어 프리페치 기반에 진짜 L2 line 고정을 더하고, L1에 설치되지 않도록 non-temporal(NT) load를 쓰는 모델이다. 이 방식의 실제 pin/unpin과 교체 정책 문제는 계산에서 제외했다. 따라서 실제 CPU에 그대로 구현된 경쟁 제품이나 선행 칩의 측정값으로 볼 수 없다.
 
-이 내용은 [검토한 커밋의 에너지 모형](https://github.com/JingqunZhang/cacheflex-ae/blob/96084d8f693a87e13efaa1bcd9fec24f52c57643/scripts/energy_model.py)에서 확인한 계산 방식이다. 이번에 시뮬레이터를 실행하거나 전체 보고값을 재산출한 것은 아니다. 코드가 합산하는 범위도 메모리 하위시스템이며, CPU의 모든 실행 유닛·보드·전원장치 소비를 측정한 값이 아니다.
+### 같은 GEMM을 두고 본 Fig. 8
 
-**확인 질문:** 캐시 접근 횟수가 같으면 계산 에너지도 같을까? 반드시 그렇지는 않다. 실행시간이 다르면 유휴 에너지 항이 달라질 수 있고, SPM·DRAM의 접근과 벡터 폭도 함께 맞춰야 한다.
+Fig. 8은 W3와 W5 두 모양을 VL=16, 단일 코어에서 비교한다. 각 구성은 최적 타일을 따로 찾았으므로 행렬 계산은 같지만 명령·타일 스케줄까지 고정한 A/B 테스트는 아니다.
 
-## 8. 반대 증거
+| 모양 | 행렬 크기 (M,K,N) | CacheFlex 전용 L2 읽기 경로: HW-PF 기준 | 이상화 L2 Pin+NT: HW-PF 기준 | CacheFlex: 이상화 L2 Pin+NT 기준 |
+|---|---|---:|---:|---:|
+| W3 | (256, 2048, 2048) | 1.90× | 1.17× | 1.63× |
+| W5 | (2048, 2048, 2048) | 1.40× | 1.05× | 1.34× |
 
-이득이 항상 크지는 않았다. 512-bit W6는 reused panel이 작아 1.05배에 그쳤다. FlashAttention에서도 per-head K+V가 L2의 절반 이하인 sequence length 1024 이하에서는 0~3.2%였다.
+HW-PF는 hardware-prefetch 기준이다. 이 표의 1.63×와 1.34×는 CacheFlex가 idealized L2 pinning+NT보다 빠른 정도이지, 일반 캐시 기준과의 수치가 아니다. CacheFlex의 전용 L2 읽기 경로와 이상화 비교군은 Fig. 8에서 각각 따로 모델링됐다.
 
-또한 성능은 gem5, 에너지는 RTL access energy와 simulated access count의 결합이다. 완성된 CPU 실리콘, multicore contention, 실제 OS scheduler, 다양한 application을 통합해 측정하지 않았다. 2048-bit SVE 구현도 현재 상용 CPU 전체를 대표하지 않는다.
+Fig. 7과 Fig. 8 숫자도 서로 바로 비교하면 안 된다. Fig. 7은 7가지 모양에 대해 각 설계를 독립적으로 튜닝한 커널 평가이고, Fig. 8은 같은 비교용 코드 조직 아래 W3·W5의 여러 대안을 놓은 별도 실험이다.
 
-## 9. 한계
+## 5. 논문이 보고한 결과
 
-평가는 single-core mechanism-level 범위다. Thread 간 SPM scheduling, shared contention, 보안·side-channel, 잦은 preemption의 spill/fill 비용은 검증되지 않았다. Graph analytics와 sparse linear algebra 확장은 전망일 뿐 측정 결과가 아니다.
+### GEMM 커널
 
-공개 artifact에는 gem5 model, benchmark, measurement와 재현 스크립트가 있지만 이번 작업에서는 직접 실행하지 않았다.
+7개 GEMM 모양의 커널 수준 기하평균(geometric mean) 성능 향상은 VL=4, 즉 512-bit에서 <strong>1.12×</strong>, VL=16, 즉 2048-bit에서 <strong>1.44×</strong>였다. 같은 조건에서 논문은 memory-subsystem energy가 각각 <strong>26%</strong>, <strong>40%</strong> 줄었다고 보고한다. 기하평균은 여러 모양별 결과를 하나의 대표값으로 모은 지표다. 이 값은 개별 모양마다 같은 속도 향상이 있었다는 뜻은 아니다.
 
-### 그림을 다시 그린 것과 실험을 다시 한 것은 다르다
+### 전체 추론 레이어
 
-고정 커밋의 README와 `reproduce.sh`는 제공된 측정자료를 읽어 그림 2·7·8·9와 표 IV를 생성하는 경로를 설명한다. 이 경로는 gem5나 벤치마크 실행 파일을 새로 빌드하지 않아도 된다. 스크립트가 성공하더라도 우선 확인한 것은 **공급된 자료에서 같은 그래프·표를 생성할 수 있는가**다.
+논문은 LLaMA-3.2-1B와 BERT-Base 형태의 입력 처리(prefill) 레이어도 평가했다. 여기서는 일반 캐시 기준(BL), CacheFlex(BL 대신 SPM을 쓰는 구성), FlashAttention을 적용한 일반 기준(BL+FA), CacheFlex와 FlashAttention을 함께 쓴 구성(CF+FA)을 구분한다. 전체 레이어 시간과 메모리 에너지는 구성 연산자들의 결과를 모델에 정의된 반복 횟수에 따라 합산한다.
 
-반면 시뮬레이터를 빌드하고 벤치마크를 다시 실행해 접근 횟수와 실행시간을 새로 얻는 경로는 별도다. 여기에는 실행 환경·설정·측정 구간과 결과의 대응을 확인하는 일이 더 필요하다. 그림의 재생성, 시뮬레이션 재실행, 실제 칩 측정은 세 단계로 구분해야 한다. 이번 검토에서는 스크립트를 읽었을 뿐 어느 경로도 실행하지 않았다.
+T=4096, VL=16에서 CacheFlex+FlashAttention은 일반 캐시 기준보다 BERT-Base 형태 레이어에서 최대 <strong>1.78×</strong> 빠르고, memory-subsystem energy를 <strong>45%</strong> 줄였다고 보고한다. LLaMA-3.2-1B 결과는 <strong>1.64×</strong>, <strong>38%</strong>다. 1.78×는 FlashAttention만 적용한 구성과의 비교가 아니다. 이 긴 BERT 조건은 표준 512 길이를 넘어선 BERT-Base 형태의 용량 확장 실험이며 기본 모델의 정확도나 실제 배포 성능을 검증한 결과가 아니다.
 
-**확인 질문:** 제공된 자료로 만든 막대그래프가 논문과 같다면 실제 CPU에서 성능을 재현한 것일까? 아니다. 입력 자료와 그리는 과정의 대응을 확인한 것이며, 새 실행이나 실리콘 측정을 대신하지 않는다.
+## 6. 에너지 수치는 어떻게 만들었나
 
-## 10. 실제 변화
+성능은 gem5에서 계산하고, 에너지는 시뮬레이션 접근 횟수와 물리 설계에서 얻은 접근당 에너지를 결합한다. 저자들은 L1·L2·L3와 SPM 회로의 RTL을 상용 12 nm 공정에 합성·배치배선하고, 스위칭 활동을 반영한 PrimePower 분석으로 접근당 동적 에너지와 누설 전력을 얻었다. DRAM 에너지는 gem5의 메모리 전력 모델을 썼다. 결과 범위는 <strong>cache+SPM+DRAM 메모리 하위시스템</strong>이며 CPU 전체, 보드, 전원장치 소비량이 아니다.
 
-설계 포인트는 “더 큰 cache”가 아니라 **자동관리 영역과 명시적 관리 영역을 실행 중 나누는 계약**이다. 더 넓은 vector를 쓸수록 residency와 movement를 ISA·OS·microarchitecture가 함께 다루는 일이 중요해진다.
+검토한 에너지 계산 스크립트는 gem5 통계의 접근 수에 캐시·SPM의 접근당 에너지를 곱하고, 유휴 전력과 시뮬레이션 구간을 사용해 캐시 유휴 에너지를 더한다. DRAM은 통계에 기록된 에너지를 합산한다. 에너지 단위가 섞여 있으므로 코드에서는 nJ(나노줄), mW(밀리와트), pJ(피코줄)를 mJ(밀리줄) 기준으로 환산한다.
 
-## 11. 다음 재검토 트리거
+SPM 읽기 횟수는 단순히 “명령 수=64 B line 수”로 두지 않는다. 계산 스크립트 설명에 따르면 `spm.ld1qd` 카운터는 명령 수를 세지만 접근당 에너지는 64 B line 기준이다. 따라서 VL=4/8/16에서 SPM 읽기 항에 1/2/4를 곱한다. 벡터 한 번의 데이터 폭이 각각 64/128/256 B이기 때문이다.
 
-MICRO 최종판 공개, artifact 독립 재현, FPGA·실리콘 프로토타입, multicore와 실제 OS 통합, irregular workload 결과가 나오면 결론을 갱신해야 한다. 특히 전체 chip area·power 기준 overhead와 context-switch가 잦은 환경의 tail latency가 필요하다.
+이 설명은 [검토한 커밋의 에너지 모형](https://github.com/JingqunZhang/cacheflex-ae/blob/96084d8f693a87e13efaa1bcd9fec24f52c57643/scripts/energy_model.py)과 논문 §IV를 따라 정리한 방법 설명이다. 이번 검토에서는 코드를 실행하거나 gem5를 다시 돌리지 않았고 원시 통계에서 결과를 재계산하지 않았다. 에너지 계산식을 새 논문 수식처럼 추가하지도 않았다.
 
-## 12. 출처
+<strong>확인 질문:</strong> 캐시 접근 수가 같으면 두 설계의 계산 에너지도 같을까? 아니다. 실행 시간이 다르면 유휴 에너지 항이 달라질 수 있고, SPM·DRAM 접근과 벡터 길이도 함께 봐야 한다.
 
-- [CacheFlex arXiv v1](https://arxiv.org/abs/2610.12940) — 15쪽, 2026-10-09 제출, MICRO 2026 게재 예정 표기.
-- [CacheFlex artifact](https://github.com/JingqunZhang/cacheflex-ae) — gem5 model, benchmark, measurements와 재현 스크립트.
-- 원문 확인 위치: §III architecture, §IV methodology, Figure 7–9, Table IV, §V-D area, §VII conclusion.
-- 이해관계·외부 산업 후원은 확인한 원문에서 별도 명시를 찾지 못했다. 없다고 단정하지 않는다.
+## 7. 효과가 작거나 경계를 넘는 경우
 
+작업집합이 작으면 기존 캐시에 이미 들어가므로 SPM 이득이 작을 수 있다. 논문은 LLaMA FlashAttention 커널에서 T=256일 때 per-head K+V가 64 KB이고, T=1024일 때 256 KB로 512 KB L2의 절반이었다고 보고한다. 이 두 조건의 CacheFlex 이득은 0–3.2%였다. 반면 더 큰 T에서는 작업집합이 L2 용량을 넘으면서 이득이 커질 수 있지만, 모든 연산에서 그런 결과가 나타난 것은 아니다.
+
+FlashAttention을 쓰지 않는 T=4096 attention에서는 CacheFlex의 속도 향상이 거의 없었다. 원문은 이 경우 T×T 점수 행렬을 <strong>32 MB</strong>라고 보고하며, 모델의 L2와 SPM보다 훨씬 크다고 설명한다. 원문 문장은 이 수치에 쓰인 점수 원소의 저장 자료형이나 MB/MiB 관례를 별도로 적지 않는다. 따라서 여기서는 저자가 보고한 32 MB를 그대로 인용한다. 이 숫자를 FP16 저장량이나 독립적으로 계산한 측정값으로 단정하지 않는다.
+
+흥미로운 점은 논문 설명에서 개별 GEMM의 재사용 타일은 L1에 들어가므로, 이 조건은 CacheFlex가 해결하려는 “스트리밍 데이터가 재사용 데이터를 밀어내는” 문제와 맞지 않는다는 것이다. FlashAttention은 전체 점수 행렬을 만들지 않아 데이터 이동을 줄이고, CacheFlex는 선택한 K/V 타일이 L2에서 교체되지 않도록 돕는다. 두 방법은 서로 다른 경로로 메모리 이동을 줄이는 조합이다.
+
+## 8. 기존 접근과 무엇이 다른가
+
+CacheFlex 논문의 Related Work는 유사한 선행 방향을 세 갈래로 요약한다. 아래 설명은 CacheFlex 저자들이 원문에서 정리한 차이이며, 각 선행 논문의 원문을 별도로 다시 검토한 비교 결과는 아니다.
+
+- Kalokerinos 등(2019)은 로컬 SRAM을 실행 중 L2 캐시와 직접 주소 지정 SPM으로 나누는 설계를 다뤘다. CacheFlex 논문은 이 프로토타입이 명령 순서대로 실행하는 in-order MicroBlaze와 사용자 수준의 원격 직접 메모리 접근(RDMA) 중심이었다고 설명한다.
+- Cong 등(2011)의 Adaptive Hybrid Cache는 L1 hybrid cache 일부를 SPM으로 바꾸고 SPM 블록을 cache set 사이에서 재배치하는 방식으로 소개된다.
+- SPX64(2021)는 데이터가 준비된 일부 명령을 먼저 실행할 수 있는 out-of-order(OoO) CPU 옆에 별도의 비일관성(non-coherent) scratchpad를 두고 OS 관리 기능을 제공한 선행 설계로 요약된다.
+
+저자들이 강조하는 차이는 기존 private L2 용량을 스레드 단위 SPM으로 되돌려 쓰고, 일반 coherent 메모리와 SPM 사이의 bridge 명령 및 dual-LSQ 순서 제어를 결합했다는 점이다. 논문은 이 세 접근과 CacheFlex를 같은 GEMM에서 직접 측정한 표로 비교하지 않는다.
+
+## 9. 면적·운영체제·보안의 실제 경계
+
+12 nm post-place-and-route에서 논문은 추가 SPM LSQ와 제어 로직 면적을 합쳐 8,377 µm²로 보고한다. L2 자체 면적 증가는 0.31%이고, SPM LSQ까지 포함한 overhead는 <strong>L2 기준 2.02%</strong>다. 이는 전체 CPU 칩 면적이 2.02% 증가한다는 뜻이 아니다.
+
+성능 평가는 single-core gem5의 mechanism-level 모델이다. 논문에 기술된 운영체제 호환·context-switch 프로토콜은 설계 제안이며, 실제 OS scheduler 통합 성능이나 잦은 preemption에서의 tail latency는 측정하지 않았다. 멀티코어 경쟁, side-channel 보안, FPGA/실리콘 프로토타입, 여러 실제 애플리케이션으로의 일반화도 이 평가에서 확인되지 않았다.
+
+공개 artifact는 gem5 모델·벤치마크·제공 측정값과 그래프 생성·시뮬레이션 재실행 경로를 구분한다. 제공된 측정값으로 그래프를 다시 그리는 일은 gem5를 빌드해 실험을 새로 실행하는 것과 다르다. 이번 검토에서는 artifact 계산 코드를 읽었을 뿐 어느 재현 경로도 실행하지 않았다.
+
+## 10. 정리
+
+CacheFlex의 핵심은 L2를 전부 더 크게 만드는 것이 아니다. 하드웨어가 자동 관리하는 cache 공간과 프로그램이 명시적으로 재사용 데이터를 고정하는 SPM 공간을 런타임에 나누는 설계다. 논문 결과는 넓은 SVE 벡터와 선택된 GEMM·prefill 작업에서의 가능성을 보였지만, 운영체제·보안·멀티코어·완성된 CPU로 이어지는 통합 효과는 다음 검증 과제로 남는다.
+
+<details>
+<summary>원문·코드·그림 출처와 검토 범위</summary>
+
+## 출처와 검토 경계
+
+- [CacheFlex arXiv v1](https://arxiv.org/abs/2610.12940) — 2026-10-09 제출본, 15쪽. 공식 arXiv 기록의 코멘트는 MICRO 2026 게재 예정이라고 밝힌다.
+- [MICRO 2026 공식 프로그램](https://www.microarch.org/micro59/program/) — CacheFlex를 Session 6D에 2026-11-04 일정으로 등재한다. 최종 proceedings 원문은 이 글의 검토 범위에 포함하지 않았다.
+- [CacheFlex artifact](https://github.com/JingqunZhang/cacheflex-ae) — 논문 부록은 제공 측정자료 기반 그림 생성과 시뮬레이션 재실행을 별도 절차로 안내한다.
+- 에너지 방법 설명은 위 pinned `energy_model.py`의 코드를 읽어 요약했다. 코드 실행이나 독립 수치 재계산은 하지 않았다.
+- Fig.1–9 원본은 이 글에 포함하지 않는다. 논문 1쪽의 IEEE 고지는 개인 이용 외 재사용, 특히 광고·홍보 목적 재게시와 저작권 구성요소 재사용에 별도 허가가 필요하다고 명시한다. 설명을 위한 시각물은 별도 미디어·권리 검토 뒤에만 선택한다.
+
+
+</details>

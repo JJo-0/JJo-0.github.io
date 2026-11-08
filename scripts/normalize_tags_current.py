@@ -533,5 +533,12 @@ POST_TAXONOMY.update({
     '2026-11-07-smartwatch-hypertension-screening-news.mdx': Taxonomy('health-lifestyle', 'wearable-hypertension-screening', 'research-report', ('frontier-candidate', 'wearable-health', 'hypertension', 'clinical-ai')),
 })
 
+# Register the three existing November 8 private drafts; article bytes and visibility unchanged.
+POST_TAXONOMY.update({
+    '2026-11-08-angptl3-base-editing-news.mdx': Taxonomy('health-lifestyle', 'in-vivo-base-editing', 'research-report', ('frontier-candidate', 'crispr-base-editing', 'cardiovascular-disease', 'gene-therapy')),
+    '2026-11-08-perovskite-led-1000nit-lifetime-news.mdx': Taxonomy('finance-industry', 'perovskite-led-stability', 'paper-review', ('frontier-one', 'perovskite-led', 'display-technology', 'device-stability')),
+    '2026-11-08-tfln-optical-memristor-news.mdx': Taxonomy('finance-industry', 'photonic-memristor', 'research-report', ('frontier-candidate', 'photonic-computing', 'lithium-niobate', 'neuromorphic-hardware')),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
