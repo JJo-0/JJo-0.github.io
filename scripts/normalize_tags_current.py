@@ -540,5 +540,12 @@ POST_TAXONOMY.update({
     '2026-11-08-tfln-optical-memristor-news.mdx': Taxonomy('finance-industry', 'photonic-memristor', 'research-report', ('frontier-candidate', 'photonic-computing', 'lithium-niobate', 'neuromorphic-hardware')),
 })
 
+# Register the November 9 posts using their existing frontmatter; retain draft flags.
+POST_TAXONOMY.update({
+    "2026-11-09-gait-foundation-model-news.mdx": Taxonomy("vision-perception-neuroscience", "gait-foundation-model", "paper-review", ("frontier-one", "gait-analysis", "foundation-model", "digital-biomarker")),
+    "2026-11-09-multishap-cross-modal-news.mdx": Taxonomy("ai-machine-learning", "multimodal-interpretability", "paper-review", ("frontier-candidate", "multimodal-ai", "interpretability", "shapley-values")),
+    "2026-11-09-redundancy-hopfield-memory-news.mdx": Taxonomy("ai-machine-learning", "associative-memory", "paper-review", ("frontier-candidate", "associative-memory", "information-theory", "hopfield-network")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
