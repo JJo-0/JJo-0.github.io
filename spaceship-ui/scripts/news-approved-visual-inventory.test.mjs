@@ -9,8 +9,8 @@ const catalogue = JSON.parse(fs.readFileSync(new URL('../site/news-media.json', 
 const read = (slug) => fs.readFileSync(new URL(`../site/content/posts/${slug}.mdx`, import.meta.url), 'utf8');
 const readByFile = (_slug, sourceFile) => fs.readFileSync(new URL(`../site/content/posts/${sourceFile}`, import.meta.url), 'utf8');
 const actual = loadApprovedVisualInventory(catalogue);
-assert.equal(actual.size, 24);
-assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 46);
+assert.equal(actual.size, 25);
+assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 48);
 assert.equal(actual.get('2026-10-09-sando-safe-dynamic-trajectory-news').mediaIds.length, 5);
 assert.deepEqual(actual.get('2026-10-07-deterministic-2d-semiconductor-nucleation-news').mediaIds, ['nucleation-current-fig1', 'nucleation-current-fig3', 'nucleation-current-fig4']);
 assert.equal([...inventory.entries].length, 9, 'October 25 batch remains nine entries');
@@ -83,6 +83,8 @@ for (const index of [3, 4, 5]) {
   alteredRights[nov5Inventory.entries[index].mediaIds[0]].rights = 'unverified-rights';
   assert.throws(() => validateVisualInventory(nov5Inventory, alteredRights, readByFile));
 }
-console.log('Approved visual inventory: PASS 21 unique posts and 41 exact media across four fixed batches; existing image checks retained');
+console.log('Approved visual inventory: PASS 25 unique posts and 48 exact media across six fixed batches; existing image checks retained');
 
 assert.deepEqual(actual.get("2026-10-14-cacheflex-l2-scratchpad-news").mediaIds, ["cacheflex-vector-width-unit"]);
+
+assert.deepEqual(actual.get("2026-10-10-endometriosis-spatial-neuroimmune-news").mediaIds, ["endo-vor-fig1a-spatial-workflow", "endo-vor-fig6a-coculture-model"]);

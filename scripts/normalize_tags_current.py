@@ -398,7 +398,7 @@ POST_TAXONOMY.update({
 POST_TAXONOMY.update({
     '2026-10-10-cuopt-mpdlp-multi-gpu-news.mdx': Taxonomy('software-engineering-cs', 'distributed-linear-optimization', 'research-report', ('frontier-one', 'linear-programming', 'gpu-computing', 'numerical-optimization')),
     '2026-10-10-neural-crest-nuclear-confinement-news.mdx': Taxonomy('health-lifestyle', 'developmental-cell-mechanics', 'paper-review', ('frontier-candidate', 'cell-mechanics', 'developmental-biology')),
-    '2026-10-10-endometriosis-spatial-neuroimmune-news.mdx': Taxonomy('health-lifestyle', 'spatial-transcriptomics-endometriosis', 'paper-review', ('frontier-candidate', 'spatial-transcriptomics', 'endometriosis')),
+    '2026-10-10-endometriosis-spatial-neuroimmune-news.mdx': Taxonomy('health-lifestyle', 'spatial-transcriptomics-endometriosis', 'paper-review', ('frontier-one', 'spatial-transcriptomics', 'endometriosis')),
 })
 
 # Register existing October 14–21 drafts without changing their metadata or visibility.
