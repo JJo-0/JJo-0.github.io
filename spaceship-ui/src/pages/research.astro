@@ -5,19 +5,20 @@ import MotionRuntime from '@/components/experience/MotionRuntime.astro';
 import ResearchMap from '@/components/experience/ResearchMap.astro';
 import '@/styles/world.css';
 import { RESEARCH_FOCUS } from '@/lib/research';
-import { getPostTypeLabel } from '@/lib/taxonomy.mjs';
-import { formatDate } from '@/lib/utils/date';
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import GroupedWritingList from '@/components/GroupedWritingList.astro';
+import { getPublishedPosts, getPostSeriesId } from '@/lib/utils/posts';
 import { getBreadcrumbSchema } from '@/lib/schemas';
 import { buildPostGraph } from '@/lib/experience/post-graph';
 
 const posts = await getPublishedPosts();
 const postGraph = buildPostGraph(posts);
 
+const technicalSeriesPosts = posts.filter((post) => getPostSeriesId(post) && !['biblical-studies', 'health-lifestyle'].includes(post.data.category) && !post.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate'));
+const featuredSeries = new Set(posts.filter((post) => post.data.researchFeatured).map(getPostSeriesId).filter(Boolean));
 const focusWithPosts = RESEARCH_FOCUS.map((focus) => ({
   ...focus,
   posts: posts
-    .filter((post) => post.data.researchArea === focus.id && post.data.researchFeatured)
+    .filter((post) => post.data.researchArea === focus.id && (post.data.researchFeatured || featuredSeries.has(getPostSeriesId(post))))
     .sort(
       (a, b) =>
         (a.data.researchOrder ?? Number.MAX_SAFE_INTEGER) -
@@ -40,6 +41,8 @@ const schema = getBreadcrumbSchema([
     <MotionRuntime scope="research" />
     <Breadcrumbs items={[{ name: 'Research', href: '/research' }]} />
 
+
+
     <div class="research-world-shell" data-world-shell>
       <aside class="research-world-sticky" aria-label="Interactive research map">
         <ResearchMap graph={postGraph} />
@@ -55,10 +58,17 @@ const schema = getBreadcrumbSchema([
             <p class="experience-role" data-motion="hero-copy">Problem → Method → Evidence</p>
             <p class="research-experience-copy" data-motion="hero-copy">
               로보틱스·AI·컴퓨터 비전에서 공부하고 실험한 내용을 공개 가능한 기술 글과 연구 노트로
-              연결합니다. 왼쪽 지도는 장식이 아니라 현재 읽고 있는 연구축과 같은 상태를 공유합니다.
+              연결합니다. 시리즈는 묶음을 펼쳐 첫 편부터 순서대로 읽을 수 있습니다.
             </p>
           </div>
         </header>
+
+    <section class="research-series-index" aria-labelledby="research-series-heading">
+      <p class="experience-section-label">Learning Series</p>
+      <h2 id="research-series-heading">시리즈로 차근차근 읽기</h2>
+      <p>관심 있는 묶음을 펼치면 각 편을 학습 순서대로 찾을 수 있습니다.</p>
+      <GroupedWritingList posts={technicalSeriesPosts} />
+    </section>
 
         <div class="research-focus-stack">
           {
@@ -80,41 +90,14 @@ const schema = getBreadcrumbSchema([
                     </h2>
                     <p class="research-focus-description">{focus.description}</p>
                     <p class="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                      {focus.posts.length} curated public records
+                      {focus.posts.length} public records
                     </p>
                   </div>
 
                   <div>
-                    <p class="research-notes-label">Selected public evidence</p>
+                    <p class="research-notes-label">시리즈와 연구 기록</p>
                     {focus.posts.length > 0 ? (
-                      focus.posts.map((post) => {
-                        const slug = getPostSlug(post);
-                        return (
-                          <a
-                            href={`/posts/${slug}`}
-                            class="research-note-link"
-                            data-post-transition-slug={slug}
-                          >
-                            <div class="flex items-start justify-between gap-5">
-                              <div class="min-w-0">
-                                <div class="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                                  <span>{getPostTypeLabel(post.data.type)}</span>
-                                  <span aria-hidden="true">·</span>
-                                  <span>{post.data.subcategory}</span>
-                                </div>
-                                <h3 data-post-transition-title>{post.data.title}</h3>
-                                <p class="line-clamp-2">{post.data.description}</p>
-                              </div>
-                              <time
-                                datetime={post.data.pubDate.toISOString()}
-                                class="shrink-0 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground tabular-nums"
-                              >
-                                {formatDate(post.data.pubDate)}
-                              </time>
-                            </div>
-                          </a>
-                        );
-                      })
+                      <GroupedWritingList posts={focus.posts} />
                     ) : (
                       <p class="py-4 text-sm text-muted-foreground">
                         관련 공개 기록을 정리하고 있습니다.
@@ -146,3 +129,9 @@ const schema = getBreadcrumbSchema([
     </section>
   </div>
 </Layout>
+
+<style>
+  .research-series-index { margin:2rem 0 3rem;min-width:0; }
+  .research-series-index h2 { font-size:clamp(1.7rem,4vw,2.5rem);font-weight:800;letter-spacing:-.03em;margin:.7rem 0; }
+  .research-series-index > p:not(.experience-section-label) { color:var(--color-muted-foreground);line-height:1.7; }
+</style>

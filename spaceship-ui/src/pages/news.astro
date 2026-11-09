@@ -19,6 +19,26 @@ const newsPosts = (await getPublishedPosts())
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() ||
     (mediaOrder.get(getPostSlug(a)) ?? 1000) - (mediaOrder.get(getPostSlug(b)) ?? 1000));
 const dates = [...new Set(newsPosts.map((post) => formatDateKey(post.data.pubDate, post.data.publicationTimeZone)))];
+// Navigation facets use existing tags/subcategories; article taxonomy stays unchanged.
+const fieldLabels: Record<string, string> = {
+  'ai-machine-learning': 'AI·머신러닝',
+  'vision-perception-neuroscience': '비전·지각·뇌과학',
+  'robotics-embedded': '로봇·임베디드',
+  'software-engineering-cs': '소프트웨어·컴퓨터과학',
+  'research-methods-tools': '연구 방법·도구',
+  'health-lifestyle': '바이오·의학',
+  semiconductor: '반도체·컴퓨팅 하드웨어',
+  energy: '에너지·배터리·환경',
+  'finance-industry': '산업·기업',
+};
+const fieldFor = (post: (typeof newsPosts)[number]) => {
+  const topics = [post.data.subcategory, ...post.data.tags].join(' ');
+  if (/semiconductor/.test(topics) || (['finance-industry', 'software-engineering-cs'].includes(post.data.category) && /transistor|chip-|memory|photonics|optoelectronic|spintronic|ferroelectric|oled|perovskite-led|quantum-computing|quantum-hardware|compute-in-memory/.test(topics))) return 'semiconductor';
+  if (/energy|batter|power-grid|photovoltaic|solar-|hydrogen|carbon-capture|methane|climate|grid-/.test(topics)) return 'energy';
+  return post.data.category;
+};
+const fields = Object.entries(fieldLabels).map(([id, label]) => ({ id, label, posts: newsPosts.filter((post) => fieldFor(post) === id) })).filter((field) => field.posts.length > 0);
+
 const schema = getBreadcrumbSchema([{ name: 'News', url: new URL('/news', Astro.site).toString() }]);
 ---
 <Layout title="News" description="AI·바이오·에너지·반도체 연구를 기초 개념과 수식, 원문 그림으로 읽는 Frontier One." schema={schema} lang="ko" adsEnabled={false}>
@@ -28,6 +48,22 @@ const schema = getBreadcrumbSchema([{ name: 'News', url: new URL('/news', Astro.
       <p>Latest &amp; Follow-up</p>
       <h1 id="latest-news-heading">Frontier One</h1>
     </header>
+    <nav class="news-browse" aria-label="NEWS 탐색">
+      <a href="#news-by-date">날짜순으로 보기</a>
+      <a href="#news-by-field">분야별로 찾기</a>
+    </nav>
+    <details id="news-by-field" class="news-fields">
+      <summary>분야별로 모아보기 <span>{fields.length}개 분야 · {newsPosts.length}편</span></summary>
+      <div class="news-field-grid">
+        {fields.map((field) => (
+          <details class="news-field" data-news-field={field.id}>
+            <summary>{field.label} <span>{field.posts.length}편</span></summary>
+            <ul>{field.posts.map((post) => <li><a href={`/posts/${getPostSlug(post)}/`}>{post.data.title}</a><time datetime={post.data.pubDate.toISOString()}>{formatDateKey(post.data.pubDate, post.data.publicationTimeZone)}</time></li>)}</ul>
+          </details>
+        ))}
+      </div>
+    </details>
+    <h2 id="news-by-date" class="news-date-heading">날짜순으로 읽기</h2>
     {dates.map((date) => (
       <section class="news-date" data-news-date={date} aria-labelledby={`date-${date}`}>
         <h2 id={`date-${date}`}><time datetime={date}>{date.replaceAll('-', '.')}</time></h2>
@@ -39,6 +75,19 @@ const schema = getBreadcrumbSchema([{ name: 'News', url: new URL('/news', Astro.
   </section>
 </Layout>
 <style>
+  .news-browse { display:flex;flex-wrap:wrap;gap:1rem;padding:1.2rem 0;font-size:.9rem;font-weight:700; }
+  .news-browse a { text-decoration:underline;text-underline-offset:4px; }
+  .news-fields { border:1px solid var(--color-border);border-radius:.75rem;padding:1rem;scroll-margin-top:7rem; }
+  .news-fields summary { cursor:pointer;font-weight:700;line-height:1.7; }
+  .news-fields summary span { display:inline-block;font-size:.75rem;color:var(--color-muted-foreground);margin-left:.5rem; }
+  .news-field-grid { display:grid;gap:.7rem;margin-top:1rem; }
+  .news-field { padding:.7rem 0;border-top:1px solid var(--color-border);min-width:0; }
+  .news-field ul { list-style:none;padding:0;margin:.7rem 0 0; }
+  .news-field li { display:flex;flex-wrap:wrap;justify-content:space-between;gap:.3rem 1rem;padding:.7rem 0; }
+  .news-field li a { flex:1 1 16rem;font-size:.9rem;line-height:1.6;overflow-wrap:anywhere; }
+  .news-field li a:hover { text-decoration:underline; }
+  .news-field time { font-size:.75rem;color:var(--color-muted-foreground); }
+  .news-date-heading { font-size:1.2rem;font-weight:800;margin-top:2.5rem;scroll-margin-top:7rem; }
   .news-page { max-width:64rem; }
   .news-heading { padding:2rem 0 2.3rem;border-top:1px solid var(--color-border);border-bottom:1px solid var(--color-border); }
   .news-heading p { font-size:.7rem;letter-spacing:.19em;text-transform:uppercase;font-weight:800;color:var(--color-muted-foreground); }
