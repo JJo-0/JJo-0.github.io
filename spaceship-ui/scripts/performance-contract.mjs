@@ -127,8 +127,8 @@ if (fs.existsSync(homepageGif) && fs.statSync(homepageGif).size > 1.35 * 1024 * 
 }
 
 // A small on-screen animation should not download the 480px source GIF.
-requireText(homeSource, 'src/pages/index.astro', 'srcset="/image/mouse_surprised.webp"');
-const homepageWebp = path.join(root, 'site', 'assets', 'image', 'mouse_surprised.webp');
+requireText(homeSource, 'src/pages/index.astro', 'srcset="/assets/profile/mouse_surprised.webp"');
+const homepageWebp = path.join(root, 'site', 'assets', 'assets', 'profile', 'mouse_surprised.webp');
 if (!fs.existsSync(homepageWebp) || fs.statSync(homepageWebp).size > 450 * 1024) {
   issues.push('homepage animated WebP must exist and stay below 450 KiB');
 }
