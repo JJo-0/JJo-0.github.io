@@ -24,15 +24,20 @@ OAuth 범위는 analytics.readonly와 webmasters.readonly입니다. 토큰은 �
 
 GitHub Actions는 **GA4 읽기 전용 서비스 계정**으로 집계값만 가져옵니다. 관리자 OAuth와 별도입니다.
 
-1. Google Cloud에서 서비스 계정을 만들고 Analytics Data API를 활성화합니다.
-2. Google Analytics의 기존 속성에 서비스 계정 이메일을 **Viewer**로 추가합니다.
-3. GitHub 저장소 Actions → **Secrets**에 GA4_SERVICE_ACCOUNT_JSON 을 추가합니다. 서비스 계정 JSON 전체 (또는 Base64로 인코딩한 JSON)를 입력합니다. Variables나 리포지터리 파일에 키를 절대 입력하지 않습니다.
-4. 앞서 설명한 PUBLIC_GA4_PROPERTY_ID 변수도 필요합니다.
-5. Deploy Blog to Pages 워크플로는 main push, 수동 실행 및 매일 한국시간 08:30 예정 실행에서 sync-popular-analytics.mjs 스크립트를 실행한 뒤 Astro 빌드를 배포합니다. GitHub 예약 실행은 지연될 수 있습니다.
+1. Google Cloud에서 전용 서비스 계정을 만듭니다. 프로젝트 Editor 등 광범위한 역할이나 JSON 비밀키는 필요하지 않습니다.
+2. Google Analytics의 기존 속성에 서비스 계정 이메일을 **Viewer**로 추가합니다. Search Console 원시 데이터는 자동 집계 계정에 제공하지 않습니다.
+3. Workload Identity Federation 풀과 GitHub OIDC 공급자를 만들고, 신뢰 조건을 저장소의 **숫자 repository_id·repository_owner_id**, `refs/heads/main`, `.github/workflows/blog-pages-deploy.yml@refs/heads/main`으로 제한합니다. 이름만 검사하면 삭제 후 재사용 위험이 있습니다.
+4. 이 조건을 통과하는 GitHub 주체에만 해당 서비스 계정의 `roles/iam.workloadIdentityUser`를 부여합니다. 프로젝트 전체 역할이나 `Service Account Token Creator`는 부여하지 않습니다.
+5. 저장소 Actions **Variables**에 `GA4_WORKLOAD_IDENTITY_PROVIDER`(전체 공급자 리소스 이름), `GA4_SERVICE_ACCOUNT_EMAIL`, `PUBLIC_GA4_PROPERTY_ID`를 등록합니다. 모두 비밀키가 아닌 식별자입니다.
+6. Google Cloud에서 Analytics Data API, IAM API, IAM Service Account Credentials API, Security Token Service API를 활성화합니다.
+7. Deploy Blog to Pages는 Google 공식 인증 액션을 고정 커밋으로 사용하여 Analytics 읽기 전용 범위의 **10분짜리 토큰**을 발급받습니다. 토큰은 집계 단계의 환경변수로만 전달합니다. 자격증명 파일 생성과 공통 환경변수 내보내기를 꺼 두며, Astro 빌드에는 토큰을 전달하지 않습니다.
+8. main push, 수동 실행 및 매일 한국시간 08:30 예정 실행에서 집계한 뒤 Astro 빌드를 배포합니다. GitHub 예약 실행은 지연될 수 있습니다.
+
+장기 JSON 키와 `GA4_SERVICE_ACCOUNT_JSON`은 사용하지 않습니다. 관리자 OAuth는 별도로 본인의 Google 계정에서 읽기 권한을 요청합니다. WIF 또는 API 오류 시 사이트 배포는 계속되지만, 빈 통계를 실제 연결 성공이라고 표시하지 않습니다.
 
 공개 파일 URL은 https://jjo-0.github.io/analytics/popular.json 입니다. 공개 데이터는 version, updatedAt, window, posts의 path/title/views로 제한합니다. GA4 screenPageViews를 pagePath/pageTitle 기준으로 조회하며 /posts/... 와 /en/posts/...의 글 경로만 남기고 상위 최대 5개만 게시합니다. 검색어 등 상세 개인 분석 데이터를 공개하지 않습니다.
 
-Google 자격증명 또는 API가 실패하면 배포는 계속되고, UI는 통계 준비 중/일시적 불가를 표시합니다. 과거에 추적하지 않은 방문량을 소급 생성할 수는 없습니다.
+Google 단기 인증 또는 API가 실패하면 배포는 계속되고, UI는 통계 준비 중/일시적 불가를 표시합니다. 과거에 추적하지 않은 방문량을 소급 생성할 수는 없습니다.
 
 ## 통계 해석·검증
 
@@ -68,3 +73,17 @@ GitHub Pages의 정적 HTML과 JavaScript, `PUBLIC_` 식별자는 공개됩니�
 - [GitHub Pages의 정적 호스팅](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
 - [Google 브라우저 토큰 모델](https://developers.google.com/identity/oauth2/web/guides/use-token-model)
 - [서비스 계정 키 보호](https://docs.cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys)
+
+## 이 블로그에 확인된 연결 대상
+
+- 전용 Google Cloud 프로젝트: `jjo-blog-analytics` (번호 `73744091730`)
+- GA4 숫자 속성: `486835586` / 측정 ID: `G-JL4J2492X6`
+- Search Console URL-prefix 속성: `https://jjo-0.github.io/`
+- GitHub 저장소 숫자 ID: `533363511`, 소유자 숫자 ID: `76779256`
+
+위 값은 공개 식별자이며, 실제 API 조회가 성공했다는 증거와는 구별합니다. 데이터가 5개보다 적으면 존재하는 글만 표시하며, Search Console이 0건을 반환하면 실제 0건으로 표시합니다. 방문 기록을 만들어 채우지 않습니다.
+
+- [배포 파이프라인의 비밀키 없는 인증](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
+- [Google 공식 GitHub 인증 액션](https://github.com/google-github-actions/auth)
+
+인증 오류는 통계 0건과 다릅니다. HTTP 401이면 메모리의 인증 상태와 표시된 보고서를 즉시 지우고 Google 재로그인을 안내합니다. HTTP 403이면 API 활성화와 속성 권한을 확인합니다. 진단에는 제한된 Google 오류 코드만 표시하고 응답 전문·헤더·토큰은 출력하지 않습니다.

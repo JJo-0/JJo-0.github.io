@@ -278,7 +278,16 @@ const dashboardConfig = JSON.stringify({
       cache: 'no-store',
       signal,
     });
-    if (!response.ok) throw new Error('Google API HTTP ' + response.status + ' (속성 ID·API 활성화·계정 권한 확인)');
+    if (!response.ok) {
+      // Only Google's bounded error codes are shown; never echo response messages,
+      // headers or tokens into the page or logs.
+      const payload = await response.json().catch(() => null);
+      const reason = payload?.error?.details?.find((detail: { reason?: unknown }) =>
+        typeof detail.reason === 'string' && /^[A-Z_]{1,80}$/.test(detail.reason)
+      )?.reason;
+      const hint = response.status === 401 ? 'Google 인증 세션을 다시 연결해 주세요.' : '속성 ID·API 활성화·계정 권한을 확인해 주세요.';
+      throw Object.assign(new Error('Google API HTTP ' + response.status + (reason ? ' [' + reason + ']' : '') + ' · ' + hint), { status: response.status });
+    }
     return response.json();
   }
 
@@ -400,6 +409,11 @@ const dashboardConfig = JSON.stringify({
 
     const [ga, queries, pages] = await Promise.allSettled([gaRequest, queriesRequest, pagesRequest]);
     if (request.signal.aborted || epoch !== reportEpoch || activeRoot !== root || !accessToken) return;
+    const authFailure = [ga, queries, pages].find((result) => result.status === 'rejected' && result.reason?.status === 401);
+    if (authFailure?.status === 'rejected') {
+      clearReportSession(root, authFailure.reason.message);
+      return;
+    }
     if (ga.status === 'fulfilled') {
       renderGA(root, config, ga.value);
       status(root, '방문 통계를 갱신했습니다. Search Console의 검색 유입 수치는 아래에서 확인할 수 있습니다.');
