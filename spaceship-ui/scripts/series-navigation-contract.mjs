@@ -74,4 +74,35 @@ for (const slug of ['deep-search-gemini', 'deep-search-travel-prompt']) {
   assert(!index.includes(`2025-05-23-${slug}`));
   assert(read(`dist/posts/2025-05-23-${slug}/index.html`).includes(`data-retired-post="${slug}"`));
 }
+// Every rendered primary lecture slide has a matching heading and table-of-contents target.
+const robotSlugs = fs.readdirSync('dist/posts').filter(slug => /^rl-robot-learning-ch\d{2}-/.test(slug)).sort();
+assert.equal(robotSlugs.length, 11);
+for (const [index, slug] of robotSlugs.entries()) {
+  const tree = nodes(parse(read(`dist/posts/${slug}/index.html`)));
+  const readingNavigation = tree.find(n => attr(n, 'data-series-reading-navigation') !== undefined);
+  assert(readingNavigation, `Missing reading links at ${slug}`);
+  const links = nodes(readingNavigation).filter(n => n.tagName === 'a');
+  assert(links.some(n => attr(n, 'href') === '#main-content'));
+  const previous = links.find(n => attr(n, 'rel') === 'prev');
+  const next = links.find(n => attr(n, 'rel') === 'next');
+  assert.equal(previous ? attr(previous, 'href') : undefined, index > 0 ? `/posts/${robotSlugs[index - 1]}/` : undefined);
+  assert.equal(next ? attr(next, 'href') : undefined, index < 10 ? `/posts/${robotSlugs[index + 1]}/` : undefined);
+  const toc = tree.find(n => n.tagName === 'nav' && attr(n, 'aria-label') === 'On this page');
+  const headings = tree.filter(n => ['h2', 'h3'].includes(n.tagName) && /^#?\s*P\d{3} ·/.test(text(n).trim()));
+  const slides = tree.filter(n => attr(n, 'data-lecture-slide'));
+  assert.equal(headings.length, slides.length, `One heading per slide at ${slug}`);
+  for (const slide of slides) {
+    const page = attr(slide, 'data-lecture-slide');
+    const heading = headings.find(n => text(n).includes(page + ' ·'));
+    assert(heading && attr(heading, 'id'));
+    assert(nodes(toc).some(n => attr(n, 'href') === '#' + attr(heading, 'id')), `Missing toc link for ${slug} ${page}`);
+  }
+}
+const firstRobotPost = nodes(parse(read('dist/posts/rl-robot-learning-ch01-introduction/index.html')));
+assert.equal(firstRobotPost.filter(n => attr(n, 'data-supplementary-figure') !== undefined).length, 5);
+for (const filename of ['ucl-agent-components.png', 'ntu-actor-observation-action.png']) {
+  const image = firstRobotPost.find(n => attr(n, 'src')?.endsWith(filename));
+  assert(image && Number(attr(image, 'width')) > 0 && Number(attr(image, 'height')) > 0);
+}
+
 console.log('series-navigation-contract: PASS collapsed groups, Acts source guides, inline Ezekiel reports, full-report read times/image geometry, retired posts absent from public collection');

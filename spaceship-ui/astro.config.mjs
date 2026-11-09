@@ -11,6 +11,7 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeExternalLinks from 'rehype-external-links';
 import remarkEmoji from 'remark-emoji';
+import robotLearningSlideHeadings from './src/lib/remark/robot-learning-slide-headings.mjs';
 import modernAiPartOneReaderCleanup from './src/lib/remark/modern-ai-part1-reader-cleanup.mjs';
 import modernAiPartTwoReaderCleanup from './src/lib/remark/modern-ai-part2-reader-cleanup.mjs';
 import modernAiPartThreeReaderCleanup from './src/lib/remark/modern-ai-part3-reader-cleanup.mjs';
@@ -69,6 +70,7 @@ export default defineConfig({
     },
     remarkPlugins: [
       remarkEmoji,
+      robotLearningSlideHeadings,
       modernAiPartOneReaderCleanup,
       modernAiPartTwoReaderCleanup,
       modernAiPartThreeReaderCleanup,
