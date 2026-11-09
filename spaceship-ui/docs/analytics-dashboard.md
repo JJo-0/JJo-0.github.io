@@ -85,3 +85,5 @@ GitHub Pages의 정적 HTML과 JavaScript, `PUBLIC_` 식별자는 공개됩니�
 
 - [배포 파이프라인의 비밀키 없는 인증](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
 - [Google 공식 GitHub 인증 액션](https://github.com/google-github-actions/auth)
+
+인증 오류는 통계 0건과 다릅니다. HTTP 401이면 메모리의 인증 상태와 표시된 보고서를 즉시 지우고 Google 재로그인을 안내합니다. HTTP 403이면 API 활성화와 속성 권한을 확인합니다. 진단에는 제한된 Google 오류 코드만 표시하고 응답 전문·헤더·토큰은 출력하지 않습니다.

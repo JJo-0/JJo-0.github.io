@@ -41,6 +41,7 @@ export async function auditAnalytics(cdp, sessionId) {
       if(!/analyticsdata.googleapis.com|www.googleapis.com\\/webmasters/.test(String(url)))return test.originalFetch(url,options);
       test.requests.push({url:String(url),authorization:options.headers.Authorization,signal:options.signal});
       const body=JSON.parse(options.body);
+      if(test.unauthorized)return Promise.resolve(new Response(JSON.stringify({error:{details:[{reason:'CREDENTIALS_MISSING'}]}}),{status:401,headers:{'Content-Type':'application/json'}}));
       const value=String(url).includes('analyticsdata')?{rows:[{dimensionValues:[{value:'/posts/rl-robot-learning-ch01-introduction'}],metricValues:[{value:'12'}]}]}:
         {rows:[{keys:[body.dimensions[0]==='query'?'<img src=x onerror="window.__analyticsXss=true">':'https://jjo-0.github.io/posts/rl-robot-learning-ch01-introduction/'],clicks:2,impressions:20,ctr:0.1}]};
       const response=()=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
@@ -60,6 +61,13 @@ export async function auditAnalytics(cdp, sessionId) {
   await evaluate(cdp, sessionId, `document.querySelector('[data-admin-logout]').click()`);
   assert(await evaluate(cdp, sessionId, empty), 'Logout erases private report DOM');
   assert.equal(await evaluate(cdp, sessionId, `window.__analyticsTest.revoked`), 1);
+
+  await evaluate(cdp, sessionId, `window.__analyticsTest.unauthorized=true`);
+  await login();
+  await waitExpression(cdp, sessionId, `document.querySelector('[data-admin-status]').textContent.includes('CREDENTIALS_MISSING')`, 'Unauthorized Google session prompts reconnect');
+  assert(await evaluate(cdp, sessionId, empty), '401 discards invalid token and private report DOM');
+  assert(await evaluate(cdp, sessionId, `!document.querySelector('[data-admin-login]').hidden`), '401 restores login control');
+  await evaluate(cdp, sessionId, `window.__analyticsTest.unauthorized=false`);
 
   await evaluate(cdp, sessionId, `window.__analyticsTest.defer=true`);
   await login();
