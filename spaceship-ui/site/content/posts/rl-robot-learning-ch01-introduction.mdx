@@ -72,11 +72,15 @@ Marc Pollefeys는 ETH 컴퓨터과학과와 Microsoft의 공간 AI 연구를 연
 
 모델이 올바른 이동 방향을 골라도 좌표계, 단위, 명령 주기가 맞지 않으면 로봇은 엉뚱하게 움직일 수 있다. 모델과 실행 시스템을 함께 공부해야 하는 이유다.
 
+<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/ucl-agent-components.png" alt="DeepMind와 UCL 원본 슬라이드. 에이전트의 상태와 정책, 선택적으로 두는 가치 추정과 모델을 나란히 표시한다." caption="DeepMind × UCL 2021, 26쪽 — 정책·가치 추정·모델이 에이전트 안에서 맡는 역할." source="https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=26" credit="Hado van Hasselt, DeepMind × UCL 2021" label="보충 강의 · DeepMind × UCL" width={1400} height={788} />
+
 [DeepMind/UCL 1강 33:59–36:21](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2039s)은 정책, 가치 함수, 환경 모델을 나누어 설명한다. 정책은 행동을 고르고, 가치 함수는 앞으로 얻을 보상의 합을 예상하며, 환경 모델은 행동 뒤의 변화를 예상한다. 가령 컵을 오른쪽으로 밀지 결정하는 것이 정책, 그 선택이 최종 정리에 얼마나 도움이 될지 평가하는 것이 가치, 컵이 어디로 이동할지 예측하는 것이 모델이다. 에이전트가 반드시 세 가지를 모두 학습해야 하는 것은 아니다. 무작위로 행동하는 규칙도 정책이며, 가치 함수나 학습된 환경 모델 없이 동작하는 정책도 있다.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/ntu-actor-observation-action.png" alt="NTU 원본 슬라이드. 관측을 입력받은 Actor가 행동을 출력하고 환경에서 보상과 새 관측을 받는다." caption="NTU ML 2021, 4쪽 — 관측을 행동으로 바꾸는 함수인 Actor와 환경의 연결." source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/drl_v5.pdf#page=4" credit="Hung-yi Lee, NTU ML 2021 및 포함 이미지의 해당 권리자" label="보충 강의 · NTU" width={1400} height={1050} />
 
 [NTU 기초 강의 5:00–6:28](https://www.youtube.com/watch?v=0oucZNfBXlI&t=300s)에서 부르는 **Actor**도 관측을 받아 행동을 내는 함수라는 출발점에서 이해할 수 있다. 서로 다른 강의의 용어를 만났을 때 이름보다 입출력을 먼저 대응시키면 된다. 여기서 배우려는 대상은 정답 문장 하나가 아니라, 환경과 반복해서 상호작용하는 행동 규칙이다.
 
-<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/ntu-policy-network.png" alt="게임 화면 픽셀이 정책 신경망에 들어가 왼쪽 0.7, 오른쪽 0.2, 발사 0.1의 행동 분포를 내는 NTU 원본 도식" caption="NTU DRL 11쪽 — 화면에서 행동 분포를 계산하는 정책 신경망. 원본 도식 부분 발췌." source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/drl_v5.pdf#page=11" credit="Hung-yi Lee, NTU ML 2021 및 포함 이미지의 해당 권리자" width={1372} height={506} />
+<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/ntu-policy-network.png" alt="게임 화면 픽셀이 정책 신경망에 들어가 왼쪽 0.7, 오른쪽 0.2, 발사 0.1의 행동 분포를 내는 NTU 원본 도식" caption="NTU DRL 11쪽 — 화면에서 행동 분포를 계산하는 정책 신경망. 원본 도식 부분 발췌." source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/drl_v5.pdf#page=11" credit="Hung-yi Lee, NTU ML 2021 및 포함 이미지의 해당 권리자" width={1372} height={506} label="보충 강의 · NTU" />
 
 그림을 왼쪽부터 읽으면 화면의 픽셀, 학습할 신경망, 가능한 행동과 확률이 이어진다. 여기서 0.7은 ‘왼쪽으로 가면 보상 0.7점을 받는다’는 뜻이 아니다. 현재 화면에서 왼쪽 행동을 선택할 확률로 읽는다. [NTU 영상 13:27–15:24](https://www.youtube.com/watch?v=0oucZNfBXlI&t=807s)도 분류 신경망과 비슷한 입출력 구조에서 출발한다. 하지만 분류에서 고양이라는 정답을 주는 것과, 행동의 장기 결과로 정책을 개선하는 것은 학습 신호가 다르다.
 
@@ -252,7 +256,7 @@ Mees가 보여 준 PR2 실험에서는 점군으로 머그잔의 모양과 위�
 
 우리의 숟가락 예제에서도 손이 숟가락을 가리면 현재 영상만으로 잡았는지 놓쳤는지 판단하기 어렵다. 직전 영상, 집게가 닫힌 정도, 힘 센서 등을 함께 쓰면 판단에 필요한 정보를 보완할 수 있다. 여기서 **에이전트의 내부 상태**는 이렇게 이용 가능한 정보를 다음 순간으로 이어가기 위한 표현이다. 물리 세계 전체의 상태와 카메라 한 장, 모델 내부의 기억을 같은 뜻의 ‘상태’로 섞어 쓰지 않는 것이 중요하다.
 
-<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/ucl-observation-aliasing.png" alt="서로 다른 미로 위치에 똑같이 보이는 국소 관측 두 개가 표시된 UCL 원본 그림" caption="DeepMind/UCL 1강 38쪽 — 위치는 다른데 로봇이 보는 작은 주변 모습은 같다. 원본 미로 부분 발췌." source="https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=38" credit="Hado van Hasselt, DeepMind × UCL 2021" width={640} height={680} maxWidth={420} />
+<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/ucl-observation-aliasing.png" alt="서로 다른 미로 위치에 똑같이 보이는 국소 관측 두 개가 표시된 UCL 원본 그림" caption="DeepMind/UCL 1강 38쪽 — 위치는 다른데 로봇이 보는 작은 주변 모습은 같다. 원본 미로 부분 발췌." source="https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=38" credit="Hado van Hasselt, DeepMind × UCL 2021" width={640} height={680} maxWidth={420} label="보충 강의 · DeepMind × UCL" />
 
 [UCL 영상 47:31–51:08](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2851s)의 미로에서는 로봇이 자기 주변의 작은 칸들만 본다. 위 그림의 밝게 드러난 두 영역은 서로 다른 위치지만 같은 국소 모양을 보여준다. 오른쪽 위에서 왼쪽 위의 목표로 가려면 아래로 돌아가야 하는 반면, 왼쪽 통로에서는 위로 가야 한다. 현재 영상만 입력으로 쓰는 결정적 정책은 두 장면을 구별할 정보가 없으므로 같은 행동을 내게 되고, 두 상황 모두에서 최단 경로 행동을 선택할 수 없다.
 
@@ -284,7 +288,7 @@ Mees가 보여 준 PR2 실험에서는 점군으로 머그잔의 모양과 위�
 
 [ETH 1강 50:12–52:20](https://www.youtube.com/watch?v=X0k14u6pSxw&t=3012s)의 전개는 로봇 정책의 이미지·지시·행동을 장면 설명 모델의 이미지·질문·문장과 대응시킨다. 입력과 출력을 시퀀스로 다룬다는 계산 틀을 공유하면 영상·언어 분야의 학습 기법을 가져올 수 있다. 다만 예측한 행동은 다시 세계를 바꾸고 다음 관측을 만든다. 예를 들어 ‘집게 닫기’를 맞혔더라도 닫는 시점이 늦어 숟가락을 놓쳤다면, 다음 단계에서는 성공 시연과 다른 입력을 처리해야 한다. 행동 토큰의 예측 정확도와 작업 전체의 성공률을 함께 보는 이유다.
 
-<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/rt2-figure1.png" alt="시각 언어 데이터와 로봇 행동 데이터를 함께 미세조정하고 출력 토큰을 행동으로 복원해 폐루프 제어하는 RT-2 그림 1" caption="RT-2 논문 그림 1 — 공동 미세조정, 행동 토큰의 복원, 실제 로봇의 폐루프 실행. 원본 그림 영역 발췌." source="https://proceedings.mlr.press/v229/zitkovich23a/zitkovich23a.pdf#page=2" credit="Zitkovich et al., RT-2, CoRL 2023 및 포함 이미지의 해당 권리자" width={1588} height={588} />
+<LearningFigure src="/assets/posts/rl-robot-learning-ch01-introduction/rt2-figure1.png" alt="시각 언어 데이터와 로봇 행동 데이터를 함께 미세조정하고 출력 토큰을 행동으로 복원해 폐루프 제어하는 RT-2 그림 1" caption="RT-2 논문 그림 1 — 공동 미세조정, 행동 토큰의 복원, 실제 로봇의 폐루프 실행. 원본 그림 영역 발췌." source="https://proceedings.mlr.press/v229/zitkovich23a/zitkovich23a.pdf#page=2" credit="Zitkovich et al., RT-2, CoRL 2023 및 포함 이미지의 해당 권리자" width={1588} height={588} label="보충 논문 · RT-2" />
 
 원본 그림에서 왼쪽은 학습 데이터의 두 종류다. 사진에 문장으로 답하는 시각·언어 데이터와, 로봇 카메라·지시에 행동으로 답하는 데이터가 함께 들어간다. 가운데는 이 데이터를 이용해 미세조정하는 모델이다. 여기서 ViT는 이미지를 모델이 처리할 표현으로 바꾸는 시각 인코더다. 보라색 출력 토큰은 다시 이동·회전 같은 로봇 명령으로 복원된다.
 

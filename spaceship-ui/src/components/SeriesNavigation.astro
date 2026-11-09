@@ -1,10 +1,11 @@
 ---
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getPublishedPosts, getPostSlug, getPostSeriesId, compareSeriesPosts } from '@/lib/utils/posts';
 import modernAiSeries from '@/data/modern-ai-series.json';
 
 interface Props {
   seriesId: string;
   currentPostId: string;
+  position?: 'top' | 'bottom';
 }
 
 interface ModernAiEntry {
@@ -15,26 +16,36 @@ interface ModernAiEntry {
   source: string;
 }
 
-const { seriesId, currentPostId } = Astro.props;
+const { seriesId, currentPostId, position = 'top' } = Astro.props;
 
 const allPosts = await getPublishedPosts();
 const seriesPosts = allPosts
-  .filter((post) => post.data.series?.id === seriesId)
-  .sort((a, b) => (a.data.series?.order ?? 0) - (b.data.series?.order ?? 0));
+  .filter((post) => getPostSeriesId(post) === seriesId)
+  .sort((a, b) => compareSeriesPosts(a, b, seriesId));
 
-const currentPost = seriesPosts.find((post) => post.id === currentPostId);
-const currentOrder = currentPost?.data.series?.order;
+const currentIndex = seriesPosts.findIndex((post) => post.id === currentPostId);
+const currentPost = seriesPosts[currentIndex];
+const previousPost = seriesPosts[currentIndex - 1];
+const nextPost = seriesPosts[currentIndex + 1];
+const currentOrder = currentPost?.data.series?.order ?? currentIndex + 1;
 const isModernAiSeries = seriesId === modernAiSeries.id;
 const modernAiEntries = (modernAiSeries.entries as ModernAiEntry[]).map((entry) => ({
   ...entry,
   post: seriesPosts.find((post) => post.data.series?.order === entry.order),
 }));
 
-if (!isModernAiSeries && seriesPosts.length <= 1) {
+if (currentIndex < 0 || (position === 'top' && !isModernAiSeries && seriesPosts.length <= 1)) {
   return null;
 }
 ---
 
+{position === 'bottom' ? (
+  <nav class="series-reading-navigation" aria-label="시리즈 이어 읽기" data-series-reading-navigation={seriesId} data-series-order={currentOrder}>
+    {previousPost && <a href={`/posts/${getPostSlug(previousPost)}/`} rel="prev"><span>이전 편</span><strong>{previousPost.data.title}</strong></a>}
+    <a class="back-to-top" href="#main-content"><span aria-hidden="true">↑</span> 맨 위로</a>
+    {nextPost && <a href={`/posts/${getPostSlug(nextPost)}/`} rel="next"><span>다음 편</span><strong>{nextPost.data.title}</strong></a>}
+  </nav>
+) : (
 <section
   class="series-map mt-8 mb-12 overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-sm"
   aria-labelledby={`series-map-${seriesId}`}
@@ -191,3 +202,14 @@ if (!isModernAiSeries && seriesPosts.length <= 1) {
     )
   }
 </section>
+)}
+<style>
+  .series-reading-navigation { display: flex; flex-wrap: wrap; align-items: stretch; gap: .8rem; margin: 2.5rem 0; padding-top: 1.5rem; border-top: 1px solid var(--color-border); }
+  .series-reading-navigation a { display: flex; flex: 1 1 14rem; flex-direction: column; justify-content: center; min-width: 0; gap: .4rem; padding: 1rem; border: 1px solid var(--color-border); border-radius: .6rem; color: var(--color-foreground); }
+  .series-reading-navigation a:hover { background: var(--color-muted); }
+  .series-reading-navigation a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+  .series-reading-navigation span { font-size: .8rem; color: var(--color-muted-foreground); }
+  .series-reading-navigation strong { font-size: .95rem; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
+  .series-reading-navigation .back-to-top { flex: 0 1 auto; flex-direction: row; align-items: center; font-size: .9rem; }
+  @media (max-width: 640px) { .series-reading-navigation a { flex-basis: 100%; } .series-reading-navigation .back-to-top { flex-basis: 100%; } }
+</style>

@@ -45,17 +45,18 @@ export async function auditHomeIdentityMedia(cdp, sessionId) {
         renderedHeight: Math.round(imageRect.height),
       };
     })()`,
-    'Home mouse GIF decoded and visible',
+    'Home profile animation decoded and visible',
     20_000,
   );
 
-  assert.match(media.currentSrc, /\/image\/mouse_surprised\.gif(?:[?#].*)?$/);
+  assert.match(media.currentSrc, /\/assets\/profile\/mouse_surprised\.webp(?:[?#].*)?$/);
   assert.equal(media.loading, 'lazy');
   assert.equal(media.fetchPriority, 'low');
-  assert.ok(media.naturalWidth > 0 && media.naturalHeight > 0);
+  assert.equal(media.naturalWidth, 256);
+  assert.equal(media.naturalHeight, 256);
   assert.ok(media.renderedWidth > 20 && media.renderedHeight > 20);
 
   console.log(
-    `browser-smoke: PASS Home mouse GIF visible (${media.naturalWidth}x${media.naturalHeight}, ${media.renderedWidth}x${media.renderedHeight} rendered)`,
+    `browser-smoke: PASS Home optimized profile animation visible (${media.naturalWidth}x${media.naturalHeight}, ${media.renderedWidth}x${media.renderedHeight} rendered)`,
   );
 }
