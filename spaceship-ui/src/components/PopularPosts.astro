@@ -39,6 +39,13 @@
             state.textContent = '인기 글 집계 연결을 준비 중입니다.';
             return;
           }
+          const date = new Date(feed.updatedAt);
+          if (!Number.isNaN(date.getTime())) {
+            updated.textContent = '통계 갱신: ' + new Intl.DateTimeFormat('ko-KR', {
+              dateStyle: 'medium', timeZone: 'Asia/Seoul',
+            }).format(date);
+            updated.hidden = false;
+          }
           const valid = feed.posts.filter((post) =>
             typeof post.path === 'string' &&
             /^\/(?:en\/)?posts\/[a-zA-Z0-9%._~/-]+$/.test(post.path) &&
@@ -48,7 +55,7 @@
             post.views > 0
           ).slice(0, 5);
           if (!valid.length) {
-            state.textContent = '집계된 글 조회수가 아직 없습니다.';
+            state.textContent = '실제 통계 조회 완료 · 지난 30일에 집계된 글 조회수가 없습니다.';
             return;
           }
           list.replaceChildren();
@@ -71,13 +78,7 @@
           }
           state.hidden = true;
           list.hidden = false;
-          const date = new Date(feed.updatedAt);
-          if (!Number.isNaN(date.getTime())) {
-            updated.textContent = '통계 갱신: ' + new Intl.DateTimeFormat('ko-KR', {
-              dateStyle: 'medium', timeZone: 'Asia/Seoul',
-            }).format(date);
-            updated.hidden = false;
-          }
+
         })
         .catch(() => { state.textContent = '인기 글 통계를 일시적으로 표시할 수 없습니다.'; });
     });

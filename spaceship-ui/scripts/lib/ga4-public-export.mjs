@@ -28,7 +28,7 @@ export async function fetchPublicAggregate({ propertyId, accessToken, fetchImpl 
       signal: AbortSignal.timeout(30000),
     }
   );
-  if (!response.ok) throw new Error('GA4 Data API: HTTP ' + response.status);
+  if (!response.ok) throw Object.assign(new Error('GA4 Data API: HTTP ' + response.status), { status: response.status });
   return buildPublicFeed(await response.json(), updatedAt);
 }
 

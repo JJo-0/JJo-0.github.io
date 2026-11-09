@@ -24,9 +24,11 @@ if (!propertyId || !accessToken) {
     const feed = await fetchPublicAggregate({ propertyId, accessToken });
     await writeFeed(feed);
     console.info('GA4 public aggregate refreshed (' + feed.posts.length + ' posts).');
-  } catch {
+  } catch (error) {
     // API failure must not expose tokens, request headers, or private response bodies.
-    console.warn('GA4 public aggregate refresh unavailable; check API activation and Viewer access.');
+    const status = Number(error?.status);
+    const safeStatus = Number.isInteger(status) && status >= 100 && status <= 599 ? ' (HTTP ' + status + ')' : '';
+    console.warn('GA4 public aggregate refresh unavailable' + safeStatus + '; check API activation and Viewer access.');
     await writeFeed(EMPTY_PUBLIC_FEED);
   }
 }
