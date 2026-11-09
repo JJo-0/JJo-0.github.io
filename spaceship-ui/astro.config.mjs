@@ -37,6 +37,7 @@ function includeInSitemap(page) {
   const pathname = new URL(page).pathname;
 
   if (isLegacyPathname(pathname)) return false;
+  if (pathname === '/analytics/' || pathname.startsWith('/analytics/')) return false;
   if (!SITE.publicSections.projects && pathname.startsWith('/projects')) return false;
   if (!SITE.publicSections.appearances && pathname.startsWith('/appearances')) return false;
 

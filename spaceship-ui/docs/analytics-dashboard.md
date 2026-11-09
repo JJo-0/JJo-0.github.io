@@ -1,0 +1,56 @@
+# JJO Blog Analytics — 관리자 및 공개 인기 글
+
+## 현재 구조 (2026-11-09)
+
+- GitHub Pages + Astro 정적 사이트입니다. 기존 GA4 측정 ID는 G-JL4J2492X6입니다. 중복 추적기를 설치하지 않았습니다. 측정 ID로는 GA4 숫자 속성 ID를 추론할 수 없습니다.
+- 메인 페이지는 지난 30개의 완료된 날짜를 기준으로 공개 인기 글 TOP 5를 보여줍니다. 자격증명이 없으면 실제 수치를 가장하지 않고 통계 연결 안내를 표시합니다.
+- /analytics/ 화면은 Google 계정으로 로그인하여 GA4 일간·주간·월간 TOP 10, 카테고리 집계, GSC 검색어와 유입 페이지를 보는 관리자용 화면입니다. 정적 페이지 자체는 공개되지만 **보고서 데이터는 Google API 권한이 있는 사용자만 조회**할 수 있습니다. noindex 및 사이트맵 제외 적용.
+- Pages 배포 결과에는 사용자별 IP, 쿠키, 개인 식별자, 접근 토큰, 서비스 계정 키 또는 원시 검색어를 포함하지 않습니다.
+
+## 관리자용 Google OAuth 설정
+
+1. Google Analytics 관리자(https://analytics.google.com/)의 속성 상세 화면에서 **숫자 GA4 Property ID**를 확인합니다. 이는 G-로 시작하는 측정 ID와 다릅니다.
+2. Google Cloud Console에서 **Google Analytics Data API** 및 **Google Search Console API**를 활성화하고 OAuth 동의 화면을 설정합니다. 외부 테스트 모드라면 본인 계정을 테스트 사용자로 등록합니다.
+3. OAuth 클라이언트 유형은 **웹 애플리케이션**, 승인된 JavaScript 출처는 https://jjo-0.github.io 입니다. API 인증은 브라우저에서 Google Identity Services를 통해 수행됩니다. OAuth 클라이언트 보안 비밀을 프런트엔드에 넣지 마세요.
+4. GitHub 저장소 Settings → Secrets and variables → Actions → **Variables** 에 다음 값을 추가합니다.
+   - PUBLIC_GOOGLE_OAUTH_CLIENT_ID: 웹 OAuth Client ID
+   - PUBLIC_GA4_PROPERTY_ID: 숫자 GA4 Property ID
+   - PUBLIC_GSC_SITE_URL: Search Console에 등록한 정확한 속성 ID (예: https://jjo-0.github.io/). URL-prefix 속성은 후행 슬래시 포함 원형 그대로 입력. 도메인 속성은 sc-domain:example.com 형식.
+5. Google 로그인 계정에 기존 GA4 속성의 Viewer 이상, Search Console 속성의 사용자/소유자 권한이 있어야 합니다. main 배포 후 /analytics/ 에서 로그인하면 됩니다.
+
+OAuth 범위는 analytics.readonly와 webmasters.readonly입니다. 토큰은 브라우저 메모리에만 보관하고 페이지를 떠나면 버립니다. 관리자 비밀번호를 공개 HTML이나 JS에 저장하지 않습니다. OAuth 설정이 없는 경우 관리자 화면에 설정 안내와 공식 서비스 링크가 표시됩니다.
+
+## 공개 인기 글 TOP 5 자동 갱신
+
+GitHub Actions는 **GA4 읽기 전용 서비스 계정**으로 집계값만 가져옵니다. 관리자 OAuth와 별도입니다.
+
+1. Google Cloud에서 서비스 계정을 만들고 Analytics Data API를 활성화합니다.
+2. Google Analytics의 기존 속성에 서비스 계정 이메일을 **Viewer**로 추가합니다.
+3. GitHub 저장소 Actions → **Secrets**에 GA4_SERVICE_ACCOUNT_JSON 을 추가합니다. 서비스 계정 JSON 전체 (또는 Base64로 인코딩한 JSON)를 입력합니다. Variables나 리포지터리 파일에 키를 절대 입력하지 않습니다.
+4. 앞서 설명한 PUBLIC_GA4_PROPERTY_ID 변수도 필요합니다.
+5. Deploy Blog to Pages 워크플로는 main push, 수동 실행 및 매일 한국시간 08:30 예정 실행에서 sync-popular-analytics.mjs 스크립트를 실행한 뒤 Astro 빌드를 배포합니다. GitHub 예약 실행은 지연될 수 있습니다.
+
+공개 파일 URL은 https://jjo-0.github.io/analytics/popular.json 입니다. 공개 데이터는 version, updatedAt, window, posts의 path/title/views로 제한합니다. GA4 screenPageViews를 pagePath/pageTitle 기준으로 조회하며 /posts/... 와 /en/posts/...의 글 경로만 남기고 상위 최대 5개만 게시합니다. 검색어 등 상세 개인 분석 데이터를 공개하지 않습니다.
+
+Google 자격증명 또는 API가 실패하면 배포는 계속되고, UI는 통계 준비 중/일시적 불가를 표시합니다. 과거에 추적하지 않은 방문량을 소급 생성할 수는 없습니다.
+
+## 통계 해석·검증
+
+- 조회수(Views)는 방문자 수(Users)와 다릅니다. 반복 조회가 포함됩니다.
+- GA4 조회 기간은 속성에서 설정한 시간대 기준 **어제, 지난 7일, 지난 30일의 완료된 날짜**입니다. 속성 시간대는 Asia/Seoul 권장.
+- 카테고리는 실제 게시물 분류(src/lib/taxonomy.mjs)를 사용하며 News는 별도 구분합니다. AI·Robotics·Semiconductor·Research 주제별 지표는 제목·태그 기반 **참고 분류**로 중복될 수 있습니다.
+- Search Console API는 미국 태평양 시간 기준으로 최근 3일을 제외한 확정 데이터만 조회합니다. 일부 검색어는 익명 처리되거나 상위 행만 반환됩니다. 검색어 합계를 전체 클릭과 동일시하지 마세요.
+- 검증 절차: GA4 Reports → Engagement → Pages and screens 에서 인기 글 수치 대조, Search Console 실적에서 검색어 비교, /analytics/ 관리자 수치 확인, /analytics/popular.json 갱신 시각·내용 확인.
+- Astro ClientRouter로 페이지를 옮길 때 GA4 page_view가 누락/중복되지 않는지 배포 후 GA4 DebugView/실시간 보고서로 직접 검증하세요. 추적 코드 중복 삽입을 피하기 위해 기존 GA4 코드는 변경하지 않았습니다.
+- 분석과 광고 서비스에서 발생하는 개인정보 처리 관련 법적 동의 및 안내는 별도로 확인해야 합니다.
+
+## 로컬 테스트
+
+    cd spaceship-ui
+    node scripts/analytics-contract.mjs
+    node scripts/sync-popular-analytics.mjs
+    pnpm check
+    pnpm lint
+    pnpm build
+
+Google API 자격증명 없는 CI도 빈 공개 JSON을 안전하게 빌드하며 집계 처리 계약을 검증합니다.
