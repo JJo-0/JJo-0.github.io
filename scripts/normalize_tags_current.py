@@ -437,7 +437,7 @@ POST_TAXONOMY.update({
     '2026-10-22-low-chloride-zinc-iodine-battery-news.mdx': Taxonomy(category='finance-industry', subcategory='aqueous-batteries', content_type='paper-review', tags=('frontier-candidate', 'zinc-iodine-battery', 'energy-storage'), research_area=None, research_featured=False, research_order=None),
     '2026-10-23-spectral-swarm-arena-shape-news.mdx': Taxonomy(category='robotics-embedded', subcategory='swarm-robotics', content_type='paper-review', tags=('frontier-one', 'swarm-robotics', 'graph-laplacian', 'embodied-ai'), research_area=None, research_featured=False, research_order=None),
     '2026-10-23-structural-bias-swarm-sim2real-news.mdx': Taxonomy(category='robotics-embedded', subcategory='swarm-robotics', content_type='paper-review', tags=('frontier-candidate', 'swarm-robotics', 'reinforcement-learning'), research_area=None, research_featured=False, research_order=None),
-    '2026-10-23-t-wla-vision-touch-news.mdx': Taxonomy(category='robotics-embedded', subcategory='robot-manipulation', content_type='research-report', tags=('frontier-candidate', 'robotics', 'tactile-sensing', 'vision-language-action'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-23-t-wla-vision-touch-news.mdx': Taxonomy(category='robotics-embedded', subcategory='robot-manipulation', content_type='research-report', tags=('frontier-one', 'robotics', 'tactile-sensing', 'vision-language-action'), research_area=None, research_featured=False, research_order=None),
 })
 
 # Register the incoming drafts without changing their text or publication state.
