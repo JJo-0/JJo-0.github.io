@@ -5,7 +5,7 @@
 1. [강화학습 01 — 로봇은 무엇을 배우는가](https://jjo-0.github.io/posts/rl-robot-learning-ch01-introduction/) · [원본 그림·수식 출처](source-assets/ch01/README.md)
 2. [강화학습 02 — 로봇 제어에서 MDP까지](https://jjo-0.github.io/posts/rl-robot-learning-ch02-control-mdp/) · [출처와 대조 범위](source-assets/ch02/README.md) · [실행 예제](labs/02-control-mdp/README.md)
 
-01장은 ETH 슬라이드 33장, 보충 원본 그림 3개와 설명 수식 5개를 제공한다. 02장은 ETH 슬라이드 42장, 독립 수식 23개와 본문 수학 표기 151개, UCL·David Silver 원본 도식 2개, 직접 계산한 그래프와 실제 Pendulum 실행 애니메이션을 제공한다. 각 배포의 상태는 GitHub PR과 Pages 실행 결과에서 확인한다.
+01장은 ETH 슬라이드 33장, 보충 원본 그림 5개와 설명 수식 5개를 제공한다. 02장은 ETH 슬라이드 42장, 독립 수식 23개와 본문 수학 표기 151개, UCL·David Silver 원본 도식 2개, 직접 계산한 그래프와 실제 Pendulum 실행 애니메이션을 제공한다. 각 배포의 상태는 GitHub PR과 Pages 실행 결과에서 확인한다.
 
 3. [강화학습 03 — 시연에서 배우는 모방학습](https://jjo-0.github.io/posts/rl-robot-learning-ch03-imitation-learning/) · [출처와 대조 범위](source-assets/ch03/README.md) · [실행 예제](labs/03-imitation-learning/README.md)
 
@@ -23,3 +23,9 @@
 - 07장: [Transformer와 행동 시퀀스](../../spaceship-ui/site/content/posts/rl-robot-learning-ch07-sequence-transformers.mdx) · [출처](source-assets/ch07/README.md) · [계산](labs/07-sequence-transformers/README.md)
 
 - 08장: [월드 모델](../../spaceship-ui/site/content/posts/rl-robot-learning-ch08-world-models.mdx) · [출처](source-assets/ch08/README.md) · [직접 실행](labs/08-world-models/README.md)
+
+- 09장: [범용 로봇 정책](../../spaceship-ui/site/content/posts/rl-robot-learning-ch09-generalist-policies.mdx)
+- 10장: [체화된 추론](../../spaceship-ui/site/content/posts/rl-robot-learning-ch10-embodied-reasoning.mdx) · [출처](source-assets/ch10/README.md)
+- 11장: [프런티어와 미해결 문제](../../spaceship-ui/site/content/posts/rl-robot-learning-ch11-frontiers-open-problems.mdx) · [출처](source-assets/ch11/README.md)
+
+[1~11장 사용자 전사 대조와 기존 내용 보존 기록](reviews/2026-11-09-transcript-coverage.md)
