@@ -6,7 +6,9 @@ import ResearchMap from '@/components/experience/ResearchMap.astro';
 import '@/styles/world.css';
 import { RESEARCH_FOCUS } from '@/lib/research';
 import GroupedWritingList from '@/components/GroupedWritingList.astro';
-import { getPublishedPosts, getPostSeriesId } from '@/lib/utils/posts';
+import { getPostTypeLabel } from '@/lib/taxonomy.mjs';
+import { formatDate } from '@/lib/utils/date';
+import { getPublishedPosts, getPostSeriesId, getPostSlug } from '@/lib/utils/posts';
 import { getBreadcrumbSchema } from '@/lib/schemas';
 import { buildPostGraph } from '@/lib/experience/post-graph';
 
@@ -97,7 +99,37 @@ const schema = getBreadcrumbSchema([
                   <div>
                     <p class="research-notes-label">시리즈와 연구 기록</p>
                     {focus.posts.length > 0 ? (
-                      <GroupedWritingList posts={focus.posts} />
+                      <>
+                        <GroupedWritingList posts={focus.posts.filter((post) => getPostSeriesId(post))} />
+                      {focus.posts.filter((post) => !getPostSeriesId(post)).map((post) => {
+                        const slug = getPostSlug(post);
+                        return (
+                          <a
+                            href={`/posts/${slug}`}
+                            class="research-note-link"
+                            data-post-transition-slug={slug}
+                          >
+                            <div class="flex items-start justify-between gap-5">
+                              <div class="min-w-0">
+                                <div class="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                  <span>{getPostTypeLabel(post.data.type)}</span>
+                                  <span aria-hidden="true">·</span>
+                                  <span>{post.data.subcategory}</span>
+                                </div>
+                                <h3 data-post-transition-title>{post.data.title}</h3>
+                                <p class="line-clamp-2">{post.data.description}</p>
+                              </div>
+                              <time
+                                datetime={post.data.pubDate.toISOString()}
+                                class="shrink-0 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground tabular-nums"
+                              >
+                                {formatDate(post.data.pubDate)}
+                              </time>
+                            </div>
+                          </a>
+                        );
+                      })}
+                      </>
                     ) : (
                       <p class="py-4 text-sm text-muted-foreground">
                         관련 공개 기록을 정리하고 있습니다.
