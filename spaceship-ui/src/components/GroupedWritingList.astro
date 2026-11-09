@@ -2,7 +2,7 @@
 import type { CollectionEntry } from 'astro:content';
 import WritingListItem from './WritingListItem.astro';
 import SeriesGroup from './SeriesGroup.astro';
-import { getPostSlug } from '@/lib/utils/posts';
+import { getPostSlug, getPostSeriesId, compareSeriesPosts } from '@/lib/utils/posts';
 import { getReadTime } from '@/lib/utils/readTime';
 interface Props { posts: CollectionEntry<'posts'>[]; }
 const { posts } = Astro.props;
@@ -15,21 +15,16 @@ const names: Record<string, string> = {
   'human-motion-study': 'Human and Robotics',
   'rl-robot-learning': '강화학습',
 };
-const keyFor = (post: CollectionEntry<'posts'>) => {
-  if (post.data.category === 'health-lifestyle' && post.data.subcategory === 'supplements') return 'supplements';
-  if (post.data.category === 'software-engineering-cs' && (post.data.subcategory === 'data-structures' || post.data.tags.includes('coding-test'))) return 'data-structures-coding-tests';
-  return post.data.series?.id;
-};
 const grouped = new Map<string, CollectionEntry<'posts'>[]>();
-for (const post of posts) { const key = keyFor(post); if (key) grouped.set(key, [...(grouped.get(key) || []), post]); }
+for (const post of posts) { const key = getPostSeriesId(post); if (key) grouped.set(key, [...(grouped.get(key) || []), post]); }
 const emitted = new Set<string>();
 interface ListItem { post: CollectionEntry<'posts'>; key?: string; members: CollectionEntry<'posts'>[]; }
 const items = posts.flatMap<ListItem>(post => {
-  const key = keyFor(post);
+  const key = getPostSeriesId(post);
   if (!key || ((grouped.get(key)?.length || 0) < 2 && key !== 'human-motion-study' && key !== 'rl-robot-learning')) return [{ post, key: undefined, members: [] }];
   if (emitted.has(key)) return [];
   emitted.add(key);
-  const members = [...grouped.get(key)!].sort((a, b) => a.data.series?.id === key ? (a.data.series?.order || 0) - (b.data.series?.order || 0) : a.data.pubDate.valueOf() - b.data.pubDate.valueOf());
+  const members = [...grouped.get(key)!].sort((a, b) => compareSeriesPosts(a, b, key));
   return [{ post, key, members }];
 });
 ---

@@ -105,4 +105,39 @@ for (const filename of ['ucl-agent-components.png', 'ntu-actor-observation-actio
   assert(image && Number(attr(image, 'width')) > 0 && Number(attr(image, 'height')) > 0);
 }
 
+// Check published neighbours for every series, including episode zero and
+// one-entry series. Drafts and future entries never become reading links.
+const readingGroups = new Map();
+for (const slug of fs.readdirSync('dist/posts')) {
+  const file = `dist/posts/${slug}/index.html`;
+  if (!fs.existsSync(file)) continue;
+  const html = read(file);
+  if (!html.includes('data-series-reading-navigation=')) continue;
+  const tree = nodes(parse(html));
+  const nav = tree.find(n => attr(n, 'data-series-reading-navigation') !== undefined);
+  assert(nav && nav.tagName === 'nav');
+  const id = attr(nav, 'data-series-reading-navigation');
+  const entries = readingGroups.get(id) || [];
+  entries.push({ slug, nav, order: Number(attr(nav, 'data-series-order')) });
+  readingGroups.set(id, entries);
+}
+assert(readingGroups.size > 10, 'Reading links must cover other series too');
+let readingPostCount = 0;
+for (const [id, entries] of readingGroups) {
+  entries.sort((a, b) => a.order - b.order);
+  for (const [index, entry] of entries.entries()) {
+    const links = nodes(entry.nav).filter(n => n.tagName === 'a');
+    assert(links.some(n => attr(n, 'href') === '#main-content'));
+    for (const [rel, neighbour] of [['prev', entries[index - 1]], ['next', entries[index + 1]]]) {
+      const link = links.find(n => attr(n, 'rel') === rel);
+      assert.equal(link ? attr(link, 'href') : undefined, neighbour ? `/posts/${neighbour.slug}/` : undefined, `${id} ${entry.slug} ${rel}`);
+    }
+    readingPostCount++;
+  }
+}
+console.log(`series-reading: PASS ${readingGroups.size} series, ${readingPostCount} published posts`);
+const goalTable = firstRobotPost.find(n => n.tagName === 'table' && text(n).includes('강의의 네 목표'));
+assert(goalTable?.parentNode && attr(goalTable.parentNode, 'class') === 'table-scroll');
+assert.equal(attr(goalTable.parentNode, 'tabindex'), '0');
+assert.equal(attr(goalTable.parentNode, 'role'), 'region');
 console.log('series-navigation-contract: PASS collapsed groups, Acts source guides, inline Ezekiel reports, full-report read times/image geometry, retired posts absent from public collection');

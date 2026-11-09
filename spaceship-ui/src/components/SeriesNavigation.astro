@@ -1,5 +1,5 @@
 ---
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getPublishedPosts, getPostSlug, getPostSeriesId, compareSeriesPosts } from '@/lib/utils/posts';
 import modernAiSeries from '@/data/modern-ai-series.json';
 
 interface Props {
@@ -20,27 +20,27 @@ const { seriesId, currentPostId, position = 'top' } = Astro.props;
 
 const allPosts = await getPublishedPosts();
 const seriesPosts = allPosts
-  .filter((post) => post.data.series?.id === seriesId)
-  .sort((a, b) => (a.data.series?.order ?? 0) - (b.data.series?.order ?? 0));
+  .filter((post) => getPostSeriesId(post) === seriesId)
+  .sort((a, b) => compareSeriesPosts(a, b, seriesId));
 
 const currentIndex = seriesPosts.findIndex((post) => post.id === currentPostId);
 const currentPost = seriesPosts[currentIndex];
 const previousPost = seriesPosts[currentIndex - 1];
 const nextPost = seriesPosts[currentIndex + 1];
-const currentOrder = currentPost?.data.series?.order;
+const currentOrder = currentPost?.data.series?.order ?? currentIndex + 1;
 const isModernAiSeries = seriesId === modernAiSeries.id;
 const modernAiEntries = (modernAiSeries.entries as ModernAiEntry[]).map((entry) => ({
   ...entry,
   post: seriesPosts.find((post) => post.data.series?.order === entry.order),
 }));
 
-if (!isModernAiSeries && seriesPosts.length <= 1) {
+if (currentIndex < 0 || (position === 'top' && !isModernAiSeries && seriesPosts.length <= 1)) {
   return null;
 }
 ---
 
 {position === 'bottom' ? (
-  <nav class="series-reading-navigation" aria-label="시리즈 이어 읽기" data-series-reading-navigation>
+  <nav class="series-reading-navigation" aria-label="시리즈 이어 읽기" data-series-reading-navigation={seriesId} data-series-order={currentOrder}>
     {previousPost && <a href={`/posts/${getPostSlug(previousPost)}/`} rel="prev"><span>이전 편</span><strong>{previousPost.data.title}</strong></a>}
     <a class="back-to-top" href="#main-content"><span aria-hidden="true">↑</span> 맨 위로</a>
     {nextPost && <a href={`/posts/${getPostSlug(nextPost)}/`} rel="next"><span>다음 편</span><strong>{nextPost.data.title}</strong></a>}
