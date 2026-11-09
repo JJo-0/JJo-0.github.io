@@ -14,6 +14,7 @@ import { auditInteractions } from './browser-interaction-audits-v4.mjs';
 import { auditNewsMedia } from './browser-news-media-audit.mjs';
 import { auditActsStudies } from './browser-acts-study-audit.mjs';
 import { auditRobotLearning } from './browser-robot-learning-audit.mjs';
+import { auditAnalytics } from './browser-analytics-audit.mjs';
 
 async function closeAuditTarget(cdp, target) {
   if (!target) return;
@@ -94,6 +95,7 @@ async function main() {
     actsTarget = await attach(cdp);
     await auditActsStudies(cdp, actsTarget.sessionId);
     await auditRobotLearning(cdp, actsTarget.sessionId);
+    await auditAnalytics(cdp, actsTarget.sessionId);
     await closeAuditTarget(cdp, actsTarget);
     actsTarget = null;
 

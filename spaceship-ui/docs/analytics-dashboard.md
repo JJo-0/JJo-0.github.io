@@ -54,3 +54,17 @@ Google 자격증명 또는 API가 실패하면 배포는 계속되고, UI는 통
     pnpm build
 
 Google API 자격증명 없는 CI도 빈 공개 JSON을 안전하게 빌드하며 집계 처리 계약을 검증합니다.
+
+## 화면의 안내와 세션 정리
+
+`/analytics/`에는 기능, 설정 순서, 공개 범위와 최신 배포 확인 링크를 직접 표시합니다. 빌드 시 OAuth·숫자 속성 ID의 등록 여부만 설명하며 API 접속 성공으로 표시하지 않습니다. 서비스 계정 키나 비밀 입력 폼은 넣지 않습니다.
+
+GitHub Pages의 정적 HTML과 JavaScript, `PUBLIC_` 식별자는 공개됩니다. noindex나 로그인 버튼으로 안내문 자체를 비밀로 만들 수 없습니다. 실제 GA4·Search Console 보고서의 접근 제어는 Google API가 로그인한 계정의 권한으로 수행합니다. 안내문까지 소유자만 보이게 할 필요가 있다면 인증 가능한 서버/프록시나 접근 제어 호스팅이 추가로 필요합니다.
+
+토큰은 브라우저 메모리에만 두고, 로그아웃·페이지 전환·Google 토큰 만료 때 보고서 DOM을 비우며 진행 중 요청을 취소합니다. 취소 직전 응답이 뒤늦게 도착해도 새 세션이나 로그아웃 화면에 반영하지 않습니다. 기간 변경 때도 이전 결과를 지워 새 날짜에 예전 수치가 남지 않게 합니다. 이 처리는 브라우저에 이미 표시됐던 내용을 복사하거나 개발자 도구로 관찰하는 것을 막는 기능은 아닙니다.
+
+브라우저 회귀 검사는 실제 계정 없이 Google SDK/API의 명시적 시험 응답을 사용해 로그인·안전한 텍스트 표시·로그아웃·토큰 만료·지연 응답·페이지 이탈을 검사합니다. 이 검사 통과를 실제 Google 권한 연결이나 방문 데이터 수집 검증으로 보고하지 않습니다.
+
+- [GitHub Pages의 정적 호스팅](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
+- [Google 브라우저 토큰 모델](https://developers.google.com/identity/oauth2/web/guides/use-token-model)
+- [서비스 계정 키 보호](https://docs.cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys)

@@ -1,5 +1,6 @@
 ---
 import Layout from '@/layouts/Layout.astro';
+import AnalyticsSetupGuide from '@/components/AnalyticsSetupGuide.astro';
 import { SITE } from '@/config';
 import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
 import { POST_CATEGORIES, getPostCategoryMeta } from '@/lib/taxonomy.mjs';
@@ -29,7 +30,7 @@ const dashboardConfig = JSON.stringify({
 
 <Layout
   title="Analytics Dashboard"
-  description="Google 계정으로 인증한 사용자에게만 제공되는 블로그 분석 대시보드입니다."
+  description="Google API 읽기 권한으로 실제 통계를 조회하는 관리자 분석 화면과 연결 설정 안내입니다."
   noindex={true}
   adsEnabled={false}
 >
@@ -68,6 +69,8 @@ const dashboardConfig = JSON.stringify({
         <a class="underline underline-offset-4" href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer">Search Console</a>
       </p>
     </section>
+
+    <AnalyticsSetupGuide oauthConfigured={Boolean(import.meta.env.PUBLIC_GOOGLE_OAUTH_CLIENT_ID)} propertyConfigured={/^\d+$/.test(import.meta.env.PUBLIC_GA4_PROPERTY_ID || '')} />
 
     <div data-admin-results hidden class="space-y-8">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -161,6 +164,26 @@ const dashboardConfig = JSON.stringify({
   let accessToken: string | null = null;
   let activeRoot: HTMLElement | null = null;
   let activeClient: TokenClient | null = null;
+  let reportRequest: AbortController | null = null;
+  let tokenExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+  let reportEpoch = 0;
+
+  function clearReportSession(root: HTMLElement | null, message?: string) {
+    accessToken = null;
+    reportEpoch += 1;
+    reportRequest?.abort();
+    reportRequest = null;
+    if (tokenExpiryTimer) clearTimeout(tokenExpiryTimer);
+    tokenExpiryTimer = null;
+    if (!root) return;
+    for (const selector of ['[data-admin-top-posts]', '[data-admin-categories]', '[data-admin-topics]', '[data-admin-queries]', '[data-admin-search-pages]', '[data-admin-gsc-status]']) {
+      root.querySelector(selector)?.replaceChildren();
+    }
+    element<HTMLElement>(root, '[data-admin-results]').hidden = true;
+    element<HTMLButtonElement>(root, '[data-admin-logout]').hidden = true;
+    element<HTMLButtonElement>(root, '[data-admin-login]').hidden = false;
+    if (message) status(root, message);
+  }
 
   function element<T extends HTMLElement>(root: HTMLElement, selector: string): T {
     const target = root.querySelector<T>(selector);
@@ -184,7 +207,10 @@ const dashboardConfig = JSON.stringify({
       script.async = true;
       script.dataset.adminGoogleLogin = 'true';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Google Identity SDK unavailable'));
+      script.onerror = () => {
+        script.remove();
+        reject(new Error('Google Identity SDK unavailable'));
+      };
       document.head.append(script);
     });
   }
@@ -244,12 +270,13 @@ const dashboardConfig = JSON.stringify({
     element<HTMLElement>(root, '[data-admin-status]').textContent = message;
   };
 
-  async function authorizedPost(url: string, body: unknown): Promise<any> {
+  async function authorizedPost(url: string, body: unknown, signal: AbortSignal): Promise<any> {
     const response = await fetch(url, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       cache: 'no-store',
+      signal,
     });
     if (!response.ok) throw new Error('Google API HTTP ' + response.status + ' (속성 ID·API 활성화·계정 권한 확인)');
     return response.json();
@@ -340,10 +367,20 @@ const dashboardConfig = JSON.stringify({
   }
 
   async function loadReports(root: HTMLElement, config: DashboardConfig) {
+    if (!accessToken || activeRoot !== root) return;
+    reportRequest?.abort();
+    const request = new AbortController();
+    reportRequest = request;
+    const epoch = ++reportEpoch;
     const days = Number(element<HTMLSelectElement>(root, '[data-admin-period]').value);
     const googleProperty = config.propertyId;
     status(root, '분석 데이터를 조회하고 있습니다.');
     element<HTMLElement>(root, '[data-admin-results]').hidden = false;
+    for (const selector of ['[data-admin-top-posts]', '[data-admin-categories]', '[data-admin-queries]', '[data-admin-search-pages]']) {
+      resetRows(element(root, selector), '조회 중입니다.');
+    }
+    element(root, '[data-admin-topics]').replaceChildren();
+    element(root, '[data-admin-gsc-status]').replaceChildren();
     const gaRequest = authorizedPost(
       'https://analyticsdata.googleapis.com/v1beta/properties/' + googleProperty + ':runReport',
       {
@@ -353,15 +390,16 @@ const dashboardConfig = JSON.stringify({
         dimensionFilter: { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'PARTIAL_REGEXP', value: '^/(en/)?posts/' } } },
         orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
         limit: 10000,
-      }
+      }, request.signal
     );
     const site = encodeURIComponent(config.gscSiteUrl);
     const gscDays = days === 1 ? 1 : days;
     const baseGsc = { startDate: pacificDate(gscDays + 2), endDate: pacificDate(3), type: 'web', dataState: 'final', rowLimit: 200 };
-    const queriesRequest = authorizedPost('https://www.googleapis.com/webmasters/v3/sites/' + site + '/searchAnalytics/query', { ...baseGsc, dimensions: ['query'] });
-    const pagesRequest = authorizedPost('https://www.googleapis.com/webmasters/v3/sites/' + site + '/searchAnalytics/query', { ...baseGsc, dimensions: ['page'] });
+    const queriesRequest = authorizedPost('https://www.googleapis.com/webmasters/v3/sites/' + site + '/searchAnalytics/query', { ...baseGsc, dimensions: ['query'] }, request.signal);
+    const pagesRequest = authorizedPost('https://www.googleapis.com/webmasters/v3/sites/' + site + '/searchAnalytics/query', { ...baseGsc, dimensions: ['page'] }, request.signal);
 
     const [ga, queries, pages] = await Promise.allSettled([gaRequest, queriesRequest, pagesRequest]);
+    if (request.signal.aborted || epoch !== reportEpoch || activeRoot !== root || !accessToken) return;
     if (ga.status === 'fulfilled') {
       renderGA(root, config, ga.value);
       status(root, '방문 통계를 갱신했습니다. Search Console의 검색 유입 수치는 아래에서 확인할 수 있습니다.');
@@ -404,17 +442,23 @@ const dashboardConfig = JSON.stringify({
     }
     loadGoogleIdentity()
       .then(() => {
+        if (activeRoot !== root || !root.isConnected) return;
         const google = (window as any).google;
         activeClient = google.accounts.oauth2.initTokenClient({
           client_id: config.clientId,
           scope: 'https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly',
-          callback: (result: { access_token?: string; error?: string }) => {
+          callback: (result: { access_token?: string; error?: string; expires_in?: number }) => {
             if (activeRoot !== root) return;
             if (result.error || !result.access_token) {
               status(root, 'Google 인증이 완료되지 않았습니다. ' + (result.error || ''));
               return;
             }
+            clearReportSession(root);
             accessToken = result.access_token;
+            const lifetime = Number(result.expires_in);
+            if (Number.isFinite(lifetime) && lifetime > 0) {
+              tokenExpiryTimer = setTimeout(() => clearReportSession(root, 'Google 연결이 만료됐습니다. 다시 로그인해 주세요.'), Math.min(lifetime * 1000, 2147483647));
+            }
             login.hidden = true;
             logout.hidden = false;
             void loadReports(root, config);
@@ -423,16 +467,14 @@ const dashboardConfig = JSON.stringify({
         login.disabled = false;
         status(root, '준비 완료. Google 계정으로 인증하면 실제 통계를 조회합니다.');
       })
-      .catch(() => status(root, 'Google 로그인 SDK를 불러올 수 없습니다. 네트워크를 확인하세요.'));
+      .catch(() => {
+        if (activeRoot === root && root.isConnected) status(root, 'Google 로그인 SDK를 불러올 수 없습니다. 네트워크를 확인하세요.');
+      });
     login.addEventListener('click', () => activeClient?.requestAccessToken({ prompt: 'select_account' }));
     logout.addEventListener('click', () => {
       const token = accessToken;
-      accessToken = null;
+      clearReportSession(root, '로그아웃했습니다. 계정을 다시 연결할 수 있습니다.');
       if (token) (window as any).google?.accounts?.oauth2?.revoke(token, () => {});
-      element<HTMLElement>(root, '[data-admin-results]').hidden = true;
-      logout.hidden = true;
-      login.hidden = false;
-      status(root, '로그아웃했습니다. 계정을 다시 연결할 수 있습니다.');
     });
     period.addEventListener('change', () => { if (accessToken) void loadReports(root, config); });
   }
@@ -440,7 +482,7 @@ const dashboardConfig = JSON.stringify({
   initializeDashboard();
   document.addEventListener('astro:page-load', initializeDashboard);
   document.addEventListener('astro:before-swap', () => {
-    accessToken = null;
+    clearReportSession(activeRoot);
     activeRoot = null;
     activeClient = null;
   });

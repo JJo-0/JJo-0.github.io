@@ -221,7 +221,17 @@ export async function auditRobotLearning(cdp, sessionId) {
       assert(links.some(href => href?.includes('cvg.ethz.ch/lectures/Robot-Learning/')));
       assert(links.filter(href => href?.includes('youtube.com/watch?')).length >= 10);
       assert(links.filter(href => href?.includes('assets/lectures/week-' + chapter)).length >= 15);
+      const expectedPages = chapter === 10 ? [...Array.from({length:19},(_,i)=>i+2), ...Array.from({length:23},(_,i)=>i+33)] : Array.from({length:48},(_,i)=>i+2);
+      const slides = await evaluate(cdp, sessionId, `[...document.querySelectorAll('[data-lecture-number="${chapter}"]')].map(e=>Number(e.dataset.lectureSlide.slice(1)))`);
+      assert.deepEqual(slides, expectedPages, 'Final chapters preserve source order and technical slide coverage');
+      for (const page of expectedPages) {
+        const selector = `[data-lecture-number="${chapter}"][data-lecture-slide="P${String(page).padStart(3,'0')}"] img`;
+        await evaluate(cdp, sessionId, `document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center',behavior:'instant'})`);
+        await waitExpression(cdp, sessionId, `(()=>{const im=document.querySelector(${JSON.stringify(selector)});return im.complete&&im.naturalWidth>0;})()`, 'Final chapter source slide decoded');
+      }
+      assert(await evaluate(cdp,sessionId, `! (document.documentElement.scrollWidth>innerWidth+2)`), 'Final chapters fit the viewport');
       await auditEquationGuides(cdp, sessionId, chapter, width);
+      console.log(`robot-final-slides: PASS chapter${chapter} ${width}px, ${slides.length} decoded source slides`);
     }
   }
 
