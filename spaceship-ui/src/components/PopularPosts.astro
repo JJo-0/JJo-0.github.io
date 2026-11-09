@@ -1,0 +1,139 @@
+<section
+  class="experience-section popular-posts"
+  data-popular-posts
+  data-reveal
+  aria-labelledby="popular-heading"
+>
+  <div class="experience-section-header">
+    <h2 id="popular-heading" class="experience-section-label">Popular Writing</h2>
+    <span aria-hidden="true"></span>
+    <p class="popular-posts__period">지난 30일 · 조회수 기준</p>
+  </div>
+  <ol class="popular-posts__list" data-popular-list hidden></ol>
+  <p class="popular-posts__empty text-sm text-muted-foreground" data-popular-state aria-live="polite">
+    인기 글 통계를 불러오는 중입니다.
+  </p>
+  <p class="popular-posts__updated text-xs text-muted-foreground" data-popular-updated hidden></p>
+</section>
+
+<script>
+  type PublicPost = { path: string; title: string; views: number };
+  type PublicFeed = { version: number; updatedAt: string | null; posts: PublicPost[] };
+
+  function initPopularPosts() {
+    document.querySelectorAll<HTMLElement>('[data-popular-posts]').forEach((root) => {
+      if (root.dataset.initialized === 'true') return;
+      root.dataset.initialized = 'true';
+      const list = root.querySelector<HTMLOListElement>('[data-popular-list]');
+      const state = root.querySelector<HTMLElement>('[data-popular-state]');
+      const updated = root.querySelector<HTMLElement>('[data-popular-updated]');
+      if (!list || !state || !updated) return;
+
+      fetch('/analytics/popular.json', { cache: 'no-cache' })
+        .then(async (response) => {
+          if (!response.ok) throw new Error('public analytics unavailable');
+          return (await response.json()) as PublicFeed;
+        })
+        .then((feed) => {
+          if (feed.version !== 1 || !Array.isArray(feed.posts) || !feed.updatedAt) {
+            state.textContent = '인기 글 집계 연결을 준비 중입니다.';
+            return;
+          }
+          const valid = feed.posts.filter((post) =>
+            typeof post.path === 'string' &&
+            /^\/(?:en\/)?posts\/[a-zA-Z0-9%._~/-]+$/.test(post.path) &&
+            !/^\/(?:en\/)?posts\/tag(?:\/|$)/.test(post.path) &&
+            typeof post.title === 'string' &&
+            Number.isSafeInteger(post.views) &&
+            post.views > 0
+          ).slice(0, 5);
+          if (!valid.length) {
+            state.textContent = '집계된 글 조회수가 아직 없습니다.';
+            return;
+          }
+          list.replaceChildren();
+          for (const [index, post] of valid.entries()) {
+            const li = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = post.path;
+            const rank = document.createElement('span');
+            rank.className = 'popular-posts__rank';
+            rank.textContent = String(index + 1).padStart(2, '0');
+            const title = document.createElement('span');
+            title.className = 'popular-posts__title';
+            title.textContent = post.title;
+            const count = document.createElement('span');
+            count.className = 'popular-posts__views';
+            count.textContent = new Intl.NumberFormat('ko-KR').format(post.views) + '회';
+            link.append(rank, title, count);
+            li.append(link);
+            list.append(li);
+          }
+          state.hidden = true;
+          list.hidden = false;
+          const date = new Date(feed.updatedAt);
+          if (!Number.isNaN(date.getTime())) {
+            updated.textContent = '통계 갱신: ' + new Intl.DateTimeFormat('ko-KR', {
+              dateStyle: 'medium', timeZone: 'Asia/Seoul',
+            }).format(date);
+            updated.hidden = false;
+          }
+        })
+        .catch(() => { state.textContent = '인기 글 통계를 일시적으로 표시할 수 없습니다.'; });
+    });
+  }
+
+  initPopularPosts();
+  document.addEventListener('astro:page-load', initPopularPosts);
+</script>
+
+<style is:global>
+  [data-popular-posts] .popular-posts__period {
+    font-size: .78rem;
+    color: var(--color-muted-foreground);
+    white-space: nowrap;
+  }
+  [data-popular-posts] .popular-posts__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  [data-popular-posts] .popular-posts__list li {
+    border-bottom: 1px solid var(--color-border);
+  }
+  [data-popular-posts] .popular-posts__list a {
+    display: flex;
+    align-items: baseline;
+    gap: clamp(.75rem, 2vw, 1.5rem);
+    padding: 1rem .25rem;
+    color: var(--color-foreground);
+    text-decoration: none;
+    transition: color .2s ease;
+  }
+  [data-popular-posts] .popular-posts__list a:hover {
+    color: var(--color-primary);
+  }
+  [data-popular-posts] .popular-posts__rank {
+    min-width: 2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-muted-foreground);
+  }
+  [data-popular-posts] .popular-posts__title {
+    flex: 1;
+    min-width: 0;
+    font-size: clamp(1rem, 1.6vw, 1.25rem);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  [data-popular-posts] .popular-posts__views {
+    flex-shrink: 0;
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-muted-foreground);
+  }
+  [data-popular-posts] .popular-posts__updated {
+    margin-top: .65rem;
+  }
+</style>
