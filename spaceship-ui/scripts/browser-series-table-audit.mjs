@@ -1,8 +1,10 @@
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import {startPreview,startChrome,Cdp,attach,stopChild,removeProfile,evaluate,navigate,viewport,waitExpression} from './browser-smoke-harness.mjs';
 let preview,chrome,cdp;
-const out = process.env.JJO_READER_ARTIFACTS || '/private/tmp/jjo-reader-layout';
+const out = process.env.JJO_READER_ARTIFACTS || path.join(os.tmpdir(), 'jjo-reader-layout');
 fs.mkdirSync(out, { recursive: true });
 async function shot(s,name){const r=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false},s);fs.writeFileSync(out+'/'+name+'.png',Buffer.from(r.data,'base64'));}
 try {
@@ -25,6 +27,11 @@ try {
   }
  }
  // Use an actual published series member discovered from the rendered listing.
+ await navigate(cdp,s,'/');
+ await evaluate(cdp,s,`document.querySelector('.experience-mouse-frame').scrollIntoView({block:'center',behavior:'instant'})`);
+ await waitExpression(cdp,s,`(()=>{const i=document.querySelector('.experience-mouse-frame img');return i.complete&&i.naturalWidth>0})()`,'Small animated profile loaded');
+ assert(await evaluate(cdp,s,`(()=>{const i=document.querySelector('.experience-mouse-frame img');return i.currentSrc.endsWith('mouse_surprised.webp')&&i.naturalWidth===256&&!performance.getEntriesByType('resource').some(r=>r.name.endsWith('mouse_surprised.gif'))})()`));
+ console.log('PASS animated WebP selected without downloading the source GIF');
  await navigate(cdp,s,'/posts/');
  const href=await evaluate(cdp,s,"document.querySelector('[data-series-group=\"data-structures-coding-tests\"] a[href^=\"/posts/\"]')?.getAttribute('href')");assert(href);
  await navigate(cdp,s,href);
