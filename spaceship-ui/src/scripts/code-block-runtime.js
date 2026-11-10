@@ -19,20 +19,17 @@ async function copyText(text) {
 }
 
 function setCopyState(button, state) {
-  const labels = {
-    idle: '복사',
-    copied: '복사됨',
-    error: '복사 실패',
-  };
+  const english = document.documentElement.lang === 'en';
+  const labels = english
+    ? { idle: 'Copy', copied: 'Copied', error: 'Copy failed' }
+    : { idle: '복사', copied: '복사됨', error: '복사 실패' };
   button.dataset.copyState = state;
   button.textContent = labels[state];
   button.setAttribute(
     'aria-label',
-    state === 'copied'
-      ? '코드가 복사되었습니다'
-      : state === 'error'
-        ? '코드 복사에 실패했습니다'
-        : '코드 복사',
+    english
+      ? (state === 'copied' ? 'Code copied' : state === 'error' ? 'Code could not be copied' : 'Copy code')
+      : (state === 'copied' ? '코드가 복사되었습니다' : state === 'error' ? '코드 복사에 실패했습니다' : '코드 복사'),
   );
 }
 
@@ -65,13 +62,15 @@ function createToggleButton(shell, pre, lineCount) {
   button.className = 'code-block-toggle';
   button.setAttribute('aria-controls', pre.id);
   button.setAttribute('aria-expanded', 'false');
-  button.textContent = `전체 ${lineCount}줄 보기`;
+  const english = document.documentElement.lang === 'en';
+  const expandLabel = english ? `Show all ${lineCount} lines` : `전체 ${lineCount}줄 보기`;
+  button.textContent = expandLabel;
 
   button.addEventListener('click', () => {
     const expanded = shell.classList.toggle('is-expanded');
     pre.dataset.codeBlockCollapsed = expanded ? 'false' : 'true';
     button.setAttribute('aria-expanded', String(expanded));
-    button.textContent = expanded ? '코드 접기' : `전체 ${lineCount}줄 보기`;
+    button.textContent = expanded ? (english ? 'Collapse code' : '코드 접기') : expandLabel;
   });
 
   return button;
