@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import vm from 'node:vm';
 import {parse} from 'acorn';
 import {getNativeActsHtml} from '../src/lib/acts-native-source.mjs';
 import {getActsDashboardHtml} from '../src/lib/acts-dashboard-source.mjs';
@@ -30,8 +31,19 @@ for(const item of manifest){
  assert.deepEqual(images(src),images(dst),item.file+' original image sequence');
  for(const tag of ['h2','h3','h4','table','tr'])assert.equal([...src.matchAll(new RegExp('<'+tag+'\\b','g'))].length,[...dst.matchAll(new RegExp('<'+tag+'\\b','g'))].length,item.file+' '+tag+' coverage');
  assert(!/[가-힣]/.test(dst.replace(/<!--[\s\S]*?-->/g,'')),item.file+' has Korean outside comments');
- assert.deepEqual(scripts(src).map(skeleton),scripts(dst).map(skeleton),item.file+' script operations/numbers');
+ // English keywords include capital letters; normalize only this reviewed search comparison.
+ const behaviorSource=item.file==='isaiah-dashboard-3.html' ? src.replace('kw.includes(query)','kw.toLowerCase().includes(query)') : src;
+ assert.deepEqual(scripts(behaviorSource).map(skeleton),scripts(dst).map(skeleton),item.file+' script operations/numbers');
  const ids=s=>[...s.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.deepEqual(ids(src),ids(dst),item.file+' control/target identities');
+ if(item.file==='isaiah-dashboard-3.html'){
+  const script=[...dst.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).find(s=>s.includes('function handleGlobalSearch'));
+  const fn=parse(script,{ecmaVersion:'latest'}).body.find(n=>n.type==='FunctionDeclaration'&&n.id.name==='handleGlobalSearch');
+  const functionText=script.slice(fn.start,fn.end);
+  for(const [query,expected] of [['Memory','tab2'],['mEmOrY','tab2'],['Exodus','tab2'],['EXODUS','tab2'],['Trauma','tab3'],['tRaUmA','tab3']]){
+   let selected;vm.runInNewContext('('+functionText+')()',{document:{getElementById:()=>({value:query})},switchTab:id=>{selected=id;}});
+   assert.equal(selected,expected,'English keyword search: '+query);
+  }
+ }
  if(item.file==='acts-1-1-5-1.html'){
   const options=[...dst.matchAll(/<option value="([^"]+)"/g)].map(m=>m[1]);const positions=[...dst.matchAll(/\bpos:\s*("(?:[^"\\]|\\.)*")/g)].map(m=>JSON.parse(m[1]));assert.equal(positions.length,20);assert(positions.every(p=>options.includes(p)),'Every Greek word matches an English filter option');
  }

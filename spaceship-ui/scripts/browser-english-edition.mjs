@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { Cdp, BASE, attach, evaluate, navigate, viewport, waitExpression, startPreview, startChrome, stopChild, removeProfile } from './browser-smoke-harness.mjs';
 import { checkPowerBankPage } from './power-bank-browser-check.mjs';
 import { checkWritingCategoryPage } from './writing-category-browser-check.mjs';
+import { checkEnglishInteractivePage } from './english-interactive-browser-check.mjs';
 import { checkSocOverviewPage } from './soc-overview-browser-check.mjs';
 const manifest=JSON.parse(fs.readFileSync(new URL('../site/english-edition.json',import.meta.url),'utf8'));
 const out='english-review';fs.mkdirSync(out,{recursive:true});
@@ -34,6 +35,7 @@ try{
       if(seriesTranslation){
         await waitExpression(cdp,sessionId,`[...document.querySelectorAll('[data-english-article] iframe[src^="/en/assets/"]')].every(frame=>frame.contentDocument?.readyState==='complete' && frame.contentDocument.body?.innerText.length>200)`,'complete English embedded research body');
       }
+      await checkEnglishInteractivePage({cdp,sessionId,slug:pair.enSlug,enter,width});
       for(const dark of [false,true]){
         await evaluate(cdp,sessionId,`document.documentElement.classList.toggle('dark',${dark})`);
         const rendered=await evaluate(cdp,sessionId,`(()=>{const article=document.querySelector('[data-english-article]');return {language:document.documentElement.lang,text:article.innerText.length,embeddedText:[...article.querySelectorAll('iframe[src^="/en/assets/"]')].reduce((n,f)=>n+(f.contentDocument?.body?.innerText.length||0),0),korean:/[가-힣]/.test(article.innerText),images:article.querySelectorAll('${visualSelector}').length,news:Boolean(document.querySelector('header a[href="${parentNav}"][aria-current="page"]')),overflow:document.documentElement.scrollWidth>innerWidth+2,mathErrors:article.querySelectorAll('.katex-error').length}})()`);

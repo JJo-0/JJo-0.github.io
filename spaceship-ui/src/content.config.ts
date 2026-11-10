@@ -133,6 +133,7 @@ const englishPosts = defineCollection({
     translatedPosts: z.record(z.string(), z.string()), featured: z.boolean().default(false),
     researchArea: z.enum(RESEARCH_AREAS).optional(), researchFeatured: z.boolean().default(false),
     researchOrder: z.number().optional(), showComments: z.boolean().default(true),
+    usesChart: z.boolean().default(false),
   }),
 });
 export const collections = { posts, projects, appearances, about, englishPosts };
