@@ -129,6 +129,7 @@ const englishPosts = defineCollection({
     publicationTimeZone: z.enum(['UTC', 'Asia/Seoul']).default('Asia/Seoul'),
     lang: z.literal('en'), category: z.enum(POST_CATEGORIES), subcategory: z.string(),
     type: z.enum(POST_TYPES), tags: z.array(z.string()), translationKey: z.string(),
+    series: z.object({ id: z.string(), order: z.number() }).optional(),
     translatedPosts: z.record(z.string(), z.string()), featured: z.boolean().default(false),
     researchArea: z.enum(RESEARCH_AREAS).optional(), researchFeatured: z.boolean().default(false),
     researchOrder: z.number().optional(), showComments: z.boolean().default(true),

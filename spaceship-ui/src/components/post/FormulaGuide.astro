@@ -1,4 +1,5 @@
 ---
+import { englishFormulaText, englishFormulaTree } from '@/lib/modern-ai-english.mjs';
 import Math from './Math.astro';
 import FormulaLessonHost from './formula-lessons/FormulaLessonHost.astro';
 import { buildFormulaGuide } from '@/lib/modern-ai-formula-guide.mjs';
@@ -26,7 +27,10 @@ const {
   showProvenance = true,
 } = Astro.props;
 
-const guide = buildFormulaGuide({ formulaId, tex, section, part });
+const isEnglish = Astro.url.pathname.startsWith('/en/');
+const t = (value: string) => isEnglish ? englishFormulaText(value) : value;
+const sourceGuide = buildFormulaGuide({ formulaId, tex, section, part });
+const guide: typeof sourceGuide = isEnglish ? englishFormulaTree(sourceGuide) : sourceGuide;
 const lessonRef = getFormulaLessonRef(formulaId);
 const hasWalkthrough = guide.steps.length > 0;
 ---
@@ -40,9 +44,9 @@ const hasWalkthrough = guide.steps.length > 0;
   <summary class="cursor-pointer list-none px-4 py-4 sm:px-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="min-w-0">
-        <span class="block text-sm font-black text-foreground">{hasWalkthrough ? '쉽게 설명 + 계산 과정' : '쉽게 설명'}</span>
+        <span class="block text-sm font-black text-foreground">{t(hasWalkthrough ? '쉽게 설명 + 계산 과정' : '쉽게 설명')}</span>
         <span class="mt-1 block text-xs leading-5 text-muted-foreground">
-          {guide.badges.join(' · ')}{lessonRef?.renderer && ' · 수식별 학습 장면'}
+          {guide.badges.join(' · ')}{lessonRef?.renderer && ` · ${t('수식별 학습 장면')}`}
         </span>
       </div>
       <span
@@ -55,11 +59,11 @@ const hasWalkthrough = guide.steps.length > 0;
   <div class="border-t border-border/60 bg-muted/10 px-4 py-5 sm:px-5 sm:py-6">
     <div class="grid gap-3 lg:grid-cols-2">
       <section class="rounded-2xl border border-border/70 bg-background/80 p-4">
-        <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">이 식이 답하는 질문</p>
+        <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">{t('이 식이 답하는 질문')}</p>
         <p class="mb-0 mt-2 text-base font-black leading-7 text-foreground">{guide.question}</p>
       </section>
       <section class="rounded-2xl border border-border/70 bg-background/80 p-4">
-        <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">한 줄 핵심</p>
+        <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">{t('한 줄 핵심')}</p>
         <p class="mb-0 mt-2 text-sm font-medium leading-7 text-foreground">{guide.summary}</p>
       </section>
     </div>
@@ -75,10 +79,10 @@ const hasWalkthrough = guide.steps.length > 0;
         <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div>
             <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">Calculation walkthrough</p>
-            <h5 class="mb-0 mt-1 text-base font-black text-foreground">계산 과정</h5>
+            <h5 class="mb-0 mt-1 text-base font-black text-foreground">{t('계산 과정')}</h5>
           </div>
           <span class="rounded-full border border-border bg-background px-3 py-1 text-xs font-bold text-muted-foreground">
-            중간 계산을 생략하지 않음
+            {t('중간 계산을 생략하지 않음')}
           </span>
         </div>
 
@@ -113,7 +117,7 @@ const hasWalkthrough = guide.steps.length > 0;
       >
         <div class="border-b border-sky-500/20 px-4 py-4 sm:px-5">
           <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">Worked example</p>
-          <h5 class="mb-0 mt-1 text-base font-black text-foreground">숫자로 직접 계산 — {guide.example.title}</h5>
+          <h5 class="mb-0 mt-1 text-base font-black text-foreground">{t('숫자로 직접 계산')} — {guide.example.title}</h5>
           <p class="mb-0 mt-1 text-sm leading-6 text-muted-foreground">{guide.example.setup}</p>
         </div>
         <ol class="m-0 divide-y divide-sky-500/15 p-0">
@@ -135,9 +139,9 @@ const hasWalkthrough = guide.steps.length > 0;
           ))}
         </ol>
         <div class="border-t border-sky-500/20 bg-background/55 px-4 py-4 sm:px-5">
-          <p class="m-0 text-sm font-black leading-6 text-foreground">결과: {guide.example.result}</p>
+          <p class="m-0 text-sm font-black leading-6 text-foreground">{t('결과')}: {guide.example.result}</p>
           {guide.example.caution && (
-            <p class="mb-0 mt-2 text-xs leading-5 text-muted-foreground">주의: {guide.example.caution}</p>
+            <p class="mb-0 mt-2 text-xs leading-5 text-muted-foreground">{t('주의')}: {guide.example.caution}</p>
           )}
         </div>
       </section>
@@ -147,7 +151,7 @@ const hasWalkthrough = guide.steps.length > 0;
       {guide.checks?.length > 0 && (
         <section class="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 sm:p-5" data-formula-checks>
           <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">Sanity check</p>
-          <h5 class="mb-2 mt-1 text-sm font-black text-foreground">검산 포인트</h5>
+          <h5 class="mb-2 mt-1 text-sm font-black text-foreground">{t('검산 포인트')}</h5>
           <ul class="m-0 space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
             {guide.checks.map((check) => <li>{check}</li>)}
           </ul>
@@ -157,10 +161,10 @@ const hasWalkthrough = guide.steps.length > 0;
       {guide.symbols.length > 0 && (
         <section class="rounded-2xl border border-border/70 bg-background/80 p-4 sm:p-5">
           <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">Symbols</p>
-          <h5 class="mb-2 mt-1 text-sm font-black text-foreground">이 식에 실제로 나온 기호</h5>
+          <h5 class="mb-2 mt-1 text-sm font-black text-foreground">{t('이 식에 실제로 나온 기호')}</h5>
           <div class="overflow-x-auto">
             <table class="m-0 min-w-full text-sm">
-              <thead><tr><th class="whitespace-nowrap">기호</th><th>의미</th></tr></thead>
+              <thead><tr><th class="whitespace-nowrap">{t('기호')}</th><th>{t('의미')}</th></tr></thead>
               <tbody>
                 {guide.symbols.map((symbol) => (
                   <tr><td class="whitespace-nowrap"><Math tex={symbol.tex} /></td><td>{symbol.meaning}</td></tr>
@@ -174,14 +178,14 @@ const hasWalkthrough = guide.steps.length > 0;
 
     {note && (
       <aside class="mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-950 dark:text-amber-100">
-        <strong>{statusLabel ? `${statusLabel}:` : '주의해서 읽기:'}</strong> {note}
+        <strong>{statusLabel ? `${statusLabel}:` : `${t('주의해서 읽기')}:`}</strong> {note}
       </aside>
     )}
 
     {guide.references?.length > 0 && (
       <section class="mt-6">
         <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">Reference-quality follow-up</p>
-        <h5 class="mb-3 mt-1 text-sm font-black text-foreground">같은 계산을 더 깊게 확인할 레퍼런스</h5>
+        <h5 class="mb-3 mt-1 text-sm font-black text-foreground">{t('같은 계산을 더 깊게 확인할 레퍼런스')}</h5>
         <div class="grid gap-3 sm:grid-cols-2">
           {guide.references.map((reference) => (
             <a
@@ -201,7 +205,7 @@ const hasWalkthrough = guide.steps.length > 0;
     {showProvenance && (
       <div class="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4 text-xs text-muted-foreground/85">
         <span>{sourceLabel || `${guide.area} · ${formulaId}`}</span>
-        <span>식별자: {formulaId}</span>
+        <span>{t('식별자')}: {formulaId}</span>
       </div>
     )}
   </div>
@@ -223,13 +227,13 @@ const hasWalkthrough = guide.steps.length > 0;
     const original = button.textContent;
     try {
       await navigator.clipboard.writeText(tex);
-      button.textContent = '복사됨';
+      button.textContent = document.documentElement.lang === 'en' ? 'Copied' : '복사됨';
       window.setTimeout(() => (button.textContent = original), 1400);
       trackFormulaEvent('formula_copy', {
         formula_id: button.closest('[data-formula-id]')?.getAttribute('data-formula-id') || '',
       });
     } catch {
-      button.textContent = '복사 실패';
+      button.textContent = document.documentElement.lang === 'en' ? 'Copy failed' : '복사 실패';
       window.setTimeout(() => (button.textContent = original), 1400);
     }
   });

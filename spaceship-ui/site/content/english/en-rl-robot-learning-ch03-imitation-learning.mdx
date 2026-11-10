@@ -1,0 +1,623 @@
+---
+title: Reinforcement Learning 03 — Learning from Demonstrations
+description: From behavior cloning to DAgger, multimodal action distributions and
+  latent plans. Follow the original figures and lecture transcripts to distinguish
+  data, loss and execution, then check the ideas with numerical examples.
+pubDate: 2026-11-04
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch03-imitation-learning
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags:
+- robot-learning
+- imitation-learning
+- behavioral-cloning
+- dagger
+- latent-plans
+draft: false
+lang: en
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 3
+translationKey: series-rl-robot-learning-ch03-imitation-learning-20261109
+translatedPosts:
+  ko-KR: rl-robot-learning-ch03-imitation-learning
+---
+
+
+import LectureSlide from '@/components/post/LectureSlide.astro';
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+If we collect a driver's road images and steering commands, can a robot learn to drive from them? The starting point is supervised learning with inputs and targets. But a robot's answer changes the next scene it sees. Let us examine learning actions from demonstrations, then three difficulties that emerge during actual execution.
+
+[Oier Mees · ETH Zurich 2026, Lecture 3](https://www.youtube.com/watch?v=Ef4R5s1LqoQ) · [Official course](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Original PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture3_imitation.pdf)
+
+<LectureSlide lecture={3} page={1} caption="Learning a rule for action from demonstrated movement" priority />
+
+[Chapter 02](/en/posts/rl-robot-learning-ch02-control-mdp/) converted desired tool-tip positions into joint targets and control commands, then described decision-making through states, actions, transitions and rewards. Now we ask <strong>how to obtain the policy</strong> within that framework.
+
+<strong>Imitation learning</strong> is a family of methods using expert behavior as a learning signal. Human teleoperation records or runs from an existing controller can serve as demonstrations. Instead of beginning with reward-based trial and error alone, the main methods here start by predicting what the expert did in the same situation. Demonstrators need not always be optimal, so data quality and coverage matter too.
+
+<LectureSlide lecture={3} page={3} caption="Reconnecting observations, policies and actions over time" />
+
+The road image is an <strong>observation</strong>; a steering command is an <strong>action</strong>. Information needed to predict what happens next, including the car's actual position, velocity and heading, is modeled as <strong>state</strong>. One camera image need not reveal all of it.
+
+Network weights <Math tex={String.raw`\theta`} /> define the action-selection rule. <Math tex={String.raw`\pi_\theta(a_t\mid o_t)`} /> is the probability or density assigned to action <Math tex={String.raw`a_t`} /> given observation <Math tex={String.raw`o_t`} /> at step <Math tex={String.raw`t`} />. The bar denotes conditioning on given information. With access to full state, we can condition on <Math tex={String.raw`s_t`} /> instead of the observation.
+
+The red arrow below the figure traces actions through a changing environment and back to the next image. The 0.8 above it is a probability of choosing forward, not a success rate. A wrong steering action changes the next camera view. Predicting actions in stored images and completing a task through repeated action therefore need separate evaluation. [Original lecture, 2:09–2:49](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=129s).
+
+<LectureSlide lecture={3} page={4} caption="What should a demonstration record contain?" />
+
+A <strong>demonstration</strong> records what an expert observed and did while performing a task. A <strong>trajectory</strong> <Math tex={String.raw`\tau`} /> is one run linking states and actions, or observations and actions, in time order. A collection of runs forms dataset <Math tex={String.raw`\mathcal D`} />.
+
+For cup grasping, the record can synchronize camera images, joint measurements, gripper commands and arm commands. Video alone, without corresponding executable robot actions, does not immediately provide the input–target pairs needed for basic behavior cloning. Mapping a video of a human grasp to robot-joint torques remains a separate problem.
+
+For training, split trajectories into observation–expert-action pairs <Math tex={String.raw`(o_t,a_t^*)`} />. The asterisk marks an <strong>expert-provided target</strong> here, not a mathematically proven optimum. Pairing an image with an action taken 0.1 seconds too late, for example, misaligns the response timing to be learned. [Original lecture, 2:41–3:54](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=161s).
+
+[NTU's imitation learning lecture, 5:26–7:51](https://www.youtube.com/watch?v=9H3ShV57lHs&t=326s) likewise connects driving records and arm demonstrations through observation–action learning. This offers a starting point when rewards are difficult to design. But the goal “move it” does not establish command units: first specify whether the records contain position targets, displacements, velocities or torques.
+
+<LectureSlide lecture={3} page={5} caption="Behavior cloning: reducing the error between predictions and expert actions" />
+
+<strong>Behavior cloning (BC)</strong> turns demonstrations into supervised training data for a policy. Supervised learning finds a prediction rule from input–target pairs. A deterministic policy predicting one continuous action can be framed as <strong>regression</strong>: predicting numerical values.
+
+
+<Math tex={String.raw`\hat a_i=f_\theta(o_i),\qquad L_{\mathrm{BC}}(\theta)=\frac1N\sum_{i=1}^N\lVert \hat a_i-a_i^*\rVert_2^2`} display label="Mean squared error for behavior cloning: average the squared difference between predicted and expert actions over the dataset" />
+
+<RobotEquationGuide id="rl03-e01" />
+
+
+<Math tex={String.raw`N`} /> counts observation–action pairs. The hat in <Math tex={String.raw`\hat a_i`} /> marks the predicted action; <Math tex={String.raw`a_i^*`} /> is the demonstrated action. Squaring a vector norm means squaring and adding component-wise action differences. We adjust weights to reduce the resulting average, the <strong>mean squared error (MSE)</strong>.
+
+Training repeatedly samples small groups of pairs called <strong>minibatches</strong>, predicts actions with the network, differentiates the loss with respect to its weights, and updates them. Computing these derivatives backward through the network is <strong>backpropagation</strong>. [Original lecture, 3:56–5:01](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=236s).
+
+When predicting an action distribution rather than one value, we can reduce the following <strong>negative log-likelihood (NLL)</strong> to give demonstrated actions high probability or density.
+
+
+<Math tex={String.raw`L_{\mathrm{NLL}}(\theta)=-\frac1N\sum_{i=1}^N\log\pi_\theta(a_i^*\mid o_i)`} display label="A stochastic policy reduces negative log-likelihood to increase the likelihood assigned to demonstrated actions" />
+
+<RobotEquationGuide id="rl03-e02" />
+
+
+Likelihood assesses how much probability or density a model assigns to the observed actions. Logarithms make products across steps easier to handle as sums, and the minus sign converts maximization to minimization. For continuous actions, distinguish density from the probability of one exact real-valued point. Combining components with different units, such as torque and distance, also changes their loss contributions, so inspect normalization and weights.
+
+<LectureSlide lecture={3} page={6} caption="Why a small action error changes the next input" />
+
+The points in the left oval are fixed inputs. Classifying a photograph as a cat or dog does not change the next photograph's pixels. On the right, the gray expert path and the executed policy path diverge after a small action error. Moving somewhere slightly different changes the next input from the one the expert saw.
+
+<strong>Distribution shift</strong> is a difference between training-input and execution-input distributions. Alongside external changes such as weather, here <strong>the policy's own actions change its input distribution</strong>. A car drifting out of its lane, seeing a less familiar image and steering incorrectly again illustrates <strong>compounding error</strong>.
+
+Write the expert's and learner's state-visitation distributions as <Math tex={String.raw`d^{\pi^*}(s)`} /> and <Math tex={String.raw`d^\pi(s)`} />. They can differ even when both start on the same road. These distributions describe how often states are visited, distinct from probabilities of selecting actions. [Original lecture, 5:38–8:44](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=338s).
+
+<strong>i.i.d.</strong> means samples are independent and identically distributed; it does not mean inputs and targets are unrelated. Supervised learning aims precisely to learn their relationship. The key difference is a closed loop in which predictions change future inputs. Consecutive demonstration frames are correlated too, so shuffling frames alone does not solve the distribution mismatch between training and execution.
+
+<LectureSlide lecture={3} page={7} caption="NVIDIA's camera-based steering: behavior cloning in practice" />
+
+NVIDIA's 2016 DAVE-2 study trained a neural network to predict steering commands from forward-facing camera images. Instead of hand-writing every intermediate rule about road boundaries and vehicle state, it learned from image–steering pairs recorded during human driving. The photographed vehicle demonstrates this approach on a real car. [Original lecture, 8:50–9:53](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=530s).
+
+<strong>End-to-end</strong> here describes learning the connection from image input to steering output. It should not be expanded into a claim that one network handled acceleration, braking, destination selection and every safety decision. The paper studies a steering system under specified training and evaluation conditions. [Original NVIDIA paper](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf).
+
+How, then, did it address compounding errors in unfamiliar states? An important connection is teaching recovery from off-center positions, rather than including only examples of good centered driving.
+
+<LectureSlide lecture={3} page={8} caption="What centered lane-following records do not teach" />
+
+Imagine a car viewed from above, traveling straight along the lane center. Its expert command may be almost straight ahead. Thousands of similar images and actions can thoroughly cover that centered-driving relationship.
+
+Record count and situation coverage are different. Adding only accurately centered driving can still leave no examples of recovering rightward from the left lane edge. The policy needs more than replaying demonstrated paths: it must <strong>choose the right next action from a slightly off-course current state</strong>. [Original lecture, 10:03–10:53](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=603s).
+
+<LectureSlide lecture={3} page={9} caption="An angled, off-course car needs target recovery actions" />
+
+Now the vehicle has drifted and turned obliquely to the lane. The image differs from centered driving, and the required steering differs from straight ahead. Fitting familiar centered images does not establish that the policy has learned recovery.
+
+Adding this state to training requires both its image and a target action specifying <strong>which way and how far to steer to recover</strong>. More examples of bad situations alone differ from records pairing those situations with good corrective behavior. [Original lecture, 10:55–11:59](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=655s) · [NTU on situations outside demonstrations, 8:00–9:01](https://www.youtube.com/watch?v=9H3ShV57lHs&t=480s).
+
+<LectureSlide lecture={3} page={10} caption="Data augmentation changes the image and recovery action together" />
+
+<strong>Data augmentation</strong> applies valid transformations to existing data to broaden training cases. For driving, side-camera images can supplement the central view with scenes that appear off-center. Their target actions must also be adjusted to steer back toward the center.
+
+The illustrative expression below takes right steering as positive and writes correction magnitude as <Math tex={String.raw`\delta>0`} />. A left-offset view is paired with rightward recovery, and a right-offset view with leftward recovery.
+
+
+<Math tex={String.raw`\mathcal D_{\mathrm{aug}}=\{(o_c,a),\;(o_l,a+\delta),\;(o_r,a-\delta)\}`} display label="Illustrative augmentation: when camera viewpoint changes, adjust the steering target toward recovery in the opposite direction" />
+
+<RobotEquationGuide id="rl03-e03" />
+
+
+<Math tex={String.raw`o_c,o_l,o_r`} /> denote central, left and right camera observations. Signs depend on the steering convention. This does not assert that one constant correction works accurately for every vehicle; camera position, orientation and the desired recovery path matter.
+
+The original NVIDIA training diagram draws image translation/rotation and steering-target adjustment as separate boxes. Moving only the image while retaining its old steering target can teach an incorrect correspondence.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch03-imitation-learning/nvidia-training.png" alt="Original NVIDIA DAVE-2 training diagram: translate and rotate images from three cameras, adjust steering targets, and backpropagate CNN prediction error." caption="Excerpt from Figure 2 on page 3 of the original NVIDIA DAVE-2 paper. Image transformations and steering-target corrections are applied together." source="https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf#page=3" credit="Bojarski et al., NVIDIA, and the respective rights holders" width={1095} height={540} />
+
+A CNN is a <strong>convolutional neural network</strong> that computes spatial image features. The backpropagation arrow traces the training path that updates weights from prediction–target differences. Distinguish training with multiple cameras and transformed images from execution using the central forward camera. [Original lecture, 12:01–13:03](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=721s).
+
+<LectureSlide lecture={3} page={11} caption="Learning a flight direction from a person walking a forest trail" />
+
+In the forest-trail example, a person walks with head-mounted cameras facing centrally, left and right. The central camera records views aligned with the trail, while the side cameras supply apparently misaligned views. Pairing them with straight, left-turn and right-turn labels trains a direction classifier for following the path.
+
+Labels derived from those three views specify direction. A real drone still needs separate flight control to convert a chosen direction into attitude and thrust.
+
+The person did not directly demonstrate every drone-motor command while walking through the forest. Camera directions and the assumption that the person follows the trail provide <strong>a way to construct target direction choices</strong>. The image-to-direction network is distinct from the lower-level controller stabilizing the aircraft.
+
+Giusti et al.'s original paper explains three-camera collection, augmentation that reverses labels when images are flipped horizontally, trail classification and ground/flight evaluation. Its results do not establish navigation through every pathless forest or avoidance of every obstacle. [Original paper](https://rpg.ifi.uzh.ch/docs/RAL16_Giusti.pdf) · [Original lecture, 13:12–15:06](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=792s) · [Berkeley on the same collection principle, 2:44–5:06](https://www.youtube.com/watch?v=ppN5ORNrMos&t=164s).
+
+<LectureSlide lecture={3} page={12} caption="A bound examines worst-case accumulation, not the error a robot will necessarily make" />
+
+Even a small probability of one incorrect action can lead to a large task-level loss if the robot then remains in unfamiliar states. The tightrope illustration represents <strong>a failure affecting every remaining step</strong>.
+
+Let <Math tex={String.raw`T`} /> be the number of execution steps and <Math tex={String.raw`\epsilon`} /> a small action-error rate on expert-visited situations. Consider a simple model with per-step cost 0 or 1 and cost 1 at every remaining step after leaving the expert path. Departure at the first step incurs cost for <Math tex={String.raw`T`} /> steps; first departure at the second incurs it for <Math tex={String.raw`T-1`} /> steps.
+
+
+<Math tex={String.raw`\sum_{t=1}^{T}\epsilon(T-t+1)=\epsilon\frac{T(T+1)}2=O(\epsilon T^2)`} display label="An early error can incur cost at every remaining step, giving intuition for worst-case accumulation quadratic in the horizon" />
+
+<RobotEquationGuide id="rl03-e04" />
+
+
+The sum conservatively combines these effects as an intuition. <Math tex={String.raw`O(\epsilon T^2)`} /> describes asymptotic growth in <Math tex={String.raw`T`} />; it does not predict that BC always worsens quadratically in experiments. If each step costs at most 1, actual total cost cannot exceed <Math tex={String.raw`T`} />, so a large upper bound may become uninformative.
+
+In a separate calculation with pre-departure error probability fixed at 0.01 per step and no recovery after departure, <Math tex={String.raw`T=20`} /> gives expected cost about 1.9728. The simple sum above gives 2.1, covering it. Independent, isolated errors costing only one step each would instead give 0.2. Comparing these models reveals what it means for an error to affect the remaining horizon.
+
+[Page 2 of Ross et al.'s original paper](https://proceedings.mlr.press/v15/ross11a/ross11a.pdf#page=2) develops general bounds under assumptions including imitation error on the expert distribution and bounded task costs. Do not apply a 0–1 error count blindly to the probability that continuous torque matches an expert exactly. Assumptions are needed to connect action error to task cost. [Original lecture, 15:11–18:00](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=911s) · [Berkeley's tightrope calculation, 6:45–10:40](https://www.youtube.com/watch?v=YivJ9KDjn-o&t=405s).
+
+<LectureSlide lecture={3} page={13} caption="Labeling the states the learner actually visits with good actions" />
+
+If a policy repeatedly fails in states missing from its data, those states can be brought into training. Shift the question from whether it followed the expert's path to <strong>what the expert would do here, where the current policy has arrived</strong>.
+
+The equality sign between distributions in the figure expresses the aim of reducing this gap. It does not say that every state's visitation frequency must match perfectly before learning is possible. It addresses the lack of useful targets in states the learner frequently encounters. This makes the next algorithm's collection sequence clearer. [Original lecture, 18:03–18:40](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1083s).
+
+<LectureSlide lecture={3} page={14} caption="DAgger: alternate policy rollouts and expert labeling" />
+
+<strong>DAgger</strong> stands for Dataset Aggregation. It begins with a policy trained on expert demonstrations, then collects states visited by the learned policy and asks the expert for the appropriate actions there.
+
+1. Execute the current policy and record the states visited. Running a policy in an environment to collect such a record is a <strong>rollout</strong>.
+2. Obtain the action the expert would choose at each visited state.
+3. Add the new state–expert-action pairs to the existing dataset.
+4. Retrain on the aggregated data and repeat.
+
+
+<Math tex={String.raw`\mathcal D_{k+1}=\mathcal D_k\cup\{(s,a^*):s\text{ visited by }\pi_k\}`} display label="DAgger labels states visited by the current policy with expert actions and adds them to the existing dataset" />
+
+<RobotEquationGuide id="rl03-e05" />
+
+
+<Math tex={String.raw`k`} /> indexes data-collection and training rounds. The procedure does not copy the learner's mistaken action as a target; it <strong>labels the state reached through that action with a good expert action</strong>. Retaining older data covers both previously familiar states and new recovery states. The blue correction arrow illustrates this additional learning.
+
+The original algorithm also includes mixtures of expert and learner policies during collection and conditions on learning and policy selection. Its theoretical point is to address imitation loss under policy-induced state distributions. The equality drawn in the figure is not an unconditional guarantee that every neural network exactly reproduces the expert's visitation distribution. Linear-order performance guarantees likewise depend on the imitation loss and assumptions about cost and recovery. [Original paper, pp. 3–4](https://proceedings.mlr.press/v15/ross11a/ross11a.pdf#page=3).
+
+When we say that data containing mistakes can help, the valuable part is the <strong>correct recovery after the mistake</strong>. Simply adding more incorrect actions can change what the model learns. Labeling joint torques individually from static robot images is also difficult for a person. That cost motivates the next intervention approach. [Original lecture, 18:44–20:27](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1124s).
+
+<LectureSlide lecture={3} page={15} caption="Human-Gated DAgger: a person takes over when needed" />
+
+An <strong>intervention</strong> is a person taking over policy execution to demonstrate a segment. Think of a driving instructor taking the wheel at a necessary moment, instead of driving the whole route for the learner.
+
+In Human-Gated DAgger, a person watches execution, takes control when trouble appears, and adds observation–action records from the recovery segment as new demonstrations. This can reduce the burden of separately labeling every past frame, but it collects a different distribution from basic DAgger, which queries targets at all visited states.
+
+Questions remain about when to intervene, how to join commands before and after takeover, and how to discover errors in unsupervised stretches. A high policy probability does not guarantee a situation warrants confidence. Separate <strong>recognizing a difficult moment</strong> from <strong>learning what to do then</strong>. [Original lecture, 20:32–22:25](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1232s).
+
+<LectureSlide lecture={3} page={16} caption="Recognizing ambiguity and asking the person again" />
+
+“Bring the round yellow object.” With several yellow objects on the table, uncertainty about <strong>which object is meant</strong> comes before choosing a gripper movement. The boxes in the photograph mark candidate object regions for the instruction.
+
+The robot can ask a distinguishing question, such as “Do you mean the lemon at the bottom center?”, and act after the answer. Relative descriptions such as “left of the lower object” also need their reference object established. Connecting language to a visual referent is <strong>language grounding</strong>.
+
+Here the robot asks for missing task information instead of asking an expert to specify every motor command again. It connects to detecting a need for intervention, but is not itself a universal detector of robot failures. [Original lecture, 22:30–23:15](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1350s).
+
+<LectureSlide lecture={3} page={17} caption="Learning candidate scores and a basis for asking questions" />
+
+For “pick up the blue one,” a blue bowl and a blue cup may both be candidates. A <strong>referring-expression comprehension model</strong> scores how well a sentence matches each object. Here <Math tex={String.raw`o_i`} /> is the correct object, <Math tex={String.raw`r_i`} /> the referring sentence and <Math tex={String.raw`S(o\mid r)`} /> their compatibility score. The symbol <Math tex={String.raw`r`} /> in this section denotes a <strong>sentence</strong>, not reward.
+
+Require the correct pair's score to exceed an incorrect pair's score by at least <Math tex={String.raw`m_1`} />. This minimum difference is the <strong>margin</strong>. Split the original ranking loss into two terms for one correct pair as follows.
+
+
+<Math tex={String.raw`\begin{aligned}\ell_i={}&\lambda_1\max\!\left(0,m_1+S(o_i\mid r_j)-S(o_i\mid r_i)\right)\\&+\lambda_2\max\!\left(0,m_1+S(o_k\mid r_i)-S(o_i\mid r_i)\right)\end{aligned}`} display label="Ranking loss encourages the correct pair to outscore incorrect sentence or object pairings by a margin" />
+
+<RobotEquationGuide id="rl03-e06" />
+
+
+The first line pairs the same object with an incorrect sentence <Math tex={String.raw`r_j`} />; the second pairs the same sentence with another object <Math tex={String.raw`o_k`} />. <Math tex={String.raw`\lambda_1,\lambda_2`} /> weights the two penalties. <Math tex={String.raw`\max(0,\cdot)`} /> sets the penalty to zero when the gap is sufficient and penalizes only the shortfall. A correct score of 0.8, incorrect score 0.4 and margin 0.2 give zero penalty; an incorrect score of 0.7 leaves a 0.1 margin shortfall. These numbers are a separate illustration of the structure.
+
+Asking a question also requires generating a description that distinguishes candidates. If <Math tex={String.raw`v_i`} /> contains visual features of an object and its surroundings, a generation loss can favor the actual description while a discriminative term discourages confusion with other objects.
+
+
+<Math tex={String.raw`\begin{aligned}L_{\mathrm{gen}}&=-\sum_i\log P(r_i\mid v_i)\\L_{\mathrm{mmi}}&=\sum_i\lambda_3\max\!\left(0,m_2+\log P(r_i\mid v_k)-\log P(r_i\mid v_i)\right)\end{aligned}`} display label="Sentence generation increases the likelihood of the target object's description and penalizes descriptions that fit other objects similarly well" />
+
+<RobotEquationGuide id="rl03-e07" />
+
+
+<Math tex={String.raw`\lambda_3`} /> weights the discriminative term, and <Math tex={String.raw`m_2`} /> is the required log-likelihood gap between the correct object and others. The first term encourages good descriptions; the second reduces their equal fit to other candidates. For example, “the blue bowl on the right side of the table” can distinguish candidates better than “the blue one.”
+
+At execution time, close candidate scores can inform a decision to ask. A small score gap is not an exact failure probability: <strong>scores are comparative model signals</strong> and should not be treated as probabilities without validation. The original ranking expression raises correct-pair scores, so I read the difference between its two scores rather than relying on the sign described verbally. [Original lecture, 23:15–24:40](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1395s).
+
+<LectureSlide lecture={3} page={18} caption="Question, confirmation and execution form one interaction" />
+
+In the robot interface, a spoken instruction is followed by candidate selection, confirmation when needed—“Do you mean the banana in the middle?”—and grasping and transport. A person's answer supplies new information narrowing an ambiguous goal. Only after that goal is specified can the system decide the arm actions needed to execute it.
+
+Candidate names and positions help distinguish them when forming a question. With two bananas, add a shared visual reference such as “in the middle,” instead of asking about the name alone.
+
+This sequence separates sources of uncertainty. Changing joint-controller gains cannot clarify which object an instruction means. Conversely, slipping after correct object selection requires addressing contact and low-level control. Diagnose <strong>what to do, where to do it and how to move</strong> separately. [Original lecture demonstration, 24:40–25:25](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1480s).
+
+<LectureSlide lecture={3} page={19} caption="The demonstrator may use information beyond the current image" />
+
+A bicycle photographed at the same road position can call for different driving decisions depending on whether it approached the roadway or moved away over the preceding seconds. A policy receiving only the current photograph cannot know that motion.
+
+The demonstrator's action is then not sufficiently described by a function of the current observation. Past views, intent or a recently checked blind spot may supply information unavailable to the policy. This is a problem of <strong>non-Markovian behavior</strong> relative to the current input.
+
+
+<Math tex={String.raw`\pi(a_t\mid o_t)\qquad\longleftrightarrow\qquad\pi(a_t\mid o_{0:t},a_{0:t-1})`} display label="Distinguish a policy conditioned only on the current observation from one conditioned on observation and action history" />
+
+<RobotEquationGuide id="rl03-e08" />
+
+
+<Math tex={String.raw`o_{0:t}`} /> denotes observation history from the beginning through the current step. Two actions at the same observation do not immediately establish human inconsistency: information used by the person may be missing from the policy input. Conversely, history may still leave different intentions or multiple valid approaches unexplained; those lead to the multimodal-distribution problem below. [Original lecture, 25:28–27:31](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1528s).
+
+<LectureSlide lecture={3} page={20} caption="Privileged observations: information visible to the demonstrator but not the robot" />
+
+The person on the left can look around the robot and table directly. In the camera view on the right, an object may appear small or be hidden by the hand. A person may have checked a handle from another viewpoint while the policy must predict the same action without seeing it.
+
+Such demonstrator-only information is called <strong>privileged information or a privileged observation</strong>. The term describes <strong>who has access to information</strong>, rather than one particular learning algorithm. A person demonstrating with exact object positions displayed by a simulator while the deployed policy receives only cameras is another example.
+
+Options include having the demonstrator use the same camera view as the policy or providing the sensors the policy needs. Using training-only information requires a learning design that still works when it is unavailable at execution time. This is one reason more demonstrations alone cannot resolve every problem. [Original lecture, 27:36–28:43](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1656s).
+
+<LectureSlide lecture={3} page={21} caption="What can a history-aware model add?" />
+
+A <strong>sequence model</strong> computes relationships among ordered inputs. Encoding several past images and reading their sequence can reveal motion direction or recent-action context absent from one frame.
+
+Seq2Seq in the figure means a structure mapping an input sequence to an output sequence or action. RNNs and LSTMs carry past information through internal state; Transformers allocate attention among inputs. Changing the architecture's name does not automatically produce the needed memory. Input window, sampling interval, latency and computation also need specifying.
+
+When past actions are inputs, inspect what fills those slots at execution time. Training with previous expert actions and executing with previous policy actions changes this input too. <strong>Adding memory and learning the right cues are separate challenges</strong>. [Original lecture, 28:45–29:54](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1725s) · [Berkeley on history models, 8:59–9:46](https://www.youtube.com/watch?v=ppN5ORNrMos&t=539s).
+
+<LectureSlide lecture={3} page={22} caption="Causal confusion: mistaking an outcome's trace for the reason to act" />
+
+Suppose a gripper force sensor always reads 10 N before the demonstrator opens a drawer. A model might learn “pull when the signal is 10 N” instead of checking whether the handle is properly grasped. If the reading becomes 2 N at execution time, the pulling command may never appear.
+
+When the force signal and handle contact always co-occur in training, the training loss alone may not distinguish which cue will remain useful under new conditions.
+
+<strong>Correlation</strong> means two phenomena occur together in data. <strong>Causation</strong> concerns how a factor produces an outcome. A cue always accompanying an action in demonstrations need not remain a sound basis for acting after the environment changes. Policy learning studies this as <strong>causal confusion</strong>.
+
+This does not make force sensors useless. Grasp state and force can be physically important. The issue is reliance on an incidental pairing between a particular number and an action while missing the contact or visual information required under changed conditions. The drawer is a conceptual example, not evidence against all force-based control.
+
+Berkeley uses another example: a brake indicator. The driver sees a pedestrian and brakes, which switches on the indicator. A model predicting braking solely from that indicator can miss the moment when braking should begin. Longer history can provide more of these easy cues too. [Berkeley, 9:58–12:38](https://www.youtube.com/watch?v=ppN5ORNrMos&t=598s).
+
+Masking cues or changing environmental conditions can probe what a model relies on. Merely enlarging it or supplying longer history does not guarantee causal understanding. [Original lecture, 29:56–31:51](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1796s) · [de Haan et al.'s original paper and project](https://sites.google.com/view/causal-confusion).
+
+<LectureSlide lecture={3} page={23} caption="Multimodal actions: several ways to achieve one goal" />
+
+A drawer can be closed by grasping and pushing its handle or by pushing its front. The pictured arm can achieve the same goal through different approaches, from above or from the side. The redundancy discussed in Chapter 02 similarly allows different joint configurations for the same tool pose.
+
+When separated actions frequently occur under similar inputs, the action distribution has several peaks. This is <strong>multimodality, or multiple modes</strong>. A mode here is a distinct way of acting, different from “multimodal” meaning several sensory types such as vision, language and force.
+
+If different human approaches all succeed, none is necessarily a wrong target. The problem is how to represent that diversity when a policy is required to output one average value. [Original lecture, 31:54–33:30](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=1914s).
+
+<LectureSlide lecture={3} page={24} caption="The average of two safe routes can head toward a tree" />
+
+Tracks in snow pass a tree on both the left and the right. Their pointwise average can run between them, toward the tree. <strong>Averaging individually valid targets need not yield a good execution.</strong>
+
+Suppose half the action targets for the same input are −1 and half +1. Minimizing squared error with one constant action <Math tex={String.raw`u`} /> gives the following.
+
+
+<Math tex={String.raw`L(u)=\tfrac12(u+1)^2+\tfrac12(u-1)^2=u^2+1,\qquad u^*=0`} display label="Equal-weight squared-error learning from opposite actions makes their mean, 0, the optimal single prediction" />
+
+<RobotEquationGuide id="rl03-e09" />
+
+
+Under the error calculation, zero is optimal. But if −1 and +1 represent going around an obstacle on opposite sides, zero may provide no avoidance. MSE has not made an arithmetic mistake; <strong>predicting one point and representing multiple possible actions are different objectives</strong>.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch03-imitation-learning/multimodal-mean.png" alt="Directly calculated comparison of an illustrative Gaussian-mixture density with peaks at minus one and plus one and the MSE-optimal prediction zero." caption="A directly computed example. The two action modes are separated, but the best single constant prediction is zero between them. Mixture parameters were selected for illustration." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/03-imitation-learning" credit="JJo; calculation code and numerical results are public" width={1260} height={630} />
+
+The vertical axis is probability density. Curve height is not the probability of one exact action; it describes concentration in nearby intervals. The optimal single prediction under squared loss is likewise related to a conditional mean. The tree analogy does not imply that averaging always causes collisions in every action representation. Examine the inputs, representation and arrangement of valid solutions together. [Original lecture, 33:33–34:16](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2013s).
+
+<LectureSlide lecture={3} page={25} caption="Gaussian mixtures: represent several action peaks instead of one mean" />
+
+A <strong>Gaussian distribution</strong> is a bell-shaped distribution concentrated around a mean. Multiple action alternatives can be represented by a weighted sum of several Gaussians. The red and blue curves are individual components; the black curve is the combined distribution.
+
+
+<Math tex={String.raw`\pi_\theta(a\mid o)=\sum_{k=1}^{K}w_k(o)\,\mathcal N\!\left(a;\mu_k(o),\Sigma_k(o)\right),\quad \sum_k w_k(o)=1`} display label="Predict multiple means, covariances and mixture weights for each observation to form a Gaussian-mixture action distribution" />
+
+<RobotEquationGuide id="rl03-e10" />
+
+
+<Math tex={String.raw`\mu_k`} /> is a component mean, <Math tex={String.raw`\Sigma_k`} /> is its <strong>covariance</strong> describing spread and joint variation among action components, and <Math tex={String.raw`w_k`} /> is its selection weight. Weights are nonnegative and sum to 1. The bars 0.65 and 0.35 give component proportions, not peak curve heights of 65% and 35%.
+
+In a policy, these quantities are network outputs that change with the observation. To sample an action, first choose a component by its weight and then sample within it. Averaging the component means back into one final action can recreate the original averaging problem.
+
+The number of components <Math tex={String.raw`K`} /> is usually fixed in advance, and outputting many means and covariances becomes burdensome in high-dimensional action spaces. Overlapping components also mean the visible peak count need not equal component count. A changed distribution representation requires a matching objective that increases demonstrated-action likelihood. [Original lecture, 34:19–35:14](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2059s) · [Berkeley on mixture distributions](https://www.youtube.com/watch?v=ppN5ORNrMos&t=908s).
+
+Consider increasing mixture size from 10 to 1,000 components. In an illustrative seven-dimensional action model with diagonal-covariance Gaussians, each component needs seven means, seven standard deviations and one mixing-weight logit. That gives 150 outputs for ten components and 15,000 for 1,000. Standard deviations need a positive transformation, and weights need normalization to sum to 1. Free-parameter counts and covariance structure vary by implementation, but the example shows why adding components alone does not make complex action distributions easy to learn. This motivates the conditional latent-variable models below.
+
+<LectureSlide lecture={3} page={26} caption="Autoregressive discretization: choose action coordinates conditionally, one at a time" />
+
+Dividing continuous steering into intervals called <strong>bins</strong> lets a classifier output selection probabilities for them. Assigning high probability to left and right bins and low probability to the center can represent several modes.
+
+The challenge is multidimensional actions. Dividing each coordinate into <Math tex={String.raw`B`} /> bins and classifying every combination of <Math tex={String.raw`d`} /> coordinates at once creates <Math tex={String.raw`B^d`} /> choices. Seven coordinates with 100 bins each give <Math tex={String.raw`100^7=10^{14}`} /> combinations.
+
+An <strong>autoregressive</strong> model chooses each action component conditioned on earlier selected components. By the probability chain rule, a three-component action can be written as follows.
+
+
+<Math tex={String.raw`\begin{aligned}p(a_t\mid s_t)={}&p(a_{t,0}\mid s_t)\\&\cdot p(a_{t,1}\mid s_t,a_{t,0})\\&\cdot p(a_{t,2}\mid s_t,a_{t,0},a_{t,1})\end{aligned}`} display label="Generate components of one action vector sequentially, conditioning each on components already selected" />
+
+<RobotEquationGuide id="rl03-e11" />
+
+
+<Math tex={String.raw`a_{t,0},a_{t,1},a_{t,2}`} /> index <strong>three coordinates of one action vector at the same time step</strong>, not three time steps. Selecting a later <Math tex={String.raw`y`} /> direction consistent with an earlier <Math tex={String.raw`x`} /> direction can represent coherent combinations more easily than sampling coordinates independently.
+
+The return arrow feeds a generated token into the next prediction. Each component's output list can have <Math tex={String.raw`B`} /> entries, but generation is sequential, and the model's computational cost is not guaranteed to be simply <Math tex={String.raw`dB`} />. Coordinate order, quantization precision and execution latency matter too. A Transformer is one available sequence model; a large language model is not mandatory. [Original lecture, 35:16–37:24](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2116s).
+
+<LectureSlide lecture={3} page={27} caption="Diffusion models: generate condition-dependent actions from noise" />
+
+The cat image becomes noisier toward the right. The <strong>forward process</strong> adds noise to clean data to construct training inputs; <strong>reverse generation</strong> starts from noise and progressively recovers structure.
+
+Keep diffusion indices separate from time steps when the robot physically acts. Here, let actual control time be <Math tex={String.raw`t`} /> and noise-step index be <Math tex={String.raw`k`} />. A common expression for constructing a noisy training sample is:
+
+
+<Math tex={String.raw`x_k=\sqrt{\bar\alpha_k}\,x_0+\sqrt{1-\bar\alpha_k}\,\epsilon,\qquad \epsilon\sim\mathcal N(0,I)`} display label="Diffusion training mixes clean samples with Gaussian noise at step-dependent ratios to construct inputs" />
+
+<RobotEquationGuide id="rl03-e12" />
+
+
+<Math tex={String.raw`x_0`} /> is clean data, <Math tex={String.raw`\epsilon`} /> sampled noise, and <Math tex={String.raw`\bar\alpha_k`} /> sets the signal proportion retained at that step. A model can learn to predict the added noise, for example, given the noise step and current observation. Actual reverse updates include schedules and coefficients, so the original phrase “subtract the noise” is a shorthand for the principle.
+
+In robotics, the generated object can be an <strong>action vector or short action sequence</strong> instead of a picture, conditioned on the current camera observation and goal. Several denoising computations for one action do not mean the robot physically moves at every computation step.
+
+The [original Diffusion Policy project](https://diffusion-policy.cs.columbia.edu/) connects observation-conditioned action-sequence generation with real robot tasks and replanning after executing a short segment. It considers both multiple modes and consistent execution of a selected approach. These notes do not report training that model; diffusion training is developed further in the later generative-model chapter. [Original lecture, 37:28–39:06](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2248s).
+
+<LectureSlide lecture={3} page={28} caption="Latent variables: specifying alternative ways to act in the same scene" />
+
+A <strong>latent variable</strong> <Math tex={String.raw`z`} /> is an internal variable learned to explain behavioral differences without a direct target name in the data. In the same scene before a tree, one <Math tex={String.raw`z`} /> might produce a leftward route and another <Math tex={String.raw`z`} /> a rightward route.
+
+A <strong>decoder</strong> is a network mapping observations and latent variables to an action distribution. Adding input conditions makes it a conditional decoder.
+
+
+<Math tex={String.raw`z\sim p(z),\qquad a\sim\pi_\theta(\cdot\mid o,z)`} display label="A conditional decoder uses a latent variable to specify a mode of execution and outputs an observation-conditioned action distribution" />
+
+<RobotEquationGuide id="rl03-e13" />
+
+
+We can use a simple prior such as <Math tex={String.raw`p(z)=\mathcal N(0,I)`} />. Even if the output distribution is simple at a fixed <Math tex={String.raw`z`} />, combining outcomes across different <Math tex={String.raw`z`} /> can represent a complex distribution. The capacity of a sufficiently expressive model and successful training of that model are separate matters.
+
+Adding arbitrary noise to a network does not automatically create left and right modes. A network may ignore random inputs unrelated to target actions. The conditional variational autoencoder (CVAE) below also builds a training path that infers useful <Math tex={String.raw`z`} /> from demonstrations. [Original lecture, 39:11–40:17](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2351s).
+
+<LectureSlide lecture={3} page={29} caption="Task conditions specify the goal; latent variables specify how to perform it" />
+
+“Open the drawer” and “close the drawer” differ in <strong>which goal to pursue</strong>. Grasping it from above or from the side differs in <strong>how to pursue the same goal</strong>. Separating task conditions from latent action modes reduces confusion.
+
+A policy using a task ID can be written as <Math tex={String.raw`\pi_\theta(a_t\mid s_t,\mathrm{task})`} />. Representing three tasks by vectors [1,0,0], [0,1,0] and [0,0,1] is <strong>one-hot encoding</strong>. Language or a goal image can also specify the task.
+
+Adding a task condition need not leave only one way to achieve it. We can therefore condition on both goal <Math tex={String.raw`g`} /> and execution mode <Math tex={String.raw`z`} /> as <Math tex={String.raw`\pi_\theta(a_t\mid s_t,g,z)`} />. Changing the goal and representing diverse executions within it are different problems. [Original lecture, 40:22–41:01](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2422s).
+
+<LectureSlide lecture={3} page={30} caption="Has the task succeeded if the door moved halfway?" />
+
+Suppose the instruction only says “move the sliding door left.” One person might consider a halfway movement sufficient, while another expects it to move all the way. The 50% in the photograph is not policy confidence; it asks <strong>how far the door must move to count as success</strong>.
+
+A single task name such as “open” can obscure the desired displacement and end state of a continuously moving object. Evaluation must specify target position, tolerance and any required states of other objects. Supplying a target image or state is one starting point for expressing continuous goals. [Original lecture, 41:03–42:47](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2463s).
+
+<LectureSlide lecture={3} page={31} caption="Policies conditioned on a goal state" />
+
+Instead of assigning a new task number to every door-opening distance or location, supply the desired end state <Math tex={String.raw`s_g`} />. A <strong>goal-conditioned policy</strong> acts toward that target from current state <Math tex={String.raw`s_t`} />.
+
+
+<Math tex={String.raw`\pi_\theta(a_t\mid s_t,s_g)`} display label="A goal-conditioned policy takes current and desired goal states and produces a distribution over next actions" />
+
+<RobotEquationGuide id="rl03-e14" />
+
+
+The policy learns actions connecting the current and target scenes on the right. From the same starting scene, a different target door position should require different actions. Goal meaning and sensor representation must also match between training and execution.
+
+Berkeley describes training by relabeling each recorded trip to a destination with its final state as the goal. This can cover more states than records for one destination alone. It does not guarantee solving unseen start–goal combinations or physically impossible goals. [Berkeley on goal relabeling, 0:24–3:10](https://www.youtube.com/watch?v=kLuJK6wDmEM&t=24s) · [Original lecture, 42:50–43:15](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2570s).
+
+<LectureSlide lecture={3} page={33} caption="Play data is not random motor commands" />
+
+<strong>Play data</strong> records a person continuously teleoperating a robot through diverse interactions, such as opening, closing and moving objects. Collection can continue without preassigning a task name to every episode or resetting to the same initial scene each time.
+
+Like the pictured toy play, it explores possibilities instead of repeating one prescribed sequence. But a person collects these records; they do not show a robot autonomously learning curiosity. The movements are also structured by human understanding of object use, unlike random torques.
+
+Opening and closing a door, or correcting a failed grasp, can record transitions between tasks and recovery behavior. Diversity does not establish complete coverage, so inspect which objects, contacts and views were actually collected. [Original lecture, 43:17–44:19](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2597s) · [Original Learning Latent Plans from Play paper](https://proceedings.mlr.press/v100/lynch20a/lynch20a.pdf).
+
+<LectureSlide lecture={3} page={34} caption="Sampling short windows from long play records" />
+
+The boxes above represent consecutive observations. Sampling a short time window from a long record also selects the actions actually performed between them. Sampling a window means <strong>choosing the start and end of a consecutive segment</strong>, not shuffling its order.
+
+For example, select observations <Math tex={String.raw`o_t,\ldots,o_{t+H}`} /> and intervening actions <Math tex={String.raw`a_t,\ldots,a_{t+H-1}`} /> as one segment. The last observation is the scene those actions actually reached. The record can then supply an example of actions leading to that final scene.
+
+Sampling isolated frames makes it difficult to identify consistent execution across a whole segment. The plan recognizer below reads the complete segment to infer how that endpoint was reached. [Original lecture, 44:22–44:56](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2662s).
+
+<LectureSlide lecture={3} page={35} caption="Self-supervised learning by relabeling the final scene as a goal" />
+
+The yellow triangular <strong>goal encoder</strong> converts the final scene into a feature vector a network can use. An encoder maps useful input information into another representation; it is not simply classifying every pixel into one task name.
+
+Earlier scenes become current inputs, the last scene becomes the goal, and recorded actions become targets. This is <strong>goal relabeling</strong>: constructing goal targets from records without separate human task labels. Because the data itself supplies the learning signal, it is called <strong>self-supervised</strong> learning.
+
+“Self” here refers to constructing goal labels, not to collecting observation–action records without people. Inputs written as <Math tex={String.raw`s`} /> in the paper can also be encoded visual and proprioceptive features. They should not automatically be equated with Chapter 02's full physical state.
+
+Multiple paths can connect the same start and end, so adding the goal does not resolve every multimodality issue. The next block represents the execution style between them separately. [Original paper, pp. 4–5](https://proceedings.mlr.press/v100/lynch20a/lynch20a.pdf#page=4).
+
+<LectureSlide lecture={3} page={36} caption="Plan recognition and plan proposal see different information" />
+
+The upper <strong>plan-recognition</strong> path reads the whole segment during training. Seeing how the object was approached, grasped and moved lets it form a distribution over latent plans <Math tex={String.raw`z`} /> explaining the behavior. The original labels this path posterior.
+
+The lower <strong>plan-proposal</strong> path sees only the starting and goal states. Without knowing the actual intermediate route, it must propose a distribution of plans that could connect them. This is the original's prior path.
+
+A <strong>prior</strong> assigns a distribution over plans before seeing the particular demonstration's intermediate actions; a <strong>posterior</strong> infers plans using that observed segment. The trained plan-recognition network approximates a true posterior that is difficult to calculate directly.
+
+At execution time, the correct future demonstration segment is unavailable. This is why both paths are needed: use whole-segment information available during training, but connect it to plan proposal from start and goal during execution. [Original lecture, 45:00–45:46](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2700s).
+
+<LectureSlide lecture={3} page={37} caption="The KL term connects training-time and execution-time plans" />
+
+The purple KL-loss box compares the two plan distributions. <strong>Kullback–Leibler (KL) divergence</strong> measures how differently one distribution accounts for values frequently produced by another. It is zero for identical distributions and generally changes when their order is reversed, unlike an ordinary symmetric distance.
+
+Training encourages the execution-time proposal to assign likelihood to plans identified from demonstrations. If recognition uses codes the proposal almost never samples, a decoder that works during training may become useless in execution.
+
+Matching distributions is not sufficient by itself. Both could output the same uninformative distribution and achieve low KL loss. The next page therefore optimizes it together with <strong>action reconstruction</strong>. Check whether <Math tex={String.raw`z`} /> actually helps explain behavioral differences. [Original lecture, 45:48–46:03](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2748s).
+
+<LectureSlide lecture={3} page={38} caption="Reconstructing actions from current observations, goals and a latent plan" />
+
+The green <strong>action decoder</strong> receives current-state features, goal features and a sampled latent plan to explain demonstrated actions. Sampling selects one value permitted by a distribution according to its probability or density.
+
+During training, the decoder uses <Math tex={String.raw`z`} /> inferred by recognition from the full demonstration and reconstructs its actions with high likelihood. The action-likelihood box evaluates how well the predicted distribution explains the actual actions. The policy's central reconstruction target is <strong>demonstrated behavior</strong>, rather than the pixels of an image.
+
+During execution, recognition is removed and the proposal supplies <Math tex={String.raw`z`} /> from start and goal. The decoder still receives freshly observed state at every action, so fixing a latent plan differs from blindly replaying a fixed sequence of motor commands.
+
+In the original paper's diagram, training is on the left and execution on the right. Notice first that the “entire sequence” input disappears on the right.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch03-imitation-learning/play-lmp-training-inference.png" alt="Original Play-LMP diagram comparing training and execution. Training combines recognition from whole demonstrations with proposal from start and goal; execution uses proposal and a closed-loop action decoder." caption="Excerpt from Figure 1 on page 2 of Learning Latent Plans from Play. It separates whole-demonstration training from execution-time plan sampling using current and goal states." source="https://proceedings.mlr.press/v100/lynch20a/lynch20a.pdf#page=2" credit="Lynch et al., and the respective rights holders" width={1380} height={855} />
+
+The 1 Hz plan proposal and 30 Hz action computation belong to that study's timing structure. They illustrate a hierarchy with slower planning and faster responses to current state. Latent-plan models need not all use those rates. [Original paper, pp. 2 and 5–6](https://proceedings.mlr.press/v100/lynch20a/lynch20a.pdf#page=2) · [Original lecture, 46:05–46:39](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2765s).
+
+<LectureSlide lecture={3} page={39} caption="Connecting target images and language to a shared goal representation" />
+
+Earlier, the goal was an image of a desired final scene. A person may instead want to say “push the pink block to the right.” The two yellow encoders map goal images and language sentences into goal features the policy can use.
+
+People need not annotate every segment of free-form manipulation with language. Many segments teach control using their final image as the goal; descriptions attached to a subset connect language with goal representations. Which sentence labels which segment still matters for language-driven execution. [Language-conditioned imitation learning paper](https://arxiv.org/abs/2005.07648)
+
+Learning to align the two representations lets the method combine many image-goal play segments with a smaller language-labeled subset. The small language fraction in the figure represents <strong>partial language labeling in that study</strong>, not a rule that the same proportion suffices for every task.
+
+A shared representation does not automatically turn every sentence into the desired scene. There must be evidence connecting the named object and direction to the actual view. As with the ambiguous “blue one,” an unclear goal can still require confirmation.
+
+Distinguish a latent goal from a latent plan: <strong>goal features specify what to achieve, while plan features specify how to connect the current situation to that goal</strong>. [Original lecture, 46:41–47:18](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2801s) · [Follow-up work on language-conditioned learning from play](https://arxiv.org/abs/2204.06252).
+
+<LectureSlide lecture={3} page={40} caption="Optimizing a lower bound when likelihood is hard to compute directly" />
+
+Several latent plans can explain the same demonstration. Without knowing <Math tex={String.raw`z`} />, computing its likelihood requires combining, for every plan, the plan's likelihood with the likelihood of the demonstration under it. Continuous latent variables require an integral in place of a sum.
+
+
+<Math tex={String.raw`p_\theta(\tau)=\int p_\theta(\tau\mid z)\,p_\theta(z)\,dz`} display label="The demonstration's marginal likelihood integrates plan-conditioned likelihood weighted by the plan prior" />
+
+<RobotEquationGuide id="rl03-e15" />
+
+
+Summing out a hidden variable this way is <strong>marginalization</strong>. Continuous variables are not always intractable in themselves. The difficulty here is accurately and efficiently evaluating an integral involving a complex neural-network decoder.
+
+In this section, <Math tex={String.raw`\tau`} /> is shorthand for the demonstration segment being learned. The actual action decoder conditions each action likelihood on the corresponding observation within that segment. The expression should not be read as a world model generating all physical state transitions.
+
+Introducing a distribution <Math tex={String.raw`q_\phi(z\mid\tau)`} /> that infers useful plans from a demonstration lets us optimize a <strong>variational lower bound, the ELBO</strong>, on log-likelihood.
+
+
+<Math tex={String.raw`\begin{aligned}\log p_\theta(\tau)&\ge \mathcal L(\theta,\phi;\tau)\\\mathcal L&=\mathbb E_{z\sim q_\phi(z\mid\tau)}[\log p_\theta(\tau\mid z)]\\&\quad-D_{\mathrm{KL}}\!\left(q_\phi(z\mid\tau)\,\|\,p_\theta(z)\right)\end{aligned}`} display label="The ELBO bounds log-likelihood by expected reconstruction log-likelihood minus KL divergence between approximate posterior and prior" />
+
+<RobotEquationGuide id="rl03-e16" />
+
+
+<Math tex={String.raw`\theta`} /> are the generative model's weights, and <Math tex={String.raw`\phi`} /> the weights of the model inferring plans from demonstrations. <Math tex={String.raw`\mathbb E`} /> denotes an average under the distribution, not just one sampled value of <Math tex={String.raw`z`} />. Sampling can estimate this average and its gradients in practice.
+
+The first term is <strong>reconstruction</strong>: it increases when demonstration-inferred plans explain the actual actions well. The second is <strong>regularization</strong>, penalizing divergence from the prior used for execution. Training maximizes the whole expression or minimizes its negative as a loss.
+
+The crucial symbol is <Math tex={String.raw`\ge`} />. We should not unconditionally replace it with equality to the exact log-likelihood. The gap relates to the difference between approximate and true posterior distributions. [Original lecture, 47:22–48:41](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2842s) · [Berkeley variational-inference slides, pp. 11–16](https://rail.eecs.berkeley.edu/deeprlcourse-fa23/static/slides/lec-18.pdf#page=11) · [Kingma and Welling's original VAE paper](https://arxiv.org/abs/1312.6114).
+
+<LectureSlide lecture={3} page={41} caption="Mapping conditional-ELBO notation to the three networks" />
+
+With a goal condition, let <Math tex={String.raw`c=(s_{\mathrm{start}},s_g)`} /> contain start and goal information. The same expression gains condition <Math tex={String.raw`c`} />. Identify where posterior, prior and action decoder enter the original diagram.
+
+
+<Math tex={String.raw`\begin{aligned}\log p_\theta(\tau\mid c)&\ge \mathcal L(\theta,\phi;\tau,c)\\\mathcal L&=\mathbb E_{q_\phi(z\mid\tau,c)}[\log p_\theta(\tau\mid z,c)]\\&\quad-D_{\mathrm{KL}}\!\left(q_\phi(z\mid\tau,c)\,\|\,p_\theta(z\mid c)\right)\end{aligned}`} display label="The goal-conditioned ELBO jointly trains full-demonstration plan recognition, start-and-goal plan proposal and a decoder explaining demonstrated actions" />
+
+<RobotEquationGuide id="rl03-e17" />
+
+
+| Expression | Diagram block | Available information |
+|---|---|---|
+| <Math tex={String.raw`q_\phi(z\mid\tau,c)`} /> | Plan recognition; approximate posterior | Full demonstration segment plus start and goal during training |
+| <Math tex={String.raw`p_\theta(z\mid c)`} /> | Plan proposal; conditional prior | Start and goal; also available during execution |
+| <Math tex={String.raw`p_\theta(\tau\mid z,c)`} /> | Demonstration likelihood under the action decoder | Plan, goal and each step's observation explain demonstrated actions. |
+
+Because the true posterior <Math tex={String.raw`p_\theta(z\mid\tau,c)`} /> is difficult to compute exactly, network <Math tex={String.raw`q_\phi`} /> approximates it. For the same latent variable, the distribution before seeing the full demonstration and the inferred distribution after seeing it have different roles.
+
+The following identity shows why this is a lower bound.
+
+
+<Math tex={String.raw`\log p_\theta(\tau\mid c)-\mathcal L=D_{\mathrm{KL}}\!\left(q_\phi(z\mid\tau,c)\,\|\,p_\theta(z\mid\tau,c)\right)\ge0`} display label="The log-likelihood–ELBO gap is the nonnegative KL divergence between approximate and true posteriors" />
+
+<RobotEquationGuide id="rl03-e18" />
+
+
+The right side differs from the earlier regularizer. That term compares <Math tex={String.raw`q_\phi`} /> with the <strong>prior</strong>; this identity compares <Math tex={String.raw`q_\phi`} /> with the <strong>true posterior</strong>. Similar notation should not obscure the different comparisons.
+
+I checked this identity with a small two-plan calculation. Prior probabilities 0.6 and 0.4 and data likelihoods 0.8 and 0.2 give marginal likelihood 0.56. With an arbitrary approximate posterior 0.7 and 0.3, log marginal likelihood is about −0.5798 and ELBO −0.6606, leaving a nonnegative gap of 0.0808. Matching the approximate to the true posterior makes the gap zero. This is a conceptual <strong>discrete latent-variable example</strong>, not a trained CVAE result.
+
+The objectives connect reconstructing plans inferred from whole demonstrations during training with proposing corresponding plans from start and goal at execution. Their success must be evaluated through actual goal reaching and recovery as well as the objective value. [Original lecture, 48:45–49:21](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2925s) · [Play-LMP's three components, original paper pp. 5–6](https://proceedings.mlr.press/v100/lynch20a/lynch20a.pdf#page=5).
+
+<LectureSlide lecture={3} page={42} caption="Related studies develop different parts of the problem" />
+
+The studies above are not simply new policy names performing the same role. Distinguishing what each evaluates and learns makes them easier to connect to this chapter.
+
+| Study | Question extending this chapter |
+|---|---|
+| [CALVIN](https://arxiv.org/abs/2112.03227) | How can we evaluate sequences of language-specified manipulation instructions? A benchmark supplying data and an evaluation environment. |
+| [What Matters in Language Conditioned Robotic Imitation Learning](https://arxiv.org/abs/2204.06252) | How do representations, hierarchy and other design choices affect language-conditioned learning from play? |
+| [Grounding Language with Visual Affordances](https://arxiv.org/abs/2210.01911) | How do we connect a sentence's referent with the object region available for interaction? |
+| [Affordance Learning from Play](https://arxiv.org/abs/2203.00352) | Can learning which regions people touch in play records help subsequent policy learning? |
+| [Latent Plans for Task-Agnostic Offline RL](https://arxiv.org/abs/2209.08959) | How can short latent skills learned through imitation be composed for longer goals? |
+
+An <strong>affordance</strong> is an opportunity for action or interaction arising from the relationship between an object and an agent: a handle affords pulling, for example, and a button pressing. Identifying what an object is in pixels differs from estimating where and how to interact with it.
+
+A benchmark specifies comparison tasks, data and evaluation rules; a learning algorithm obtains a policy from given data. Before mixing results from different environments, align success criteria, observations, actions and data conditions. [Original lecture, 49:25–49:37](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2965s).
+
+<LectureSlide lecture={3} page={43} caption="Choosing tools to match the cause of behavior-cloning failure" />
+
+The final figure separates three causes. Before choosing the newest model, examine which best describes the current failure.
+
+| Observed problem | What to check first | Relevant approaches |
+|---|---|---|
+| A small deviation leads to progressively worse mistakes. | Are good targets available for states visited during execution? | Recovery data, valid augmentation, DAgger and human intervention |
+| The same photograph does not explain demonstrated actions. | Does the demonstrator have additional viewpoints, memory or goal information? | Align information and consider history models; also check reliance on easy spurious cues. |
+| The policy selects the average between two valid actions. | Does the action distribution contain separated alternatives? | Mixtures, autoregressive discretization, diffusion or latent-variable models |
+
+Several causes can coexist. A generative model representing multiple action modes can still lack the goal information needed to select one. DAgger can broaden input coverage while a model that collapses all actions to one average retains a representation problem.
+
+This chapter's criteria are <strong>good behavioral data, information actually available during execution, and a representation capable of expressing alternative actions</strong>. Separating them helps diagnose why a robot fails despite a small training loss. [Original lecture, 49:39–50:27](https://www.youtube.com/watch?v=Ef4R5s1LqoQ&t=2979s).
+
+## Checking data coverage and equations with a small executable example
+
+I published an executable NumPy <strong>one-dimensional synthetic environment</strong>. It isolates the process of labeling policy-visited states, without reproducing a real robot or the ETH assignment environment.
+
+State <Math tex={String.raw`x`} /> is lateral deviation from target zero. The next state adds the policy action and a small disturbance to the current deviation. The policy is a linear function <Math tex={String.raw`a=wx`} /> with output clipped to −1 through +1. Expert targets use <Math tex={String.raw`a^*=-0.8x`} /> under the same limits.
+
+The initial dataset contains only twenty center-state/straight-action pairs <Math tex={String.raw`(x,a^*)=(0,0)`} />. It cannot determine which slope <Math tex={String.raw`w`} /> should apply outside the center. The minimum-norm least-squares solution is <Math tex={String.raw`w=0`} />. I then repeated policy execution, expert labeling of visited states and refitting three times. In this example, the first additional round identified slope −0.8.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch03-imitation-learning/data-aggregation.png" alt="Recorded comparison in a one-dimensional environment: disturbances increase deviation under the center-only policy, while the policy with added expert corrections keeps deviation small." caption="One synthetic-environment evaluation with held-out seed 1000. Compare center-only data with data augmented by expert labels at policy-visited states." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/03-imitation-learning" credit="JJo; executable code, CSVs and environment settings are public" width={1260} height={675} />
+
+| Policy learned in this synthetic environment | Learned slope | Mean state RMS over 20 held-out evaluations |
+|---|---:|---:|
+| Center-only data | 0 | 0.415916 |
+| Aggregated expert labels on visited states | −0.8 | 0.035215 |
+
+RMS takes the square root of the mean squared state deviation within each run. The table averages that quantity over 20 evaluations. Each run has 60 steps, and both policies use the same seeds 1000–1019. State units are illustrative, not robot-arm position errors or success rates.
+
+This difference arises from <strong>deliberately narrow center-only data and an expert with a linear target rule</strong>. It neither predicts the same improvement ratio for DAgger in every environment nor measures general neural-network BC performance. Its purpose is to make visible the loop of adding inputs generated by the learned policy back into training.
+
+The same executable includes 15 checks covering MSE-optimal mean actions, mixture-density normalization, autoregressive probability sums, a compounding-error bound and the ELBO–posterior-KL identity. See the [execution file, settings, result JSON and CSVs](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/03-imitation-learning) together.
+
+## Continue with real robot-arm learning
+
+The [official ETH HW3](https://github.com/mees-robot-learning-course/ethz-course-2026/tree/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw3_imitation_learning) connects demonstration collection, behavior cloning, intervention data and goal-conditioned learning in SO-101 simulation.
+
+| Official exercise | Concept to connect |
+|---|---|
+| Exercise 1, MSE policy | Collect teleoperation records, derive action labels from state differences and train a policy. Inspect observation/action coordinates and scaling. |
+| Exercise 2, DAgger | Observe failures after changing obstacle distributions, add corrective human-takeover records and retrain. |
+| Exercise 3, multiple cubes | Condition on target-cube color and destination-bin position. Check that goal information actually enters the observation. |
+
+Because corrective collection uses online human intervention, distinguish it from basic DAgger's labeling of every visited state. Success criteria should also distinguish a gripper reaching its target from an object actually being placed inside the bin.
+
+I read the official assignment and code as references; these notes do not report training those policies or operating a real robot. The synthetic environment and numerical checks above are what I ran. For larger demonstration-learning examples, continue with [Diffusion Policy's public code and notebooks](https://diffusion-policy.cs.columbia.edu/).
+
+Chapter 04 turns from treating demonstrated actions as targets to the first reinforcement-learning algorithms that improve policies through rewards from acting in an environment.
+
+## Sources and further reading
+
+- [Oier Mees — ETH Robot Learning, Lecture 3](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Video](https://www.youtube.com/watch?v=Ef4R5s1LqoQ) · [PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture3_imitation.pdf) · [Image copies](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-03)
+- [Sergey Levine — Berkeley CS285, Supervised Learning of Behaviors](https://rail.eecs.berkeley.edu/deeprlcourse-fa23/static/slides/lec-2.pdf) · [Compounding-error video](https://www.youtube.com/watch?v=YivJ9KDjn-o) · [Practical BC video](https://www.youtube.com/watch?v=ppN5ORNrMos) · [Goal-conditioned learning video](https://www.youtube.com/watch?v=kLuJK6wDmEM)
+- [Hung-yi Lee — NTU imitation learning](https://www.youtube.com/watch?v=9H3ShV57lHs)
+- [Ross·Gordon·Bagnell — DAgger, AISTATS2011](https://proceedings.mlr.press/v15/ross11a.html)
+- [Bojarski et al. — NVIDIA End to End Learning for Self-Driving Cars](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)
+- [Giusti et al. — Forest Trails](https://rpg.ifi.uzh.ch/docs/RAL16_Giusti.pdf)
+- [Mees·Burgard — Composing Pick-and-Place Tasks By Grounding Language](https://arxiv.org/abs/2102.08094)
+- [de Haan·Jayaraman·Levine — Causal Confusion](https://sites.google.com/view/causal-confusion)
+- [Lynch et al. — Learning Latent Plans from Play](https://proceedings.mlr.press/v100/lynch20a.html) · [Project](https://learning-from-play.github.io/)
+- [Berkeley CS285 — Variational Inference and Generative Models](https://rail.eecs.berkeley.edu/deeprlcourse-fa23/static/slides/lec-18.pdf) · [Kingma·Welling — Auto-Encoding Variational Bayes](https://arxiv.org/abs/1312.6114)
+- [Chi et al. — Diffusion Policy](https://diffusion-policy.cs.columbia.edu/) · [Official ETH HW3](https://github.com/mees-robot-learning-course/ethz-course-2026/tree/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw3_imitation_learning)
+
+P numbers follow the slide-image copies. Administrative, transition-only, closing and references-only slides are omitted. Copyright belongs to <strong>Oier Mees and the rights holders of incorporated material</strong>. Supplementary NVIDIA and Play-LMP diagrams belong to their original creators. The directly computed graphs and synthetic example are separate explanatory materials.

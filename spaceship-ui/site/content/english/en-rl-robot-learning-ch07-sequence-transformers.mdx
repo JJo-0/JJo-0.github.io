@@ -1,0 +1,517 @@
+---
+title: Reinforcement Learning 07 — Transformers and Sequences of Robot Actions
+description: How can a robot remember states that one photograph cannot reveal? From
+  attention, tokens, and position information to CLIP, VLMs, ACT, and FAST, this chapter
+  compares slides with public captions and works through numerical examples.
+pubDate: 2026-11-05 00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch07-sequence-transformers
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags:
+- robot-learning
+- reinforcement-learning
+- transformers
+- sequence-modeling
+- action-tokenization
+draft: false
+lang: en
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 7
+translationKey: series-rl-robot-learning-ch07-sequence-transformers-20261109
+translatedPosts:
+  ko-KR: rl-robot-learning-ch07-sequence-transformers
+---
+
+
+import LectureSlide from '@/components/post/LectureSlide.astro';
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+A hand paused in front of a cup could be approaching to grasp it or withdrawing after a failed attempt. A robot needs not only the current scene but also the process leading to it. This chapter represents that process as a sequence and connects relevant information through attention.
+
+[Oier Mees · ETH Zurich 2026, Lecture 7](https://www.youtube.com/watch?v=imSTfMJjp7M) · [Official lecture](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Original PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture7_sequence_modeling.pdf)
+
+<LectureSlide lecture={7} page={2} caption="From one photograph to actions unfolding over time" priority />
+
+[Chapter 06](/en/posts/rl-robot-learning-ch06-generative-models/) represented distributions of possible actions with VAEs, diffusion, and flow matching. Here, we examine how to divide data into units and structure relationships between past information and future actions. Generation methods and sequence architectures are compatible design choices. Transformers need not operate autoregressively; they can also be used within diffusion or flow models.
+
+A <strong>sequence</strong> is an ordered collection of data, such as words in a sentence, video frames, or joint commands over time. A <strong>token</strong> is a unit the model processes, and an <strong>embedding</strong> represents it as a numerical vector. Language tokens usually map from integer vocabulary indices to vectors. Image-patch or continuous-action tokens may already be continuous vectors. Treating everything as tokens does not mean converting every input into the same kind of integer.
+
+The lecture moves from language-model principles to vision–language models (VLMs), then vision–language–action models (VLAs). Let us examine the connections needed between predicting token indices and achieving goals in the physical world.
+
+[Original lecture from 0:00](https://www.youtube.com/watch?v=imSTfMJjp7M&t=0s).
+
+<LectureSlide lecture={7} page={3} caption="Can the current scene alone reveal the direction of motion?" />
+
+A policy sits between an icy-road photograph and three branching arrows. This is a reactive policy selecting the next action from the current observation alone. But a pedestrian at the same photographed location may require different responses depending on whether they are approaching or moving away from the car. Previous positions and time intervals allow velocity estimation.
+
+Likewise, a car at the same position on an icy road may require different actions depending on whether it is sliding or stationary. A still image shows position; observations over time provide clues about speed and direction. Inferring the current state from history and producing smooth future commands are separate problems.
+
+Another issue is action continuity. Independently choosing an approach direction each moment can make the hand oscillate between left and right. Using past information and generating consistent future commands are related but distinct: one concerns observation memory, the other output action-sequence design.
+
+A reactive policy can be appropriate when one observation already contains sufficient state information or the task is simple. The figure does not claim that every single-time-step policy fails; it asks whether one sensor snapshot contains enough information for the decision.
+
+[Original lecture from 0:17](https://www.youtube.com/watch?v=imSTfMJjp7M&t=17s).
+
+<LectureSlide lecture={7} page={4} caption="Under partial observability, consider both past observations and actions" />
+
+The table photograph represents the current visible scene, and the robot illustration represents actions affecting it. The physical state includes information a photograph cannot fully reveal, such as occluded objects, contact states, and velocity. This can be modeled as a <strong>partially observable Markov decision process (POMDP)</strong>. Even if world states are Markovian, observation images alone need not be.
+
+<Math display tex={String.raw`h_t=(o_0,a_0,\ldots,a_{t-1},o_t),\qquad a_t\sim\pi_\theta(\cdot\mid h_t)`} label="A policy conditioned on observation and action history" />
+
+<RobotEquationGuide id="rl07-e01" />
+
+Here, <Math tex={String.raw`o`} /> denotes observations, <Math tex={String.raw`a`} /> actions, and <Math tex={String.raw`h`} /> the history so far. For example, knowing a previous command closed the hand can help interpret the current finger configuration and object position. Feeding history into a network does not guarantee exact reconstruction of hidden state; unseen information remains uncertain.
+
+The slide's compact trajectory-probability equation summarizes the earlier reactive policy. Assuming that current observations and actions suffice to predict the next observation adds an assumption in a general partially observed problem. Retaining observation history gives the following expression.
+
+<Math display tex={String.raw`p_\theta(\tau)=p(o_0)\prod_{t=0}^{T-1}\pi_\theta(a_t\mid h_t)\,p(o_{t+1}\mid h_t,a_t)`} label="Probability of an observation–action sequence with history retained" />
+
+<RobotEquationGuide id="rl07-e02" />
+
+Instead of retaining the entire history, one can update a belief—a probability distribution over hidden states—or use a learned summary vector. Sequence models learn these summaries and references from data.
+
+[Original lecture from 2:18](https://www.youtube.com/watch?v=imSTfMJjp7M&t=138s).
+
+<LectureSlide lecture={7} page={5} caption="An autoregressive model predicts the next element from the preceding sequence" />
+
+Imagine extending a sentence one word at a time. Select the first token, use it to select the second, and continue conditioning on all tokens generated so far. This generation procedure, using earlier outputs as subsequent inputs, is <strong>autoregression</strong>.
+
+<Math display tex={String.raw`p_\theta(x_1,\ldots,x_T)=\prod_{i=1}^{T}p_\theta(x_i\mid x_1,\ldots,x_{i-1})`} label="A joint distribution factored by the probability chain rule" />
+
+<RobotEquationGuide id="rl07-e03" />
+
+The factorization itself is the probability chain rule and requires no Markov assumption. How much to remember, and for how long, is a modeling choice for each conditional distribution. Even if abbreviated notation appears to reference only one preceding token, the main text conditions on the entire prefix <Math tex={String.raw`x`} />.
+
+Robots can form sequences from observations, actions, language, and other information. But generating future environment observations differs from generating only actions given observations. Using a sequence model does not necessarily make it a world model predicting future video.
+
+[Original lecture from 3:28](https://www.youtube.com/watch?v=imSTfMJjp7M&t=208s).
+
+<LectureSlide lecture={7} page={6} caption="An RNN repeatedly updates a fixed-size memory vector" />
+
+The small boxes along the bottom show the same network unrolled over time. A recurrent neural network (RNN) forms its next memory from its previous memory and new input. It shares weights across time, rather than creating a different model at each step.
+
+<Math display tex={String.raw`u_t=f_\theta(u_{t-1},x_t)`} label="Updating an RNN's hidden representation" />
+
+<RobotEquationGuide id="rl07-e04" />
+
+Here, <Math tex={String.raw`u_t`} /> is a hidden memory vector summarizing information read through time <Math tex={String.raw`t`} />. The previous memory is <Math tex={String.raw`u_{t-1}`} />, the new input is <Math tex={String.raw`x_t`} />, and <Math tex={String.raw`f_\theta`} /> is a learned function combining them to update memory. Memory components do not have predefined meanings such as joint angles; they are internal features learned to aid prediction. Distinguish this vector from the full raw history <Math tex={String.raw`h_t`} /> introduced earlier. Updating a fixed-size vector accommodates variable-length inputs while keeping runtime memory compact.
+
+For distant information to affect the current training error, however, it must pass through many updates. Repeated multiplication of derivatives can cause vanishing or exploding gradients. LSTMs mitigate this with gates controlling retention and deletion. Temporal training parallelism is also limited because the previous memory is needed before calculating the next. This is not simply a consequence of autoregression: Transformers can also generate autoregressively.
+
+[Original lecture from 4:49](https://www.youtube.com/watch?v=imSTfMJjp7M&t=289s).
+
+<LectureSlide lecture={7} page={7} caption="Attention directly connects distant tokens" />
+
+The figures compare paths by which the last word references earlier words. An RNN passes through successive intermediate memories, while self-attention directly compares token representations entering the current layer. Its advantage is a shorter connection path between distant positions.
+
+The slide's <Math tex={String.raw`\mathcal{O}(1)`} /> refers to <strong>path length</strong> between positions. It does not mean total attention computation remains constant as sentences grow. Standard dense attention compares every position pair, requiring computation proportional to the square of token count.
+
+Direct connections do not guarantee perfect long-context understanding or unlimited memory. Context windows, model capacity, position information, and training data remain limiting factors. Transformers offer a useful structure for learning long-range relationships rather than automatically solving every long-range dependency problem.
+
+[Original lecture from 6:19](https://www.youtube.com/watch?v=imSTfMJjp7M&t=379s).
+
+<LectureSlide lecture={7} page={8} caption="Queries and keys determine weights; values supply the information to combine" />
+
+The figure shows the final token, spoon, referencing other words to form a new representation. Each token produces three vectors. A <strong>query</strong> expresses information sought; a <strong>key</strong> is a representation used for comparison; a <strong>value</strong> contains information to pass along. Think of comparing a search query with identifying labels, then gathering the associated content.
+
+<Math display tex={String.raw`Q=XW_Q,\quad K=XW_K,\quad V=XW_V`} label="Projecting token representations into queries, keys, and values" />
+
+<RobotEquationGuide id="rl07-e05" />
+
+<Math display tex={String.raw`Y=\operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}+M\right)V`} label="Scaled dot-product attention" />
+
+<RobotEquationGuide id="rl07-e06" />
+
+Each row of <Math tex={String.raw`X`} /> represents one token. Three learned matrices produce vectors with different roles from the same input. The dot product of <Math tex={String.raw`Q`} /> and <Math tex={String.raw`K`} /> gives a comparison score, divided by the square root of key dimension to moderate dimension-dependent magnitude. Softmax converts each query row's scores into nonnegative weights summing to one. The final multiplication forms a weighted sum of values. Colored bands on the right show how much each value contributes.
+
+The mask <Math tex={String.raw`M`} /> blocks disallowed connections and is zero where there is no restriction. For example, two key scores of 0 and 1 give softmax weights approximately 0.269 and 0.731. This does not mean the second word has a 73.1% probability of being important in the real world. These are internal information-mixing weights, not automatically causal explanations or object-detection probabilities.
+
+[Stanford CS25, 23:38–28:12](https://www.youtube.com/watch?v=XfpMkf4rD6E&t=1418s) explains this as information passing between nodes. [NTU's self-attention lecture, 24:57–30:03](https://www.youtube.com/watch?v=0djMUi2-uV4&t=1497s) separately walks through comparison scores and weighted value sums. Multiple heads perform references in parallel with different weights; stacking layers adds sequential depth that reprocesses their outputs.
+
+[Original lecture from 7:26](https://www.youtube.com/watch?v=imSTfMJjp7M&t=446s).
+
+<LectureSlide lecture={7} page={9} caption="Tell the model where a token is, as well as what it is" />
+
+“The robot picked up the spoon” and “The spoon picked up the robot” contain the same words but mean different things. Without position signals or order-dependent masks, basic self-attention is permutation-equivariant: rearranging inputs rearranges outputs in the same way. Content comparisons alone cannot adequately distinguish order.
+
+Absolute position representations on the left add position vectors to token embeddings. Relative representations on the right adjust comparison scores according to query–key separation. A separation of four positions remains the same if the whole sentence shifts.
+
+<Math display tex={String.raw`s_{ij}=\frac{q_i^\top k_j}{\sqrt{d_k}}+b(j-i)`} label="Attention scores with relative-position bias" />
+
+<RobotEquationGuide id="rl07-e07" />
+
+Absolute position methods include fixed sine/cosine signals and learned tables; relative methods also take multiple forms. Relative positions can help with longer inputs than those seen in training, but do not guarantee perfect generalization to arbitrary lengths. Unseen distances, training lengths, and changes in attention distributions still matter. Read the long-sequence checkmark as the design's intent.
+
+[Original lecture from 8:56](https://www.youtube.com/watch?v=imSTfMJjp7M&t=536s).
+
+<LectureSlide lecture={7} page={10} caption="The encoder reads inputs; the decoder generates an answer not yet available" />
+
+The two middle columns are the original translation Transformer's encoder and decoder. The encoder receives the entire source sentence, so tokens may refer to source positions on either side. The decoder generates a translation and cannot see future translated tokens. The lower-right triangle depicts permitted references: rows query positions and columns referenced positions, with only the diagonal and lower-left region open.
+
+A <strong>causal mask</strong> adds negative infinity to future-position scores, making their post-softmax weights zero. “Causal” here means respecting generation order, not automatically recognizing real-world causes and effects. It also differs from a padding mask, which hides empty tokens inserted to align sequence lengths.
+
+In cross-attention, queries come from the decoder and keys and values from encoder outputs. It asks which part of the source to reference when extending the translation produced so far. In self-attention, all three vectors come from the same sequence.
+
+The feed-forward network nonlinearly transforms features at each position. Add introduces the previous representation to preserve information and derivative paths. Norm normalizes feature magnitudes. The information gathered by multiple heads is repeatedly combined with this processing. A full Transformer is not just one weighted averaging of values.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch07-sequence-transformers/attention-masks.png" alt="Attention-weight matrices with unrestricted connections versus a triangular causal mask" caption="Calculated directly using the same queries and keys. Above-diagonal entries on the right refer to future positions and have weights exactly zero." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/07-sequence-transformers" credit="JJo; directly executed numerical example" width={1350} height={540} />
+
+[Original lecture from 11:00](https://www.youtube.com/watch?v=imSTfMJjp7M&t=660s).
+
+<LectureSlide lecture={7} page={11} caption="Training provides the correct prefix and computes every next-token loss" />
+
+The top input row shifts the target sentence one position to the right. After the start token, The is supplied to predict robot; each position receives the correct preceding tokens. This is <strong>teacher forcing</strong>, distinct from immediately feeding the model's own incorrect word back as the next training input.
+
+<Math display tex={String.raw`\mathcal L=-\frac1T\sum_{t=1}^{T}\log p_\theta(x_t\mid x_{<t})`} label="Negative log likelihood of the correct next token" />
+
+<RobotEquationGuide id="rl07-e08" />
+
+Higher probability on the correct token yields lower loss. Target probability 0.8 gives loss approximately 0.223; 0.01 gives approximately 4.605. This matches cross-entropy for one discrete target. Models trained only on robot action tokens can mask losses on observation and instruction tokens.
+
+Because the correct sentence is already available, a causally masked Transformer can calculate losses at multiple positions in one batched forward pass. Actual generation remains sequential because each next token depends on earlier generated outputs. Parallel training does not mean generation finishes in one pass. At execution, the model's own errors enter subsequent inputs, creating another mismatch with training.
+
+[Original lecture from 12:51](https://www.youtube.com/watch?v=imSTfMJjp7M&t=771s).
+
+<LectureSlide lecture={7} page={12} caption="Choosing token units between characters and words" />
+
+Character indices give a small vocabulary but turn long sentences into many tokens. Word indices shorten sequences but enlarge the vocabulary and make new words difficult to handle. For example, robot, robots, and robotic could be separate words, or share robot as a common part with separate endings.
+
+A vocabulary is the list of available tokens. Token-index magnitudes usually do not encode an ordering of word meanings. An index retrieves a row from an embedding table, whose vector is adjusted during learning to form useful representations.
+
+Tokenization is not only about semantics. Longer sequences increase attention comparisons and generation steps. How to represent the same information compactly and reliably reappears later in robot-action compression.
+
+[Original lecture from 13:45](https://www.youtube.com/watch?v=imSTfMJjp7M&t=825s).
+
+<LectureSlide lecture={7} page={13} caption="BPE repeatedly merges frequent neighboring tokens" />
+
+Begin by dividing data into small symbols such as characters. Find the most frequent consecutive token pair across the training corpus and merge it into one new token. Repeat until reaching the desired vocabulary size. Merge rules are learned during training and reused when encoding new sentences.
+
+For example, frequent neighbors <code>r</code> and <code>o</code> can merge into <code>ro</code>; frequent <code>ro</code> and <code>b</code> can then form <code>rob</code>. Each merge preserves the original symbol sequence. Because it can be decoded back to those symbols, fewer tokens do not necessarily mean lost sentence information.
+
+The [original subword BPE paper](https://arxiv.org/abs/1508.07909) explains representing rare words using known smaller units. Handling symbols absent from the initial alphabet is a separate matter. Byte-level representations, introduced later, provide a more comprehensive base symbol set.
+
+[Original lecture from 15:12](https://www.youtube.com/watch?v=imSTfMJjp7M&t=912s).
+
+<LectureSlide lecture={7} page={14} caption="Distinguishing token-count reduction from file-size reduction" />
+
+As merges proceed, frequent substrings in the example sentence become larger units. The reduction from 54 characters to 34 tokens compares counts in this example. It does not mean the disk file becomes exactly 37% smaller, because bits per stored token index and vocabulary size also matter.
+
+Larger corpora can improve estimates of frequent patterns, but do not guarantee better compression for every input. Language, spacing, symbols, vocabulary size, and training distribution all matter. These choices also help explain differing token counts for Korean sentences and English code.
+
+Our small character-BPE implementation likewise shortens repeated strings and reconstructs their original text. It does not reproduce a commercial language model's actual tokenizer; it implements only the merge rules needed to demonstrate the principle.
+
+[Original lecture from 16:32](https://www.youtube.com/watch?v=imSTfMJjp7M&t=992s).
+
+<LectureSlide lecture={7} page={15} caption="Architecture, position representations, and memory computation for long sequences" />
+
+First, decoder-only models handle input context and output sequences within one generative model, without the original translation architecture's separate encoder. This is important in GPT models, but not universal to language models. Second, byte-level tokenization uses raw bytes as base symbols, representing new characters through their byte sequences. Representability does not imply semantic understanding.
+
+Third, <strong>RoPE</strong> rotates coordinate pairs in queries and keys by position-dependent angles. This makes the positional effect in their dot product depend on relative separation. Content vectors still affect the dot product, so distance alone does not determine the full score. Long-sequence generalization remains a separate challenge. [RoPE paper](https://arxiv.org/abs/2104.09864).
+
+Fourth, <strong>FlashAttention</strong> tiles computation into small blocks and reduces memory transfers instead of storing the entire token-pair weight matrix in large memory at once. It computes the required attention exactly, unlike sparse attention that omits selected comparisons. Even if storage for attention computation becomes linear at fixed head dimension, total dense-attention arithmetic does not become linear. [FlashAttention paper](https://arxiv.org/abs/2205.14135).
+
+Long-context support results from architecture and training conditions together. Adding RoPE and FlashAttention alone does not automatically guarantee memory accuracy or real-time control latency.
+
+[Original lecture from 17:48](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1068s).
+
+<LectureSlide lecture={7} page={16} caption="Pretraining, fine-tuning, and in-context learning involve different changes" />
+
+The circles of increasing size compare historical GPT model scales. Parameters are weights adjusted during learning; training tokens measure the amount of data consumed. More parameters do not automatically mean more training data.
+
+<strong>Pretraining</strong> learns general representations and prediction capabilities from broad data. <strong>Fine-tuning</strong> subsequently updates weights for particular data or objectives. <strong>In-context learning</strong> supplies examples in a prompt to elicit a matching response pattern, without ordinary weight updates during that execution.
+
+Zero-shot means no separate demonstration examples are included in the request; few-shot includes a small number. Neither means the model had no pretraining data. Experiments showing larger models using examples better are distinct from claims that increasing scale suffices for every task.
+
+[Original lecture from 20:22](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1222s).
+
+The lecture highlights GPT-3's 175 billion parameters and 300 billion training tokens. The first describes weight count; the second describes textual units consumed during training. In a few-shot setup that provides three translation examples before asking for a fourth, those prompt examples do not retrain the weights. The observation concerns how differently scaled models use patterns in context. For robots, likewise record model size, demonstration volume, and demonstrations in the current context as separate axes. [Original GPT-3 paper](https://arxiv.org/abs/2005.14165)
+
+<LectureSlide lecture={7} page={17} caption="The graph compares effects of model size and the number of in-context examples" />
+
+The person on the left is reinforcement-learning researcher Richard Sutton. The Bitter Lesson argues from historical examples that general methods exploiting computation have achieved strong long-term results. It can be read as cautioning against limiting scalability through current hand-engineered knowledge, rather than demanding that people design no structure at all.
+
+The horizontal axis counts in-context examples; the vertical axis is accuracy in that experiment. Curve colors distinguish model sizes and show larger models making better use of examples in this setting. Accuracy in the cited language experiment is not a robot's physical success rate.
+
+For robots, the questions are concrete: which sensors and actions will be recorded, how much data will be collected, how will units be aligned across robots, and will greater computation fit the control cycle? Scale does not replace these design choices; it asks whether they can grow effectively.
+
+[Original lecture from 21:55](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1315s).
+
+<LectureSlide lecture={7} page={18} caption="Divide the training-compute budget between model size and data volume" />
+
+The curves on the left show how loss falls with more computation at each model size. The largest model does not always give the lowest loss for a fixed budget. An oversized model may be undertrained; an undersized one may reach capacity limits despite more data. The curves' lower envelope connects favorable choices at different budgets.
+
+<Math display tex={String.raw`C\approx6ND,\qquad N^*\propto C^{1/2},\qquad D^*\propto C^{1/2}`} label="Approximate dense-language-model training compute and Chinchilla-style allocation" />
+
+<RobotEquationGuide id="rl07-e09" />
+
+Here, <Math tex={String.raw`N`} /> is parameter count, <Math tex={String.raw`D`} /> training-token count, and <Math tex={String.raw`C`} /> training computation. The two graphs on the right show favorable model and data sizes increasing together with the budget. Roughly following this relation, quadrupling compute doubles both model size and data volume.
+
+Approximately 20 tokens per parameter is an empirical training-compute guideline from the [Chinchilla paper's](https://arxiv.org/abs/2203.15556) setting, not a universal law for every language, model, or objective, nor a formula for robot demonstration counts. Attention overhead, inference cost, and data quality also matter alongside this dense-model approximation.
+
+[Original lecture from 23:27](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1407s).
+
+<LectureSlide lecture={7} page={19} caption="Conditions for extrapolating small-experiment trends to larger runs" />
+
+The isoflop curves on the left vary model size under equal compute budgets. Estimating minimum-loss positions across budgets can suggest favorable sizes for larger runs. Extrapolation predicts beyond observed ranges and therefore carries assumptions that the relationship continues, as well as uncertainty.
+
+The model minimizing one training run's cost may differ in size from the model minimizing total cost across many calls. Training a smaller model on more tokens can reduce per-call computation even if training lasts longer. Read Chinchilla's token ratio as a budget-allocation result for that experiment. [Chinchilla paper](https://arxiv.org/abs/2203.15556)
+
+The right side compares model sizes and training-token counts. Minimizing training computation alone differs from minimizing total cost over many deployed queries. A smaller model trained longer on more data can cost more initially while being cheaper to run repeatedly.
+
+It is therefore unjustified to call training beyond 20 tokens per parameter an inherently wrong choice. Robot applications also depend on latency, power, device memory, and failure cost. Accurately extrapolating language-prediction loss does not imply equally accurate predictions of physical-task success or safety constraints.
+
+[Original lecture from 25:16](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1516s).
+
+<LectureSlide lecture={7} page={20} caption="Turning visual information into Transformer input units" />
+
+A robot must see the cup and hand positions as well as read instructions. Earlier embeddings converted words into numerical vectors. Next, we represent information from different image locations as vector units too.
+
+A shared vector-sequence interface permits the same attention operations. But identical interfaces alone do not place language and images in a shared semantic space. First we examine image tokenization, then learning that connects meanings across the two data types.
+
+[Original lecture from 27:25](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1645s).
+
+<LectureSlide lecture={7} page={21} caption="Image patches are pixel vectors, not words cut into numbered pieces" />
+
+Dividing a 224×224 image into patches 16 pixels on each side gives 14×14=196 patches. Here, 16×16 is the patch's pixel size, not a division into sixteen pieces along each image axis. One RGB patch flattens into 16×16×3=768 numbers.
+
+A learned linear transformation maps that vector to the model dimension, then position information is added. The figure's 768→768 is a dimensional choice for that example, not a requirement for every model. Position information distinguishes patches from the image's top and bottom.
+
+Including the special CLS classification token yields a sequence length of 197 in this example. Not every visual model uses CLS or passes only that single vector to other models. Later VLMs can pass multiple patch features into a language model. [Vision Transformer paper](https://arxiv.org/abs/2010.11929).
+
+[Original lecture from 27:58](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1678s).
+
+<LectureSlide lecture={7} page={22} caption="Matching dimensions is different from connecting meanings" />
+
+Suppose apple-image patches and the word apple are represented by vectors of the same dimension. Equal length alone does not tell the model they have related meanings. Paired data and a learning objective are needed.
+
+Here, <strong>alignment</strong> means learning corresponding representations across data types. Bringing whole-image and caption meanings together, answering questions using image information, and linking a particular word to an image location are different levels of alignment. CLIP's strength at the first does not automatically provide precise object localization at the last.
+
+[Original lecture from 29:44](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1784s).
+
+<LectureSlide lecture={7} page={23} caption="CLIP learns to retrieve matching image–text pairs" />
+
+The two towers are image and text encoders. A batch of <Math tex={String.raw`N`} /> paired images and texts becomes vectors. Dot products of length-normalized vectors give cosine similarities in an <Math tex={String.raw`N`} />×<Math tex={String.raw`N`} /> table. Matching row and column indices mark original pairs; training encourages each image to score its own text above the others. The reverse direction is trained too.
+
+<Math display tex={String.raw`p(j\mid i)=\frac{\exp(s_{ij}/\tau)}{\sum_{k=1}^{N}\exp(s_{ik}/\tau)}`} label="A relative score for image i selecting text j within the batch" />
+
+<RobotEquationGuide id="rl07-e10" />
+
+<Math display tex={String.raw`\mathcal L_{\mathrm{CLIP}}=-\frac1{2N}\sum_{i=1}^{N}[\log p_{I\to T}(i\mid i)+\log p_{T\to I}(i\mid i)]`} label="The bidirectional matching-pair loss" />
+
+<RobotEquationGuide id="rl07-e11" />
+
+Here, <Math tex={String.raw`s`} /> is similarity and <Math tex={String.raw`\tau`} /> a positive temperature. A lower temperature turns the same score differences into sharper selection probabilities. The reverse direction normalizes across images, rather than simply transposing the first probability table.
+
+This structure alone does not make CLIP a language model generating sentences token by token. Multiple captions may correctly describe one image, so other batch pairs are not necessarily entirely wrong semantically. The [original CLIP paper](https://arxiv.org/abs/2103.00020) studies transferable visual representations learned by contrastive training. The figure depicts a ViT encoder example; the original paper also includes other image-encoder families.
+
+[Original lecture from 30:34](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1834s).
+
+<LectureSlide lecture={7} page={24} caption="LLaVA inserts visual features into a sequence the language model can read" />
+
+The image on the left passes through a visual encoder to produce multiple patch features. The connector maps their dimensions into the language model's input space. These visual features then enter alongside text embeddings, letting attention reference both. The output answers a question such as “What is visible?” in words.
+
+Here, <strong>early fusion</strong> means that image and text information enter shared sequence processing in the language model. It does not mean raw pixels and characters are handled identically. A visual encoder precedes them, and visual-feature format and count vary by version.
+
+Distinguish linear projection in the [original LLaVA paper](https://arxiv.org/abs/2304.08485) from MLP connectors in later versions. Do not memorize the slide's MLP as a universal LLaVA architecture. Frozen and trainable weights likewise vary by training stage and variant. Feature alignment and visual instruction tuning shift the objective from comparing image–text similarity to generating answers about images.
+
+[Original lecture from 31:59](https://www.youtube.com/watch?v=imSTfMJjp7M&t=1919s).
+
+<LectureSlide lecture={7} page={25} caption="Flamingo adds paths for language to reference visual information" />
+
+Visual-encoder features pass through a Perceiver Resampler into a fixed number of visual representations. Added gated cross-attention uses text queries to reference visual keys and values. This differs in where information meets from concatenating image and text tokens directly into one self-attention sequence.
+
+<Math display tex={String.raw`h_{\mathrm{out}}=h+\tanh(g)\,\operatorname{CrossAttn}(h,V_{\mathrm{img}})`} label="A conceptual gate controlling the addition of visual information" />
+
+<RobotEquationGuide id="rl07-e12" />
+
+Initializing gate weight <Math tex={String.raw`g`} /> at zero makes the added path contribute nothing initially. Learning can then adjust its visual contribution. An important design feature is keeping pretrained language-model weights fixed while introducing this new pathway.
+
+A gate opening over training describes a possible behavior, not a guaranteed monotonic increase. New-block spacing also depends on the configuration; it is not necessarily one in every layer of every model. Saying that the language model does not see image tokens directly means they are not appended to the same input sequence, not that visual information cannot affect the output. [Original Flamingo paper](https://arxiv.org/abs/2204.14198).
+
+[Original lecture from 33:40](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2020s).
+
+<LectureSlide lecture={7} page={26} caption="Joint multimodal learning still requires input formats and temporal alignment" />
+
+Images, audio, video, and text pass through their respective encoders or tokenizers. Examples on the right interleave units such as an image followed by a caption, audio followed by text, or video followed by a question. A common sequence model learns relationships across data types.
+
+<strong>Native multimodal</strong> usually refers to training that tightly integrates multiple data types. The name alone does not prove every component was trained from random initialization or every weight saw each data type equally. Actual models may contain separate encoders, multiple training stages, different losses, and masks.
+
+Combining audio and video with different time axes also requires timestamps and alignment. Matching vector dimensions alone does not identify simultaneous sounds and movements. The figure illustrates a joint-learning direction rather than detailed product specifications.
+
+[Original lecture from 35:29](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2129s).
+
+<LectureSlide lecture={7} page={27} caption="Compare visual-information pathways rather than model names" />
+
+The three columns broadly contrast merging visual features into language sequences, adding separate cross-attention paths, and jointly training multiple data types. Reading the connector, added attention, and joint-learning differences first provides comparison criteria that remain useful as model names change.
+
+The table mixes models with publicly documented architectures and models whose internals are insufficiently disclosed. Labels such as “likely” and “undisclosed” denote inference or missing disclosure. They should not be rewritten as verified architectural facts. An individual model may also combine characteristics from several columns.
+
+This is not a quality ranking. Compare trainable-weight counts, visual-token counts, data, preservation of language capabilities, video length, and compute costs together. A model's placement in one column does not mean it can produce robot joint commands.
+
+[Original lecture from 36:58](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2218s).
+
+<LectureSlide lecture={7} page={28} caption="From seeing and answering to seeing and acting" />
+
+The question changes from “Where is the spoon?” to “Which commands will pick it up?” Image description ends with text output, but action output must connect to the actual robot's kinematics, controller, and environment.
+
+Actions can become model units just as language and images become tokens. But continuous-value resolution, different joint units, generation latency, and temporal consistency introduce new challenges. Action representations and execution interfaces matter alongside Transformer architecture.
+
+[Original lecture from 38:34](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2314s).
+
+<LectureSlide lecture={7} page={29} caption="Action tokens become commands through a defined control interface" />
+
+“Pick up the spoon” on the left supplies a language condition, while the central image shows the current scene. If the output represents actions instead of descriptive text, this forms a vision–language–action (VLA) model. Actions can encode hand displacement, rotational changes, and gripper opening.
+
+An agreed decoder converts output tokens into numerical commands. The downstream control process differs depending on whether these numbers denote joint targets, relative end-effector positions, or velocities. Token indices are not sent directly to motors. A low-level controller still tracks the targets.
+
+Including past images and actions in the actual input sequence allows history conditioning. But not every VLA takes a long history simply because it uses a Transformer; some use only a few current images. Distinguish architectural possibilities from actual input design.
+
+[Original lecture from 39:20](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2360s).
+
+<LectureSlide lecture={7} page={30} caption="What is lost by dividing continuous actions into 256 bins?" />
+
+The histograms show two robots with different physical action ranges: small displacements on the left and a wider range on the right. Defining lower and upper quantiles for each action dimension and normalizing that range reduces the tendency of one rare extreme outlier to compress most values into a few narrow bins.
+
+<Math display tex={String.raw`u=2\operatorname{clip}\left(\frac{a-l}{h-l},0,1\right)-1`} label="Normalizing an action range to −1 through 1" />
+
+<RobotEquationGuide id="rl07-e13" />
+
+<Math display tex={String.raw`b=\min\left(255,\left\lfloor256\frac{u+1}{2}\right\rfloor\right)`} label="An example mapping normalized actions to bin indices 0–255" />
+
+<RobotEquationGuide id="rl07-e14" />
+
+The selected lower and upper quantiles <Math tex={String.raw`l`} /> and <Math tex={String.raw`h`} /> must differ. If <Math tex={String.raw`u`} /> is exactly 1, the calculation produces 256, so clip the last index to 255. Decoding with bin centers bounds in-range error by half a bin width in original units. Clipping errors outside the range do not share this bound.
+
+The [OpenVLA paper](https://arxiv.org/abs/2406.09246) divides each dimension's first-to-99th-percentile range into 256 bins. Distinguish this choice from the original [RT-2](https://arxiv.org/abs/2307.15818) min–max method. Action tokens can be mapped into a language-model vocabulary; OpenVLA reuses some existing vocabulary slots.
+
+Identical normalized indices do not mean identical physical motions across robots. Joint order, coordinate frames, absolute values versus increments, movement units, and gripper semantics must be aligned. Encoding each dimension of a seven-dimensional action with one index requires seven tokens per control instant.
+
+[Original lecture from 40:22](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2422s).
+
+<LectureSlide lecture={7} page={31} caption="Action chunking and temporal ensembling address different problems" />
+
+The upper timeline executes all four predicted actions before observing again. Actions within the chunk can be planned together, but observations are incorporated less frequently. The lower timeline predicts a fresh chunk every instant and combines predictions referring to the same actual execution time: earlier predictions of the present action are combined with the latest prediction of that same action.
+
+<Math display tex={String.raw`\widehat a_t=\frac{\sum_{i=0}^{m-1}w_i\,a_t^{(i)}}{\sum_{i=0}^{m-1}w_i}`} label="Combining overlapping predictions for the same execution time" />
+
+<RobotEquationGuide id="rl07-e15" />
+
+The [original ACT paper](https://arxiv.org/abs/2304.13705) indexes the oldest prediction with <Math tex={String.raw`i`} />=0 and uses exponentially decreasing weights. Under this notation, a positive decay coefficient therefore gives older predictions greater weight. Check the indices: this is opposite to the common assumption that the newest prediction receives the most weight. Our example verifies the distinction with predictions 1, 2, and 3 ordered oldest first.
+
+This differs from a filter simply averaging actual actions across different times. It combines what overlapping plans say to do at the same time. It trades smoothness against responsiveness to new observations; if plans choose entirely different valid routes, their average need not be safe. Calling the policy at every instant also incurs computation.
+
+[Original lecture from 42:50](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2570s).
+
+<LectureSlide lecture={7} page={32} caption="ACT does not generate 100 actions through 100 next-token steps" />
+
+The battery-insertion video requires precise coordination of both hands and their contacts. ACT's ALOHA setup controls a combined 14-dimensional action at 50 Hz and predicts chunks of length 100. One chunk spans about two seconds and contains 1,400 scalar values. It does not generate these 1,400 values one by one like language tokens.
+
+The original paper combines a <strong>conditional VAE and Transformer</strong>. During training, an encoder uses demonstrated action chunks and joint states to infer a latent style distribution. The policy decoder predicts chunks from images, joint states, and style. This connects to Chapter 06's latent-variable models.
+
+At execution, future demonstrated actions are unavailable, so the training encoder is discarded. The original paper fixes style at zero, the prior mean, for deterministic decoding. It would therefore be inaccurate to describe ACT as an autoregressive VLA randomly sampling latent codes each time. Its flexible movements result from model, data, hardware, and control settings together; action chunking alone does not guarantee the same precision. [Official project and code](https://tonyzhaozh.github.io/aloha/).
+
+[Original lecture from 45:16](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2716s).
+
+<LectureSlide lecture={7} page={33} caption="Copying similar tokens can give low loss yet fail at fast control" />
+
+The left graph shows a simple binned-token policy deteriorating at higher data control frequencies in this experiment. The right emphasizes an autoregressive structure's temptation to copy preceding tokens when neighboring actions are very similar. Recording physically continuous motion at short intervals creates nearly identical adjacent values.
+
+At higher control frequencies, neighboring joint commands differ less. A model copying the previous token can appear strong during training yet miss small necessary changes, such as when a battery contacts its slot. FAST compresses temporal structure across action chunks rather than isolated instants. [FAST project](https://www.pi.website/research/fast)
+
+Teacher forcing supplies the actual preceding action, so predicting a nearly identical next value can achieve high token accuracy. But repeatedly feeding back predictions at execution can suppress necessary changes or accumulate errors. This is why token accuracy and long-task success should be checked separately.
+
+High control frequency means more commands per second, not necessarily rapidly oscillating action signals. Sampling the same smooth curve more frequently increases both sample count and redundancy. Do not generalize this experiment into a limitation of every high-frequency controller or Transformer.
+
+[Original lecture from 46:39](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2799s).
+
+<LectureSlide lecture={7} page={34} caption="Transform temporal motion into frequency coefficients with DCT, then compress" />
+
+Read the five boxes in order. First, normalize action sequences per dimension. Second, apply the discrete cosine transform (DCT) to each dimension's temporal signal, expressing broad trends and fast changes as coefficients of different cosine components. Third, scale and round coefficients to integers. Fourth, flatten dimensions starting with low frequencies. Fifth, apply BPE to repeated integer patterns to produce final tokens.
+
+<Math display tex={String.raw`c_k=\eta_k\sum_{t=0}^{H-1}a_t\cos\left[\frac{\pi}{H}(t+\tfrac12)k\right]`} label="An orthonormal DCT-II for one action dimension" />
+
+<RobotEquationGuide id="rl07-e16" />
+
+<Math display tex={String.raw`\eta_0=H^{-1/2},\quad\eta_{k>0}=\sqrt{2/H},\quad q_k=\operatorname{round}(\gamma c_k)`} label="Coefficient normalization and integer quantization" />
+
+<RobotEquationGuide id="rl07-e17" />
+
+Here, <Math tex={String.raw`H`} /> is chunk length, <Math tex={String.raw`k`} /> the frequency-component index, and <Math tex={String.raw`\gamma`} /> the scaling factor controlling rounding resolution. DCT itself is invertible if all coefficients are retained. Loss arises mainly from rounding and range limits. Small coefficients rounded to zero form long repeated patterns that BPE can encode compactly. BPE itself groups integer symbols reversibly.
+
+Smooth motions tend to concentrate energy at low frequencies. But high-frequency components at contacts or abrupt transitions are not always unnecessary noise. Lowering <Math tex={String.raw`\gamma`} /> for stronger compression can lose important fine motions. The connection is that BPE is difficult to apply directly to continuous values, yet becomes useful again after DCT and integer conversion. [Original FAST paper](https://arxiv.org/abs/2501.09747).
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch07-sequence-transformers/dct-action-codec.png" alt="DCT coefficients and rounding-induced reconstruction errors for smooth actions and an abrupt-transition signal" caption="The article's own DCT and quantization calculation. Abrupt transitions require more coefficients. This is not a run of the official FAST tokenizer." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/07-sequence-transformers" credit="JJo; directly executed numerical example" width={1800} height={540} />
+
+[Original lecture from 48:24](https://www.youtube.com/watch?v=imSTfMJjp7M&t=2904s).
+
+<LectureSlide lecture={7} page={35} caption="Check which computation a fivefold improvement compares" />
+
+The left graph plots evaluation score against the data's control frequency. In this setting, FAST tends to maintain or improve performance on high-frequency data compared with simple binning. Error bars represent variation across runs or evaluations; differences between mean points are not absolute laws.
+
+The right graph plots <strong>training iterations</strong> against evaluation score. Although the lecture says “test time” at one point, the fivefold claim in this graph should not be read as fivefold lower generation latency. The paper reports improved <strong>training speed</strong> toward performance comparable with diffusion policies in the evaluated setting. This does not guarantee the same runtime improvement across every task, device, and model.
+
+Autoregressive policies using FAST and Chapter 06's flow-matching policies generate actions differently. Even with shared underlying vision–language representations, compare their output representations and training objectives separately. [Official FAST research page](https://pi.website/research/fast).
+
+[Original lecture from 50:59](https://www.youtube.com/watch?v=imSTfMJjp7M&t=3059s).
+
+<LectureSlide lecture={7} page={36} caption="Generality and dexterity require different evaluations" />
+
+The photographs on the left show tasks across multiple kitchens and environments; those on the right show precise, long-horizon dual-arm tasks such as folding laundry. Generality concerns performance with new objects, scenes, and instructions; dexterity concerns reliable control and contact under tight error tolerances.
+
+FAST experiments examine scaling in both directions. Evaluation in unseen kitchens does not imply unconditional operation on any robot or object. Check the data, hardware, instruction range, and success criteria together.
+
+The publicly released general-purpose action tokenizer FAST+ provides a starting point for other datasets. Action dimensions, units, normalization, and lengths must still match, and downloading a tokenizer does not train a robot policy. Our examples are small calculations illustrating its principles, not reproductions of the photographed real-world tasks.
+
+[Original lecture from 52:09](https://www.youtube.com/watch?v=imSTfMJjp7M&t=3129s).
+
+<LectureSlide lecture={7} page={37} caption="Design what to remember and what to generate together" />
+
+The chapter's progression suggests three questions. First, is the current observation sufficient, or are past actions and observations needed? Second, should data be represented as characters, patches, continuous vectors, or action tokens? Third, does the model output autoregressive tokens, an action chunk in one pass, or actions iteratively updated through diffusion or flow?
+
+| Method or concept | Problem addressed | What it does not guarantee by itself |
+|---|---|---|
+| History conditioning | Using past information absent from the current scene | Complete hidden-state reconstruction |
+| Attention and position information | Learning contextual relations and order | Unlimited memory or constant total computation |
+| CLIP and VLMs | Connecting visual and language representations and outputs | Precise position control or action success |
+| ACT and action chunks | Jointly predicting actions across multiple times | Immediate response to every environmental change |
+| FAST | Efficiently representing continuous actions as sequences | Lossless compression or safe execution |
+
+Transformers provide structure for learning relationships between memory and action. Real-robot outcomes depend jointly on data, representations, objectives, generation latency, controllers, and evaluation. Look beyond token accuracy or language-model loss to whether the task finishes under real-time constraints.
+
+[Original lecture from 53:24](https://www.youtube.com/watch?v=imSTfMJjp7M&t=3204s).
+
+## Further connection: Decision Transformer also takes the desired outcome as input
+
+[Decision Transformer](https://arxiv.org/abs/2106.01345), an official week-seven paper-discussion reading, connects sequence modeling with reinforcement learning. We discuss it as supplementary material rather than implying that the original lecture slides contain a separate algorithm section for it.
+
+For each stored trajectory, calculate return-to-go—the sum of rewards from each time onward—and interleave these values with states and actions in a sequence.
+
+<Math display tex={String.raw`G_t=\sum_{k=t}^{T-1}r_k,\qquad (G_0,s_0,a_0,G_1,s_1,a_1,\ldots)`} label="A trajectory representation containing return-to-go" />
+
+<RobotEquationGuide id="rl07-e18" />
+
+Training uses returns calculated from observed trajectories. Execution conditions action prediction on a desired return, current state, and history. Received rewards reduce the remaining target return accordingly. This is an offline RL approach distinct from repeatedly updating values through Bellman equations or directly calculating policy gradients.
+
+Writing a large desired return does not ensure it can be achieved. Requesting actions and outcomes unsupported by training data creates extrapolation problems. Conditioning on context examples also does not make this equivalent to using prompts without training: model weights must first be learned from trajectories. Continuous actions can use a continuous-action prediction loss, as in the original paper, so outputs need not all be integer tokens from a language vocabulary.
+
+## Executed examples and further reading
+
+The [example code and numerical results](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/07-sequence-transformers) cover attention weights, future masking, input permutation, teacher-forcing loss, small character-BPE round trips, quantile-binning boundaries and error, ACT temporal ensembling, and DCT quantization and reconstruction. They also check that changing future target tokens leaves earlier outputs unchanged. These calculations do not constitute neural-policy training, real-robot execution, or physics simulation.
+
+- [Official Stanford CS25 recording](https://web.stanford.edu/class/cs25/recordings/): Andrej Karpathy's explanation at 23:38–28:12 connects to <Math tex={String.raw`Q`} />, <Math tex={String.raw`K`} />, <Math tex={String.raw`V`} />, and multiple heads.
+- [Stanford CS224n 2024 Transformer slides](https://web.stanford.edu/class/archive/cs/cs224n/cs224n.1246/slides/cs224n-spr2024-lecture08-transformers.pdf): supplementary material on attention, position information, and the original encoder–decoder architecture.
+- [NTU 2021 self-attention lecture](https://speech.ee.ntu.edu.tw/~hylee/ml/2021-spring.php): the public English captions at 24:57–30:03 explain score calculation and weighted value sums. The original PPTX and PDF are also preserved in the source archive.
+- [Attention Is All You Need](https://arxiv.org/abs/1706.03762): the foundations of scaled dot-product attention, training, and parallelism.
+- [ACT and ALOHA project](https://tonyzhaozh.github.io/aloha/): the original paper, code, and physical-manipulation videos. Distinguish them from our own examples.
+- [Official FAST project](https://pi.website/research/fast): action-token compression and public tokenizer resources. The article's DCT example does not substitute for running that released model.
+- [Humanoid Locomotion as Next Token Prediction](https://arxiv.org/abs/2402.19469): another example from the official discussion list. The article does not reproduce its full experiments.
+
+Copyright in the slides and lecture belongs to <strong>Oier Mees and the rights holders of each cited resource</strong>. JJo created the explanatory text and numerical figures. Photographs, paper figures, and demonstration videos belong to their original authors. [Oier Mees](https://www.oiermees.com/) · [ETH Computer Vision and Geometry Group](https://cvg.ethz.ch/).

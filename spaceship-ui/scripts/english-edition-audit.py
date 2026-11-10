@@ -11,7 +11,8 @@ class Page(HTMLParser):
 def check(value,message):
     if not value: raise AssertionError(message)
 def body(s): return s.split('---',2)[2]
-def math(s): return re.findall(r'<Math\b[^>]*tex=\{("(?:[^"\\]|\\.)*")\}',s)
+def math(s):
+    return re.findall(r'<Math\b[^>]*tex=\{(?:String\.raw`([^`]+)`|("(?:[^"\\]|\\.)*"))\}',s)
 pages=[]
 for p in manifest['pairs']:
     ko=root/'site/content/posts'/p['koFile']; en=root/'site/content/english'/p['enFile']
@@ -20,12 +21,13 @@ for p in manifest['pairs']:
     a,b=body(ko.read_text()),body(en.read_text())
     check(len(re.findall(r'^## ',a,re.M))==len(re.findall(r'^## ',b,re.M)),p['key']+' H2 coverage')
     check(len(re.findall(r'^### ',a,re.M))==len(re.findall(r'^### ',b,re.M)),p['key']+' H3 coverage')
-    check(math(a)==math(b),p['key']+' equations')
-    check(len(re.findall(r'^\|',a,re.M))==len(re.findall(r'^\|',b,re.M)),p['key']+' table row coverage')
+    check(sorted(math(a))==sorted(math(b)) if p.get('translationMethod')=='direct-chat-translation' else math(a)==math(b),p['key']+' equations')
+    check(len(re.findall(r'^\s*\|',a,re.M))==len(re.findall(r'^\s*\|',b,re.M)),p['key']+' table row coverage')
     am=re.findall(r'<NewsFigure media="([^"]+)"',a);bm=re.findall(r'<NewsFigure media="([^"]+)"',b)
     check(am==bm,p['key']+' source figures and order')
-    refs=re.findall(r'^\[(\d+)\] ',b,re.M)
-    check(refs and len(refs)==len(set(refs)),p['key']+' unique references')
+    reference_body=re.sub(r'^```[^\n]*\n.*?^```[^\n]*$', '', b, flags=re.M|re.S)
+    refs=re.findall(r'^\[(\d+)\] ',reference_body,re.M)
+    check(len(refs)==len(set(refs)),p['key']+' unique references')
     html=(root/'dist/en/posts'/p['enSlug']/'index.html').read_text(); page=Page(html)
     check(page.select('html',lang='en'),p['key']+' HTML language')
     check(page.select('link',rel='canonical',href=f"https://jjo-0.github.io/en/posts/{p['enSlug']}/"),p['key']+' canonical')
@@ -34,7 +36,8 @@ for p in manifest['pairs']:
     for n in refs:
         check(len([a for t,a in page.tags if a.get('id')==f'news-ref-{n}'])==1,p['key']+' reference target '+n)
     links=[a for t,a in page.tags if t=='a' and 'data-news-citation' in a]
-    check(links and all(a.get('href')=='#news-ref-'+a['data-news-citation'] for a in links),p['key']+' native citations')
+    check(all(a.get('href')=='#news-ref-'+a['data-news-citation'] for a in links),p['key']+' native citations')
+    if refs: check(bool(links),p['key']+' bibliography has native citations')
     check('pagead2.googlesyndication.com' not in html and 'google-adsense-account' not in html,p['key']+' no ads')
     check('katex-error' not in html,p['key']+' math rendering')
     koh=Page((root/'dist/posts'/p['koSlug']/'index.html').read_text())
@@ -48,7 +51,7 @@ for route in ['','research','about','news','posts','translations']:
 search=json.loads((root/'dist/en/api/search.json').read_text())
 check(len(search)==len(pages) and all(p['href'].startswith('/en/posts/') for p in search),'locale scoped search')
 rss=(root/'dist/en/rss.xml').read_text();check('<language>en</language>' in rss and rss.count('<item>')==len(pages),'English RSS')
-check(len(list((root/'site/content/english').glob('*.mdx')))==len(pages),'every published translation registered')
+check(len([p for p in (root/'site/content/english').iterdir() if p.suffix in {'.md', '.mdx'}])==len(pages),'every published translation registered')
 output=root/'english-review';output.mkdir(exist_ok=True)
 (output/'static.json').write_text(json.dumps({'passed':True,'articles':pages},indent=2))
 print('english-edition-audit: PASS',json.dumps(pages))

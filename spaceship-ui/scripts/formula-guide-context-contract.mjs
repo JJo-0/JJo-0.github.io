@@ -39,7 +39,7 @@ for (const required of [
 for (const required of [
   'const hasWalkthrough = guide.steps.length > 0;',
   '{hasWalkthrough && (',
-  "{hasWalkthrough ? '쉽게 설명 + 계산 과정' : '쉽게 설명'}",
+  "{t(hasWalkthrough ? '쉽게 설명 + 계산 과정' : '쉽게 설명')}",
 ]) {
   if (!component.includes(required)) issues.push(`conditional walkthrough renderer missing: ${required}`);
 }

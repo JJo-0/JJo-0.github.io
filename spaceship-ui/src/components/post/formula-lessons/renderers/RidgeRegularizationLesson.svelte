@@ -1,4 +1,7 @@
 <script>
+ import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+ const formulaEnglish = document.documentElement.lang === 'en';
+ const formulaText = value => formulaEnglish ? englishFormulaText(value) : value;
   import {
     evaluateQuadratic,
     fitRidgePolynomial,
@@ -58,9 +61,9 @@
   }
 
   function presetLabel(index) {
-    if (index === 0) return 'λ=0 · 작은 가중치 선호 없음';
-    if (index === spec.defaultLambdaIndex) return '중간 λ · 균형 확인';
-    return '큰 λ · underfitting 확인';
+    if (index === 0) return formulaText('λ=0 · 작은 가중치 선호 없음');
+    if (index === spec.defaultLambdaIndex) return formulaText('중간 λ · 균형 확인');
+    return formulaText('큰 λ · underfitting 확인');
   }
 </script>
 
@@ -68,14 +71,14 @@
   <section class="chart-panel">
     <header>
       <div>
-        <p>현재 수식의 초점</p>
+        <p>{formulaText("현재 수식의 초점")}</p>
         <h6>{spec.focusLabels[focus]}</h6>
       </div>
       <span>degree {spec.degree} · λ={formatLambda(lambda)}</span>
     </header>
 
     <div class="chart-scroll">
-      <svg viewBox="0 0 660 360" role="img" aria-label="이차 생성함수의 noisy 훈련점에 9차 다항식을 ridge regularization으로 적합한 결과">
+      <svg viewBox="0 0 660 360" role="img" aria-label="{formulaText("이차 생성함수의 noisy 훈련점에 9차 다항식을 ridge regularization으로 적합한 결과")}">
         <rect width="660" height="360" rx="18" class="plot-bg" />
         <line x1={chart.left} y1={chart.bottom} x2={chart.right} y2={chart.bottom} class="axis" />
         <line x1={xScale(0)} y1={chart.top} x2={xScale(0)} y2={chart.bottom} class="axis" />
@@ -95,16 +98,16 @@
     </div>
 
     <div class="legend">
-      <span><i class="data-dot"></i>노이즈가 있는 훈련점</span>
-      <span><i class="truth-line"></i>실제 이차 생성함수</span>
-      <span><i class="fit-line"></i>현재 9차 ridge 적합</span>
+      <span><i class="data-dot"></i>{formulaText("노이즈가 있는 훈련점")}</span>
+      <span><i class="truth-line"></i>{formulaText("실제 이차 생성함수")}</span>
+      <span><i class="fit-line"></i>{formulaText("현재 9차 ridge 적합")}</span>
     </div>
   </section>
 
   <section class="control-panel">
     <header>
       <p>Regularization strength</p>
-      <h6>λ를 바꾸되 데이터와 모델 차수는 고정</h6>
+      <h6>{formulaText("λ를 바꾸되 데이터와 모델 차수는 고정")}</h6>
     </header>
 
     <div class="lambda-control">
@@ -139,7 +142,7 @@
       <span>＝</span>
       <article class="total">
         <small>minimized objective</small>
-        <strong>전체 목적함수</strong>
+        <strong>{formulaText("전체 목적함수")}</strong>
         <b>{format(fit.objective)}</b>
         <i style="width:100%"></i>
       </article>
@@ -147,9 +150,9 @@
 
     <dl class="metric-grid">
       <div><dt>‖w‖²</dt><dd>{format(fit.weightNormSquared)}</dd></div>
-      <div><dt>고차 계수 energy</dt><dd>{format(fit.highOrderEnergy)}</dd></div>
-      <div><dt>훈련 SSE</dt><dd>{format(fit.sse)}</dd></div>
-      <div><dt>훈련 표본 L</dt><dd>{spec.trainX.length}</dd></div>
+      <div><dt>{formulaText("고차 계수 energy")}</dt><dd>{format(fit.highOrderEnergy)}</dd></div>
+      <div><dt>{formulaText("훈련 SSE")}</dt><dd>{format(fit.sse)}</dd></div>
+      <div><dt>{formulaText("훈련 표본 L")}</dt><dd>{spec.trainX.length}</dd></div>
     </dl>
   </section>
 </div>
@@ -157,8 +160,8 @@
 <section class="coefficient-panel">
   <header>
     <div>
-      <p>‖w‖²를 구성하는 실제 항</p>
-      <h6>Chebyshev 계수의 크기와 λwₖ² 기여</h6>
+      <p>{formulaText("‖w‖²를 구성하는 실제 항")}</p>
+      <h6>{formulaText("Chebyshev 계수의 크기와 λwₖ² 기여")}</h6>
     </div>
     <span>Σwₖ²={format(fit.weightNormSquared)}</span>
   </header>
@@ -190,7 +193,7 @@
           {/each}
         </tbody>
         <tfoot>
-          <tr><th colspan="2">합계</th><th>{format(fit.weightNormSquared, 6)}</th><th>{format(fit.penalty, 6)}</th></tr>
+          <tr><th colspan="2">{formulaText("합계")}</th><th>{format(fit.weightNormSquared, 6)}</th><th>{format(fit.penalty, 6)}</th></tr>
         </tfoot>
       </table>
     </div>
@@ -200,23 +203,23 @@
 <section class="interpretation-rail">
   <article class:active={lambda === 0}>
     <b>λ=0</b>
-    <strong>훈련점 맞추기만 우선</strong>
-    <p>작은 계수에 대한 선호가 없어 고차항이 노이즈를 따라갈 수 있다.</p>
+    <strong>{formulaText("훈련점 맞추기만 우선")}</strong>
+    <p>{formulaText("작은 계수에 대한 선호가 없어 고차항이 노이즈를 따라갈 수 있다.")}</p>
   </article>
   <article class:active={lambda > 0 && lambda < 0.1}>
-    <b>중간 λ</b>
-    <strong>fit–complexity 절충</strong>
-    <p>훈련오차를 조금 허용하고 계수 크기와 곡선의 요동을 줄인다.</p>
+    <b>{formulaText("중간 λ")}</b>
+    <strong>{formulaText("fit–complexity 절충")}</strong>
+    <p>{formulaText("훈련오차를 조금 허용하고 계수 크기와 곡선의 요동을 줄인다.")}</p>
   </article>
   <article class:active={lambda >= 0.1}>
-    <b>큰 λ</b>
-    <strong>과도한 shrinkage</strong>
-    <p>가중치가 지나치게 작아져 실제 이차 구조까지 충분히 표현하지 못할 수 있다.</p>
+    <b>{formulaText("큰 λ")}</b>
+    <strong>{formulaText("과도한 shrinkage")}</strong>
+    <p>{formulaText("가중치가 지나치게 작아져 실제 이차 구조까지 충분히 표현하지 못할 수 있다.")}</p>
   </article>
 </section>
 
 <aside class="assumptions">
-  <strong>원자료 Figure 3과 식을 연결하는 조건</strong>
+  <strong>{formulaText("원자료 Figure 3과 식을 연결하는 조건")}</strong>
   <ul>
     {#each spec.assumptions as assumption, index (index)}
       <li>{assumption}</li>

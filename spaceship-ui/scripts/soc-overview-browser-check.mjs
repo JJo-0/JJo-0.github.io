@@ -133,6 +133,14 @@ export async function checkSocOverviewPage({ cdp, sessionId, width, lang, enter,
   const link = lang === 'ko'
     ? `#robotics-embedded a[href*="2026-09-28-soc-00-system-map"]`
     : `main a[href="${enPath}"]`;
+  // English series are collapsed in the archive; open the visible summary
+  // with native input before activating the lesson link inside it.
+  if (lang === 'en') {
+    const summary = 'details[data-english-series="soc-from-code-to-chip"] > summary';
+    const closed = await evaluate(cdp, sessionId, `!document.querySelector('details[data-english-series="soc-from-code-to-chip"]').open`);
+    if (closed) await enter(summary);
+    await waitExpression(cdp, sessionId, `document.querySelector('details[data-english-series="soc-from-code-to-chip"]').open`, 'Native SoC series disclosure opens');
+  }
   await enter(link);
   await waitExpression(cdp, sessionId, `location.pathname.replace(/\\/+$/, '') === ${JSON.stringify(route.replace(/\/+$/, ''))} && document.readyState === 'complete' && document.querySelectorAll('[data-soc-figure]').length === 5`, 'Native archive link opens the exact SoC lesson');
   const archiveDestination = await evaluate(cdp, sessionId, 'location.pathname');

@@ -3,25 +3,26 @@ import provenance from '../../../site/assets/assets/posts/modern-ai-vi-papers/pr
 
 interface Props { figure: string; alt: string; }
 const { figure, alt } = Astro.props;
+const isEnglish = Astro.url.pathname.startsWith('/en/');
 const record = provenance.figures.find((item) => item.id === figure);
 if (!record || !alt.trim()) throw new Error(`Missing segmentation paper figure or alt: ${figure}`);
 const src = `/assets/posts/modern-ai-vi-papers/${record.file}`;
-const label = `${record.paper === 'fcn' ? 'FCN' : 'U-Net'} 원논문 Figure ${record.figure}`;
+const label = `${record.paper === 'fcn' ? 'FCN' : 'U-Net'} ${isEnglish ? 'original paper' : '원논문'} Figure ${record.figure}`;
 ---
 
 <figure class="paper-figure" data-paper-figure={figure} data-paper-version={record.version}>
-  <a class="paper-image-link" href={src} target="_blank" rel="noopener noreferrer" aria-label={`${label} 원본 크기로 보기`}>
+  <a class="paper-image-link" href={src} target="_blank" rel="noopener noreferrer" aria-label={`${label} ${isEnglish ? 'View original size' : '원본 크기로 보기'}`}>
     <img src={src} alt={alt} width={record.width} height={record.height} loading="lazy" decoding="async" />
   </a>
   <figcaption>
     <strong>{label}.</strong> <slot />
     <span class="paper-credit">
       {record.authors} · {record.sourceDate} ·
-      <a href={record.source} target="_blank" rel="noopener noreferrer">{record.version} 원문</a> ·
-      <a href={`${record.pdfSource}#page=${record.pdfPage}`} target="_blank" rel="noopener noreferrer">논문 속 그림 위치</a> ·
-      <a href={src} target="_blank" rel="noopener noreferrer">크게 보기</a>
+      <a href={record.source} target="_blank" rel="noopener noreferrer">{record.version} {isEnglish ? 'original' : '원문'}</a> ·
+      <a href={`${record.pdfSource}#page=${record.pdfPage}`} target="_blank" rel="noopener noreferrer">{isEnglish ? 'Figure in the paper' : '논문 속 그림 위치'}</a> ·
+      <a href={src} target="_blank" rel="noopener noreferrer">{isEnglish ? 'Enlarge' : '크게 보기'}</a>
     </span>
-    <span class="paper-rights">원논문 도판 발췌. 그림 부분만 잘라 무손실 WebP로 변환했으며 내용·색상은 다시 그리지 않았다. 한국어 설명은 별도 작성했다. 도판의 권리는 원권리자에게 있으며 블로그 코드의 MIT 라이선스나 CC 재배포 허락이 적용된다는 뜻은 아니다.</span>
+    <span class="paper-rights">{isEnglish ? "Excerpt from the original paper. Only the figure region was cropped and converted to lossless WebP; content and colors were not redrawn. Commentary was written separately and translated for this edition. Rights remain with the original rights holders; neither the blog code\u2019s MIT license nor permission for CC redistribution is implied." : "원논문 도판 발췌. 그림 부분만 잘라 무손실 WebP로 변환했으며 내용·색상은 다시 그리지 않았다. 한국어 설명은 별도 작성했다. 도판의 권리는 원권리자에게 있으며 블로그 코드의 MIT 라이선스나 CC 재배포 허락이 적용된다는 뜻은 아니다."}</span>
   </figcaption>
 </figure>
 
