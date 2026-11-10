@@ -1,0 +1,293 @@
+---
+title: Reinforcement Learning 11 — Problems Robots Must Solve Beyond the Lab
+description: Turning generalization, contact sensing, rapid adaptation, and lifelong
+  learning into research questions.
+pubDate: 2026-11-08 00:15:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch11-frontiers-open-problems
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags:
+- robot-learning
+- reinforcement-learning
+- vision-language-action
+draft: false
+lang: en
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 11
+translationKey: series-rl-robot-learning-ch11-frontiers-open-problems-20261109
+translatedPosts:
+  ko-KR: rl-robot-learning-ch11-frontiers-open-problems
+---
+
+
+import LectureSlide from '@/components/post/LectureSlide.astro';
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+A robot grasps a cup in the lab. How does the same policy fare the next day under different lighting, a shifted camera, and a thin glass cup? Changing all three at once makes failures difficult to diagnose. This final chapter turns questions behind impressive demonstrations into concrete research problems. [Previous chapter: Embodied Reasoning](/en/posts/rl-robot-learning-ch10-embodied-reasoning/)
+
+This is week eleven on ETH's official schedule and Oier Mees's final main lecture. He introduces it as Lecture 12 and begins with information about a policy-testing PC for demo day. The Korean transcript was compared with English captions; P numbers below follow copied slides including the cover. [ETH schedule](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Official PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture11_frontiers.pdf) · [Slide-copy index](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11)
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch11-frontiers-open-problems/deployment-learning.en.svg" alt="How experience enters the next policy. Robot execution → experience recording → learning and checking previous capabilities → retesting the improved policy." caption="How experience enters the next policy" source="https://github.com/JJo-0/JJo-0.github.io/blob/main/spaceship-ui/site/assets/assets/posts/rl-robot-learning-ch11-frontiers-open-problems/deployment-learning.svg" credit="JJo; original conceptual diagram" width={560} height={760} maxWidth={560} />
+
+## From impressive demonstrations to generalization experiments
+
+<LectureSlide lecture={11} page={2} caption="What evidence supports weekly claims that robotics is solved?" />
+
+The lecture begins with social-media claims of having solved robotics. Rather than dismissing announcements, it asks what videos actually establish. Their meaning depends on the robot and objects, trial counts including failures, and whether testing was repeated in a new room.
+
+<LectureSlide lecture={11} page={3} caption="Which changes degrade performance outside the lab?" />
+
+The lecturer shows older humanoid and mobile-kitchen-manipulation videos, not a ranking of current state-of-the-art performance. They introduce how easily long everyday tasks go wrong under lighting, objects, and viewpoints differing from training. Slow dinner preparation can include failures in navigation, recognition, grasping, and recovery.
+
+<LectureSlide lecture={11} page={4} caption="How to make an impressive demo—and what it evaluates" />
+
+Mees's satirical recipe is to collect many demonstrations on the target robot, repeat behavior cloning until it works, and film under the same day's lighting and camera setup. Adding previous failures to training can turn them into <strong>interpolation</strong> problems among familiar examples. Handling another room and unfamiliar tools together requires separate tests. People recombine knowledge of drawers and utensils in new kitchens; this is the <strong>compositional generalization</strong> the lecture seeks. [Original lecture, 4:06](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=246s) · [Slide P004](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-4.jpg) · [Slide P005](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-5.jpg)
+
+<LectureSlide lecture={11} page={5} caption="Generalization across one object, one room, one building, and the world" />
+
+Collecting more target-platform data can bring previous failures inside training coverage and improve performance. This is useful engineering, but differs from recombining knowledge in an unseen kitchen. Before calling a policy general-purpose, specify which axes changed: objects, rooms, buildings, embodiments, or instructions.
+
+Use a baseline with the same camera and objects, then change only the camera and only the object in separate conditions, and finally both. The equation below is an educational way to report each condition's success rate and decline from baseline.
+
+<Math tex={String.raw`\widehat p_c=\frac{s_c}{n_c},\qquad \Delta_c=\widehat p_{\mathrm{base}}-\widehat p_c`} display />
+<RobotEquationGuide id="rl11-e01" />
+
+Record trial counts and success definitions too. Holding a lifted cup for two seconds and transporting it to a specified location upright can give different results.
+
+## Choosing backbones and data combinations separately
+
+<LectureSlide lecture={11} page={6} caption="Combining broad semantic knowledge with body-specific skills" />
+
+A <strong>backbone</strong> is the model's central component converting observations or language into representations for action prediction. The lecture compares three starting points. VLMs help represent names and spatial relations; video models learn changes across scenes; training from robot data directly addresses deployed actions and contacts but carries collection costs. Recognizing a glass or generating plausible footage of it falling does not establish how it actually tips under fingertip contact. [Original lecture, 6:50](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=410s) · [Slide P006](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-6.jpg) · [Slide P008](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-8.jpg)
+
+<LectureSlide lecture={11} page={7} caption="Embodied experience connects sensation, space, and time" />
+
+Describing a glass differs from judging which push makes it fall or what force breaks it. Plausible generated video does not guarantee consistent mass, contact, or object permanence. The lecture proposes strengthening physical grounding through experience linking multiple senses with action outcomes.
+
+<LectureSlide lecture={11} page={8} caption="Comparing VLMs, video models, and robot-data training" />
+
+These approaches differ in their starting information: semantic object/instruction knowledge, temporal visual change, or directly paired sensors and actions. None is established as always superior. Match final demonstration counts, compute budgets, and observations to separate backbone benefits from simply using more data.
+
+<LectureSlide lecture={11} page={9} caption="Three-stage and two-stage paths through web data, simulation, and reality" />
+
+Data ordering offers choices: learn language and objects from web data, add simulated interactions, then adapt to reality; or spend simulation-building time collecting real robot data instead. A video-centered path first learns motion from Internet and human egocentric videos, then connects robot actions. Comparing backbones requires matching final robot demonstration counts and physical tests. [Original lecture, 11:18](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=678s) · [Slide P009](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-9.jpg) · [Slide P010](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-10.jpg) · [Scott Reed's invited talk](https://www.youtube.com/watch?v=fqkp_wkov6M)
+
+<LectureSlide lecture={11} page={10} caption="From general video through human first-person views to robot actions" />
+
+Web→simulation→reality provides many inexpensive interactions but retains world-building costs and the reality gap. Web→reality spends that effort on physical collection. Video-centered paths add human first-person tasks after Internet video before connecting robot actions. Robot-centered approaches directly learn sensors and actions without Internet pretraining. Compare the order and the stage at which action labels enter.
+
+<LectureSlide lecture={11} page={11} caption="Collection interfaces differ in costs and alignment" />
+
+| Collection method | Information readily obtained | Remaining work for robot use |
+| --- | --- | --- |
+| Human first-person video | Varied places, objects, and task sequences | Connect human hand motion to robot commands |
+| Gloves or UMI-style handheld grippers | Finger/gripper motion and viewpoints | Transform sensing and manipulation differences |
+| VR or leader–follower teleoperation | Actual target-robot movement | Manage collection time, demonstration quality, and maintenance |
+
+<LectureSlide lecture={11} page={12} caption="The trade-off between data scalability and hardware alignment" />
+
+Everyday first-person video scales across locations, but five-fingered motions are not gripper commands. Handheld grippers and gloves narrow the gap while supporting mobile collection. Direct teleoperation best matches the deployed body, yet resets, operating time, and maintenance become bottlenecks. The thousands-to-tens-of-millions-of-hours axis conceptually contrasts scales; it does not guarantee actual holdings for every project.
+
+In leader–follower operation, the robot arm follows a human-moved leader arm. Mees notes its value for precise demonstrations alongside increased breakdown and maintenance costs as hardware grows. Video scales more easily but retains the human–robot hand gap. The slide's time axis is conceptual. [Original lecture, 13:50](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=830s) · [Slide P011](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-11.jpg) · [Slide P012](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-12.jpg)
+
+## Why cameras alone can be insufficient for grasping a mug
+
+<LectureSlide lecture={11} page={13} caption="What dexterity and generality need in common" />
+
+Dexterity can benefit from fast control and contact feedback; broad generalization from varied experience and large representations. Slow large models and scarce tactile data create tension. Mobility matters too: robots visiting several rooms encounter more variation than arms fixed to one table. The goal is to combine specialist dexterity with broad knowledge.
+
+<LectureSlide lecture={11} page={14} caption="A broken mug: seeing well versus grasping well" />
+
+During his PhD, Mees estimated a mug's 3D shape and pose from images to grasp its partly occluded handle. The robot missed the handle, grasped the body, and broke it with excessive force. The example concerns feedback after contact. Cameras may show apparent contact, while force and tactile sensors indicate actual loads or slipping. <strong>Proprioception</strong> measures the robot's own body, such as joint angles. [Original lecture, 19:24](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=1164s) · [Slide P013](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-13.jpg) · [Slide P014](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-14.jpg)
+
+<LectureSlide lecture={11} page={15} caption="Will joint training across all senses solve it?" />
+
+Recall native multimodal learning from Chapter 7. Vision, touch, force, and joint states can become tokens learned in one model. A common vector interface alone is insufficient: sensor semantics, temporal alignment, and available simultaneous measurements determine learnability.
+
+<LectureSlide lecture={11} page={16} caption="Separate scarcity, missing paired data, and sensor heterogeneity" />
+
+First, tactile and force data are scarce because sensors are costly and damage is possible. Second, even if separate modality datasets exist, synchronized RGB, depth, touch, and force are rarer. Third, robot-specific sensors impede transfer of recorded values. These are distinct problems. More audio data do not automatically create paired touch and vision for the same contact.
+
+<LectureSlide lecture={11} page={17} caption="Can separately observed senses be connected?" />
+
+Separate vision–language and touch–language data can share descriptions such as rough or soft. Language carries common meaning rather than perfectly reconstructing every sensory measurement. A few words cannot preserve every material or pressure difference, so connections need evaluation under relevant tasks and sensors.
+
+<LectureSlide lecture={11} page={18} caption="FuSe: language as a bridge between senses" />
+
+One multimodal model needs sufficient sensor data aligned to common events, yet expensive tactile sensors have scarce, heterogeneous outputs. FuSe uses natural language to connect separately collected sensory data. Finding a brown object that feels like a pineapple requires visual color and tactile texture. Describing an object inside a bag shows information touch adds when cameras cannot see. This demonstrates cross-sensory behavior in particular experiments. [Original lecture, 21:21](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=1281s) · [Slide P016](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-16.jpg) · [Slide P018](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-18.jpg) · [Slide P019](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-19.jpg) · [FuSe paper](https://www.oiermees.com/publication/fuse/)
+
+<LectureSlide lecture={11} page={19} caption="Prompts combining color, touch, and sound" />
+
+An object that is brown and feels like a pineapple must satisfy both conditions. Vision alone may leave several brown candidates; touch alone may include differently colored objects with the same texture. Feeling and describing an object in a bag uses information unavailable to the camera. This motivates fusion without establishing universal handling of unfamiliar sensors from one demonstration.
+
+## Keep moving, think longer, or stop?
+
+<LectureSlide lecture={11} page={20} caption="Familiar, uncertain, and out-of-scope situations" />
+
+The lecture proposes fast policy execution for familiar tasks, [Chapter 10's additional reasoning](/en/posts/rl-robot-learning-ch10-embodied-reasoning/) for uncertain judgments, and stopping for human help beyond the system's ability. The numerical example below illustrates this. A <strong>confidence</strong> band of 0.8 is calibrated if roughly 80% of such cases succeed. Contact risks and safety-limit violations require independent stopping conditions. [Original lecture, 24:40](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=1480s) · [Slide P020](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-20.jpg) · [Slide P021](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-21.jpg)
+
+<Math tex={String.raw`m(c)=\begin{cases}\mathrm{act}&c\ge\tau_h\\\mathrm{check}&\tau_l\le c<\tau_h\\\mathrm{handoff}&c<\tau_l\end{cases}`} display />
+<RobotEquationGuide id="rl11-e02" />
+
+<LectureSlide lecture={11} page={21} caption="How can a model detect what it does not know?" />
+
+Adaptive computation assumes uncertainty can first be detected. High token probability cannot directly be read as task-success probability. A familiar-looking scene may have different friction, camera calibration, or embodiment. Even larger models can confidently complete the wrong pattern. The confidence-threshold example explains design principles rather than reports a completed out-of-distribution detector.
+
+A familiar cup may still come with changed sensors or a shifted workbench. Independent changes in objects, locations, sensors, bodies, and instructions can produce confident errors. Alongside success, record <strong>continuations in dangerous situations</strong>, <strong>unnecessary stops during normal tasks</strong>, and <strong>recovery after human intervention</strong> to evaluate routing decisions.
+
+## Making deployment experience improve the next policy
+
+<LectureSlide lecture={11} page={22} caption="Limits of policies that imitate demonstrations" />
+
+If demonstrations always follow states 1→2→3, behavior cloning learns that sequence well. If separate episodes contain a path to an intermediate point and a path from there to the goal, offline reinforcement learning can evaluate stitching them together using rewards. Unobserved shortcuts may be overvalued, making transition coverage and reward definitions essential. [Original lecture, 28:49](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=1729s) · [Slide P022](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-22.jpg) · [Slide P023](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-23.jpg)
+
+<LectureSlide lecture={11} page={23} caption="Which experiences can reinforcement learning combine?" />
+
+Behavior cloning trained only on 1→2→3 lacks evidence to reinforce a direct 1→3 action. Rewards and transition experience support comparing returns of alternative connections. Offline RL still cannot invent arbitrary physical transitions absent from data. Algorithms must handle exploration cost, failures, and overestimation outside data coverage.
+
+<Math tex={String.raw`G=r_0+\gamma r_1+\gamma^2 r_2`} display />
+<RobotEquationGuide id="rl11-e03" />
+
+<LectureSlide lecture={11} page={24} caption="A cycle linking better policies and more experience" />
+
+A <strong>data flywheel</strong> feeds deployment experience into training, then uses improved policies to collect broader experience. Expert teleoperation may be smooth and brief, while autonomous records contain hesitation, failures, and recovery. Treating all as correct demonstrations can teach pre-failure actions too. Record failures and interventions separately and reevaluate old tasks after learning. Losing existing skills while learning new ones is <strong>catastrophic forgetting</strong>. [Original lecture, 31:00](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=1860s) · [Slide P024](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-24.jpg) · [Slide P025](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-25.jpg) · [Slide P026](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-26.jpg) · [Sutton's The Bitter Lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html)
+
+<LectureSlide lecture={11} page={25} caption="Can expert demonstrations and autonomous records be mixed unchanged?" />
+
+Autonomous runs may spend many frames hesitating where experts act briefly. Uniform imitation can overrepresent slow stationary behavior and treat commands preceding failures as targets. Consider recording frequency, trajectory length, success labels, and intervention locations alongside quality. Failure data can still teach outcomes or values, motivating alternative learning signals rather than discarding experience.
+
+<LectureSlide lecture={11} page={26} caption="Learning after deployment without forgetting" />
+
+Lifelong learning means more than storing experience. Capabilities must update, retain earlier skills, and improve over time, beyond the common train→freeze→deploy cycle. After learning a new refrigerator, reevaluate earlier drawer opening. Rapid local adaptation and long-term weight learning can operate on different timescales.
+
+### Connecting autonomous collection to actual improvement
+
+In the autonomous-improvement example, foundation models propose tasks based on scene affordances and evaluate success afterward. An <strong>affordance</strong> is an action possibility such as pulling a drawer or pressing a button. Repeatedly choosing easy tasks can accumulate successes without broadening experience. Task-selection criteria and success-evaluation quality must be examined together to establish policy improvement. [Original lecture, 41:44](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=2504s) · [Autonomous-improvement research](https://arxiv.org/abs/2407.20635)
+
+A person finishing in three seconds and a robot hesitating for fifteen seconds can reach the same final state with different movement distributions. Separately recording failures and human recovery lets data serve as imitation targets, outcome-prediction experience, or reward-ranked paths. Rechecking improvement with the same evaluation is essential to the flywheel.
+
+## Memory needed to adapt to one refrigerator
+
+<LectureSlide lecture={11} page={27} caption="Putting a verbal correction or demonstration into context" />
+
+If fetching a cola fails only because the handle estimate is wrong, “grasp slightly farther left” may suffice. If opening itself is unfamiliar, a demonstration may help more. <strong>In-context adaptation</strong> places such feedback or demonstrations in the current input to change behavior quickly. Its timescale differs from lifelong weight learning. PALO illustrates few-demonstration task decomposition and adaptation. [Original lecture, 35:30](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=2130s) · [Slide P027](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-27.jpg) · [Slide P032](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-32.jpg) · [PALO project](https://palo-website.github.io/)
+
+<LectureSlide lecture={11} page={28} caption="Representations combining navigation and manipulation" />
+
+A mobile robot working across rooms needs information exchange between simultaneous localization and mapping (SLAM) and manipulation. Topological room connections may suffice in corridors, while physical distances matter near doors or narrow shelves. VLMaps places vision–language features in 3D maps for language-based localization. LeLaN learns language-goal navigation from sources including human walkthrough videos without a prebuilt map. Suitability depends on distance, environmental change, and required arrival precision. [Original lecture, 37:09](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=2229s) · [Slide P028](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-28.jpg) · [Slide P030](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-30.jpg) · [VLMaps paper](https://www.oiermees.com/publication/vlmaps/) · [LeLaN paper](https://proceedings.mlr.press/v270/hirose25b.html)
+
+Modular systems use SLAM, localization, and planning during navigation before switching to manipulation. An integrated model must choose between explicit location/map state and learned representations from image history. Remembering routes through a building differs in timescale from avoiding a new nearby obstacle. Maintaining maps or scene graphs while local control reacts to fresh observations is another option.
+
+<LectureSlide lecture={11} page={29} caption="Preserving seconds of sensor data and years of experience" />
+
+Whole-body policies need not store all memory in network weights. Nearby-obstacle information and routes to rooms on another floor need different precision. Maps and walkthrough context require timestamps and update rules when furniture moves. What to record or forget, and how to retrieve sensations across time and space, are separate research questions.
+
+Catching a slipping object needs immediate sensor history. Finding where a cup was moved weeks earlier may need longer-term place-and-event records. Calculating storage for every raw camera frame illustrates why memory must select and summarize events. [Original lecture, 39:36](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=2376s) · [Slide P029](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-29.jpg)
+
+<Math tex={String.raw`D=T\sum_{j=1}^{M} b_j`} display />
+<RobotEquationGuide id="rl11-e04" />
+
+### What should be remembered for longer?
+
+Short-term memory can retain detailed hand–cup motion; long-term memory can store events such as placing a cup on the right shelf that morning. Events must link object identity, observation time, and subsequent movement. If the cup moves again, old positions must be distinguished from current ones. Such updates matter in prolonged home interaction.
+
+The lecture considers explicit 3D maps, bird's-eye views, topological room maps, object-relation scene graphs, and walkthrough videos. Compare retrieval accuracy, goal-reaching success, and update costs after environmental changes. Repeating an instruction after furniture moves can reveal whether old memory is blindly reused or corrected with observations.
+
+<LectureSlide lecture={11} page={30} caption="VLMaps and LeLaN represent environments differently" />
+
+VLMaps links visual–language features with 3D positions to locate goals such as “near the chair.” LeLaN connects language with movement from sources including human walkthrough videos, learning navigation without a prebuilt map. Map-free approaches still require observations and experience supporting movement decisions. Compare travel distance, arrival precision, and scene-change conditions alongside map use.
+
+<LectureSlide lecture={11} page={31} caption="Foundation models proposing tasks and evaluating outcomes" />
+
+Imagine a model seeing a drawer handle, proposing opening it, and checking afterward whether it opened. Task proposals determine exploration; success evaluation supplies learning signals. Both can be wrong. Autonomous improvement requires checking both expanded useful task coverage and whether automatic-scoring errors accumulate.
+
+<LectureSlide lecture={11} page={32} caption="PALO: recomposing existing skills from a few demonstrations" />
+
+The slide compares PALO with roughly five demonstrations against fine-tuning using about a hundred. PALO combines task decomposition and language optimization with an existing generalist policy. These numbers describe data efficiency in that long-horizon evaluation, not a law that every in-context model solves any task after five examples. [PALO team](https://palo-website.github.io/)
+
+<LectureSlide lecture={11} page={33} caption="Reasoning, dexterous mobile manipulation, lifelong learning, and rapid adaptation" />
+
+The four elements depend on one another. Reasoning can choose a subtask yet fail at contact without touch and fast control. Mobile collection offers new experience, but memory and learning systems are needed to reuse it. The aim goes beyond assembling good demonstrations of each element to making them work together in unfamiliar environments.
+
+<LectureSlide lecture={11} page={34} caption="Which boundary will these tools help extend?" />
+
+Chapters 1–11 connect control, MDPs, imitation and reinforcement learning with generative models, sequences, world models, generalist policies, and reasoning. The final question is not which tool is newest, but which tool and experiment address the failure just identified.
+
+<LectureSlide lecture={11} page={35} caption="Turning open problems into research plans" />
+
+## Research that reveals where failures begin
+
+<LectureSlide lecture={11} page={36} caption="Incremental research, failed ideas, and simple designs" />
+
+Mees advises choosing an important problem together with a testable plan. Method-driven research may start with a new video model and seek applications. Problem-driven research can begin with camera-viewpoint failures and retain that question even if its first method fails. Before spending months, act as your own critical <strong>Reviewer 2</strong> and find the quickest experiment that could disprove your claim. [Original lecture, 44:14](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=2654s) · [Slide P036](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-36.jpg) · [Slide P037](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-37.jpg) · [Slide P040](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-40.jpg)
+
+The example of ten ideas becoming five experiments, two interesting results, and one paper is an experiential analogy, not measured statistics on research success. Recording failures clarifies assumptions even when attempts do not immediately produce publications. If a method needs seventeen components, also ask whether a simpler version captures much of the benefit.
+
+<LectureSlide lecture={11} page={37} caption="Both an important problem and a testable approach are needed" />
+
+The lecture contrasts important goals without approaches, such as curing cancer, with narrow benchmark gains lacking a clear substantive problem. Small improvements are not inherently meaningless. The point is that a number alone struggles to demonstrate importance without explaining the cost or failure reduced. First state what success would newly make possible.
+
+For example, recovering from camera reinstallation with a small calibration set instead of rerecording dozens of demonstrations makes the saved cost concrete. Even a small gain under fixed conditions needs uncertainty and repeat counts. Explain both why the problem matters and how to approach it.
+
+<LectureSlide lecture={11} page={38} caption="Interest sustains long failures and repeated attempts" />
+
+Mees notes that many ideas disappear in experiments and much research accumulates small results. Simple designs are easier to reproduce and scale. Choosing a problem that interests you helps sustain long cycles of failure and repetition. This advice comes from his research experience.
+
+<LectureSlide lecture={11} page={39} caption="Examine the likeliest failure reasons first" />
+
+Finding data leakage or a weak baseline only after months is costly. List strong objections before starting: could gains come only from augmentation, disappear with changed objects, or exceed real-time compute budgets? Small early tests of those objections protect time for later stages.
+
+<LectureSlide lecture={11} page={40} caption="Method-driven and problem-driven research start differently" />
+
+One seeks applications for a new video model; the other seeks tools to reduce viewpoint-change failures. Both can succeed, but the latter preserves an important question when a first method fails. This motivates the lecturer's recommendation of problem-driven PhD research.
+
+<LectureSlide lecture={11} page={41} caption="Overfit a small sample and inspect inputs and outputs directly" />
+
+For camera-viewpoint failures, deliberately <strong>overfit</strong> a few demonstrations first to verify the input-to-action connection. Visualize crops, coordinates, and actual commands. Then compare a baseline and new method with only the camera changed before extending to unseen rooms and objects. Share code and data where possible, make comparison conditions visible in figures, and limit claims to demonstrated coverage. [Original lecture, 51:44](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=3104s) · [Slide P041](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-41.jpg) · [Slide P042](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-42.jpg) · [Slide P043](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-43.jpg)
+
+<LectureSlide lecture={11} page={42} caption="Discuss with colleagues and share code, data, and figures" />
+
+Explaining conditions to colleagues or cited authors can reduce repetition of known failures. Publish code and data where possible and show inputs, outputs, and comparisons directly in figures. Readers should understand the tested claim before reading the entire article.
+
+<LectureSlide lecture={11} page={43} caption="Communicate research without exceeding demonstrated scope" />
+
+Do not assume the audience shares your background; explain unfamiliar terms and conditions first. arXiv and social media make findings usable by others, but expanding one success into “robotics solved” erases evaluation scope. The opening critique returns as a standard for communicating one's own research.
+
+<LectureSlide lecture={11} page={44} caption="Finding research questions in a failing complex pipeline" />
+
+A week before a PhD deadline, Mees's robot stalled during automatic calibration. After a lucky late recovery, experiments were rushed through the final night. He later spent about a year preparing a Franka, custom workbench, VR interface, and wrist camera. Slow physical iteration motivated a simulator with the same manipulation workflow; that side project became <strong>CALVIN</strong> for language-conditioned long-horizon manipulation. Later work trained one policy on more than 25 real tasks. The simulation benchmark and physical-robot study are separate results. [Original lecture, 54:54](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=3294s) · [Slide P044](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-44.jpg) · [Slide P046](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-46.jpg) · [Slide P047](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-47.jpg) · [CALVIN paper](https://arxiv.org/abs/2112.03227) · [HULC++ paper](https://www.oiermees.com/publication/hulc2/)
+
+<LectureSlide lecture={11} page={45} caption="A year spent building the Franka experimental setup" />
+
+Before research, the setup required a custom metal workbench, VR teleoperation code, cameras, a 3D-printed wrist mount, and low-level controllers. This infrastructure rarely appears in algorithm plots but determines collection accuracy and iteration speed. His wish to simplify a complex ROS pipeline is personal experience, not a conclusion that every robot system should remove ROS.
+
+<LectureSlide lecture={11} page={46} caption="A tool for faster physical iteration becomes CALVIN" />
+
+Simulation sharing the real manipulation workflow created a foundation for evaluating language-conditioned long-horizon tasks. Mees recalls releasing this side project, which became the widely used, award-winning CALVIN benchmark. Important research can emerge from removing experimental bottlenecks rather than only pursuing the original main idea. Benchmark achievements and subsequent physical-robot results remain separate evaluations.
+
+<LectureSlide lecture={11} page={47} caption="Beyond 25 real tasks toward unfamiliar task combinations" />
+
+The final demonstration shows the goal of chaining language-directed manipulations and generalizing to unseen combinations. The Korean transcript says “about five years,” but the slide says “five papers” before the final demo. Either way, the point is accumulated environment, data, evaluation, and policy development rather than one completed training run. Playback labels such as 2× speed must also be distinguished from actual completion times.
+
+<LectureSlide lecture={11} page={48} caption="Student feedback helping improve a new course" />
+
+<LectureSlide lecture={11} page={49} caption="Thanks to the assistants who built exercises and projects" />
+
+The lecture closes by thanking students for feedback, teams for data sharing, and teaching assistants for practical environments. The official schedule lists a separate invited lecture for the following week. [Original lecture, 60:10](https://www.youtube.com/watch?v=eL4lcy1KNzE&t=3610s) · [Slide P048](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-48.jpg) · [Slide P049](https://github.com/SRA-VJTI/robotics-study-group/blob/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-11/slide-49.jpg) · [Lucas Beyer's invited talk](https://youtu.be/0XB7fNS_ONg)
+
+## Further reading
+
+- Architectures connecting prediction and planning. [LeCun, A Path Towards Autonomous Machine Intelligence](https://openreview.net/forum?id=BZ5a1r-kVsf)
+- Long-term advantages of methods exploiting more computation and experience. [Sutton, The Bitter Lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html)
+- A robotics perspective centered on interaction with the real world. [Brooks, Intelligence without Representation](https://people.csail.mit.edu/brooks/papers/representation.pdf)
+
+[First chapter: What Does a Robot Learn?](/en/posts/rl-robot-learning-ch01-introduction/)

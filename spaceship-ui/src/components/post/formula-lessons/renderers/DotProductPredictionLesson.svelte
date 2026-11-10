@@ -1,4 +1,7 @@
 <script>
+ import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+ const formulaEnglish = document.documentElement.lang === 'en';
+ const formulaText = value => formulaEnglish ? englishFormulaText(value) : value;
   import { computeDotProductPrediction } from '@/lib/formula-lessons/dot-product.mjs';
 
   export let lesson;
@@ -31,7 +34,7 @@
   <section class="contribution-panel">
     <header>
       <div>
-        <p>성분별 계산</p>
+        <p>{formulaText("성분별 계산")}</p>
         <h6>wᵀx = Σᵢ wᵢxᵢ</h6>
       </div>
       <output>{format(result.prediction, 3)}</output>
@@ -74,8 +77,8 @@
 
   <section class="control-panel">
     <header>
-      <p>직접 바꾸는 기호</p>
-      <h6>가중치 wᵢ</h6>
+      <p>{formulaText("직접 바꾸는 기호")}</p>
+      <h6>{formulaText("가중치 wᵢ")}</h6>
     </header>
 
     <div class="controls">
@@ -92,14 +95,14 @@
         <input bind:value={w2} type="range" min="-2" max="2" step="0.05" />
       </label>
       <div class="buttons">
-        <button type="button" on:click={resetWeights}>예제 가중치</button>
-        <button type="button" class="secondary" on:click={zeroWeights}>모두 0</button>
+        <button type="button" on:click={resetWeights}>{formulaText("예제 가중치")}</button>
+        <button type="button" class="secondary" on:click={zeroWeights}>{formulaText("모두 0")}</button>
       </div>
     </div>
 
     <dl class="checks">
-      <div><dt>입력 x</dt><dd>[{spec.x.map((value) => format(value)).join(', ')}]</dd></div>
-      <div><dt>가중치 w</dt><dd>[{weights.map((value) => format(value)).join(', ')}]</dd></div>
+      <div><dt>{formulaText("입력 x")}</dt><dd>[{spec.x.map((value) => format(value)).join(', ')}]</dd></div>
+      <div><dt>{formulaText("가중치 w")}</dt><dd>[{weights.map((value) => format(value)).join(', ')}]</dd></div>
       <div><dt>‖x‖₂</dt><dd>{format(result.inputNorm, 3)}</dd></div>
       <div><dt>‖w‖₂</dt><dd>{format(result.weightNorm, 3)}</dd></div>
       <div><dt>cos θ</dt><dd>{format(result.cosine, 3)}</dd></div>
@@ -110,7 +113,7 @@
 <section class="calculation-table-wrap">
   <table class="calculation-table">
     <thead>
-      <tr><th>i</th><th>xᵢ</th><th>wᵢ</th><th>wᵢxᵢ</th><th>예측에 미치는 방향</th></tr>
+      <tr><th>i</th><th>xᵢ</th><th>wᵢ</th><th>wᵢxᵢ</th><th>{formulaText("예측에 미치는 방향")}</th></tr>
     </thead>
     <tbody>
       {#each spec.x as value, index (index)}
@@ -119,18 +122,18 @@
           <td>{format(value)}</td>
           <td>{format(weights[index])}</td>
           <td>{format(result.contributions[index], 3)}</td>
-          <td>{result.contributions[index] > 0 ? '예측을 올림' : result.contributions[index] < 0 ? '예측을 내림' : '영향 없음'}</td>
+          <td>{result.contributions[index] > 0 ? formulaText('예측을 올림') : result.contributions[index] < 0 ? formulaText('예측을 내림') : formulaText('영향 없음')}</td>
         </tr>
       {/each}
     </tbody>
     <tfoot>
-      <tr><th colspan="3">합계 ŷ = wᵀx</th><th>{format(result.prediction, 3)}</th><th>선형 예측값</th></tr>
+      <tr><th colspan="3">{formulaText("합계 ŷ = wᵀx")}</th><th>{format(result.prediction, 3)}</th><th>{formulaText("선형 예측값")}</th></tr>
     </tfoot>
   </table>
 </section>
 
 <aside class="assumptions">
-  <strong>이 시각화가 수식과 연결되는 이유</strong>
+  <strong>{formulaText("이 시각화가 수식과 연결되는 이유")}</strong>
   <ul>
     {#each spec.assumptions as assumption, index (index)}
       <li>{assumption}</li>

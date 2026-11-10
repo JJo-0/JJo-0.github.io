@@ -1,0 +1,758 @@
+---
+title: Reinforcement Learning 02 — From Robot Control to MDPs
+description: Follow a robot's goal into physical motion through coordinate frames,
+  inverse kinematics, trajectories and PID control, then build an MDP from states,
+  actions, transitions and rewards. Read the ETH Lecture 2 slides alongside the transcript
+  and a simulation I ran.
+pubDate: 2026-11-04
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch02-control-mdp
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags:
+- robot-learning
+- reinforcement-learning
+- robot-control
+- mdp
+- eth-zurich
+draft: false
+lang: en
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 2
+translationKey: series-rl-robot-learning-ch02-control-mdp-20261109
+translatedPosts:
+  ko-KR: rl-robot-learning-ch02-control-mdp
+---
+
+
+import LectureSlide from '@/components/post/LectureSlide.astro';
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+How does an instruction to move a hand toward a cup become motor motion? We will follow the path from coordinate frames through control, then connect it to a mathematical framework for evaluating and learning robot behavior.
+
+[Oier Mees · ETH Zurich 2026, Lecture 2 video](https://www.youtube.com/watch?v=5-Bb84eTTqQ) · [Official course](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Original PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture2_control_mdp.pdf)
+
+<LectureSlide lecture={2} page={1} caption="From robot control to Markov decision processes" priority />
+
+“Move your hand 1 cm toward the cup.” A short instruction hides several questions for a robot. In which coordinate frame is that centimeter measured? How far should each joint turn? How long should the motion take, and how should an overshoot be corrected? If the grasp misses, what should happen next?
+
+In [Chapter 01](/en/posts/rl-robot-learning-ch01-introduction/), a policy was a rule that receives information and chooses an action. Here we first examine <strong>how a chosen action becomes physical movement</strong>, then turn to <strong>Markov decision processes (MDPs)</strong> to evaluate the consequences of sequences of actions. The control in the first half and the learning in the second meet within one robot system.
+
+<LectureSlide lecture={2} page={3} caption="A common language for differently shaped robots" />
+
+Drones move propellers, arms move joints, and mobile robots turn wheels. A robot's morphology is more than its appearance. Joint connections, permitted directions of motion, and the arrangement of sensors and actuators determine which actions are possible.
+
+The quadruped, Rubik's-cube-solving hand and drone appear together because each must turn an abstract instruction into commands for its own body. The same instruction, “reach the target,” calls for adjusting motor thrust in a drone and joint commands in an arm.
+
+Across hardware, the shared problem is <strong>turning what we want to do into commands the device can execute</strong>. Even “forward” means different things as a wheel speed, body velocity or target foot position. Whenever action <Math tex={String.raw`a`} /> appears in an equation, first ask <strong>which physical quantity is being commanded to which device</strong>.
+
+
+The photographs show arms and hands manipulating objects, robots moving through corridors, and legged robots supporting their bodies. An arm controls contact between the tool and object; a mobile robot controls the relationship between its body and obstacles; a walking robot also controls foot contacts and balance. Even “move right” depends on what should move and what should stay fixed. Making that distinction first lets us define states and actions concretely. [Video, 1:00–2:14](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=60s).
+
+
+A learning framework spanning these bodies cannot begin with memorizing the buttons on one particular arm. We need a common language for the relationships among goals, joint motion and actuator inputs. That is why rigid bodies, coordinate frames, joints and control come first here. Sharing a framework does not mean sending the same torque commands to every robot.
+
+<LectureSlide lecture={2} page={4} caption="Rigid-body motion: representing position and orientation together" />
+
+A <strong>rigid body</strong> is a model in which the distance between any two points in a body stays constant during motion. Approximating a metal link this way lets us describe its motion by the position and orientation of an attached coordinate frame, without tracking every surface point separately. It does not mean that a whole jointed robot is one rigid body.
+
+Planar motion is usually described by two position coordinates <Math tex={String.raw`(x,y)`} /> and one orientation <Math tex={String.raw`\theta`} />. The space of these poses is <strong>SE(2)</strong>. Spatial motion requires position <Math tex={String.raw`(x,y,z)`} /> and three orientation degrees of freedom, represented using <strong>SE(3)</strong>. A pose includes both position and orientation. Knowing a drone's height alone does not tell us how it is tilted.
+
+The rigid-body model uses the fact that points on one body move together to predict its next pose. Flexible cables and soft objects require deformation to be modeled separately. Six pose degrees of freedom also do not mean that a body can instantly move arbitrarily in all six directions. Actuators and contact constraints limit the motions actually available.
+
+
+In the planar-car diagram, the straight arrows denote forward/backward and sideways position, while the curved arrow denotes heading. In the drone diagram, roll, pitch and yaw are rotations about the <Math tex={String.raw`x`} />, <Math tex={String.raw`y`} /> and <Math tex={String.raw`z`} /> axes, respectively: tilting sideways, pitching forward/backward and changing heading as viewed from above. Combining rotations also requires an order of application. Writing down a pose numerically and producing the thrust needed to reach it are separate tasks. [Rigid-body motion, 2:17–5:35](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=137s).
+
+<LectureSlide lecture={2} page={5} caption="What do the entries in a transformation matrix mean?" />
+
+Rotation changes the directions of coordinate axes, while translation changes the origin's position. A <strong>homogeneous transformation matrix</strong> combines both operations in one matrix product. The planar transformation below converts a point expressed in frame <Math tex={String.raw`B`} /> into frame <Math tex={String.raw`A`} />.
+
+<Math tex={String.raw`T=\begin{bmatrix}\cos\theta&-\sin\theta&x\\\sin\theta&\cos\theta&y\\0&0&1\end{bmatrix},\qquad \tilde p_A=T^A_B\tilde p_B`} display label="Planar homogeneous transformation: rotate and translate a point from frame B to express it in frame A" />
+
+<RobotEquationGuide id="rl02-e01" />
+
+The upper-left 2×2 block is rotation, and <Math tex={String.raw`(x,y)`} /> in the rightmost column is translation. Extending a point to <Math tex={String.raw`(p_x,p_y,1)`} /> combines the two operations in one product. The tilde denotes <strong>homogeneous coordinates</strong>, with a final coordinate of 1. In three dimensions, the rotation block is 3×3 and the complete matrix is 4×4.
+
+For example, rotate frame <Math tex={String.raw`B`} /> counterclockwise by 90° relative to <Math tex={String.raw`A`} /> and place its origin at <Math tex={String.raw`(1\,\mathrm m,2\,\mathrm m)`} />. Point <Math tex={String.raw`(1\,\mathrm m,0\,\mathrm m)`} /> in <Math tex={String.raw`B`} /> is then <Math tex={String.raw`(1\,\mathrm m,3\,\mathrm m)`} /> in <Math tex={String.raw`A`} />. The same pair of numbers does not identify the same location in different frames.
+
+A rotation matrix <Math tex={String.raw`R`} /> satisfies <Math tex={String.raw`R^\top R=I`} /> and <Math tex={String.raw`\det R=1`} />. The first condition preserves lengths and angles; the second excludes reflections. Nine matrix entries do not give orientation nine degrees of freedom. Three-dimensional rotations satisfying these constraints have three degrees of freedom.
+
+
+In the three-dimensional expression, the upper-left rotation block expresses the directions of the three new coordinate axes in the original frame. Each axis has unit length and must be perpendicular to the others, so the entries cannot be chosen independently. The zeros and one in the last row add no new translational freedom; they let rotation and translation share a matrix operation. <strong>Matrix dimensions count the numbers used in a representation; degrees of freedom count independently specifiable motion variables</strong>.
+
+<LectureSlide lecture={2} page={6} caption="Converting sensor coordinates to robot coordinates" />
+
+When a roof-mounted sensor detects a pedestrian, it reports a sensor-relative position—such as a distance of several <Math tex={String.raw`m`} /> ahead of the sensor. The driving controller may instead use the vehicle's center as its reference. The two frames can differ in origin and axis directions, so passing the numbers through unchanged can point to the wrong place. The sensor's relative position and orientation are needed to express the same pedestrian in the body frame. [Connecting coordinate frames, 5:37–7:09](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=337s).
+
+A roof-mounted LiDAR reports a pedestrian in its sensor frame. Choosing an avoidance motion in the vehicle frame requires transforming those coordinates using the mounting position and orientation. Estimating that transform is extrinsic calibration. If the sensor moves, an unchanged point can appear to have changed position in the computed coordinates.
+
+<Math tex={String.raw`T^{\mathrm{base}}_{\mathrm{ped}}=T^{\mathrm{base}}_{\mathrm{sensor}}T^{\mathrm{sensor}}_{\mathrm{ped}}`} display label="Compose the transformations from the pedestrian to the sensor and from the sensor to the robot reference frame" />
+
+<RobotEquationGuide id="rl02-e02" />
+
+Here, the superscript is the destination frame and the subscript is the source frame. Applying the rightmost transformation first matches the intermediate sensor frames. Reversing the order generally produces a different result. A robot arm uses the same principle when chaining base, shoulder, elbow and wrist transformations.
+
+Determining the relationship between sensor and base is one role of extrinsic calibration. The [Modern Robotics video and script on homogeneous transformations](https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/) ([video, 1:51–2:49](https://www.youtube.com/watch?v=vlb3P7arbkU&t=111s)) also explains coordinate representations and transformation composition. Before multiplying matrices, write down the units and the direction of each transform.
+
+To reverse a transformation, is negating the translation enough? Following the frame explanation in [Modern Robotics, 1:24–2:49](https://www.youtube.com/watch?v=vlb3P7arbkU&t=84s) shows that the inverse rotation must be applied too. The inverse of a three-dimensional transform is:
+
+<Math tex={String.raw`T=\begin{bmatrix}R&t\\0&1\end{bmatrix},\qquad T^{-1}=\begin{bmatrix}R^\top&-R^\top t\\0&1\end{bmatrix}`} display label="An inverse transform transposes the rotation and applies that inverse rotation to the translation vector as well" />
+
+<RobotEquationGuide id="rl02-e03" />
+
+<Math tex={String.raw`t`} /> is the translation vector, not a time variable. In the earlier example with a 90° rotation and translation <Math tex={String.raw`(1\,\mathrm m,2\,\mathrm m)`} />, inverse-transforming <Math tex={String.raw`(1\,\mathrm m,3\,\mathrm m)`} /> in <Math tex={String.raw`A`} /> returns <Math tex={String.raw`(1\,\mathrm m,0\,\mathrm m)`} /> in <Math tex={String.raw`B`} />. This is why transforming a known point out and back is useful when checking coordinate consistency. A position point receives a final coordinate of 1, while a pure direction vector receives 0 so that translation does not affect it.
+
+<LectureSlide lecture={2} page={7} caption="Articulated robots: building a body from links, joints and an end effector" />
+
+An <strong>articulated robot</strong> consists of multiple bodies connected by joints that allow their relative positions or orientations to change. Industrial arms often connect several rotational joints to move the tool tip, much as a person bends a shoulder, elbow and wrist. “Articulated” describes <strong>how the body is connected and moves</strong>, rather than a type of AI. The pictured LOLA humanoid can likewise be modeled by separating its torso, arms and legs and their connections.
+
+A <strong>link</strong> is an individual body approximated as rigid, such as treating the upper arm and forearm as separate units. A <strong>joint</strong> is a mechanical connection permitting particular relative motions between those bodies. Bending an elbow changes the angle between the upper arm and forearm, not their lengths. An <strong>end effector</strong> is the tool at the end that interacts directly with the task object. It may be a gripper, suction tool or welding torch and can be changed to suit the task.
+
+Changing a joint angle changes the coordinate transformation between links; multiplying the connected transforms gives the hand position. Count the joints, but also identify which links they connect and along which axes. Different link lengths or joint axes send the hand to different locations even for the same angle vector.
+
+
+A robot's fixed support is its <strong>base</strong>. The sequence of links and joints from base to tool tip is a <strong>kinematic chain</strong>. The humanoid branches from its torso into two arms and two legs, so it can be viewed as having several chains. Foot–ground contact adds motion constraints. Deciding which parts to model as rigid bodies and which connections as joints is the starting point for motion equations. [Modern Robotics on rigid bodies, links and joints](https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-1-degrees-of-freedom-of-a-rigid-body/).
+
+<LectureSlide lecture={2} page={8} caption="Reading the joint structures of Franka and SO-101" />
+
+In the Franka diagram, link 0 lies at the support, while links 1 through 7 follow the arm. Joints 1 through 7 identify rotational axes between neighboring bodies. Turning the first joint moves the whole connected arm above it; turning the last mainly changes the wrist pose. Offsets between axes also change how rotation affects tool-tip position. The model therefore includes axis directions and distances between axes as well as body lengths.
+
+On the SO-101, shoulder pan rotates the shoulder left and right; shoulder lift raises it; elbow flex bends the elbow; wrist flex bends the wrist; and wrist roll twists about the wrist's longitudinal axis. The gripper drive opens and closes the fingers. The colored coordinate axes attached to each link provide references for calculating position and orientation. Connecting the joint values through these frames gives the gripper's location and direction.
+
+<strong>Count arm degrees of freedom separately from gripper opening and closing.</strong> Variables setting the tool's three-dimensional position, its orientation and its opening width serve different roles. A six-element joint vector does not necessarily provide six-degree-of-freedom spatial pose control.
+
+
+Franka has seven arm joints. In the SO-101 diagram, five arm joints move and orient the gripper, while another drive opens and closes it. Six drive values therefore do not establish independent control over all six spatial position and orientation components. Changing gripper width does not replace a wrist-tilt degree of freedom. This distinction matters when judging whether different arms can perform the same goal.
+
+<LectureSlide lecture={2} page={9} caption="Changing the grasping tool changes the action space" />
+
+A suction gripper may have a command to switch vacuum on or off; a parallel gripper controls opening width or force. An articulated hand requires coordinating multiple finger joints. Changing the contact mechanism changes both the required precision and the dimensionality of the actions to learn.
+
+If the command only switches suction on or off, it has two choices and can be represented as a <strong>binary action</strong>. [Video, 9:09–10:35](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=549s). This does not make the arm position and orientation used to bring the suction tool over an object binary. A single policy can combine continuous arm commands with a discrete grasp command.
+
+
+A suction tool holds an object through a pressure difference between its cup and the object's surface. The material and gaps affect whether it seals, so activating suction does not establish a successful grasp. A parallel gripper moves two opposing fingers to press on an object; contact and sufficient force matter alongside width. An articulated hand can adjust multiple contacts to handle complex shapes, but requires estimating and controlling more finger joints and contact states. The tool choice changes both what must be observed and what must be commanded.
+
+
+If the fingers of a parallel gripper move symmetrically, one opening-width variable specifies their configuration. Two fingers do not necessarily mean two independent degrees of freedom. An articulated hand, by contrast, can have over 20 degrees of freedom, requiring choices about each finger as well as the overall grasp. A larger policy output dimension means more independent choices of this kind. [Tools and action dimensions, 9:29–10:35](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=569s).
+
+<LectureSlide lecture={2} page={10} caption="A joint constrains which motions are allowed" />
+
+Two unconstrained rigid bodies moving relative to one another require three position and three orientation variables in space. A revolute joint allows rotation about one axis and prevents the other relative motions. A prismatic joint allows translation along one axis.
+
+Think of a door hinge. The door rotates about the hinge axis, but does not freely detach sideways or slide along that axis. A joint enables certain motions while preventing others. A <strong>constraint</strong> is a condition tying motion variables together so they cannot be chosen independently.
+
+The six joints in the diagram can be distinguished as follows. Degrees of freedom count the variables that can change independently between two links. [Modern Robotics on joint types and degrees of freedom](https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-2-degrees-of-freedom-of-a-robot/).
+
+| Joint | Permitted relative motion | Degrees of freedom | An intuitive example |
+|---|---|---:|---|
+| Revolute (<Math tex={String.raw`R`} />) | Rotation about one axis | 1 | One angle changes, as in a door hinge. |
+| Prismatic (<Math tex={String.raw`P`} />) | Translation along one axis | 1 | One distance changes, as with a slider on a rail. |
+| Helical (<Math tex={String.raw`H`} />) | Rotation and translation along the same axis coupled at a fixed ratio | 1 | Turning a screw advances it by its specified pitch. |
+| Cylindrical (<Math tex={String.raw`C`} />) | Independent rotation and translation along the same axis | 2 | Rotation and sliding distance can be set separately. |
+| Universal (<Math tex={String.raw`U`} />) | Rotation about two intersecting axes | 2 | Imagine a cross-shaped connection bending in two directions. |
+| Spherical (<Math tex={String.raw`S`} />) | Rotation in three directions about one point | 3 | A ball joint changes orientation while retaining its center. |
+
+A helical joint rotates and translates, but the two motions are coupled, giving one degree of freedom. A cylindrical joint permits those motions independently and has two. That is why we ask <strong>how many motion variables can be chosen independently</strong>, rather than simply counting visible motors. Passive joints and drives coupling several joints also mean that motor count and kinematic degrees of freedom need not match.
+
+<LectureSlide lecture={2} page={11} caption="Distinguishing degrees of freedom from state dimension" />
+
+<strong>Degrees of freedom (DoF)</strong> count the independent variables needed to specify a robot's geometric configuration. The slide introduces a calculation that subtracts joint constraints from the rigid bodies' original freedoms.
+
+<Math tex={String.raw`\mathrm{DoF}=m(N-1)-\sum_{i=1}^{J}c_i`} display label="Subtract the independent constraints imposed by joints from the rigid bodies' degrees of freedom" />
+
+<RobotEquationGuide id="rl02-e04" />
+
+<Math tex={String.raw`m`} /> is 3 for a planar rigid body and 6 for a spatial one. <Math tex={String.raw`N`} /> counts links including the fixed base, <Math tex={String.raw`J`} /> counts joints, and <Math tex={String.raw`c_i`} /> is the number of relative freedoms removed by each joint. The calculation assumes independent constraints; direct substitution can fail for special mechanisms. A planar serial 2R arm has three links and two revolute joints, giving <Math tex={String.raw`3(3-1)-2-2=2`} />.
+
+Here, <strong>configuration and dynamical state are different.</strong> If a two-DoF arm's configuration consists of two joint angles, predicting its motion may also require two joint velocities. An arm moving quickly and a stationary arm evolve differently even at the same angles. This distinction becomes important when defining an MDP state later.
+
+
+The table's constraints column expresses the same calculation from the other side. Two spatial rigid bodies have six relative degrees of freedom; a revolute joint leaves one, imposing five motion constraints. In the plane, there are three relative freedoms, so the same revolute joint imposes two constraints. Including the base in the link count lets us count its joint to the first moving link in the same way as other joints. Closed-loop mechanisms can have overlapping constraints, so their independence requires particular attention.
+
+<LectureSlide lecture={2} page={12} caption="Configuration space and the periodicity of joint angles" />
+
+<strong>Configuration space, or C-space,</strong> is the set of all possible joint configurations. One configuration of a 2R arm is an angle pair <Math tex={String.raw`(q_1,q_2)`} />: a point in this space describes one arm configuration. This differs from the space in which we plot the hand's position above a table.
+
+An unrestricted revolute joint returns to the same configuration after one full turn. The ideal configuration space of two such joints is the product of two circles—a torus. Real joint limits restrict the feasible subset.
+
+At an angle's numerical boundary, simple subtraction may miss the shorter physical rotation. As an illustration, moving <strong>from 359° to 1°</strong> has a short difference of +2°, rather than the −358° obtained by direct subtraction. Mechanical limits or cables may prevent crossing that boundary, in which case the short route is not allowed either. Representing angles with <Math tex={String.raw`\sin q,\cos q`} /> in a neural-network input is one way to capture periodicity.
+
+
+The other examples become clearer when we separate variable count from the shape of a space. A point in a plane needs two position coordinates, yielding a plane of possible positions. The endpoint of a fixed-length spherical pendulum stays the same distance from the center and moves on a sphere's surface, described by two direction variables. A handle that both slides and rotates needs one displacement and one angle, producing a cylinder-like space combining a line and a circle. Having two variables does not make all these spaces the same plane. [Configuration-space shapes and coordinate representations](https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-3-1-configuration-space-topology/).
+
+<LectureSlide lecture={2} page={13} caption="Workspace: the places a hand can reach" />
+
+Here, <strong>workspace</strong> means the set of positions the end effector can physically reach. Think of the reach envelope around the base in the ABB diagram. Its coordinates have a different meaning from the joint angles of C-space.
+
+A point inside that envelope may still be unreachable at the desired orientation or through an obstacle-free approach. A cup being within arm's reach does not guarantee a feasible grasp. Wrist orientation, joint limits and elbow–table collisions also need checking.
+
+Consider an ideal planar 2R arm with link lengths <Math tex={String.raw`l_1,l_2`} />. Ignoring joint limits and self-collision, the distance between tool tip and base lies between <Math tex={String.raw`\lvert l_1-l_2\rvert`} /> and <Math tex={String.raw`l_1+l_2`} />. With two 1 m links, positions within a 2 m radius are reachable, but not every desired hand orientation can be achieved at every point.
+
+The two C-space coordinates in this example are <strong>the joint angles</strong>; the two workspace coordinates are <strong>the hand's planar position</strong>. Equal dimension does not make them the same space. Forward kinematics connects them, and that relationship also explains multiple inverse-kinematics solutions. The explanation in [ETH, 13:58–14:41](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=838s)—the cup is seen in workspace, while execution occurs in joint configuration—can be read through this example.
+
+
+The ABB side and top views show sections or projections of the same robot's reach envelope from different directions. Joint limits and link lengths make some points around the base feasible and others infeasible. The shaded region helps assess reachability first; the orientation of an approach with a particular tool still needs separate checking. Some literature includes end-effector orientation in its definition of workspace. Here we retain the narrower convention of reachable positions. [Task space and workspace](https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-5-task-space-and-workspace/).
+
+<LectureSlide lecture={2} page={14} caption="From physical obstacles to forbidden regions in joint space" />
+
+The blue circle on the left is a physical obstacle. The plot on the right colors the joint-angle combinations at which the arm collides with it. It is not a direct copy of the obstacle's shape: it is <strong>the result of checking the shape of the entire arm and its collisions for each angle combination</strong>.
+
+A link in the middle of the arm can touch an obstacle even when the tool tip lies outside it. Conversely, bending the elbow the other way can avoid a collision at the same tool-tip position. Drawing a straight line for the hand and finding a safe path for the whole robot are therefore different problems.
+
+
+The horizontal and vertical axes of the right-hand plot are joint angles, not distances across a table. Picking one point fixes both angles and therefore the entire arm shape in the left-hand space. If that shape touches the obstacle, the point is colored blue. The curved or broad blue region comes from multiple angle combinations producing collisions, not from deforming the obstacle. Even if start and goal are both in white regions, straight-line interpolation between their joint angles collides if it passes through blue.
+
+<LectureSlide lecture={2} page={15} caption="Path planning finds a connection around forbidden regions" />
+
+Representing the robot's start and goal configurations as points in C-space turns path planning into connecting those points within the collision-free region. Collision checking accounts for the robot's full thickness and its relationship to obstacles; the path itself is a continuous sequence of configurations.
+
+As joint count increases, the space of angle combinations grows in dimension, making it difficult to precompute every forbidden region. [Discussion, 14:44–16:42](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=884s). This does not mean discarding geometric planning. Sampling-based planners can check collisions at selected configurations, and learned policies still need constraint handling and collision checks during execution. Keep the distinction that <strong>a path says where to move, while a trajectory says when and how</strong>.
+
+
+The turquoise region contains forbidden configurations; the white region contains configurations free of collision. A curve connecting start and goal must remain in white. Each point on the curve is one arm configuration, and following the curve changes configurations in sequence. The figure still has no schedule specifying which point is crossed at which time. Adding that timing produces the trajectories and control commands discussed later.
+
+<LectureSlide lecture={2} page={16} caption="Task space: coordinates that express the goal naturally" />
+
+<strong>Task space</strong> is a space of variables natural for describing the work. A whiteboard-wiping location can use two coordinates on the board, and a floor-cleaning location can use two coordinates on the floor. It is a starting point for expressing the goal independently of the robot's joint structure.
+
+That does not mean two numbers alone suffice for control. If the eraser must maintain its orientation and force against the board, those conditions become additional constraints. <strong>The task dimension depends on what we hold fixed and what we leave free.</strong>
+
+
+The same goal—wipe a particular mark on a board—can be given to a five-joint or seven-joint arm, but the joint angles needed to touch it differ. Think of <strong>task space as where we describe the work, configuration space as where we describe that robot's body configuration, and workspace as where its hand can reach</strong>. This makes the directions of FK and IK easier to follow.
+
+<LectureSlide lecture={2} page={17} caption="Why the elbow can move while the hand stays still" />
+
+Franka's arm configuration is seven-dimensional, while the hand's spatial position and orientation are locally six-dimensional. In an ordinary configuration, multiple joint configurations can produce the same hand pose. This is <strong>kinematic redundancy</strong>.
+
+In the Franka example, the elbow can move while the cup's position and orientation remain fixed. This freedom can help avoid nearby objects without tilting the cup. The available directions and range depend on the current configuration and joint limits.
+
+Try moving your elbow while holding a coffee cup in place without tilting it. There is room to change the rest of the arm while retaining the hand's position and orientation. [Example, 18:20–19:17](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1100s). In differential terms, <strong>null-space motion</strong> is joint motion that leaves the current task output unchanged. It can help avoid joint limits or maintain clearance from obstacles. Simple dimension counting can change at singular configurations or under additional contact constraints.
+
+Writing tool-tip position as <Math tex={String.raw`x=f(q)`} />, its small change is approximated by <Math tex={String.raw`\Delta x\approx J(q)\Delta q`} />. A joint change satisfying <Math tex={String.raw`J(q)\Delta q=0`} /> therefore leaves the tool tip stationary to first order. The null space consists of directions producing zero in that equation. One finite movement need not hold the tool tip exactly fixed, so actual control recomputes at the updated configuration while maintaining the target.
+
+Having room to move the elbow does not guarantee that every obstacle can be avoided. Without sufficient clearance or joint range, even a redundant arm may have no collision-free solution.
+
+
+Earlier, workspace meant reachable positions, while task space meant the coordinates expressing the goal. The six compared with seven here is <strong>the local dimension of the task</strong> of controlling the hand's full position and orientation. This is not a comparison of the physical reach envelope's size or volume with joint space. At an ordinary configuration where the Jacobian spans all six independent task directions, one remaining direction of joint motion may leave hand pose unchanged.
+
+<LectureSlide lecture={2} page={18} caption="Forward kinematics: from joints to tool tip" />
+
+<strong>Forward kinematics (FK)</strong> computes the end effector's position and orientation from a known joint configuration <Math tex={String.raw`q`} />. Given a model with fixed link lengths and joint axes, each configuration produces one hand pose, written as <Math tex={String.raw`x=f(q)`} />.
+
+For a planar 2R arm with link lengths <Math tex={String.raw`l_1,l_2`} /> and joint angles <Math tex={String.raw`q_1,q_2`} />, the tool-tip position is given below. This separate example illustrates the principle.
+
+<Math tex={String.raw`\begin{aligned}x&=l_1\cos q_1+l_2\cos(q_1+q_2)\\y&=l_1\sin q_1+l_2\sin(q_1+q_2)\end{aligned}`} display label="A planar 2R arm's tool-tip position is the sum of its two rotated link-length vectors" />
+
+<RobotEquationGuide id="rl02-e05" />
+
+The second link's direction is <Math tex={String.raw`q_1+q_2`} />, rather than <Math tex={String.raw`q_2`} />, because the second angle is measured relative to the first link. With 1 m links and <Math tex={String.raw`(q_1,q_2)=(0^\circ,90^\circ)`} />, the tool tip is at <Math tex={String.raw`(1\,\mathrm m,1\,\mathrm m)`} />. FK is distinct from dynamics, which computes quantities such as forces and accelerations.
+
+
+In the arm diagram, the first angle sets direction relative to the base; later angles describe bending relative to preceding links. Accumulating those angles and moving along each link locates the endpoint. Specifying all joint values determines one modelled tool pose, so FK is deterministic. But different joint values can produce the same tool-tip position, so it is not one-to-one. Having a determined forward result and a unique inverse solution are different properties.
+
+<LectureSlide lecture={2} page={19} caption="Inverse kinematics: from a tool-tip goal to joints" />
+
+<strong>Inverse kinematics (IK)</strong> finds joint configurations that produce a desired hand position and orientation. When a policy outputs tool-tip targets, IK connects those targets to joint commands.
+
+For the 2R arm above, <Math tex={String.raw`(90^\circ,-90^\circ)`} /> also produces tool-tip position <Math tex={String.raw`(1\,\mathrm m,1\,\mathrm m)`} />. Different elbow configurations can reach the same position. Because the target here specifies <strong>position only</strong>, the two solutions need not have the same tool orientation. Including orientation changes the solution set. Thus <Math tex={String.raw`f^{-1}`} /> should not be read as a simple inverse function returning one answer.
+
+
+The red question mark indicates that the endpoint is known but the joint angles are not. Given link lengths and joint structure, we must find angle combinations that reach the goal. The original expression uses set notation to show that an answer need not be one numerical vector: there may be multiple solutions, or an empty set when the target is unreachable. Reading FK backward does not always reduce the problem to one matrix inversion.
+
+<LectureSlide lecture={2} page={20} caption="IK can have multiple solutions, no solution or a local solution" />
+
+A goal outside the reach envelope has no exact solution. Even a reachable goal may become infeasible after joint limits or collisions are considered. Multiple solutions require a selection criterion, such as proximity to the current configuration or clearance from obstacles.
+
+When a direct formula is difficult to obtain, IK can be solved as an <strong>optimization</strong> problem that repeatedly changes joint values to reduce the tool-tip error. [Numerical IK, 20:42–21:30](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1242s). The initial configuration and step size can change the numerical outcome. A small final tool-tip error does not establish a collision-free path to it.
+
+[Modern Robotics on numerical IK, 1:55–2:19 and 4:24–4:42](https://www.youtube.com/watch?v=VhUA0jf7tI8&t=115s) explains how initial estimates can lead to different solutions and how a small gradient can produce an excessively large update. When following successive tool-tip targets, we can therefore <strong>use the previous solution as the next target's initial estimate</strong> instead of restarting from arbitrary joint angles each time.
+
+When moving a hand in 1 cm increments, neighboring targets are close, so the previous configuration may be a good starting point for the next solution. Joint limits, singularities or new obstacles can break that continuity. Check whether the target was reached alongside the initialization, stopping tolerance and iteration limit.
+
+<LectureSlide lecture={2} page={21} caption="Using the Jacobian to move toward a target in small steps" />
+
+First consider <strong>position targets only</strong>, expressing <Math tex={String.raw`f(q)`} /> and target <Math tex={String.raw`x^*`} /> as vectors in the same Euclidean coordinates. Writing the slide's <Math tex={String.raw`\theta`} /> consistently as joint variable <Math tex={String.raw`q`} /> gives the following.
+
+<Math tex={String.raw`\begin{aligned}e(q)&=f(q)-x^*\\L(q)&=\tfrac12\lVert e(q)\rVert^2\\J(q)&=\frac{\partial f}{\partial q}\\q_{k+1}&=q_k-\alpha J(q_k)^\top e(q_k)\end{aligned}`} display label="Reduce squared position-IK error by gradient descent using the Jacobian transpose" />
+
+<RobotEquationGuide id="rl02-e06" />
+
+<Math tex={String.raw`J`} /> is the <strong>Jacobian</strong>. It describes the direction and amount of tool-tip movement produced by a small joint change. With <Math tex={String.raw`m`} /> task coordinates and <Math tex={String.raw`n`} /> joint variables, <Math tex={String.raw`J`} /> has shape <Math tex={String.raw`m\times n`} />, and <Math tex={String.raw`J^\top e`} /> has the same <Math tex={String.raw`n`} /> dimensions as the joint vector. <Math tex={String.raw`\alpha`} /> is the step size controlling each update; <Math tex={String.raw`k`} /> is the optimization iteration index.
+
+Because the error is <Math tex={String.raw`f(q)-x^*`} />, the update moves in the <strong>negative-gradient direction</strong>. This is gradient descent using the Jacobian <strong>transpose</strong>, distinct from directly applying an inverse or pseudoinverse. Including hand orientation requires an orientation-error representation and relative position/orientation weights, rather than simply subtracting SE(3) matrices.
+
+After an update, recompute FK and the Jacobian at the new joint values. Continue until the error is sufficiently small or the iteration limit is reached. One calculation does not teleport the tool tip to the goal. [Update equation, 21:31–22:19](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1291s). The executable example below also checks this gradient against numerical differentiation.
+
+Even with the same Jacobian, the update depends on what we want to compute. [Modern Robotics, 2:21–4:23](https://www.youtube.com/watch?v=VhUA0jf7tI8&t=141s) treats tool-tip error as a local linear problem and solves it with a pseudoinverse. To remain consistent with this section's error <Math tex={String.raw`e=f(q)-x^*`} /> and its sign, define the desired change toward the target as <Math tex={String.raw`\Delta x=x^*-f(q)=-e`} />.
+
+<Math tex={String.raw`\begin{aligned}\Delta q_{\mathrm{pinv}}&=J^\dagger\Delta x\\\Delta q_{\mathrm{DLS}}&=J^\top(JJ^\top+\lambda^2I)^{-1}\Delta x\end{aligned}`} display label="Apply a pseudoinverse or damped least-squares matrix to the target-directed error to obtain a joint increment" />
+
+<RobotEquationGuide id="rl02-e07" />
+
+<Math tex={String.raw`J^\dagger`} /> is the Moore–Penrose pseudoinverse. If the local linear equation has multiple solutions, it selects the joint change with the smallest Euclidean norm; if an exact match is impossible, it minimizes the linear residual. This does not guarantee a global optimum of the nonlinear IK problem. The DLS damping factor <Math tex={String.raw`\lambda`} /> reduces excessive updates along weak directions, and <Math tex={String.raw`I`} /> is an identity matrix sized to the task dimension.
+
+The [official NVIDIA Isaac Lab implementation](https://github.com/isaac-sim/IsaacLab/blob/dc01ec356052f2acd04246752a92a55162f6cd68/source/isaaclab/isaaclab/controllers/differential_ik.py#L225) offers transpose (`trans`), pseudoinverse (`pinv`) and DLS (`dls`) as distinct options. It takes a tool-tip position error and Jacobian, computes a joint increment, and adds it to the current joint values. This is where the equations meet code.
+
+In a separate 2R calculation, both links were 1 m, the first joint was at 0 rad, and the desired change was −1 mm along <Math tex={String.raw`x`} />. With DLS parameter <Math tex={String.raw`\lambda=0.05`} />, <strong>one linear calculation</strong> gave the following results.
+
+| Second joint | Pseudoinverse joint-change norm (rad) | DLS joint-change norm (rad) |
+|---|---:|---:|
+| Bent at <Math tex={String.raw`\pi`} />/2 rad | 0.001000 | 0.000995 |
+| Nearly straight at 0.001 rad | 2.236068 | 0.000179 |
+| Fully straight at 0 rad | 0 | 0 |
+
+Near a straight configuration, exactly matching a small tool-tip change in the linear equation can demand a large joint change. DLS moderates it but may leave a tool-tip residual. At full extension, the first-order Jacobian cannot express inward motion along <Math tex={String.raw`x`} />, so both calculations returned zero. The target is not physically impossible; <strong>the local linearization at that configuration cannot represent motion in that direction</strong>. This illustrates why a small initial bend or another search strategy may be needed. The table comes from a separate NumPy calculation of the published equations, not an Isaac Lab run.
+
+
+Read the four equation lines in order. First subtract the target tool-tip position from the current FK position to form the error. Squaring and summing its components gives the loss. If the current tool tip is 2 cm beyond the target along <Math tex={String.raw`x`} /> and aligned along <Math tex={String.raw`y`} />, the error vector is <Math tex={String.raw`e=(0.02,0)^\top`} /><Math tex={String.raw`m`} />. The factor 1/2 cancels the factor 2 arising when the square is differentiated; it does not change where the loss is minimized.
+
+<strong>Each Jacobian column describes one joint's contribution</strong>. Hold the other joint fixed and record how the tool tip moves when one joint turns slightly, then do the same for the other. With two position coordinates and two joints, the matrix reads as follows.
+
+<Math tex={String.raw`J(q)=\begin{bmatrix}\dfrac{\partial x}{\partial q_1}&\dfrac{\partial x}{\partial q_2}\\[4pt]\dfrac{\partial y}{\partial q_1}&\dfrac{\partial y}{\partial q_2}\end{bmatrix}`} display label="Jacobian of a planar two-joint arm: columns describe joint contributions, while rows describe tool-tip x and y changes" />
+
+<RobotEquationGuide id="rl02-e08" />
+
+The first row describes changes in <Math tex={String.raw`x`} /> and the second changes in <Math tex={String.raw`y`} />. <Math tex={String.raw`\partial x/\partial q_1`} /> measures how the <Math tex={String.raw`x`} /> position changes when only the first joint angle changes slightly. Combining this matrix with the current tool-tip error determines which way to adjust the joints to reduce that error. <Math tex={String.raw`J^\top e`} /> maps tool-coordinate error into the loss gradient for each joint. The same error therefore produces different updates in a straight and a bent arm. [Reading Jacobian columns as individual joint contributions](https://modernrobotics.northwestern.edu/nu-gm-book-resource/5-1-1-space-jacobian/).
+
+<LectureSlide lecture={2} page={22} caption="Finding target angles is different from reaching them physically" />
+
+Even when IK supplies target angles, a robot cannot jump instantly from its current pose. We need a sequence and timing for the joints between the endpoints, then drive them while monitoring measurements. This is the step from specifying a target pose to <strong>executing a movement</strong>.
+
+Even “1 cm along <Math tex={String.raw`Y`} />” needs a specified frame. The tool-frame <Math tex={String.raw`Y`} /> axis can differ from the base-frame <Math tex={String.raw`Y`} /> axis. For straight-line hand motion, we can first define a path in task space and solve IK along it. Linear interpolation between starting and ending joint angles generally does not produce a straight tool-tip path.
+
+<LectureSlide lecture={2} page={23} caption="Linear interpolation: generating intermediate targets over time" />
+
+For a move lasting <Math tex={String.raw`T`} /> seconds at control frequency <Math tex={String.raw`f`} /> Hz, the time interval is approximately <Math tex={String.raw`1/f`} /> seconds. As an illustrative convention, define <Math tex={String.raw`N=\lceil Tf\rceil`} /> as the <strong>number of intervals</strong> and generate <Math tex={String.raw`N+1`} /> points including both endpoints. Under that convention, the slide's interpolation is:
+
+<Math tex={String.raw`s_i=\frac{i}{N},\quad i=0,\ldots,N,\qquad q_i=q_{\mathrm{start}}+s_i(q_{\mathrm{target}}-q_{\mathrm{start}})`} display label="Linear interpolation generates intermediate joint targets from normalized progress between the starting and target configurations" />
+
+<RobotEquationGuide id="rl02-e09" />
+
+<Math tex={String.raw`s_i`} /> is progress from 0 to 1. Moving one joint from 0 rad to 1 rad in one second with <Math tex={String.raw`f=100\,\mathrm{Hz}`} /> gives <Math tex={String.raw`N=100`} /> and 101 points including both endpoints. The first target is 0, the middle target 0.5 and the last 1 rad. If an implementation adjusts timing through rounding, the actual <Math tex={String.raw`\Delta t`} /> must also be specified.
+
+A robot's <Math tex={String.raw`q`} /> need not be six-dimensional as in the slide example. Use a vector matching its joint count and account for limits and angle boundaries. This step generates a target trajectory; it is not a measurement showing that the motors followed it.
+
+The instruction to move the hand 1 cm becomes <strong>tool-tip target → IK joint target → intermediate joint targets over time</strong>. [Example, 22:22–23:54](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1342s). Denser intermediate targets do not remove the need to align observations and targets in time. If a 100 Hz controller follows goals from a 10 Hz policy, specify which target it uses for the ten control updates between policy calls. It may hold the target or interpolate according to time.
+
+
+Intermediate targets are called <strong>waypoints</strong>. Linear interpolation is also abbreviated LERP. It moves a fraction of the way from start to end: progress 0 gives the start, 1/2 gives the midpoint and 1 gives the end. Control frequency determines how often such targets are updated; it is not itself the motor's physical speed.
+
+<LectureSlide lecture={2} page={24} caption="Continuous position can still have abrupt velocity changes" />
+
+Linear position interpolation gives constant velocity during the move. Before the move the robot is stationary, then instantly switches to that velocity, and stops again at the end. In idealized continuous time, those velocity jumps require impulsive acceleration. Real motors cannot follow them exactly and may develop tracking error or vibration.
+
+Read the three graphs from top to bottom. The blue position line runs straight from the start at 0 seconds to the target at 1 second. Its constant slope during movement gives the constant green velocity line in the middle. The problem lies at departure and arrival: velocity jumps from zero to the moving value and drops straight back to zero at the target. An unbroken position curve alone does not make a command smooth.
+
+Changing velocity requires acceleration. The same velocity change requires greater acceleration when made over less time; in the ideal limit of zero change time, no finite acceleration value represents it. The red spikes at the bottom mark the impulsive accelerations at start and stop. Their finite drawn heights should not be read as a motor's maximum acceleration. They indicate that <strong>the command itself requires instantaneous changes in velocity</strong>.
+
+A time derivative measures how quickly a quantity changes over time. Differentiating position once gives velocity and twice gives acceleration; the rate of change of acceleration is <strong>jerk</strong>. One dot denotes one time derivative, and two dots denote two.
+
+<Math tex={String.raw`\dot q=\frac{dq}{dt},\qquad \ddot q=\frac{d^2q}{dt^2},\qquad \dddot q=\frac{d^3q}{dt^3}`} display label="Successive time derivatives of position give velocity, acceleration and jerk" />
+
+<RobotEquationGuide id="rl02-e10" />
+
+If position is expressed as <Math tex={String.raw`m`} /> as in this figure, the successive units are m/s, m/s² and m/s³. For joint angles in radians, they are rad/s, rad/s² and rad/s³. Abrupt acceleration and braking can require large forces or torques and excite vibration. The next step therefore goes beyond adding intermediate positions to create <strong>a schedule that gradually accelerates from rest and slows before the target</strong>. [Video, 23:58–24:48](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1438s).
+
+<LectureSlide lecture={2} page={25} caption="Quintic time scaling for smooth starts and stops" />
+
+Two position conditions, two zero-velocity conditions and two zero-acceleration conditions give six boundary conditions. A fifth-degree polynomial with six coefficients can satisfy them. To distinguish it from other functions, write the slide's expression in normalized time <Math tex={String.raw`s=t/T`} /> as <Math tex={String.raw`h`} />.
+
+<Math tex={String.raw`\begin{aligned}h(s)&=10s^3-15s^4+6s^5,\quad 0\le s\le1\\q(t)&=q_0+(q_1-q_0)h(t/T)\end{aligned}`} display label="Quintic time scaling satisfies the endpoint positions and zero velocity and acceleration at both ends" />
+
+<RobotEquationGuide id="rl02-e11" />
+
+<Math tex={String.raw`q_0,q_1`} /> are the start and end joint vectors. <Math tex={String.raw`h(0)=0`} /> and <Math tex={String.raw`h(1)=1`} />, with <Math tex={String.raw`h',h''`} /> equal to zero at both endpoints. The joint-space path stays the same while its progress over time changes: the motion starts slowly, speeds up in the middle and gradually stops.
+
+The [Modern Robotics trajectory video and script](https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/) ([video, 1:19–2:49](https://www.youtube.com/watch?v=0ZqeBEa_MWo&t=79s)) compares cubic, quintic, trapezoidal and <Math tex={String.raw`S`} />-curve time scaling. Satisfying the quintic boundary conditions does not automatically satisfy every actuator's velocity and acceleration limits.
+
+
+The six conditions specify starting and ending positions, velocities and accelerations. They determine both the endpoints and how the motion joins the stationary periods before and after it. Choosing the six quintic coefficients accordingly makes position, velocity and acceleration continuous into those stationary periods. The conditions do not require jerk to join them at zero.
+
+<LectureSlide lecture={2} page={26} caption="Even a smooth trajectory needs enough time" />
+
+Differentiating with respect to time shows that velocity scales with <Math tex={String.raw`1/T`} /> and acceleration with <Math tex={String.raw`1/T^2`} />. Completing the same move in half the time doubles peak velocity and quadruples peak acceleration. A smooth expression and a motion the motors can sustain are different requirements.
+
+For a joint moving from 0 rad to 1 rad in one second, this quintic has a peak velocity of <strong>1.875 rad/s</strong>, exceeding the 1 rad/s linear-interpolation speed over the same interval. It travels faster in the middle to allow gentler starts and stops. The figure below was computed directly from the expression.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch02-control-mdp/time-scaling.png" alt="Position, velocity and acceleration for linear and quintic interpolation from 0 to 1 radian in one second. Quintic interpolation has zero velocity and acceleration at both endpoints." caption="A directly computed comparison of time scaling. The impulsive endpoint accelerations of linear interpolation are not drawn as finite lines." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/02-control-mdp" credit="JJo; executable code and calculated results are public" width={1280} height={1120} />
+
+Use joint velocity and acceleration limits to increase <Math tex={String.raw`T`} /> or select another time scaling. Continuous position, velocity and acceleration do not imply continuous jerk; choose according to the required motion quality.
+
+For the 1 rad move above, a maximum allowed velocity of 1 rad/s requires at least 1.875 seconds under this quintic, considering velocity alone. Acceleration or torque limits can require longer. As [Modern Robotics, 2:40–2:49](https://www.youtube.com/watch?v=0ZqeBEa_MWo&t=160s) emphasizes, motion speed depends on distance and total duration as well as curve shape.
+
+When comparing LERP with a quintic along the same path, hold displacement and duration constant. Storing more samples does not by itself mean the robot moved more slowly or smoothly.
+
+
+This velocity graph has a rounded peak instead of a rectangle. Velocity rises gradually from zero, peaks near the middle and decreases before arrival. Acceleration is positive early and negative later. The later negative acceleration means <strong>braking to reduce forward speed</strong>, not moving backward. Reading its sign alongside the position graph explains how the same goal can be reached with less abrupt motion.
+
+<LectureSlide lecture={2} page={27} caption="PID: correcting the difference between a planned trajectory and measurements" />
+
+Gravity, friction and payload make real joints depart from their target trajectory. <strong>PID control</strong> repeatedly reads the difference between target and measurement and computes a corrective command. Here error is target minus measured value.
+
+<Math tex={String.raw`\begin{aligned}e_k&=q_k^{\mathrm{desired}}-q_k^{\mathrm{measured}}\\u_k&=K_p e_k+K_i\sum_{j=0}^{k}e_j\Delta t+K_d\frac{e_k-e_{k-1}}{\Delta t}\end{aligned}`} display label="Discrete PID combines current error, accumulated error and error rate to generate an actuator command" />
+
+<RobotEquationGuide id="rl02-e12" />
+
+<Math tex={String.raw`K_p,K_i,K_d`} /> are the three gains and <Math tex={String.raw`\Delta t`} /> is the measurement/command interval. The proportional (<Math tex={String.raw`P`} />) term reacts to current error, the integral (<Math tex={String.raw`I`} />) term to accumulated error, and the derivative (<Math tex={String.raw`D`} />) term to how quickly error changes. Gain units depend on whether the input error and output command represent angle, velocity or torque.
+
+For a numerical example, take current error 0.1, previous error 0.12, <Math tex={String.raw`\Delta t=0.02`} /> and accumulated integral 0.2. With <Math tex={String.raw`K_p=10,\;K_i=0.5,\;K_d=2`} />, the three terms are <Math tex={String.raw`1`} />, <Math tex={String.raw`0.1`} /> and <Math tex={String.raw`-2`} />, giving a command of <strong>−0.9</strong>. Even while the joint remains short of its goal, the derivative term can brake if it is approaching quickly. These values illustrate a calculation, not recommended gains for a real robot.
+
+
+The integral adds the area of error accumulated over time. In a computer, multiplying each sampled error by the time interval and adding turns it into a sum. The derivative is likewise approximated by the change from the previous error divided by the interval. The <Math tex={String.raw`P`} /> term uses the current shortfall, <Math tex={String.raw`I`} /> tracks persistent lag, and <Math tex={String.raw`D`} /> tracks rapid approach. Sending the computed command, taking a new measurement and repeating the process closes the <strong>feedback</strong> loop.
+
+<LectureSlide lecture={2} page={28} caption="Reading PID as a spring, accumulated correction and a damper" />
+
+A spring pulling harder as displacement from the target grows provides an intuition for <Math tex={String.raw`P`} />. The <Math tex={String.raw`I`} /> term accumulates persistent error to add correction, while <Math tex={String.raw`D`} /> reacts to rapid error changes and can reduce an excessive approach. Hence the analogies of <Math tex={String.raw`P`} /> as a spring and <Math tex={String.raw`D`} /> as a damper. [PID analogies, 25:55–27:51](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1555s). The integral term does not directly identify gravity; it accumulates sustained error, unlike gravity compensation based on a dynamics model.
+
+Arbitrarily increasing gains can cause oscillation or actuator saturation. The integral term needs protection against windup while commands saturate, and the derivative can amplify sensor noise. Changing control frequency changes <Math tex={String.raw`\Delta t`} />, so the behavior of the same numerical gains needs checking again.
+
+A common arrangement has a policy choose target joint positions relatively slowly and a lower-level controller track them faster. The official ETH assignment below also separates policy calls from physics steps.
+
+For a more concrete view of the integral term, [Modern Robotics on torque control, 0:09–1:36](https://www.youtube.com/watch?v=992hdsGgVlE&t=9s) considers a single joint tracking a fixed target under gravity. If a PD controller holds the joint stationary against gravity torque <Math tex={String.raw`\tau_g`} />, the derivative term is zero and the following equilibrium is required.
+
+<Math tex={String.raw`K_p e_{\mathrm{ss}}=\tau_g,\qquad e_{\mathrm{ss}}=\frac{\tau_g}{K_p}`} display label="At a stationary PD equilibrium without gravity compensation, proportional torque may require a nonzero steady-state error" />
+
+<RobotEquationGuide id="rl02-e13" />
+
+<Math tex={String.raw`e_{\mathrm{ss}}`} /> is the steady-state error remaining after sufficient time. With required torque 1 N·<Math tex={String.raw`m`} /> at the given configuration and <Math tex={String.raw`K_p=20\,\mathrm{N\,m/rad}`} />, the example needs 0.05 rad of error for the proportional term to supply that torque. An integral term retains accumulated past error and can therefore produce torque even when current error reaches zero. This account assumes a stable, unsaturated equilibrium at a fixed target; it does not model every robot's gravity effects with one constant.
+
+At [4:32–5:10 in the same video](https://www.youtube.com/watch?v=992hdsGgVlE&t=272s), adding an integral term reduces steady-state error but introduces overshoot. Another approach is to add the required torque in advance using a gravity model. Connecting PID to actual motion requires considering error reduction and stable operation together.
+
+
+The green markers on the path are target waypoints. If the arm sags below its target, <Math tex={String.raw`P`} /> pulls in a direction reducing the error. Persistent sag under gravity accumulates in <Math tex={String.raw`I`} />, adding correction. Approaching too fast and passing the goal is <strong>overshoot</strong>, and <Math tex={String.raw`D`} /> can brake that change. When the target itself moves, however, its velocity also affects <Math tex={String.raw`D`} />; describing it as “always a brake” does not explain every PID behavior.
+
+<LectureSlide lecture={2} page={30} caption="From knowing how to move to choosing the next action" />
+
+So far we have asked how to move toward a specified target. We still need to choose the next target: whether to move an obstacle before grasping a cup, or approach again after missing an object.
+
+A learned policy can output a tool-tip goal executed through IK, trajectory generation and a lower-level controller. Other systems output joint positions or torques directly. <strong>Which layers the policy handles changes both the meaning of its actions and the difficulty of learning them.</strong>
+
+
+Machine learning can also enter at several points. Perception estimates cup and hand locations from images; imitation learning teaches a policy the observation–action relationships demonstrated by a person. Reinforcement learning improves choices using execution rewards, dynamics learning predicts state changes after actions, and representation learning extracts task-relevant features from sensor values or images. These modules can be combined; they need not form one model that directly outputs motor commands.
+
+
+Even with a good trajectory-tracking controller, we still need to choose <strong>which trajectory to follow</strong>. If the cup moves or a new obstacle appears, the system must decide which object to grasp first and how to sequence its movements. After learning how to execute a specified motion, we now turn to the rule that chooses the next motion from observations. [From control to decision-making, 27:54–29:00](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1674s).
+
+<LectureSlide lecture={2} page={31} caption="A sequence of actions makes one task" />
+
+To cut toy sushi with a two-arm robot, one hand first grasps a tool and moves it so the other can take it, then the tool must be aligned with the object and moved appropriately. Even with toy food, precision and sequencing are needed to fit small gaps. [Two-arm task video, 29:02–30:38](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1742s). The central issue is choosing the current action to make the next stage possible, rather than producing one impressive pose.
+
+In the ALOHA demonstration, one hand picks up and passes the knife; the other receives it and cuts the toy sushi. An error in the earlier stage can prevent the receiving hand from taking the knife, so the full sequence matters. The policy generates successive commands at high frequency, while the lower-level controller corrects motor-tracking errors.
+
+Even a small position error in the hand holding the knife is not enough to describe success: grasping in the wrong sequence can make later steps impossible. Each action changes the next observation and which actions become possible. This is a <strong>sequential decision-making</strong> problem.
+
+
+For instance, the tool must be held stably before cutting, and the other hand may need to secure the object to prevent slipping. Creating the contact needed for the next step can be more useful than immediately moving closer to the target. Evaluation therefore expands from instantaneous pose accuracy to <strong>actions and consequences over the whole task</strong>.
+
+
+The lecture describes this two-arm example as having 14 degrees of freedom. The task requires continuously updating both arms' drives to preserve the tool–object relationship, rather than matching one hand position. The <strong>horizon</strong> describes how far ahead these decisions are considered. Over a long horizon, a small choice now can change the chance of success many steps later. A higher-level policy makes these choices, while lower-level controllers such as PID track the goals through actual joint motion. [Two arms and control layers, 29:02–30:38](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=1742s).
+
+<LectureSlide lecture={2} page={32} caption="What classification and policy networks share—and where they differ" />
+
+A cat-image classifier computes class scores or probabilities from an image. A policy network can similarly compute action probabilities, such as left or right, from a camera image. The 0.8 in the figure is the probability of selecting that output for the current input, not a success rate or reward.
+
+The key difference emerges after using the output. Misclassifying a photograph does not change the cat in it, but steering a car incorrectly changes the next camera image. Predicting one target in a labeled dataset and repeatedly acting in a real closed loop therefore require different evaluation.
+
+[NTU's RL introduction, 5:00–6:28](https://www.youtube.com/watch?v=0oucZNfBXlI&t=300s) calls this observation-to-action function an <strong>Actor</strong>. Finding the function involves more than predicting the answer for one input. It means using the function to act in the environment, receive changed observations and improve the sum of rewards over multiple steps. ETH's <Math tex={String.raw`\pi_\theta`} />, NTU's Actor and the observation-to-torque function in the exercise below connect through this input/output view. A fixed PD function sharing the interface is nevertheless not a policy learned from rewards.
+
+
+The output bars give forward and reverse weights of 0.8 and 0.2, with left and right at zero. Interpreted as discrete probabilities, they sum to 1. Choosing the largest gives forward; sampling can also select reverse. A high learned probability does not guarantee safety or success. Evaluation must include the input sensors and the scene changed by execution.
+
+<LectureSlide lecture={2} page={33} caption="Policies receiving states and policies receiving observations" />
+
+At time step <Math tex={String.raw`t`} />, write the state as <Math tex={String.raw`s_t`} />, observation as <Math tex={String.raw`o_t`} /> and action as <Math tex={String.raw`a_t`} />. A stochastic policy defined by network weights <Math tex={String.raw`\theta`} /> can be written as follows.
+
+<Math tex={String.raw`a_t\sim\pi_\theta(\cdot\mid o_t)\quad\text{or}\quad a_t\sim\pi_\theta(\cdot\mid s_t)`} display label="A policy forms an action distribution conditioned on the current observation or accessible state" />
+
+<RobotEquationGuide id="rl02-e14" />
+
+The bar <Math tex={String.raw`\mid`} /> means “given this information,” and <Math tex={String.raw`\sim`} /> means “sample from the distribution.” For continuous actions, the output can be a distribution over torques or position changes rather than probabilities for buttons. A deterministic policy produces one action for a given input.
+
+Using only one observation is a simple policy choice under partial observability. Policies may instead use a history of images and actions or internal memory. Merely renaming the current observation <Math tex={String.raw`s`} /> does not supply missing information.
+
+
+The red downward arrow traces the output action through the environment and back to the next image. A network diagram may look like a single input-to-output calculation, but a robot repeats it over time. Subscript <Math tex={String.raw`t`} /> indexes the step in that repetition; policy subscript <Math tex={String.raw`\theta`} /> denotes the learned weights instead. Distinguishing them separates information arriving over time from the rule that uses it to choose actions.
+
+
+Time subscripts 0, 1 and 2 in these notes are decision-step indices, not seconds. At 10 Hz, a policy step lasts 0.1 seconds; at 100 Hz it lasts 0.01 seconds. Three steps can therefore cover different amounts of physical time. Keep this convention when reading trajectory probabilities and discount factors below.
+
+<LectureSlide lecture={2} page={34} caption="The same physical situation can look different" />
+
+Let a car's state include position, velocity and heading, and let its observation be a camera image. Lighting or fog can change the image greatly at the same position and speed. Conversely, similar images can occur at different speeds or with different occluded obstacles. In general, observations do not guarantee exact recovery of state.
+
+The slide's statement that state is unchanged by weather should be read as <strong>holding a chosen car-motion state fixed while varying visibility</strong>. If weather changes friction or motion, its effects belong in the state, disturbance or transition model. The example does not claim that real weather changes leave every physical state unchanged.
+
+The wall-facing camera robot in [DeepMind/UCL Lecture 1, 43:52–45:17](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2632s) raises the same issue. Having looked behind a moment ago may matter for the next action. The relevant extension is a <strong>partially observable MDP (POMDP)</strong>.
+
+The next illustration is the original diagram from [page 38 of the UCL Lecture 1 PDF](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=38). Observing only nearby cells, rather than the whole map, can make two locations indistinguishable.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch02-control-mdp/ucl-observation-aliasing.png" alt="Original UCL maze diagram showing identical local observations at two different positions." caption="UCL Lecture 1, p. 38 — Different locations can produce indistinguishable observations. Excerpt from the original diagram." source="https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=38" credit="Hado van Hasselt, DeepMind × UCL, and the respective rights holders" width={640} height={680} maxWidth={420} />
+
+The [video at 47:31–51:08](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2851s) asks the agent to move from the upper right to the upper left. The highlighted observations are identical, but the right-hand location requires going down and around, while the left-hand one requires going up. A function receiving only one observation has no basis for different answers. Adding one previous observation is not always enough in this maze either. The point is to <strong>include the history needed to distinguish the current situation in the state representation</strong>, rather than mechanically increasing frame count.
+
+<LectureSlide lecture={2} page={35} caption="The Markov property does not mean ignoring the past" />
+
+A process has the Markov property if, given the current state and action, adding earlier history does not change the conditional distribution of the next state. For a controlled process, this is:
+
+<Math tex={String.raw`P(s_{t+1}\mid s_0,a_0,\ldots,s_t,a_t)=P(s_{t+1}\mid s_t,a_t)`} display label="Given the current state and action, earlier history supplies no additional information for predicting the next-state distribution" />
+
+<RobotEquationGuide id="rl02-e15" />
+
+For example, identical joint <strong>angles alone</strong> can lead to different next positions when velocities differ. Angles alone may therefore be an insufficient state for this model. Joint velocities and relevant object states may also be needed. The condition says that the required information is compressed into the current state; it is not an instruction that discarding past observations is always correct.
+
+A Markov transition can still be stochastic. [ETH, 34:52–36:00](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2092s) · [UCL, 40:49–43:17](https://www.youtube.com/watch?v=TCCjZe0y4Qc&t=2449s). <strong>Having sufficient current information</strong> and <strong>having one determined future outcome</strong> are different claims.
+
+Controller memory can be understood in the same way. Even with identical current joint angles and velocities, different accumulated integral values make a PID controller issue different commands. Modeling PID as a memoryless function of current joint measurements misses that distinction. To predict the system including its controller, consider whether the integral accumulator and required previous errors belong in the state.
+
+A “sufficient state” need not literally copy the whole world; it is <strong>a choice of information suited to the system and time interval we want to predict</strong>. Applying the state–action diagram from [ETH, 34:52–36:00](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2092s) to real control code leads to this question.
+
+
+The “lossy mapping” arrow from state to observation indicates that sensing may lose information. One photograph need not reveal actual vehicle speed or an occluded object's position. The state-and-action-to-next-state arrow instead describes environmental changes through motion, contact and other processes. Distinguishing the arrows separates a need for more sensor information from a need to better predict physical action outcomes.
+
+<LectureSlide lecture={2} page={36} caption="Recognizing alternative notation for state, action and cost" />
+
+Robot-control literature often writes state as <Math tex={String.raw`x`} />, input as <Math tex={String.raw`u`} /> and cost as <Math tex={String.raw`c(x,u)`} />. Reinforcement-learning literature often uses <Math tex={String.raw`s`} />, <Math tex={String.raw`a`} /> and <Math tex={String.raw`r(s,a)`} /> for state, action and reward. Match the physical quantities and time steps rather than relying on symbol names.
+
+Under matching conditions, setting <Math tex={String.raw`r=-c`} /> makes minimizing cumulative cost express the same preferences as maximizing cumulative reward. The horizon, discounting and termination conditions must match too. Hand position <Math tex={String.raw`x`} /> in inverse kinematics and full state <Math tex={String.raw`x`} /> here may use the same letter for different roles.
+
+<LectureSlide lecture={2} page={37} caption="An MDP combines states, actions, transitions and rewards" />
+
+An <strong>MDP</strong> makes the ingredients of a decision problem mathematically explicit. Its four basic elements are states, actions, transitions and rewards. An actual learning problem also specifies the initial-state distribution and a horizon or discounting conditions.
+
+| Element | Meaning | What to specify for cup grasping |
+|---|---|---|
+| State space <Math tex={String.raw`S`} /> | The set of possible states | Which joint angles, velocities, cup positions and contacts are included? |
+| Action space <Math tex={String.raw`A`} /> | The set of possible commands | Tool-tip targets, joint targets or torques? |
+| Transition <Math tex={String.raw`P`} /> | How a state and action produce a next state | How do gravity, friction, contact and lower-level control act? |
+| Reward <Math tex={String.raw`R`} /> | A numerical rule evaluating action outcomes | How are grasp success, elapsed time and collisions reflected? |
+
+The slides use both <Math tex={String.raw`r(s,a)`} /> and <Math tex={String.raw`R(s,a,s^\prime)`} /> for rewards. Here, we define <strong>the reward from moving from <Math tex={String.raw`s_t`} /> to <Math tex={String.raw`s_{t+1}`} /> under action <Math tex={String.raw`a_t`} /> as <Math tex={String.raw`r_t`} /></strong>, and write the interaction as follows.
+
+<Math tex={String.raw`s_{t+1}\sim P(\cdot\mid s_t,a_t),\qquad r_t=R(s_t,a_t,s_{t+1})`} display label="After an action, sample the next state from the transition distribution and compute the reward for that transition" />
+
+<RobotEquationGuide id="rl02-e16" />
+
+Another book may call the same transition's reward <Math tex={String.raw`r_{t+1}`} />. Align the indexing convention before calculating. A more general model can also make rewards stochastic. Defining an MDP does not mean a good policy has already been found. The learning algorithm determines which experiences to collect and how to improve the policy within that framework.
+
+[David Silver's student Markov chain in Lecture 2](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf#page=7) is useful practice for reading states and transitions.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch02-control-mdp/silver-student-chain.png" alt="David Silver's original student Markov-chain diagram with transition probabilities among Class 1, Class 2, Class 3, Facebook, Pub, Pass and Sleep." caption="David Silver Lecture 2, p. 7 — A Markov chain before introducing actions. Arrow labels are conditional next-state probabilities. Excerpt from the original diagram." source="https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf#page=7" credit="David Silver, UCL · Author's lecture materials: CC BY-NC 4.0, excluding incorporated third-party material" width={834} height={624} />
+
+The two arrows leaving Class 2 give probability 0.8 of moving to Class 3 and 0.2 of moving to Sleep. Next-state probabilities from one state sum to 1, and this diagram has no action choice yet. [Chain explanation, 7:28–8:55](https://www.youtube.com/watch?v=lfHX2hHRMVQ&t=448s). Adding actions such as Study and Sleep, each with different transition probabilities, extends it into an MDP. [Example with actions, 43:37–46:24](https://www.youtube.com/watch?v=lfHX2hHRMVQ&t=2617s). What the agent chooses changes the next-state distribution.
+
+Once the policy is fixed, we can calculate the transition it induces. For discrete actions, the following expression averages action-specific transitions using the policy's action probabilities.
+
+<Math tex={String.raw`P^\pi(s^\prime\mid s)=\sum_a\pi(a\mid s)P(s^\prime\mid s,a)`} display label="Under a fixed policy, state transitions average the action-specific transitions by their selection probabilities" />
+
+<RobotEquationGuide id="rl02-e17" />
+
+As a separate example, suppose that from state <Math tex={String.raw`A`} /> a left action reaches <Math tex={String.raw`A`} />/<Math tex={String.raw`B`} /> with probabilities 0.8/0.2, while right reaches <Math tex={String.raw`A`} />/<Math tex={String.raw`B`} /> with probabilities 0.1/0.9. If the policy chooses left with probability 0.75 and right with 0.25, the probability of next state <Math tex={String.raw`A`} /> is <Math tex={String.raw`0.75\times0.8+0.25\times0.1=0.625`} />, while <Math tex={String.raw`B`} /> has probability 0.375. This illustrates <strong>separating and then combining the policy's random choice with the environment's random outcome</strong>.
+
+
+Read the interaction loop in order: the robot receives available information and chooses an action through its policy. The environment executes it, produces the next state and returns a reward for the outcome. At the next step, the robot acts again from the new state. Reward is a number assessing an outcome that has already occurred against the objective, rather than an answer command specifying what to do next. The learning algorithm uses these records to improve later choices.
+
+
+Chess and robots have entirely different bodies and commands, yet both fit the MDP structure of observing a state, acting and evaluating the outcome. This shared form supports applying algorithms across environments. Each environment still needs its own state and action dimensions, transitions and rewards; it does not mean transferring a chess policy directly into a robot. [The common MDP framework, 36:52–37:43](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2212s).
+
+<LectureSlide lecture={2} page={38} caption="Continuous state spaces cannot be stored as exhaustive tables" />
+
+Grid cells and board games can be represented by discrete cases. Joint angles, velocities and object positions are often modeled as continuous quantities. Storing sensor numbers at finite precision is compatible with treating a problem as continuous.
+
+Even dividing each joint angle into just 100 bins gives <Math tex={String.raw`100^7`} /> combinations for seven joints. Adding velocities and object states makes the table grow rapidly. Function approximators such as neural networks share representations and computations across inputs. Applying one to a continuous space does not automatically ensure good behavior in unvisited states.
+
+
+Even a chess state may need more than visible piece positions. It must include whose turn it is and rule information affecting legal moves. Likewise, a drone at the same photographed position can move differently next if its linear or angular velocity differs. Recognizing objects in a picture and constructing a state sufficient to predict the next outcome are separate tasks.
+
+<LectureSlide lecture={2} page={39} caption="Action numbers need units and execution timing" />
+
+Choosing left or right is a discrete action; selecting a real-valued joint torque is continuous. The same robot can use either depending on its interface. Reading a policy output requires knowing how the environment interprets it.
+
+Distinguish whether <Math tex={String.raw`0.5`} /> is a 0.5 rad target, a midpoint in a normalized range or a torque of 0.5 N·<Math tex={String.raw`m`} />. Applying the same displacement every 0.01 seconds and every 0.1 seconds also produces different motion. Record policy timing, lower-level control timing and physics intervals to reproduce behavior.
+
+The [ETH HW2 action-handler description](https://github.com/mees-robot-learning-course/ethz-course-2026/blob/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw2_robot_control_mdps/exercises/ex3.py) maps normalized <Math tex={String.raw`a\in[-1,1]`} /> into the joint range. For lower and upper joint limits <Math tex={String.raw`q_{\min},q_{\max}`} />, the linear mapping is:
+
+<Math tex={String.raw`q_{\mathrm{target}}=q_{\min}+\frac{a+1}{2}(q_{\max}-q_{\min})`} display label="Map normalized actions -1, 0 and 1 to the joint-range lower limit, midpoint and upper limit" />
+
+<RobotEquationGuide id="rl02-e18" />
+
+For the example range <Math tex={String.raw`[-1,2]\,\mathrm{rad}`} />, actions <Math tex={String.raw`-1,0,1`} /> give targets <Math tex={String.raw`-1,\;0.5,\;2\,\mathrm{rad}`} />, respectively. Action 0 here is neither a zero joint angle nor zero torque. Inputs that may exceed the range also need clipping.
+
+The [MuJoCo actuator documentation](https://mujoco.readthedocs.io/en/stable/XMLreference.html#actuator-position) describes a position servo that receives a position target and computes force. For a simple revolute joint with unit gear ratio, a position gain acts on the target-minus-current angle and damping reduces motion. The same numerical `data.ctrl` therefore means different things under XML motor and position settings. Check the boundary where policy output becomes actuator input.
+
+Action representation can also change with the interface used for human demonstrations on the same robot. A keyboard with left, right and stop buttons records a finite, discrete command space. Continuously reading a VR controller's position and rotation can record continuous target poses. Physically continuous joint angles and the choices offered to a policy are different matters. Either interface needs conventions for converting its inputs to joint or end-effector targets, including units and limits.
+
+<LectureSlide lecture={2} page={40} caption="Transition uncertainty and sensor uncertainty" />
+
+A deterministic model assigns one next state to a given state and action. A stochastic model distributes probability across possible next states. The same steering angle can produce different paths as road friction and actuator errors vary. [Steering example, 39:30–40:26](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2370s).
+
+Make one further distinction: <strong>sensor noise creates uncertainty about what was observed</strong>, while <strong>dynamical disturbances create uncertainty about where the system actually moved</strong>. A model separating full physical state from measurements places the former in the observation model and the latter in the transition model. Omitting some factors from state can also make their effects appear as stochastic transitions. Separating them helps diagnose prediction errors versus fluctuating measurements.
+
+
+The single path on the left models one next outcome for the same state and steering input. The multiple paths on the right assign probabilities to possible outcomes. Stochastic does not mean that everything is equally likely: some directions may be more likely than others. Read it as a modeling choice for uncertainty remaining under a particular state representation and prediction precision, rather than necessarily a claim that the physical world is intrinsically random.
+
+<LectureSlide lecture={2} page={41} caption="Sparse and dense rewards: what counts as doing well?" />
+
+A <strong>sparse reward</strong> is given infrequently—for example, 1 for a successful grasp and 0 otherwise. Success is clear, but until it happens by chance there may be little signal distinguishing actions. A <strong>dense reward</strong> also scores intermediate progress, such as the distance between hand and object.
+
+In the lecture's pick-and-place experiment, rewarding success alone made it difficult to distinguish early failures. A distance reward also signals an approach toward the target. But stopping beside an object and actually picking it up and moving it require a separate final-success criterion.
+
+To reward approaching rather than maximizing distance, choose an appropriate sign or transformation. The following is a separate illustrative example.
+
+<Math tex={String.raw`r_t=-\lVert p_{\mathrm{hand}}-p_{\mathrm{object}}\rVert`} display label="Using negative distance as reward gives a higher reward for a smaller distance" />
+
+<RobotEquationGuide id="rl02-e19" />
+
+A distance of 0.2 m gives −0.2, while 0.05 m gives −0.05, so being closer earns more. Yet remaining nearby without grasping can also score well. Design success conditions, contact and collision handling, and object movement to match the intended task.
+
+Sparse signals can make it hard to identify the intermediate actions leading to success; continuous distance signals can make approaches easier to assess. [Grasping experiment, 40:29–41:48](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2429s). This establishes neither that dense rewards always produce better final policies nor that sparse rewards cannot be learned. Real systems also need sensors and success detectors capable of measuring the reward.
+
+If evaluation only checks that a plate reaches a target, throwing and breaking it may still earn a position score. [NTU's reward-design example, 3:29–4:36](https://www.youtube.com/watch?v=9H3ShV57lHs&t=209s). Rewarding arrival alone leaves damage avoidance out of the objective. The useful question is <strong>whether the intended task matches the objective written in numbers</strong>, rather than merely saying reinforcement learning made a mistake.
+
+In cup grasping, hand–cup distance improves on approach but does not capture lifting, spilling, transporting or releasing the cup. Combining reward terms also requires attention to their units and scales. Converting meters to centimeters while retaining the coefficient changes the term's numerical weight. Measuring success rate, contact and collisions, and elapsed time separately from reward helps reveal behavior missing from the objective.
+
+
+The colored region and center point around the object connect to the perception needed to measure distance reward. Hand position alone is insufficient; the target object's position is needed too. Success also requires a measurable condition, such as whether the gripper closed or the object was actually lifted. <strong>Writing a reward function includes deciding how to obtain its inputs.</strong>
+
+<LectureSlide lecture={2} page={42} caption="Where does a trajectory's probability come from?" />
+
+A trajectory records a sequence of actions and state transitions from an initial state. Write a record containing <Math tex={String.raw`H`} /> actions as <Math tex={String.raw`\tau=(s_0,a_0,s_1,\ldots,s_H)`} />. The slide's product can be expressed with the same meaning as follows.
+
+<Math tex={String.raw`p_\pi(\tau)=\rho_0(s_0)\prod_{t=0}^{H-1}\pi(a_t\mid s_t)P(s_{t+1}\mid s_t,a_t)`} display label="A trajectory probability multiplies the initial-state probability by the action and transition probabilities at every step" />
+
+<RobotEquationGuide id="rl02-e20" />
+
+<Math tex={String.raw`\rho_0`} /> is the initial-state distribution, and <Math tex={String.raw`\prod`} /> means multiplying the stepwise terms. In a discrete illustrative example, an initial-state probability of 0.5, first-action probability 0.8, next-state probability 0.9, second-action probability 0.6 and final-state probability 0.7 give this particular trajectory probability <strong>0.1512</strong>. This product uses successive probabilities conditioned on preceding states and actions, not an assumption that time steps are independent.
+
+Changing only the policy changes the chosen actions and thus the trajectory distribution, even in an unchanged physical environment. [Trajectory probabilities, 41:51–43:02](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2511s). For continuous variables, interpret the expression as a probability <strong>density</strong>, distinct from the probability of one exact real-valued point. This expression describes a state-conditioned policy. A POMDP using observations must also account for observation generation and the policy's dependence on history.
+
+Specify what one transition <Math tex={String.raw`P`} /> covers. If a policy sets a target and receives its next observation after several lower-level control updates, its transition includes all intervening control and physics calculations. One simulator integration step and one policy decision need not represent the same unit.
+
+Even on unchanged hardware, lower-level gains or action-hold duration can alter the transitions experienced by the policy. When comparing trajectory data, record command units, time intervals and execution controllers alongside state and action column names.
+
+
+The branching paths below show that records can differ even from the same starting point. Initial states may be sampled differently, the policy may choose different actions, and the environment may produce different next states after the same action. The equation multiplies these sources of randomness in sequence. The <Math tex={String.raw`P`} /> inside the product represents one transition; the whole product describes the likelihood of a multistep record.
+
+<LectureSlide lecture={2} page={43} caption="Time limits and discount factors are part of the problem definition" />
+
+A finite-horizon problem requires completing the task within <Math tex={String.raw`H`} /> steps. At the same position, the best action can differ with 100 steps remaining versus one. Including remaining time in state or using a time-dependent policy expresses that difference.
+
+For a problem with no preset stopping time, we can use a <strong>discount factor <Math tex={String.raw`\gamma`} /></strong>. With <Math tex={String.raw`0\le\gamma<1`} />, more distant rewards receive progressively smaller weights. For bounded rewards, this can also make an infinite sum finite. <Math tex={String.raw`\gamma=0`} /> considers immediate reward only; values nearer one give more weight to the distant future. An episode guaranteed to terminate may instead use an undiscounted sum with <Math tex={String.raw`\gamma=1`} />.
+
+If a cup must be moved within five seconds, remaining time determines whether a long detour is feasible. A time limit can change optimal behavior, beyond being a runtime setting. [Time-limit example, 43:06–44:47](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2586s). Exercise APIs distinguish <strong>task termination (terminated)</strong> from <strong>an external time-limit cutoff (truncated)</strong>. Running 200 steps should not itself be interpreted as success.
+
+Control frequency and discounting also interact. At 10 Hz with <Math tex={String.raw`\gamma=0.99`} />, a reward one second ahead has weight <Math tex={String.raw`0.99^{10}\approx0.9044`} />. Switching to 100 Hz while retaining 0.99 gives a one-second weight of <Math tex={String.raw`0.99^{100}\approx0.3660`} />. Changing actions per second alone can substantially alter preferences over real time.
+
+To match the discount weight after one second, convert the per-step discount factor as follows. This is an illustrative conversion for exponential discounting.
+
+<Math tex={String.raw`\gamma_{\mathrm{new}}=\gamma_{\mathrm{old}}^{\Delta t_{\mathrm{new}}/\Delta t_{\mathrm{old}}}`} display label="Convert the step discount factor to preserve the same discount weight over physical time when the step interval changes" />
+
+<RobotEquationGuide id="rl02-e21" />
+
+For the example above, <Math tex={String.raw`\gamma_{\mathrm{new}}=0.99^{0.1}\approx0.998995`} />. This alone does not make the full objectives identical across simulation settings. Reward accumulation and termination must also match, depending on whether a step reward represents a cost rate or a success event.
+
+The [Gymnasium explanation of time limits](https://gymnasium.farama.org/tutorials/gymnasium_basics/handling_time_limits/) also distinguishes a finite horizon inherent to the task from an external rollout cutoff. When remaining time changes task outcomes, it belongs in the state representation. By contrast, an observation at an external evaluation cutoff should not automatically be treated as a terminal state of the original task.
+
+<LectureSlide lecture={2} page={44} caption="From a score on one run to the definition of a good policy" />
+
+Under this chapter's reward-index convention, the finite-horizon discounted return and policy objective are as follows. They connect the slide's cumulative rewards, expectations and optimization in one notation.
+
+<Math tex={String.raw`\begin{aligned}G(\tau)&=\sum_{t=0}^{H-1}\gamma^t r_t\\J(\pi)&=\mathbb E_{\tau\sim p_\pi}[G(\tau)]\\\pi^*&\in\operatorname*{arg\,max}_{\pi}J(\pi)\end{aligned}`} display label="Define a trajectory's discounted reward sum as its return, then find a policy maximizing its expectation" />
+
+<RobotEquationGuide id="rl02-e22" />
+
+<Math tex={String.raw`G`} /> is the score of one executed trajectory. <Math tex={String.raw`J`} /> is the expected return over possible trajectories generated by the starting state, policy and transitions. <Math tex={String.raw`\arg\max`} /> asks for a policy attaining the maximum, rather than the maximum score itself. The notation <Math tex={String.raw`\in`} /> allows multiple optimal policies.
+
+For three rewards <Math tex={String.raw`[0,0,1]`} /> and <Math tex={String.raw`\gamma=0.9`} />, the return is <strong>0.81</strong>. An initial action scoring zero may have prepared the final success. In stochastic problems, one lucky successful run differs from a policy that performs well on average. The learning objective is a policy with high expected return, rather than one fortunate success. [Objective function, 44:51–45:57](https://www.youtube.com/watch?v=5-Bb84eTTqQ&t=2691s).
+
+Reward design carries through into this objective. Rewarding speed alone can omit collisions, and rewarding hand distance alone can omit actual grasping. <strong>A good policy is good for the problem objective we wrote down</strong>, so check whether that objective expresses the desired behavior before optimizing it.
+
+While <Math tex={String.raw`J(\pi)`} /> scores an entire policy, a value function asks for expected return from a particular state. In [David Silver's PDF, p. 28](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf#page=28), <Math tex={String.raw`v_\pi(s)`} /> starts from state <Math tex={String.raw`s`} /> and follows policy <Math tex={String.raw`\pi`} />; <Math tex={String.raw`q_\pi(s,a)`} /> specifies first action <Math tex={String.raw`a`} /> and follows <Math tex={String.raw`\pi`} /> afterward. Distinguishing reward, one sampled return and expected return is the starting point for later algorithms.
+
+This chapter defines the problem up to the meaning of an optimal policy. Writing a maximization expression does not by itself provide a way to compute that policy. The next chapter's learning from demonstrations and the subsequent reinforcement-learning algorithms offer different ways to obtain policies with these inputs, outputs and objectives.
+
+
+An expectation averages possible executions weighted by their likelihood. In a deterministic problem with the same success score every time, one run may equal that average. When starting states, actions or contact outcomes vary, multiple runs are needed. Here <Math tex={String.raw`J`} /> is a function scoring a policy, while the earlier IK <Math tex={String.raw`J`} /> was a matrix connecting joint and tool-tip changes. Reusing a letter can confuse their roles; check whether its input is a policy or joint configuration and whether its output is a scalar or a matrix.
+
+## Inspecting observations, actions and rewards in a real simulation run
+
+For a small example, I used [Gymnasium's Pendulum-v1](https://gymnasium.farama.org/environments/classic_control/pendulum/), an environment that holds a single-joint inverted pendulum upright. The results below run a <strong>fixed PD controller initialized near the upright position</strong>. No parameters are trained from demonstrations or rewards.
+
+The observation is <Math tex={String.raw`[\cos\theta,\sin\theta,\dot\theta]`} />, and the action is one torque between −2 and +2 N·<Math tex={String.raw`m`} />. Representing the underlying state <Math tex={String.raw`(\theta,\dot\theta)`} /> this way handles the angle's periodic boundary. Reward is the negative of a cost combining weighted squared angle, angular velocity and torque. It is highest when upright, stationary and applying zero torque.
+
+The experiment used `seed=7`, initial angles within ±0.2 rad and zero initial angular velocity to reproduce the same initial conditions. It compared zero torque with the following PD torque over 200 steps each.
+
+<Math tex={String.raw`u=\operatorname{clip}(-15\theta-3\dot\theta,-2,2)`} display label="Compute PD torque from angle and angular velocity, then clip it between minus 2 and plus 2 newton-meters" />
+
+<RobotEquationGuide id="rl02-e23" />
+
+The clip function restricts a result to specified lower and upper bounds. This controller demonstrates stabilization near upright. The result does not establish swing-up from the downward position.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch02-control-mdp/pendulum-zero.gif" alt="Recorded Gymnasium run: with the same initial conditions and no torque, the inverted pendulum falls under gravity and swings." caption="Comparison run: zero torque, with the same initial state as the PD run below. The final angle alone does not describe the whole movement." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/02-control-mdp" credit="Gymnasium environment by Farama Foundation; execution and recording by JJo" width={360} height={360} maxWidth={360} />
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch02-control-mdp/pendulum-pd.gif" alt="Recorded Gymnasium run: an inverted pendulum initialized near upright moves under torque from a fixed PD controller." caption="Actual Pendulum-v1 execution, capturing one frame every five steps over 200 steps. This is fixed PD control, not the result of reinforcement-learning training." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/02-control-mdp" credit="Gymnasium environment by Farama Foundation; execution and recording by JJo" width={360} height={360} maxWidth={360} />
+
+| Fixed control method | Reward sum over 200 steps | Final angle (rad) |
+|---|---:|---:|
+| Zero torque | -502.751685 | 0.159858 |
+| PD | -0.019170 | 0.000000 |
+
+At step 200, both runs reported `terminated=False` and `truncated=True`. They reached the default time limit rather than ending on a task-success judgment. The reward sum is an <strong>undiscounted rollout return</strong> for this one initial condition, not expected performance across starting states or a comparison of RL algorithms.
+
+The core execution sequence is to form a command from the observation, pass it to `step`, and receive a new observation and reward. Fixing the seed in `reset` specifies reproducible initial conditions.
+
+```python
+import gymnasium as gym
+import numpy as np
+
+env = gym.make("Pendulum-v1")
+obs, info = env.reset(seed=7, options={"x_init": 0.2, "y_init": 0.0})
+for _ in range(200):
+    theta = np.arctan2(obs[1], obs[0])
+    torque = np.clip(-15.0 * theta - 3.0 * obs[2], -2.0, 2.0)
+    action = np.array([torque], dtype=np.float32)
+    obs, reward, terminated, truncated, info = env.step(action)
+    if terminated or truncated:
+        break
+env.close()
+```
+
+The [executable files, environment versions, CSVs and numerical checks](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/02-control-mdp) are public together. They include checks of coordinate transformations, the two IK solutions for a 2R arm, numerical differentiation of the Jacobian gradient, quintic boundary conditions, PID calculations, trajectory probabilities and returns. The additional file `supplement_checks.py` contains eight numerical checks covering pseudoinverse/DLS behavior at singular configurations, inverse transformations, policy-induced transition mixtures, action ranges and discount-factor conversion.
+
+## Continue with robot-arm exercises
+
+The [official ETH HW2](https://github.com/mees-robot-learning-course/ethz-course-2026/tree/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw2_robot_control_mdps) connects this chapter in three stages: convert spatial targets into joint configurations through IK, add trajectory generation and control, then train a policy in a MuJoCo environment.
+
+| Official exercise | Connection to examine | What to read before running |
+|---|---|---|
+| Exercise 1 | Target point → IK → joint configuration | Directly changing poses for visualization differs from physical tracking control. |
+| Exercise 2 | Quintic trajectory → IK → PID → physics simulation | Inspect target-versus-measured joint errors, gains and the meaning of output commands. |
+| Exercise 3 | Observation → policy action → actuator → next observation and reward | Inspect the mapping from normalized actions to physical targets. |
+
+The official description sets Exercise 3's policy at <strong>10 Hz</strong> and physics at <strong>500 Hz</strong>, with 50 physics steps per policy action. <strong>Exercise 2 interprets `data.ctrl` as torque input, while Exercise 3 interprets it as joint targets.</strong> A variable name can have a different meaning under a different loaded actuator model. The table is a guide to reading the public assignment and code; it does not report training the official SO-101 assignment or operating a real robot here.
+
+For larger parallel simulation environments, continue with the [official NVIDIA Isaac Lab tutorial](https://isaac-sim.github.io/IsaacLab/main/source/how-to/index.html). Learning to identify the boundaries among observations, actions, physics and rewards before scaling up makes the structure easier to follow as settings change.
+
+Chapter 03 turns to <strong>imitation learning: learning a policy from expert behavior</strong> before starting reward-based trial and error. The difficulty of taking observation-to-demonstrated-action learning into actual execution connects directly to this chapter's sequential decision-making.
+
+## Sources and further reading
+
+- [Oier Mees — ETH Robot Learning, Lecture 2: Robot Control & MDPs](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Lecture video, 2026-02-23](https://www.youtube.com/watch?v=5-Bb84eTTqQ) · [Slides](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture2_control_mdp.pdf)
+- [Lecture-slide image copies](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-02). P numbers follow the file order in this copy. Administrative, transition-only and closing slides are omitted.
+- [Lynch and Park — Modern Robotics: rigid bodies and links](https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-1-degrees-of-freedom-of-a-rigid-body/) · [Six joint types and degrees of freedom](https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-2-degrees-of-freedom-of-a-robot/) · [Configuration-space shapes](https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-3-1-configuration-space-topology/) · [Task space and workspace](https://modernrobotics.northwestern.edu/nu-gm-book-resource/2-5-task-space-and-workspace/)
+- [Lynch and Park — Modern Robotics: homogeneous transformations](https://modernrobotics.northwestern.edu/nu-gm-book-resource/3-3-1-homogeneous-transformation-matrices/) · [Time scaling](https://modernrobotics.northwestern.edu/nu-gm-book-resource/9-1-and-9-2-point-to-point-trajectories-part-2-of-2/). Videos are accompanied by official scripts.
+- [Hado van Hasselt — DeepMind × UCL 2021, Introduction to RL](https://www.youtube.com/watch?v=TCCjZe0y4Qc) · [Lecture PDF](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf)
+- [Modern Robotics — Numerical inverse kinematics](https://modernrobotics.northwestern.edu/nu-gm-book-resource/6-2-numerical-inverse-kinematics-part-1-of-2/) · [PD/PID torque control under gravity](https://modernrobotics.northwestern.edu/nu-gm-book-resource/11-4-motion-control-with-torque-or-force-inputs-part-2-of-3/)
+- [David Silver — UCL 2015, original MDP lecture PDF](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-2-mdp.pdf) · [Public Google DeepMind lecture video](https://www.youtube.com/watch?v=lfHX2hHRMVQ) · [Author's lecture materials and terms of use](https://www.davidsilver.uk/teaching/)
+- [NVIDIA Isaac Lab — Differential IK](https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.controllers.html#differential-inverse-kinematics) · [MuJoCo — Actuator settings](https://mujoco.readthedocs.io/en/stable/XMLreference.html#actuator-position)
+- [Hung-yi Lee — NTU RL introduction](https://www.youtube.com/watch?v=0oucZNfBXlI) · [Reward design and imitation learning](https://www.youtube.com/watch?v=9H3ShV57lHs)
+- [Farama Foundation — Gymnasium Pendulum documentation](https://gymnasium.farama.org/environments/classic_control/pendulum/) · [Original ETH HW2 code](https://github.com/mees-robot-learning-course/ethz-course-2026/tree/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw2_robot_control_mdps)
+
+Copyright in the lecture slides belongs to <strong>Oier Mees and the respective rights holders</strong>. Figures and photographs from Modern Robotics, ABB, Latombe, LaValle and others belong to their original creators. The explanatory 2R arm, reward and probability calculations, and directly generated graphs in these notes are separate examples developed to explain the concepts.

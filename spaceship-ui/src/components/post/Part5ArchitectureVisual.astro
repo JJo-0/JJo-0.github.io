@@ -1,4 +1,8 @@
 ---
+import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+const isEnglish = Astro.url.pathname.startsWith('/en/');
+const t = (value: string) => isEnglish ? englishFormulaText(value) : value;
+
 type VisualKind =
   | 'convolution'
   | 'pooling'
@@ -25,30 +29,30 @@ const { kind } = Astro.props;
 
 const visuals: Record<VisualKind, VisualInfo> = {
   convolution: {
-    title: '다채널 2D convolution이 한 출력 채널을 만드는 과정',
+    title: t("다채널 2D convolution이 한 출력 채널을 만드는 과정"),
     description:
-      '각 입력 채널에 대응하는 3×3 kernel 응답을 더한 뒤 bias를 더한다. 같은 kernel 묶음이 다음 위치로 이동하면서 출력 격자를 채운다.',
+      t("각 입력 채널에 대응하는 3×3 kernel 응답을 더한 뒤 bias를 더한다. 같은 kernel 묶음이 다음 위치로 이동하면서 출력 격자를 채운다."),
   },
   pooling: {
-    title: '3×3 max pooling window의 이동',
+    title: t("3×3 max pooling window의 이동"),
     description:
-      'padding을 포함한 입력에서 window 안의 최댓값만 남기고, stride 2만큼 이동해 다음 출력을 계산한다.',
+      t("padding을 포함한 입력에서 window 안의 최댓값만 남기고, stride 2만큼 이동해 다음 출력을 계산한다."),
   },
   'imagenet-trend': {
-    title: 'ILSVRC 분류 오류의 하락 흐름',
+    title: t("ILSVRC 분류 오류의 하락 흐름"),
     description:
-      '초기 hand-crafted feature 기반 방식에서 AlexNet을 거쳐 VGG·GoogLeNet, ResNet, SENet으로 이어지며 top-5 오류가 빠르게 낮아진 상대적 흐름을 단순화해 그렸다.',
+      t("초기 hand-crafted feature 기반 방식에서 AlexNet을 거쳐 VGG·GoogLeNet, ResNet, SENet으로 이어지며 top-5 오류가 빠르게 낮아진 상대적 흐름을 단순화해 그렸다."),
     source: {
-      label: 'ImageNet 원 논문',
+      label: t("ImageNet 원 논문"),
       href: 'https://www.image-net.org/static_files/papers/imagenet_cvpr09.pdf',
     },
   },
   alexnet: {
-    title: 'AlexNet의 큰 kernel에서 깊은 classifier까지',
+    title: t("AlexNet의 큰 kernel에서 깊은 classifier까지"),
     description:
-      '초기 층은 큰 11×11 kernel과 stride 4로 해상도를 빠르게 줄이고, 다섯 convolution layer 뒤 세 fully-connected layer가 1,000개 class를 분류한다.',
+      t("초기 층은 큰 11×11 kernel과 stride 4로 해상도를 빠르게 줄이고, 다섯 convolution layer 뒤 세 fully-connected layer가 1,000개 class를 분류한다."),
     source: {
-      label: 'AlexNet 원 논문',
+      label: t("AlexNet 원 논문"),
       href: 'https://proceedings.neurips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html',
     },
     stages: [
@@ -62,11 +66,11 @@ const visuals: Record<VisualKind, VisualInfo> = {
     ],
   },
   vgg: {
-    title: 'VGGNet: 작은 3×3 kernel을 반복해 깊이 확보',
+    title: t("VGGNet: 작은 3×3 kernel을 반복해 깊이 확보"),
     description:
-      '동일한 3×3 convolution을 여러 번 쌓아 receptive field를 넓히고, block 사이의 pooling으로 공간 크기를 절반씩 줄인다.',
+      t("동일한 3×3 convolution을 여러 번 쌓아 receptive field를 넓히고, block 사이의 pooling으로 공간 크기를 절반씩 줄인다."),
     source: {
-      label: 'VGG 원 논문',
+      label: t("VGG 원 논문"),
       href: 'https://arxiv.org/abs/1409.1556',
     },
     stages: [
@@ -80,38 +84,38 @@ const visuals: Record<VisualKind, VisualInfo> = {
     ],
   },
   inception: {
-    title: 'Inception module: 여러 크기의 특징을 병렬로 추출',
+    title: t("Inception module: 여러 크기의 특징을 병렬로 추출"),
     description:
-      '1×1 bottleneck으로 채널 수를 먼저 줄인 뒤 3×3·5×5 convolution과 pooling 경로를 병렬 실행하고, 결과를 channel 방향으로 이어 붙인다.',
+      t("1×1 bottleneck으로 채널 수를 먼저 줄인 뒤 3×3·5×5 convolution과 pooling 경로를 병렬 실행하고, 결과를 channel 방향으로 이어 붙인다."),
     source: {
-      label: 'GoogLeNet 원 논문',
+      label: t("GoogLeNet 원 논문"),
       href: 'https://openaccess.thecvf.com/content_cvpr_2015/html/Szegedy_Going_Deeper_With_2015_CVPR_paper.html',
     },
   },
   'resnet-wrn': {
-    title: 'ResNet의 identity shortcut과 WRN의 폭 확장',
+    title: t("ResNet의 identity shortcut과 WRN의 폭 확장"),
     description:
-      'residual branch가 F(x)를 학습하고 shortcut의 x와 더한다. WRN은 같은 원리를 유지하면서 layer 수 대신 channel 폭을 키운다.',
+      t("residual branch가 F(x)를 학습하고 shortcut의 x와 더한다. WRN은 같은 원리를 유지하면서 layer 수 대신 channel 폭을 키운다."),
     source: {
-      label: 'ResNet 원 논문',
+      label: t("ResNet 원 논문"),
       href: 'https://arxiv.org/abs/1512.03385',
     },
   },
   densenet: {
-    title: 'DenseNet: 앞선 모든 feature를 다음 layer가 재사용',
+    title: t("DenseNet: 앞선 모든 feature를 다음 layer가 재사용"),
     description:
-      '각 layer의 출력은 더해지는 대신 channel 방향으로 concatenate된다. 따라서 l번째 layer는 x₀부터 xₗ₋₁까지 모두 입력으로 받는다.',
+      t("각 layer의 출력은 더해지는 대신 channel 방향으로 concatenate된다. 따라서 l번째 layer는 x₀부터 xₗ₋₁까지 모두 입력으로 받는다."),
     source: {
-      label: 'DenseNet 원 논문',
+      label: t("DenseNet 원 논문"),
       href: 'https://arxiv.org/abs/1608.06993',
     },
   },
   'se-network': {
-    title: 'SE block: channel별 중요도를 학습해 다시 곱하기',
+    title: t("SE block: channel별 중요도를 학습해 다시 곱하기"),
     description:
-      'spatial 정보를 global average pooling으로 squeeze하고, 두 fully-connected layer와 sigmoid가 만든 channel weight를 원래 feature map에 곱한다.',
+      t("spatial 정보를 global average pooling으로 squeeze하고, 두 fully-connected layer와 sigmoid가 만든 channel weight를 원래 feature map에 곱한다."),
     source: {
-      label: 'SE Network 원 논문',
+      label: t("SE Network 원 논문"),
       href: 'https://arxiv.org/abs/1709.01507',
     },
   },
@@ -152,10 +156,10 @@ const visual = visuals[kind];
             stroke-width="4"
           />
           <text x="82" y="265">
-            입력 channel 묶음
+            {t("입력 channel 묶음")}
           </text>
           <text x="92" y="290" class="small">
-            3×3 window · 위치 1
+            {t("3×3 window · 위치 1")}
           </text>
 
           <text x="320" y="128" class="operator">
@@ -170,7 +174,7 @@ const visual = visuals[kind];
               stroke="currentColor"
             />
             <text x="29" y="160">
-              channel별 kernel
+              {t("channel별 kernel")}
             </text>
           </g>
           <text x="535" y="128" class="operator">
@@ -189,10 +193,10 @@ const visual = visuals[kind];
             <rect x="37" y="3" width="28" height="28" rx="4" class="accent-fill" opacity=".55" />
           </g>
           <text x="653" y="265">
-            한 출력 channel
+            {t("한 출력 channel")}
           </text>
           <text x="661" y="290" class="small">
-            stride만큼 옮겨 반복
+            {t("stride만큼 옮겨 반복")}
           </text>
         </svg>
       )
@@ -308,7 +312,7 @@ const visual = visuals[kind];
             stride 2
           </text>
           <text x="535" y="285" class="small">
-            작아진 feature map
+            {t("작아진 feature map")}
           </text>
         </svg>
       )
@@ -321,10 +325,10 @@ const visual = visuals[kind];
           <line x1="85" y1="45" x2="85" y2="315" class="axis" />
           <>
             <text x="16" y="60" class="small">
-              오류 높음
+              {t("오류 높음")}
             </text>
             <text x="18" y="310" class="small">
-              오류 낮음
+              {t("오류 낮음")}
             </text>
           </>
           <path
@@ -348,7 +352,7 @@ const visual = visuals[kind];
                 2010
               </text>
               <text x="91" y="110">
-                기존 방식
+                {t("기존 방식")}
               </text>
             </>
             <>
@@ -393,7 +397,7 @@ const visual = visuals[kind];
             </>
           </g>
           <text x="665" y="82" class="callout">
-            더 깊게 쌓는 법과 연결 방식의 혁신
+            {t("더 깊게 쌓는 법과 연결 방식의 혁신")}
           </text>
           <path
             d="M710 95C700 145 670 195 640 252"
@@ -437,32 +441,32 @@ const visual = visuals[kind];
       kind === 'inception' && (
         <div class="branch-diagram" role="img" aria-label={visual.title}>
           <>
-            <div class="stage-card input">입력 feature</div>
+            <div class="stage-card input">{t("입력 feature")}</div>
             <span class="arrow">→</span>
           </>
           <div class="branches">
             <div>
               <>
                 <b>1×1 Conv</b>
-                <span>그대로 통과</span>
+                <span>{t("그대로 통과")}</span>
               </>
             </div>
             <div>
               <>
                 <b>1×1 Conv → 3×3 Conv</b>
-                <span>bottleneck 뒤 중간 크기 특징</span>
+                <span>{t("bottleneck 뒤 중간 크기 특징")}</span>
               </>
             </div>
             <div>
               <>
                 <b>1×1 Conv → 5×5 Conv</b>
-                <span>bottleneck 뒤 큰 특징</span>
+                <span>{t("bottleneck 뒤 큰 특징")}</span>
               </>
             </div>
             <div>
               <>
                 <b>3×3 MaxPool → 1×1 Conv</b>
-                <span>pooling 특징과 채널 정리</span>
+                <span>{t("pooling 특징과 채널 정리")}</span>
               </>
             </div>
           </div>
@@ -508,9 +512,9 @@ const visual = visuals[kind];
           <div class="width-note">
             <>
               <b>WRN</b>
-              <span>더 적은 block × 더 넓은 channel</span>
+              <span>{t("더 적은 block × 더 넓은 channel")}</span>
               <a href="https://arxiv.org/abs/1605.07146" target="_blank" rel="noreferrer">
-                WRN 원 논문 ↗
+                {t("WRN 원 논문 ↗")}
               </a>
             </>
           </div>
@@ -542,7 +546,7 @@ const visual = visuals[kind];
             />
           </svg>
           <p>
-            <b>입력:</b> H₃([x₀, x₁, x₂]) — 이전 feature를 channel 방향으로 연결
+            <b>{t("입력:")}</b> {t("H₃([x₀, x₁, x₂]) — 이전 feature를 channel 방향으로 연결")}
           </p>
         </div>
       )
@@ -599,7 +603,7 @@ const visual = visuals[kind];
     visual.source && (
       <div class="flex items-center justify-between gap-4 border-t border-border/70 bg-background/55 px-5 py-3 text-sm sm:px-6">
         <span class="text-muted-foreground">
-          도식은 원 논문의 구조를 바탕으로 새로 제작했습니다.
+          {t("도식은 원 논문의 구조를 바탕으로 새로 제작했습니다.")}
         </span>
         <a
           class="shrink-0 font-bold text-primary no-underline hover:underline"

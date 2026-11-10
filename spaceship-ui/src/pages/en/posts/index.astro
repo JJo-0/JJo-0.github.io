@@ -1,12 +1,31 @@
 ---
 import Layout from '@/layouts/Layout.astro';
 import EnglishPostCard from '@/components/EnglishPostCard.astro';
-import { getEnglishPosts, isEnglishNews } from '@/lib/english';
-const posts=(await getEnglishPosts()).filter(p=>!isEnglishNews(p));
+import { getEnglishPosts, isEnglishNews, pairForEnglish } from '@/lib/english';
+import { getEnglishSeries } from '@/lib/english-series';
+const posts = (await getEnglishPosts()).filter(post => !isEnglishNews(post));
+const series = await getEnglishSeries();
+const groupedSources = new Set(series.flatMap(group => group.entries.map(entry => entry.sourceSlug)));
+const standalone = posts.filter(post => !groupedSources.has(pairForEnglish(post.data.slug).koSlug));
 ---
-<Layout lang="en" title="Writing — English" description="English study notes, implementation records, tutorials, and research writing." adsEnabled={false}>
+<Layout lang="en" title="Writing — English" description="English study notes, implementation records, tutorials, and research writing, organized by series." adsEnabled={false}>
 <section class="max-w-5xl"><h1 class="text-4xl sm:text-6xl font-bold" style="font-family:var(--font-editorial)">Writing</h1>
-<p class="mt-6 max-w-3xl leading-relaxed">Study notes, tutorials, implementation records, and research writing. Frontier One explainers have their own <a href="/en/news/">News archive</a>.</p>
-{posts.length ? posts.map(post=><EnglishPostCard {post} />) : <div class="my-8 border border-border p-6 leading-relaxed"><p>The longer study and interactive series are not translated yet. They remain available in their original language; this page does not substitute NEWS articles for them.</p><p class="mt-4"><a href="/posts" data-astro-reload>Browse the original Korean Writing archive</a> · <a href="/en/translations/">See translation coverage</a></p></div>}
+<p class="mt-6 max-w-3xl leading-relaxed">Study notes, tutorials, implementation records, and research writing. Explore a series below, or visit the separate <a href="/en/news/">Frontier One news archive</a>.</p>
+<p class="mt-4 leading-relaxed"><a href="/en/translations/">Translation coverage</a> tracks full articles. An entry marked “Korean original” has not yet been translated.</p>
+<div class="mt-8" data-english-series-index>{series.map(group => <details class="english-series-group" data-english-series={group.id}>
+  <summary><strong>{group.title}</strong><span>{group.translated} / {group.entries.length} in English</span></summary>
+  <div class="px-3 pb-5">{group.entries.map(entry => entry.translation
+    ? <EnglishPostCard post={entry.translation} />
+    : <p class="my-4 text-sm leading-relaxed"><a href={`/posts/${entry.sourceSlug}/`} lang="ko" data-astro-reload>{entry.original.data.title}</a> <span class="text-muted-foreground">— Korean original; English translation in progress</span></p>
+  )}</div>
+</details>)}</div>
+{standalone.length > 0 && <section class="mt-10" aria-label="Other English writing"><h2 class="text-2xl font-semibold">Other writing</h2>{standalone.map(post => <EnglishPostCard {post} />)}</section>}
 </section>
 </Layout>
+<style>
+.english-series-group { border-block:1px solid var(--color-border); margin:1rem 0; }
+summary { display:flex; justify-content:space-between; gap:1rem; padding:1.2rem .25rem; cursor:pointer; }
+summary strong { font-family:var(--font-editorial); font-size:1.2rem; } summary span { font-size:.8rem; white-space:nowrap; color:var(--color-muted-foreground); }
+summary:focus-visible { outline:2px solid var(--color-primary); outline-offset:4px; }
+@media(max-width:480px) { summary { flex-direction:column; gap:.3rem; } }
+</style>

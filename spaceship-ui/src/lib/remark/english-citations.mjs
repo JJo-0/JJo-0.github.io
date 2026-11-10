@@ -3,7 +3,9 @@ export default function englishCitations() {
   return (tree, file) => {
     if (!String(file.path || file.history?.[0] || '').replaceAll('\\','/').includes('/content/english/')) return;
     const references = new Map();
-    for (const node of tree.children || []) {
+    function collectReferences(parent) {
+     for (const node of parent.children || []) {
+      collectReferences(node);
       const first=node.type==='paragraph' && node.children?.[0];
       const match=first?.type==='text' && first.value.match(/^\[(\d+)\]\s/);
       if (!match) continue;
@@ -12,6 +14,8 @@ export default function englishCitations() {
       references.set(n,node);
       node.data={...node.data,hProperties:{...node.data?.hProperties,id:`news-ref-${n}`,'data-news-reference':n}};
     }
+     }
+    collectReferences(tree);
     const skip=new Set([...references.values()]);
     function walk(parent) {
       if(!parent.children || skip.has(parent) || ['link','linkReference','code','inlineCode'].includes(parent.type)) return;

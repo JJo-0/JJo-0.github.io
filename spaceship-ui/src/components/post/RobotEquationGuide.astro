@@ -1,9 +1,13 @@
 ---
 import Math from './Math.astro';
 import GuideMathText from './GuideMathText.astro';
-import guides from '@/data/robot-equation-guides.json';
+import koreanGuides from '@/data/robot-equation-guides.json';
+import englishGuides from '@/data/robot-equation-guides.en.json';
 interface Props { id: string }
 const { id } = Astro.props;
+const english = Astro.url.pathname.startsWith('/en/');
+const guides = english ? englishGuides : koreanGuides;
+const copy = english ? { expand: 'Explore the symbols and calculation', reading: 'Read the equation in words', symbols: 'Understand each symbol', steps: 'Follow the calculation', example: 'Check with a small example', note: 'An illustrative example for understanding the equation.' } : { expand: '기호 뜻과 계산 과정 자세히 보기', reading: '이 식을 말로 읽으면', symbols: '기호 하나씩 이해하기', steps: '계산을 따라가는 순서', example: '작은 예시로 확인하기', note: '식을 이해하기 위한 설명용 예시입니다.' };
 const guide = (guides as Record<string, {
   title: string; tex: string; reading: string;
   symbols: { tex: string; meaning: string }[];
@@ -14,25 +18,25 @@ if (!guide) throw new Error(`Missing robot equation guide: ${id}`);
 
 <details class="robot-equation-guide" data-equation-guide={id} data-equation-tex={encodeURIComponent(guide.tex)}>
   <summary aria-controls={`${id}-body`}>
-    <span>기호 뜻과 계산 과정 자세히 보기</span>
+    <span>{copy.expand}</span>
     <small><GuideMathText text={guide.title} /></small>
   </summary>
   <div id={`${id}-body`} class="guide-body">
-    <p class="guide-label">이 식을 말로 읽으면</p>
+    <p class="guide-label">{copy.reading}</p>
     <p><GuideMathText text={guide.reading} /></p>
-    <p class="guide-label">기호 하나씩 이해하기</p>
+    <p class="guide-label">{copy.symbols}</p>
     <dl>
       {guide.symbols.map(symbol => <div>
         <dt><Math tex={symbol.tex} /></dt>
         <dd><GuideMathText text={symbol.meaning} /></dd>
       </div>)}
     </dl>
-    <p class="guide-label">계산을 따라가는 순서</p>
+    <p class="guide-label">{copy.steps}</p>
     <ol>{guide.steps.map(step => <li><GuideMathText text={step} /></li>)}</ol>
     <div class="worked-example">
-      <p class="guide-label">작은 예시로 확인하기</p>
+      <p class="guide-label">{copy.example}</p>
       <p><GuideMathText text={guide.example} /></p>
-      <p class="example-note">식을 이해하기 위한 설명용 예시입니다.</p>
+      <p class="example-note">{copy.note}</p>
     </div>
   </div>
 </details>

@@ -1,0 +1,1124 @@
+---
+title: Modern Artificial Intelligence I — From AI, ML, and DL to Probability and Optimization
+description: Integrated ECE5992 Chapter 1 study notes covering AI, ML, deep learning,
+  image processing, linear algebra, perceptrons, convolution, random variables, Gaussian
+  distributions, WSS, losses, and gradient descent, preserving the equations from
+  both lecture handouts.
+pubDate: 2025-05-16
+updatedDate: 2026-08-18
+category: ai-machine-learning
+subcategory: mathematical-foundations
+type: study-note
+tags:
+- artificial-intelligence
+- linear-algebra
+- probability
+- optimization
+- deep-learning
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 1
+featured: true
+lang: en
+series:
+  id: modern-artificial-intelligence
+  order: 1
+slug: 2025-05-16-mordern-artificial-intelligence
+draft: false
+translationKey: series-mordern-artificial-intelligence-20261109
+translatedPosts:
+  ko-KR: 2025-05-16-mordern-artificial-intelligence
+---
+
+
+import Math from '@/components/post/ExplainedMath.astro';
+
+> **Editorial and copyright principles**  
+> This English edition translates a Korean study-oriented reconstruction of ECE5992 Modern Artificial Intelligence Chapter 1 materials dated March 12 and 19, 2025. It does not reproduce the source's sentence arrangement, page layout, or illustrations. Concepts are explained in new wording and diagrams are newly created. The mathematical content is preserved because changing an equation's meaning would be unacceptable. Differences in equation numbering between versions and questionable source notation are documented separately.
+
+> **No material was discarded in this consolidation.**  
+> Earlier provisional drafts on linear algebra, perceptrons, probability, and optimization, temporarily numbered 2–8, were merged into this first article. This integrated edition combines two Chapter 1 PDFs in one post.
+
+## Preserving every equation
+
+Each displayed equation has a unique `MAI` identifier. The integrated article currently contains **238 equation blocks**. Identical equations repeated across source versions are explained once, while differences in notation or numbering receive notes. KaTeX rendering rather than equation images preserves copying, search, and accessibility.
+
+## Series structure
+
+The series follows **ECE5992 materials actually obtained**: this integrated Chapter 1 plus seven subsequent PDFs form **eight articles**. No empty posts are created merely to fill numbers.
+
+The **eight-part study map** above presents this progression in one view.
+
+**Mathematical and probability foundations → Machine-learning generalization → Perceptrons and CNNs → Gradient optimization → Image classification → Semantic segmentation → VAEs and diffusion → Contrastive representation learning**
+
+Map entries become links as subsequent articles become available, so a duplicate table organized around PDF filenames is unnecessary here.
+
+## Auditing source notation
+
+Comparison of the two versions distinguishes source notation from standard mathematical notation in the following cases.
+
+1. The second equation in the two-variable linear-system example contains `x_2` twice. The source equation is preserved and a general form is given separately.
+2. If `A\in\mathbb{R}^{M\times N}` and `x\in\mathbb{R}^{N}`, then `Ax\in\mathbb{R}^{M}`. A source sentence's output dimension appears to be a typographical error in context; the text uses the correct dimension.
+3. The **geometric distance** from the origin to a hyperplane is `|b|/\|w\|_2`, while `b/\|w\|_2` can represent signed distance. The source's `b/\|w\|_2` is annotated as a signed expression.
+4. The joint density of M independent Gaussian vectors requires normalization `|C|^{-M/2}`. A source derivation appears to use `|C|^{-1/2}`, so both the preserved source expression and its correction are shown.
+5. For complex random vectors, uncorrelatedness generally requires `E[\widetilde X_i\widetilde X_j^*]=0`. One source version omits conjugation, and the difference is identified in the text.
+
+---
+## Part 1.0: Fields and the research ecosystem
+
+> **Equation reading mode** — Every displayed equation below opens `Explanation and calculations`. Each card proceeds through **the question → intermediate calculations → numerical example → checks → external references**.
+
+## 2. AI, ML, and DL are different terms
+
+Broadly, **artificial intelligence** concerns building systems that behave intelligently. **Machine learning** learns rules or representations from data within that field. **Deep learning** is a machine-learning family centered on multilayer neural networks.
+
+In one line:
+
+**Artificial intelligence ⊃ Machine learning ⊃ Deep learning**
+
+This inclusion diagram is not a complete law of the field's history. Rule-based AI, search, planning, and optimization can be non-learning approaches, while modern systems combine learned models with search, tools, external memory, and planners. It provides a starting view of field relationships rather than a complete account of contemporary architectures.
+
+## 3. What should you read?
+
+The research ecosystem presented in the lectures remains useful. Following a field requires more than reading isolated papers: develop a **habit of scanning journal and conference proceedings tables of contents**.
+
+### Representative journals
+
+- IEEE Transactions on Pattern Analysis and Machine Intelligence
+- Nature Machine Intelligence
+- IEEE Transactions on Image Processing
+- IEEE Transactions on Signal Processing
+- IEEE Transactions on Medical Imaging
+- IEEE Transactions on Computational Imaging
+- IEEE Transactions on Intelligent Transportation Systems
+- IEEE Transactions on Robotics
+- Pattern Recognition
+- Medical Image Analysis
+- IEEE Signal Processing Letters
+- IEEE Robotics and Automation Letters
+
+### Representative conferences
+
+- NeurIPS
+- ICML
+- ICLR
+- CVPR
+- ICCV
+- ECCV
+- MICCAI
+- ICIP
+- IROS
+- ICRA
+
+The important point is **connections between fields**, rather than the list alone. Imaging, signal processing, robotics, medical imaging, and machine learning overlap extensively in actual research.
+
+## 4. Image processing and computer vision
+
+The lecture presents the imaging pipeline as follows.
+
+> Physical scene → Image formation → Raw measurements → Image processing → Improved image → Image analysis → Meaningful decisions
+
+Two additional branches accompany this pipeline.
+
+- Image display: representing images for human viewing
+- Image compression: reducing storage and transmission costs
+
+Traditionally, image processing was often called **low-level vision**, and image analysis **high-level vision**. Deep learning has weakened this boundary: one network can jointly learn restoration, feature extraction, detection, and classification.
+
+### Low-level and high-level perspectives
+
+| Perspective | Low-level emphasis | High-level emphasis |
+|---|---|---|
+| Main question | How should pixels be restored or transformed? | What is in the scene, and what does it mean? |
+| Typical tasks | Denoising, super-resolution, restoration, calibration | Classification, detection, segmentation, tracking, reasoning |
+| Traditional foundations | Signal processing, optimization, statistics | Pattern recognition, machine learning |
+| Modern characteristic | Substantial overlap | Substantial overlap |
+
+## 5. An important caution from the lectures
+
+One central message is that fundamental understanding of modern deep learning remains immature.
+
+Better model performance differs from **fully understanding why models generalize, what representations they learn, and when they fail**. This motivates the linear algebra, probability, and optimization that follow.
+
+## 6. August 2026 update
+
+These foundations remain necessary in 2026, while implementation practice has expanded substantially.
+
+- The source article identifies the current stable PyTorch documentation as the 2.13 series, with `torch.linalg`, `torch.func`, `torch.compile`, distributed training, and attention kernels alongside tensor operations in one ecosystem.
+- CNNs are no longer the only basic visual architecture. Since Vision Transformer, patch-based attention has become a standard choice, with CNNs, Transformers, and hybrids coexisting.
+- “Modern AI equals a simple multilayer network” is therefore incomplete. Connect **mathematical foundations → representation learning → large-scale optimization → efficient compilation and distributed execution**.
+
+#### Current references in the source article
+
+- [PyTorch 2.13 documentation](https://docs.pytorch.org/docs/stable/)
+- [PyTorch `torch.compile`](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)
+- [Original Vision Transformer paper](https://arxiv.org/abs/2010.11929)
+
+### 7. Next section
+
+Next comes linear algebra, beginning with vector and matrix notation and reconstructing **inner products, outer products, matrix–vector products, and matrix–matrix products** equation by equation.
+
+---
+
+## Part 1.1: Linear Algebra I — Vectors, Matrices, and Products
+
+### 1. Why begin with linear algebra?
+
+Most modern neural networks ultimately execute **operations on vectors and matrices**. Linear algebra is more than a prerequisite: it connects forward passes, matrix representations of convolution, attention, optimization, and covariance calculations.
+
+#### 1.1 A two-variable linear system
+
+The lectures provide the following two equations. The second contains `x_2` twice in the source. We **preserve that notation** and give a conventional two-variable system immediately below.
+
+{/* formula: MAI2-001 */}
+<Math formulaId="MAI2-001" display tex={"\\begin{aligned}\nA_{1,1}x_1 - A_{1,2}x_2 &= b_1,\\\\\nA_{2,1}x_2 - A_{2,2}x_2 &= b_2.\n\\end{aligned}"} />
+A general two-variable linear system is usually written as follows.
+
+{/* formula: MAI2-002 */}
+<Math formulaId="MAI2-002" display tex={"\\begin{aligned}\nA_{1,1}x_1 + A_{1,2}x_2 &= b_1,\\\\\nA_{2,1}x_1 + A_{2,2}x_2 &= b_2.\n\\end{aligned}"} />
+Matrix notation makes it much more compact.
+
+{/* formula: MAI2-003 */}
+<Math formulaId="MAI2-003" display tex={"A\\mathbf{x}=\\mathbf{b},\\qquad\nA=\\begin{bmatrix}A_{1,1}&A_{1,2}\\\\A_{2,1}&A_{2,2}\\end{bmatrix},\\qquad\n\\mathbf{b}=\\begin{bmatrix}b_1\\\\b_2\\end{bmatrix}."} />
+### 2. Basic notation
+
+Always check column-vector and matrix dimensions first.
+
+{/* formula: MAI2-004 */}
+<Math formulaId="MAI2-004" display tex={"\\mathbf{x}\\in\\mathbb{R}^{M},\\qquad \\mathbf{x}^{T}\\ \\text{is a row vector}."} />
+{/* formula: MAI2-005 */}
+<Math formulaId="MAI2-005" display tex={"A\\in\\mathbb{R}^{M\\times N}."} />
+{/* formula: MAI2-006 */}
+<Math formulaId="MAI2-006" display tex={"\\mathbf{x}=\n\\begin{bmatrix}\nx_1\\\\x_2\\\\\\vdots\\\\x_M\n\\end{bmatrix}."} />
+{/* formula: MAI2-007 */}
+<Math formulaId="MAI2-007" display tex={"A=\n\\begin{bmatrix}\nA_{1,1}&A_{1,2}&\\cdots&A_{1,N}\\\\\nA_{2,1}&A_{2,2}&\\cdots&A_{2,N}\\\\\n\\vdots&\\vdots&\\ddots&\\vdots\\\\\nA_{M,1}&A_{M,2}&\\cdots&A_{M,N}\n\\end{bmatrix}."} />
+Columnwise and rowwise notation are also common.
+
+{/* formula: MAI2-008 */}
+<Math formulaId="MAI2-008" display tex={"A=\\begin{bmatrix}\\mathbf{a}_1&\\mathbf{a}_2&\\cdots&\\mathbf{a}_N\\end{bmatrix}."} />
+{/* formula: MAI2-009 */}
+<Math formulaId="MAI2-009" display tex={"A=\\begin{bmatrix}\n\\mathbf{a}_1^T\\\\\n\\mathbf{a}_2^T\\\\\n\\vdots\\\\\n\\mathbf{a}_M^T\n\\end{bmatrix}."} />
+### 3. Vectorizing an image
+
+Flattening a multidimensional image into one long vector allows operations such as convolution to be expressed as matrix–vector multiplication.
+
+{/* formula: MAI2-010 */}
+<Math formulaId="MAI2-010" display tex={"\\begin{bmatrix}y_1&\\cdots&y_N\\end{bmatrix}\n\\longrightarrow\n\\begin{bmatrix}y_1\\\\\\vdots\\\\y_N\\end{bmatrix}."} />
+{/* formula: MAI2-011 */}
+<Math formulaId="MAI2-011" display tex={"y[m,n]=(a*x)[m,n]."} />
+{/* formula: MAI2-012 */}
+<Math formulaId="MAI2-012" display tex={"\\mathbf{y}=A\\mathbf{x}."} />
+### 4. Vector–vector products
+
+#### 4.1 Inner product
+
+An inner product reduces two vectors to one scalar.
+
+{/* formula: MAI2-013 */}
+<Math formulaId="MAI2-013" display tex={"\\mathbf{x}^T\\mathbf{y}\n=\n\\begin{bmatrix}x_1&x_2&\\cdots&x_N\\end{bmatrix}\n\\begin{bmatrix}y_1\\\\y_2\\\\\\vdots\\\\y_N\\end{bmatrix}\n=\n\\sum_{i=1}^{N}x_i y_i\\in\\mathbb{R}."} />
+{/* formula: MAI2-014 */}
+<Math formulaId="MAI2-014" display tex={"\\mathbf{x}^T\\mathbf{y}=\\mathbf{y}^T\\mathbf{x}."} />
+#### 4.2 Outer product
+
+An outer product forms a matrix from two vectors.
+
+{/* formula: MAI2-015 */}
+<Math formulaId="MAI2-015" display tex={"\\mathbf{x}\\mathbf{y}^T\n=\n\\begin{bmatrix}\nx_1y_1&x_1y_2&\\cdots&x_1y_N\\\\\nx_2y_1&x_2y_2&\\cdots&x_2y_N\\\\\n\\vdots&\\vdots&\\ddots&\\vdots\\\\\nx_My_1&x_My_2&\\cdots&x_My_N\n\\end{bmatrix}\n\\in\\mathbb{R}^{M\\times N}."} />
+### 5. Two views of matrix–vector multiplication
+
+Rowwise, each output component is the inner product of one matrix row with the input vector.
+
+{/* formula: MAI2-016 */}
+<Math formulaId="MAI2-016" display tex={"\\mathbf{y}=A\\mathbf{x}\n=\n\\begin{bmatrix}\n\\mathbf{a}_1^T\\mathbf{x}\\\\\n\\mathbf{a}_2^T\\mathbf{x}\\\\\n\\vdots\\\\\n\\mathbf{a}_M^T\\mathbf{x}\n\\end{bmatrix}."} />
+{/* formula: MAI2-017 */}
+<Math formulaId="MAI2-017" display tex={"y_i=\\mathbf{a}_i^T\\mathbf{x}."} />
+Columnwise, the output is a linear combination of A's columns.
+
+{/* formula: MAI2-018 */}
+<Math formulaId="MAI2-018" display tex={"\\mathbf{y}=A\\mathbf{x}\n=\n\\begin{bmatrix}\\mathbf{a}_1&\\mathbf{a}_2&\\cdots&\\mathbf{a}_N\\end{bmatrix}\n\\begin{bmatrix}x_1\\\\x_2\\\\\\vdots\\\\x_N\\end{bmatrix}\n=\n\\mathbf{a}_1x_1+\\mathbf{a}_2x_2+\\cdots+\\mathbf{a}_Nx_N."} />
+A row vector can also multiply from the left.
+
+{/* formula: MAI2-019 */}
+<Math formulaId="MAI2-019" display tex={"\\mathbf{y}^T=\\mathbf{x}^T A\n=\n\\begin{bmatrix}\n\\mathbf{x}^T\\mathbf{a}_1&\n\\mathbf{x}^T\\mathbf{a}_2&\n\\cdots&\n\\mathbf{x}^T\\mathbf{a}_N\n\\end{bmatrix}."} />
+{/* formula: MAI2-020 */}
+<Math formulaId="MAI2-020" display tex={"\\mathbf{y}^T=\\mathbf{x}^T A\n=\nx_1\\mathbf{a}_1^T+x_2\\mathbf{a}_2^T+\\cdots+x_M\\mathbf{a}_M^T."} />
+### 6. Matrix–matrix multiplication
+
+{/* formula: MAI2-021 */}
+<Math formulaId="MAI2-021" display tex={"A\\in\\mathbb{R}^{M\\times N},\\quad\nB\\in\\mathbb{R}^{N\\times P},\\quad\nC=AB\\in\\mathbb{R}^{M\\times P}."} />
+{/* formula: MAI2-022 */}
+<Math formulaId="MAI2-022" display tex={"C_{i,j}=\\sum_{k=1}^{N}A_{i,k}B_{k,j}."} />
+Collecting row–column inner products gives:
+
+{/* formula: MAI2-023 */}
+<Math formulaId="MAI2-023" display tex={"C=AB=\n\\begin{bmatrix}\n\\mathbf{a}_1^T\\mathbf{b}_1&\\mathbf{a}_1^T\\mathbf{b}_2&\\cdots&\\mathbf{a}_1^T\\mathbf{b}_P\\\\\n\\mathbf{a}_2^T\\mathbf{b}_1&\\mathbf{a}_2^T\\mathbf{b}_2&\\cdots&\\mathbf{a}_2^T\\mathbf{b}_P\\\\\n\\vdots&\\vdots&\\ddots&\\vdots\\\\\n\\mathbf{a}_M^T\\mathbf{b}_1&\\mathbf{a}_M^T\\mathbf{b}_2&\\cdots&\\mathbf{a}_M^T\\mathbf{b}_P\n\\end{bmatrix}."} />
+The column–row view expresses it as a sum of outer products.
+
+{/* formula: MAI2-024 */}
+<Math formulaId="MAI2-024" display tex={"C=AB=\\sum_{i=1}^{N}\\mathbf{a}_i\\mathbf{b}_i^T."} />
+Viewing B by columns, each column of C is A multiplied by one column of B.
+
+{/* formula: MAI2-025 */}
+<Math formulaId="MAI2-025" display tex={"C=A\\begin{bmatrix}\\mathbf{b}_1&\\mathbf{b}_2&\\cdots&\\mathbf{b}_P\\end{bmatrix}\n=\n\\begin{bmatrix}A\\mathbf{b}_1&A\\mathbf{b}_2&\\cdots&A\\mathbf{b}_P\\end{bmatrix}."} />
+{/* formula: MAI2-026 */}
+<Math formulaId="MAI2-026" display tex={"\\mathbf{c}_i=A\\mathbf{b}_i."} />
+Viewing A by rows, each row of C is obtained as follows.
+
+{/* formula: MAI2-027 */}
+<Math formulaId="MAI2-027" display tex={"C=\n\\begin{bmatrix}\n\\mathbf{a}_1^TB\\\\\n\\mathbf{a}_2^TB\\\\\n\\vdots\\\\\n\\mathbf{a}_M^TB\n\\end{bmatrix}."} />
+{/* formula: MAI2-028 */}
+<Math formulaId="MAI2-028" display tex={"\\mathbf{c}_i^T=\\mathbf{a}_i^TB."} />
+#### 6.1 Basic multiplication properties
+
+{/* formula: MAI2-029 */}
+<Math formulaId="MAI2-029" display tex={"(AB)C=A(BC)."} />
+{/* formula: MAI2-030 */}
+<Math formulaId="MAI2-030" display tex={"A(B+C)=AB+AC."} />
+{/* formula: MAI2-031 */}
+<Math formulaId="MAI2-031" display tex={"AB\\neq BA\\quad\\text{in general}."} />
+### 7. Identity and diagonal matrices
+
+{/* formula: MAI2-032 */}
+<Math formulaId="MAI2-032" display tex={"I_{i,j}=\n\\begin{cases}\n1,&i=j,\\\\\n0,&i\\neq j.\n\\end{cases}"} />
+{/* formula: MAI2-033 */}
+<Math formulaId="MAI2-033" display tex={"AI=A=IA."} />
+{/* formula: MAI2-034 */}
+<Math formulaId="MAI2-034" display tex={"D=\\operatorname{diag}(d_1,\\ldots,d_N),\\qquad\nD_{i,j}=\n\\begin{cases}\nd_i,&i=j,\\\\\n0,&i\\neq j.\n\\end{cases}"} />
+{/* formula: MAI2-035 */}
+<Math formulaId="MAI2-035" display tex={"I=\\operatorname{diag}(1,\\ldots,1)."} />
+### 8. Transpose
+
+{/* formula: MAI2-036 */}
+<Math formulaId="MAI2-036" display tex={"(A^T)_{i,j}=A_{j,i}."} />
+{/* formula: MAI2-037 */}
+<Math formulaId="MAI2-037" display tex={"(A^T)^T=A."} />
+{/* formula: MAI2-038 */}
+<Math formulaId="MAI2-038" display tex={"(AB)^T=B^TA^T."} />
+{/* formula: MAI2-039 */}
+<Math formulaId="MAI2-039" display tex={"(A+B)^T=A^T+B^T."} />
+### 9. Implementation perspective in 2026
+
+As of the source's August 2026 update, PyTorch 2.13's `torch.linalg` directly provides nearly all operations covered here, including norms, determinants, rank, solve, QR, and Cholesky.
+
+In practice, **solving the linear system `Ax=b` with `torch.linalg.solve` is often numerically and computationally preferable** to explicitly forming `A^{-1}b`.
+
+- [PyTorch `torch.linalg`](https://docs.pytorch.org/docs/stable/linalg)
+- [PyTorch `torch.linalg.solve`](https://docs.pytorch.org/docs/stable/generated/torch.linalg.solve.html)
+
+### 10. Perspectives to remember
+
+Rather than memorize multiplication as one formula, learn all four views.
+
+1. Row–column inner products
+2. A sum of outer products
+3. Applying A to each column of B
+4. Applying B to each row of A
+
+These perspectives recur in fully connected layers, convolution's im2col representation, and attention projections.
+
+---
+
+## Part 1.2: Linear Algebra II — Symmetry, Trace, Norms, Rank, and Determinants
+
+### 1. Symmetric and skew-symmetric matrices
+
+{/* formula: MAI3-001 */}
+<Math formulaId="MAI3-001" display tex={"A=A^T."} />
+{/* formula: MAI3-002 */}
+<Math formulaId="MAI3-002" display tex={"A=-A^T."} />
+Any square matrix decomposes into symmetric and skew-symmetric parts.
+
+{/* formula: MAI3-003 */}
+<Math formulaId="MAI3-003" display tex={"A=\n\\frac12(A+A^T)+\\frac12(A-A^T)."} />
+### 2. Trace
+
+Trace is the sum of diagonal entries.
+
+{/* formula: MAI3-004 */}
+<Math formulaId="MAI3-004" display tex={"\\operatorname{tr}(A)=\\sum_{i=1}^{N}A_{i,i}."} />
+{/* formula: MAI3-005 */}
+<Math formulaId="MAI3-005" display tex={"\\operatorname{tr}(A)=\\operatorname{tr}(A^T)."} />
+{/* formula: MAI3-006 */}
+<Math formulaId="MAI3-006" display tex={"\\operatorname{tr}(A+B)=\\operatorname{tr}(A)+\\operatorname{tr}(B)."} />
+{/* formula: MAI3-007 */}
+<Math formulaId="MAI3-007" display tex={"\\operatorname{tr}(tA)=t\\,\\operatorname{tr}(A)."} />
+{/* formula: MAI3-008 */}
+<Math formulaId="MAI3-008" display tex={"\\operatorname{tr}(AB)=\\operatorname{tr}(BA)."} />
+{/* formula: MAI3-009 */}
+<Math formulaId="MAI3-009" display tex={"\\operatorname{tr}(ABC)=\\operatorname{tr}(BCA)=\\operatorname{tr}(CAB)."} />
+### 3. Norms
+
+#### 3.1 Euclidean norm
+
+{/* formula: MAI3-010 */}
+<Math formulaId="MAI3-010" display tex={"\\|\\mathbf{x}\\|_2=\\sqrt{\\sum_{i=1}^{N}x_i^2}."} />
+{/* formula: MAI3-011 */}
+<Math formulaId="MAI3-011" display tex={"\\|\\mathbf{x}\\|_2^2=\\mathbf{x}^T\\mathbf{x}."} />
+A norm generalizes length and satisfies four properties.
+
+{/* formula: MAI3-012 */}
+<Math formulaId="MAI3-012" display tex={"f(\\mathbf{x})\\ge 0."} />
+{/* formula: MAI3-013 */}
+<Math formulaId="MAI3-013" display tex={"f(\\mathbf{x})=0\\iff \\mathbf{x}=0."} />
+{/* formula: MAI3-014 */}
+<Math formulaId="MAI3-014" display tex={"f(t\\mathbf{x})=|t|f(\\mathbf{x})."} />
+{/* formula: MAI3-015 */}
+<Math formulaId="MAI3-015" display tex={"f(\\mathbf{x}+\\mathbf{y})\\le f(\\mathbf{x})+f(\\mathbf{y})."} />
+Other representative norms are included too.
+
+{/* formula: MAI3-016 */}
+<Math formulaId="MAI3-016" display tex={"\\|\\mathbf{x}\\|_1=\\sum_{i=1}^{N}|x_i|."} />
+{/* formula: MAI3-017 */}
+<Math formulaId="MAI3-017" display tex={"\\|\\mathbf{x}\\|_\\infty=\\max_i |x_i|."} />
+{/* formula: MAI3-018 */}
+<Math formulaId="MAI3-018" display tex={"\\|\\mathbf{x}\\|_p=\n\\left(\\sum_{i=1}^{N}|x_i|^p\\right)^{1/p},\\qquad p\\ge1."} />
+For matrices, the Frobenius norm frequently appears.
+
+{/* formula: MAI3-019 */}
+<Math formulaId="MAI3-019" display tex={"\\|A\\|_F=\n\\sqrt{\\sum_{i=1}^{M}\\sum_{j=1}^{N}A_{i,j}^2}\n=\n\\sqrt{\\operatorname{tr}(A^TA)}."} />
+### 4. Linear independence and rank
+
+If one vector can be expressed as a linear combination of the others, the set is linearly dependent.
+
+{/* formula: MAI3-020 */}
+<Math formulaId="MAI3-020" display tex={"\\mathbf{x}_N=\\sum_{i=1}^{N-1}\\alpha_i\\mathbf{x}_i."} />
+The lecture gives these three example vectors.
+
+{/* formula: MAI3-021 */}
+<Math formulaId="MAI3-021" display tex={"\\mathbf{x}_1=\n\\begin{bmatrix}1\\\\2\\\\3\\end{bmatrix},\\quad\n\\mathbf{x}_2=\n\\begin{bmatrix}4\\\\1\\\\5\\end{bmatrix},\\quad\n\\mathbf{x}_3=\n\\begin{bmatrix}2\\\\-3\\\\-1\\end{bmatrix}."} />
+{/* formula: MAI3-022 */}
+<Math formulaId="MAI3-022" display tex={"\\mathbf{x}_3=-2\\mathbf{x}_1+\\mathbf{x}_2."} />
+Basic rank properties follow.
+
+{/* formula: MAI3-023 */}
+<Math formulaId="MAI3-023" display tex={"\\operatorname{rank}(A)\\le\\min(M,N),\\qquad A\\in\\mathbb{R}^{M\\times N}."} />
+{/* formula: MAI3-024 */}
+<Math formulaId="MAI3-024" display tex={"\\operatorname{rank}(A)=\\operatorname{rank}(A^T)."} />
+{/* formula: MAI3-025 */}
+<Math formulaId="MAI3-025" display tex={"\\operatorname{rank}(AB)\\le\\min(\\operatorname{rank}(A),\\operatorname{rank}(B))."} />
+{/* formula: MAI3-026 */}
+<Math formulaId="MAI3-026" display tex={"\\operatorname{rank}(A+B)\\le\\operatorname{rank}(A)+\\operatorname{rank}(B)."} />
+### 5. Matrix inverse
+
+{/* formula: MAI3-027 */}
+<Math formulaId="MAI3-027" display tex={"A^{-1}A=I=AA^{-1}."} />
+Even a square matrix has no inverse if singular. For nonsingular matrices, the following properties hold.
+
+{/* formula: MAI3-028 */}
+<Math formulaId="MAI3-028" display tex={"(A^{-1})^{-1}=A."} />
+{/* formula: MAI3-029 */}
+<Math formulaId="MAI3-029" display tex={"(AB)^{-1}=B^{-1}A^{-1}."} />
+{/* formula: MAI3-030 */}
+<Math formulaId="MAI3-030" display tex={"(A^{-1})^T=(A^T)^{-1}\\equiv A^{-T}."} />
+### 6. Orthogonality and orthogonal matrices
+
+{/* formula: MAI3-031 */}
+<Math formulaId="MAI3-031" display tex={"\\mathbf{x}^T\\mathbf{y}=0."} />
+{/* formula: MAI3-032 */}
+<Math formulaId="MAI3-032" display tex={"\\|\\mathbf{x}\\|_2=1."} />
+A square orthogonal matrix U has orthonormal columns and satisfies:
+
+{/* formula: MAI3-033 */}
+<Math formulaId="MAI3-033" display tex={"U^TU=I=UU^T."} />
+If only a rectangular matrix's columns are orthonormal, just one multiplication order yields an identity.
+
+{/* formula: MAI3-034 */}
+<Math formulaId="MAI3-034" display tex={"U^TU=I,\\qquad UU^T\\neq I\\quad (U\\in\\mathbb{R}^{M\\times N},\\,N<M)."} />
+Orthogonal transformations preserve Euclidean length.
+
+{/* formula: MAI3-035 */}
+<Math formulaId="MAI3-035" display tex={"\\|U\\mathbf{x}\\|_2=\\|\\mathbf{x}\\|_2."} />
+### 7. Determinant
+
+The determinant's absolute value represents the volume of the parallelotope formed by the row vectors.
+
+{/* formula: MAI3-036 */}
+<Math formulaId="MAI3-036" display tex={"S=\n\\left\\{\n\\mathbf{v}\\in\\mathbb{R}^N:\n\\mathbf{v}=\\sum_{i=1}^{N}\\alpha_i\\mathbf{a}_i,\\quad\n0\\le\\alpha_i\\le1\n\\right\\}."} />
+The lecture's 2×2 example follows.
+
+{/* formula: MAI3-037 */}
+<Math formulaId="MAI3-037" display tex={"A=\n\\begin{bmatrix}\n1&3\\\\\n3&2\n\\end{bmatrix}."} />
+{/* formula: MAI3-038 */}
+<Math formulaId="MAI3-038" display tex={"\\mathbf{a}_1=\n\\begin{bmatrix}1\\\\3\\end{bmatrix},\\qquad\n\\mathbf{a}_2=\n\\begin{bmatrix}3\\\\2\\end{bmatrix}."} />
+{/* formula: MAI3-039 */}
+<Math formulaId="MAI3-039" display tex={"\\det(A)=|A|=-7,\\qquad |\\det(A)|=7."} />
+The key determinant properties are listed in full.
+
+{/* formula: MAI3-040 */}
+<Math formulaId="MAI3-040" display tex={"|I|=1."} />
+{/* formula: MAI3-041 */}
+<Math formulaId="MAI3-041" display tex={"\\det\n\\begin{bmatrix}\nt\\mathbf{a}_1^T\\\\\n\\mathbf{a}_2^T\\\\\n\\vdots\\\\\n\\mathbf{a}_N^T\n\\end{bmatrix}\n=t|A|."} />
+{/* formula: MAI3-042 */}
+<Math formulaId="MAI3-042" display tex={"\\det\n\\begin{bmatrix}\n\\mathbf{a}_2^T\\\\\n\\mathbf{a}_1^T\\\\\n\\vdots\\\\\n\\mathbf{a}_N^T\n\\end{bmatrix}\n=-|A|."} />
+{/* formula: MAI3-043 */}
+<Math formulaId="MAI3-043" display tex={"|A|=|A^T|."} />
+{/* formula: MAI3-044 */}
+<Math formulaId="MAI3-044" display tex={"|AB|=|A||B|."} />
+{/* formula: MAI3-045 */}
+<Math formulaId="MAI3-045" display tex={"|A|=0\\iff A\\ \\text{is singular}."} />
+{/* formula: MAI3-046 */}
+<Math formulaId="MAI3-046" display tex={"|A^{-1}|=\\frac{1}{|A|}."} />
+### 8. Numerical computation in 2026
+
+An important practical refinement is to **distinguish mathematical definitions from numerical code**.
+
+- Inverses matter mathematically, but explicitly forming `inv(A) @ b` every time is not a good default computational habit. For linear systems, `solve` is more direct.
+- Small determinants can underflow and large ones overflow, making the log determinant `slogdet` useful.
+- Treat rank as **numerical rank** depending on floating-point tolerance, rather than exact symbolic rank.
+
+Current PyTorch's `torch.linalg` includes `solve`, `slogdet`, `matrix_rank`, `qr`, `svd`, and `eigh`.
+
+- [PyTorch `torch.linalg`](https://docs.pytorch.org/docs/stable/linalg)
+- [PyTorch `torch.linalg.solve`](https://docs.pytorch.org/docs/stable/generated/torch.linalg.solve.html)
+
+---
+
+## Part 1.3: Linear Algebra III — Quadratic Forms, Eigenvalues, and Derivatives
+
+### 1. Quadratic forms
+
+{/* formula: MAI4-001 */}
+<Math formulaId="MAI4-001" display tex={"\\mathbf{x}^TA\\mathbf{x}\n=\n\\sum_{i=1}^{N}x_i(A\\mathbf{x})_i\n=\n\\sum_{i=1}^{N}\\sum_{j=1}^{N}A_{i,j}x_i x_j."} />
+Only A's symmetric part contributes to a quadratic form.
+
+{/* formula: MAI4-002 */}
+<Math formulaId="MAI4-002" display tex={"\\mathbf{x}^TA\\mathbf{x}\n=\n(\\mathbf{x}^TA\\mathbf{x})^T\n=\n\\mathbf{x}^TA^T\\mathbf{x}\n=\n\\mathbf{x}^T\\left(\\frac12A+\\frac12A^T\\right)\\mathbf{x}."} />
+### 2. Positive definiteness and semidefiniteness
+
+{/* formula: MAI4-003 */}
+<Math formulaId="MAI4-003" display tex={"A\\succ0\n\\iff\n\\mathbf{x}^TA\\mathbf{x}>0\n\\quad\\text{for all }\\mathbf{x}\\neq0."} />
+{/* formula: MAI4-004 */}
+<Math formulaId="MAI4-004" display tex={"A\\succeq0\n\\iff\n\\mathbf{x}^TA\\mathbf{x}\\ge0\n\\quad\\text{for all }\\mathbf{x}."} />
+{/* formula: MAI4-005 */}
+<Math formulaId="MAI4-005" display tex={"A\\prec0\n\\iff\n\\mathbf{x}^TA\\mathbf{x}<0\n\\quad\\text{for all }\\mathbf{x}\\neq0."} />
+{/* formula: MAI4-006 */}
+<Math formulaId="MAI4-006" display tex={"A\\preceq0\n\\iff\n\\mathbf{x}^TA\\mathbf{x}\\le0\n\\quad\\text{for all }\\mathbf{x}."} />
+Indefinite means positive in some directions and negative in others.
+
+{/* formula: MAI4-007 */}
+<Math formulaId="MAI4-007" display tex={"\\exists\\mathbf{x}_1,\\mathbf{x}_2:\n\\quad\n\\mathbf{x}_1^TA\\mathbf{x}_1>0,\\qquad\n\\mathbf{x}_2^TA\\mathbf{x}_2<0."} />
+### 3. Eigenvalues and eigenvectors
+
+{/* formula: MAI4-008 */}
+<Math formulaId="MAI4-008" display tex={"A\\mathbf{x}=\\lambda\\mathbf{x},\\qquad \\mathbf{x}\\neq0."} />
+Eigenvalues connect directly with trace, determinant, and rank.
+
+{/* formula: MAI4-009 */}
+<Math formulaId="MAI4-009" display tex={"\\operatorname{tr}(A)=\\sum_{i=1}^{N}\\lambda_i."} />
+{/* formula: MAI4-010 */}
+<Math formulaId="MAI4-010" display tex={"|A|=\\prod_{i=1}^{N}\\lambda_i."} />
+{/* formula: MAI4-011 */}
+<Math formulaId="MAI4-011" display tex={"\\operatorname{rank}(A)=\\#\\{i:\\lambda_i\\neq0\\}."} />
+{/* formula: MAI4-012 */}
+<Math formulaId="MAI4-012" display tex={"A^{-1}\\mathbf{x}_i=\\frac{1}{\\lambda_i}\\mathbf{x}_i."} />
+{/* formula: MAI4-013 */}
+<Math formulaId="MAI4-013" display tex={"D=\\operatorname{diag}(d_1,\\ldots,d_N)\n\\quad\\Longrightarrow\\quad\n\\lambda_i=d_i."} />
+Collecting all eigenvector equations gives:
+
+{/* formula: MAI4-014 */}
+<Math formulaId="MAI4-014" display tex={"AX=X\\Lambda."} />
+{/* formula: MAI4-015 */}
+<Math formulaId="MAI4-015" display tex={"X=\n\\begin{bmatrix}\\mathbf{x}_1&\\mathbf{x}_2&\\cdots&\\mathbf{x}_N\\end{bmatrix},\n\\qquad\n\\Lambda=\\operatorname{diag}(\\lambda_1,\\ldots,\\lambda_N)."} />
+If X is invertible, A is diagonalizable.
+
+{/* formula: MAI4-016 */}
+<Math formulaId="MAI4-016" display tex={"A=X\\Lambda X^{-1}."} />
+### 4. Eigendecomposition of symmetric matrices
+
+A symmetric matrix has real eigenvalues and can have orthonormal eigenvectors.
+
+{/* formula: MAI4-017 */}
+<Math formulaId="MAI4-017" display tex={"A=U\\Lambda U^T."} />
+This structure lets eigenvalue signs determine definiteness.
+
+{/* formula: MAI4-018 */}
+<Math formulaId="MAI4-018" display tex={"\\mathbf{x}^TA\\mathbf{x}\n=\n\\mathbf{x}^TU\\Lambda U^T\\mathbf{x}\n=\n\\mathbf{y}^T\\Lambda\\mathbf{y}\n=\n\\sum_{i=1}^{N}\\lambda_i y_i^2."} />
+{/* formula: MAI4-019 */}
+<Math formulaId="MAI4-019" display tex={"\\mathbf{y}=U^T\\mathbf{x}."} />
+### 5. Gradients with respect to matrices
+
+For a scalar-valued function of a matrix, the gradient is a matrix of partial derivatives matching the input's shape.
+
+{/* formula: MAI4-020 */}
+<Math formulaId="MAI4-020" display tex={"\\nabla_A f(A)\\in\\mathbb{R}^{M\\times N},\\qquad\n\\left(\\nabla_A f(A)\\right)_{i,j}\n=\n\\frac{\\partial f(A)}{\\partial A_{i,j}}."} />
+For vector inputs, this becomes the familiar gradient.
+
+{/* formula: MAI4-021 */}
+<Math formulaId="MAI4-021" display tex={"\\nabla_{\\mathbf{x}}f(\\mathbf{x})\n=\n\\begin{bmatrix}\n\\frac{\\partial f}{\\partial x_1}\\\\\n\\frac{\\partial f}{\\partial x_2}\\\\\n\\vdots\\\\\n\\frac{\\partial f}{\\partial x_N}\n\\end{bmatrix}."} />
+Linearity is preserved as well.
+
+{/* formula: MAI4-022 */}
+<Math formulaId="MAI4-022" display tex={"\\nabla_{\\mathbf{x}}\\big(f(\\mathbf{x})+g(\\mathbf{x})\\big)\n=\n\\nabla_{\\mathbf{x}}f(\\mathbf{x})+\\nabla_{\\mathbf{x}}g(\\mathbf{x})."} />
+{/* formula: MAI4-023 */}
+<Math formulaId="MAI4-023" display tex={"\\nabla_{\\mathbf{x}}\\big(tf(\\mathbf{x})\\big)\n=\nt\\nabla_{\\mathbf{x}}f(\\mathbf{x})."} />
+### 6. Hessian
+
+{/* formula: MAI4-024 */}
+<Math formulaId="MAI4-024" display tex={"\\nabla_{\\mathbf{x}}^2 f(\\mathbf{x})\\in\\mathbb{R}^{N\\times N},\\qquad\n\\left(\\nabla_{\\mathbf{x}}^2 f(\\mathbf{x})\\right)_{i,j}\n=\n\\frac{\\partial^2 f(\\mathbf{x})}{\\partial x_i\\partial x_j}."} />
+For sufficiently smooth functions, mixed partial derivatives agree and the Hessian is symmetric.
+
+{/* formula: MAI4-025 */}
+<Math formulaId="MAI4-025" display tex={"\\frac{\\partial^2f(\\mathbf{x})}{\\partial x_i\\partial x_j}\n=\n\\frac{\\partial^2f(\\mathbf{x})}{\\partial x_j\\partial x_i}."} />
+### 7. Derivative formulas for linear and quadratic functions
+
+{/* formula: MAI4-026 */}
+<Math formulaId="MAI4-026" display tex={"\\nabla_{\\mathbf{x}}\\mathbf{b}^T\\mathbf{x}=\\mathbf{b}."} />
+{/* formula: MAI4-027 */}
+<Math formulaId="MAI4-027" display tex={"\\nabla_{\\mathbf{x}}\\mathbf{x}^TA\\mathbf{x}=2A\\mathbf{x}\n\\qquad(A=A^T)."} />
+{/* formula: MAI4-028 */}
+<Math formulaId="MAI4-028" display tex={"\\nabla_{\\mathbf{x}}^2\\mathbf{x}^TA\\mathbf{x}=2A\n\\qquad(A=A^T)."} />
+### 8. Automatic differentiation in 2026
+
+PyTorch can calculate these gradients, Jacobians, and Hessians without manual expansion. Autodifferentiation does not eliminate mathematics: without understanding **shape, symmetry, positive definiteness, and conditioning**, results are easy to misinterpret.
+
+As of the source's August 2026 update, PyTorch 2.13's `torch.func` directly provides:
+
+- `grad`
+- `vjp`, `jvp`
+- `jacrev`, `jacfwd`
+- `hessian`
+- `vmap`
+
+Hessians involve second derivatives, so memory and compute can grow rapidly. Large-scale models often use Hessian–vector products rather than a full Hessian.
+
+- [PyTorch `torch.func`](https://docs.pytorch.org/docs/stable/func.api)
+- [PyTorch autograd mechanics](https://docs.pytorch.org/docs/stable/notes/autograd)
+
+---
+
+## Part 1.4: Perceptrons, Convolution, and DNNs
+
+### 1. From biological neurons to perceptrons
+
+A perceptron does not faithfully reproduce a biological neuron. It abstracts a computational structure: **inputs → weighted sum → nonlinear or threshold function → output**.
+
+One neuron in a multilayer network can be written using the lecture diagram's equation as follows.
+
+{/* formula: MAI5-001 */}
+<Math formulaId="MAI5-001" display tex={"z_i^{(\\ell)}\n=\n\\sum_{j=1}^{n_{\\ell-1}}\nw_{i,j}^{(\\ell)}a_j^{(\\ell-1)}\n+b_i^{(\\ell)}."} />
+{/* formula: MAI5-002 */}
+<Math formulaId="MAI5-002" display tex={"a_i^{(\\ell)}=h\\!\\left(z_i^{(\\ell)}\\right)."} />
+### 2. From a two-dimensional line to an N-dimensional hyperplane
+
+A two-dimensional line can be written as:
+
+{/* formula: MAI5-003 */}
+<Math formulaId="MAI5-003" display tex={"y=ax+c."} />
+Rearranging into a general linear boundary gives:
+
+{/* formula: MAI5-004 */}
+<Math formulaId="MAI5-004" display tex={"w_1x_1+w_2x_2+b=0."} />
+In N dimensions, it becomes a hyperplane.
+
+{/* formula: MAI5-005 */}
+<Math formulaId="MAI5-005" display tex={"\\sum_{n=1}^{N}w_nx_n+b=0."} />
+{/* formula: MAI5-006 */}
+<Math formulaId="MAI5-006" display tex={"\\mathbf{w}^T\\mathbf{x}+b=0."} />
+### 3. The perceptron's discriminant function
+
+{/* formula: MAI5-007 */}
+<Math formulaId="MAI5-007" display tex={"d(\\mathbf{x})=\\operatorname{sign}(g(\\mathbf{x})),\n\\qquad\ng(\\mathbf{x})=\\mathbf{w}^T\\mathbf{x}+b."} />
+{/* formula: MAI5-008 */}
+<Math formulaId="MAI5-008" display tex={"\\operatorname{sign}(a)=\n\\begin{cases}\n-1,&a<0,\\\\\n0,&a=0,\\\\\n1,&a>0.\n\\end{cases}"} />
+#### 3.1 Decision-boundary geometry
+
+- The boundary is perpendicular to weight vector `\mathbf{w}`.
+- Bias shifts the boundary's location.
+- The source's `b/\|w\|_2` can be read as signed distance. Nonnegative geometric distance is `|b|/\|w\|_2`.
+
+{/* formula: MAI5-009 */}
+<Math formulaId="MAI5-009" display tex={"\\operatorname{dist}(0,\\text{boundary})=\\frac{b}{\\|\\mathbf{w}\\|_2}."} />
+Including the sign, a point x's position relative to the boundary is expressed by:
+
+{/* formula: MAI5-010 */}
+<Math formulaId="MAI5-010" display tex={"\\operatorname{signed\\ distance}(\\mathbf{x})\n=\n\\frac{g(\\mathbf{x})}{\\|\\mathbf{w}\\|_2}."} />
+{/* formula: MAI5-011 */}
+<Math formulaId="MAI5-011" display tex={"\\begin{aligned}\ng(\\mathbf{x})&=0 &&\\text{on the plane},\\\\\ng(\\mathbf{x})&>0 &&\\text{on the positive side},\\\\\ng(\\mathbf{x})&<0 &&\\text{on the negative side}.\n\\end{aligned}"} />
+### 4. Linearly separable training sets and zero error
+
+{/* formula: MAI5-012 */}
+<Math formulaId="MAI5-012" display tex={"\\mathcal{D}=\n\\{(\\mathbf{x}_1,y_1),\\ldots,(\\mathbf{x}_M,y_M)\\}."} />
+{/* formula: MAI5-013 */}
+<Math formulaId="MAI5-013" display tex={"\\big(y_m=1\\land g(\\mathbf{x}_m)>0\\big)\n\\ \\lor\\\n\\big(y_m=-1\\land g(\\mathbf{x}_m)<0\\big),\n\\qquad\\forall m."} />
+In one line:
+
+{/* formula: MAI5-014 */}
+<Math formulaId="MAI5-014" display tex={"y_m\\,g(\\mathbf{x}_m)>0,\\qquad\\forall m."} />
+### 5. Nonlinear discriminants and convolution
+
+Begin with continuous convolution, one of the DNN's key building blocks.
+
+{/* formula: MAI5-015 */}
+<Math formulaId="MAI5-015" display tex={"(f*g)(t)\n=\n\\int_{-\\infty}^{\\infty}\nf(\\tau)g(t-\\tau)\\,d\\tau."} />
+These two discrete forms are equivalent.
+
+{/* formula: MAI5-016 */}
+<Math formulaId="MAI5-016" display tex={"(f*g)[n]\n=\n\\sum_{m=-\\infty}^{\\infty}\nf[m]\\,g[n-m]."} />
+{/* formula: MAI5-017 */}
+<Math formulaId="MAI5-017" display tex={"(f*g)[n]\n=\n\\sum_{m=-\\infty}^{\\infty}\nf[n-m]\\,g[m]."} />
+### 6. Common DNN modules
+
+The lecture's PyTorch module list is reorganized by function below.
+
+| Module | Role |
+|---|---|
+| `nn.Linear` | Fully connected linear transformation |
+| `nn.Conv2d` | Two-dimensional convolution |
+| `nn.ConvTranspose2d` | Transposed-convolution upsampling |
+| `nn.ReLU` | Nonlinear activation |
+| `nn.MaxPool2d` | Max pooling |
+| `nn.AvgPool2d` | Average pooling |
+| `nn.Upsample` | Interpolation-based upsampling |
+| `nn.Dropout` | Regularization through random deactivation during training |
+
+### 7. 2026 update: what followed CNNs?
+
+CNN mathematics has not become obsolete, but visual-model choices have broadened substantially.
+
+- Vision Transformer treats images as patch sequences and demonstrated strong image recognition with attention alone.
+- PyTorch 2.13 provides `scaled_dot_product_attention` and can dispatch to several backends, including FlashAttention-2-family implementations.
+- `torch.compile` is a central PyTorch execution path capturing model code as graphs for optimization.
+- CNNs remain widely used for low-level features, embedded vision, restoration, medical imaging, and hybrid architectures.
+
+The lecture's **perceptron → convolution → DNN** progression is a historical foundation, extended by attention and foundation models.
+
+- [Original Vision Transformer paper](https://arxiv.org/abs/2010.11929)
+- [PyTorch scaled dot-product attention](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention)
+- [PyTorch `torch.compile`](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)
+
+---
+
+## Part 1.5: Random Variables, Conditional Probability, and Conditional Expectation
+
+### 1. CDF and PDF of a real random variable
+
+{/* formula: MAI6-001 */}
+<Math formulaId="MAI6-001" display tex={"F_X(x)=P\\{X\\le x\\},\\qquad \\forall x\\in\\mathbb{R}."} />
+{/* formula: MAI6-002 */}
+<Math formulaId="MAI6-002" display tex={"\\lim_{t\\to\\infty}F_X(t)=1,\\qquad\n\\lim_{t\\to-\\infty}F_X(t)=0."} />
+{/* formula: MAI6-003 */}
+<Math formulaId="MAI6-003" display tex={"p_X(x)=\\frac{dF_X(x)}{dx}."} />
+### 2. Discrete and continuous distributions
+
+The lecture's discrete examples are Bernoulli, binomial, and Poisson; continuous examples are uniform, Gaussian, and Laplace.
+
+The Poisson PMF is:
+
+{/* formula: MAI6-004 */}
+<Math formulaId="MAI6-004" display tex={"P\\{X=k\\}=e^{-\\lambda}\\frac{\\lambda^k}{k!},\n\\qquad k=0,1,2,\\ldots,\\quad \\lambda>0."} />
+A univariate Gaussian PDF with mean μ and variance σ² is:
+
+{/* formula: MAI6-005 */}
+<Math formulaId="MAI6-005" display tex={"p_X(x)\n=\n\\frac{1}{\\sqrt{2\\pi\\sigma^2}}\n\\exp\\!\\left(\n-\\frac12\\frac{(x-\\mu)^2}{\\sigma^2}\n\\right)."} />
+### 3. Independence
+
+{/* formula: MAI6-006 */}
+<Math formulaId="MAI6-006" display tex={"p_{X,Y}(x,y)=p_X(x)p_Y(y)."} />
+### 4. Mean, expectation, variance, and correlation
+
+{/* formula: MAI6-007 */}
+<Math formulaId="MAI6-007" display tex={"\\mu_X=E[X]=\\int x\\,p_X(x)\\,dx."} />
+{/* formula: MAI6-008 */}
+<Math formulaId="MAI6-008" display tex={"E[g(X)]=\\int g(x)p_X(x)\\,dx."} />
+{/* formula: MAI6-009 */}
+<Math formulaId="MAI6-009" display tex={"\\operatorname{Var}(X)\n=\nE\\!\\left[|X-E[X]|^2\\right]\n=\nE[|X|^2]-|E[X]|^2."} />
+{/* formula: MAI6-010 */}
+<Math formulaId="MAI6-010" display tex={"E[XY^*]\n=\n\\iint xy^*p_{X,Y}(x,y)\\,dx\\,dy."} />
+Expanding real and imaginary parts of complex random variables makes the correlation integral four-dimensional.
+
+{/* formula: MAI6-011 */}
+<Math formulaId="MAI6-011" display tex={"E[XY^*]\n=\n\\iiiint\n(a+ib)(c-id)\\,\np_{X_r,X_i,Y_r,Y_i}(a,b,c,d)\\,\nda\\,db\\,dc\\,dd."} />
+### 5. Covariance
+
+{/* formula: MAI6-012 */}
+<Math formulaId="MAI6-012" display tex={"\\operatorname{Cov}(X,Y)\n=\nE[(X-E[X])(Y-E[Y])^*]\n=\nE[XY^*]-E[X]E[Y^*]."} />
+Distinguish ensemble mean from a finite-sample mean.
+
+{/* formula: MAI6-013 */}
+<Math formulaId="MAI6-013" display tex={"\\bar{x}=\\frac1N\\sum_{n=1}^{N}x_n."} />
+The covariance properties are listed in full.
+
+{/* formula: MAI6-014 */}
+<Math formulaId="MAI6-014" display tex={"\\operatorname{Cov}(X,Y)\n=\nE[XY^*]-\\mu_X\\mu_Y^*."} />
+{/* formula: MAI6-015 */}
+<Math formulaId="MAI6-015" display tex={"\\operatorname{Cov}(X,Y)\n=\n\\operatorname{Cov}^*(Y,X)."} />
+{/* formula: MAI6-016 */}
+<Math formulaId="MAI6-016" display tex={"\\operatorname{Cov}(X,X)=\\operatorname{Var}(X)."} />
+{/* formula: MAI6-017 */}
+<Math formulaId="MAI6-017" display tex={"\\operatorname{Cov}(aX+b,cY+d)\n=\nac^*\\operatorname{Cov}(X,Y)."} />
+{/* formula: MAI6-018 */}
+<Math formulaId="MAI6-018" display tex={"|\\operatorname{Cov}(X,Y)|\\le\\sigma_X\\sigma_Y,\n\\qquad\n\\sigma_X^2=\\operatorname{Var}(X),\\ \n\\sigma_Y^2=\\operatorname{Var}(Y)."} />
+{/* formula: MAI6-019 */}
+<Math formulaId="MAI6-019" display tex={"|E[XY^*]|\n\\le\n\\sqrt{E[|X|^2]E[|Y|^2]}."} />
+{/* formula: MAI6-020 */}
+<Math formulaId="MAI6-020" display tex={"X\\perp Y\n\\quad\\Longrightarrow\\quad\nE[XY]=\\mu_X\\mu_Y\n\\quad\\Longrightarrow\\quad\n\\operatorname{Cov}(X,Y)=0."} />
+The converse does not generally hold. Jointly Gaussian variables are a special case where uncorrelatedness implies independence.
+
+{/* formula: MAI6-021 */}
+<Math formulaId="MAI6-021" display tex={"\\operatorname{Cov}\\!\\left(\\sum_n X_n,\\sum_mY_m\\right)\n=\n\\sum_i\\sum_j\\operatorname{Cov}(X_i,Y_j)."} />
+### 6. A vector proof of Cauchy–Schwarz
+
+The lecture footnote's derivation is retained too.
+
+{/* formula: MAI6-022 */}
+<Math formulaId="MAI6-022" display tex={"\\begin{aligned}\n\\sum_{n=1}^{N}\\sum_{n'=1}^{N}\n(x_ny_{n'}-x_{n'}y_n)^2\n&=\n\\sum_n x_n^2\\sum_{n'}y_{n'}^2\n+\n\\sum_n y_n^2\\sum_{n'}x_{n'}^2\\\\\n&\\quad-\n2\\sum_n x_ny_n\\sum_{n'}x_{n'}y_{n'}\\\\\n&=\n2\\left(\\sum_nx_n^2\\right)\n\\left(\\sum_ny_n^2\\right)\n-\n2\\left(\\sum_nx_ny_n\\right)^2.\n\\end{aligned}"} />
+{/* formula: MAI6-023 */}
+<Math formulaId="MAI6-023" display tex={"\\left(\\sum_{n=1}^{N}x_n^2\\right)\n\\left(\\sum_{n=1}^{N}y_n^2\\right)\n\\ge\n\\left(\\sum_{n=1}^{N}x_ny_n\\right)^2."} />
+### 7. Conditional probability
+
+{/* formula: MAI6-024 */}
+<Math formulaId="MAI6-024" display tex={"P(A\\mid B)."} />
+{/* formula: MAI6-025 */}
+<Math formulaId="MAI6-025" display tex={"F_Y(y)=\\lim_{x\\to\\infty}F_{X,Y}(x,y)."} />
+{/* formula: MAI6-026 */}
+<Math formulaId="MAI6-026" display tex={"F_{X,Y}(x,y)\n=\n\\int_{-\\infty}^{y}\nF_{X\\mid Y}(x\\mid t)\\,dF_Y(t)."} />
+{/* formula: MAI6-027 */}
+<Math formulaId="MAI6-027" display tex={"F_{X\\mid Y}(x\\mid y)\n=\n\\frac{dF_{X,Y}(x,y)}{dy}\n\\left(\n\\frac{dF_{X,Y}(\\infty,y)}{dy}\n\\right)^{-1}."} />
+The density-function form may be more familiar.
+
+{/* formula: MAI6-028 */}
+<Math formulaId="MAI6-028" display tex={"p_{X,Y}(x,y)\n=\n\\frac{d^2F_{X,Y}(x,y)}{dx\\,dy}."} />
+{/* formula: MAI6-029 */}
+<Math formulaId="MAI6-029" display tex={"p_Y(y)=\\frac{dF(\\infty,y)}{dy}."} />
+{/* formula: MAI6-030 */}
+<Math formulaId="MAI6-030" display tex={"p_{X\\mid Y}(x\\mid y)\n=\n\\frac{p_{X,Y}(x,y)}{p_Y(y)}."} />
+Under independence, conditioning does not change X's distribution.
+
+{/* formula: MAI6-031 */}
+<Math formulaId="MAI6-031" display tex={"p_{X\\mid Y}(x\\mid y)=p_X(x),\n\\qquad\n\\forall x,y\\ \\text{with }p_Y(y)>0."} />
+### 8. Conditional expectation
+
+{/* formula: MAI6-032 */}
+<Math formulaId="MAI6-032" display tex={"E[X\\mid Y]\n=\n\\int_{-\\infty}^{\\infty}\nx\\,dF_{X\\mid Y}(x\\mid Y)."} />
+{/* formula: MAI6-033 */}
+<Math formulaId="MAI6-033" display tex={"E[X\\mid Y]\n=\n\\int_{-\\infty}^{\\infty}\nx\\,p_{X\\mid Y}(x\\mid Y)\\,dx."} />
+Conditional expectation is a function of Y and therefore itself a random variable.
+
+{/* formula: MAI6-034 */}
+<Math formulaId="MAI6-034" display tex={"I_A(X)=\n\\begin{cases}\n1,&X\\in A,\\\\\n0,&\\text{otherwise}.\n\\end{cases}"} />
+{/* formula: MAI6-035 */}
+<Math formulaId="MAI6-035" display tex={"P\\{X\\in A\\mid Y\\}=E[I_A(X)\\mid Y]."} />
+#### 8.1 Filtration property
+
+{/* formula: MAI6-036 */}
+<Math formulaId="MAI6-036" display tex={"E[E[X\\mid Y,Z]\\mid Y]=E[X\\mid Y]."} />
+
+The integral expansion of the filtration property in the lecture footnote is also retained.
+
+{/* formula: MAI6-036A */}
+<Math formulaId="MAI6-036A" display tex={"\\begin{aligned}\nE[X\\mid Y=y]\n&=\\int x\\,p_{X\\mid Y}(x\\mid y)\\,dx\\\\\n&=\\int x\\,\\frac{p_{X,Y}(x,y)}{p_Y(y)}\\,dx\\\\\n&=\\int x\\,\\frac{\\int p_{X,Y,Z}(x,y,z)\\,dz}{p_Y(y)}\\,dx\\\\\n&=\\int \\frac{p_{Y,Z}(y,z)}{p_Y(y)}\n\\left\\{\\int x\\,p_{X\\mid Y,Z}(x\\mid y,z)\\,dx\\right\\}dz\\\\\n&=\\int p_{Z\\mid Y}(z\\mid y)\\,E[X\\mid Y=y,Z=z]\\,dz\\\\\n&=E[E[X\\mid Y,Z]\\mid Y=y].\n\\end{aligned}"} />
+{/* formula: MAI6-037 */}
+<Math formulaId="MAI6-037" display tex={"E[X]=E[E[X\\mid Y]]."} />
+#### 8.2 Conditioning on an already known quantity
+
+{/* formula: MAI6-038 */}
+<Math formulaId="MAI6-038" display tex={"E[f(X)Z\\mid X,Y]\n=\nf(X)E[Z\\mid X,Y]."} />
+{/* formula: MAI6-039 */}
+<Math formulaId="MAI6-039" display tex={"E[X\\mid X,Y]=X."} />
+{/* formula: MAI6-040 */}
+<Math formulaId="MAI6-040" display tex={"E[E[X\\mid Y,Z]\\mid Y]\n=\nE[X\\mid Y]\n=\nE[E[X\\mid Y]\\mid Y,Z]."} />
+### 9. Deterministic or random?
+
+The lecture's check questions are retained as equations too.
+
+{/* formula: MAI6-041 */}
+<Math formulaId="MAI6-041" display tex={"Y=f(X)."} />
+{/* formula: MAI6-042 */}
+<Math formulaId="MAI6-042" display tex={"\\mu=E[X]."} />
+{/* formula: MAI6-043 */}
+<Math formulaId="MAI6-043" display tex={"\\widehat{X}=E[X\\mid Z]."} />
+{/* formula: MAI6-044 */}
+<Math formulaId="MAI6-044" display tex={"\\widehat{X}=E[X\\mid Z=z_0]."} />
+Interpret them as follows.
+
+- `Y=f(X)`: generally a random variable
+- `\mu=E[X]`: a deterministic scalar once its distribution is fixed
+- `E[X\mid Z]`: a random variable because it is a function of Z
+- `E[X\mid Z=z_0]`: a deterministic quantity when conditioned on a particular z₀
+
+### 10. Implementation perspective in 2026
+
+As of the source's August 2026 update, PyTorch 2.13's `torch.distributions` treats Bernoulli, normal, and Poisson distributions as more than sampling tools. Through `log_prob`, `entropy`, and reparameterized sampling, it **connects probabilistic models to computation graphs**.
+
+Conditional probability and expectation are therefore both classical statistical language and foundations for implementing VAEs, stochastic policies, Bayesian layers, and uncertainty estimation.
+
+- [PyTorch `torch.distributions`](https://docs.pytorch.org/docs/stable/distributions.html)
+
+---
+
+## Part 1.6: Random Vectors, Joint Gaussians, WSS, and Power Spectra
+
+### 1. Random vectors
+
+{/* formula: MAI7-001 */}
+<Math formulaId="MAI7-001" display tex={"\\mathbf{X}=(X_1,\\ldots,X_N)\\in\\mathcal{X},\n\\qquad\n\\mathcal{X}=\\mathbb{R}^N\\ \\text{or}\\ \\mathbb{C}^N."} />
+{/* formula: MAI7-002 */}
+<Math formulaId="MAI7-002" display tex={"F_{\\mathbf{X}}(x_1,\\ldots,x_N)\n=\nP\\{X_1\\le x_1,\\ldots,X_N\\le x_N\\}."} />
+{/* formula: MAI7-003 */}
+<Math formulaId="MAI7-003" display tex={"\\lim_{t_n\\to\\infty}\nF_{\\mathbf{X}}(t_1,\\ldots,t_N)=1,\\qquad\n\\lim_{t_n\\to-\\infty}\nF_{\\mathbf{X}}(t_1,\\ldots,t_N)=0."} />
+{/* formula: MAI7-004 */}
+<Math formulaId="MAI7-004" display tex={"p_{\\mathbf{X}}(\\mathbf{x})\n=\n\\frac{\\partial^N F_{\\mathbf{X}}(x_1,\\ldots,x_N)}\n{\\partial x_1\\cdots\\partial x_N}."} />
+### 2. Multivariate Gaussian distributions
+
+{/* formula: MAI7-005 */}
+<Math formulaId="MAI7-005" display tex={"\\mathbf{X}\\sim\\mathcal{N}(\\boldsymbol{\\mu},C)."} />
+{/* formula: MAI7-006 */}
+<Math formulaId="MAI7-006" display tex={"p_{\\mathbf{X}}(\\mathbf{x})\n=\n\\frac{1}{\\sqrt{\\det(2\\pi C)}}\n\\exp\\!\\left(\n-\\frac12\n(\\mathbf{x}-\\boldsymbol{\\mu})^H\nC^{-1}\n(\\mathbf{x}-\\boldsymbol{\\mu})\n\\right)."} />
+{/* formula: MAI7-007 */}
+<Math formulaId="MAI7-007" display tex={"\\det(\\alpha C)=\\alpha^N\\det(C),\n\\qquad C\\in\\mathbb{C}^{N\\times N}."} />
+### 3. Expectation, correlation, and covariance of random vectors
+
+{/* formula: MAI7-008 */}
+<Math formulaId="MAI7-008" display tex={"E[\\mathbf{X}]\n=\n\\int_{\\mathcal{X}}\\mathbf{x}\\,p_{\\mathbf{X}}(\\mathbf{x})\\,d\\mathbf{x}."} />
+{/* formula: MAI7-009 */}
+<Math formulaId="MAI7-009" display tex={"E[g(\\mathbf{X})]\n=\n\\int_{\\mathcal{X}}g(\\mathbf{x})p_{\\mathbf{X}}(\\mathbf{x})\\,d\\mathbf{x}."} />
+{/* formula: MAI7-010 */}
+<Math formulaId="MAI7-010" display tex={"R_{\\mathbf{X}}\n=\nE[\\mathbf{X}\\mathbf{X}^H],\n\\qquad\n[R_{\\mathbf{X}}]_{i,j}\n=\nE[X_iX_j^*]\n=\n\\int_{\\mathcal{X}}\nx_i x_j^* p_{\\mathbf{X}}(\\mathbf{x})\\,d\\mathbf{x}."} />
+{/* formula: MAI7-011 */}
+<Math formulaId="MAI7-011" display tex={"C_{\\mathbf{X},\\mathbf{Y}}\n=\nE[(\\mathbf{X}-E[\\mathbf{X}])\n(\\mathbf{Y}-E[\\mathbf{Y}])^H],\n\\qquad\n[C_{\\mathbf{X},\\mathbf{Y}}]_{i,j}\n=\n\\operatorname{Cov}(X_i,Y_j)."} />
+{/* formula: MAI7-012 */}
+<Math formulaId="MAI7-012" display tex={"C_{\\mathbf{X},\\mathbf{X}}\n=\nR_{\\mathbf{X}}\n-\nE[\\mathbf{X}]E[\\mathbf{X}]^H."} />
+Independent components yield a diagonal covariance matrix.
+
+{/* formula: MAI7-013 */}
+<Math formulaId="MAI7-013" display tex={"C_{\\mathbf{X},\\mathbf{X}}\n=\n\\operatorname{diag}(\\sigma_1^2,\\ldots,\\sigma_N^2)."} />
+The quadratic form of a positive-definite matrix appears again.
+
+{/* formula: MAI7-014 */}
+<Math formulaId="MAI7-014" display tex={"\\|\\mathbf{x}\\|_A^2\n=\n\\mathbf{x}^HA\\mathbf{x}>0,\n\\qquad\n\\forall\\mathbf{x}\\in\\mathbb{C}^N,\\ \\mathbf{x}\\neq0."} />
+### 4. Orthogonal covariance diagonalization and decorrelation
+
+{/* formula: MAI7-015 */}
+<Math formulaId="MAI7-015" display tex={"C=E\\Lambda E^H."} />
+{/* formula: MAI7-016 */}
+<Math formulaId="MAI7-016" display tex={"\\widetilde{\\mathbf{X}}=E^H\\mathbf{X}."} />
+{/* formula: MAI7-017 */}
+<Math formulaId="MAI7-017" display tex={"E[\\widetilde{\\mathbf{X}}\\widetilde{\\mathbf{X}}^H]=\\Lambda."} />
+{/* formula: MAI7-018 */}
+<Math formulaId="MAI7-018" display tex={"E[\\widetilde{X}_i\\widetilde{X}_j]=0,\n\\qquad i\\neq j."} />
+
+For complex vectors, conjugation is ordinarily included as follows.
+
+{/* formula: MAI7-018C */}
+<Math formulaId="MAI7-018C" display tex={"E[\\widetilde{X}_i\\widetilde{X}_j^*]=0,\n\\qquad i\\neq j."} />
+For jointly Gaussian variables, uncorrelated components are jointly independent.
+
+### 5. Conditional expectation for jointly Gaussian variables
+
+{/* formula: MAI7-019 */}
+<Math formulaId="MAI7-019" display tex={"E[\\mathbf{X}\\mid\\mathbf{Y}]\n=\nA\\mathbf{Y}+\\mathbf{b}."} />
+{/* formula: MAI7-020 */}
+<Math formulaId="MAI7-020" display tex={"E\\!\\left[\n(\\mathbf{X}-E[\\mathbf{X}\\mid\\mathbf{Y}])\n(\\mathbf{X}-E[\\mathbf{X}\\mid\\mathbf{Y}])^H\n\\mid\\mathbf{Y}\n\\right]\n=\nC."} />
+### 6. An example with M i.i.d. Gaussian vectors
+
+{/* formula: MAI7-021 */}
+<Math formulaId="MAI7-021" display tex={"\\mathbf{X}=\n\\begin{bmatrix}\n\\mathbf{X}_1&\\cdots&\\mathbf{X}_M\n\\end{bmatrix}."} />
+{/* formula: MAI7-022 */}
+<Math formulaId="MAI7-022" display tex={"p_{\\mathbf{X}}(\\mathbf{x})\n=\n\\prod_{m=1}^{M}\n\\frac{1}{(2\\pi)^{N/2}}|C|^{-1/2}\n\\exp\\!\\left\\{\n-\\frac12\n(\\mathbf{x}_m-\\boldsymbol{\\mu})^T\nC^{-1}\n(\\mathbf{x}_m-\\boldsymbol{\\mu})\n\\right\\}."} />
+{/* formula: MAI7-023 */}
+<Math formulaId="MAI7-023" display tex={"p_{\\mathbf{X}}(\\mathbf{x})\n=\n\\frac{1}{(2\\pi)^{MN/2}}|C|^{-1/2}\n\\exp\\!\\left\\{\n-\\frac12\n\\sum_{m=1}^{M}\n(\\mathbf{x}_m-\\boldsymbol{\\mu})^T\nC^{-1}\n(\\mathbf{x}_m-\\boldsymbol{\\mu})\n\\right\\}."} />
+
+The equation above preserves the source notation. Since each density contributes one `|C|^{-1/2}`, normalization for M independent vectors is corrected as follows.
+
+{/* formula: MAI7-023C */}
+<Math formulaId="MAI7-023C" display tex={"p_{\\mathbf{X}}(\\mathbf{x})\n=\n\\frac{1}{(2\\pi)^{MN/2}}|C|^{-M/2}\n\\exp\\!\\left\\{\n-\\frac12\n\\sum_{m=1}^{M}\n(\\mathbf{x}_m-\\boldsymbol{\\mu})^T\nC^{-1}\n(\\mathbf{x}_m-\\boldsymbol{\\mu})\n\\right\\}."} />
+The lecture defines its two sample statistics as **sums**. Notice that the first lacks the `1/M` of a conventional sample mean. Here, it is best read as a sum used to derive sufficient statistics.
+
+{/* formula: MAI7-024 */}
+<Math formulaId="MAI7-024" display tex={"\\widehat{\\boldsymbol{\\mu}}\n=\n\\sum_{m=1}^{M}\\mathbf{X}_m."} />
+{/* formula: MAI7-025 */}
+<Math formulaId="MAI7-025" display tex={"\\widehat{C}\n=\n\\sum_{m=1}^{M}\\mathbf{X}_m\\mathbf{X}_m^T\n=\n\\mathbf{X}\\mathbf{X}^T."} />
+{/* formula: MAI7-026 */}
+<Math formulaId="MAI7-026" display tex={"p_{\\mathbf{X}}(\\mathbf{x})\n=\n\\frac{1}{(2\\pi)^{MN/2}}|C|^{-1/2}\n\\exp\\!\\left\\{\n-\\frac12\\operatorname{tr}(\\widehat{C}C^{-1})\n+\n\\widehat{\\boldsymbol{\\mu}}^TC^{-1}\\boldsymbol{\\mu}\n-\n\\frac{M}{2}\\boldsymbol{\\mu}^TC^{-1}\\boldsymbol{\\mu}\n\\right\\}."} />
+{/* formula: MAI7-027 */}
+<Math formulaId="MAI7-027" display tex={"\\operatorname{tr}(AB)=\\operatorname{tr}(BA)."} />
+{/* formula: MAI7-028 */}
+<Math formulaId="MAI7-028" display tex={"\\operatorname{tr}(A)=\\sum_i A_{i,i}."} />
+### 7. Two-dimensional discrete random processes
+
+{/* formula: MAI7-029 */}
+<Math formulaId="MAI7-029" display tex={"X_{\\mathbf{s}},\n\\qquad\n\\mathbf{s}=(s_1,s_2)\\in\\mathbb{Z}^2,\n\\qquad\n\\mathcal{S}\\subseteq\\mathbb{Z}^2."} />
+{/* formula: MAI7-030 */}
+<Math formulaId="MAI7-030" display tex={"\\mu_{\\mathbf{s}}=E[X_{\\mathbf{s}}]."} />
+{/* formula: MAI7-031 */}
+<Math formulaId="MAI7-031" display tex={"R_{\\mathbf{s},\\mathbf{r}}\n=\nE[X_{\\mathbf{s}}X_{\\mathbf{r}}^*]."} />
+{/* formula: MAI7-032 */}
+<Math formulaId="MAI7-032" display tex={"C_{\\mathbf{s},\\mathbf{r}}\n=\nE[(X_{\\mathbf{s}}-\\mu_{\\mathbf{s}})\n(X_{\\mathbf{r}}-\\mu_{\\mathbf{r}})^*]\n=\nR_{\\mathbf{s},\\mathbf{r}}\n-\n\\mu_{\\mathbf{s}}\\mu_{\\mathbf{r}}^*."} />
+### 8. WSS
+
+For a second-order random process, shift-invariant mean and covariance define wide-sense stationarity.
+
+{/* formula: MAI7-033 */}
+<Math formulaId="MAI7-033" display tex={"\\mu_{\\mathbf{s}}=\\mu_{(0,0)}."} />
+{/* formula: MAI7-034 */}
+<Math formulaId="MAI7-034" display tex={"C_{\\mathbf{r},\\mathbf{r}+\\mathbf{s}}\n=\nC_{(0,0),\\mathbf{s}}."} />
+The WSS properties are listed in full.
+
+{/* formula: MAI7-035 */}
+<Math formulaId="MAI7-035" display tex={"R_{\\mathbf{s},(0,0)}\n=\nE[X_{\\mathbf{s}}X_{(0,0)}^*]\n=\nE[X_{\\mathbf{s}+\\mathbf{r}}X_{\\mathbf{r}}^*],\n\\qquad\\forall\\mathbf{r}\\in\\mathbb{Z}^2."} />
+{/* formula: MAI7-036 */}
+<Math formulaId="MAI7-036" display tex={"Y_{\\mathbf{s}}=X_{\\mathbf{s}+\\mathbf{s}_0}."} />
+{/* formula: MAI7-037 */}
+<Math formulaId="MAI7-037" display tex={"\\mu_Y=\\mu_X,\\qquad R_Y=R_X."} />
+{/* formula: MAI7-038 */}
+<Math formulaId="MAI7-038" display tex={"C_{\\mathbf{s},(0,0)}\n=\n\\operatorname{Var}(X_{\\mathbf{s}})."} />
+{/* formula: MAI7-039 */}
+<Math formulaId="MAI7-039" display tex={"R_{\\mathbf{s},(0,0)}\n=\n\\operatorname{Var}(X_{\\mathbf{s}})\n+\n|\\mu_{\\mathbf{s}}|^2."} />
+{/* formula: MAI7-040 */}
+<Math formulaId="MAI7-040" display tex={"R_{-\\mathbf{s},(0,0)}\n=\nR_{\\mathbf{s},(0,0)}^*."} />
+{/* formula: MAI7-041 */}
+<Math formulaId="MAI7-041" display tex={"R_{-\\mathbf{s},(0,0)}\n=\nR_{(0,0)-\\mathbf{s},(0,0)}\n=\nR_{(0,0),\\mathbf{s}}\n=\nR_{\\mathbf{s},(0,0)}^*."} />
+{/* formula: MAI7-042 */}
+<Math formulaId="MAI7-042" display tex={"|R_{\\mathbf{s}}|\\le R_{\\mathbf{s},(0,0)}."} />
+### 9. Two-dimensional power spectral density
+
+The power spectrum is the **DSFT of autocorrelation**, rather than a directly defined DSFT of the WSS process itself.
+
+{/* formula: MAI7-043 */}
+<Math formulaId="MAI7-043" display tex={"S_X(e^{i\\mu},e^{i\\nu})\n=\n\\sum_{m=-\\infty}^{\\infty}\n\\sum_{n=-\\infty}^{\\infty}\nR_{(m,n),(0,0)}\ne^{-i(m\\mu+n\\nu)}."} />
+This relationship is the core of the Wiener–Khinchin theorem.
+
+#### 9.1 A zero-mean WSS white process
+
+{/* formula: MAI7-044 */}
+<Math formulaId="MAI7-044" display tex={"R_{(m,n),(0,0)}\n=\nC_{(m,n),(0,0)}\n=\n\\sigma^2\\delta[m,n]."} />
+{/* formula: MAI7-045 */}
+<Math formulaId="MAI7-045" display tex={"S_X(e^{i\\mu},e^{i\\nu})=\\sigma^2."} />
+#### 9.2 Nonzero mean
+
+{/* formula: MAI7-046 */}
+<Math formulaId="MAI7-046" display tex={"C_{(m,n),(0,0)}=\\sigma^2\\delta[m,n]."} />
+{/* formula: MAI7-047 */}
+<Math formulaId="MAI7-047" display tex={"R_{(m,n),(0,0)}\n=\n\\sigma^2\\delta[m,n]\n+\n|\\mu_{(0,0)}|^2."} />
+{/* formula: MAI7-048 */}
+<Math formulaId="MAI7-048" display tex={"S_X(e^{i\\mu},e^{i\\nu})\n=\n\\sigma^2\n+\n|\\mu_{(0,0)}|^2(2\\pi)^2\n\\sum_{k,l=-\\infty}^{\\infty}\n\\delta(\\mu-2k\\pi,\\nu-2l\\pi)."} />
+### 10. Implementation perspective in 2026
+
+Frequency analysis remains a direct tool for two-dimensional images. As of the source's August 2026 update, PyTorch 2.13's `torch.fft.fft2` provides the 2D DFT, and its documentation notes Hermitian symmetry in Fourier representations of real signals.
+
+WSS does not assert that a real finite image is a perfectly stationary finite object. As the lecture notes, it models a finite image as **part of an observed infinite WSS process**.
+
+- [PyTorch `torch.fft.fft2`](https://docs.pytorch.org/docs/stable/generated/torch.fft.fft2.html)
+
+---
+
+## Part 1.7: Losses, Gradient Descent, Minibatches, and Generalization
+
+### 1. Minimize expected loss
+
+In statistical machine learning, model D maps input x to prediction D(x), and a loss measures its discrepancy from target y.
+
+Versions of the lecture number this equation `(4)` or `(5)`. This series **tracks the equation itself**, rather than relying on numbering alone.
+
+{/* formula: MAI8-001 */}
+<Math formulaId="MAI8-001" display tex={"\\underset{D}{\\operatorname{argmin}}\\;\nE_{\\mathbf{x},\\mathbf{y}}\n\\mathcal{L}(D(\\mathbf{x}),\\mathbf{y})."} />
+### 2. Approximate expectations with finite-sample averages
+
+The true joint data distribution is usually unknown. Training samples `(\mathbf{x}_l,\mathbf{y}_l)` approximate expected loss through an empirical average.
+
+{/* formula: MAI8-002 */}
+<Math formulaId="MAI8-002" display tex={"E_{\\mathbf{x},\\mathbf{y}}\n\\mathcal{L}(D(\\mathbf{x}),\\mathbf{y})\n\\approx\n\\frac1L\\sum_{l=1}^{L}\n\\mathcal{L}(D(\\mathbf{x}_l),\\mathbf{y}_l)."} />
+The March 19, 2025 version presents the right side as `??` for students to complete. The expression above is completed using the earlier version and surrounding context.
+
+### 3. MSE example
+
+{/* formula: MAI8-003 */}
+<Math formulaId="MAI8-003" display tex={"\\underset{D}{\\operatorname{argmin}}\\;\nE_{\\mathbf{x},\\mathbf{y}}\n\\mathcal{L}(D(\\mathbf{x}),\\mathbf{y}),\n\\qquad\n\\mathcal{L}(D(\\mathbf{x}),\\mathbf{y})\n=\n\\|D(\\mathbf{x})-\\mathbf{y}\\|_2^2."} />
+{/* formula: MAI8-004 */}
+<Math formulaId="MAI8-004" display tex={"\\|\\mathbf{x}\\|_2^2\n=\n\\sum_n |x_n|^2."} />
+### 4. Gradient
+
+The gradient of `f:\mathbb{R}^N\to\mathbb{R}` points toward steepest increase and is perpendicular to level curves.
+
+{/* formula: MAI8-005 */}
+<Math formulaId="MAI8-005" display tex={"\\nabla f(\\mathbf{z})\n=\n\\begin{bmatrix}\n\\frac{\\partial f}{\\partial x_1}(\\mathbf{z})&\n\\cdots&\n\\frac{\\partial f}{\\partial x_N}(\\mathbf{z})\n\\end{bmatrix}^{T}."} />
+### 5. Conditions for a local minimum
+
+{/* formula: MAI8-006 */}
+<Math formulaId="MAI8-006" display tex={"\\nabla f(\\mathbf{x}^*)=0."} />
+{/* formula: MAI8-007 */}
+<Math formulaId="MAI8-007" display tex={"\\mathbf{y}^T\\nabla^2f(\\mathbf{x}^*)\\mathbf{y}>0,\n\\qquad\n\\forall\\mathbf{y}\\neq0,\\ \n\\mathbf{y}\\in\\mathbb{R}^{N}."} />
+{/* formula: MAI8-008 */}
+<Math formulaId="MAI8-008" display tex={"\\left[\\nabla^2f(\\mathbf{x})\\right]_{m,n}\n=\n\\frac{\\partial^2f}{\\partial x_m\\partial x_n}(\\mathbf{x})."} />
+### 6. Gradient descent
+
+{/* formula: MAI8-009 */}
+<Math formulaId="MAI8-009" display tex={"\\mathbf{x}^{(i+1)}\n=\n\\mathbf{x}^{(i)}\n-\n\\alpha\\nabla f(\\mathbf{x}^{(i)})."} />
+A learning rate `\alpha` that is too small slows convergence; one that is too large can cause divergence.
+
+Computing each gradient from the full dataset is expensive for large L. The MSE example requires the following gradient across every sample.
+
+{/* formula: MAI8-010 */}
+<Math formulaId="MAI8-010" display tex={"\\nabla_D\n\\left\\|\nD(\\mathbf{x}_l)-\\mathbf{y}_l\n\\right\\|_2^2,\n\\qquad\nl=1,\\ldots,L."} />
+### 7. Stochastic minibatch gradient descent
+
+First shuffle sample indices randomly and divide them into batches of size B.
+
+{/* formula: MAI8-011 */}
+<Math formulaId="MAI8-011" display tex={"\\{1,\\ldots,L\\}\n=\n\\mathcal{L}^{(1)}\n\\cup\\cdots\\cup\n\\mathcal{L}^{(L/B)},\n\\qquad\n|\\mathcal{L}^{(i)}|=B."} />
+Update for each batch as follows.
+
+{/* formula: MAI8-012 */}
+<Math formulaId="MAI8-012" display tex={"\\mathbf{x}^{(i+1)}\n\\leftarrow\n\\mathbf{x}^{(i)}\n-\n\\alpha\n\\sum_{l\\in\\mathcal{L}^{(i+1)}}\n\\nabla f_l(\\mathbf{x}^{(i)})."} />
+The lecture defines total empirical loss by this sum.
+
+{/* formula: MAI8-013 */}
+<Math formulaId="MAI8-013" display tex={"\\sum_{l=1}^{L}f_l(\\mathbf{x})."} />
+### 8. The batch-size debate
+
+The lecture introduces Keskar and colleagues' ICLR 2017 findings: an empirical observation that large batches can approach sharper minimizers and generalize worse.
+
+However, **“sharp minima always generalize poorly” is not a theorem**. A 2017 response already showed reparameterizations changing sharpness without changing the function, and 2025 research also reported sharp minima that generalize well.
+
+A more careful 2026 reading is:
+
+- Evaluate batch size together with gradient noise, throughput, memory, and learning-rate schedules.
+- Sharpness is one useful diagnostic but can depend on parameterization.
+- Large-scale training jointly optimizes hardware utilization and optimization stability, rather than assuming smaller batches are always better.
+
+### 9. Connecting MIDAS research topics to the lecture
+
+The lecture closes with examples of MIDAS Lab's research directions.
+
+- Self-supervised and unsupervised learning
+- Iterative AI and iterative neural networks
+- Multimodal analysis
+- Nonconvex optimization
+- Compressed sensing
+- X-ray CT, MRI, PET, SPECT
+- Camera imaging, 3D reconstruction, and super-resolution
+- Vision-based autonomous systems
+- Digital healthcare
+
+The first version presents improved RMSE in self-supervised regression for low-dose CT alongside neural view synthesis and NeRF-family examples. Read these as **connections between foundational mathematics and actual research**.
+
+### 10. 2026 update: large-scale training in practice
+
+The lecture's SGD equations remain a starting point, with many systems techniques layered above them in large-scale training.
+
+#### 10.1 Optimizer
+
+AdamW, which decouples weight decay from gradient updates, is widely used. The source's PyTorch 2.13 discussion includes **Muon** alongside AdamW in the official optimizer API.
+
+- [Original AdamW paper](https://arxiv.org/abs/1711.05101)
+- [PyTorch optimizer list](https://docs.pytorch.org/docs/stable/optim.html)
+- [PyTorch Muon](https://docs.pytorch.org/docs/stable/generated/torch.optim.Muon.html)
+
+#### 10.2 Mixed precision
+
+The source describes NVIDIA Transformer Engine 2.16 as supporting FP8 on Hopper, Ada, and Blackwell, with MXFP8 and NVFP4 also documented for Blackwell. Modern training therefore combines **mathematical gradient descent, low-precision numerical representations, and scale management**.
+
+- [NVIDIA Transformer Engine](https://docs.nvidia.com/deeplearning/transformer-engine/)
+
+#### 10.3 Compilation and distributed training
+
+PyTorch 2.13 provides `torch.compile`, FSDP/FSDP2, tensor parallelism, and distributed checkpoints in one ecosystem.
+
+- [PyTorch `torch.compile`](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)
+- [PyTorch FSDP](https://docs.pytorch.org/docs/stable/fsdp.html)
+
+### 11. Reconnecting Chapter 1 in one line
+
+**Represent data as vectors and matrices → Model it probabilistically → Construct functions with neural networks → Define losses → Differentiate to obtain gradients → Optimize repeatedly with minibatches → Validate generalization.**
+
+This progression is the core of Chapter 1.

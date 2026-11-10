@@ -1,4 +1,7 @@
 <script>
+ import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+ const formulaEnglish = document.documentElement.lang === 'en';
+ const formulaText = value => formulaEnglish ? englishFormulaText(value) : value;
   import { computePerceptronLearning } from '@/lib/formula-lessons/perceptron-learning.mjs';
 
   export let lesson;
@@ -22,7 +25,7 @@
 
 <div class="lesson-grid" data-perceptron-learning-lesson data-focus={lesson.focus}>
   <section class="panel">
-    <p class="eyebrow">현재 margin과 error set</p>
+    <p class="eyebrow">{formulaText("현재 margin과 error set")}</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>sample</th><th>y</th><th>g(x)</th><th>y·g(x)</th><th>&lt;0</th><th>≤0</th></tr></thead>
@@ -45,7 +48,7 @@
   </section>
 
   <section class="panel">
-    <p class="eyebrow">완성 gradient와 update</p>
+    <p class="eyebrow">{formulaText("완성 gradient와 update")}</p>
     <div class="formula-row"><span>∂L/∂w</span><strong>{vec(result.fullGradient.w)}</strong></div>
     <div class="formula-row"><span>∂L/∂b</span><strong>{f(result.fullGradient.b)}</strong></div>
     <div class="formula-row"><span>full update w</span><strong>{vec(result.fullUpdate.w)}</strong></div>
@@ -61,7 +64,7 @@
 </div>
 
 <section class="panel next-panel">
-  <p class="eyebrow">corrected error-set update 뒤 margin</p>
+  <p class="eyebrow">{formulaText("corrected error-set update 뒤 margin")}</p>
   <div class="margin-bars">
     {#each result.correctedNextRows as row (row.id)}
       <div><span>{row.id}</span><i style={`width:${Math.max(3, Math.min(100, row.margin * 20))}%`}></i><strong>{f(row.margin)}</strong></div>
@@ -71,9 +74,7 @@
 
 <aside class="note">
   <strong>Fail-closed source distinction.</strong>
-  MAI-P3-023/024의 <code>??</code>는 그대로 보존되고, 수치 gradient는 별도 완성식 MAI-P3-144/145가 제공한다.
-  또 MAI-P3-030/036은 <code>margin&lt;0</code>을 쓰지만 교정형 MAI-P3-162/163은 <code>margin≤0</code>을 쓴다.
-  초기 w=0, b=0에서는 이 차이가 의도적으로 드러난다. zero-margin 표본은 corrected error set에는 들어가지만 그 순간 error-loss 항 자체는 0일 수 있으므로, “loss=0 iff error set empty”를 교정형에 기계적으로 확장하지 않는다.
+  {formulaText("MAI-P3-023/024의")} <code>??</code>{formulaText("는 그대로 보존되고, 수치 gradient는 별도 완성식 MAI-P3-144/145가 제공한다.\n  또 MAI-P3-030/036은")} <code>margin&lt;0</code>{formulaText("을 쓰지만 교정형 MAI-P3-162/163은")} <code>margin≤0</code>{formulaText("을 쓴다.\n  초기 w=0, b=0에서는 이 차이가 의도적으로 드러난다. zero-margin 표본은 corrected error set에는 들어가지만 그 순간 error-loss 항 자체는 0일 수 있으므로, “loss=0 iff error set empty”를 교정형에 기계적으로 확장하지 않는다.")}
 </aside>
 
 <style>
