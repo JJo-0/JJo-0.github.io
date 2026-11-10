@@ -547,5 +547,12 @@ POST_TAXONOMY.update({
     "2026-11-09-redundancy-hopfield-memory-news.mdx": Taxonomy("ai-machine-learning", "associative-memory", "paper-review", ("frontier-candidate", "associative-memory", "information-theory", "hopfield-network")),
 })
 
+# Register November 10 drafts from their existing frontmatter; retain draft flags.
+POST_TAXONOMY.update({
+    "2026-11-10-left-bundle-pacing-av-block-news.mdx": Taxonomy("health-lifestyle", "conduction-system-pacing", "research-report", ("frontier-candidate", "cardiac-pacing", "atrioventricular-block", "randomized-trial")),
+    "2026-11-10-retatrutide-knee-osteoarthritis-news.mdx": Taxonomy("health-lifestyle", "knee-osteoarthritis-obesity", "paper-review", ("frontier-one", "obesity", "osteoarthritis", "phase-3-trial")),
+    "2026-11-10-semaglutide-hfpef-hemodynamics-news.mdx": Taxonomy("health-lifestyle", "hfpef-hemodynamics", "research-report", ("frontier-candidate", "hfpef", "semaglutide", "hemodynamics")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
