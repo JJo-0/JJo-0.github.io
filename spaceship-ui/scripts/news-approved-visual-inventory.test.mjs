@@ -9,9 +9,10 @@ const catalogue = JSON.parse(fs.readFileSync(new URL('../site/news-media.json', 
 const read = (slug) => fs.readFileSync(new URL(`../site/content/posts/${slug}.mdx`, import.meta.url), 'utf8');
 const readByFile = (_slug, sourceFile) => fs.readFileSync(new URL(`../site/content/posts/${sourceFile}`, import.meta.url), 'utf8');
 const actual = loadApprovedVisualInventory(catalogue);
-assert.equal(actual.size, 26);
-assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 51);
+assert.equal(actual.size, 27);
+assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 52);
 assert.equal(actual.get('2026-10-09-sando-safe-dynamic-trajectory-news').mediaIds.length, 5);
+assert.deepEqual(actual.get('2026-10-08-google-constellation-nuclear-uprate-news').mediaIds, ['nuclear-clinton-context-original']);
 assert.deepEqual(actual.get('2026-10-07-deterministic-2d-semiconductor-nucleation-news').mediaIds, ['nucleation-current-fig1', 'nucleation-current-fig3', 'nucleation-current-fig4']);
 assert.equal([...inventory.entries].length, 9, 'October 25 batch remains nine entries');
 assert.equal([...currentInventory.entries].length, 3, 'October 28 batch is exactly three entries');
@@ -83,7 +84,7 @@ for (const index of [3, 4, 5]) {
   alteredRights[nov5Inventory.entries[index].mediaIds[0]].rights = 'unverified-rights';
   assert.throws(() => validateVisualInventory(nov5Inventory, alteredRights, readByFile));
 }
-console.log('Approved visual inventory: PASS 26 unique posts and 51 exact media across six fixed batches; existing image checks retained');
+console.log('Approved visual inventory: PASS 27 unique posts and 52 exact media across seven fixed batches; existing image checks retained');
 
 assert.deepEqual(actual.get("2026-10-14-cacheflex-l2-scratchpad-news").mediaIds, ["cacheflex-vector-width-unit"]);
 
