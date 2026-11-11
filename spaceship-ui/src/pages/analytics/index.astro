@@ -87,6 +87,13 @@ const dashboardConfig = JSON.stringify({
       <p class="text-sm text-muted-foreground">
         GA4 조회수(screenPageViews) 기준. 오늘을 제외한 완료 날짜 구간이며, 처리 지연으로 수치가 수정될 수 있습니다.
       </p>
+      <p data-admin-ga-status class="text-sm text-muted-foreground"></p>
+      <section aria-label="사이트 전체 방문 통계" class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-2xl border border-border p-5"><h3 class="text-sm text-muted-foreground">활성 사용자</h3><p data-admin-metric="activeUsers" class="mt-2 text-3xl font-bold tabular-nums">—</p></div>
+        <div class="rounded-2xl border border-border p-5"><h3 class="text-sm text-muted-foreground">세션</h3><p data-admin-metric="sessions" class="mt-2 text-3xl font-bold tabular-nums">—</p></div>
+        <div class="rounded-2xl border border-border p-5"><h3 class="text-sm text-muted-foreground">전체 페이지 조회수</h3><p data-admin-metric="screenPageViews" class="mt-2 text-3xl font-bold tabular-nums">—</p></div>
+      </section>
+      <p class="text-xs text-muted-foreground">위 지표는 메인·목록을 포함한 사이트 전체 집계입니다. 아래 인기 글은 게시글 주소만 집계하므로 수치가 다를 수 있습니다.</p>
       <div class="grid gap-5 lg:grid-cols-2">
         <section class="rounded-2xl border border-border p-5">
           <h3 class="mb-4 text-lg font-bold">인기 글 TOP 10</h3>
@@ -146,6 +153,7 @@ const dashboardConfig = JSON.stringify({
 </Layout>
 
 <script>
+  import { GOOGLE_READ_SCOPES, validateGoogleSession } from '@/lib/analytics/google-session.mjs';
   type CatalogEntry = { path: string; title: string; category: string; tags: string[]; isNews: boolean };
   type DashboardConfig = {
     clientId: string;
@@ -167,6 +175,7 @@ const dashboardConfig = JSON.stringify({
   let reportRequest: AbortController | null = null;
   let tokenExpiryTimer: ReturnType<typeof setTimeout> | null = null;
   let reportEpoch = 0;
+  let consentRequired = false;
 
   function clearReportSession(root: HTMLElement | null, message?: string) {
     accessToken = null;
@@ -176,13 +185,20 @@ const dashboardConfig = JSON.stringify({
     if (tokenExpiryTimer) clearTimeout(tokenExpiryTimer);
     tokenExpiryTimer = null;
     if (!root) return;
-    for (const selector of ['[data-admin-top-posts]', '[data-admin-categories]', '[data-admin-topics]', '[data-admin-queries]', '[data-admin-search-pages]', '[data-admin-gsc-status]']) {
+    root.querySelectorAll<HTMLElement>('[data-admin-metric]').forEach((metric) => { metric.textContent = '—'; });
+    for (const selector of ['[data-admin-top-posts]', '[data-admin-categories]', '[data-admin-topics]', '[data-admin-queries]', '[data-admin-search-pages]', '[data-admin-ga-status]', '[data-admin-gsc-status]']) {
       root.querySelector(selector)?.replaceChildren();
     }
     element<HTMLElement>(root, '[data-admin-results]').hidden = true;
     element<HTMLButtonElement>(root, '[data-admin-logout]').hidden = true;
     element<HTMLButtonElement>(root, '[data-admin-login]').hidden = false;
     if (message) status(root, message);
+  }
+
+  function reconnect(root: HTMLElement, message: string) {
+    clearReportSession(root, message);
+    consentRequired = true;
+    element<HTMLButtonElement>(root, '[data-admin-login]').textContent = 'Google 연결 다시 허용';
   }
 
   function element<T extends HTMLElement>(root: HTMLElement, selector: string): T {
@@ -389,8 +405,10 @@ const dashboardConfig = JSON.stringify({
       resetRows(element(root, selector), '조회 중입니다.');
     }
     element(root, '[data-admin-topics]').replaceChildren();
+    element(root, '[data-admin-ga-status]').textContent = 'GA4 조회 중입니다.';
+    root.querySelectorAll<HTMLElement>('[data-admin-metric]').forEach((metric) => { metric.textContent = '—'; });
     element(root, '[data-admin-gsc-status]').replaceChildren();
-    const gaRequest = authorizedPost(
+    const gaPostsRequest = authorizedPost(
       'https://analyticsdata.googleapis.com/v1beta/properties/' + googleProperty + ':runReport',
       {
         dateRanges: [{ startDate: days + 'daysAgo', endDate: 'yesterday' }],
@@ -401,31 +419,46 @@ const dashboardConfig = JSON.stringify({
         limit: 10000,
       }, request.signal
     );
+    const gaSummaryRequest = authorizedPost(
+      'https://analyticsdata.googleapis.com/v1beta/properties/' + googleProperty + ':runReport',
+      {
+        dateRanges: [{ startDate: days + 'daysAgo', endDate: 'yesterday' }],
+        metrics: [{ name: 'activeUsers' }, { name: 'sessions' }, { name: 'screenPageViews' }],
+        keepEmptyRows: true,
+      }, request.signal
+    );
     const site = encodeURIComponent(config.gscSiteUrl);
     const gscDays = days === 1 ? 1 : days;
     const baseGsc = { startDate: pacificDate(gscDays + 2), endDate: pacificDate(3), type: 'web', dataState: 'final', rowLimit: 200 };
     const queriesRequest = authorizedPost('https://www.googleapis.com/webmasters/v3/sites/' + site + '/searchAnalytics/query', { ...baseGsc, dimensions: ['query'] }, request.signal);
     const pagesRequest = authorizedPost('https://www.googleapis.com/webmasters/v3/sites/' + site + '/searchAnalytics/query', { ...baseGsc, dimensions: ['page'] }, request.signal);
 
-    const [ga, queries, pages] = await Promise.allSettled([gaRequest, queriesRequest, pagesRequest]);
+    const [ga, gaSummary, queries, pages] = await Promise.allSettled([gaPostsRequest, gaSummaryRequest, queriesRequest, pagesRequest]);
     if (request.signal.aborted || epoch !== reportEpoch || activeRoot !== root || !accessToken) return;
-    const authFailure = [ga, queries, pages].find((result) => result.status === 'rejected' && result.reason?.status === 401);
+    const authFailure = [ga, gaSummary, queries, pages].find((result) => result.status === 'rejected' && result.reason?.status === 401);
     if (authFailure?.status === 'rejected') {
-      clearReportSession(root, authFailure.reason.message);
+      reconnect(root, authFailure.reason.message + ' “Google 연결 다시 허용”에서 계정과 두 읽기 권한을 다시 확인해 주세요.');
       return;
     }
-    if (ga.status === 'fulfilled') {
+    if (ga.status === 'fulfilled' && gaSummary.status === 'fulfilled') {
       renderGA(root, config, ga.value);
+      ['activeUsers', 'sessions', 'screenPageViews'].forEach((name, index) => {
+        const value = Number(gaSummary.value.rows?.[0]?.metricValues?.[index]?.value ?? 0);
+        element(root, '[data-admin-metric="' + name + '"]').textContent = Number.isFinite(value) && value >= 0 ? number(value) : '—';
+      });
+      element(root, '[data-admin-ga-status]').textContent = 'GA4 연결 확인 · 실제 통계 조회 완료';
       status(root, '방문 통계를 갱신했습니다. Search Console의 검색 유입 수치는 아래에서 확인할 수 있습니다.');
     } else {
-      status(root, 'GA4 조회 실패: ' + ga.reason.message);
+      const reason = ga.status === 'rejected' ? ga.reason : gaSummary.status === 'rejected' ? gaSummary.reason : null;
+      status(root, 'GA4 조회 실패: ' + (reason?.message || 'API 접근 확인 필요'));
+      element(root, '[data-admin-ga-status]').textContent = 'GA4 조회 실패';
       resetRows(element(root, '[data-admin-top-posts]'), 'GA4 조회가 실패했습니다.');
       resetRows(element(root, '[data-admin-categories]'), 'GA4 조회가 실패했습니다.');
     }
     if (queries.status === 'fulfilled' && pages.status === 'fulfilled') {
       renderGSC(root, config, queries.value.rows || [], pages.value.rows || []);
       element<HTMLElement>(root, '[data-admin-gsc-status]').textContent =
-        '확정 데이터 기간(태평양 시간): ' + baseGsc.startDate + ' ~ ' + baseGsc.endDate;
+        'Search Console 연결 확인 · 확정 데이터 기간(태평양 시간): ' + baseGsc.startDate + ' ~ ' + baseGsc.endDate;
     } else {
       const reason = queries.status === 'rejected' ? queries.reason : pages.status === 'rejected' ? pages.reason : null;
       element<HTMLElement>(root, '[data-admin-gsc-status]').textContent =
@@ -440,6 +473,7 @@ const dashboardConfig = JSON.stringify({
     if (!root || root.dataset.initialized === 'true') return;
     root.dataset.initialized = 'true';
     activeRoot = root;
+    consentRequired = false;
     let config: DashboardConfig;
     try {
       config = JSON.parse(root.dataset.config || '') as DashboardConfig;
@@ -460,22 +494,29 @@ const dashboardConfig = JSON.stringify({
         const google = (window as any).google;
         activeClient = google.accounts.oauth2.initTokenClient({
           client_id: config.clientId,
-          scope: 'https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly',
-          callback: (result: { access_token?: string; error?: string; expires_in?: number }) => {
+          scope: GOOGLE_READ_SCOPES.join(' '),
+          callback: (result: unknown) => {
             if (activeRoot !== root) return;
-            if (result.error || !result.access_token) {
-              status(root, 'Google 인증이 완료되지 않았습니다. ' + (result.error || ''));
+            const session = validateGoogleSession(result);
+            if (session.kind !== 'ready') {
+              const message = session.kind === 'missing-scopes'
+                ? 'Analytics와 Search Console의 읽기 권한을 모두 허용해야 합니다.'
+                : session.kind === 'oauth-error' ? 'Google 인증이 완료되지 않았습니다.'
+                  : 'Google이 유효한 인증 응답을 반환하지 않았습니다. 다시 연결해 주세요.';
+              reconnect(root, message);
               return;
             }
             clearReportSession(root);
-            accessToken = result.access_token;
-            const lifetime = Number(result.expires_in);
-            if (Number.isFinite(lifetime) && lifetime > 0) {
-              tokenExpiryTimer = setTimeout(() => clearReportSession(root, 'Google 연결이 만료됐습니다. 다시 로그인해 주세요.'), Math.min(lifetime * 1000, 2147483647));
-            }
+            consentRequired = false;
+            accessToken = session.accessToken;
+            tokenExpiryTimer = setTimeout(() => clearReportSession(root, 'Google 연결이 만료됐습니다. 다시 로그인해 주세요.'), Math.min(session.expiresIn * 1000, 2147483647));
+            login.textContent = 'Google로 로그인';
             login.hidden = true;
             logout.hidden = false;
             void loadReports(root, config);
+          },
+          error_callback: () => {
+            if (activeRoot === root) status(root, 'Google 로그인 창이 닫혔거나 열리지 않았습니다. 로그인 버튼으로 다시 시작해 주세요.');
           },
         });
         login.disabled = false;
@@ -484,7 +525,7 @@ const dashboardConfig = JSON.stringify({
       .catch(() => {
         if (activeRoot === root && root.isConnected) status(root, 'Google 로그인 SDK를 불러올 수 없습니다. 네트워크를 확인하세요.');
       });
-    login.addEventListener('click', () => activeClient?.requestAccessToken({ prompt: 'select_account' }));
+    login.addEventListener('click', () => activeClient?.requestAccessToken({ prompt: consentRequired ? 'consent select_account' : 'select_account' }));
     logout.addEventListener('click', () => {
       const token = accessToken;
       clearReportSession(root, '로그아웃했습니다. 계정을 다시 연결할 수 있습니다.');
