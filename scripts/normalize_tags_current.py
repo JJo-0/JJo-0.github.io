@@ -554,5 +554,12 @@ POST_TAXONOMY.update({
     "2026-11-10-semaglutide-hfpef-hemodynamics-news.mdx": Taxonomy("health-lifestyle", "hfpef-hemodynamics", "research-report", ("frontier-candidate", "hfpef", "semaglutide", "hemodynamics")),
 })
 
+# Register November 11 drafts using their existing frontmatter; keep draft status unchanged.
+POST_TAXONOMY.update({
+    "2026-11-11-fe-vofet-reservoir-readout-news.mdx": Taxonomy("finance-industry", "neuromorphic-vision-hardware", "paper-review", ("frontier-candidate", "semiconductor", "neuromorphic-vision", "ferroelectric-transistor")),
+    "2026-11-11-pico-x-nanowatt-microcontroller-news.mdx": Taxonomy("finance-industry", "ultra-low-power-microcontroller", "paper-review", ("frontier-candidate", "semiconductor", "ultra-low-power", "fdsoi")),
+    "2026-11-11-tsmc-40b-capital-approval-news.mdx": Taxonomy("finance-industry", "semiconductor-capacity-investment", "research-report", ("frontier-one", "semiconductor", "advanced-packaging", "foundry")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
