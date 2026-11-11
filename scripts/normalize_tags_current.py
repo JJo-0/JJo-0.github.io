@@ -561,5 +561,11 @@ POST_TAXONOMY.update({
     "2026-11-11-tsmc-40b-capital-approval-news.mdx": Taxonomy("finance-industry", "semiconductor-capacity-investment", "research-report", ("frontier-one", "semiconductor", "advanced-packaging", "foundry")),
 })
 
+POST_TAXONOMY.update({
+    "2026-11-12-flexible-tidal-turbine-blades-news.mdx": Taxonomy("finance-industry", "tidal-turbine-load-control", "paper-review", ("frontier-one", "tidal-energy", "turbine-blades", "aeroelasticity")),
+    "2026-11-12-four-electron-iodine-battery-news.mdx": Taxonomy("finance-industry", "aqueous-iodine-battery", "paper-review", ("frontier-candidate", "aqueous-battery", "iodine-chemistry", "energy-storage")),
+    "2026-11-12-organic-photocatalyst-sheet-news.mdx": Taxonomy("finance-industry", "solar-water-splitting", "paper-review", ("frontier-candidate", "solar-hydrogen", "photocatalyst", "organic-semiconductor")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
