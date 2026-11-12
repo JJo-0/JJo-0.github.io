@@ -9,10 +9,12 @@ const catalogue = JSON.parse(fs.readFileSync(new URL('../site/news-media.json', 
 const read = (slug) => fs.readFileSync(new URL(`../site/content/posts/${slug}.mdx`, import.meta.url), 'utf8');
 const readByFile = (_slug, sourceFile) => fs.readFileSync(new URL(`../site/content/posts/${sourceFile}`, import.meta.url), 'utf8');
 const actual = loadApprovedVisualInventory(catalogue);
-assert.equal(actual.size, 28);
-assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 53);
+assert.equal(actual.size, 29);
+assert.equal([...actual.values()].reduce((n, row) => n + row.mediaIds.length, 0), 56);
 assert.deepEqual(actual.get('2026-10-14-iot-ai-self-replication-news').mediaIds, ['iot-android-tv-background']);
 assert.equal(actual.get('2026-10-14-iot-ai-self-replication-news').newsDiagramCount, 0);
+assert.deepEqual(actual.get('2026-10-14-cpu-gpu-uma-memory-sharing-news').mediaIds, ['uma-v1-figure2', 'uma-v1-figure3', 'uma-v1-figure14']);
+assert.equal(actual.get('2026-10-14-cpu-gpu-uma-memory-sharing-news').newsDiagramCount, 0);
 assert.equal(actual.get('2026-10-09-sando-safe-dynamic-trajectory-news').mediaIds.length, 5);
 assert.deepEqual(actual.get('2026-10-08-google-constellation-nuclear-uprate-news').mediaIds, ['nuclear-clinton-context-original']);
 assert.deepEqual(actual.get('2026-10-07-deterministic-2d-semiconductor-nucleation-news').mediaIds, ['nucleation-current-fig1', 'nucleation-current-fig3', 'nucleation-current-fig4']);

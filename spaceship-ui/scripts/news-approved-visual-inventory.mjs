@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { newsSourceFilename, newsSourceIdentity } from './news-media-source-file.mjs';
 
 const inventoryBatches = new Map([
-  ['2026-11-12', { count: 1, path: '../site/news-approved-visual-inventory-20261112.json' }],
+  ['2026-11-12', { count: 2, path: '../site/news-approved-visual-inventory-20261112.json' }],
   ['2026-11-11', { count: 1, path: '../site/news-approved-visual-inventory-20261111.json' }],
   ['2026-11-09', { count: 2, path: '../site/news-approved-visual-inventory-20261109.json' }],
   ['2026-11-08', { count: 3, path: '../site/news-approved-visual-inventory-20261108.json' }],
