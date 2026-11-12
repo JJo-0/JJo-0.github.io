@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { groupMediaByPost } from './news-media-visit-plan.mjs';
 import { loadApprovedVisualInventory } from './news-approved-visual-inventory.mjs';
-import { newsSourceFilename, newsSourceIdentity } from './news-media-source-file.mjs';
+import { newsSourceFilename, newsSourceIdentity, newsBodyMediaIds } from './news-media-source-file.mjs';
 import { BASE, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
 export async function auditNewsMedia(cdp, sessionId) {
@@ -210,7 +210,7 @@ export async function auditNewsMedia(cdp, sessionId) {
       const minFigures =
         approved?.mediaIds.length ??
         visualPolicy?.minFigures ??
-        (declaredSource ? declaredSource.mediaIds.length : coverOnly.has(item.slug) ? 1 : 3);
+        (declaredSource ? newsBodyMediaIds(declaredSource, fs.readFileSync(new URL(`../site/content/posts/${newsSourceFilename(declaredSource)}`, import.meta.url), 'utf8')).length : coverOnly.has(item.slug) ? 1 : 3);
       const minDiagrams =
         approved?.newsDiagramCount ?? visualPolicy?.minDiagrams ?? (declaredSource ? 0 : coverOnly.has(item.slug) ? 0 : 2);
       const route = `/posts/${item.slug}/`;

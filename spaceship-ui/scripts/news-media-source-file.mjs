@@ -1,5 +1,23 @@
 const safeRouteSlug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/** Separate explicitly approved body plates from a retained listing thumbnail. */
+export function newsBodyMediaIds(item, sourceText) {
+  if (!item.bodyMediaIds) return item.mediaIds;
+  newsSourceIdentity(item, sourceText);
+  const ids = item.bodyMediaIds;
+  if (!Array.isArray(ids) || !ids.length || new Set(ids).size !== ids.length
+      || ids.some(id => !item.mediaIds?.includes(id)))
+    throw new Error('Body media inventory must be a nonempty unique subset of declared media');
+  const actual = [...sourceText.matchAll(/<NewsFigure\b([^>]*?)\/>/g)].map(match => {
+    const id = match[1].match(/\bmedia="([^"]+)"/);
+    if (!id) throw new Error('Body media must have static media IDs');
+    return id[1];
+  });
+  if (JSON.stringify(ids) !== JSON.stringify(actual))
+    throw new Error('Approved body media inventory differs from the actual article');
+  return ids;
+}
+
 /** Resolve only a basename; article slugs are public routes, not source paths. */
 export function newsSourceFilename(item) {
   if (!item || typeof item.slug !== 'string' || !safeRouteSlug.test(item.slug)) {

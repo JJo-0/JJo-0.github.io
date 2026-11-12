@@ -2,7 +2,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { newsSourceFilename, newsSourceIdentity } from './news-media-source-file.mjs';
+import { newsSourceFilename, newsSourceIdentity, newsBodyMediaIds } from './news-media-source-file.mjs';
+
+const bodyFixture = { slug: 'reviewed-post', mediaIds: ['cover', 'plate'], bodyMediaIds: ['plate'] };
+const bodySource = '---\nslug: reviewed-post\n---\n<NewsFigure media="plate" />';
+assert.deepEqual(newsBodyMediaIds(bodyFixture, bodySource), ['plate']);
+assert.deepEqual(newsBodyMediaIds({ slug: 'legacy', mediaIds: ['cover'] }, ''), ['cover']);
+for (const bodyMediaIds of [[], ['plate', 'plate'], ['unknown'], ['cover']])
+  assert.throws(() => newsBodyMediaIds({ ...bodyFixture, bodyMediaIds }, bodySource));
+assert.throws(() => newsBodyMediaIds(bodyFixture, bodySource + '\n<NewsFigure media="cover" />'));
 
 assert.equal(newsSourceFilename({
   slug: 'miopm-multi-immersion-light-sheet',
