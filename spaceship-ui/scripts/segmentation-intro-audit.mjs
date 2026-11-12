@@ -16,7 +16,7 @@ for (const [, alt, url] of images) {
   assert(alt.length > 15);
   assert(fs.existsSync(path.join('site/assets', url)));
 }
-const slideBlocks = [...post.matchAll(/<SegmentationLectureSlide page=\{(\d+)\}[^>]*\/>\s*([^#]+?)(?=\n## |$)/g)];
+const slideBlocks = [...post.matchAll(/<SegmentationLectureSlide page=\{(\d+)\}[^>]*\/>\s*([\s\S]+?)(?=\n## |$)/g)];
 const pages = slideBlocks.map(m => Number(m[1]));
 assert.deepEqual(pages, Array.from({length:33}, (_,i) => i+32));
 for (const block of slideBlocks) {
@@ -42,3 +42,8 @@ if (fs.existsSync('dist')) {
   }
   console.log('segmentation-intro-audit: canonical internal routes exist in dist');
 }
+
+assert(post.includes('title: "Segmentation - 1강. 픽셀 단위로 이해하기"'));
+assert(post.includes('id: segmentation'));
+assert.equal((post.match(/<LearningFigure /g) || []).length, 3);
+for (const term of ['보충 강의·논문', 'bilinear 보간', '채널 방향 concatenation', 'zero-shot cross-dataset transfer']) assert(post.includes(term));
