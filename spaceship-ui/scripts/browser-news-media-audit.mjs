@@ -7,6 +7,10 @@ import { loadApprovedVisualInventory } from './news-approved-visual-inventory.mj
 import { newsSourceFilename, newsSourceIdentity, newsBodyMediaIds } from './news-media-source-file.mjs';
 import { BASE, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
+export function filterBodyRegisteredMedia(registeredMedia, bodyIds) {
+  return registeredMedia.filter(([id]) => !bodyIds || bodyIds.has(id));
+}
+
 export async function auditNewsMedia(cdp, sessionId) {
   const media = JSON.parse(
     fs.readFileSync(new URL('../site/news-media.json', import.meta.url), 'utf8')
@@ -141,6 +145,7 @@ export async function auditNewsMedia(cdp, sessionId) {
   const results = [];
   const publishedPosts = groupMediaByPost(publishedMedia);
   let checkedMedia = 0;
+  let expectedBodyMediaChecks = 0;
   for (const size of sizes) {
     await viewport(cdp, sessionId, size);
     await navigate(cdp, sessionId, '/news');
@@ -207,10 +212,16 @@ export async function auditNewsMedia(cdp, sessionId) {
       const declaredSource = sourceFigurePosts.get(item.slug);
       const visualPolicy = visualPolicies.get(item.slug);
       const approved = approvedInventory.get(item.slug);
+      const articleSource = declaredSource
+        ? fs.readFileSync(new URL(`../site/content/posts/${newsSourceFilename(declaredSource)}`, import.meta.url), 'utf8')
+        : null;
+      const bodyMediaIds = declaredSource
+        ? newsBodyMediaIds(declaredSource, articleSource)
+        : null;
       const minFigures =
         approved?.mediaIds.length ??
         visualPolicy?.minFigures ??
-        (declaredSource ? newsBodyMediaIds(declaredSource, fs.readFileSync(new URL(`../site/content/posts/${newsSourceFilename(declaredSource)}`, import.meta.url), 'utf8')).length : coverOnly.has(item.slug) ? 1 : 3);
+        (bodyMediaIds ? bodyMediaIds.length : coverOnly.has(item.slug) ? 1 : 3);
       const minDiagrams =
         approved?.newsDiagramCount ?? visualPolicy?.minDiagrams ?? (declaredSource ? 0 : coverOnly.has(item.slug) ? 0 : 2);
       const route = `/posts/${item.slug}/`;
@@ -218,10 +229,9 @@ export async function auditNewsMedia(cdp, sessionId) {
       assert.equal(response.status, 200, `Published route ${route}`);
       await navigate(cdp, sessionId, route);
       // The declared primary thumbnail is checked on NEWS above, not as a body plate.
-      const bodyIds = declaredSource?.bodyMediaIds
-        ? new Set(newsBodyMediaIds(declaredSource, fs.readFileSync(new URL(`../site/content/posts/${newsSourceFilename(declaredSource)}`, import.meta.url), 'utf8')))
-        : null;
-      for (const [id] of registeredMedia.filter(([id]) => !bodyIds || bodyIds.has(id))) {
+      const bodyIds = bodyMediaIds ? new Set(bodyMediaIds) : null;
+      expectedBodyMediaChecks += bodyMediaIds?.length ?? registeredMedia.length;
+      for (const [id] of filterBodyRegisteredMedia(registeredMedia, bodyIds)) {
         await waitExpression(
           cdp,
           sessionId,
@@ -296,7 +306,7 @@ export async function auditNewsMedia(cdp, sessionId) {
         assert.equal(result.diagramCount, approved.newsDiagramCount, 'Rendered diagrams must match approved inventory');
         assert.deepEqual(registeredDetails.map((figure) => figure.id), approved.mediaIds, 'Approved images must render exactly once in order');
       }
-      for (const [id, expected] of registeredMedia) {
+      for (const [id, expected] of filterBodyRegisteredMedia(registeredMedia, bodyIds)) {
         const matches = registeredDetails.filter((figure) => figure.id === id);
         assert.equal(matches.length, 1, `${item.slug}: exactly one registered figure ${id}`);
         assert.equal(matches[0].src, expected.src);
@@ -319,8 +329,8 @@ export async function auditNewsMedia(cdp, sessionId) {
         );
         assert.deepEqual(
           ids,
-          declaredSource.mediaIds,
-          'All declared original figures must appear exactly once in order'
+          bodyMediaIds,
+          'All approved body figures must appear exactly once in order'
         );
       }
       const todayEntry = [
@@ -383,10 +393,10 @@ export async function auditNewsMedia(cdp, sessionId) {
   );
   assert.equal(
     checkedMedia,
-    publishedMedia.length * sizes.length,
-    'Every registered media ID and viewport must be checked'
+    expectedBodyMediaChecks,
+    'Every approved body media ID and viewport must be checked'
   );
   console.log(
-    `news-media-qa: PASS ${checkedMedia} registered image/viewport checks in ${results.length} article visits and ${draftSlugs.size} draft-exclusion case(s) on ${BASE}`
+    `news-media-qa: PASS ${checkedMedia} approved body image/viewport checks plus NEWS listing thumbnails in ${results.length} article visits and ${draftSlugs.size} draft-exclusion case(s) on ${BASE}`
   );
 }

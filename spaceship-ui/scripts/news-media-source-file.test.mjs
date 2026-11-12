@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { newsSourceFilename, newsSourceIdentity, newsBodyMediaIds } from './news-media-source-file.mjs';
+import { filterBodyRegisteredMedia } from './browser-news-media-audit.mjs';
 
 const bodyFixture = { slug: 'reviewed-post', mediaIds: ['cover', 'plate'], bodyMediaIds: ['plate'] };
 const bodySource = '---\nslug: reviewed-post\n---\n<NewsFigure media="plate" />';
@@ -40,6 +41,18 @@ assert.throws(() => newsSourceIdentity({
 const here = path.dirname(fileURLToPath(import.meta.url));
 const media = JSON.parse(fs.readFileSync(path.join(here, '../site/news-media.json'), 'utf8'));
 const postsDirectory = path.join(here, '../site/content/posts');
+const sep29Edition = JSON.parse(fs.readFileSync(path.join(here, '../site/news-edition-20260929.json'), 'utf8'));
+const sep29Agent = sep29Edition.entries.find((row) => row.slug === '2026-09-29-agent-thermostable-mrna-vaccine-news');
+const sep29Source = fs.readFileSync(path.join(postsDirectory, `${sep29Agent.slug}.mdx`), 'utf8');
+const sep29BodyMediaIds = newsBodyMediaIds(sep29Agent, sep29Source);
+const sep29RegisteredMedia = sep29Agent.mediaIds.map((id) => [id, media[id]]);
+const sep29BodyRegisteredMedia = filterBodyRegisteredMedia(sep29RegisteredMedia, new Set(sep29BodyMediaIds));
+assert.deepEqual(sep29BodyRegisteredMedia.map(([id]) => id), sep29BodyMediaIds,
+  'Article-body assertions must use the exact approved body figure IDs');
+assert(!sep29BodyRegisteredMedia.some(([id]) => id === 'sep29-agent-fig1'),
+  'Listing thumbnail Figure 1 is not a body figure');
+assert.deepEqual(filterBodyRegisteredMedia([['legacy-cover', {}], ['legacy-body', {}]], null),
+  [['legacy-cover', {}], ['legacy-body', {}]], 'Undeclared legacy body inventories retain prior behavior');
 const oct20 = Object.entries(media).filter(([id]) => id.startsWith('oct20-'));
 assert.equal(oct20.length, 8, 'Fixture covers all eight current Oct 20 media records');
 const checkedPosts = new Map();
