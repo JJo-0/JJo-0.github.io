@@ -22,7 +22,7 @@ Stanford AA203을 기본 설명 흐름으로, IMT Lucca Alberto Bemporad MPC를 
 Repository: `JJo-0/Onto_base` (private)
 Branch: `blog-mpc-series`
 Directory: `blog/mpc/`
-Verified initialization checkpoint: `bdb6f7c721d4f259b4dc76a54af5bda95816d821`
+Verified chapter-01 checkpoint: `d92750bf1637e36943a31242fc3944ab5b6d84f5`
 
 [재개 규칙](https://github.com/JJo-0/Onto_base/blob/blog-mpc-series/blog/mpc/RESUME.md) · [현재 상태](https://github.com/JJo-0/Onto_base/blob/blog-mpc-series/blog/mpc/state.json)
 
@@ -30,10 +30,12 @@ Verified initialization checkpoint: `bdb6f7c721d4f259b4dc76a54af5bda95816d821`
 
 ## 현재와 다음 작업
 
-12개 챕터의 잠정 편집 계획, 01장 집필 설계, 공식 선형 MPC 코드 정적 검토를 비공개 작업본에 저장했다. 원본 슬라이드별 완성 원고, 자막 확보, 실습 실행은 아직 완료하지 않았다.
+01장 「미래를 계산하고 첫 행동만 실행하는 이유」의 한국어 초안, 출처·검토 기록, 자체 MPC 입문 실습을 비공개 작업본에 저장했다. 본문 범위는 AA203 L11 PDF 1–6쪽이며, IMT PDF 5·6·12쪽의 관련 텍스트를 보충했다. 원본은 공식 PDF 페이지별 뷰어와 fallback 링크로 연결한다. 개별 이미지 업로드나 브라우저 렌더 검증을 완료한 상태는 아니다.
 
-다음 순서: AA203 L11 공식 PDF/PPTX 확보와 판본 대조 → 원본 페이지별 색인·시각 검토 → IMT Linear MPC의 대응 페이지 확인 → 01장 본문 작성. 공식 실습은 TODO·solver 상태 처리·제약 검증을 확인하며 별도로 구현한다.
+원본 PDF/PPTX 확보 및 파일 검증을 마쳤다. 직접 시각 검수와 영상 자막 확보는 미완료다. 자체 스칼라 예제는 실제 실행했고 단위 테스트 15개, 원고 구조 검사 14개가 통과했다. 공식 PORA 과제 실행이나 논문 재현은 아니다.
+
+다음 순서: 기존 01장 원고·검토 기록 읽기 → AA203 1–6쪽 및 IMT 5·6·12쪽 실제 그림 대조 → 데스크톱/모바일 원본 표시와 재사용 범위 확인 → 02장을 AA203 L11 P007 이후에서 시작. 자막은 실제 확보한 범위만 기록한다. 이미 작성된 01장을 새로 만들지 않는다.
 
 ## 공개 제한과 검증
 
-이 브랜치에는 UI 변경과 이 안내만 있다. 비공개 원고, 강의 파일, 자막 원문을 공개 저장소에 복사하지 않았다. 게시글 파일을 생성하지 않았고 main 병합·사이트 배포도 실행하지 않았다. 전체 Astro 빌드 및 브라우저 렌더 검증은 미실행이다. 공개 전환은 별도 지시를 따른다. 이 파일은 예약 실행이 아니다.
+이 브랜치에는 UI 변경과 이 안내만 있다. 비공개 원고, 강의 파일, 자막 원문을 공개 저장소에 복사하지 않았다. 공개 게시글 파일을 생성하지 않았고 main 병합·사이트 배포도 실행하지 않았다. 전체 Astro 빌드 및 브라우저 렌더 검증은 미실행이다. 공개 전환은 별도 지시를 따른다. 이 파일은 예약 실행이 아니다.
