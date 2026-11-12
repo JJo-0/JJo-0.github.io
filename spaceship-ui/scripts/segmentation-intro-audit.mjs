@@ -25,7 +25,9 @@ for (const block of slideBlocks) {
   assert(fs.existsSync(file));
 }
 assert(post.includes('2025년 영상'));
-assert(post.includes('자막 전문 미확보'));
+assert(post.includes('영어 수동 자막'));
+assert(post.includes('2026 PDF 각 장의 전환 시각은 아니며'));
+for (const seconds of [1065, 1257, 1987]) assert(post.includes(`&t=${seconds}s`));
 assert(post.includes('발표용 스크립트'));
 const prediction = new Set([0,1,2,3,4,5,6,7,8]);
 const groundTruth = new Set([3,4,5,6,7,8,9,10,11]);
