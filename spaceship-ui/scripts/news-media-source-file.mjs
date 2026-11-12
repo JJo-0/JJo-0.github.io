@@ -8,6 +8,9 @@ export function newsBodyMediaIds(item, sourceText) {
   if (!Array.isArray(ids) || !ids.length || new Set(ids).size !== ids.length
       || ids.some(id => !item.mediaIds?.includes(id)))
     throw new Error('Body media inventory must be a nonempty unique subset of declared media');
+  const listingOnly = item.mediaIds.filter(id => !ids.includes(id));
+  if (listingOnly.length > 1 || listingOnly.some(id => id !== item.mediaIds[0]))
+    throw new Error('Only the declared primary listing thumbnail may be separate from the body');
   const actual = [...sourceText.matchAll(/<NewsFigure\b([^>]*?)\/>/g)].map(match => {
     const id = match[1].match(/\bmedia="([^"]+)"/);
     if (!id) throw new Error('Body media must have static media IDs');

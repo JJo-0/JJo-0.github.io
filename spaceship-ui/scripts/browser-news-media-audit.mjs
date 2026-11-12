@@ -217,8 +217,11 @@ export async function auditNewsMedia(cdp, sessionId) {
       const response = await fetch(new URL(route, BASE));
       assert.equal(response.status, 200, `Published route ${route}`);
       await navigate(cdp, sessionId, route);
-      // One navigation per article; every registered figure is still required.
-      for (const [id] of registeredMedia) {
+      // The declared primary thumbnail is checked on NEWS above, not as a body plate.
+      const bodyIds = declaredSource?.bodyMediaIds
+        ? new Set(newsBodyMediaIds(declaredSource, fs.readFileSync(new URL(`../site/content/posts/${newsSourceFilename(declaredSource)}`, import.meta.url), 'utf8')))
+        : null;
+      for (const [id] of registeredMedia.filter(([id]) => !bodyIds || bodyIds.has(id))) {
         await waitExpression(
           cdp,
           sessionId,

@@ -11,6 +11,7 @@ assert.deepEqual(newsBodyMediaIds({ slug: 'legacy', mediaIds: ['cover'] }, ''), 
 for (const bodyMediaIds of [[], ['plate', 'plate'], ['unknown'], ['cover']])
   assert.throws(() => newsBodyMediaIds({ ...bodyFixture, bodyMediaIds }, bodySource));
 assert.throws(() => newsBodyMediaIds(bodyFixture, bodySource + '\n<NewsFigure media="cover" />'));
+assert.throws(() => newsBodyMediaIds({ ...bodyFixture, mediaIds: ['cover', 'plate', 'extra'] }, bodySource));
 
 assert.equal(newsSourceFilename({
   slug: 'miopm-multi-immersion-light-sheet',
