@@ -2,6 +2,20 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fetchPublicAggregate } from './lib/ga4-public-export.mjs';
 import { EMPTY_PUBLIC_FEED, normalizePublicPostPath, buildPublicFeed } from '../src/lib/analytics/public-feed.mjs';
+import { GOOGLE_READ_SCOPES, validateGoogleSession } from '../src/lib/analytics/google-session.mjs';
+
+// Explicit synthetic grants. No live token or account is read by this contract.
+const grant = { access_token: 'fixture-opaque-bearer', token_type: 'Bearer', expires_in: 3600, scope: GOOGLE_READ_SCOPES.join(' ') };
+assert.equal(validateGoogleSession(grant).kind, 'ready');
+assert.equal(validateGoogleSession({ ...grant, token_type: 'bearer' }).kind, 'ready');
+for (const access_token of [null, {}, '', '[object Object]', 'Bearer fixture', 'fixture\r\nInjected: secret']) {
+  assert.equal(validateGoogleSession({ ...grant, access_token }).kind, 'invalid-token');
+}
+assert.equal(validateGoogleSession({ ...grant, token_type: 'id_token' }).kind, 'invalid-token');
+for (const expires_in of [undefined, 0, -1, 'invalid']) assert.equal(validateGoogleSession({ ...grant, expires_in }).kind, 'expired');
+assert.equal(validateGoogleSession({ ...grant, scope: GOOGLE_READ_SCOPES[0] }).kind, 'missing-scopes');
+assert.equal(validateGoogleSession({ ...grant, scope: undefined }).kind, 'missing-scopes');
+assert.deepEqual(validateGoogleSession({ error: 'private-error-fixture', access_token: 'must-not-leak' }), { kind: 'oauth-error' });
 
 assert.equal(normalizePublicPostPath('/posts/example/'), '/posts/example');
 assert.equal(normalizePublicPostPath('/en/posts/example/?q=a'), '/en/posts/example');

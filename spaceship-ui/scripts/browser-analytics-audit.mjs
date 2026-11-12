@@ -31,18 +31,18 @@ export async function auditAnalytics(cdp, sessionId) {
     previous.replaceWith(root); delete root.dataset.initialized;
     const config=JSON.parse(root.dataset.config);config.clientId='fixture.apps.googleusercontent.com';config.propertyId='123456';
     root.dataset.config=JSON.stringify(config);
-    window.__analyticsTest={requests:[],revoked:0,pending:[],defer:false,lifetime:3600,originalFetch:window.fetch};
+    window.__analyticsTest={requests:[],prompts:[],revoked:0,pending:[],defer:false,lifetime:3600,originalFetch:window.fetch};
     const test=window.__analyticsTest;
     window.google={accounts:{oauth2:{
-      initTokenClient(options){return {requestAccessToken(){options.callback({access_token:'jjo-browser-fixture-token',expires_in:test.lifetime});}};},
+      initTokenClient(options){return {requestAccessToken(request){test.prompts.push(request.prompt);options.callback({access_token:test.invalidToken?{}:'jjo-browser-fixture-token',token_type:'Bearer',expires_in:test.lifetime,scope:test.missingScope?'https://www.googleapis.com/auth/analytics.readonly':options.scope});}};},
       revoke(token,callback){if(token==='jjo-browser-fixture-token')test.revoked++;callback();}
     }}};
     window.fetch=(url,options)=>{
       if(!/analyticsdata.googleapis.com|www.googleapis.com\\/webmasters/.test(String(url)))return test.originalFetch(url,options);
       test.requests.push({url:String(url),authorization:options.headers.Authorization,signal:options.signal});
       const body=JSON.parse(options.body);
-      if(test.unauthorized)return Promise.resolve(new Response(JSON.stringify({error:{details:[{reason:'CREDENTIALS_MISSING'}]}}),{status:401,headers:{'Content-Type':'application/json'}}));
-      const value=String(url).includes('analyticsdata')?{rows:[{dimensionValues:[{value:'/posts/rl-robot-learning-ch01-introduction'}],metricValues:[{value:'12'}]}]}:
+      if(test.unauthorized&&String(url).includes('analyticsdata')&&!body.dimensions)return Promise.resolve(new Response(JSON.stringify({error:{details:[{reason:'CREDENTIALS_MISSING'}]}}),{status:401,headers:{'Content-Type':'application/json'}}));
+      const value=String(url).includes('analyticsdata')?(body.dimensions?{rows:[{dimensionValues:[{value:'/posts/rl-robot-learning-ch01-introduction'}],metricValues:[{value:'12'}]}]}:{rows:[{metricValues:[{value:'7'},{value:'9'},{value:'20'}]}]}):
         {rows:[{keys:[body.dimensions[0]==='query'?'<img src=x onerror="window.__analyticsXss=true">':'https://jjo-0.github.io/posts/rl-robot-learning-ch01-introduction/'],clicks:2,impressions:20,ctr:0.1}]};
       const response=()=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
       if(test.defer)return new Promise(resolve=>test.pending.push(()=>resolve(response())));
@@ -52,10 +52,11 @@ export async function auditAnalytics(cdp, sessionId) {
   })()`);
   await waitExpression(cdp, sessionId, `!document.querySelector('[data-admin-login]').disabled`, 'Fixture Google SDK initialized');
   const login = () => evaluate(cdp, sessionId, `document.querySelector('[data-admin-login]').click()`);
-  const empty = `(() => {const r=document.querySelector('[data-analytics-dashboard]');return r.querySelector('[data-admin-results]').hidden && ['[data-admin-top-posts]','[data-admin-categories]','[data-admin-topics]','[data-admin-queries]','[data-admin-search-pages]','[data-admin-gsc-status]'].every(s=>!r.querySelector(s).textContent);})()`;
+  const empty = `(() => {const r=document.querySelector('[data-analytics-dashboard]');return r.querySelector('[data-admin-results]').hidden && [...r.querySelectorAll('[data-admin-metric]')].every(m=>m.textContent==='—') && ['[data-admin-top-posts]','[data-admin-categories]','[data-admin-topics]','[data-admin-queries]','[data-admin-search-pages]','[data-admin-ga-status]','[data-admin-gsc-status]'].every(s=>!r.querySelector(s).textContent);})()`;
   await login();
   await waitExpression(cdp, sessionId, `document.querySelector('[data-admin-queries]').textContent.includes('<img')`, 'Fixture reports rendered');
   assert(await evaluate(cdp, sessionId, `!window.__analyticsXss && !document.querySelector('[data-admin-queries] img')`), 'Untrusted query rendered as text');
+  assert.deepEqual(await evaluate(cdp, sessionId, `[...document.querySelectorAll('[data-admin-metric]')].map(m=>m.textContent)`), ['7','9','20'], 'Site-wide users, sessions and views keep their distinct meanings');
   assert(await evaluate(cdp, sessionId, `window.__analyticsTest.requests.every(r=>r.authorization==='Bearer jjo-browser-fixture-token')`));
   assert(await evaluate(cdp, sessionId, `![...Object.values(localStorage),...Object.values(sessionStorage)].some(value=>value.includes('jjo-browser-fixture-token'))`), 'Access token never persisted');
   await evaluate(cdp, sessionId, `document.querySelector('[data-admin-logout]').click()`);
@@ -65,17 +66,31 @@ export async function auditAnalytics(cdp, sessionId) {
   await evaluate(cdp, sessionId, `window.__analyticsTest.unauthorized=true`);
   await login();
   await waitExpression(cdp, sessionId, `document.querySelector('[data-admin-status]').textContent.includes('CREDENTIALS_MISSING')`, 'Unauthorized Google session prompts reconnect');
-  assert(await evaluate(cdp, sessionId, empty), '401 discards invalid token and private report DOM');
+  assert(await evaluate(cdp, sessionId, empty), 'A summary-only 401 discards the token and all private DOM, including successful peer requests');
   assert(await evaluate(cdp, sessionId, `!document.querySelector('[data-admin-login]').hidden`), '401 restores login control');
   await evaluate(cdp, sessionId, `window.__analyticsTest.unauthorized=false`);
 
+  await evaluate(cdp, sessionId, `window.__analyticsTest.invalidToken=true;window.__analyticsTest.requests=[]`);
+  await login();
+  assert(await evaluate(cdp, sessionId, `window.__analyticsTest.requests.length===0`), 'Malformed grants cannot reach a private API');
+  assert(await evaluate(cdp, sessionId, empty));
+  await evaluate(cdp, sessionId, `window.__analyticsTest.invalidToken=false;window.__analyticsTest.missingScope=true`);
+  await login();
+  assert(await evaluate(cdp, sessionId, `window.__analyticsTest.requests.length===0`), 'Partial consent cannot be mistaken for a complete connection');
+  assert(await evaluate(cdp, sessionId, `document.querySelector('[data-admin-status]').textContent.includes('두')||document.querySelector('[data-admin-status]').textContent.includes('모두')`));
+  await evaluate(cdp, sessionId, `window.__analyticsTest.missingScope=false`);
+  await login();
+  await waitExpression(cdp, sessionId, `document.querySelector('[data-admin-ga-status]').textContent.includes('연결 확인')&&document.querySelector('[data-admin-gsc-status]').textContent.includes('연결 확인')`, 'Both real-source status controls reflect successful fixture responses');
+  assert(await evaluate(cdp, sessionId, `window.__analyticsTest.prompts.slice(-3).every(prompt=>prompt==='consent select_account')`), 'Rejected grants require an explicit account and consent refresh');
+  await evaluate(cdp, sessionId, `document.querySelector('[data-admin-logout]').click()`);
+
   await evaluate(cdp, sessionId, `window.__analyticsTest.defer=true`);
   await login();
-  await waitExpression(cdp, sessionId, `window.__analyticsTest.pending.length===3`, 'Deferred report requests');
+  await waitExpression(cdp, sessionId, `window.__analyticsTest.pending.length===4`, 'Deferred report requests');
   await evaluate(cdp, sessionId, `document.querySelector('[data-admin-logout]').click();window.__analyticsTest.pending.splice(0).forEach(resolve=>resolve())`);
   await evaluate(cdp, sessionId, `new Promise(resolve=>setTimeout(resolve,100))`);
   assert(await evaluate(cdp, sessionId, empty), 'Late responses cannot repopulate logout');
-  assert(await evaluate(cdp, sessionId, `window.__analyticsTest.requests.slice(-3).every(r=>r.signal.aborted)`), 'In-flight reports aborted');
+  assert(await evaluate(cdp, sessionId, `window.__analyticsTest.requests.slice(-4).every(r=>r.signal.aborted)`), 'In-flight reports aborted');
 
   await evaluate(cdp, sessionId, `window.__analyticsTest.defer=false;window.__analyticsTest.lifetime=0.5`);
   await login();
