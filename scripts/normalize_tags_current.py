@@ -20,6 +20,10 @@ POST_TAXONOMY.update({
 
 POST_TAXONOMY.update(
     {
+        "segmentation-from-pixels-to-robot-observations.mdx": Taxonomy(
+            "ai-machine-learning", "semantic-segmentation", "study-note",
+            ("computer-vision", "semantic-segmentation", "robot-learning", "study"),
+        ),
         "human-motion-study-0.md": Taxonomy(
             "vision-perception-neuroscience", "human-motion", "study-note",
             ("human-pose-estimation", "motion-prediction", "human-robot-interaction", "uncertainty"),

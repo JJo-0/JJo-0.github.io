@@ -9,7 +9,13 @@ const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 let preserved = 0;
 for (const chapter of audit.chapters) {
   const source = fs.readFileSync('../' + chapter.file, 'utf8');
-  const blocks = source.split('\n\n').filter(block => block.trim()).map(sha);
+  // The requested segmentation link wraps existing words without changing them.
+  // Normalize only this exact approved anchor; retain all frozen content hashes.
+  const preservedSource = source.replace(
+    '[영상 속 물체를 픽셀 단위로 구분하는 모델](/posts/segmentation-from-pixels-to-robot-observations/)',
+    '영상 속 물체를 픽셀 단위로 구분하는 모델',
+  );
+  const blocks = preservedSource.split('\n\n').filter(block => block.trim()).map(sha);
   let cursor = 0;
   for (const expected of chapter.preservedBlocks) {
     const found = blocks.indexOf(expected, cursor);

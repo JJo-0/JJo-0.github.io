@@ -88,3 +88,10 @@ The July hydrogen and 2024 OECT figures are background from different papers, no
 - rubin-rack-background: Genevieve Martin / Oak Ridge National Laboratory; CC BY 2.0; https://commons.wikimedia.org/wiki/File:ORNL_Launches_Summit_Supercomputer_(31430046567).jpg; https://creativecommons.org/licenses/by/2.0/. 2018 Summit rack photograph; not Vera Rubin or its benchmark system. Proportional resize and WebP conversion only.
 - ms-ebv-micrograph: NIAID; Public domain; https://www.eurekalert.org/multimedia/963089; https://www.eurekalert.org/multimedia/963089. NIAID electron microscopy of three Epstein-Barr virions; background, not the 2026 study specimen. Proportional resize and WebP conversion only.
 - hemophilia-aav-micrograph: Graham Beards; CC BY-SA 4.0; https://commons.wikimedia.org/wiki/File:AAVs_by_electron_microscopy.jpg; https://creativecommons.org/licenses/by-sa/4.0/. 2019 micrograph: large adenovirus particles surrounded by smaller AAV particles; not BBM-H901 trial material. Proportional resize and WebP conversion only.
+
+
+## Stanford CS231n 2026 semantic segmentation commentary
+
+`spaceship-ui/site/assets/assets/posts/segmentation-from-pixels-to-robot-observations/slides/` contains full-page rasterizations of pages 32–64 of [CS231n 2026 Lecture 9](https://cs231n.stanford.edu/slides/2026/lecture_9.pdf), dated April 28, 2026. The original author footer and source credits are retained. Each page is paired with original Korean explanation of its specific visual and operation, rather than offered as a standalone replacement for the full lecture. The complete 147-page PDF is not bundled.
+
+The original slides and embedded material remain the property of their respective rights holders. This notice does not assert that public accessibility grants a redistribution license or grant any new rights to readers. Use in this article is contextual educational quotation/commentary; a blanket reuse license has not been verified. Source and output hashes, pages, dimensions, and transformations are recorded in `spaceship-ui/docs/segmentation-slide-provenance.json`. Proportional rasterization and WebP conversion only; no cropping or removal of credits.
