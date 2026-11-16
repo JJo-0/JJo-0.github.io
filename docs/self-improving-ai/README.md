@@ -50,4 +50,4 @@ Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 �
 
 각 기록은 원작자, 원문 URL, PDF 쪽수와 인쇄 번호, 발췌 범위, 파일 해시, 본문 삽입 위치를 남긴다. 논문 그림은 강의 PPT로 부르지 않는다. 추가 이미지의 `rightsStatus`는 `unverified`, 이용·수정 허가 확인 값은 `false`로 유지한다. 관측한 라이선스 표시는 허가 확인과 별도 기록한다. 현재 사용자의 요청은 각 publishing job의 `revisionAuthorization`에 이 추가 12개 범위로 기록했으며, 이전 15개 본 강의 이미지의 발행 승인과 구분한다.
 
-검수 기록은 [보충 자료 QA](reviews/2026-11-16-supplementary-qa.json)에 연결한다. publishing job의 `previousPublicationEvidence`와 progress의 `originalPublication`은 PR #200의 과거 발행 증거를 보존한다. 새 원고 해시는 이번 준비 리비전을 가리키며, **이번 리비전의 최종 병합·배포·공개 페이지 확인 증거는 리비전 PR에 기록한다.** 이 준비 기록 자체가 현재 `main` 배포 완료를 뜻하지 않는다.
+검수 기록은 [보충 자료 QA](reviews/2026-11-16-supplementary-qa.json)에 연결한다. publishing job의 `previousPublicationEvidence`와 progress의 `originalPublication`은 PR #200의 과거 발행 증거를 보존한다. 새 원고 해시는 이번 준비 리비전을 가리키며, **이번 리비전의 최종 병합·배포·공개 페이지 확인 증거는 [PR #201](https://github.com/JJo-0/JJo-0.github.io/pull/201)에 기록한다.** 이 준비 기록 자체가 현재 `main` 배포 완료를 뜻하지 않는다.
