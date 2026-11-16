@@ -601,5 +601,11 @@ POST_TAXONOMY.update({
     ),
 })
 
+# Register Self-Improving AI lessons 04–05.
+POST_TAXONOMY.update({
+    "self-improving-ai-04-sparse-rewards-and-shaping.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "reward-shaping", "robotics", "ntu")),
+    "self-improving-ai-05-reward-design-to-ai-feedback.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "reward-shaping", "robotics", "ntu")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
