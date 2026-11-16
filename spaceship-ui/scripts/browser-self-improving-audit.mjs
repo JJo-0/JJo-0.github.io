@@ -71,7 +71,9 @@ try {
     const group = await evaluate(cdp, session, `(()=>{const g=document.querySelector('[data-series-group="self-improving-ai"]');return {title:g.querySelector('.series-group__title')?.textContent,count:g.querySelector('.series-group__count')?.textContent,links:[...new Set(Array.from(g.querySelectorAll('a[href^="/posts/"]')).map(a=>a.getAttribute('href')))]};})()`);
     assert.equal(group.title, '자가개선 AI');
     assert.equal(group.count, '5편');
-    for (const chapter of chapters) assert(group.links.includes(`/posts/${chapter.slug}/`));
+    // List cards omit the optional trailing slash; retain exact path membership checks.
+    const groupPaths = new Set(group.links.map(href => href.replace(/\/+$/, '')));
+    for (const chapter of chapters) assert(groupPaths.has(`/posts/${chapter.slug}`), `Series missing ${chapter.slug}`);
     await evaluate(cdp, session, "(()=>{const g=document.querySelector('[data-series-group=\"self-improving-ai\"]');g.open=true;g.scrollIntoView({block:'center',behavior:'instant'});})()");
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
     fs.writeFileSync(path.join(out, `self-improving-group-${width}.png`), Buffer.from(shot.data, 'base64'));
