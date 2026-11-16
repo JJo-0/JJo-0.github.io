@@ -21,6 +21,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 �
 
 - `source-assets/01/manifest.json`: 1–5쪽의 원문과 출력 이미지 메타데이터
 - `source-assets/02/manifest.json`: 6–10쪽의 원문과 출력 이미지 메타데이터
+- `source-assets/03/manifest.json`: 11–15쪽의 원문과 출력 이미지 메타데이터
 - `progress.json`: 현재 작성 범위와 다음 시작 페이지
 
 원본 자료의 재사용·수정 조건은 `unverified`로 기록한다. 공개 접근과 출처 표시를 라이선스로 취급하지 않으며, 포함된 제3자 이미지에도 별도 권리가 있을 수 있다.
@@ -31,8 +32,22 @@ Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 �
 
 일반 자동 권리확인 경로의 `publish-gate` 실패 기록과 소유자의 별도 발행 결정은 [승인 범위 기록](publishing/2026-11-16-owner-exception.json)에 구분했다. 하네스, CI, 저장소 권한과 일반 콘텐츠 정책은 변경하지 않았다. 과거 검수 기록은 당시 원고 해시와 결과를 보존하며, 새 발행본의 검사·배포 상태는 별도로 기록한다.
 
-## 공개 상태
+## 기존 발행 상태 — PR #200
 
 2026-11-16에 [PR #200](https://github.com/JJo-0/JJo-0.github.io/pull/200)을 `main`에 병합하고 세 공개 페이지를 확인했다. 영어 슬라이드 15장과 한국어 해설 3편의 발행 범위는 원본 1–15쪽이다. **다음 시작은 16쪽이며, 희소 보상(Sparse reward)과 로봇의 문 열기 예제를 다룬다.**
 
 정확한 커밋·CI·배포·페이지 확인 기록은 [발행 검증](reviews/2026-11-16-publication.json)에 있다.
+
+## 2026-11-16 보충 원본 자료 리비전
+
+사용자의 1·2·3편 업데이트 요청에 따라 관련 설명 곁에 보충 자료를 배치했다. 각 편에 4개씩, **원본 영어 강의 슬라이드 9장과 원본 논문 그림 3개**를 추가한다. 기존 NTU 1–15쪽 이미지와 본문 수식은 유지하며, 02편에는 보충 해설 수식 11개를 추가한다. 다음 본 강의 시작 페이지는 16쪽 그대로다.
+
+| 글 | 보충 원본 자료 | 출처·추출 기록 |
+|---|---|---|
+| 01 | DeepMind × UCL PDF 17쪽, GEPA 저자 강연 PDF 33·34쪽, DGM Figure 1 | [01 supplementary manifest](source-assets/01/supplementary-manifest.json) |
+| 02 | Stanford CS229 PDF 9쪽, Lambert Lecture 7 PDF 14·21쪽, Noisy Student Figure 1 | [02 supplementary manifest](source-assets/02/supplementary-manifest.json) |
+| 03 | Stanford CS329T PDF 45쪽, Aviral Kumar 발표 PDF 5쪽, Stanford CS224N PDF 92쪽, SCoRe arXiv v2 Figure 7 | [03 supplementary manifest](source-assets/03/supplementary-manifest.json) |
+
+각 기록은 원작자, 원문 URL, PDF 쪽수와 인쇄 번호, 발췌 범위, 파일 해시, 본문 삽입 위치를 남긴다. 논문 그림은 강의 PPT로 부르지 않는다. 추가 이미지의 `rightsStatus`는 `unverified`, 이용·수정 허가 확인 값은 `false`로 유지한다. 관측한 라이선스 표시는 허가 확인과 별도 기록한다. 현재 사용자의 요청은 각 publishing job의 `revisionAuthorization`에 이 추가 12개 범위로 기록했으며, 이전 15개 본 강의 이미지의 발행 승인과 구분한다.
+
+검수 기록은 [보충 자료 QA](reviews/2026-11-16-supplementary-qa.json)에 연결한다. publishing job의 `previousPublicationEvidence`와 progress의 `originalPublication`은 PR #200의 과거 발행 증거를 보존한다. 새 원고 해시는 이번 준비 리비전을 가리키며, **이번 리비전의 최종 병합·배포·공개 페이지 확인 증거는 리비전 PR에 기록한다.** 이 준비 기록 자체가 현재 `main` 배포 완료를 뜻하지 않는다.
