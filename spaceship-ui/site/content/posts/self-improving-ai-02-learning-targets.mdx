@@ -35,7 +35,7 @@ import Math from '@/components/post/Math.astro';
 
 앞선 [자가개선 AI 01 — AI는 무엇을 바꿀 때 더 좋아지는가](/posts/self-improving-ai-01-overview/)에서 변경 대상·자동화 범위·평가 기준을 나눴다. 이번에는 그중 **모델의 파라미터를 학습하는 구조**를 따라간다.
 
-영상 구간은 제공 자막의 주제 설명 시각이다. 정확한 화면 전환 프레임을 측정한 값은 아니다. 본문의 추가 수식과 계산 예시는 학습을 돕기 위해 별도로 작성했다.
+영상 구간은 제공 자막의 주제 설명 시각이다. 정확한 화면 전환 프레임을 측정한 값은 아니다. 본문의 추가 수식과 계산 예시는 학습을 돕기 위해 별도로 작성했다. 보충 자료는 관련 설명 옆에 원본 영어 강의 슬라이드와 논문 도해로 넣었다. 보충 자료 확인일은 2026년 11월 16일이다.
 
 ## 6쪽 — AI는 어떻게 학습하는가?
 
@@ -117,6 +117,22 @@ import Math from '@/components/post/Math.astro';
 - 음의 부호: 그 반대 방향으로 이동하여 손실을 낮추려는 갱신.
 
 이 식이 모든 신경망에서 항상 전역 최솟값을 찾는다는 뜻은 아니다. 실제로 도달하는 해는 초기값, 자료, 모델 구조, 최적화 설정 등에 영향을 받는다. 또한 학습 자료에서 좋은 후보가 새로운 자료에서도 좋으려면 일반화(Generalization)를 별도로 확인해야 한다. [보충: Stanford CS229 강의 노트, 지도학습·경사하강법](https://cs229.stanford.edu/lectures-spring2022/main_notes.pdf)
+
+### 보충 강의 · Stanford CS229 — 최적화는 어떤 값을 바꾸는가
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/cs229-midterm-review-p09.png"
+  alt="Stanford CS229의 원본 영어 슬라이드. 비용 함수 J를 줄이기 위해 학습률 알파와 기울기로 파라미터 세타를 갱신하는 경사하강법 식을 보여 준다."
+  caption="보충 원본 슬라이드 · Stanford CS229, Midterm Review, PDF 9쪽(슬라이드 9/39). 문서 표지 날짜는 2022-05-06이다."
+  source="https://cs229.stanford.edu/lectures-spring2023/cs229-mid_term_review_slides.pdf#page=9"
+  credit="Nandita Bhaskhar / Stanford CS229. Original English lecture slide."
+  width={1800}
+  height={1013}
+/>
+
+Stanford 슬라이드의 <Math tex={String.raw`J(\theta)`} />는 앞에서 쓴 전체 손실 <Math tex={String.raw`L(\theta)`} />에, 학습률 <Math tex={String.raw`\alpha`} />는 <Math tex={String.raw`\eta`} />에 대응한다. 갱신식에서 실제로 바뀌는 값은 파라미터 <Math tex={String.raw`\theta`} />다. 아래의 확률적 경사하강법(Stochastic Gradient Descent, SGD) 설명은 한 번의 갱신에 어떤 학습 예제를 사용하는지 구분한다.
+
+이 식을 이번 강의의 첫 상자와 연결하면 차이가 보인다. 교사가 바뀌어 목표 라벨이 달라지면, 같은 경사하강법을 사용해도 손실과 기울기가 달라질 수 있다. 따라서 최적화 알고리즘을 확인하는 일과, 그 알고리즘에 제공할 목표를 검토하는 일은 각각 필요하다.
 
 ### 왜 첫 상자가 강조되었을까?
 
@@ -229,6 +245,22 @@ import Math from '@/components/post/Math.astro';
 
 여기서는 교사 분포를 학생 업데이트 동안 고정한 목표로 취급한다. 두 방식은 모두 교사의 출력을 이용하지만, 전달하는 정보의 형태가 다르다. Hinton 등의 2015년 논문은 출력 분포와 온도(Temperature)를 이용한 증류를 설명한다. [원문 §2](https://arxiv.org/pdf/1503.02531)
 
+### 보충 강의 · Lambert — 교사 분포는 고정하고 학생을 갱신한다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/lambert-lec7-p14.png"
+  alt="Nathan Lambert의 원본 영어 슬라이드. 같은 입력을 받는 고정된 교사와 학습되는 학생의 확률분포를 KL 손실로 비교하고 학생 쪽에만 기울기를 전달한다."
+  caption="보충 원본 슬라이드 · Nathan Lambert, Post-training Lecture 7, PDF 14쪽(슬라이드 14/59)."
+  source="https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/slides.pdf#page=14"
+  credit="Nathan Lambert / RLHF Book. Original English lecture slide; cites Hinton et al. (2015)."
+  width={1800}
+  height={1013}
+/>
+
+위쪽 교사는 Frozen, 아래쪽 학생은 Trained로 표시되어 있다. 같은 입력을 두 모델에 넣지만, 점선 화살표가 돌려보내는 기울기는 학생만 바꾼다. 교사가 만든 목표까지 함께 움직이면 무엇을 따라가야 하는지 바뀌므로, 이 그림에서는 교사 분포를 고정한다.
+
+가운데 온도(Temperature) <Math tex={String.raw`\tau`} />는 로짓을 확률로 바꿀 때 분포의 뾰족함을 조절한다. 그림의 <Math tex={String.raw`\tau>1`} /> 설정은 가장 큰 확률 이외의 정보도 드러낸다. 이 구조가 앞에서 소개한 “완성된 답변을 목표로 주기”와 구별되는 지점이다. 학생은 선택된 답 하나뿐 아니라 교사의 확률분포를 맞춘다.
+
 ### 확률분포는 무엇을 더 남겨 주는가?
 
 다음은 세 클래스에 대한 가상 예시다.
@@ -245,8 +277,6 @@ import Math from '@/components/post/Math.astro';
 ### “강한 교사”는 반드시 더 큰 모델일까?
 
 지식 증류를 항상 “큰 모델을 작은 모델로 압축하는 것”으로만 한정할 필요는 없다. 무엇이 더 나은 학습 신호를 제공하는지가 핵심이다. Noisy Student는 동일하거나 더 큰 학생과 학습 중 노이즈를 사용하는 구성을 연구한다. 따라서 모델 크기와 교사의 신호 품질을 구분해야 한다. [Noisy Student, CVPR 2020](https://arxiv.org/pdf/1911.04252)
-
-최근 언어모델의 합성 자료와 증류를 함께 공부할 때는 [Nathan Lambert의 2026년 Post-training 7강](https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/)도 연결해서 볼 수 있다. 생성 답변을 이용한 학습과 분포를 이용한 증류가 어떻게 이어지는지 보충하기 좋다.
 
 이 장의 학습 목표는 **다른 교사**가 제공한다. 다음 10쪽은 그 교사 자리에 학습 대상 자신을 놓는다.
 
@@ -301,6 +331,22 @@ p_\theta(c\mid x)-q(c\mid x).`} display />
 D_{\mathrm{KL}}(q\|q)=0.`} display />
 
 두 분포가 같아도 교차엔트로피는 분포의 엔트로피만큼 남는다. 예를 들어 <Math tex={String.raw`q=(0.8,0.2)`} />이면 교차엔트로피는 약 0.5004다. 이 값 자체가 남아 있다고 해서 학생에게 더 움직일 방향이 생기는 것은 아니다.
+
+### 보충 강의 · Lambert — 교차엔트로피에서 무엇이 줄어드는가
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/lambert-lec7-p21.png"
+  alt="Nathan Lambert의 원본 영어 슬라이드. 교사 q와 학생 p 사이의 교차엔트로피를 교사의 엔트로피 H(q)와 KL 발산의 합으로 전개한다."
+  caption="보충 원본 슬라이드 · Nathan Lambert, Post-training Lecture 7, PDF 21쪽(슬라이드 21/59)."
+  source="https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/slides.pdf#page=21"
+  credit="Nathan Lambert / RLHF Book. Original English lecture slide."
+  width={1800}
+  height={1013}
+/>
+
+슬라이드의 <Math tex={String.raw`H(q,p)`} />는 위에서 쓴 <Math tex={String.raw`\operatorname{CE}(q,p)`} />다. 마지막 줄은 이를 교사 자체의 불확실성 <Math tex={String.raw`H(q)`} />와 두 분포의 차이를 나타내는 KL 발산으로 나눈다. 교사를 고정하면 학생이 바꿀 수 있는 항은 KL 쪽이다.
+
+따라서 교사와 학생의 분포가 같아진 뒤에도 남아 있는 <Math tex={String.raw`H(q)`} />를 학생의 미해결 오차로 해석하면 안 된다. 학생이 줄일 수 있는 항이 KL뿐이라는 해석에는 “교사 고정”이 필요하다. 같은 파라미터로 교사도 다시 계산하며 그쪽까지 미분하면, 앞의 고정 목표 문제와 다른 목적 함수를 최적화하게 된다.
 
 ### 경우 B. 자신의 예측을 하나의 확정 라벨로 바꾸는 경우
 
@@ -362,6 +408,21 @@ p-\tilde y
 
 **Noisy Student, CVPR 2020.** 교사가 라벨 없는 이미지에 의사 라벨을 만들고, 정답 자료와 의사 라벨 자료를 함께 사용해 학생을 학습한다. 학생에는 데이터 증강과 모델 노이즈를 적용한다. 학생은 교사와 동일하거나 더 큰 모델일 수 있다. [원문](https://arxiv.org/pdf/1911.04252)
 
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/noisy-student-figure1.png"
+  alt="Noisy Student 논문 원본 Figure 1. 정답 자료로 교사를 학습하고, 라벨 없는 자료의 의사 라벨을 만든 다음, 노이즈를 적용한 학생을 학습하여 다음 교사로 바꾸는 반복 구조다."
+  caption="보충 원본 논문 도해 · Noisy Student, Figure 1, arXiv v4 PDF 2쪽. 원본 그림과 캡션을 발췌했다."
+  source="https://arxiv.org/pdf/1911.04252v4#page=2"
+  credit="Qizhe Xie, Minh-Thang Luong, Eduard Hovy, Quoc V. Le (2020). Original Figure 1; example images from ImageNet."
+  label="보충 논문 · Noisy Student"
+  width={1458}
+  height={1056}
+/>
+
+왼쪽 위의 교사는 정답이 있는 자료로 출발한다. 그다음 라벨 없는 입력에 의사 라벨을 붙이고, 아래의 학생은 두 종류의 자료를 함께 사용한다. 파란 글씨의 자료 증강(Data augmentation), 드롭아웃(Dropout), 확률적 깊이(Stochastic depth)는 학생을 학습할 때 적용하는 변화를 표시한다. 의사 라벨을 만들 때의 교사는 이러한 노이즈를 끈다.
+
+이 그림은 앞의 “같은 입력·같은 실행 조건에서 같은 분포를 그대로 맞추는 경우”와 왜 다른지 보여 준다. 새 입력을 추가하고 학생의 학습 조건을 바꾸기 때문이다. 마지막 화살표는 학습된 학생을 다음 교사로 사용하는 반복이다. 이 화살표만으로 개선이 보장되지는 않으며, 별도의 평가에서 실제 효과를 확인해야 한다.
+
 **STaR, NeurIPS 2022.** 생성한 풀이 중 정답을 얻은 것을 학습하며, 틀린 경우 정답을 조건으로 다시 풀이를 생성한다. 문제·정답 정보와 초기 풀이 예시가 들어간다. [원문](https://arxiv.org/abs/2203.14465)
 
 **ReST, 2023년 8월.** 자료를 생성하는 Grow와 보상 점수로 선별한 자료를 학습하는 Improve를 구분한다. 원문은 음의 로그우도와 여러 오프라인 강화학습 손실을 다루므로, 하나의 손실만 사용하는 방법으로 한정하면 안 된다. [원문 §3](https://arxiv.org/html/2308.08998v2)
@@ -378,9 +439,9 @@ p-\tilde y
 
 1. [Hung-yi Lee, NTU ML 2026 공식 강의](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php). 이번 범위는 Self-Improving 상편 PDF 6–10쪽.
 2. [Stanford CS229 강의 노트](https://cs229.stanford.edu/lectures-spring2022/main_notes.pdf). 지도학습, 경사하강법, 분류 손실의 기초.
-3. [Hinton, Vinyals, Dean, Distilling the Knowledge in a Neural Network](https://arxiv.org/pdf/1503.02531). 2015-03-09. 확률분포를 이용한 지식 증류.
-4. [Xie et al., Self-training with Noisy Student improves ImageNet classification](https://arxiv.org/pdf/1911.04252). CVPR 2020. 의사 라벨, 자료 증강, 학생의 노이즈.
-5. [Zelikman et al., STaR: Bootstrapping Reasoning With Reasoning](https://arxiv.org/abs/2203.14465). NeurIPS 2022. 생성 풀이의 선별과 학습.
-6. [Gulcehre et al., Reinforced Self-Training (ReST) for Language Modeling](https://arxiv.org/html/2308.08998v2). 사용 판본 2023-08-21. 생성과 선별·학습의 반복.
-7. [Nathan Lambert, 2026 Post-training Course, Lecture 7](https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/). 합성 자료와 현대적인 증류의 보충 강의.
-
+3. [Nandita Bhaskhar, Stanford CS229 Midterm Review](https://cs229.stanford.edu/lectures-spring2023/cs229-mid_term_review_slides.pdf#page=9). 문서 표지 날짜 2022-05-06. PDF 9쪽의 경사하강법 슬라이드를 7쪽 해설에 넣었다.
+4. [Hinton, Vinyals, Dean, Distilling the Knowledge in a Neural Network](https://arxiv.org/pdf/1503.02531). 2015-03-09. 확률분포를 이용한 지식 증류.
+5. [Xie et al., Self-training with Noisy Student improves ImageNet classification](https://arxiv.org/pdf/1911.04252v4). CVPR 2020, 사용 판본 arXiv v4(2020-06-19). PDF 2쪽 Figure 1을 10쪽 해설에 넣었다.
+6. [Zelikman et al., STaR: Bootstrapping Reasoning With Reasoning](https://arxiv.org/abs/2203.14465). NeurIPS 2022. 생성 풀이의 선별과 학습.
+7. [Gulcehre et al., Reinforced Self-Training (ReST) for Language Modeling](https://arxiv.org/html/2308.08998v2). 사용 판본 2023-08-21. 생성과 선별·학습의 반복.
+8. [Nathan Lambert, Post-training Course, Lecture 7](https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/) · [공식 PDF](https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/slides.pdf). PDF 14쪽의 증류 도식과 21쪽의 교차엔트로피 전개를 각각 9쪽·10쪽 해설에 넣었다.
