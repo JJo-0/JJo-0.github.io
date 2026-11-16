@@ -571,5 +571,35 @@ POST_TAXONOMY.update({
     "2026-11-12-organic-photocatalyst-sheet-news.mdx": Taxonomy("finance-industry", "solar-water-splitting", "paper-review", ("frontier-candidate", "solar-hydrogen", "photocatalyst", "organic-semiconductor")),
 })
 
+# Register the existing November 14–16 drafts from their current frontmatter.
+# This repairs manifest coverage without changing article bytes or visibility.
+POST_TAXONOMY.update({
+    "2026-11-14-aluminium-graphite-3v-battery-news.mdx": Taxonomy("finance-industry", "aluminium-graphite-battery", "paper-review", ("frontier-candidate", "energy-storage", "aluminium-battery", "electrolyte")),
+    "2026-11-14-perovskite-molecular-anchor-transistor-news.mdx": Taxonomy("finance-industry", "perovskite-transistor", "paper-review", ("frontier-candidate", "semiconductor", "perovskite-transistor", "ion-migration")),
+    "2026-11-14-single-crystal-dielectric-2d-cfet-news.mdx": Taxonomy("finance-industry", "two-dimensional-cfet", "paper-review", ("frontier-one", "semiconductor", "two-dimensional-materials", "low-power-logic")),
+    "2026-11-15-cervical-pathology-self-supervised-ai-news.mdx": Taxonomy("finance-industry", "pathology-ai", "paper-review", ("frontier-candidate", "medical-ai", "digital-pathology", "self-supervised-learning")),
+    "2026-11-15-disordered-rocksalt-li-transport-news.mdx": Taxonomy("finance-industry", "battery-materials", "paper-review", ("frontier-candidate", "battery-materials", "lithium-transport", "machine-learning-potential")),
+    "2026-11-15-split-rna-guided-scas9-news.mdx": Taxonomy("finance-industry", "molecular-diagnostics", "paper-review", ("frontier-one", "biotechnology", "crispr-diagnostics", "molecular-sensing")),
+    "2026-11-16-cue-locality-temporal-shortcuts-news.mdx": Taxonomy("finance-industry", "ai-robustness", "paper-review", ("frontier-one", "machine-learning", "shortcut-learning", "ood-generalization")),
+    "2026-11-16-multi-topology-rl-critical-nodes-news.mdx": Taxonomy("finance-industry", "graph-learning", "paper-review", ("frontier-candidate", "reinforcement-learning", "graph-neural-network", "network-science")),
+    "2026-11-16-self-supervised-polishing-collision-news.mdx": Taxonomy("finance-industry", "robot-safety-ai", "paper-review", ("frontier-candidate", "self-supervised-learning", "industrial-robotics", "collision-detection")),
+})
+
+# Register the three NTU Self-Improving lecture installments.
+POST_TAXONOMY.update({
+    "self-improving-ai-01-overview.mdx": Taxonomy(
+        "ai-machine-learning", "self-improving-ai", "study-note",
+        ("self-improvement", "self-correction", "reinforcement-learning", "ntu", "study"),
+    ),
+    "self-improving-ai-02-learning-targets.mdx": Taxonomy(
+        "ai-machine-learning", "self-improving-ai", "study-note",
+        ("self-improvement", "knowledge-distillation", "self-training", "ntu", "study"),
+    ),
+    "self-improving-ai-03-self-correction-to-rl.mdx": Taxonomy(
+        "ai-machine-learning", "self-improving-ai", "study-note",
+        ("self-improvement", "self-correction", "reinforcement-learning", "fine-tuning", "ntu"),
+    ),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
