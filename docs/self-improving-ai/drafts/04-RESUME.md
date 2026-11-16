@@ -1,40 +1,14 @@
-# 4편 재개 지점 — 2026-11-16
+# Self-Improving AI 04–05 continuation
 
-## 현재 결과
+The original draft-only handoff has been superseded by the prepared production manuscripts:
 
-- 작업 브랜치: `content/self-improving-ai-04`
-- 기준 main: `348d252b853f9a08afac1f3203d2e35c8e3e6281`
-- 원고: `self-improving-ai-04-sparse-rewards-and-shaping.md`
-- 제목: **자가개선 AI 04 — 정답은 드문데, 무엇을 보상해야 할까**
-- 원본 범위: NTU Self-Improving 상편 PDF 16–20쪽. 표지는 1쪽.
-- 본문은 작성되어 있으나 사이트 content collection에 넣지 않았다. 공개 글로 취급하지 않는다.
-- 수치 검증 6개 통과. 검증 코드의 원격 Git blob SHA `47926d267fee0224720f2bc2070e278abc6fa1a4`가 로컬 실행 파일과 일치함을 읽어 확인했다.
-- 기존 1–3편, 전체 진행 파일의 공개 범위, 사이트 코드, CI, 권한, 하네스는 변경하지 않았다.
+- `spaceship-ui/site/content/posts/self-improving-ai-04-sparse-rewards-and-shaping.mdx`
+- `spaceship-ui/site/content/posts/self-improving-ai-05-reward-design-to-ai-feedback.mdx`
 
-## 반드시 구분할 상태
+Each contains five NTU source-page images and four original supplementary figures. Source editions, crop rectangles, text overlays, dimensions and hashes are recorded under `source-assets/04/manifest.json` and `source-assets/05/manifest.json`.
 
-`원고 작성`과 `영어 슬라이드 완성`, `보충 이미지 삽입`, `main 병합`, `공개 배포`는 서로 다른 상태다. 이번에는 원고·출처 연결·수치 예제까지 준비했다. 나머지는 완료되지 않았다. 이미지 처리 도구 연결에서 Cloudflare 403 차단이 발생했다.
+`reviews/2026-11-16-chapters-04-05-preparation.json` records actual preparation checks. It is not evidence of production CI or public deployment. Exact final CI, merge, Pages and public-page observations belong in PR #202.
 
-원본 PDF/PPTX와 16–20쪽의 선택 PDF를 작업용 샌드박스에 확보했지만, 작업용 파일 경로 또는 임시 다운로드 링크를 영구 공개 이미지 주소로 사용하지 않는다. 원문 파일 해시를 기록하지 못했으므로 재개 시 공식 출처 파일을 다시 확보하고 SHA-256을 고정한다.
+The temporary asset-preparation workflow has been removed. The standalone render/compile scripts remain for reproducibility. The series title mapping is `자가개선 AI`; individual titles retain 01–05.
 
-## 재개 순서
-
-1. `source-assets/04/source-review.json`과 이 원고의 `MEDIA_SLOT`을 먼저 읽는다. 본문을 처음부터 다시 쓰지 않는다.
-2. 원본 17쪽은 그림 내부 문구의 시각 판독·대조가 남아 있다. 현재 17쪽 본문은 추가 해설이며 원문 그림을 번역했다고 주장하지 않는다.
-3. 원본 16·18·20쪽의 중국어 문구를 영어로 편집한다. 19쪽은 영어 외 비트맵 문구 유무를 확인한다. 18쪽의 원본 링크 이미지 누락을 다른 원본 사진인 것처럼 보완하지 않는다.
-4. 본 강의 이미지 5장과 보충 원본 이미지 4장을 최종 제작한다. 보충 자료는 UMass PDF 4·5·11쪽, Eureka 프로젝트 PDF 2쪽 Figure 2이다. 그림마다 출처·페이지·원작자·변환 방식·해시·치수와 실제 권리 확인 상태를 기록한다.
-5. 이미지 파일을 영구 저장한 뒤 기존 LearningFigure와 Math 컴포넌트 방식으로 MDX에 통합한다. 현재 Markdown의 수학 부등호와 코드 블록을 구분해 변환한다. 외부 임시 이미지 URL과 깨진 이미지 슬롯을 공개하지 않는다.
-6. 실제 게시물 경로는 `spaceship-ui/site/content/posts/self-improving-ai-04-sparse-rewards-and-shaping.mdx`이다. 이미지 기본 경로는 `spaceship-ui/site/assets/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/`이다. 두 경로는 아직 생성하지 않았다.
-7. taxonomy 등록, 시리즈 순서 4, 3편→4편 링크, 원문·수식·모바일/데스크톱 화면을 검증한다. 로컬 산술 테스트는 사이트 빌드나 이미지 검수를 대신하지 않는다.
-8. 정확한 최종 커밋의 CI와 GitHub Pages 배포 및 공개 화면을 확인한 뒤에만 공개 상태와 진행 범위를 갱신한다. 기존 발행 범위는 1–15쪽, 다음 미발행 페이지는 16쪽이다. 4편이 실제 공개된 다음의 집필 범위는 21–25쪽이다.
-
-## 보존할 핵심 설명
-
-- 희소성과 지연을 구분하고, 독립 시행 계산을 실제 RL 표본 복잡도 예측으로 부르지 않는다.
-- 반복 접촉 보상 반례는 준비 상태·즉시 성공 가능·성공 시 종료·보상 중복 없음이라는 가정을 유지한다.
-- PBRS의 경계 항을 생략하지 않는다. 정책 보존과 유한 표본 학습 효율·안전 보장을 구분한다.
-- 보상 후보의 원시 점수 크기 대신 학습된 정책을 공통 평가 기준으로 비교한다.
-- LLM 보상 작성과 정책 학습을 구별한다. LLM의 가중치까지 업데이트했다고 단정하지 않는다.
-- 보상 후보 선택에 사용한 조건과 최종 테스트 조건을 구분한다.
-
-원문 재사용 권리 상태는 미확인이다. 사용자 집필 요청이나 과거 1–15쪽 발행 기록을 새로운 제3자 허가가 확인된 것으로 확대하지 않는다.
+After verified publication of these two posts, the next primary source page is 26. No later chapter is represented as published here.
