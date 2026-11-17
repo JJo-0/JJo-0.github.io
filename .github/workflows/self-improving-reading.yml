@@ -9,6 +9,10 @@ on:
       - 'spaceship-ui/scripts/browser-self-improving-audit.mjs'
       - 'docs/self-improving-ai/source-assets/**/manifest.json'
       - '.github/workflows/self-improving-reading.yml'
+  workflow_run:
+    workflows: ['Deploy Blog to Pages']
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       base_url:
@@ -23,6 +27,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   reading:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     defaults:
@@ -30,6 +35,8 @@ jobs:
         working-directory: spaceship-ui
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.19.0
@@ -43,12 +50,15 @@ jobs:
           pnpm install --frozen-lockfile
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Verify chapter 06 numerical examples
+        run: python3 ../docs/self-improving-ai/reviews/verify_examples_06.py
       - name: Production build
+        if: github.event_name != 'workflow_run'
         run: pnpm build
       - name: Verify figures, math, navigation and series heading
         env:
           JJO_SELF_IMPROVING_ARTIFACTS: self-improving-audit
-          JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
+          JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_run' && 'https://jjo-0.github.io' || github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
         run: node scripts/browser-self-improving-audit.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()

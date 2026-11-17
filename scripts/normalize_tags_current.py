@@ -607,5 +607,14 @@ POST_TAXONOMY.update({
     "self-improving-ai-05-reward-design-to-ai-feedback.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "reward-shaping", "robotics", "ntu")),
 })
 
+# Register chapter 06 and repair coverage of existing November 17 drafts.
+# Existing NEWS article bytes and draft flags are unchanged.
+POST_TAXONOMY.update({
+    "self-improving-ai-06-self-evaluation-and-entropy.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-evaluation", "entropy-minimization", "test-time-adaptation", "ntu")),
+    "2026-11-17-cd7-aav-immune-cell-engineering-news.mdx": Taxonomy("finance-industry", "cell-gene-therapy", "paper-review", ("frontier-candidate", "gene-delivery", "cell-therapy", "immunoengineering")),
+    "2026-11-17-openscientist-biomedical-agentic-ai-news.mdx": Taxonomy("finance-industry", "biomedical-ai", "paper-review", ("frontier-one", "agentic-ai", "biomedical-research", "scientific-discovery")),
+    "2026-11-17-superb-seq-crispr-transcriptome-news.mdx": Taxonomy("finance-industry", "genome-editing-methods", "paper-review", ("frontier-candidate", "crispr", "single-cell", "functional-genomics")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

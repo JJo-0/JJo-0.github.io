@@ -8,19 +8,30 @@ import { startPreview, startChrome, Cdp, attach, stopChild, removeProfile, evalu
 const out = process.env.JJO_SELF_IMPROVING_ARTIFACTS || path.join(os.tmpdir(), 'jjo-self-improving');
 fs.mkdirSync(out, { recursive: true });
 const chapters = [
-  { number: 4, slug: 'self-improving-ai-04-sparse-rewards-and-shaping', previous: 'self-improving-ai-03-self-correction-to-rl', next: 'self-improving-ai-05-reward-design-to-ai-feedback' },
-  { number: 5, slug: 'self-improving-ai-05-reward-design-to-ai-feedback', previous: 'self-improving-ai-04-sparse-rewards-and-shaping', next: null },
+  { number: 4, math: 26, slug: 'self-improving-ai-04-sparse-rewards-and-shaping', previous: 'self-improving-ai-03-self-correction-to-rl', next: 'self-improving-ai-05-reward-design-to-ai-feedback' },
+  { number: 5, math: 26, slug: 'self-improving-ai-05-reward-design-to-ai-feedback', previous: 'self-improving-ai-04-sparse-rewards-and-shaping', next: 'self-improving-ai-06-self-evaluation-and-entropy' },
+  { number: 6, math: 20, slug: 'self-improving-ai-06-self-evaluation-and-entropy', previous: 'self-improving-ai-05-reward-design-to-ai-feedback', next: null },
 ];
+const manifests = new Map();
 const evidence = { checkedAt: new Date().toISOString(), publicBase: process.env.JJO_SMOKE_BASE_URL || null, views: [], assets: [], series: [] };
 let preview, chrome, cdp;
 try {
   for (const chapter of chapters) {
     const manifest = JSON.parse(fs.readFileSync(`../docs/self-improving-ai/source-assets/0${chapter.number}/manifest.json`, 'utf8'));
     assert.equal(manifest.assets.length, 9);
+    manifests.set(chapter.number, manifest);
     for (const asset of manifest.assets) {
       const data = fs.readFileSync(path.resolve('..', asset.path));
       assert.equal(crypto.createHash('sha256').update(data).digest('hex'), asset.sha256);
-      evidence.assets.push({ path: asset.path, sha256: asset.sha256, source: asset.source });
+      const record = { path: asset.path, sha256: asset.sha256, source: asset.source };
+      if (process.env.JJO_SMOKE_BASE_URL) {
+        const response = await fetch(new URL(asset.src, process.env.JJO_SMOKE_BASE_URL), { signal: AbortSignal.timeout(30000), cache: 'no-store' });
+        assert.equal(response.status, 200, `Public asset ${asset.src}`);
+        const publicHash = crypto.createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex');
+        assert.equal(publicHash, asset.sha256, `Public asset hash ${asset.src}`);
+        record.publicSha256 = publicHash;
+      }
+      evidence.assets.push(record);
     }
   }
   if (!process.env.JJO_SMOKE_BASE_URL) preview = await startPreview();
@@ -49,17 +60,22 @@ try {
         };
       })()`);
       assert.equal(view.figures.length, 9);
-      assert.equal(view.math, 26);
+      assert.equal(view.math, chapter.math);
       assert.equal(view.mathErrors, 0);
       assert(view.overflow <= 2, JSON.stringify(view));
       assert.equal(view.previous, `/posts/${chapter.previous}/`);
       assert.equal(view.next, chapter.next ? `/posts/${chapter.next}/` : null);
       for (const figure of view.figures) {
+        const expected = manifests.get(chapter.number).assets.find(asset => asset.src === figure.src);
+        assert(expected, `Unexpected image ${figure.src}`);
+        assert.equal(figure.naturalWidth, expected.width);
+        assert.equal(figure.naturalHeight, expected.height);
+        assert.equal(figure.source, expected.source);
         assert(figure.alt.length > 10 && figure.caption.length > 20);
         assert(figure.source?.includes('#page='));
       }
       evidence.views.push(view);
-      for (const index of [1, 7]) {
+      for (const index of (chapter.number === 6 ? [0, 1, 2, 3, 4, 5, 6, 7, 8] : [1, 7])) {
         await evaluate(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]')[${index}].scrollIntoView({block:'center',behavior:'instant'})`);
         const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
         fs.writeFileSync(path.join(out, `${chapter.slug}-${width}-figure-${index}.png`), Buffer.from(shot.data, 'base64'));
@@ -70,9 +86,10 @@ try {
     await waitExpression(cdp, session, "!!document.querySelector('[data-series-group=" + '"self-improving-ai"' + "]')", 'Self-Improving series group');
     const group = await evaluate(cdp, session, `(()=>{const g=document.querySelector('[data-series-group="self-improving-ai"]');return {title:g.querySelector('.series-group__title')?.textContent,count:g.querySelector('.series-group__count')?.textContent,links:[...new Set(Array.from(g.querySelectorAll('a[href^="/posts/"]')).map(a=>a.getAttribute('href')))]};})()`);
     assert.equal(group.title, '자가개선 AI');
-    assert.equal(group.count, '5편');
+    assert.equal(group.count, '6편');
     // List cards omit the optional trailing slash; retain exact path membership checks.
     const groupPaths = new Set(group.links.map(href => href.replace(/\/+$/, '')));
+    assert.equal(groupPaths.size, 6);
     for (const chapter of chapters) assert(groupPaths.has(`/posts/${chapter.slug}`), `Series missing ${chapter.slug}`);
     await evaluate(cdp, session, "(()=>{const g=document.querySelector('[data-series-group=\"self-improving-ai\"]');g.open=true;g.scrollIntoView({block:'center',behavior:'instant'});})()");
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
