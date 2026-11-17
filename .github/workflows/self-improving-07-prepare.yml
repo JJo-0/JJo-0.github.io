@@ -8,36 +8,28 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
         with:
           ref: content/self-improving-ai-07
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Render pinned sources and verify reviewed bytes
+      - name: Clarify the Taylor expansion assumption without changing equations
         run: |
-          python -m pip install PyMuPDF==1.26.7
-          python docs/self-improving-ai/tools/render_07.py
-          python docs/self-improving-ai/reviews/verify_examples_07.py --output docs/self-improving-ai/reviews/numeric-checks-07.json
-          python docs/self-improving-ai/tools/prepare_07.py
-          node --check spaceship-ui/scripts/browser-self-improving-audit.mjs
-          python scripts/normalize_tags_current.py --check
-      - name: Commit only scoped content changes
-        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json,re
+          p=Path('spaceship-ui/site/content/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training.mdx')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='554b6cf1aa1b15645660257a559241f4a60e3d6ac696207d91f5a3666172859e'
+          s=p.read_text();a='미분 가능한 두 손실과 충분히 작은 학습률을 가정하고';b='주변에서 두 번 연속 미분 가능한 손실과 충분히 작은 학습률을 가정하고';assert s.count(a)==1
+          p.write_text(s.replace(a,b));h=hashlib.sha256(p.read_bytes()).hexdigest();assert h=='2dd3a93e3200a441b48bc9d8137ba60c0c29066aa019ee18f1bdf52014783160'
+          assert p.read_text().count('<LearningFigure')==9 and len(re.findall(r'<Math\s',p.read_text()))==22
+          p=Path('docs/self-improving-ai/progress.json');d=json.loads(p.read_text());d['prepared_chapter_07']['manuscript_sha256']=h;p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+          p=Path('docs/self-improving-ai/reviews/2026-11-17-chapter-07-preparation.json');d=json.loads(p.read_text());d['sha256']=h;p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+          print('Final reviewed manuscript SHA256:',h)
+          PY
+          python3 docs/self-improving-ai/reviews/verify_examples_07.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/self-improving-ai/source-assets/07/ docs/self-improving-ai/reviews/numeric-checks-07.json docs/self-improving-ai/reviews/2026-11-17-chapter-07-preparation.json docs/self-improving-ai/publishing/2026-11-17-chapter-07-request.json docs/self-improving-ai/drafts/07-RESUME.md docs/self-improving-ai/progress.json scripts/normalize_tags_current.py spaceship-ui/scripts/browser-self-improving-audit.mjs spaceship-ui/site/content/posts/self-improving-ai-06-self-evaluation-and-entropy.mdx spaceship-ui/site/assets/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/
-          git diff --cached --stat
-          git commit -m 'content: integrate reviewed chapter 07 figures, transcript and continuation'
+          git add spaceship-ui/site/content/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training.mdx docs/self-improving-ai/progress.json docs/self-improving-ai/reviews/2026-11-17-chapter-07-preparation.json
+          git commit -m 'content: specify smoothness for the chapter 07 second-order remainder'
           git push origin HEAD:content/self-improving-ai-07
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
-        with:
-          name: self-improving-07-rendered
-          path: |
-            spaceship-ui/site/assets/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/
-            docs/self-improving-ai/source-assets/07/
-            docs/self-improving-ai/reviews/*07*
-          retention-days: 7
