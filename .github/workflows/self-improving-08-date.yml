@@ -1,0 +1,36 @@
+name: Temporary chapter 08 publication time fix
+on:
+  push:
+    branches: ['content/self-improving-ai-08']
+    paths: ['.github/workflows/self-improving-08-date.yml']
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/self-improving-ai-08
+      - name: Correct only the publication instant and its preparation hashes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from datetime import datetime,timezone
+          import hashlib,json
+          p=Path('spaceship-ui/site/content/posts/self-improving-ai-08-entropy-estimation-and-gradients.mdx')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='8b2eb2eafde42132b903b1ce4f30c61d53056a61eb1300d718084d94f7128649'
+          s=p.read_text();old='pubDate: 2026-11-18\n';new='pubDate: 2026-11-18T01:34:33+09:00\n';assert s.count(old)==1
+          instant=datetime.fromisoformat('2026-11-18T01:34:33+09:00');assert instant.astimezone(timezone.utc)<datetime.now(timezone.utc)
+          p.write_text(s.replace(old,new));digest=hashlib.sha256(p.read_bytes()).hexdigest()
+          p=Path('docs/self-improving-ai/progress.json');d=json.loads(p.read_text());d['prepared_chapter_08']['manuscript_sha256']=digest;d['prepared_chapter_08']['publication_instant']='2026-11-18T01:34:33+09:00';p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+          p=Path('docs/self-improving-ai/reviews/2026-11-18-chapter-08-preparation.json');d=json.loads(p.read_text());d['sha256']=digest;d['publication_time_fix']='Date-only 2026-11-18 was future UTC in the production filter. Set the original manuscript commit time with explicit +09:00; keep content, Korean publication day and global filters unchanged.';p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+          print('Final manuscript SHA256',digest)
+          print('Publication instant UTC',instant.astimezone(timezone.utc).isoformat())
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add spaceship-ui/site/content/posts/self-improving-ai-08-entropy-estimation-and-gradients.mdx docs/self-improving-ai/progress.json docs/self-improving-ai/reviews/2026-11-18-chapter-08-preparation.json
+          git commit -m 'fix: publish chapter 08 at the explicit Korean creation time'
+          git push origin HEAD:content/self-improving-ai-08
