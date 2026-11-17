@@ -1,0 +1,53 @@
+name: Temporary Self-Improving 06 source preparation
+on:
+  push:
+    branches: [content/self-improving-ai-06]
+    paths:
+      - '.github/workflows/self-improving-06-preparation.yml'
+      - 'docs/self-improving-ai/tools/render_06.py'
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Obtain original source files for visual review
+        run: |
+          python -m pip install --quiet PyMuPDF==1.26.6 Pillow==11.3.0
+          python - <<'PY'
+          import urllib.request, pathlib, concurrent.futures, hashlib, json, tarfile
+          import pymupdf as fitz
+          root=pathlib.Path('source-review-06');root.mkdir(exist_ok=True)
+          sources={
+            'ntu.pdf':'https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf',
+            'ntu.pptx':'https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx',
+            'tent.pdf':'https://arxiv.org/pdf/2006.10726v3',
+            'self-consistency.pdf':'https://arxiv.org/pdf/2203.11171v4',
+            'suta.pdf':'https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.pdf',
+            'entropy-llm.pdf':'https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf',
+          }
+          def get(item):
+            name,url=item
+            with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'JJo-source-review/1.0'}),timeout=70) as response:data=response.read(40000001)
+            if len(data)>40000000:raise RuntimeError('Source too large')
+            (root/name).write_bytes(data)
+            return {'name':name,'url':url,'sha256':hashlib.sha256(data).hexdigest()}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:records=list(pool.map(get,sources.items()))
+          (root/'sources.json').write_text(json.dumps(records,indent=2))
+          doc=fitz.open(root/'ntu.pdf')
+          for number in range(26,31):doc[number-1].get_pixmap(matrix=fitz.Matrix(1.5,1.5),alpha=False).save(root/f'original-{number}.png')
+          with tarfile.open(root/'repository-text.tar.gz','w:gz') as tar:
+            for path in pathlib.Path('.').rglob('*'):
+              if path.is_file() and path.parts[0] not in {'.git','source-review-06'} and path.suffix.lower() in {'.md','.mdx','.json','.mjs','.js','.ts','.astro','.svelte','.css','.yml','.yaml','.py'}:tar.add(path)
+          print(json.dumps(records,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: self-improving-06-source-review
+          path: source-review-06/
+          retention-days: 3
