@@ -1,0 +1,48 @@
+name: Temporary Self-Improving 07 preparation
+on:
+  push:
+    branches: ['content/self-improving-ai-07']
+    paths: ['.github/workflows/self-improving-07-prepare.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Retrieve public source documents for visual review
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.request import Request,urlopen
+          from concurrent.futures import ThreadPoolExecutor
+          import hashlib,json,tarfile
+          root=Path('/tmp/chapter07-sources');root.mkdir()
+          sources={
+            'urlvr':'https://arxiv.org/pdf/2603.08660v1',
+            'tlm':'https://arxiv.org/pdf/2505.20633v1',
+            'ttt':'https://proceedings.mlr.press/v119/sun20b/sun20b.pdf',
+            'ntu-post':'https://speech.ee.ntu.edu.tw/~hylee/GenAI-ML/2025-fall-course-data/Post.pdf'
+          }
+          def fetch(item):
+            key,url=item
+            with urlopen(Request(url,headers={'User-Agent':'JJo-source-review/1.0'}),timeout=60) as r: data=r.read(80000001)
+            assert data.startswith(b'%PDF') and len(data)<=80000000
+            (root/(key+'.pdf')).write_bytes(data)
+            return key,{'url':url,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)}
+          result=dict(ThreadPoolExecutor(4).map(fetch,sources.items()))
+          (root/'sources.json').write_text(json.dumps(result,indent=2))
+          files=['CONTENT_POLICY.md','docs/self-improving-ai/progress.json','docs/self-improving-ai/tools/render_06.py','spaceship-ui/scripts/browser-self-improving-audit.mjs','.github/workflows/self-improving-reading.yml','spaceship-ui/site/content/posts/self-improving-ai-06-self-evaluation-and-entropy.mdx','scripts/normalize_tags_current.py']
+          with tarfile.open(root/'current-repo-text.tar.gz','w:gz') as t:
+            for p in files: t.add(p,arcname=p)
+          print(json.dumps(result,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: self-improving-07-sources
+          path: /tmp/chapter07-sources/
+          retention-days: 3
