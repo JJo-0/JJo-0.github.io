@@ -4,45 +4,41 @@ on:
     branches: ['content/self-improving-ai-08']
     paths: ['.github/workflows/self-improving-08-prepare.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: content/self-improving-ai-08
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Retrieve original sources and current repository text
+      - name: Render exact reviewed sources and integrate chapter 08
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          from urllib.request import Request,urlopen
-          from concurrent.futures import ThreadPoolExecutor
-          import hashlib,json,tarfile
-          out=Path('/tmp/chapter08-sources');out.mkdir()
-          sources={
-            'rethinking':'https://arxiv.org/pdf/2605.08186v1',
-            'berkeley':'https://rail.eecs.berkeley.edu/deeprlcourse/static/slides/lec-5.pdf',
-            'stanford':'https://web.stanford.edu/class/ee376a/files/2017-18/lecture_3.pdf',
-            'ntu':'https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf'
-          }
-          def fetch(item):
-            key,url=item
-            with urlopen(Request(url,headers={'User-Agent':'JJo-source-review/1.0'}),timeout=60) as r: data=r.read(80000001)
-            assert data.startswith(b'%PDF') and len(data)<80000000
-            (out/(key+'.pdf')).write_bytes(data)
-            return key,{'url':url,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)}
-          records=dict(ThreadPoolExecutor(4).map(fetch,sources.items()))
-          (out/'sources.json').write_text(json.dumps(records,indent=2))
-          files=['CONTENT_POLICY.md','docs/self-improving-ai/progress.json','docs/self-improving-ai/tools/render_07.py','spaceship-ui/scripts/browser-self-improving-audit.mjs','.github/workflows/self-improving-reading.yml','spaceship-ui/site/content/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training.mdx','scripts/normalize_tags_current.py','spaceship-ui/src/components/post/LearningFigure.astro','spaceship-ui/src/components/post/Math.astro','spaceship-ui/package.json']
-          with tarfile.open(out/'repository-text.tar.gz','w:gz') as t:
-            for p in files: t.add(p,arcname=p)
-          print(json.dumps(records,indent=2))
-          PY
+          python -m pip install PyMuPDF==1.26.7
+          python docs/self-improving-ai/tools/render_08.py
+          python docs/self-improving-ai/reviews/verify_examples_08.py --output docs/self-improving-ai/reviews/numeric-checks-08.json
+          python docs/self-improving-ai/tools/prepare_08.py
+          node --check spaceship-ui/scripts/browser-self-improving-audit.mjs
+          python scripts/normalize_tags_current.py --check
+      - name: Commit only scoped content changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/self-improving-ai/source-assets/08/ docs/self-improving-ai/reviews/numeric-checks-08.json docs/self-improving-ai/reviews/2026-11-18-chapter-08-preparation.json docs/self-improving-ai/publishing/2026-11-18-chapter-08-request.json docs/self-improving-ai/drafts/08-RESUME.md docs/self-improving-ai/progress.json scripts/normalize_tags_current.py spaceship-ui/scripts/browser-self-improving-audit.mjs spaceship-ui/site/content/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training.mdx spaceship-ui/site/assets/assets/posts/self-improving-ai-08-entropy-estimation-and-gradients/
+          git diff --cached --stat
+          git commit -m 'content: integrate chapter 08 reviewed figures, transcript and navigation'
+          git push origin HEAD:content/self-improving-ai-08
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: self-improving-08-sources
-          path: /tmp/chapter08-sources/
-          retention-days: 3
+          name: self-improving-08-rendered
+          path: |
+            spaceship-ui/site/assets/assets/posts/self-improving-ai-08-entropy-estimation-and-gradients/
+            docs/self-improving-ai/source-assets/08/
+            docs/self-improving-ai/reviews/*08*
+            /tmp/chapter08-integration.tar.gz
+          retention-days: 7
