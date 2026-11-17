@@ -10,7 +10,8 @@ fs.mkdirSync(out, { recursive: true });
 const chapters = [
   { number: 4, math: 26, slug: 'self-improving-ai-04-sparse-rewards-and-shaping', previous: 'self-improving-ai-03-self-correction-to-rl', next: 'self-improving-ai-05-reward-design-to-ai-feedback' },
   { number: 5, math: 26, slug: 'self-improving-ai-05-reward-design-to-ai-feedback', previous: 'self-improving-ai-04-sparse-rewards-and-shaping', next: 'self-improving-ai-06-self-evaluation-and-entropy' },
-  { number: 6, math: 20, slug: 'self-improving-ai-06-self-evaluation-and-entropy', previous: 'self-improving-ai-05-reward-design-to-ai-feedback', next: null },
+  { number: 6, math: 20, slug: 'self-improving-ai-06-self-evaluation-and-entropy', previous: 'self-improving-ai-05-reward-design-to-ai-feedback', next: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training' },
+  { number: 7, math: 22, slug: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', previous: 'self-improving-ai-06-self-evaluation-and-entropy', next: null },
 ];
 const manifests = new Map();
 const evidence = { checkedAt: new Date().toISOString(), publicBase: process.env.JJO_SMOKE_BASE_URL || null, views: [], assets: [], series: [] };
@@ -74,9 +75,27 @@ try {
         assert(figure.alt.length > 10 && figure.caption.length > 20);
         assert(figure.source?.includes('#page='));
       }
+      if (chapter.number === 7) {
+        const transcriptLinks = await evaluate(cdp, session, `Array.from(document.querySelectorAll('article a[href*="youtube.com/watch"]')).map(a=>a.href)`);
+        for (const seconds of [1873, 1918, 1972, 2014, 2086]) {
+          assert(transcriptLinks.some(href => { const url = new URL(href); return url.searchParams.get('v') === 's06mSAGN4gM' && url.searchParams.get('t') === `${seconds}s`; }), `Missing transcript timestamp ${seconds}`);
+        }
+        view.transcriptLinks = transcriptLinks;
+      }
       evidence.views.push(view);
-      for (const index of (chapter.number === 6 ? [0, 1, 2, 3, 4, 5, 6, 7, 8] : [1, 7])) {
+      for (const index of (chapter.number >= 6 ? [0, 1, 2, 3, 4, 5, 6, 7, 8] : [1, 7])) {
         await evaluate(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]')[${index}].scrollIntoView({block:'center',behavior:'instant'})`);
+        // Image decoding and layout readiness are separate from a painted frame.
+        const painted = await evaluate(cdp, session, `(async()=>{
+          const image=document.querySelectorAll('article figure[data-learning-figure] img')[${index}];
+          await image.decode();
+          await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+          const rect=image.getBoundingClientRect(),style=getComputedStyle(image);
+          return {index:${index},complete:image.complete,width:rect.width,height:rect.height,
+            visible:rect.bottom>0 && rect.top<innerHeight && rect.right>0 && rect.left<innerWidth && style.visibility!=='hidden' && style.display!=='none'};
+        })()`);
+        assert(painted.complete && painted.visible && painted.width > 0 && painted.height > 0, JSON.stringify(painted));
+        (view.screenshotReadiness ||= []).push(painted);
         const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
         fs.writeFileSync(path.join(out, `${chapter.slug}-${width}-figure-${index}.png`), Buffer.from(shot.data, 'base64'));
       }
@@ -86,12 +105,14 @@ try {
     await waitExpression(cdp, session, "!!document.querySelector('[data-series-group=" + '"self-improving-ai"' + "]')", 'Self-Improving series group');
     const group = await evaluate(cdp, session, `(()=>{const g=document.querySelector('[data-series-group="self-improving-ai"]');return {title:g.querySelector('.series-group__title')?.textContent,count:g.querySelector('.series-group__count')?.textContent,links:[...new Set(Array.from(g.querySelectorAll('a[href^="/posts/"]')).map(a=>a.getAttribute('href')))]};})()`);
     assert.equal(group.title, '자가개선 AI');
-    assert.equal(group.count, '6편');
+    assert.equal(group.count, '7편');
     // List cards omit the optional trailing slash; retain exact path membership checks.
     const groupPaths = new Set(group.links.map(href => href.replace(/\/+$/, '')));
-    assert.equal(groupPaths.size, 6);
+    assert.equal(groupPaths.size, 7);
+    for (const slug of ['self-improving-ai-01-overview', 'self-improving-ai-02-learning-targets', 'self-improving-ai-03-self-correction-to-rl']) assert(groupPaths.has(`/posts/${slug}`), `Series missing ${slug}`);
     for (const chapter of chapters) assert(groupPaths.has(`/posts/${chapter.slug}`), `Series missing ${chapter.slug}`);
     await evaluate(cdp, session, "(()=>{const g=document.querySelector('[data-series-group=\"self-improving-ai\"]');g.open=true;g.scrollIntoView({block:'center',behavior:'instant'});})()");
+    await evaluate(cdp, session, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
     fs.writeFileSync(path.join(out, `self-improving-group-${width}.png`), Buffer.from(shot.data, 'base64'));
     evidence.series.push({ width, ...group });
