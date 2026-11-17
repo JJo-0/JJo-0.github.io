@@ -616,5 +616,10 @@ POST_TAXONOMY.update({
     "2026-11-17-superb-seq-crispr-transcriptome-news.mdx": Taxonomy("finance-industry", "genome-editing-methods", "paper-review", ("frontier-candidate", "crispr", "single-cell", "functional-genomics")),
 })
 
+# Register the transcript-aligned Self-Improving AI chapter 07.
+POST_TAXONOMY.update({
+    "self-improving-ai-07-unsupervised-rlvr-and-test-time-training.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "unsupervised-rlvr", "test-time-training", "perplexity", "ntu")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
