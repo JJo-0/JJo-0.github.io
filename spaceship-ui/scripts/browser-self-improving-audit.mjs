@@ -85,6 +85,17 @@ try {
       evidence.views.push(view);
       for (const index of (chapter.number >= 6 ? [0, 1, 2, 3, 4, 5, 6, 7, 8] : [1, 7])) {
         await evaluate(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]')[${index}].scrollIntoView({block:'center',behavior:'instant'})`);
+        // Image decoding and layout readiness are separate from a painted frame.
+        const painted = await evaluate(cdp, session, `(async()=>{
+          const image=document.querySelectorAll('article figure[data-learning-figure] img')[${index}];
+          await image.decode();
+          await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+          const rect=image.getBoundingClientRect(),style=getComputedStyle(image);
+          return {index:${index},complete:image.complete,width:rect.width,height:rect.height,
+            visible:rect.bottom>0 && rect.top<innerHeight && rect.right>0 && rect.left<innerWidth && style.visibility!=='hidden' && style.display!=='none'};
+        })()`);
+        assert(painted.complete && painted.visible && painted.width > 0 && painted.height > 0, JSON.stringify(painted));
+        (view.screenshotReadiness ||= []).push(painted);
         const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
         fs.writeFileSync(path.join(out, `${chapter.slug}-${width}-figure-${index}.png`), Buffer.from(shot.data, 'base64'));
       }
@@ -101,6 +112,7 @@ try {
     for (const slug of ['self-improving-ai-01-overview', 'self-improving-ai-02-learning-targets', 'self-improving-ai-03-self-correction-to-rl']) assert(groupPaths.has(`/posts/${slug}`), `Series missing ${slug}`);
     for (const chapter of chapters) assert(groupPaths.has(`/posts/${chapter.slug}`), `Series missing ${chapter.slug}`);
     await evaluate(cdp, session, "(()=>{const g=document.querySelector('[data-series-group=\"self-improving-ai\"]');g.open=true;g.scrollIntoView({block:'center',behavior:'instant'});})()");
+    await evaluate(cdp, session, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
     fs.writeFileSync(path.join(out, `self-improving-group-${width}.png`), Buffer.from(shot.data, 'base64'));
     evidence.series.push({ width, ...group });
