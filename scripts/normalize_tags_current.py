@@ -621,5 +621,10 @@ POST_TAXONOMY.update({
     "self-improving-ai-07-unsupervised-rlvr-and-test-time-training.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "unsupervised-rlvr", "test-time-training", "perplexity", "ntu")),
 })
 
+# Register the transcript-aligned Self-Improving AI chapter 08.
+POST_TAXONOMY.update({
+    "self-improving-ai-08-entropy-estimation-and-gradients.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "entropy-minimization", "policy-gradient", "test-time-adaptation", "ntu")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())
