@@ -4,45 +4,40 @@ on:
     branches: ['content/self-improving-ai-07']
     paths: ['.github/workflows/self-improving-07-prepare.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: content/self-improving-ai-07
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Retrieve public source documents for visual review
+      - name: Render pinned sources and verify reviewed bytes
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          from urllib.request import Request,urlopen
-          from concurrent.futures import ThreadPoolExecutor
-          import hashlib,json,tarfile
-          root=Path('/tmp/chapter07-sources');root.mkdir()
-          sources={
-            'urlvr':'https://arxiv.org/pdf/2603.08660v1',
-            'tlm':'https://arxiv.org/pdf/2505.20633v1',
-            'ttt':'https://proceedings.mlr.press/v119/sun20b/sun20b.pdf',
-            'ntu-post':'https://speech.ee.ntu.edu.tw/~hylee/GenAI-ML/2025-fall-course-data/Post.pdf'
-          }
-          def fetch(item):
-            key,url=item
-            with urlopen(Request(url,headers={'User-Agent':'JJo-source-review/1.0'}),timeout=60) as r: data=r.read(80000001)
-            assert data.startswith(b'%PDF') and len(data)<=80000000
-            (root/(key+'.pdf')).write_bytes(data)
-            return key,{'url':url,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)}
-          result=dict(ThreadPoolExecutor(4).map(fetch,sources.items()))
-          (root/'sources.json').write_text(json.dumps(result,indent=2))
-          files=['CONTENT_POLICY.md','docs/self-improving-ai/progress.json','docs/self-improving-ai/tools/render_06.py','spaceship-ui/scripts/browser-self-improving-audit.mjs','.github/workflows/self-improving-reading.yml','spaceship-ui/site/content/posts/self-improving-ai-06-self-evaluation-and-entropy.mdx','scripts/normalize_tags_current.py']
-          with tarfile.open(root/'current-repo-text.tar.gz','w:gz') as t:
-            for p in files: t.add(p,arcname=p)
-          print(json.dumps(result,indent=2))
-          PY
+          python -m pip install PyMuPDF==1.26.7
+          python docs/self-improving-ai/tools/render_07.py
+          python docs/self-improving-ai/reviews/verify_examples_07.py --output docs/self-improving-ai/reviews/numeric-checks-07.json
+          python docs/self-improving-ai/tools/prepare_07.py
+          node --check spaceship-ui/scripts/browser-self-improving-audit.mjs
+          python scripts/normalize_tags_current.py --check
+      - name: Commit only scoped chapter changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/self-improving-ai/source-assets/07/ docs/self-improving-ai/reviews/numeric-checks-07.json docs/self-improving-ai/reviews/2026-11-17-chapter-07-preparation.json docs/self-improving-ai/publishing/2026-11-17-chapter-07-request.json docs/self-improving-ai/drafts/07-RESUME.md docs/self-improving-ai/progress.json scripts/normalize_tags_current.py spaceship-ui/scripts/browser-self-improving-audit.mjs .github/workflows/self-improving-reading.yml spaceship-ui/site/content/posts/self-improving-ai-06-self-evaluation-and-entropy.mdx spaceship-ui/site/assets/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/
+          git diff --cached --stat
+          git commit -m 'content: integrate reviewed chapter 07 figures, transcript and continuation'
+          git push origin HEAD:content/self-improving-ai-07
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: self-improving-07-sources
-          path: /tmp/chapter07-sources/
-          retention-days: 3
+          name: self-improving-07-rendered
+          path: |
+            spaceship-ui/site/assets/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/
+            docs/self-improving-ai/source-assets/07/
+            docs/self-improving-ai/reviews/*07*
+          retention-days: 7
