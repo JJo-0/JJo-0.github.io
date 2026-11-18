@@ -7,6 +7,15 @@ Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 �
 | [01](https://jjo-0.github.io/posts/self-improving-ai-01-overview/) | 1–5 | 자기개선의 범위, 재귀적 개선, 피드백과 평가 |
 | [02](https://jjo-0.github.io/posts/self-improving-ai-02-learning-targets/) | 6–10 | 학습 목표, 손실, 지식 증류, 자기 생성 의사 정답 |
 | [03](https://jjo-0.github.io/posts/self-improving-ai-03-self-correction-to-rl/) | 11–15 | 자기수정, 고정 파라미터, 미세조정, 지도학습과 강화학습 |
+| [04](https://jjo-0.github.io/posts/self-improving-ai-04-sparse-rewards-and-shaping/) | 16–20 | 희소 보상과 보상 설계 |
+| [05](https://jjo-0.github.io/posts/self-improving-ai-05-reward-design-to-ai-feedback/) | 21–25 | 보상 설계와 AI 피드백 |
+| [06](https://jjo-0.github.io/posts/self-improving-ai-06-self-evaluation-and-entropy/) | 26–30 | 자기평가와 엔트로피 |
+| [07](https://jjo-0.github.io/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/) | 31–35 | 자기학습의 한계와 테스트 시점 학습 |
+| [08](https://jjo-0.github.io/posts/self-improving-ai-08-entropy-estimation-and-gradients/) | 36–40 | 엔트로피 추정과 빠진 경사 |
+| [09](https://jjo-0.github.io/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/) | 41–45 | 경로 선택, 음성인식 결과표, AI 평가와 입력 생성 |
+
+2026-11-18 소스 체크포인트: 8편의 main 병합과 공개 배포는 [PR #205](https://github.com/JJo-0/JJo-0.github.io/pull/205), [발행 기록](reviews/2026-11-18-chapter-08-publication.json)으로 확인했다. 9편은 이번 리비전의 발행 대상이며 실제 최종 배포 상태는 해당 PR에 기록한다. **다음 제작 범위는 10편, 원본 46–50쪽**이다. 아래의 이전 날짜 기록은 당시 작업 범위와 증거를 보존한다.
+
 
 독자 화면은 영어로 편집한 슬라이드 다음에 한국어 해설을 배치한다. 이미지의 중국어를 옮긴 자료는 **비공식 영어 편집본**이며, 공식 영문판으로 소개하지 않는다. 그림과 수식의 원본 페이지는 각 이미지에서 직접 연결한다. 원래 영어로 구성된 3·4쪽은 원본 렌더를 그대로 사용한다. 원문에 없는 계산 예시와 유도는 본문에서 추가 해설임을 밝힌다.
 
