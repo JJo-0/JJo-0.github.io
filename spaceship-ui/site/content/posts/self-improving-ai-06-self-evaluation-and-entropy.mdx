@@ -1,6 +1,6 @@
 ---
 title: "자가개선 AI 06 — 스스로 확신하는 AI는 더 정확해질까"
-description: "NTU Self-Improving 26–30쪽을 영어 편집 슬라이드와 한국어로 해설합니다. 자기평가 점수, 다수결, 엔트로피를 구분하고 Tent·SUTA·LLM 엔트로피 최소화의 원리와 한계를 살펴봅니다."
+description: "자기평가 점수, 다수결, 엔트로피는 무엇이 다를까? Tent·SUTA·LLM 엔트로피 최소화의 학습 신호와 적용 조건을 살펴봅니다."
 pubDate: 2026-11-17
 publicationTimeZone: Asia/Seoul
 slug: self-improving-ai-06-self-evaluation-and-entropy
@@ -32,9 +32,8 @@ import Math from '@/components/post/Math.astro';
 
 하나는 <strong>말로 점수를 매기는 자기평가</strong>다. 다른 하나는 <strong>여러 번 답하고 일치하는 답을 찾는 집계</strong>다. 마지막은 <strong>출력 확률이 얼마나 한곳에 모이는지 측정하는 엔트로피</strong>다. 이 셋은 사용하는 정보와 계산 방법이 다르다. 선택된 답만 바꾸는지, 신경망의 파라미터까지 바꾸는지도 따로 확인해야 한다.
 
-기준 자료는 Hung-yi Lee의 <strong>NTU Machine Learning 2026 Spring, Self-Improving 상편 26–30쪽</strong>이다. 강의일은 2026년 5월 8일이며, 표지를 1쪽으로 센다. [공식 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) · [원본 PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx)
-
-아래 다섯 장은 원본의 도해와 수식을 유지하고 중국어 제목·설명을 영어로 옮긴 <strong>비공식 편집본</strong>이다. 30쪽에 잘려 있는 SUTA 논문 주소의 마지막 숫자는 정식 논문과 대조해 수정했다. 보충 그림·표는 원 논문의 해당 영역을 발췌했다. 본문의 추가 수식과 가상 숫자 예제는 강의 해설이며, 논문의 실험 결과와 구분한다.
+<details>
+<summary>슬라이드별 핵심 질문</summary>
 
 | 원본 | 이번에 확인할 질문 |
 |---|---|
@@ -44,14 +43,16 @@ import Math from '@/components/post/Math.astro';
 | 29쪽 | 엔트로피가 낮아진다는 것은 무엇을 뜻하며, 무엇을 보장하지 않는가? |
 | 30쪽 | 이미지·음성·언어에서 엔트로피 최소화는 각각 무엇을 바꾸는가? |
 
+</details>
+
 ## 26쪽 — 평가 신호를 만드는 역할과 답을 만드는 역할
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-26-en.png"
-  alt="입력과 생성 답을 평가하는 AI가 각 예제의 손실을 만들고 이를 합하는 RLAIF의 영어 편집 슬라이드."
-  caption="P026 — NTU Self-Improving 원본 26쪽 · 비공식 영어 편집본."
+  alt="입력과 생성 답을 평가하는 AI가 각 예제의 손실을 만들고 이를 합하는 RLAIF의 도해."
+  caption="P026 — 답변 생성과 평가 신호를 만드는 역할의 분리."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=26"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
@@ -74,7 +75,7 @@ s_\phi(x,y;c),\qquad
 
 ### 정답 라벨이 없다는 말과 기준이 없다는 말은 다르다
 
-형식을 지켰는지, 요청한 항목을 포함했는지처럼 평가 지침을 명확히 쓸 수 있는 과제에서는 AI 평가가 유용한 신호가 될 수 있다. 그러나 모델 자신이 어려워하는 계산이나 지식 문제에서 자기평가만 반복하면, 답을 만들 때의 오류가 평가에도 이어질 수 있다. 이 글에서는 이를 검증 설계의 위험으로 다룬다. 모든 AI 평가가 무효라는 결론도, 모든 자기평가가 정확하다는 결론도 내리지 않는다.
+형식을 지켰는지, 요청한 항목을 포함했는지처럼 평가 지침을 명확히 쓸 수 있는 과제에서는 AI 평가가 유용한 신호가 될 수 있다. 그러나 모델 자신이 어려워하는 계산이나 지식 문제에서 자기평가만 반복하면, 답을 만들 때의 오류가 평가에도 이어질 수 있다. 평가의 신뢰도는 과제와 평가 근거에 따라 달라진다.
 
 중요한 질문은 “외부 라벨을 썼는가?” 하나가 아니다. <strong>어떤 사전 지식과 평가 기준이 이미 들어 있고, 새로 주어진 입력에서 무엇을 배우며, 개선 여부를 무엇으로 확인하는가?</strong>도 함께 물어야 한다. 사전학습 모델과 사람이 정한 평가 지침을 사용하면서 완전히 아무 정보 없이 목표를 만들었다고 설명하면 과정이 사라진다.
 
@@ -82,10 +83,10 @@ s_\phi(x,y;c),\qquad
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-27-en.png"
-  alt="답에 1–5점 점수를 매기는 방법과 Yes 토큰의 확률을 음수 부호와 연결해 손실을 만드는 영어 편집 슬라이드."
-  caption="P027 — NTU Self-Improving 원본 27쪽 · 비공식 영어 편집본."
+  alt="답에 1–5점 점수를 매기는 방법과 Yes 토큰의 확률을 음수 부호와 연결해 손실을 만드는 도해."
+  caption="P027 — 언어로 매긴 점수와 긍정 응답 확률."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=27"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
@@ -113,7 +114,7 @@ s_\phi(x,y;c),\qquad
 
 실제로는 “Yes”, “ yes”, “Correct”처럼 답의 표현이 달라질 수 있다. 토크나이저에 따라 단어가 여러 토큰으로 나뉘기도 한다. Yes와 No의 확률만 다시 정규화하면 전체 어휘에서의 Yes 확률과 다른 수치가 된다. 평가 모델이 “확신도 90%”라는 문자열을 출력하는 경우에는, 그 문자열의 숫자와 그 문자열 자체의 생성 확률도 구분해야 한다.
 
-예를 들어 수학 답에 대한 평가자가 매끄러운 설명에 이끌려 높은 긍정 확률을 준다고 하자. 같은 답을 다시 계산해 얻은 검증 결과와 그 확률은 서로 다른 근거다. 이 글의 제안은 두 수치를 같다고 놓지 말고, 실제 정답이 있는 별도 자료에서 평가 신호와 정확도의 관계를 확인하는 것이다.
+예를 들어 수학 답에 대한 평가자가 매끄러운 설명에 이끌려 높은 긍정 확률을 준다고 하자. 같은 답을 다시 계산해 얻은 검증 결과와 그 확률은 서로 다른 근거다. 실제 정답이 있는 별도 자료에서 평가 신호와 정확도의 관계를 확인해야 한다.
 
 ### 평가를 사용한 선택과 평가를 사용한 학습
 
@@ -125,10 +126,10 @@ s_\phi(x,y;c),\qquad
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-28-en.png"
-  alt="같은 질문의 답 3, 5, 3에서 다수 답 3을 의사 정답으로 선택해 다른 출력과 비교하는 영어 편집 슬라이드."
-  caption="P028 — NTU Self-Improving 원본 28쪽 · 비공식 영어 편집본."
+  alt="같은 질문의 답 3, 5, 3에서 다수 답 3을 의사 정답으로 선택해 다른 출력과 비교하는 도해."
+  caption="P028 — 여러 응답의 일치로 의사 정답을 선택하는 과정."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=28"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
@@ -148,18 +149,18 @@ s_\phi(x,y;c),\qquad
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/self-consistency-v4-figure1.png"
   alt="하나의 탐욕적 답과 여러 추론 경로를 샘플링해 최종 답을 집계하는 자기일관성 방식을 비교한 원본 Figure 1."
-  caption="Self-Consistency · arXiv v4 / ICLR 2023 · PDF 2쪽 Figure 1 그림 영역 발췌."
+  caption="Self-Consistency Figure 1 — 여러 추론 경로를 생성하고 최종 답을 집계하는 과정(PDF 2쪽)."
   source="https://arxiv.org/pdf/2203.11171v4#page=2"
-  credit="Xuezhi Wang et al. / Google Research, ICLR 2023. Original source, not redrawn."
+  credit="Xuezhi Wang et al. / Google Research, ICLR 2023."
   width={1801}
   height={861}
 />
 
-Wang 등의 <em>Self-Consistency Improves Chain of Thought Reasoning in Language Models</em>는 여러 추론 경로를 샘플링하고 최종 답을 집계하는 방식이다. 원본 Figure 1은 하나의 탐욕적 경로(Greedy path)만 택하는 경우와, 여러 경로가 도달한 답을 모으는 경우를 대비한다. 이 글은 arXiv v4의 ICLR 2023 판본을 읽는다. [원문 PDF 2쪽 Figure 1, §2](https://arxiv.org/pdf/2203.11171v4#page=2)
+Wang 등의 <em>Self-Consistency Improves Chain of Thought Reasoning in Language Models</em>는 여러 추론 경로를 샘플링하고 최종 답을 집계하는 방식이다. 원본 Figure 1은 하나의 탐욕적 경로(Greedy path)만 택하는 경우와, 여러 경로가 도달한 답을 모으는 경우를 대비한다. [원문 PDF 2쪽 Figure 1, §2](https://arxiv.org/pdf/2203.11171v4#page=2)
 
 그림의 요점은 “설명을 세 번 길게 적으면 무조건 좋아진다”가 아니다. 서로 다른 추론 경로를 샘플링하고, 비교 가능한 형태로 최종 답을 추출한 뒤, 그 답의 일치를 이용한다는 것이다. 원 논문의 자기일관성(Self-consistency)은 <strong>추론 시점의 디코딩·집계 전략</strong>이다. 그 집계만으로 신경망의 가중치를 새로 학습하는 절차는 아니다. [§2–3](https://arxiv.org/pdf/2203.11171v4#page=2)
 
-원본 강의의 그림은 이를 더 넓은 학습 신호의 관점으로 연결한다. 집계한 답을 의사 정답(Pseudo-label)으로 삼아 모델을 학습할 수도 있다. 예를 들어 다음은 선택한 답을 학습 목표로 사용하는 지도학습 형태의 설명식이다. Self-Consistency 논문의 원래 학습 목적식이라고 주장하지 않는다.
+원본 강의의 그림은 이를 더 넓은 학습 신호의 관점으로 연결한다. 집계한 답을 의사 정답(Pseudo-label)으로 삼아 모델을 학습할 수도 있다. 집계에 <strong>의사 정답 학습 단계를 덧붙이면</strong>, 선택한 답을 목표로 삼아 다음과 같이 학습할 수 있다.
 
 <Math tex={String.raw`\ell_{\mathrm{pseudo}}(\theta)=-\log\pi_\theta(\widehat y\mid x).`} display />
 
@@ -181,10 +182,10 @@ Wang 등의 <em>Self-Consistency Improves Chain of Thought Reasoning in Language
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-29-en.png"
-  alt="출력 확률의 집중도와 엔트로피의 합·기대값 표현을 보여주는 영어 편집 슬라이드. 확신은 정확성과 구분해야 한다."
-  caption="P029 — NTU Self-Improving 원본 29쪽 · 비공식 영어 편집본."
+  alt="출력 확률의 집중도와 엔트로피의 합·기대값 표현을 보여주는 도해. 확신은 정확성과 구분해야 한다."
+  caption="P029 — 출력 분포의 집중도와 엔트로피."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=29"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
@@ -260,31 +261,31 @@ H(0.8,0.1,0.1)\approx0.6390.`} display />
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-30-en.png"
-  alt="이미지의 Tent, 음성의 SUTA, 텍스트의 엔트로피 최소화 연구를 연결하는 영어 편집 슬라이드. SUTA 링크의 잘린 마지막 숫자를 수정했다."
-  caption="P030 — NTU Self-Improving 원본 30쪽 · 비공식 영어 편집본. 원본의 SUTA URL 2203.1422를 확인된 논문 번호 2203.14222로 수정."
+  alt="이미지의 Tent, 음성의 SUTA, 텍스트의 엔트로피 최소화 연구를 연결하는 도해."
+  caption="P030 — 이미지·음성·언어 모델의 엔트로피 최소화."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=30"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
 
 원본은 이미지의 Tent, 음성의 SUTA, 언어 모델의 엔트로피 최소화 연구를 연결한다. 같은 “엔트로피를 줄인다”는 표현을 쓰지만, 모델 구조와 업데이트 대상, 입력 조건은 다르다. 서로 다른 실험의 수치를 한 줄의 성능 순위로 비교하기보다, <strong>어떤 분포의 엔트로피를 어떤 파라미터에 대해 줄이는가</strong>를 읽어야 한다.
 
-원본 SUTA 주소에는 마지막 숫자가 빠져 있다. 영어 편집본에는 확인된 [arXiv 2203.14222](https://arxiv.org/abs/2203.14222)를 표기했다. 아래 해설과 보충 그림은 [Interspeech 2022 정식 논문](https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.html)을 기준으로 한다.
+SUTA의 방법과 설정은 [arXiv 논문](https://arxiv.org/abs/2203.14222)과 [Interspeech 2022 논문](https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.html)에서 확인할 수 있다.
 
 ### 함께 읽기 B — Tent: 예측 엔트로피로 테스트 시점에 적응한다
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/tent-v3-figure3.png"
   alt="정답 라벨을 쓰는 훈련과 예측 엔트로피로 제한된 파라미터를 조절하는 테스트 시점 적응을 비교한 Tent 원본 Figure 3."
-  caption="Tent · arXiv v3, 2021-03-18 / ICLR 2021 · PDF 3쪽 Figure 3와 캡션 발췌."
+  caption="Tent Figure 3 — 정답 라벨을 쓰는 훈련과 예측 엔트로피를 쓰는 테스트 시점 적응(PDF 3쪽)."
   source="https://arxiv.org/pdf/2006.10726v3#page=3"
-  credit="Dequan Wang et al. / ICLR 2021. Original source, not redrawn."
+  credit="Dequan Wang et al. / ICLR 2021."
   width={1801}
   height={389}
 />
 
-Tent는 학습 때와 달라진 입력 분포에 대해, 정답 라벨 없이 테스트 시점 적응(Test-time adaptation)을 수행하는 방법이다. 원본 Figure 3은 정답 라벨로 지도학습하는 경로와, 예측 엔트로피를 이용해 적응하는 경로를 나란히 보여준다. 이 글은 <strong>ICLR 2021, arXiv v3, 2021년 3월 18일 판본</strong>을 사용한다. [원문 PDF 3쪽 Figure 3](https://arxiv.org/pdf/2006.10726v3#page=3)
+Tent는 학습 때와 달라진 입력 분포에 대해, 정답 라벨 없이 테스트 시점 적응(Test-time adaptation)을 수행하는 방법이다. 원본 Figure 3은 정답 라벨로 지도학습하는 경로와, 예측 엔트로피를 이용해 적응하는 경로를 나란히 보여준다. [원문 PDF 3쪽 Figure 3](https://arxiv.org/pdf/2006.10726v3#page=3)
 
 모델이 현재 입력을 잘 설명하도록 제한된 자유도를 조절한다는 점이 중요하다. 해당 방법은 정규화 통계(Normalization statistics)를 재추정하고, 정규화 계층의 <strong>채널별 아핀 변환 파라미터</strong>를 엔트로피 목적에 맞추어 업데이트한다. 전체 신경망의 모든 가중치를 무제한으로 학습하는 방식과 같지 않다. [§3, Algorithm 1](https://arxiv.org/pdf/2006.10726v3#page=3)
 
@@ -297,9 +298,9 @@ Tent는 학습 때와 달라진 입력 분포에 대해, 정답 라벨 없이 �
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/suta-interspeech2022-figure1.png"
   alt="단일 발화에 대해 온도 평활화, 엔트로피 최소화, 클래스 혼동 감소를 결합해 일부 음성 인식 파라미터를 적응시키는 SUTA 원본 그림."
-  caption="SUTA · Interspeech 2022 정식 논문 · PDF 1쪽, 인쇄 2198쪽 Figure 1 그림 영역 발췌."
+  caption="SUTA Figure 1 — 단일 발화의 엔트로피와 클래스 혼동을 이용한 음성인식 적응(PDF 1쪽)."
   source="https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.pdf#page=1"
-  credit="Guan-Ting Lin, Shang-Wen Li, Hung-yi Lee / ISCA Interspeech 2022. Original source, not redrawn."
+  credit="Guan-Ting Lin, Shang-Wen Li, Hung-yi Lee / ISCA Interspeech 2022."
   width={1801}
   height={1347}
   maxWidth={650}
@@ -317,7 +318,7 @@ SUTA는 단일 발화(Single utterance)를 이용한 음성 인식의 테스트 
 
 ### 언어 모델: EM-FT, EM-RL, EM-INF는 같은 학습이 아니다
 
-Agarwal 등의 <em>The Unreasonable Effectiveness of Entropy Minimization in LLM Reasoning</em>는 엔트로피 최소화를 언어 모델의 사후학습과 추론에 적용한다. 여기서는 <strong>NeurIPS 2025 정식 논문</strong>을 기준으로 세 방식을 구분한다. [정식 논문 §2–4](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=3)
+Agarwal 등의 <em>The Unreasonable Effectiveness of Entropy Minimization in LLM Reasoning</em>는 엔트로피 최소화를 언어 모델의 사후학습과 추론에 적용한다. 논문은 세 방식을 구분한다. [정식 논문 §2–4](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=3)
 
 | 방법 | 직접 바꾸는 대상 | 엔트로피를 쓰는 방식 | 모델 가중치 업데이트 |
 |---|---|---|---|
@@ -336,16 +337,16 @@ EM-INF는 더 분명한 경계를 보여준다. 추론 중 로짓을 최적화�
 <LearningFigure
   src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/entropy-llm-neurips2025-table5.png"
   alt="기본 모델과 과제에 따라 엔트로피 최소화의 효과가 제한되거나 낮아질 수 있음을 보여주는 원본 Table 5."
-  caption="Entropy Minimization in LLM Reasoning · NeurIPS 2025 정식 논문 · PDF 9쪽 Table 5와 표제 발췌."
+  caption="Entropy Minimization in LLM Reasoning Table 5 — 기본 모델과 과제에 따른 효과의 차이(PDF 9쪽)."
   source="https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=9"
-  credit="Shivam Agarwal et al. / NeurIPS 2025. Original source, not redrawn."
+  credit="Shivam Agarwal et al. / NeurIPS 2025."
   width={1801}
   height={491}
 />
 
 같은 논문의 Table 5는 엔트로피 최소화의 한계를 보여준다. 왼쪽은 Llama-3.1-8B-Instruct 기반의 수학 과제, 오른쪽은 Qwen-2.5-7B-Instruct의 개인별 가치 판단 과제를 다룬다. <strong>이 표는 모든 모델에서 일관된 향상이 나온다는 주장을 뒷받침하는 표가 아니다.</strong> [PDF 9쪽 Table 5, §5](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=9)
 
-구체적으로 같은 Minerva 열에서 기본 Llama-3.1-8B-Instruct의 보고값은 <strong>22.4</strong>, EM-FT는 <strong>18.8</strong>이다. 반면 다른 열에서는 향상이 나타나기도 한다. 오른쪽 IndVal에서는 기본값 65.9와 비교해 세 엔트로피 방법의 보고값이 66.0, 66.0, 66.3이다. 이 작은 차이만으로 확실한 개선을 선언할 수는 없다. 해당 표에는 신뢰구간이 제시되어 있지 않으며, 이 글도 통계적 유의성을 새로 주장하지 않는다.
+구체적으로 같은 Minerva 열에서 기본 Llama-3.1-8B-Instruct의 보고값은 <strong>22.4</strong>, EM-FT는 <strong>18.8</strong>이다. 반면 다른 열에서는 향상이 나타나기도 한다. 오른쪽 IndVal에서는 기본값 65.9와 비교해 세 엔트로피 방법의 보고값이 66.0, 66.0, 66.3이다. 이 작은 차이만으로 확실한 개선을 선언할 수는 없다. 해당 표에는 신뢰구간이 제시되어 있지 않아 이 차이만으로 통계적 유의성을 판단하기 어렵다.
 
 저자들은 기본 모델의 초기 추론 능력과 과제에 맞는 확신이 중요하다고 해석한다. 모델이 이미 가진 능력을 더 일관되게 활용하는 데 도움이 될 수 있지만, 잘못된 지식이나 과제에 맞지 않는 사전 편향까지 확신 있게 만들 수 있다는 것이다. 이는 <strong>저자들의 실험에 근거한 해석</strong>이며, 특정 모델 이름만으로 모든 새 과제에서의 성공·실패를 예측하는 규칙은 아니다. [§5–6](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=9)
 
@@ -367,7 +368,7 @@ EM-INF는 더 분명한 경계를 보여준다. 추론 중 로짓을 최적화�
 
 테스트 시점 적응에서는 평가 절차도 분명해야 한다. 각 입력마다 원래 모델로 돌아가는지, 이전 입력의 업데이트를 누적하는지, 정답 라벨을 적응이나 설정 선택에 사용했는지 명시한다. 테스트 입력을 라벨 없이 활용하는 적응 자체와, 테스트 정답을 보고 방법을 고르는 누출(Leakage)은 구분해야 한다. 최종 비교에 사용하는 정답을 반복적으로 보면서 설정을 고르면 독립적인 성능 평가가 되기 어렵다.
 
-이는 특정 논문의 절차를 모두 같은 것으로 묶으려는 요구가 아니다. 각 방법이 실제로 사용한 조건을 기록하고, 같은 비용·입력·초기 모델 아래의 비교와 조건이 다른 비교를 나누자는 제안이다. 가능하면 여러 시드의 변동과 실패 사례도 함께 보고한다.
+각 방법의 비용·입력·초기 모델 조건을 함께 기록해야 비교를 해석할 수 있다. 가능하면 여러 시드의 변동과 실패 사례도 함께 보고한다.
 
 ## 이해를 확인하는 세 질문
 
@@ -387,7 +388,7 @@ EM-INF는 더 분명한 경계를 보여준다. 추론 중 로짓을 최적화�
 
 ## 함께 읽을 원문
 
-| 자료 | 이 글이 사용한 판본·위치 | 연결 내용 |
+| 자료 | 판본·위치 | 연결 내용 |
 |---|---|---|
 | [NTU Self-Improving](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) | 2026-05-08 강의, PDF 26–30쪽 | 기준 강의와 세 평가 신호 |
 | [Self-Consistency](https://arxiv.org/abs/2203.11171) | arXiv v4 / ICLR 2023, Figure 1은 PDF 2쪽 | 여러 추론 경로와 최종 답 집계 |
@@ -395,4 +396,4 @@ EM-INF는 더 분명한 경계를 보여준다. 추론 중 로짓을 최적화�
 | [SUTA](https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.html) | Interspeech 2022, 인쇄 2198–2202쪽, Figure 1은 PDF 1쪽 | 단일 발화의 CTC 음성 인식 적응 |
 | [Entropy Minimization in LLM Reasoning](https://papers.nips.cc/paper_files/paper/2025/hash/9a14cf2ee36cf2524f54d8f196a6734c-Abstract-Conference.html) | NeurIPS 2025 정식 논문, §2–5, Table 5는 PDF 9쪽 | EM-FT·EM-RL·EM-INF와 기본 모델 의존성 |
 
-원본 그림·표와 추가 해설은 구분해서 읽는다. 각 이미지에 원저작자와 자료 위치를 표시했다. 출처 표시는 원저작물 전체에 대한 재사용 허가를 뜻하지 않는다.
+[강의 PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx)
