@@ -21,7 +21,8 @@ const chapters = [
   { number: 11, math: 16, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-11-automated-post-training', previous: 'self-improving-ai-10-self-play-and-external-feedback', next: 'self-improving-ai-12-weak-to-strong-generalization' },
   { number: 12, math: 12, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-12-weak-to-strong-generalization', previous: 'self-improving-ai-11-automated-post-training', next: 'self-improving-ai-13-agent-harness-and-system-improvement' },
   { number: 13, math: 8, figures: 6, primarySlides: 2, timingRows: 2, slug: 'self-improving-ai-13-agent-harness-and-system-improvement', previous: 'self-improving-ai-12-weak-to-strong-generalization', next: 'self-improving-ai-14-proposer-solver-verifier' },
-  { number: 14, math: 14, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-14-proposer-solver-verifier', previous: 'self-improving-ai-13-agent-harness-and-system-improvement', next: null },
+  { number: 14, math: 14, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-14-proposer-solver-verifier', previous: 'self-improving-ai-13-agent-harness-and-system-improvement', next: 'self-improving-ai-15-harness-optimization-and-evaluation' },
+  { number: 15, math: 15, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-15-harness-optimization-and-evaluation', previous: 'self-improving-ai-14-proposer-solver-verifier', next: null },
 ];
 const mappingSummary = '슬라이드별 영상 위치';
 const lectureParts = [
@@ -40,6 +41,7 @@ const timestampGroups = {
   12: [3519, 3547, 3617, 3677, 3759],
   13: [3782, 3820],
   14: [0, 7, 45, 216, 285],
+  15: [285, 315, 336, 348, 427],
 };
 const productionPhrases = [
   /(?:자막|자료|원문|원고|보충 자료)[·\s]*(?:조회|대조|확인)일/,
@@ -99,13 +101,15 @@ function loadChapterManifest(chapter) {
     assert.equal(mainSlides.length, chapter.primarySlides, 'Chapter 13 has exactly two main slides');
     assert.deepEqual(mainSlides.map(asset => asset.pdf_page), [61, 62], 'Chapter 13 concludes the 62-page source deck');
   }
-  if (chapter.number === 14) {
+  if (chapter.number === 14 || chapter.number === 15) {
     const mainSlides = records.filter(asset => /^main-\d+$/.test(asset.slot || ''));
-    assert.equal(primary.source_pdf_total_pages, 64, 'Chapter 14 uses the separate 64-page lower lecture');
-    assert.deepEqual(primary.primary_page_range, [1, 5], 'Chapter 14 starts the lower lecture at page 1');
+    const pageRange = chapter.number === 14 ? [1, 5] : [6, 10];
+    const expectedPages = Array.from({ length: 5 }, (_, index) => pageRange[0] + index);
+    assert.equal(primary.source_pdf_total_pages, 64, `Chapter ${chapter.number} uses the separate 64-page lower lecture`);
+    assert.deepEqual(primary.primary_page_range, pageRange, `Chapter ${chapter.number} lower lecture source range`);
     assert.equal(mainSlides.length, chapter.primarySlides);
-    assert.deepEqual(mainSlides.map(asset => asset.pdf_page), [1, 2, 3, 4, 5]);
-    assert(mainSlides.every(asset => (asset.source ?? asset.source_page_url) === `https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=${asset.pdf_page}`), 'Chapter 14 slide links use the lower lecture PDF');
+    assert.deepEqual(mainSlides.map(asset => asset.pdf_page), expectedPages);
+    assert(mainSlides.every(asset => (asset.source ?? asset.source_page_url) === `https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=${asset.pdf_page}`), `Chapter ${chapter.number} slide links use the lower lecture PDF`);
   }
   return { assets };
 }
@@ -181,7 +185,7 @@ async function verifyArticleParts(cdp, session, chapter, width) {
   }
   const currentLinks = map.parts.flatMap(part => part.links).filter(link => link.current === 'page');
   assert.deepEqual(currentLinks.map(link => link.href), [`/posts/${chapter.slug}/`]);
-  if (chapter.number === 13 || chapter.number === 14) {
+  if (chapter.number === 13 || chapter.number === 14 || chapter.number === 15) {
     for (const part of lectureParts) {
       const selector = `[data-self-improving-map] [data-series-map-part="${part.number}"]`;
       await clickSummarySelector(cdp, session, `${selector} > summary`);
@@ -263,6 +267,8 @@ try {
       assert.equal(view.seriesPart, chapter.number <= 13 ? 1 : 2);
       if (chapter.number === 13) assert.equal(view.nextLabel, '다음 편 · 하편');
       if (chapter.number === 14) assert.equal(view.previousLabel, '이전 편 · 상편');
+      if (chapter.number === 14) assert.equal(view.nextLabel, '다음 편 · 하편');
+      if (chapter.number === 15) assert.equal(view.previousLabel, '이전 편 · 하편');
       view.articleParts = articleParts;
       if (timingDetails) view.timingDetails = timingDetails;
       for (const figure of view.figures) {

@@ -630,6 +630,7 @@ POST_TAXONOMY.update({
     "self-improving-ai-12-weak-to-strong-generalization.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "weak-to-strong", "alignment", "automated-research", "ntu")),
     "self-improving-ai-13-agent-harness-and-system-improvement.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "harness", "memory", "ntu")),
     "self-improving-ai-14-proposer-solver-verifier.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-play", "reinforcement-learning", "verification", "ntu")),
+    "self-improving-ai-15-harness-optimization-and-evaluation.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "harness", "evaluation", "ntu")),
 })
 
 # Preserve the existing November 18 candidate's taxonomy and draft visibility.
