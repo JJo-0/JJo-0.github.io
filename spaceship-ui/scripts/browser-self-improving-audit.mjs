@@ -17,9 +17,11 @@ const chapters = [
   { number: 7, math: 22, slug: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', previous: 'self-improving-ai-06-self-evaluation-and-entropy', next: 'self-improving-ai-08-entropy-estimation-and-gradients' },
   { number: 8, math: 32, slug: 'self-improving-ai-08-entropy-estimation-and-gradients', previous: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', next: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs' },
   { number: 9, math: 31, slug: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', previous: 'self-improving-ai-08-entropy-estimation-and-gradients', next: 'self-improving-ai-10-self-play-and-external-feedback' },
-  { number: 10, math: 18, slug: 'self-improving-ai-10-self-play-and-external-feedback', previous: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', next: null },
+  { number: 10, math: 18, slug: 'self-improving-ai-10-self-play-and-external-feedback', previous: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', next: 'self-improving-ai-11-automated-post-training' },
+  { number: 11, math: 16, slug: 'self-improving-ai-11-automated-post-training', previous: 'self-improving-ai-10-self-play-and-external-feedback', next: 'self-improving-ai-12-weak-to-strong-generalization' },
+  { number: 12, math: 12, slug: 'self-improving-ai-12-weak-to-strong-generalization', previous: 'self-improving-ai-11-automated-post-training', next: null },
 ];
-const mappingChapters = new Set([1, 7, 8, 9, 10]);
+const mappingChapters = new Set([1, 7, 8, 9, 10, 11, 12]);
 const mappingSummary = '슬라이드별 영상 위치';
 const timestampGroups = {
   1: [1, 10, 51, 100, 159],
@@ -29,6 +31,8 @@ const timestampGroups = {
   8: [2160, 2193, 2395, 2471, 2564],
   9: [2603, 2647, 2690, 2695, 2719],
   10: [2739, 2891, 2939, 3023, 3084],
+  11: [3136, 3173, 3227, 3316, 3401],
+  12: [3519, 3547, 3617, 3677, 3759],
 };
 const productionPhrases = [
   /(?:자막|자료|원문|원고|보충 자료)[·\s]*(?:조회|대조|확인)일/,
@@ -66,10 +70,18 @@ function loadChapterManifest(chapter) {
     assert.equal(src, assetPath.slice('spaceship-ui/site/assets'.length));
     assert.match(sha256 || '', /^[a-f0-9]{64}$/);
     assert.equal(typeof source, 'string', `Missing source in ${assetPath}`);
-    assert(source.includes('#page='), `Missing source page in ${assetPath}`);
+    const sourceType = asset.source_type ?? 'pdf';
+    if (sourceType === 'pdf') {
+      assert(source.includes('#page='), `Missing source page in ${assetPath}`);
+    } else {
+      assert.equal(sourceType, 'web_figure', `Unsupported source type in ${assetPath}`);
+      assert.equal(source, 'https://alignment.anthropic.com/2026/automated-w2s-researcher/');
+      assert.match(asset.source_figure_url || '', /^https:\/\/alignment\.anthropic\.com\/2026\/automated-w2s-researcher\/fig[458]\.png$/);
+      assert.equal(asset.source_figure_sha256, sha256, `Web figure must retain source bytes: ${assetPath}`);
+    }
     assert(Number.isInteger(asset.width) && asset.width > 0, assetPath);
     assert(Number.isInteger(asset.height) && asset.height > 0, assetPath);
-    return { path: assetPath, src, source, sha256, width: asset.width, height: asset.height };
+    return { path: assetPath, src, source, sourceType, sha256, width: asset.width, height: asset.height };
   });
   assert.equal(assets.length, 9, `Chapter ${chapter.number} total assets`);
   assert.equal(new Set(assets.map(asset => asset.src)).size, 9, `Chapter ${chapter.number} unique assets`);
@@ -179,7 +191,7 @@ try {
         assert.equal(figure.naturalHeight, expected.height);
         assert.equal(figure.source, expected.source);
         assert(figure.alt.length > 10 && figure.caption.length > 20);
-        assert(figure.source?.includes('#page='));
+        if (expected.sourceType === 'pdf') assert(figure.source?.includes('#page='));
       }
       if (timestampGroups[chapter.number]) {
         const transcriptLinks = await evaluate(cdp, session, `Array.from(document.querySelectorAll('article a[href*="youtube.com/watch"]')).map(a=>a.href)`);
@@ -234,12 +246,12 @@ try {
     await waitExpression(cdp, session, "!!document.querySelector('[data-series-group=" + '"self-improving-ai"' + "]')", 'Self-Improving series group');
     const group = await evaluate(cdp, session, `(()=>{const g=document.querySelector('[data-series-group="self-improving-ai"]');return {title:g.querySelector('.series-group__title')?.textContent,count:g.querySelector('.series-group__count')?.textContent,links:[...new Set(Array.from(g.querySelectorAll('a[href^="/posts/"]')).map(a=>a.getAttribute('href')))]};})()`);
     assert.equal(group.title, '자가개선 AI');
-    assert.equal(group.count, '10편');
+    assert.equal(group.count, `${chapters.length}편`);
     // List cards omit the optional trailing slash; retain exact path membership checks.
     const groupPaths = new Set(group.links.map(href => href.replace(/\/+$/, '')));
-    assert.equal(groupPaths.size, 10);
+    assert.equal(groupPaths.size, chapters.length);
     for (const chapter of chapters) assert(groupPaths.has(`/posts/${chapter.slug}`), `Series missing ${chapter.slug}`);
-    assert.deepEqual([...groupPaths], chapters.map(chapter => `/posts/${chapter.slug}`), 'Series order 01–10');
+    assert.deepEqual([...groupPaths], chapters.map(chapter => `/posts/${chapter.slug}`), 'Series order 01–12');
     await evaluate(cdp, session, "(()=>{const g=document.querySelector('[data-series-group=\"self-improving-ai\"]');g.open=true;g.scrollIntoView({block:'center',behavior:'instant'});})()");
     await evaluate(cdp, session, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);

@@ -626,6 +626,8 @@ POST_TAXONOMY.update({
     "self-improving-ai-08-entropy-estimation-and-gradients.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "entropy-minimization", "policy-gradient", "test-time-adaptation", "ntu")),
     "self-improving-ai-09-entropy-paths-and-self-generated-inputs.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "entropy-minimization", "policy-gradient", "synthetic-data", "ntu")),
     "self-improving-ai-10-self-play-and-external-feedback.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-play", "reinforcement-learning", "synthetic-data", "ntu")),
+    "self-improving-ai-11-automated-post-training.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "post-training", "llm-agents", "fine-tuning", "ntu")),
+    "self-improving-ai-12-weak-to-strong-generalization.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "weak-to-strong", "alignment", "automated-research", "ntu")),
 })
 
 if __name__ == "__main__":

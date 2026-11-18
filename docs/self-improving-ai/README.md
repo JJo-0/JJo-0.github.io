@@ -14,8 +14,14 @@ Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 �
 | [08](https://jjo-0.github.io/posts/self-improving-ai-08-entropy-estimation-and-gradients/) | 36–40 | 엔트로피 추정과 빠진 경사 |
 | [09](https://jjo-0.github.io/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/) | 41–45 | 경로 선택, 음성인식 결과표, AI 평가와 입력 생성 |
 | [10](https://jjo-0.github.io/posts/self-improving-ai-10-self-play-and-external-feedback/) | 46–50 | 문제 생성과 자기대결, 의사정답의 신뢰도, 외부 정보 |
+| [11 원고](../../spaceship-ui/site/content/posts/self-improving-ai-11-automated-post-training.mdx) | 51–55 | 후학습 자동화, 시간 예산, 가중 평가와 데이터 오염 — 발행 준비 |
+| [12 원고](../../spaceship-ui/site/content/posts/self-improving-ai-12-weak-to-strong-generalization.mdx) | 56–60 | 약한 감독에서 강한 모델로의 일반화, PGR, 자동 정렬 연구와 전이 한계 — 발행 준비 |
 
-2026-11-18 소스 체크포인트: 9편의 main 병합과 공개 배포는 [PR #206](https://github.com/JJo-0/JJo-0.github.io/pull/206), [발행 기록](reviews/2026-11-18-chapter-09-publication.json)으로 확인했다. 이번 리비전은 1–9편의 읽기 흐름을 정리하고 10편을 추가한다. 실제 최종 배포 상태는 이 리비전 PR에 기록한다. **다음 제작 범위는 11편, 원본 51–55쪽**이다. 아래의 이전 날짜 기록은 당시 작업 범위와 증거를 보존한다.
+2026-11-18 소스 체크포인트: **10편까지 main 병합과 공개 배포를 확인했다.** [PR #207](https://github.com/JJo-0/JJo-0.github.io/pull/207)은 `bbcf0b60c8b5eeb9d82260547c17ef507a892773`에 2026-11-18 10:59:49 KST로 병합됐다. [Pages 실행의 두 번째 시도](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44219959680/attempts/2)는 build·deploy·live-smoke가 모두 성공했고, [배포 후 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44232521807)도 성공했다. 이 배포에는 1–9편의 읽기 흐름 정리도 포함된다.
+
+이번 리비전은 **11편(51–55쪽)과 12편(56–60쪽)의 원고·이미지·검산을 준비한다.** 각 편은 본 강의 이미지 5장과 보충 이미지 4장을 포함한다. 수식은 각각 16개·12개이며, 계산 검사는 각각 17개·16개가 통과했다. 로컬 빌드와 타입 검사도 통과했다. 이 기록 시점에는 두 편의 PR 병합과 배포를 아직 확인하지 않았으며, 실제 최종 상태는 해당 발행 PR의 커밋·Pages 결과·공개 페이지 검사 기록으로 이어진다.
+
+**다음 집필은 13편, 원본 61쪽부터**다. 남은 61–62쪽은 에이전트의 구성과 다음 강의로 이어지는 부분이다. `progress.json`은 발행 확인 범위(1–50쪽)와 준비된 범위(51–60쪽)를 구분한다. 아래의 이전 날짜 기록은 당시 작업 범위와 증거를 보존한다.
 
 ## 독자 본문 편집 기준
 
@@ -28,7 +34,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 �
 - 검산 기록과 재현 코드는 글 끝의 기본 닫힘 details에서 연결한다. 본문을 검사 결과 보고서로 만들지 않는다.
 - 출처·제공 자막·버전·파일 해시·편집 내역은 이 문서 디렉터리에서 추적한다. 독자에게 필요 없는 과정 설명을 본문에 다시 넣지 않는다.
 
-이번 정리에서 1–9편의 수식 298개와 이미지 81개는 그대로 유지했다. [리비전 기록](reviews/2026-11-18-editorial-cleanup-01-09.json)은 본문 전후 해시와 보존 검사를 담는다.
+PR #207의 읽기 흐름 정리에서 1–9편의 수식 298개와 이미지 81개는 그대로 유지했다. [리비전 기록](reviews/2026-11-18-editorial-cleanup-01-09.json)은 본문 전후 해시와 보존 검사를 담는다.
 
 ## 원자료 관리
 
@@ -46,6 +52,9 @@ Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 �
 - `source-assets/01/manifest.json`: 1–5쪽의 원문과 출력 이미지 메타데이터
 - `source-assets/02/manifest.json`: 6–10쪽의 원문과 출력 이미지 메타데이터
 - `source-assets/03/manifest.json`: 11–15쪽의 원문과 출력 이미지 메타데이터
+- `source-assets/11/manifest.json`: 51–55쪽과 보충 자료 4개의 이미지 메타데이터
+- `source-assets/12/manifest.json`: 56–60쪽과 보충 자료 4개의 이미지 메타데이터
+- `source-assets/11/transcript-provenance.json`, `source-assets/12/transcript-provenance.json`: 제공 자막과 영상 위치의 근거
 - `progress.json`: 현재 작성 범위와 다음 시작 페이지
 
 원본 자료의 재사용·수정 조건은 `unverified`로 기록한다. 공개 접근과 출처 표시를 라이선스로 취급하지 않으며, 포함된 제3자 이미지에도 별도 권리가 있을 수 있다.
