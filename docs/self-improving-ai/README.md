@@ -4,7 +4,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 
 ## 상편 — 1–13편
 
-기준 자료는 `Self-Improving.pdf`이며 총 62쪽이다. **13편까지 main 병합과 공개 배포를 확인했다.**
+기준 자료는 `Self-Improving.pdf`이며 총 62쪽이다. **상편 1–13편의 main 병합과 공개 배포를 확인했다.**
 
 | 글 | 상편 원본 페이지 | 내용 |
 |---|---|---|
@@ -28,17 +28,25 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 
 | 글 | 하편 원본 페이지 | 내용·현재 상태 |
 |---|---|---|
-| [14 원고](../../spaceship-ui/site/content/posts/self-improving-ai-14-proposer-solver-verifier.mdx) | 1–5 | 출제자·풀이자·검증자, 학습 손실과 평가 손실, 자기학습의 외부 신호 — 원고·원전 검토와 로컬 빌드 완료 |
+| [14](https://jjo-0.github.io/posts/self-improving-ai-14-proposer-solver-verifier/) | 1–5 | 출제자·풀이자·검증자, 학습 손실과 평가 손실, 자기학습의 외부 신호 — 발행·공개 검증 완료 |
+| [15 원고](../../spaceship-ui/site/content/posts/self-improving-ai-15-harness-optimization-and-evaluation.mdx) | 6–10 | 모델과 하네스, AI의 수정안 생성, 비교 조건·토큰 예산·반복 신뢰성 — 원고·원전 검토와 로컬 빌드 완료 |
+| [16 원고](../../spaceship-ui/site/content/posts/self-improving-ai-16-prompt-memory-code-evolution.mdx) | 11–15 | OPRO·GEPA·ALMA·DGM — 프롬프트·메모리·코드의 개선; 원고·이미지·수치·출처 검토 완료, 발행 검증 진행 |
 
 ## 현재 발행과 집필 위치
 
-2026-11-18 확인: [PR #209](https://github.com/JJo-0/JJo-0.github.io/pull/209)는 `5eda387a88c6b7851617cd7b73e65451f4faae08`에 **16:26:39 KST**로 병합됐다. Pages 배포는 16:29:32 KST에 완료됐고 [최종 Pages 실행](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44258924444)은 attempt 2에서 성공했다. [공개 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44261729663)는 16:54:44 KST에 완료됐으며 **26개 화면·공개 이미지 114/114 해시 일치**를 확인했다. [공개 모바일 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44261729689)도 성공했다.
+2026-11-18 확인: [PR #210](https://github.com/JJo-0/JJo-0.github.io/pull/210)는 `17df9790c2494d5bbd0bc6920e0b64938b8af7e1`에 **20:32:40 KST**로 병합됐다. Pages 배포는 20:34:57 KST에 완료됐고, 후속 검사를 포함한 [전체 Pages 실행](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44295652150)은 20:52:17 KST에 성공으로 종료됐다. [공개 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44298594773)는 20:54:38 KST에 **28개 화면·공개 이미지 123/123 해시 일치**를 확인했다. [공개 모바일 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44298594721)도 성공했다.
 
-13편 PR 검사는 18개 모두 성공했다. 병합 후 push 검사는 17개가 성공했고, 기존 Sept22 검사 한 건은 Ubuntu 한글 폰트 다운로드 정체로 세 시도 모두 설치 단계에서 취소됐다. 이 환경 문제를 13편의 성공한 공개 검증과 구분한다. 상세 근거는 [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json)에 보존한다.
+14편 PR 검사는 18개 모두 성공했다. 병합 후 Pages를 제외한 push 검사는 17개가 성공했고, 기존 September 21 검사 한 건은 Ubuntu 한글 폰트 설치 중 시간 제한으로 취소됐다. 배포 직후 직접 확인한 공개 화면과 이미지 검증, 뒤이어 완료된 자동 검증의 관측 시점을 [14편 발행 기록](reviews/2026-11-18-chapter-14-publication.json)에 구분해 보존한다. [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json)과 이전 준비 기록도 유지한다.
 
-현재 **14편, 하편 1–5쪽의 원고와 이미지가 준비됐다.** 본강의 5장과 보충 원전 그림 4장, 수식 14개, 계산 검산 16개를 포함하며 원전·자막 대조와 독립 원고 검토를 마쳤다. 기존 글의 번호·URL·연속 탐색은 유지하며, 목록과 글 안의 시리즈 안내를 상편·하편으로 나눈다. 준비 기록은 공개 배포 완료를 뜻하지 않는다. 14편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **다음 집필은 15편, 하편 PDF 6쪽부터다.** [14편 준비 기록](reviews/2026-11-18-chapter-14-preparation.json)에서 범위와 검증을 확인할 수 있다.
+현재 **14·15편에 외부 강의 슬라이드와 영상 해설을 보강했다.** 각 편은 NTU 본강의 5장, 보충 논문 자료 4개, 추가 외부 강의 슬라이드 3개로 총 12개 이미지를 포함한다. 14편은 Lambert L9·L7과 CMU L9, 15편은 CMU L12·NAIRR·MIT 강의를 해당 논점 곁에 연결했다. 네 영상의 실제 영어 자동 자막 구간을 확인했다. 15편의 기존 수식 15개와 계산 검산 20개는 보존한다. 독립 원고 검토와 별도 수치 검산 12개 묶음도 통과했다. 문제 생성 지시에 담긴 사람의 설계에서 출발해, 가중치 θ와 하네스 h의 구분, 하네스에 경사하강식을 바로 적용하기 어려운 이유, AI가 만든 수정안의 평가·선택을 설명한다. 기존 상편·하편 구분과 글 번호·URL·연속 탐색을 유지한다. 준비 기록은 공개 배포 완료를 뜻하지 않으며, 15편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **16편은 하편 PDF 11–15쪽까지 집필했으며, 다음 집필은 17편·하편 PDF 16쪽부터다.** [15편 준비 기록](reviews/2026-11-18-chapter-15-preparation.json)에서 범위와 검증을 확인할 수 있다.
 
 이전 11·12편 발행 기록은 [PR #208](https://github.com/JJo-0/JJo-0.github.io/pull/208), 이전 10편과 1–9편 읽기 흐름 정리는 [PR #207](https://github.com/JJo-0/JJo-0.github.io/pull/207)에 있다. `progress.json`의 과거 준비·발행 기록은 당시 날짜와 범위를 보존한다.
+
+## 16편 작성 위치
+
+16편은 NTU 하편 11–15쪽의 OPRO·GEPA·ALMA·DGM을 한 장씩 해설한다. 원본 5장에 CMU OPRO 강의 1장, Stanford GEPA 저자 강연 2장, ALMA Table 1을 연결했다. 본강의와 GEPA ICLR 발표의 실제 제공 자막을 읽고 관련 문단에 시간 링크를 배치했다. Stanford 2025 슬라이드와 ICLR 2026 영상은 다른 행사로 구분한다.
+
+원고에는 수식 11개와 이미지 9개가 있으며 계산 검산 17개가 통과했다. [준비 기록](reviews/2026-11-18-chapter-16-preparation.json), [독립 검토](reviews/2026-11-18-chapter-16-independent-review.json), [원전 대조](source-assets/16/source-review.json)에서 범위와 한계를 확인할 수 있다. 이 작성 기록은 배포 완료를 뜻하지 않는다. 14·15편 보강 브랜치를 기준으로 이어서 작업했으며, 최종 원격 검사와 Pages 배포는 별도 관측 결과로 기록한다. 다음 원본은 **하편 16쪽**, 다음 글은 **17편**이다.
 
 ## 독자 본문 편집 기준
 
@@ -53,6 +61,19 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 
 PR #207의 읽기 흐름 정리에서 1–9편의 수식 298개와 이미지 81개는 그대로 유지했다. [리비전 기록](reviews/2026-11-18-editorial-cleanup-01-09.json)은 본문 전후 해시와 보존 검사를 담는다.
 
+## 외부 강의 보충 기준
+
+2026-11-18의 14·15편 보강 요청은 [처음 수집한 강의 목록](https://chatgpt.com/share/6afd95c6-00c0-83ee-ae8f-e69ca9b3448a)에 근거한다. 원래 연재 방식은 **NTU 한 장 → 한국어 설명 → 다른 강의·논문으로 개념 확장**이다. 논문 그림만 추가하면 외부 강의의 설명 방식과 영상 해설을 연결한다는 요구를 충족하지 못한다.
+
+- 다음 편을 쓸 때 관련 개념을 실제로 설명하는 외부 강의의 슬라이드·강의노트를 먼저 검토한다. 이번 14·15편에는 편당 외부 강의 슬라이드 3장을 추가한다.
+- 보충 설명은 연결되는 NTU 슬라이드나 원전 논점 바로 뒤에 둔다. 해당 자료가 설명하는 내용, 본강의와의 연결, 독자가 확인할 예 또는 한계를 한국어로 풀어 쓴다.
+- 자료 이름만 나열하거나 참고문헌에 링크만 추가한 것은 본문 보충으로 세지 않는다. 강의 슬라이드, 논문 그림, 공식 설명 문서, 실제 영상 발화를 구분한다.
+- 영상 설명은 실제로 확보한 자막·전사에서 확인한 구간에 시간 링크를 단다. 슬라이드만 읽은 설명을 영상 발화로 쓰지 않는다. 자막 언어·종류·범위와 원본 해시는 별도 provenance에 기록한다.
+- 원자료가 다루지 않는 연결은 이 글의 해설 또는 가상 예제로 쓴다. 원문에 없는 수치·인과·보장을 저자에게 돌리지 않는다.
+- 관련성이 낮은 강의를 수량을 맞추기 위해 넣지 않는다. 필요한 개념에 맞는 자료를 선택하고, 원 슬라이드 번호·출처와 기존 글의 탐색 링크를 유지한다.
+
+이번 추가 자료의 위치와 검증 근거는 [14·15편 보충 기록](reviews/2026-11-18-chapters-14-15-lecture-supplements.json)에 보존한다. 이 기록의 준비 상태와 최종 공개 배포 확인은 구분한다.
+
 ## 원자료 관리
 
 독자 화면은 슬라이드 다음에 한국어 해설을 배치한다. 이미지의 중국어를 옮긴 자료는 비공식 영어 편집본이며, 공식 영문판으로 소개하지 않는다. 그림과 수식의 원본 페이지는 각 이미지에서 직접 연결한다. 원래 영어로 구성된 페이지는 원본 렌더를 그대로 사용한다. 계산 예의 설정은 해당 설명에서 밝히며, 제작 과정 자체에 대한 반복 안내는 위 편집 기준에 따라 본문에서 생략한다.
@@ -64,9 +85,9 @@ PR #207의 읽기 흐름 정리에서 1–9편의 수식 298개와 이미지 81�
 - [공식 하편 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf)
 - [하편 영상](https://www.youtube.com/watch?v=cQLKVzbwN7I)
 
-초기 1–3편의 원문·제공 자막 대조일은 2026-11-12, 영어 편집본의 준비일은 2026-11-16이다. 이후 편의 조회일·버전·해시는 각 manifest와 transcript provenance에 기록한다. 하편 1–5쪽과 제공 자막은 2026-11-18에 대조했다. 영상 시간은 제공 자막의 주제 설명 구간이며 정확한 화면 전환 프레임과 동일하다고 주장하지 않는다.
+초기 1–3편의 원문·제공 자막 대조일은 2026-11-12, 영어 편집본의 준비일은 2026-11-16이다. 이후 편의 조회일·버전·해시는 각 manifest와 transcript provenance에 기록한다. 하편 1–10쪽과 제공 자막은 2026-11-18에 대조했다. 영상 시간은 제공 자막의 주제 설명 구간이며 정확한 화면 전환 프레임과 동일하다고 주장하지 않는다.
 
-하편 5쪽은 원본 PDF에서 서로 겹치거나 하단에 잘린 논문 URL 텍스트만 같은 문구로 재배치했다. 원본 도형·수식·사진·빨간 X 요소는 보존했으며, 세부 변경은 14편 manifest에 기록한다.
+하편 5쪽은 원본 PDF에서 서로 겹치거나 하단에 잘린 논문 URL 텍스트만 같은 문구로 재배치했다. 원본 도형·수식·사진·빨간 X 요소는 보존했으며, 세부 변경은 14편 manifest에 기록한다. 하편 7·8쪽은 중국어 표제 하나를 영어로 바꿨으며, 6·9·10쪽과 보충 자료의 내용·도형은 그대로 보존했다. 15편의 보충 자료는 SWE-agent·AFlow·τ-bench 논문 그림 세 개와 DSPy의 번호 없는 RAG 코드 예제 한 개다. 세부 출처와 편집 범위는 15편 manifest에서 확인한다.
 
 ## 기록
 
@@ -77,15 +98,18 @@ PR #207의 읽기 흐름 정리에서 1–9편의 수식 298개와 이미지 81�
 - `source-assets/12/manifest.json`: 56–60쪽과 보충 자료 4개의 이미지 메타데이터
 - `source-assets/13/manifest.json`: 마지막 61–62쪽과 보충 자료 4개의 이미지 메타데이터
 - `source-assets/14/manifest.json`: 하편 1–5쪽과 보충 논문 그림 4개의 이미지 메타데이터
+- `source-assets/15/manifest.json`: 하편 6–10쪽과 보충 원전 자료 4개의 이미지 메타데이터
 - `source-assets/11/transcript-provenance.json`, `source-assets/12/transcript-provenance.json`: 제공 자막과 영상 위치의 근거
 - `source-assets/13/transcript-provenance.json`: 1:03:02–1:03:40과 1:03:40–끝의 제공 자막 근거
 - `source-assets/14/transcript-provenance.json`: 하편 첫 5쪽에 대응하는 0:00·0:07·0:45·3:36·4:45의 제공 자막 근거
 - `reviews/verify_examples_13.py`, `reviews/numeric-checks-13.json`: 13편의 계산 예제와 검산 결과
 - `reviews/verify_examples_14.py`, `reviews/numeric-checks-14.json`: 14편의 계산 예제와 검산 결과
+- `reviews/verify_examples_15.py`, `reviews/numeric-checks-15.json`: 15편의 짝지은 비교·토큰 예산·반복 성공률 계산과 검산 결과
+- `source-assets/15/transcript-provenance.json`: 하편 6–10쪽의 4:45·5:15·5:36·5:48·7:07 주제 발언 근거. 6쪽은 앞편 회고와 겹치는 문맥이며 고유한 화면 전환이 확인된 시각은 아니다.
 - `spaceship-ui/src/data/self-improving-series.json`: 상편·하편의 표시 이름과 연속 글 번호 범위
 - `progress.json`: 현재 작성 범위와 다음 시작 페이지
 
-원본 자료의 재사용·수정 조건은 `unverified`로 기록한다. 공개 접근과 출처 표시를 라이선스로 취급하지 않으며, 포함된 제3자 이미지에도 별도 권리가 있을 수 있다.
+NTU 원본 자료의 재사용·수정 조건은 `unverified`로 기록한다. 공개 접근과 출처 표시를 라이선스로 취급하지 않으며, 포함된 제3자 이미지에도 별도 권리가 있을 수 있다.
 
 ## 2026-11-16 발행 승인 범위
 
