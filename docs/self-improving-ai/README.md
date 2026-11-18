@@ -38,7 +38,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 
 [PR 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44308915605)는 1–16편의 390px·1440px 화면 32개, 이미지 147개, 수식 오류 0개와 가로 넘침 0개를 확인했다. 16편의 실제 그림 스크린샷 18개도 시각 검토했다. 공개 HTTP 확인은 글 16개·글 목록·새 PNG 24개, 총 41개 URL에서 모두 200을 받았으며 새 PNG 24개의 공개·로컬·병합 커밋 SHA-256이 일치했다. 직접 공개 화면에서도 16편의 그림 9개·수식 11개, 영상 위치 표, 상편·하편 메뉴, 15↔16 이동을 확인했다.
 
-PR workflow 18개 중 17개가 성공했다. October 3의 두 PR 시도는 한글 폰트 다운로드 중 취소됐으며, **같은 source tree의 main October 3 검사**는 빌드·계약·브라우저 검사까지 성공했다. Pages의 build/deploy 성공과 사이트 전체 후속 live-smoke 상태는 구분한다. 후속 검사 첫 시도는 기존 9월 20일 글의 이동/로딩 대기에서 시간 제한에 걸렸고, 동일 코드의 해당 job만 재실행 중이다. 전체 workflow 성공을 미리 주장하지 않는다. 관측 시점과 예외는 [16편 발행 기록](reviews/2026-11-18-chapter-16-publication.json)에 남겼다.
+PR workflow 18개 중 17개가 성공했다. October 3의 두 PR 시도는 한글 폰트 다운로드 중 취소됐으며, **같은 source tree의 main October 3 검사**는 빌드·계약·브라우저 검사까지 성공했다. Pages의 build/deploy 성공과 사이트 전체 후속 live-smoke 상태는 구분한다. 후속 검사 첫 시도는 기존 9월 20일 글의 이동/로딩 대기에서 시간 제한에 걸렸다. 동일 코드의 해당 job만 1회 재실행했고, **전체 공개 Pages browser matrix가 22:32:11 KST에 성공**했다. NEWS 인용 링크·출처 공개 검사도 통과했으며, 나머지 기존 글 읽기 검사는 마지막 관측 시점에 진행 중이다. 전체 workflow 성공을 미리 주장하지 않는다. 관측 시점과 예외는 [16편 발행 기록](reviews/2026-11-18-chapter-16-publication.json)에 남겼다.
 
 현재 하편 **1–15쪽, 14–16편까지 발행**했다. 다음 집필은 **17편·하편 PDF 16쪽부터**다. 하편은 총 64쪽이므로 전체 연재 완료 상태가 아니다. 이전 [14편 발행 기록](reviews/2026-11-18-chapter-14-publication.json), [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json), 준비 기록은 당시의 날짜와 검증 범위를 보존한다.
 
