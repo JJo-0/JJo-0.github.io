@@ -1,0 +1,62 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { getPostSlug } from '@/lib/utils/posts';
+import { getSelfImprovingPart, selfImprovingSeries } from '@/lib/self-improving-series';
+
+interface Props {
+  posts: CollectionEntry<'posts'>[];
+  currentPostId: string;
+}
+
+const { posts, currentPostId } = Astro.props;
+const currentPost = posts.find((post) => post.id === currentPostId);
+const currentPart = getSelfImprovingPart(currentPost?.data.series);
+const parts = selfImprovingSeries.parts.map((part) => ({
+  ...part,
+  posts: posts.filter((post) => getSelfImprovingPart(post.data.series)?.number === part.number),
+})).filter((part) => part.posts.length > 0);
+---
+
+<nav class="self-improving-map" aria-label="자가개선 AI 상편과 하편" data-self-improving-map data-current-part={currentPart?.number}>
+  <div class="self-improving-map__heading">
+    <strong>{selfImprovingSeries.title}</strong>
+    <span data-current-series-part>{currentPart?.label} · 현재 {currentPost?.data.series?.order}편</span>
+  </div>
+  {parts.map((part) => (
+    <details data-series-map-part={part.number}>
+      <summary>
+        <span>{part.label} <span class="self-improving-map__range">{part.rangeLabel}</span></span>
+        <span class="self-improving-map__count">{part.posts.length}편 <span aria-hidden="true">⌄</span></span>
+      </summary>
+      <ol start={part.firstOrder} aria-label={`${part.title} 글 목록`}>
+        {part.posts.map((post) => (
+          <li value={post.data.series?.order}>
+            <a href={`/posts/${getPostSlug(post)}/`} aria-current={post.id === currentPostId ? 'page' : undefined}>
+              {post.data.title}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </details>
+  ))}
+</nav>
+
+<style>
+  .self-improving-map { margin-top: 2rem; padding: 1rem 1.25rem; border: 1px solid var(--color-border); border-radius: .75rem; background: var(--color-card); min-width: 0; }
+  .self-improving-map__heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem 1rem; margin-bottom: .6rem; }
+  .self-improving-map__heading strong { font-size: 1rem; color: var(--color-foreground); }
+  .self-improving-map__heading > span { font-size: .8rem; color: var(--color-muted-foreground); }
+  details { border-top: 1px solid var(--color-border); }
+  summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .8rem 0; cursor: pointer; list-style: none; font-weight: 600; }
+  summary::-webkit-details-marker { display: none; }
+  .self-improving-map__range { margin-left: .5rem; font-size: .8rem; font-weight: 400; color: var(--color-muted-foreground); }
+  .self-improving-map__count { flex-shrink: 0; font-size: .8rem; font-weight: 400; color: var(--color-muted-foreground); }
+  .self-improving-map__count > span { display: inline-block; margin-left: .5rem; }
+  details[open] .self-improving-map__count > span { transform: rotate(180deg); }
+  ol { margin: 0 0 .8rem; padding-left: 1.7rem; list-style: decimal; }
+  li { padding: .4rem 0 .4rem .3rem; font-size: .9rem; line-height: 1.65; overflow-wrap: anywhere; }
+  a { color: var(--color-muted-foreground); }
+  a:hover, a[aria-current="page"] { color: var(--color-foreground); }
+  a[aria-current="page"] { font-weight: 700; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+</style>

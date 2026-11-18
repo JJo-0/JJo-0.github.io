@@ -20,9 +20,14 @@ const chapters = [
   { number: 10, math: 18, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-10-self-play-and-external-feedback', previous: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', next: 'self-improving-ai-11-automated-post-training' },
   { number: 11, math: 16, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-11-automated-post-training', previous: 'self-improving-ai-10-self-play-and-external-feedback', next: 'self-improving-ai-12-weak-to-strong-generalization' },
   { number: 12, math: 12, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-12-weak-to-strong-generalization', previous: 'self-improving-ai-11-automated-post-training', next: 'self-improving-ai-13-agent-harness-and-system-improvement' },
-  { number: 13, math: 8, figures: 6, primarySlides: 2, timingRows: 2, slug: 'self-improving-ai-13-agent-harness-and-system-improvement', previous: 'self-improving-ai-12-weak-to-strong-generalization', next: null },
+  { number: 13, math: 8, figures: 6, primarySlides: 2, timingRows: 2, slug: 'self-improving-ai-13-agent-harness-and-system-improvement', previous: 'self-improving-ai-12-weak-to-strong-generalization', next: 'self-improving-ai-14-proposer-solver-verifier' },
+  { number: 14, math: 14, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-14-proposer-solver-verifier', previous: 'self-improving-ai-13-agent-harness-and-system-improvement', next: null },
 ];
 const mappingSummary = '슬라이드별 영상 위치';
+const lectureParts = [
+  { number: 1, id: 'self-improving-ai-part-1', title: '자가개선 AI — 상편', first: 1, last: 13 },
+  { number: 2, id: 'self-improving-ai-part-2', title: '자가개선 AI — 하편', first: 14, last: Infinity },
+];
 const timestampGroups = {
   1: [1, 10, 51, 100, 159],
   2: [217, 241, 296, 422, 483],
@@ -34,6 +39,7 @@ const timestampGroups = {
   11: [3136, 3173, 3227, 3316, 3401],
   12: [3519, 3547, 3617, 3677, 3759],
   13: [3782, 3820],
+  14: [0, 7, 45, 216, 285],
 };
 const productionPhrases = [
   /(?:자막|자료|원문|원고|보충 자료)[·\s]*(?:조회|대조|확인)일/,
@@ -93,6 +99,14 @@ function loadChapterManifest(chapter) {
     assert.equal(mainSlides.length, chapter.primarySlides, 'Chapter 13 has exactly two main slides');
     assert.deepEqual(mainSlides.map(asset => asset.pdf_page), [61, 62], 'Chapter 13 concludes the 62-page source deck');
   }
+  if (chapter.number === 14) {
+    const mainSlides = records.filter(asset => /^main-\d+$/.test(asset.slot || ''));
+    assert.equal(primary.source_pdf_total_pages, 64, 'Chapter 14 uses the separate 64-page lower lecture');
+    assert.deepEqual(primary.primary_page_range, [1, 5], 'Chapter 14 starts the lower lecture at page 1');
+    assert.equal(mainSlides.length, chapter.primarySlides);
+    assert.deepEqual(mainSlides.map(asset => asset.pdf_page), [1, 2, 3, 4, 5]);
+    assert(mainSlides.every(asset => (asset.source ?? asset.source_page_url) === `https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=${asset.pdf_page}`), 'Chapter 14 slide links use the lower lecture PDF');
+  }
   return { assets };
 }
 
@@ -136,6 +150,54 @@ async function verifyMappingDetails(cdp, session, expectedRows) {
   return { summary: mappingSummary, expectedRows, initialOpen: false, afterFirstClick: opened, afterSecondClickOpen: false };
 }
 
+async function clickSummarySelector(cdp, session, selector) {
+  const point = await evaluate(cdp, session, `(async()=>{
+    const summary=document.querySelector(${JSON.stringify(selector)});
+    summary.scrollIntoView({block:'center',behavior:'instant'});
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const rect=summary.getBoundingClientRect(),x=rect.left+rect.width/2,y=rect.top+rect.height/2;
+    return {x,y,hit:summary.contains(document.elementFromPoint(x,y))};
+  })()`);
+  assert(point.hit, `Series summary is clickable: ${selector}`);
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y }, session);
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: point.x, y: point.y, button: 'left', clickCount: 1 }, session);
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x, y: point.y, button: 'left', clickCount: 1 }, session);
+}
+
+async function verifyArticleParts(cdp, session, chapter, width) {
+  const map = await evaluate(cdp, session, `(()=>{
+    const map=document.querySelector('[data-self-improving-map]');
+    return {currentPart:Number(map?.dataset.currentPart),currentLabel:map?.querySelector('[data-current-series-part]')?.textContent,
+      parts:Array.from(map?.querySelectorAll('[data-series-map-part]') || []).map(part=>({number:Number(part.dataset.seriesMapPart),open:part.open,
+        links:Array.from(part.querySelectorAll('a')).map(a=>({href:a.getAttribute('href'),current:a.getAttribute('aria-current')}))}))};
+  })()`);
+  assert.equal(map.currentPart, chapter.number <= 13 ? 1 : 2, 'Correct current lecture part');
+  assert.equal(map.currentLabel.trim(), `${chapter.number <= 13 ? '상편' : '하편'} · 현재 ${chapter.number}편`);
+  assert.deepEqual(map.parts.map(part => part.number), [1, 2], 'Both lecture parts are available');
+  for (const part of lectureParts) {
+    const actual = map.parts.find(item => item.number === part.number);
+    assert.equal(actual.open, false, 'Article part lists start closed');
+    assert.deepEqual(actual.links.map(link => link.href), chapters.filter(item => item.number >= part.first && item.number <= part.last).map(item => `/posts/${item.slug}/`));
+  }
+  const currentLinks = map.parts.flatMap(part => part.links).filter(link => link.current === 'page');
+  assert.deepEqual(currentLinks.map(link => link.href), [`/posts/${chapter.slug}/`]);
+  if (chapter.number === 13 || chapter.number === 14) {
+    for (const part of lectureParts) {
+      const selector = `[data-self-improving-map] [data-series-map-part="${part.number}"]`;
+      await clickSummarySelector(cdp, session, `${selector} > summary`);
+      await waitExpression(cdp, session, `document.querySelector(${JSON.stringify(selector)}).open === true`, 'Article part opens on click');
+      await clickSummarySelector(cdp, session, `${selector} > summary`);
+      await waitExpression(cdp, session, `document.querySelector(${JSON.stringify(selector)}).open === false`, 'Article part closes on click');
+    }
+    await evaluate(cdp, session, "document.querySelector('[data-self-improving-map]').scrollIntoView({block:'center',behavior:'instant'})");
+    await evaluate(cdp, session, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+    const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
+    fs.writeFileSync(path.join(out, `self-improving-map-${chapter.number}-${width}.png`), Buffer.from(shot.data, 'base64'));
+    map.interactionChecks = 'Both part disclosures opened and closed by pointer click';
+  }
+  return map;
+}
+
 const manifests = new Map();
 const evidence = { checkedAt: new Date().toISOString(), publicBase: process.env.JJO_SMOKE_BASE_URL || null, views: [], assets: [], series: [] };
 let preview, chrome, cdp;
@@ -169,6 +231,7 @@ try {
     for (const chapter of chapters) {
       await navigate(cdp, session, `/posts/${chapter.slug}/`);
       await waitExpression(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]').length === ${chapter.figures}`, `Exactly ${chapter.figures} lesson figures`);
+      const articleParts = await verifyArticleParts(cdp, session, chapter, width);
       const timingDetails = chapter.timingRows !== null ? await verifyMappingDetails(cdp, session, chapter.timingRows) : null;
       for (let index = 0; index < chapter.figures; index++) {
         await evaluate(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]')[${index}].scrollIntoView({block:'center',behavior:'instant'})`);
@@ -183,7 +246,10 @@ try {
           math:document.querySelectorAll('article .katex').length,
           mathErrors:document.querySelectorAll('.katex-error').length,
           previous:navigation?.querySelector('[rel="prev"]')?.getAttribute('href') || null,
-          next:navigation?.querySelector('[rel="next"]')?.getAttribute('href') || null
+          next:navigation?.querySelector('[rel="next"]')?.getAttribute('href') || null,
+          seriesPart:Number(navigation?.dataset.seriesPart),
+          previousLabel:navigation?.querySelector('[rel="prev"] span')?.textContent || null,
+          nextLabel:navigation?.querySelector('[rel="next"] span')?.textContent || null
         };
       })()`);
       assert.equal(view.figures.length, chapter.figures);
@@ -194,6 +260,10 @@ try {
       assert(view.overflow <= 2, JSON.stringify(view));
       assert.equal(view.previous, chapter.previous ? `/posts/${chapter.previous}/` : null);
       assert.equal(view.next, chapter.next ? `/posts/${chapter.next}/` : null);
+      assert.equal(view.seriesPart, chapter.number <= 13 ? 1 : 2);
+      if (chapter.number === 13) assert.equal(view.nextLabel, '다음 편 · 하편');
+      if (chapter.number === 14) assert.equal(view.previousLabel, '이전 편 · 상편');
+      view.articleParts = articleParts;
       if (timingDetails) view.timingDetails = timingDetails;
       for (const figure of view.figures) {
         const expected = manifests.get(chapter.number).assets.find(asset => asset.src === figure.src);
@@ -207,7 +277,7 @@ try {
       if (timestampGroups[chapter.number]) {
         const transcriptLinks = await evaluate(cdp, session, `Array.from(document.querySelectorAll('article a[href*="youtube.com/watch"]')).map(a=>a.href)`);
         for (const seconds of timestampGroups[chapter.number]) {
-          assert(transcriptLinks.some(href => { const url = new URL(href); return url.searchParams.get('v') === 's06mSAGN4gM' && url.searchParams.get('t') === `${seconds}s`; }), `Missing transcript timestamp ${seconds}`);
+          assert(transcriptLinks.some(href => { const url = new URL(href); return url.searchParams.get('v') === (chapter.number <= 13 ? 's06mSAGN4gM' : 'cQLKVzbwN7I') && url.searchParams.get('t') === `${seconds}s`; }), `Missing transcript timestamp ${seconds}`);
         }
         view.transcriptLinks = transcriptLinks;
       }
@@ -254,21 +324,27 @@ try {
       console.log('PASS Self-Improving article', chapter.slug, width, JSON.stringify({ images: view.figures.length, math: view.math, errors: view.mathErrors, overflow: view.overflow }));
     }
     await navigate(cdp, session, '/posts/');
-    await waitExpression(cdp, session, "!!document.querySelector('[data-series-group=" + '"self-improving-ai"' + "]')", 'Self-Improving series group');
-    const group = await evaluate(cdp, session, `(()=>{const g=document.querySelector('[data-series-group="self-improving-ai"]');return {title:g.querySelector('.series-group__title')?.textContent,count:g.querySelector('.series-group__count')?.textContent,links:[...new Set(Array.from(g.querySelectorAll('a[href^="/posts/"]')).map(a=>a.getAttribute('href')))]};})()`);
-    assert.equal(group.title, '자가개선 AI');
-    assert.equal(group.count, `${chapters.length}편`);
-    // List cards omit the optional trailing slash; retain exact path membership checks.
-    const groupPaths = new Set(group.links.map(href => href.replace(/\/+$/, '')));
-    assert.equal(groupPaths.size, chapters.length);
-    for (const chapter of chapters) assert(groupPaths.has(`/posts/${chapter.slug}`), `Series missing ${chapter.slug}`);
-    assert.deepEqual([...groupPaths], chapters.map(chapter => `/posts/${chapter.slug}`), 'Series order 01–13');
-    await evaluate(cdp, session, "(()=>{const g=document.querySelector('[data-series-group=\"self-improving-ai\"]');g.open=true;g.scrollIntoView({block:'center',behavior:'instant'});})()");
-    await evaluate(cdp, session, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
-    const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
-    fs.writeFileSync(path.join(out, `self-improving-group-${width}.png`), Buffer.from(shot.data, 'base64'));
-    evidence.series.push({ width, ...group });
-    console.log('PASS Self-Improving series name and membership', width, JSON.stringify(group));
+    for (const part of lectureParts) {
+      const selector = `[data-series-group="${part.id}"]`;
+      await waitExpression(cdp, session, `!!document.querySelector(${JSON.stringify(selector)})`, 'Self-Improving lecture part');
+      const group = await evaluate(cdp, session, `(()=>{const g=document.querySelector(${JSON.stringify(selector)});return {title:g.querySelector('.series-group__title')?.textContent,count:g.querySelector('.series-group__count')?.textContent,initialOpen:g.open,links:[...new Set(Array.from(g.querySelectorAll('a[href^="/posts/"]')).map(a=>a.getAttribute('href')))]};})()`);
+      const partChapters = chapters.filter(chapter => chapter.number >= part.first && chapter.number <= part.last);
+      assert.equal(group.title, part.title);
+      assert.equal(group.count, `${partChapters.length}편`);
+      assert.equal(group.initialOpen, false, 'Lecture part shelf starts closed');
+      const groupPaths = [...new Set(group.links.map(href => href.replace(/\/+$/, '')))];
+      assert.deepEqual(groupPaths, partChapters.map(chapter => `/posts/${chapter.slug}`), `${part.title} exact membership and order`);
+      await clickSummarySelector(cdp, session, `${selector} > summary`);
+      await waitExpression(cdp, session, `document.querySelector(${JSON.stringify(selector)}).open === true`, 'Lecture shelf opens on click');
+      await evaluate(cdp, session, `document.querySelector(${JSON.stringify(`${selector} > summary`)}).scrollIntoView({block:'center',behavior:'instant'})`);
+      await evaluate(cdp, session, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+      const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);
+      fs.writeFileSync(path.join(out, `self-improving-group-part-${part.number}-${width}.png`), Buffer.from(shot.data, 'base64'));
+      await clickSummarySelector(cdp, session, `${selector} > summary`);
+      await waitExpression(cdp, session, `document.querySelector(${JSON.stringify(selector)}).open === false`, 'Lecture shelf closes on click');
+      evidence.series.push({ width, part: part.number, ...group, afterFirstClickOpen: true, afterSecondClickOpen: false });
+      console.log('PASS Self-Improving lecture part', width, JSON.stringify(group));
+    }
   }
   evidence.result = 'PASS';
 } catch (error) {

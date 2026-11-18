@@ -1,6 +1,8 @@
 ---
 import { getPublishedPosts, getPostSlug, getPostSeriesId, compareSeriesPosts } from '@/lib/utils/posts';
 import modernAiSeries from '@/data/modern-ai-series.json';
+import { getSelfImprovingPart, selfImprovingSeries } from '@/lib/self-improving-series';
+import SelfImprovingSeriesMap from './SelfImprovingSeriesMap.astro';
 
 interface Props {
   seriesId: string;
@@ -29,22 +31,28 @@ const previousPost = seriesPosts[currentIndex - 1];
 const nextPost = seriesPosts[currentIndex + 1];
 const currentOrder = currentPost?.data.series?.order ?? currentIndex + 1;
 const isModernAiSeries = seriesId === modernAiSeries.id;
+const isSelfImprovingSeries = seriesId === selfImprovingSeries.id;
+const currentPart = getSelfImprovingPart(currentPost?.data.series);
+const previousPart = getSelfImprovingPart(previousPost?.data.series);
+const nextPart = getSelfImprovingPart(nextPost?.data.series);
 const modernAiEntries = (modernAiSeries.entries as ModernAiEntry[]).map((entry) => ({
   ...entry,
   post: seriesPosts.find((post) => post.data.series?.order === entry.order),
 }));
 
-if (currentIndex < 0 || (position === 'top' && !isModernAiSeries && seriesPosts.length <= 1)) {
+if (currentIndex < 0 || (position === 'top' && !isModernAiSeries && !isSelfImprovingSeries && seriesPosts.length <= 1)) {
   return null;
 }
 ---
 
 {position === 'bottom' ? (
-  <nav class="series-reading-navigation" aria-label="시리즈 이어 읽기" data-series-reading-navigation={seriesId} data-series-order={currentOrder}>
-    {previousPost && <a href={`/posts/${getPostSlug(previousPost)}/`} rel="prev"><span>이전 편</span><strong>{previousPost.data.title}</strong></a>}
+  <nav class="series-reading-navigation" aria-label="시리즈 이어 읽기" data-series-reading-navigation={seriesId} data-series-order={currentOrder} data-series-part={currentPart?.number}>
+    {previousPost && <a href={`/posts/${getPostSlug(previousPost)}/`} rel="prev"><span>이전 편{previousPart && ` · ${previousPart.label}`}</span><strong>{previousPost.data.title}</strong></a>}
     <a class="back-to-top" href="#main-content"><span aria-hidden="true">↑</span> 맨 위로</a>
-    {nextPost && <a href={`/posts/${getPostSlug(nextPost)}/`} rel="next"><span>다음 편</span><strong>{nextPost.data.title}</strong></a>}
+    {nextPost && <a href={`/posts/${getPostSlug(nextPost)}/`} rel="next"><span>다음 편{nextPart && ` · ${nextPart.label}`}</span><strong>{nextPost.data.title}</strong></a>}
   </nav>
+) : isSelfImprovingSeries ? (
+  <SelfImprovingSeriesMap posts={seriesPosts} {currentPostId} />
 ) : (
 <section
   class="series-map mt-8 mb-12 overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-sm"
