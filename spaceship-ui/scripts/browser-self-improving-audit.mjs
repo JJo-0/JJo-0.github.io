@@ -8,20 +8,20 @@ import { startPreview, startChrome, Cdp, attach, stopChild, removeProfile, evalu
 const out = process.env.JJO_SELF_IMPROVING_ARTIFACTS || path.join(os.tmpdir(), 'jjo-self-improving');
 fs.mkdirSync(out, { recursive: true });
 const chapters = [
-  { number: 1, math: 38, slug: 'self-improving-ai-01-overview', previous: null, next: 'self-improving-ai-02-learning-targets' },
-  { number: 2, math: 72, slug: 'self-improving-ai-02-learning-targets', previous: 'self-improving-ai-01-overview', next: 'self-improving-ai-03-self-correction-to-rl' },
-  { number: 3, math: 31, slug: 'self-improving-ai-03-self-correction-to-rl', previous: 'self-improving-ai-02-learning-targets', next: 'self-improving-ai-04-sparse-rewards-and-shaping' },
-  { number: 4, math: 26, slug: 'self-improving-ai-04-sparse-rewards-and-shaping', previous: 'self-improving-ai-03-self-correction-to-rl', next: 'self-improving-ai-05-reward-design-to-ai-feedback' },
-  { number: 5, math: 26, slug: 'self-improving-ai-05-reward-design-to-ai-feedback', previous: 'self-improving-ai-04-sparse-rewards-and-shaping', next: 'self-improving-ai-06-self-evaluation-and-entropy' },
-  { number: 6, math: 20, slug: 'self-improving-ai-06-self-evaluation-and-entropy', previous: 'self-improving-ai-05-reward-design-to-ai-feedback', next: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training' },
-  { number: 7, math: 22, slug: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', previous: 'self-improving-ai-06-self-evaluation-and-entropy', next: 'self-improving-ai-08-entropy-estimation-and-gradients' },
-  { number: 8, math: 32, slug: 'self-improving-ai-08-entropy-estimation-and-gradients', previous: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', next: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs' },
-  { number: 9, math: 31, slug: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', previous: 'self-improving-ai-08-entropy-estimation-and-gradients', next: 'self-improving-ai-10-self-play-and-external-feedback' },
-  { number: 10, math: 18, slug: 'self-improving-ai-10-self-play-and-external-feedback', previous: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', next: 'self-improving-ai-11-automated-post-training' },
-  { number: 11, math: 16, slug: 'self-improving-ai-11-automated-post-training', previous: 'self-improving-ai-10-self-play-and-external-feedback', next: 'self-improving-ai-12-weak-to-strong-generalization' },
-  { number: 12, math: 12, slug: 'self-improving-ai-12-weak-to-strong-generalization', previous: 'self-improving-ai-11-automated-post-training', next: null },
+  { number: 1, math: 38, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-01-overview', previous: null, next: 'self-improving-ai-02-learning-targets' },
+  { number: 2, math: 72, figures: 9, primarySlides: 5, timingRows: null, slug: 'self-improving-ai-02-learning-targets', previous: 'self-improving-ai-01-overview', next: 'self-improving-ai-03-self-correction-to-rl' },
+  { number: 3, math: 31, figures: 9, primarySlides: 5, timingRows: null, slug: 'self-improving-ai-03-self-correction-to-rl', previous: 'self-improving-ai-02-learning-targets', next: 'self-improving-ai-04-sparse-rewards-and-shaping' },
+  { number: 4, math: 26, figures: 9, primarySlides: 5, timingRows: null, slug: 'self-improving-ai-04-sparse-rewards-and-shaping', previous: 'self-improving-ai-03-self-correction-to-rl', next: 'self-improving-ai-05-reward-design-to-ai-feedback' },
+  { number: 5, math: 26, figures: 9, primarySlides: 5, timingRows: null, slug: 'self-improving-ai-05-reward-design-to-ai-feedback', previous: 'self-improving-ai-04-sparse-rewards-and-shaping', next: 'self-improving-ai-06-self-evaluation-and-entropy' },
+  { number: 6, math: 20, figures: 9, primarySlides: 5, timingRows: null, slug: 'self-improving-ai-06-self-evaluation-and-entropy', previous: 'self-improving-ai-05-reward-design-to-ai-feedback', next: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training' },
+  { number: 7, math: 22, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', previous: 'self-improving-ai-06-self-evaluation-and-entropy', next: 'self-improving-ai-08-entropy-estimation-and-gradients' },
+  { number: 8, math: 32, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-08-entropy-estimation-and-gradients', previous: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', next: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs' },
+  { number: 9, math: 31, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', previous: 'self-improving-ai-08-entropy-estimation-and-gradients', next: 'self-improving-ai-10-self-play-and-external-feedback' },
+  { number: 10, math: 18, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-10-self-play-and-external-feedback', previous: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', next: 'self-improving-ai-11-automated-post-training' },
+  { number: 11, math: 16, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-11-automated-post-training', previous: 'self-improving-ai-10-self-play-and-external-feedback', next: 'self-improving-ai-12-weak-to-strong-generalization' },
+  { number: 12, math: 12, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-12-weak-to-strong-generalization', previous: 'self-improving-ai-11-automated-post-training', next: 'self-improving-ai-13-agent-harness-and-system-improvement' },
+  { number: 13, math: 8, figures: 6, primarySlides: 2, timingRows: 2, slug: 'self-improving-ai-13-agent-harness-and-system-improvement', previous: 'self-improving-ai-12-weak-to-strong-generalization', next: null },
 ];
-const mappingChapters = new Set([1, 7, 8, 9, 10, 11, 12]);
 const mappingSummary = '슬라이드별 영상 위치';
 const timestampGroups = {
   1: [1, 10, 51, 100, 159],
@@ -33,6 +33,7 @@ const timestampGroups = {
   10: [2739, 2891, 2939, 3023, 3084],
   11: [3136, 3173, 3227, 3316, 3401],
   12: [3519, 3547, 3617, 3677, 3759],
+  13: [3782, 3820],
 };
 const productionPhrases = [
   /(?:자막|자료|원문|원고|보충 자료)[·\s]*(?:조회|대조|확인)일/,
@@ -50,7 +51,7 @@ function loadChapterManifest(chapter) {
   const primary = JSON.parse(fs.readFileSync(`${directory}/manifest.json`, 'utf8'));
   const records = [...primary.assets];
   if (chapter.number <= 3) {
-    assert.equal(primary.assets.length, 5, `Chapter ${chapter.number} primary manifest`);
+    assert.equal(primary.assets.length, chapter.primarySlides, `Chapter ${chapter.number} primary manifest`);
     const supplementary = JSON.parse(fs.readFileSync(`${directory}/supplementary-manifest.json`, 'utf8'));
     assert.equal(supplementary.assets.length, 4, `Chapter ${chapter.number} supplementary manifest`);
     records.push(...supplementary.assets);
@@ -83,8 +84,15 @@ function loadChapterManifest(chapter) {
     assert(Number.isInteger(asset.height) && asset.height > 0, assetPath);
     return { path: assetPath, src, source, sourceType, sha256, width: asset.width, height: asset.height };
   });
-  assert.equal(assets.length, 9, `Chapter ${chapter.number} total assets`);
-  assert.equal(new Set(assets.map(asset => asset.src)).size, 9, `Chapter ${chapter.number} unique assets`);
+  assert.equal(assets.length, chapter.figures, `Chapter ${chapter.number} total assets`);
+  assert.equal(new Set(assets.map(asset => asset.src)).size, chapter.figures, `Chapter ${chapter.number} unique assets`);
+  if (chapter.number === 13) {
+    const mainSlides = records.filter(asset => /^main-\d+$/.test(asset.slot || ''));
+    assert.equal(primary.source_pdf_total_pages, 62, 'Chapter 13 source deck has exactly 62 pages');
+    assert.deepEqual(primary.primary_page_range, [61, 62], 'Chapter 13 source range');
+    assert.equal(mainSlides.length, chapter.primarySlides, 'Chapter 13 has exactly two main slides');
+    assert.deepEqual(mainSlides.map(asset => asset.pdf_page), [61, 62], 'Chapter 13 concludes the 62-page source deck');
+  }
   return { assets };
 }
 
@@ -105,7 +113,8 @@ async function clickMappingSummary(cdp, session) {
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x, y: point.y, button: 'left', clickCount: 1 }, session);
 }
 
-async function verifyMappingDetails(cdp, session) {
+async function verifyMappingDetails(cdp, session, expectedRows) {
+  assert(Number.isInteger(expectedRows) && expectedRows > 0, 'Exact slide timing row count');
   const initial = await evaluate(cdp, session, `(()=>{
     const summaries=${mappingExpression};
     return {count:summaries.length,open:summaries[0]?.parentElement.open};
@@ -120,11 +129,11 @@ async function verifyMappingDetails(cdp, session) {
     return {open:details.open,rows:table?.querySelectorAll('tbody tr').length || 0,width:rect?.width || 0,height:rect?.height || 0,
       overflow:Math.max(0,document.documentElement.scrollWidth-innerWidth)};
   })()`);
-  assert(opened.open && opened.rows === 5 && opened.width > 0 && opened.height > 0, `Opened slide timing table: ${JSON.stringify(opened)}`);
+  assert(opened.open && opened.rows === expectedRows && opened.width > 0 && opened.height > 0, `Opened slide timing table: ${JSON.stringify(opened)}`);
   assert(opened.overflow <= 2, `Opened slide timing page overflow: ${JSON.stringify(opened)}`);
   await clickMappingSummary(cdp, session);
   await waitExpression(cdp, session, `(${mappingExpression})[0].parentElement.open === false`, 'Slide timing disclosure closes on click');
-  return { summary: mappingSummary, initialOpen: false, afterFirstClick: opened, afterSecondClickOpen: false };
+  return { summary: mappingSummary, expectedRows, initialOpen: false, afterFirstClick: opened, afterSecondClickOpen: false };
 }
 
 const manifests = new Map();
@@ -133,6 +142,8 @@ let preview, chrome, cdp;
 try {
   for (const chapter of chapters) {
     assert(Number.isInteger(chapter.math) && chapter.math > 0, `Set the exact math count for chapter ${chapter.number}`);
+    assert(Number.isInteger(chapter.figures) && chapter.figures > 0, `Exact figure count for chapter ${chapter.number}`);
+    if (chapter.timingRows !== null) assert.equal(chapter.timingRows, timestampGroups[chapter.number]?.length, `Exact timestamp count for chapter ${chapter.number}`);
     const manifest = loadChapterManifest(chapter);
     manifests.set(chapter.number, manifest);
     for (const asset of manifest.assets) {
@@ -157,9 +168,9 @@ try {
     await viewport(cdp, session, { width, height: 1000, mobile: width < 500, touch: width < 500, reduced: true });
     for (const chapter of chapters) {
       await navigate(cdp, session, `/posts/${chapter.slug}/`);
-      await waitExpression(cdp, session, "document.querySelectorAll('article figure[data-learning-figure]').length === 9", 'Nine lesson figures');
-      const timingDetails = mappingChapters.has(chapter.number) ? await verifyMappingDetails(cdp, session) : null;
-      for (let index = 0; index < 9; index++) {
+      await waitExpression(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]').length === ${chapter.figures}`, `Exactly ${chapter.figures} lesson figures`);
+      const timingDetails = chapter.timingRows !== null ? await verifyMappingDetails(cdp, session, chapter.timingRows) : null;
+      for (let index = 0; index < chapter.figures; index++) {
         await evaluate(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]')[${index}].scrollIntoView({block:'center',behavior:'instant'})`);
         await waitExpression(cdp, session, `(()=>{const image=document.querySelectorAll('article figure[data-learning-figure] img')[${index}];return image.complete && image.naturalWidth>0 && image.naturalHeight>0;})()`, 'Lesson image decoded');
       }
@@ -175,8 +186,8 @@ try {
           next:navigation?.querySelector('[rel="next"]')?.getAttribute('href') || null
         };
       })()`);
-      assert.equal(view.figures.length, 9);
-      assert.equal(new Set(view.figures.map(figure => figure.src)).size, 9);
+      assert.equal(view.figures.length, chapter.figures);
+      assert.equal(new Set(view.figures.map(figure => figure.src)).size, chapter.figures);
       assert.equal(view.width, width);
       assert.equal(view.math, chapter.math);
       assert.equal(view.mathErrors, 0);
@@ -223,7 +234,7 @@ try {
       assert.deepEqual(productionMatches, [], `Visible production notes in ${chapter.slug}`);
       view.editorial = { visibleTextCharacters: visibleText.length, productionMatches };
       evidence.views.push(view);
-      const screenshotIndices = chapter.number >= 6 ? [0, 1, 2, 3, 4, 5, 6, 7, 8] : chapter.number <= 3 ? [0, 7] : [1, 7];
+      const screenshotIndices = chapter.number >= 6 ? Array.from({ length: chapter.figures }, (_, index) => index) : chapter.number <= 3 ? [0, 7] : [1, 7];
       for (const index of screenshotIndices) {
         await evaluate(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]')[${index}].scrollIntoView({block:'center',behavior:'instant'})`);
         // Image decoding and layout readiness are separate from a painted frame.
@@ -251,7 +262,7 @@ try {
     const groupPaths = new Set(group.links.map(href => href.replace(/\/+$/, '')));
     assert.equal(groupPaths.size, chapters.length);
     for (const chapter of chapters) assert(groupPaths.has(`/posts/${chapter.slug}`), `Series missing ${chapter.slug}`);
-    assert.deepEqual([...groupPaths], chapters.map(chapter => `/posts/${chapter.slug}`), 'Series order 01–12');
+    assert.deepEqual([...groupPaths], chapters.map(chapter => `/posts/${chapter.slug}`), 'Series order 01–13');
     await evaluate(cdp, session, "(()=>{const g=document.querySelector('[data-series-group=\"self-improving-ai\"]');g.open=true;g.scrollIntoView({block:'center',behavior:'instant'});})()");
     await evaluate(cdp, session, 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session);

@@ -628,6 +628,7 @@ POST_TAXONOMY.update({
     "self-improving-ai-10-self-play-and-external-feedback.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-play", "reinforcement-learning", "synthetic-data", "ntu")),
     "self-improving-ai-11-automated-post-training.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "post-training", "llm-agents", "fine-tuning", "ntu")),
     "self-improving-ai-12-weak-to-strong-generalization.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "weak-to-strong", "alignment", "automated-research", "ntu")),
+    "self-improving-ai-13-agent-harness-and-system-improvement.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "harness", "memory", "ntu")),
 })
 
 if __name__ == "__main__":
