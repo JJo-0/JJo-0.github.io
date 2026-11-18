@@ -1,6 +1,6 @@
 ---
 title: "자가개선 AI 04 — 정답은 드문데, 무엇을 보상해야 할까"
-description: "NTU Self-Improving 16–20쪽을 따라 희소 보상, 보상 설계, 실제 목표와 대리 보상, 잠재 함수 기반 보상 설계와 LLM 보상 코드 개선을 설명합니다."
+description: "희소 보상의 어려움과 중간 보상이 목표를 바꾸는 반례를 살펴봅니다. 잠재 함수 기반 보상의 조건, LLM 보상 코드 생성과 정책 평가를 연결합니다."
 pubDate: 2026-11-16
 publicationTimeZone: Asia/Seoul
 slug: self-improving-ai-04-sparse-rewards-and-shaping
@@ -33,19 +33,6 @@ import Math from '@/components/post/Math.astro';
 
 이번에는 그다음 질문을 다룬다. <strong>정답 대신 점수를 주면 된다고 했는데, 그 점수는 누가 어떻게 만들어야 할까?</strong>
 
-기준 자료는 Hung-yi Lee의 [NTU Machine Learning 2026 Spring](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php) 강의 중 [Self-Improving 상편 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf)의 16–20쪽이다. 표지를 1쪽으로 센다. 이 글의 확률 계산, 문 열기 반례, 잠재 함수 계산 및 실험 설계 제안은 원본 슬라이드에 없는 추가 해설이다.
-
-
-중국어 제목과 문구는 원본 도형을 유지한 비공식 영어 편집본으로 제시한다. 원래 영어인 19쪽은 그대로 사용한다. 18쪽 원본에 보이는 연결 이미지 누락 표시도 임의의 새 그림으로 바꾸지 않았다. 원문에 없는 계산과 유도는 추가 해설로 구별한다.
-
-| 원본 페이지 | 이번에 풀어볼 질문 |
-|---|---|
-| 16쪽 | 성공했을 때만 보상을 받으면 왜 학습이 어려워질까? |
-| 17쪽 | 문 열기를 작은 단계로 나누면 무엇이 달라질까? |
-| 18쪽 | 중간 보상을 추가하면 원래 문제도 그대로 유지될까? |
-| 19쪽 | 학습 점수와 최종 평가 점수는 왜 분리해야 할까? |
-| 20쪽 | LLM이 보상을 작성한다면 무엇을 보고 개선해야 할까? |
-
 ## 16쪽 — 성공은 명확하지만, 성공을 거의 만나지 못한다
 
 [원본 슬라이드 16쪽](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=16)
@@ -53,9 +40,9 @@ import Math from '@/components/post/Math.astro';
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/ntu-self-improving-16-en.png"
   alt="희소한 실제 보상 때문에 학습이 어려워지는 문제를 로봇의 문 열기 그림으로 소개한다."
-  caption="P016 — NTU Self-Improving 원본 16쪽 · 비공식 영어 편집본."
+  caption="NTU 16쪽 — 성공 보상이 드문 로봇의 문 열기 과제."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=16"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
@@ -99,9 +86,9 @@ import Math from '@/components/post/Math.astro';
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/umass-hcml-reward-specification-p04.png"
   alt="목표에서만 점수를 주는 격자와 여러 상태에 점수를 주는 격자를 비교한 희소·조밀 보상 슬라이드."
-  caption="UMass CS 690 · Reward Specification · PDF 4쪽 전체 원본 슬라이드."
+  caption="UMass CS 690, PDF 4쪽 — 희소 보상과 조밀 보상."
   source="https://people.cs.umass.edu/~sniekum/classes/HCML-S24/lectures/lecture4.pdf#page=4"
-  credit="Scott Niekum / UMass Amherst CS 690, Spring 2024. Original source, not redrawn."
+  credit="Scott Niekum / UMass Amherst CS 690, Spring 2024"
   width={1800}
   height={1013}
 />
@@ -119,14 +106,14 @@ import Math from '@/components/post/Math.astro';
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/ntu-self-improving-17-en.png"
   alt="문 손잡이에서 멀리 있는 상태는 0, 가까워진 상태는 1, 손잡이에 닿은 상태는 5의 보상으로 표시한 원본의 보상 형성 그림이다."
-  caption="P017 — NTU Self-Improving 원본 17쪽 · 비공식 영어 편집본."
+  caption="NTU 17쪽 — 손잡이 접근과 접촉에 주는 중간 보상."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=17"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
 
-17쪽은 문 손잡이에 접근하는 거리에 따라 중간 점수를 부여하는 그림이다. 원본 아래쪽은 멀리 있으면 0, 가까워지면 +1, 손잡이에 닿으면 +5로 표시한다. 이 숫자는 다음 18쪽의 접촉 +0.5·문 열기 +1과 다른 설명용 예시다. 두 장을 하나의 검증된 보상 설정처럼 합치지 않는다. 아래의 네 단계 구분은 그림의 직접 번역이 아니라, 문 열기를 이해하기 위해 추가한 해설이다.
+17쪽은 문 손잡이에서 멀리 있으면 0, 가까워지면 +1, 손잡이에 닿으면 +5를 주는 그림이다. 다음 18쪽의 접촉 +0.5·문 열기 +1과는 **서로 다른 설명용 보상 설정**이다.
 
 로봇에게 “문을 열어라”라는 목표를 주었을 때, 연구자는 다음과 같은 중간 사건을 생각할 수 있다.
 
@@ -164,9 +151,9 @@ r_t=r(s_t,a_t,s_{t+1}).`} display />
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/ntu-self-improving-18-en.png"
   alt="문 열기 성공을 평가하는 실제 보상과 손잡이 접촉에 중간 점수를 주는 대리 보상의 관계를 비교한다."
-  caption="P018 — NTU Self-Improving 원본 18쪽 · 비공식 영어 편집본."
+  caption="NTU 18쪽 — 문 열기 목표와 손잡이 접촉의 대리 보상."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=18"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
@@ -181,7 +168,7 @@ r_t=r(s_t,a_t,s_{t+1}).`} display />
 
 ### 계산 반례: 문은 열지 않고 접촉 점수만 모은다면
 
-다음은 원본의 +1과 +0.5를 출발점으로 만든 추가 사고실험이다. 실제 강의에서 보고한 실험 결과가 아니다.
+접촉에 주는 +0.5점을 반복해서 받을 수 있다면 어떤 일이 생기는지 **가상 사고실험**으로 살펴보자.
 
 처음부터 문을 바로 열 수 있는 준비 상태에서 시작한다고 가정하자. 성공하면 그 스텝에서 1점을 받고 에피소드가 끝난다. 성공하지 않았지만 손잡이에 접촉해 있으면 매 스텝 0.5점을 받는다. 최대 길이는 20스텝, 할인율은 0.99다.
 
@@ -209,9 +196,9 @@ r_t=r(s_t,a_t,s_{t+1}).`} display />
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/umass-hcml-reward-specification-p05.png"
   alt="할인된 다음 상태 잠재값과 현재 상태 잠재값의 차이를 보상에 더하는 잠재 함수 기반 보상 설계 슬라이드."
-  caption="UMass CS 690 · Reward Specification · PDF 5쪽 전체 원본 슬라이드."
+  caption="UMass CS 690, PDF 5쪽 — 잠재 함수 차이를 이용한 보상 설계."
   source="https://people.cs.umass.edu/~sniekum/classes/HCML-S24/lectures/lecture4.pdf#page=5"
-  credit="Scott Niekum / UMass Amherst CS 690, Spring 2024. Original source, not redrawn."
+  credit="Scott Niekum / UMass Amherst CS 690, Spring 2024"
   width={1800}
   height={1013}
 />
@@ -223,7 +210,7 @@ F(s_t,s_{t+1})=\gamma\Phi(s_{t+1})-\Phi(s_t).`} display />
 
 [Ng·Harada·Russell(1999)의 Theorem 1](https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf#page=4)은 이러한 변환과 최적 정책 보존의 관계를 다룬다. 여기서 잠재 함수는 반드시 참 가치 함수일 필요는 없다. 다만 무엇이 보존되는지 논하려면 할인율, 상태 정의, 종료 처리 등 수학적 조건이 맞아야 한다.
 
-다음 전개는 그 조건을 이해하기 위한 추가 유도다. 유한한 궤적의 보상을 모두 더해보면 중간의 잠재 함수 항이 상쇄된다.
+유한한 궤적의 보상을 모두 더해보면 중간의 잠재 함수 항이 상쇄된다.
 
 <Math tex={String.raw`\begin{aligned}
 G'
@@ -263,9 +250,9 @@ G'=0.46+0.9(0.42)+0.9^2(1.20)=1.81.`} display />
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/ntu-self-improving-19-en.png"
   alt="모델 출력을 최적화하는 대리 손실과 별도로 성과를 평가하는 실제 손실의 경로를 구분한다."
-  caption="P019 — NTU Self-Improving 원본 19쪽 · 원본 영어 슬라이드·내용 변경 없음."
+  caption="NTU 19쪽 — 학습에 쓰는 대리 손실과 성과를 평가하는 실제 손실."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=19"
-  credit="Hung-yi Lee / NTU. Original source, not redrawn."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
@@ -293,9 +280,9 @@ G'=0.46+0.9(0.42)+0.9^2(1.20)=1.81.`} display />
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/umass-hcml-reward-specification-p11.png"
   alt="올바른 과제 명세만으로 충분한지 묻고 시행착오 보상 설계의 과적합을 다루는 슬라이드."
-  caption="UMass CS 690 · Reward Specification · PDF 11쪽 전체 원본 슬라이드."
+  caption="UMass CS 690, PDF 11쪽 — 반복적인 보상 설계의 과적합."
   source="https://people.cs.umass.edu/~sniekum/classes/HCML-S24/lectures/lecture4.pdf#page=11"
-  credit="Scott Niekum / UMass Amherst CS 690, Spring 2024. Original source, not redrawn."
+  credit="Scott Niekum / UMass Amherst CS 690, Spring 2024"
   width={1800}
   height={1013}
 />
@@ -321,9 +308,9 @@ G'=0.46+0.9(0.42)+0.9^2(1.20)=1.81.`} display />
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/ntu-self-improving-20-en.png"
   alt="LLM이 대리 보상을 수정하고, 그 보상으로 학습한 정책을 평가하는 두 반복을 보여준다. 정책이 반드시 LLM인 것은 아니다."
-  caption="P020 — NTU Self-Improving 원본 20쪽 · 비공식 영어 편집본."
+  caption="NTU 20쪽 — 보상 설계와 정책 학습의 두 반복."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=20"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
@@ -336,7 +323,7 @@ G'=0.46+0.9(0.42)+0.9^2(1.20)=1.81.`} display />
 
 안쪽 반복(Inner loop)에서는 보상 하나를 고정한 채 정책을 학습한다. 바깥쪽 반복(Outer loop)에서는 학습된 정책의 성능과 실패를 보고 보상 후보를 수정한다.
 
-이를 설명용 수식으로 정리하면 다음과 같다. 아래 표기는 원본 슬라이드의 식을 옮긴 것이 아니라 두 역할을 구분하기 위한 재표현이다.
+두 역할을 설명용 수식으로 나타내면 다음과 같다.
 
 <Math tex={String.raw`\theta_{\phi}
 =\operatorname{Train}(\theta_0,r_{\phi},B,\mathcal D_{\mathrm{train}}).`} display />
@@ -348,16 +335,16 @@ G'=0.46+0.9(0.42)+0.9^2(1.20)=1.81.`} display />
 
 이 표기가 바깥쪽 반복을 반드시 미분해야 한다는 뜻은 아니다. LLM이 여러 코드를 제안하고, 실제 학습 결과를 문장으로 받아 다음 코드를 만드는 탐색도 가능하다. 코드 수정과 LLM의 가중치 학습은 별개의 일이다.
 
-### 함께 읽기 D — Eureka의 원본 Figure 2
+### 함께 읽기 D — Eureka의 보상 생성과 정책 평가
 
 [Ma 등의 Eureka 논문, 프로젝트 제공 PDF 2쪽 Figure 2](https://eureka-research.github.io/assets/eureka_paper.pdf#page=2)
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-04-sparse-rewards-and-shaping/eureka-original-figure2.png"
   alt="환경 코드와 과제 설명에서 보상 코드를 만들고 정책 학습·평가와 보상 성찰을 반복하는 Eureka의 원본 Figure 2."
-  caption="Eureka · 저자 프로젝트 제공 PDF 2쪽 Figure 2와 캡션 발췌. 원본 내부 내용 변경 없음."
+  caption="Eureka, Figure 2 — 보상 코드 생성, 정책 학습·평가, 보상 성찰."
   source="https://eureka-research.github.io/assets/eureka_paper.pdf#page=2"
-  credit="Yecheng Jason Ma et al. / Eureka. Original source, not redrawn."
+  credit="Yecheng Jason Ma et al. / Eureka"
   width={1801}
   height={1026}
 />
@@ -370,7 +357,7 @@ Eureka의 원본 도해는 환경 코드와 과제 설명에서 보상 코드를
 
 ### 코드가 실행된다는 것만으로 좋은 보상은 아니다
 
-자동 생성한 보상에는 최소한 다음 세 단계의 검토가 필요하다. 아래는 이번 글의 구현 검토 제안이다.
+자동 생성한 보상은 계산 가능성, 행동의 적절성, 실제 학습 효과를 차례로 확인해야 한다.
 
 <strong>첫째, 계산이 가능한가?</strong> 입력 변수와 단위, 배치 차원, 출력 형식, 유한값 여부를 확인한다. 없는 상태 변수를 참조하거나 NaN을 만들면 학습 성능을 비교하기 전부터 잘못된 후보다.
 
@@ -378,11 +365,47 @@ Eureka의 원본 도해는 환경 코드와 과제 설명에서 보상 코드를
 
 <strong>셋째, 실제 학습에 도움이 되는가?</strong> 동일한 예산에서 정책을 학습한 뒤 공통된 성공 기준과 실패 기준으로 비교한다. 테스트 조건은 후보 수정에 재사용하지 않는다.
 
-문 열기 성공 판정과 보상 후보 생성 코드를 분리하는 것도 중요하다. 후보 작성기가 성공 판정 자체를 고칠 수 있게 만들면, 더 잘 행동하는 대신 평가 규칙을 바꾸는 방향으로 진행할 수 있기 때문이다. 평가기 변경 권한을 제한하는 것은 여기서 제안하는 실험 구조이며, 원본 강의가 제공한 구체적인 구현이라고 주장하지 않는다.
+문 열기 성공 판정과 보상 후보 생성 코드를 분리하는 것도 중요하다. 후보 작성기가 성공 판정 자체를 고칠 수 있게 만들면, 더 잘 행동하는 대신 평가 규칙을 바꾸는 방향으로 진행할 수 있기 때문이다. 이를 막으려면 후보 작성기가 성공 판정을 변경할 수 없도록 실험을 구성해야 한다.
 
-## 직접 확인하는 작은 계산
+## 이해를 확인하는 세 질문
 
-아래 코드는 이 글의 숫자를 검증한다. 로봇 학습 코드가 아니며, 세 가지 설명용 계산을 재현하는 순수 Python 코드다. 외부 패키지가 필요하지 않다.
+<strong>질문 1. “손잡이 접촉에 0.5점”은 항상 좋은 보상일까?</strong>
+
+아니다. 언제, 몇 번, 어떤 조건에서 지급하는지에 따라 누적 보상이 달라진다. 한 번의 중간 성취 보상과 매 스텝 반복 지급하는 보상은 서로 다른 목적을 만들 수 있다.
+
+<strong>질문 2. 잠재 함수 기반 보상 설계는 모든 실패를 해결할까?</strong>
+
+아니다. 가정이 맞을 때의 최적 정책 보존과, 유한한 학습에서의 효율·안정성·안전은 별개의 문제다. 종료 경계 처리가 잘못되면 순위 보존의 전제부터 깨질 수 있다.
+
+<strong>질문 3. LLM이 좋은 보상 코드를 쓰게 되면, 로봇도 학습을 마친 것일까?</strong>
+
+아니다. 코드 제안, 정책 학습, 독립 평가는 다른 단계다. 좋은 코드처럼 보인다는 판단을 실제 정책의 성능 검증으로 대체할 수 없다.
+
+## 이번 다섯 장의 연결
+
+16쪽은 성공 보상이 드문 문제를 제기한다. 17쪽의 문 열기 문맥에서는 중간 신호를 어떻게 생각할지 살펴본다. 18쪽은 실제 목표와 대리 보상을 구분하게 하고, 19쪽은 최적화와 평가의 역할을 나눈다. 20쪽에서는 보상 작성과 정책 학습을 서로 다른 반복 과정으로 연결한다.
+
+핵심은 <strong>“AI가 보상을 만들었는가”보다 “그 보상으로 학습한 정책이 원래 목표를 더 잘 이루는가”</strong>다. 사람이 설계하든 AI가 설계하든, 이 질문은 남는다.
+
+다음 [자가개선 AI 05 — 보상을 만드는 AI와 답을 평가하는 AI](/posts/self-improving-ai-05-reward-design-to-ai-feedback/)는 원본 <strong>21–25쪽</strong>을 다룬다. 보상 설계 관련 연구를 비교하고, RLHF와 RLAIF의 학습 신호를 구별한다.
+
+## 함께 읽을 자료
+
+[NTU Machine Learning 2026 강의 안내](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+| 자료 | 읽을 위치 | 이 글에서 연결한 내용 |
+|---|---|---|
+| [Hung-yi Lee, NTU Self-Improving](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) | PDF 16–20쪽 | 기준 강의의 흐름과 표기 |
+| [Scott Niekum, UMass CS 690 Reward Specification](https://people.cs.umass.edu/~sniekum/classes/HCML-S24/lectures/lecture4.pdf) | PDF 4·5·11쪽 | 희소·조밀 보상, 잠재 함수 기반 보상, 과적합 |
+| [Ng, Harada, Russell, ICML 1999](https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf) | §2.2, §3 Theorem 1; PDF 3–4쪽 | 보상 변환과 정책 보존의 조건 |
+| [Booth et al., AAAI 2023](https://ojs.aaai.org/index.php/AAAI/article/view/25733) | 논문과 저자 연구 자료 | 시행착오 보상 설계의 과적합과 잘못된 과제 명세 |
+| [Ma et al., Eureka 프로젝트 제공 논문](https://eureka-research.github.io/assets/eureka_paper.pdf) | PDF 2쪽 Figure 2, §2–3 | 보상 코드 생성, 정책 학습·평가, 보상 성찰 |
+| [Eureka 저자 프로젝트](https://eureka-research.github.io/) | Components와 공개 태스크 예제 | 보상 생성기와 정책 학습자의 역할 구분 |
+
+<details>
+<summary>계산 예제 재현: Python 검산</summary>
+
+본문의 세 가상 계산을 재현한다. 외부 패키지는 필요하지 않다.
 
 ```python
 from math import isclose
@@ -437,37 +460,4 @@ if __name__ == "__main__":
 
 이 코드를 실제 실험에 연결할 때는 과제 종료 규칙, 시간 제한, 평가 환경을 먼저 정의해야 한다. 계산 예제에서 확인한 항등식을 실제 신경망 학습의 수렴 보장으로 취급해서는 안 된다.
 
-## 이해를 확인하는 세 질문
-
-<strong>질문 1. “손잡이 접촉에 0.5점”은 항상 좋은 보상일까?</strong>
-
-아니다. 언제, 몇 번, 어떤 조건에서 지급하는지에 따라 누적 보상이 달라진다. 한 번의 중간 성취 보상과 매 스텝 반복 지급하는 보상은 서로 다른 목적을 만들 수 있다.
-
-<strong>질문 2. 잠재 함수 기반 보상 설계는 모든 실패를 해결할까?</strong>
-
-아니다. 가정이 맞을 때의 최적 정책 보존과, 유한한 학습에서의 효율·안정성·안전은 별개의 문제다. 종료 경계 처리가 잘못되면 순위 보존의 전제부터 깨질 수 있다.
-
-<strong>질문 3. LLM이 좋은 보상 코드를 쓰게 되면, 로봇도 학습을 마친 것일까?</strong>
-
-아니다. 코드 제안, 정책 학습, 독립 평가는 다른 단계다. 좋은 코드처럼 보인다는 판단을 실제 정책의 성능 검증으로 대체할 수 없다.
-
-## 이번 다섯 장의 연결
-
-16쪽은 성공 보상이 드문 문제를 제기한다. 17쪽의 문 열기 문맥에서는 중간 신호를 어떻게 생각할지 살펴본다. 18쪽은 실제 목표와 대리 보상을 구분하게 하고, 19쪽은 최적화와 평가의 역할을 나눈다. 20쪽에서는 보상 작성과 정책 학습을 서로 다른 반복 과정으로 연결한다.
-
-핵심은 <strong>“AI가 보상을 만들었는가”보다 “그 보상으로 학습한 정책이 원래 목표를 더 잘 이루는가”</strong>다. 사람이 설계하든 AI가 설계하든, 이 질문은 남는다.
-
-다음 [자가개선 AI 05 — 보상을 만드는 AI와 답을 평가하는 AI](/posts/self-improving-ai-05-reward-design-to-ai-feedback/)는 원본 <strong>21–25쪽</strong>을 다룬다. 보상 설계 관련 연구를 비교하고, RLHF와 RLAIF의 학습 신호를 구별한다.
-
-## 출처와 함께 읽을 자료
-
-| 자료 | 읽을 위치 | 이 글에서 연결한 내용 |
-|---|---|---|
-| [Hung-yi Lee, NTU Self-Improving](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) | PDF 16–20쪽 | 기준 강의의 흐름과 표기 |
-| [Scott Niekum, UMass CS 690 Reward Specification](https://people.cs.umass.edu/~sniekum/classes/HCML-S24/lectures/lecture4.pdf) | PDF 4·5·11쪽 | 희소·조밀 보상, 잠재 함수 기반 보상, 과적합 |
-| [Ng, Harada, Russell, ICML 1999](https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf) | §2.2, §3 Theorem 1; PDF 3–4쪽 | 보상 변환과 정책 보존의 조건 |
-| [Booth et al., AAAI 2023](https://ojs.aaai.org/index.php/AAAI/article/view/25733) | 논문과 저자 연구 자료 | 시행착오 보상 설계의 과적합과 잘못된 과제 명세 |
-| [Ma et al., Eureka 프로젝트 제공 논문](https://eureka-research.github.io/assets/eureka_paper.pdf) | PDF 2쪽 Figure 2, §2–3 | 보상 코드 생성, 정책 학습·평가, 보상 성찰 |
-| [Eureka 저자 프로젝트](https://eureka-research.github.io/) | Components와 공개 태스크 예제 | 보상 생성기와 정책 학습자의 역할 구분 |
-
-원본 자료의 공개 접근이나 출처 표시를 재사용 허가와 동일하게 취급하지 않는다. 원문 슬라이드, 논문 그림, 이 글의 추가 설명과 가상 계산을 구분한다. 
+</details>

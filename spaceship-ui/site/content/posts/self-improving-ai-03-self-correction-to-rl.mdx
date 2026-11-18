@@ -1,6 +1,6 @@
 ---
 title: "자가개선 AI 03 — 자기수정은 언제 학습이 되는가"
-description: "NTU 2026 Self-Improving 11–15쪽을 영어 편집 슬라이드와 한국어로 해설합니다. 자기수정·미세조정·지도학습·강화학습의 차이와 보상 학습의 계산 예시를 설명합니다."
+description: "답을 고치는 자기수정과 파라미터를 바꾸는 학습을 구분합니다. 수정 답의 지도학습, 수정 행동의 강화학습, 보상에 따른 업데이트를 계산 예시와 함께 살펴봅니다."
 pubDate: 2026-11-16
 publicationTimeZone: Asia/Seoul
 slug: self-improving-ai-03-self-correction-to-rl
@@ -27,35 +27,25 @@ series:
 import LearningFigure from '@/components/post/LearningFigure.astro';
 import Math from '@/components/post/Math.astro';
 
-**NTU Hung-yi Lee, Machine Learning 2026 Spring · Self-Improving 상편 11–15쪽**
-
-[원본 PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx) · [공식 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) · [강의 영상](https://www.youtube.com/watch?v=s06mSAGN4gM)
-
-강의일은 2026년 5월 8일, 이번 범위의 원문·자막 대조일은 2026년 11월 16일이다. 표지를 1쪽으로 센다. 중국어 문구를 영어로 옮긴 **비공식 영어 편집본**을 사용하고, 원래 영어인 부분은 유지한다. 각 이미지 아래에 한국어 해설을 붙인다. 공식 원문은 각 이미지의 PDF 링크에서 확인할 수 있다.
-
-시리즈 시작: [자가개선 AI 01 — AI는 무엇을 바꿀 때 더 좋아지는가](/posts/self-improving-ai-01-overview/).
-
 앞선 [자가개선 AI 02 — 학습 목표는 누가 만드는가](/posts/self-improving-ai-02-learning-targets/)에서는 모델이 자기 답을 학습 목표로 사용할 때 무엇이 달라져야 하는지 살펴봤다. 이번 다섯 장은 **답을 고치는 과정이 어떻게 다음 학습의 재료가 되는지** 설명한다.
 
 먼저 구별할 것은 두 가지다. 지금 받은 질문의 답을 개선할 수 있고, 파라미터를 학습하여 이후의 출력 방식도 바꿀 수 있다. 자기수정(Self-correction)은 첫 번째를 수행하는 방법이 될 수 있다. 그 결과를 지도학습에 사용하거나, 수정 행동에 보상을 주며 강화학습할 수도 있다. 따라서 자가개선 전체를 강화학습과 같은 뜻으로 쓰면 서로 다른 과정이 섞인다.
-
-영상 시각은 영상에서 제공하는 중국어 번체 자막의 **주제 설명 구간**이다. 정확한 슬라이드 전환 프레임을 측정한 값은 아니다. 본문의 수식, 숫자 예시, 비교 실험 설계는 이해를 돕기 위해 추가한 해설이다.
 
 ## 11쪽 — 같은 AI가 더 좋은 학습 목표를 만들 수 있을까?
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-11-en.png"
-  alt="NTU Self-Improving 11쪽의 영어 편집본. AI가 스스로 답을 생성한다는 제목 아래 앞선 Self-Correction 강의를 연결한다."
-  caption="P011 — AI-Generated Answers · 원본 11쪽의 비공식 영어 편집본."
+  alt="AI가 스스로 답을 생성한다는 제목 아래 앞선 Self-Correction 강의를 연결한다."
+  caption="NTU 11쪽 — 자기수정으로 학습 목표를 만드는 질문."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=11"
-  credit="Original: Hung-yi Lee, NTU and the respective image owners. Unofficial English adaptation for this commentary."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
 
 [원본 11쪽](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=11) · [영상 약 08:31–08:43](https://www.youtube.com/watch?v=s06mSAGN4gM&t=510s)
 
-이 장의 썸네일은 강사의 앞선 [Self-Correction 강의](https://www.youtube.com/watch?v=m3i2mk5hs8U)를 가리킨다. 공식 수업 일정에서 자기수정 강의는 2026년 4월 24일, 이번 자가개선 상편은 5월 8일에 배치되어 있다. 두 주제가 이어지는 구성이다. [공식 강의 일정](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+이 장은 앞선 [Self-Correction 강의](https://www.youtube.com/watch?v=m3i2mk5hs8U)에서 다룬 답의 점검·수정을 학습 목표 생성과 연결한다.
 
 앞선 10쪽의 질문을 다시 가져오자. 모델이 자기 출력을 그대로 베껴서 학습하면, 더 좋은 답의 방향을 어디서 얻을 수 있을까? 11쪽은 **첫 답을 만든 뒤 점검하고 수정하는 절차**를 연결한다.
 
@@ -74,7 +64,7 @@ import Math from '@/components/post/Math.astro';
 | 채택 | 수정 후보가 학습에 쓸 만한지 판단한다 | 학습 목표 후보 |
 | 학습 | 채택한 목표를 이용해 파라미터를 바꾼다 | 새 모델 |
 
-이 표의 채택 단계는 원본 11쪽에 그려진 절차가 아니라, 수정 결과를 실제 학습 자료로 사용할 때 추가로 구별해야 하는 단계다. **답을 생성한 주체와 답의 품질을 보증하는 근거는 별개의 문제**이기 때문이다.
+수정 결과를 학습 자료로 쓰려면 채택 기준이 필요하다. **답을 생성한 주체와 답의 품질을 보증하는 근거는 별개의 문제**이기 때문이다.
 
 예를 들어 모델이 “이제 오류가 없다”고 말하는 것은 모델의 출력이다. 실행한 프로그램이 테스트를 통과했다는 기록이나 수학적 검산과는 근거의 성격이 다르다. 외부 검증을 사용했다면, 모델이 모든 판단을 혼자 했다고 설명해서도 안 된다.
 
@@ -82,10 +72,10 @@ import Math from '@/components/post/Math.astro';
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-12-en.png"
-  alt="NTU Self-Improving 12쪽의 영어 편집본. 오류 탐지와 수정, reflection을 통한 재생성, reasoning을 통한 수정의 세 경로를 보여준다."
-  caption="P012 — AI-Generated Answers: Self-Correction · 원본 12쪽의 비공식 영어 편집본."
+  alt="오류 탐지와 수정, reflection을 통한 재생성, reasoning을 통한 수정의 세 경로를 보여준다."
+  caption="NTU 12쪽 — 오류 탐지·비평·추론을 통한 자기수정."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=12"
-  credit="Original: Hung-yi Lee, NTU. Unofficial English adaptation for this commentary."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
@@ -100,7 +90,7 @@ import Math from '@/components/post/Math.astro';
 
 이 그림의 탐지 상자가 반드시 또 하나의 언어모델이라는 뜻은 아니다. 구체적인 방법에서는 어떤 신호로 오류를 판단하는지 먼저 확인해야 한다. 오류 위치를 아는 것, 답 전체가 틀렸다는 사실만 아는 것, 단지 확신이 낮다는 것을 아는 것은 서로 다른 정보다.
 
-가상 계산 예시를 보자. 첫 답이 “17 × 6 = 112”라면, “틀렸다”는 판정보다 “10 × 6과 7 × 6을 각각 계산해 합계를 확인하라”는 피드백이 수정할 위치를 구체화한다. 후자의 절차를 따르면 60 + 42 = 102를 얻는다. 이 숫자는 강의의 실험 결과가 아니라 설명용 예시다.
+가상 계산 예시를 보자. 첫 답이 “17 × 6 = 112”라면, “틀렸다”는 판정보다 “10 × 6과 7 × 6을 각각 계산해 합계를 확인하라”는 피드백이 수정할 위치를 구체화한다. 후자의 절차를 따르면 60 + 42 = 102를 얻는다.
 
 ### 둘째 줄: 초안과 반성 내용을 다음 생성에 제공한다
 
@@ -116,8 +106,8 @@ Self-Refine은 이 구조와 연결해서 읽기 좋은 보충 연구다. 2023�
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/stanford-cs329t-self-refine-p45.png"
-  alt="Stanford CS329T 원본 영어 슬라이드. 왼쪽 RARR는 검색한 근거로 응답을 수정하고, 오른쪽 Self-Refine은 탁구 대화의 초안·비평·수정 예시를 보여준다."
-  caption="Stanford CS329T, Grounding, Fall 2023 · PDF 45쪽 전체. RARR와 Self-Refine의 응답 수정 예시를 나란히 읽는다."
+  alt="왼쪽 RARR는 검색한 근거로 응답을 수정하고, 오른쪽 Self-Refine은 탁구 대화의 초안·비평·수정 예시를 보여준다."
+  caption="Stanford CS329T, PDF 45쪽 — RARR와 Self-Refine의 응답 수정 비교."
   source="https://web.stanford.edu/class/archive/cs/cs329t/cs329t.1242/slides/lecture_9.pdf#page=45"
   credit="Anupam Datta, John Mitchell, Ankur Taly / Stanford CS329T. Included examples: Gao et al. and Madaan et al., 2023."
   width={1800}
@@ -152,10 +142,10 @@ Huang 등의 ICLR 2024 논문은 외부 정답 피드백 없이 수행하는 <st
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-13-en.png"
-  alt="NTU Self-Improving 13쪽의 영어 편집본. 위에서는 자기수정으로 답을 고치지만 LLM 아래에 Nothing changes라고 표시하며, 아래에서는 같은 모델이 다시 최초 출력을 내는 구조를 보여준다."
-  caption="P013 — Nothing changes… · 원본 13쪽의 비공식 영어 편집본."
+  alt="위에서는 자기수정으로 답을 고치지만 LLM 아래에 Nothing changes라고 표시하며, 아래에서는 같은 모델이 다시 최초 출력을 내는 구조를 보여준다."
+  caption="NTU 13쪽 — 답을 고쳐도 모델의 파라미터는 그대로다."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=13"
-  credit="Original: Hung-yi Lee, NTU. Unofficial English adaptation for this commentary."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
@@ -197,8 +187,8 @@ y_1\sim p_\theta(\cdot\mid x,y_0,c_0).`} display />
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/aviral-simons-finetuning-p05.png"
-  alt="Aviral Kumar의 원본 영어 발표 슬라이드. 왼쪽은 기반 모델의 독립 후보를 검증기로 순위화하고, 오른쪽은 학습된 모델이 이전 응답을 순차적으로 수정하는 구조다."
-  caption="Aviral Kumar, Simons Institute 발표, 2025-03-31 · PDF 5쪽, 인쇄 번호 5. 병렬 생성과 순차 수정에 추론 계산을 배분하는 두 방식을 보여준다."
+  alt="왼쪽은 기반 모델의 독립 후보를 검증기로 순위화하고, 오른쪽은 학습된 모델이 이전 응답을 순차적으로 수정하는 구조다."
+  caption="Aviral Kumar, Simons Institute, PDF 5쪽 — 병렬 후보 생성과 순차 자기수정."
   source="https://simons.berkeley.edu/sites/default/files/2025-04/LLM25-2%20Aviral%20Kumar%20Slides%20%281%29.pdf#page=5"
   credit="Aviral Kumar, Carnegie Mellon University / Simons Institute. Included source: Snell et al., 2024."
   width={1800}
@@ -213,10 +203,10 @@ y_1\sim p_\theta(\cdot\mid x,y_0,c_0).`} display />
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-14-en.png"
-  alt="NTU Self-Improving 14쪽의 PPT 재렌더본. 자기수정으로 만든 답을 목표로 모델 파라미터를 미세조정하고, 새 모델이 입력에서 수정된 답을 직접 생성하도록 학습한다."
-  caption="P014 — Fine-tune model parameters · 원본 영어 문구를 보존한 PPT 재렌더본."
+  alt="자기수정으로 만든 답을 목표로 모델 파라미터를 미세조정하고, 새 모델이 입력에서 수정된 답을 직접 생성하도록 학습한다."
+  caption="NTU 14쪽 — 수정된 답을 목표로 모델을 미세조정한다."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=14"
-  credit="Original: Hung-yi Lee, NTU. English text preserved; re-rendered from the original PPTX with font-fit adjustments."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
@@ -225,7 +215,7 @@ y_1\sim p_\theta(\cdot\mid x,y_0,c_0).`} display />
 
 위쪽에는 기존의 자기수정 과정이 있다. 가운데에서는 현재 모델의 출력과 수정된 답을 비교한다. 아래쪽에는 **파라미터를 미세조정(Fine-tuning)한 모델**이 있다. 색이 바뀐 LLM 상자는 학습 전후를 구별한다.
 
-가운데의 <strong>?????</strong>는 학습 중 모델이 내는 출력 자리다. 오른쪽의 corrected를 목표로 두고 비교한다고 읽으면 앞선 8쪽의 손실 그림과 연결된다. 아래 도식은 학습의 목표를 보여준다. 모든 입력에서 반드시 수정 답을 출력한다는 보장은 아니다. 실제 자막도 새 모델이 수정된 답을 출력할 **가능성이 커진다**는 취지로 설명한다.
+가운데의 <strong>?????</strong>는 학습 중 모델이 내는 출력 자리다. 오른쪽의 corrected를 목표로 두고 비교한다고 읽으면 앞선 8쪽의 손실 그림과 연결된다. 아래 도식은 학습의 목표를 보여준다. 모든 입력에서 반드시 수정 답을 출력한다는 보장은 아니다. 강의가 설명하는 변화는 새 모델이 수정된 답을 출력할 **가능성이 커진다**는 것이다.
 
 ### 수정 후보를 목표로 고정하고 학생을 업데이트한다
 
@@ -277,8 +267,8 @@ y_1\sim p_\theta(\cdot\mid x,y_0,c_0).`} display />
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/stanford-cs224n-constitutional-ai-p92.png"
-  alt="Stanford CS224N 원본 영어 슬라이드. 부적절한 요청에 대한 초기 응답을 비평하고, 문제를 제거한 응답으로 수정하는 Constitutional AI 예시다."
-  caption="Stanford CS224N, Lecture 10, 2024-05-02 · PDF 92쪽, 인쇄 번호 97. Constitutional AI의 비평 요청·비평·수정 요청·수정 응답을 보여준다."
+  alt="부적절한 요청에 대한 초기 응답을 비평하고, 문제를 제거한 응답으로 수정하는 Constitutional AI 예시다."
+  caption="Stanford CS224N, PDF 92쪽 — Constitutional AI의 비평과 응답 수정."
   source="https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=92"
   credit="Archit Sharma, Stanford CS224N; based on Jesse Mu's slides. Constitutional AI example: Bai et al., 2022."
   width={1800}
@@ -293,10 +283,10 @@ y_1\sim p_\theta(\cdot\mid x,y_0,c_0).`} display />
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-15-en.png"
-  alt="NTU Self-Improving 15쪽의 영어 편집본. 지도학습은 출력 y와 목표 y-hat를 비교하고 강화학습은 출력을 보상 함수로 평가하는 구조를 비교한다."
-  caption="P015 — How Do Humans Help AI Improve? · 원본 15쪽의 비공식 영어 편집본."
+  alt="지도학습은 출력 y와 목표 y-hat를 비교하고 강화학습은 출력을 보상 함수로 평가하는 구조를 비교한다."
+  caption="NTU 15쪽 — 목표 답을 비교하는 지도학습과 보상으로 평가하는 강화학습."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=15"
-  credit="Original: Hung-yi Lee, NTU and the respective image owners. Unofficial English adaptation for this commentary."
+  credit="Hung-yi Lee · NTU"
   width={1800}
   height={1013}
 />
@@ -322,7 +312,7 @@ y_1\sim p_\theta(\cdot\mid x,y_0,c_0).`} display />
 
 보통 강화학습에서 보상 <Math tex={String.raw`r`} />은 **클수록 좋은 값**이다. 그런데 이 슬라이드의 Reward function 오른쪽에는 손실을 뜻하는 <Math tex={String.raw`\ell`} />이 나온다.
 
-이는 자막으로 확인할 수 있는 의도적인 표기 선택이다. 강사는 **지도학습과 하나의 틀에서 이야기하기 위해 이 강의에서는 보상 함수의 출력을 작을수록 좋은 손실처럼 취급한다**고 설명한다. [해당 설명 약 11:47–12:16](https://www.youtube.com/watch?v=s06mSAGN4gM&t=707s)
+강사는 **지도학습과 하나의 틀에서 이야기하기 위해 이 강의에서는 보상 함수의 출력을 작을수록 좋은 손실처럼 취급한다**고 설명한다. [해당 설명 약 11:47–12:16](https://www.youtube.com/watch?v=s06mSAGN4gM&t=707s)
 
 두 관례를 연결하는 설명용 변환은 다음과 같다.
 
@@ -337,7 +327,7 @@ y_1\sim p_\theta(\cdot\mid x,y_0,c_0).`} display />
 
 ### 숫자로 보는 두 선택의 보상 학습
 
-다음은 업데이트 방향을 확인하기 위한 **가상 두 선택 예시**다. 실제 LLM 학습 실험이나 특정 RL 알고리즘의 재현 결과가 아니다.
+두 선택만 있는 **가상 문제**로 업데이트 방향을 계산해 보자.
 
 | 답 후보 | 현재 선택 확률 | 보상 <Math tex={String.raw`r`} /> | 비용 <Math tex={String.raw`1-r`} /> |
 |---|---:|---:|---:|
@@ -370,10 +360,10 @@ z'=z+0.1\times0.24\approx-0.381465.`} display />
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-03-self-correction-to-rl/score-v2-fig07-two-stage-training.png"
-  alt="SCoRe 원 논문 Figure 7. 첫 단계는 첫 응답을 기반 모델에 가깝게 제약하면서 두 번째 응답 보상을 높이고, 둘째 단계는 두 응답을 함께 학습하되 수정 진전을 보상한다."
-  caption="Kumar et al., arXiv:2409.12917v2 · PDF 9쪽 Figure 7. 원 논문의 두 단계 학습 도해를 발췌했다."
+  alt="SCoRe의 첫 단계는 첫 응답을 기반 모델에 가깝게 제약하면서 두 번째 응답 보상을 높이고, 둘째 단계는 두 응답을 함께 학습하되 수정 진전을 보상한다."
+  caption="SCoRe, arXiv v2 Figure 7 — 수정 행동을 훈련하는 두 단계."
   source="https://arxiv.org/pdf/2409.12917v2#page=9"
-  credit="Kumar, Zhuang, Agarwal, Su et al., Google DeepMind, 2024. Original figure; no redrawing."
+  credit="Kumar, Zhuang, Agarwal, Su et al., Google DeepMind, 2024"
   width={1800}
   height={560}
 />
@@ -394,15 +384,17 @@ z'=z+0.1\times0.24\approx-0.381465.`} display />
 
 ## 함께 읽을 자료
 
-1. [Hung-yi Lee, NTU ML 2026 공식 강의](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php). 2026-05-08 Self-Improving 상편. 이번 범위는 원본 PDF 11–15쪽.
+[강의 PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx) · [PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) · [강의 영상](https://www.youtube.com/watch?v=s06mSAGN4gM)
+
+1. [Hung-yi Lee, NTU ML 2026 공식 강의](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php). 2026-05-08 Self-Improving 상편. PDF 11–15쪽: 자기수정에서 학습으로.
 2. [Hung-yi Lee, Self-Correction 강의](https://www.youtube.com/watch?v=m3i2mk5hs8U). 공식 수업 일정상 2026-04-24. 원본 11쪽에서 연결하는 앞선 강의.
 3. [Madaan et al., Self-Refine: Iterative Refinement with Self-Feedback](https://arxiv.org/html/2303.17651v2). NeurIPS 2023. 추가 파라미터 학습 없이 초안·피드백·수정을 반복하는 구조.
 4. [Huang et al., Large Language Models Cannot Self-Correct Reasoning Yet](https://proceedings.iclr.cc/paper_files/paper/2024/file/8b4add8b0aa8749d80a34ca5d941c355-Paper-Conference.pdf). ICLR 2024. 외부 피드백, 초기 프롬프트, 계산 예산을 구별한 자기수정 평가.
 5. [Bai et al., Constitutional AI: Harmlessness from AI Feedback](https://arxiv.org/html/2212.08073v1). 2022-12-15. 비평·수정 결과를 이용한 SFT와 별도의 AI 피드백 기반 RL.
-6. [Kumar et al., Training Language Models to Self-Correct via Reinforcement Learning](https://arxiv.org/html/2409.12917v2). 2024년 공개, ICLR 2025. 사용 판본 2024-10-04. 자기수정 행동을 훈련하는 SCoRe.
+6. [Kumar et al., Training Language Models to Self-Correct via Reinforcement Learning](https://arxiv.org/html/2409.12917v2). 2024년 공개, ICLR 2025. arXiv v2(2024-10-04). 자기수정 행동을 훈련하는 SCoRe.
 7. [Sutton et al., Policy Gradient Methods for Reinforcement Learning with Function Approximation](https://proceedings.neurips.cc/paper/1999/hash/464d828b85b0bed98e80ade0a5c43b0f-Abstract.html). NIPS 1999. 기대 보상의 기울기로 정책을 학습하는 관점.
 
-8. [Stanford CS329T, Lecture 9: Grounding](https://web.stanford.edu/class/archive/cs/cs329t/cs329t.1242/slides/lecture_9.pdf#page=45). Anupam Datta·John Mitchell·Ankur Taly, Fall 2023. PDF 45쪽의 Self-Refine·RARR 비교를 원본 12쪽 해설에 배치했다.
-9. [Aviral Kumar, The Key Ingredients of Optimizing Test-Time Compute and What's Still Missing](https://simons.berkeley.edu/talks/aviral-kumar-carnegie-mellon-university-2025-03-31). Simons Institute, 2025-03-31. 발표 PDF 5쪽을 원본 13쪽 해설에 배치했다.
-10. [Stanford CS224N, Lecture 10: Prompting, Instruction Finetuning, and DPO/RLHF](https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=92). Archit Sharma, 2024-05-02. PDF 92쪽(인쇄 97쪽)의 Constitutional AI 예시를 원본 14쪽 해설에 배치했다.
-11. [SCoRe, arXiv v2의 Figure 7](https://arxiv.org/pdf/2409.12917v2#page=9). 2024-10-04 제출 판본. PDF 9쪽의 두 단계 학습 도해를 원본 15쪽 해설에 배치했다. 2025년 학회 판본의 그림 번호와 구별한다.
+8. [Stanford CS329T, Lecture 9: Grounding](https://web.stanford.edu/class/archive/cs/cs329t/cs329t.1242/slides/lecture_9.pdf#page=45). Anupam Datta·John Mitchell·Ankur Taly, Fall 2023. PDF 45쪽: Self-Refine과 RARR의 피드백 비교.
+9. [Aviral Kumar, The Key Ingredients of Optimizing Test-Time Compute and What's Still Missing](https://simons.berkeley.edu/talks/aviral-kumar-carnegie-mellon-university-2025-03-31). Simons Institute, 2025-03-31. 발표 PDF 5쪽: 병렬 후보 생성과 순차 자기수정.
+10. [Stanford CS224N, Lecture 10: Prompting, Instruction Finetuning, and DPO/RLHF](https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=92). Archit Sharma, 2024-05-02. PDF 92쪽(인쇄 97쪽): Constitutional AI의 비평과 수정.
+11. [SCoRe, arXiv v2의 Figure 7](https://arxiv.org/pdf/2409.12917v2#page=9). arXiv v2(2024-10-04), PDF 9쪽: SCoRe의 두 단계 학습. 2025년 학회 판본은 그림 번호가 다르다.

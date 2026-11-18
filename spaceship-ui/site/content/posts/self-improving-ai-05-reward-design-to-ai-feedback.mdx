@@ -1,6 +1,6 @@
 ---
 title: "자가개선 AI 05 — 보상을 만드는 AI와 답을 평가하는 AI"
-description: "NTU Self-Improving 21–25쪽을 영어 슬라이드와 한국어로 해설합니다. Eureka·REvolve·RF-Agent, 도파민 비유의 한계, 보상 모델의 선호 학습, RLHF와 RLAIF를 구분합니다."
+description: "Eureka·REvolve·RF-Agent의 보상 탐색, 도파민의 보상 예측 오차, 선호 기반 보상 모델과 RLHF·RLAIF의 차이를 살펴봅니다."
 pubDate: 2026-11-16
 publicationTimeZone: Asia/Seoul
 slug: self-improving-ai-05-reward-design-to-ai-feedback
@@ -26,14 +26,12 @@ series:
 import LearningFigure from '@/components/post/LearningFigure.astro';
 import Math from '@/components/post/Math.astro';
 
-
 > <strong>보상 코드를 작성하는 AI와 답의 품질을 판단하는 AI는 역할이 다르다. 두 경우 모두 무엇을 좋은 결과로 볼지는 별도로 정하고 검증해야 한다.</strong>
 
 [4편 — 정답은 드문데, 무엇을 보상해야 할까](/posts/self-improving-ai-04-sparse-rewards-and-shaping/)에서는 학습용 대리 보상(Proxy reward)과 실제 과제의 평가 기준을 구분했다. 이번에는 보상 설계의 탐색 방법을 비교하고, 코드로 적기 어려운 평가 기준을 모델이 학습하는 문제로 넘어간다.
 
-기준 자료는 Hung-yi Lee의 <strong>NTU Machine Learning 2026 Spring, Self-Improving 상편 21–25쪽</strong>이다. 강의일은 2026년 5월 8일이다. 표지를 1쪽으로 센다. [공식 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) · [원본 PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx)
-
-21·22쪽의 영어 원본은 그대로 사용한다. 23–25쪽의 중국어 제목과 설명은 영어로 옮긴 <strong>비공식 편집본</strong>이다. 23쪽은 공개 PDF에서 제목 아래가 가려져 있으므로, 보이지 않는 내용을 복원했다고 주장하지 않는다. 발표자 노트의 비유와 추가 연구 해설을 본문에서 구별한다. 수식 재표현과 숫자 예시는 이 글의 설명용 계산이며 논문의 실험 결과가 아니다.
+<details>
+<summary>슬라이드별 핵심 주제</summary>
 
 | 원본 | 읽을 때 구별할 것 |
 |---|---|
@@ -43,14 +41,16 @@ import Math from '@/components/post/Math.astro';
 | 24쪽 | 사람이 직접 점수를 주는 일과 사람의 선호를 학습한 보상 모델 |
 | 25쪽 | AI가 점수를 출력한다는 사실과 AI 피드백으로 학습한다는 사실 |
 
+</details>
+
 ## 21쪽 — 좋은 보상을 찾는 과정도 탐색 문제다
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-21-en.png"
-  alt="RF-Agent 논문에서 가져온 원본 영어 비교 그림. Eureka, REvolve, RF-Agent의 보상 후보 탐색 구조를 비교한다."
-  caption="P021 — NTU Self-Improving 원본 21쪽 · 원본 영어 슬라이드·내용 변경 없음."
+  alt="RF-Agent 논문에서 가져온 비교 그림. Eureka, REvolve, RF-Agent의 보상 후보 탐색 구조를 비교한다."
+  caption="P021 — Eureka·REvolve·RF-Agent의 보상 후보 탐색 구조."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=21"
-  credit="Hung-yi Lee / NTU. Original source, not redrawn."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
@@ -79,16 +79,16 @@ RF-Agent는 보상을 수정한 경로를 트리(Tree)로 관리하고, 몬테�
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/revolve-v4-figure1.png"
   alt="LLM이 보상 집단을 만들고 각 정책을 학습한 뒤 사람이 실행 결과를 비교하며 선호와 자연어 피드백으로 집단을 개선하는 원본 Figure 1."
-  caption="REvolve · arXiv v4, 2025-05-23 · PDF 3쪽 Figure 1 그림 영역 발췌."
+  caption="REvolve Figure 1 — 사람의 정책 선호와 자연어 피드백을 반영하는 보상 탐색(PDF 3쪽)."
   source="https://arxiv.org/pdf/2406.01309v4#page=3"
-  credit="Rishi Hazra, Alkis Sygkounas, Andreas Persson, Amy Loutfi, Pedro Zuidberg Dos Martires. Original source, not redrawn."
+  credit="Rishi Hazra, Alkis Sygkounas, Andreas Persson, Amy Loutfi, Pedro Zuidberg Dos Martires."
   width={1801}
   height={1261}
 />
 
 그림을 왼쪽에서 시작해 보자. 과제와 환경 변수가 보상 설계자에게 들어간다. 설계자가 만든 여러 보상은 각각 정책 학습에 사용된다. 그 뒤 사람이 비교하는 것은 <strong>보상 코드의 문장 표현이 아니라 학습된 정책의 실행 결과(Rollout)</strong>다. 선호와 자연어 피드백이 다음 보상 집단을 만드는 재료가 된다. [REvolve v4, PDF 3쪽 Figure 1](https://arxiv.org/pdf/2406.01309v4#page=3)
 
-예를 들어 두 주행 정책이 모두 목적지에 도착해도 하나는 급격하게 차선을 바꾸고 다른 하나는 부드럽게 움직일 수 있다. 사람이 후자를 선호한다는 정보는 단순 도착 여부보다 넓은 기준을 전달한다. 이 주행 예시는 그림의 의미를 설명하는 가상 상황이다. 실제 차량 도로 주행을 검증했다는 뜻이 아니다.
+가상의 주행 예로, 두 정책이 모두 목적지에 도착해도 하나는 급격하게 차선을 바꾸고 다른 하나는 부드럽게 움직일 수 있다. 사람이 후자를 선호한다는 정보는 단순 도착 여부보다 넓은 기준을 전달한다.
 
 이 방식에는 새로운 질문도 남는다. 피드백을 준 사람들의 기준이 서로 다르면 어떻게 합칠까? 같은 사람이 반복 비교하면서 판단을 바꾸면 어떻게 기록할까? 사람을 피드백 과정에 둔다는 사실과 평가가 완전하고 일관된다는 사실은 같지 않다. 연구를 재현할 때는 평가 지침, 비교 대상의 제시 순서, 평가자 수, 불일치 처리도 확인해야 한다.
 
@@ -96,10 +96,10 @@ RF-Agent는 보상을 수정한 경로를 트리(Tree)로 관리하고, 몬테�
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-22-en.png"
-  alt="보상 후보의 설계 이력과 트리 탐색을 이용하는 RF-Agent의 원본 영어 구성 그림이다."
-  caption="P022 — NTU Self-Improving 원본 22쪽 · 원본 영어 슬라이드·내용 변경 없음."
+  alt="보상 후보의 설계 이력과 트리 탐색을 이용하는 RF-Agent의 구성 그림이다."
+  caption="P022 — 보상 설계 이력을 활용하는 RF-Agent의 트리 탐색."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=22"
-  credit="Hung-yi Lee / NTU. Original source, not redrawn."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
@@ -110,7 +110,7 @@ RF-Agent는 보상을 수정한 경로를 트리(Tree)로 관리하고, 몬테�
 
 바깥 반복의 행동은 보상 코드를 새로 만들거나 수정하는 것이다. 안쪽 반복의 행동은 로봇 정책이 환경에서 수행하는 제어다. 바깥 반복은 학습된 정책의 성능과 실패 기록을 보고, 안쪽 반복은 보상 값을 이용해 정책 파라미터를 갱신한다.
 
-다음 수식은 4편의 두 반복을 다시 적은 <strong>설명용 표기</strong>다. 논문의 모든 구현 세부 사항을 재현한 식은 아니다.
+두 반복을 정책 학습과 평가로 나누어 쓰면 다음과 같다.
 
 <Math tex={String.raw`\theta_k=\operatorname{Train}(\theta_0,r_{\phi_k},B),\qquad
 q_k=\operatorname{Eval}(\pi_{\theta_k};\mathcal D_{\mathrm{select}}).`} display />
@@ -123,25 +123,25 @@ RF-Agent는 이력을 활용하는 문맥 추론과 MCTS를 결합하고, 설계
 
 설명용으로 후보 A는 손잡이 접근을, 후보 B는 접촉 유지 비용을, 후보 C는 문짝 각도를 강조한다고 하자. 현재 A가 가장 좋아도 A만 계속 고치면 B에서 출발했을 때 발견할 수 있는 개선을 놓칠 수 있다. 트리는 어떤 수정에서 무엇이 나왔는지 남기고, 이미 유망한 경로를 더 활용할지 덜 조사한 경로를 탐색할지 선택하게 한다.
 
-그러나 후보를 보존한다고 계산 비용이 사라지지는 않는다. 가상 예로 보상 후보 8개를 각각 독립 시드 3개로 처음부터 학습하면 정책 학습은 24회다. 각 학습 예산이 <Math tex={String.raw`B`} />라면 총 안쪽 학습 예산은 <Math tex={String.raw`24B`} />이며, 여기에 LLM 생성과 평가 비용이 추가된다. 이 계산은 RF-Agent의 보고 비용이 아니라, 실험 예산을 설명하기 위한 예제다.
+그러나 후보를 보존한다고 계산 비용이 사라지지는 않는다. 가상 예로 보상 후보 8개를 각각 독립 시드 3개로 처음부터 학습하면 정책 학습은 24회다. 각 학습 예산이 <Math tex={String.raw`B`} />라면 총 안쪽 학습 예산은 <Math tex={String.raw`24B`} />이며, 여기에 LLM 생성과 평가 비용이 추가된다.
 
 비교 실험에서는 다음 질문이 중요하다. 같은 완전 학습 횟수에서 성공률을 비교했는가? LLM 토큰·시간과 정책 학습 시간을 함께 보고했는가? 좋은 후보를 선택하는 평가 조건이 최종 테스트와 분리되어 있는가? 여러 방법에 서로 다른 탐색 예산을 주면, 차이를 알고리즘 자체의 효과로만 해석하기 어렵다.
 
-또한 이 글이 읽는 RF-Agent 판본은 <strong>arXiv v1, 2026년 2월 27일</strong>이다. 이 판본의 실험은 17개 저수준 제어 태스크의 시뮬레이션 평가를 다룬다. 이를 곧바로 모든 실제 로봇, 센서 오차, 사람과의 협업 환경에서의 성능 보장으로 넓히지 않는다. [판본 정보](https://arxiv.org/abs/2602.23876) · [실험 §5.1](https://arxiv.org/html/2602.23876v1#S5.SS1)
+RF-Agent의 <strong>arXiv v1(2026년 2월 27일)</strong> 실험은 17개 저수준 제어 태스크의 시뮬레이션 평가를 다룬다. 이를 곧바로 모든 실제 로봇, 센서 오차, 사람과의 협업 환경에서의 성능 보장으로 넓히지 않는다. [판본 정보](https://arxiv.org/abs/2602.23876) · [실험 §5.1](https://arxiv.org/html/2602.23876v1#S5.SS1)
 
 ## 23쪽 — 도파민 비유는 어디까지 유효할까?
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-23-en.png"
-  alt="도파민과 보상 형성이라는 제목의 영어 편집본. 공개 PDF 원본처럼 제목 아래 영역은 가려진 상태를 유지했다."
-  caption="P023 — NTU Self-Improving 원본 23쪽 · 비공식 영어 편집본 · 원본의 가려진 영역 유지; 설명은 발표자 노트와 별도 문헌을 구분해 제시."
+  alt="도파민과 보상 형성의 관계라는 제목을 제시하는 슬라이드."
+  caption="P023 — 도파민과 보상 형성(Reward Shaping)."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=23"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
 
-원본 제목은 ‘도파민과 Reward Shaping의 관계’다. <strong>공개 PDF의 23쪽은 제목 아래가 가려진 상태</strong>이며, 원본 PPTX에는 그림 위에 덮개 도형이 있다. 이 글은 해당 정적 화면을 유지한다. 아래 설명은 공개 PPTX의 발표자 노트에 있는 중간 목표와 보상에 관한 비유를 출발점으로 삼은 추가 해설이다.
+중간 목표와 보상의 관계를 생각해 보자. [발표자 노트](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx)는 최종 결과 앞의 중간 단서가 행동을 이끄는 상황을 비유로 든다.
 
 비유의 교육적 역할은 분명하다. 최종 결과를 기다려야만 학습하는 대신, 그 결과를 예측하는 단서가 행동 조절에 도움이 될 수 있다는 것이다. 그러나 여기서 <strong>‘도파민은 쾌락 점수이고 뇌는 우리가 작성한 보상 함수 그대로 작동한다’</strong>는 결론으로 가면 설명이 과해진다.
 
@@ -150,9 +150,9 @@ RF-Agent는 이력을 활용하는 문맥 추론과 MCTS를 결합하고, 설계
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/schultz-1997-figure1.png"
   alt="예측하지 못한 보상, 단서로 예측한 보상, 예측했지만 누락된 보상의 세 조건에서 도파민 뉴런 반응을 비교한 원본 그래프."
-  caption="Schultz·Dayan·Montague, Science (1997) · PDF 2쪽·인쇄 1594쪽 Figure 1의 세 반응 그래프 발췌."
+  caption="Schultz·Dayan·Montague Figure 1 — 예측 여부와 보상 누락에 따른 도파민 반응(PDF 2쪽)."
   source="https://www.gatsby.ucl.ac.uk/~dayan/papers/sdm97.pdf#page=2"
-  credit="Wolfram Schultz, Peter Dayan, P. Read Montague / Science 275 (1997). Original source, not redrawn."
+  credit="Wolfram Schultz, Peter Dayan, P. Read Montague / Science 275 (1997)."
   width={1801}
   height={2155}
   maxWidth={650}
@@ -162,7 +162,7 @@ Schultz·Dayan·Montague의 1997년 논문 Figure 1은 특정 실험 조건에�
 
 논문의 핵심 해석은 보상에 대한 반응을 <strong>예측과 실제 결과의 차이</strong>와 연결하는 것이다. 예측을 학습하면 반응 시점이 보상 자체에서 앞선 단서 쪽으로 바뀔 수 있고, 기대한 보상이 누락되면 그 예상 시점에 반응 감소가 나타난다. 이는 이 논문이 다루는 실험과 계산 모형의 연결이지, 모든 도파민 활동에 대한 하나의 완전한 정의가 아니다.
 
-강화학습의 시간차 오차(Temporal-difference error)를 단순한 상태 가치 모형으로 쓰면 다음과 같다. 아래는 표기를 정리한 설명식이다.
+강화학습의 시간차 오차(Temporal-difference error)를 단순한 상태 가치 모형으로 쓰면 다음과 같다.
 
 <Math tex={String.raw`\delta_t=r_t+\gamma V(s_{t+1})-V(s_t).`} display />
 
@@ -179,9 +179,9 @@ Schultz·Dayan·Montague의 1997년 논문 Figure 1은 특정 실험 조건에�
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-24-en.png"
   alt="사람의 선호를 이용해 보상 모델을 학습하고 그 모델로 생성 정책을 평가하는 RLHF 구성을 보여준다."
-  caption="P024 — NTU Self-Improving 원본 24쪽 · 비공식 영어 편집본."
+  caption="P024 — 사람의 선호를 학습한 보상 모델과 생성 정책."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=24"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
@@ -194,10 +194,10 @@ Schultz·Dayan·Montague의 1997년 논문 Figure 1은 특정 실험 조건에�
 
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/stanford-cs224n-preference-model-p60.png"
-  alt="세 요약 답의 선호와 승자·패자 점수 차이의 로지스틱 손실로 보상 모델을 학습하는 원본 영어 슬라이드."
-  caption="Stanford CS224N Lecture 10 (2024) · PDF 60쪽, 인쇄 슬라이드 63 전체."
+  alt="세 요약 답의 선호와 승자·패자 점수 차이의 로지스틱 손실로 보상 모델을 학습하는 슬라이드."
+  caption="Stanford CS224N — 답 쌍의 선호를 이용한 보상 모델 학습(PDF 60쪽)."
   source="https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=60"
-  credit="Archit Sharma / Stanford CS224N; based on Jesse Mu slides. Original source, not redrawn."
+  credit="Archit Sharma / Stanford CS224N; based on Jesse Mu slides."
   width={1800}
   height={1013}
 />
@@ -246,9 +246,9 @@ KL 제약을 넣었다고 보상 모델의 오류가 사라지는 것은 아니�
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-25-en.png"
   alt="학습 평가 자료의 출처를 AI 피드백으로 바꾸는 RLAIF 구성을 보여준다."
-  caption="P025 — NTU Self-Improving 원본 25쪽 · 비공식 영어 편집본."
+  caption="P025 — AI 피드백을 학습 신호로 사용하는 RLAIF."
   source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=25"
-  credit="Hung-yi Lee / NTU. Unofficial English text adaptation; original diagrams retained."
+  credit="Hung-yi Lee / NTU."
   width={1800}
   height={1013}
 />
@@ -262,9 +262,9 @@ KL 제약을 넣었다고 보상 모델의 오류가 사라지는 것은 아니�
 <LearningFigure
   src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/constitutional-ai-v1-figure1.png"
   alt="위쪽에는 비평·수정 자료의 지도학습, 아래쪽에는 AI 선호 자료·선호 모델·강화학습이 이어지는 원본 두 단계 도해."
-  caption="Constitutional AI · arXiv v1, 2022-12-15 · PDF 2쪽 Figure 1 그림 영역 발췌."
+  caption="Constitutional AI Figure 1 — 비평·수정의 지도학습과 AI 선호를 이용한 강화학습(PDF 2쪽)."
   source="https://arxiv.org/pdf/2212.08073v1#page=2"
-  credit="Yuntao Bai et al. / Anthropic. Original source, not redrawn."
+  credit="Yuntao Bai et al. / Anthropic."
   width={1801}
   height={698}
 />
@@ -279,7 +279,7 @@ Constitutional AI의 원본 Figure 1은 위쪽에 비평·수정 결과를 이�
 
 <strong>어떤 기준을 따르는가?</strong> 같은 답도 사실성, 정중함, 간결함, 위험 회피 중 무엇을 강조하느냐에 따라 선호가 달라질 수 있다. 기준을 프롬프트·원칙·라벨 지침으로 명시해야 결과를 해석할 수 있다.
 
-<strong>무엇을 근거로 판단하는가?</strong> AI가 표현의 매끄러움만 보고 답을 고르는지, 계산 실행·출처 대조·검사 도구의 결과도 사용하는지 구별한다. 같은 모델이 답을 만들고 평가하면 같은 오류를 반복할 가능성도 점검해야 한다. 평가자 모델을 바꾸는 것은 도움이 될 수 있지만, 모델 이름이 다르다는 사실만으로 오류가 독립이라고 보장되지는 않는다. 이 문단은 검증 설계에 관한 추가 제안이다.
+<strong>무엇을 근거로 판단하는가?</strong> AI가 표현의 매끄러움만 보고 답을 고르는지, 계산 실행·출처 대조·검사 도구의 결과도 사용하는지 구별한다. 같은 모델이 답을 만들고 평가하면 같은 오류를 반복할 가능성도 점검해야 한다. 평가자 모델을 바꾸는 것은 도움이 될 수 있지만, 모델 이름이 다르다는 사실만으로 오류가 독립이라고 보장되지는 않는다.
 
 <strong>최종 검증은 누가 무엇으로 하는가?</strong> AI 평가 점수 상승을 곧바로 사용자 효용이나 실제 정확도 상승으로 읽지 않는다. 사람이 별도로 평가한 자료, 실행 가능한 테스트, 보지 않은 질문, 실제 환경의 성공 기준 등 과제에 맞는 독립 근거가 필요하다.
 
@@ -299,7 +299,7 @@ Constitutional AI의 원본 Figure 1은 위쪽에 비평·수정 결과를 이�
 
 ## 이해를 확인하는 세 질문
 
-<strong>질문 1. REvolve는 사람 없이 좋은 보상을 찾는 방법인가?</strong> 아니다. 이 글이 읽은 방법은 사람의 정책 선호와 자연어 피드백을 보상 진화에 사용한다.
+<strong>질문 1. REvolve는 사람 없이 좋은 보상을 찾는 방법인가?</strong> 아니다. REvolve는 사람의 정책 선호와 자연어 피드백을 보상 진화에 사용한다.
 
 <strong>질문 2. 보상 모델의 점수 차이를 시그모이드에 넣은 값은 답의 사실 확률인가?</strong> 아니다. 지정한 쌍별 비교 모형에서의 선호 확률이다. 사실성의 확률로 사용하려면 별도 정의와 검증이 필요하다.
 
@@ -309,14 +309,12 @@ Constitutional AI의 원본 Figure 1은 위쪽에 비평·수정 결과를 이�
 
 ## 함께 읽을 원문
 
-| 자료 | 사용한 판본·위치 | 연결 내용 |
+| 자료 | 판본·위치 | 연결 내용 |
 |---|---|---|
-| [NTU Self-Improving](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) | 2026-05-08 강의, PDF 21–25쪽; 23쪽은 공개 PPTX의 노트와 구별 | 기준 강의 |
+| [NTU Self-Improving](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) | PDF 21–25쪽 | 기준 강의 |
 | [Eureka](https://eureka-research.github.io/assets/eureka_paper.pdf) | 저자 프로젝트 PDF, §3 | 보상 코드 생성·학습 피드백 |
 | [REvolve](https://arxiv.org/abs/2406.01309) | v4, 2025-05-23, Figure 1은 PDF 3쪽 | 집단 탐색과 인간 피드백 |
 | [RF-Agent](https://arxiv.org/abs/2602.23876) | v1, 2026-02-27, Figure 1–2·§4–5 | 이력과 MCTS 기반 보상 설계 |
 | [Schultz·Dayan·Montague](https://www.gatsby.ucl.ac.uk/~dayan/papers/sdm97.html) | Science, 1997-03-14, Figure 1은 PDF 2쪽 | 보상 예측 오차와 도파민 연구의 연결 |
 | [Stanford CS224N Lecture 10](https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf) | 2024년 강의, PDF 60쪽(인쇄 63), PDF 62쪽(인쇄 66) | 선호 모형과 KL 제약 목적 |
 | [Constitutional AI](https://arxiv.org/abs/2212.08073) | v1, 2022-12-15, Figure 1·§4 | 원칙에 따른 AI 피드백과 RLAIF |
-
-원본 슬라이드·논문 도해와 이 글의 추가 해설은 구분해서 읽는다. 원저작자와 자료 위치는 각 그림에 표시하며, 출처 표시는 원저작물 전체에 대한 재사용 허가를 뜻하지 않는다.
