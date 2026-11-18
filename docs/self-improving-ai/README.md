@@ -1,8 +1,12 @@
 # 자가개선 AI 강의 해설
 
-Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 한 장씩 해설한다. 표지는 1쪽이며 원본은 총 62쪽이다.
+Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 나누어 한 장씩 해설한다. 글 번호는 연속으로 유지한다. 상편은 1–13편, 하편은 14편부터이며 두 PDF의 페이지 번호는 각각 1쪽에서 시작한다.
 
-| 글 | 원본 페이지 | 내용 |
+## 상편 — 1–13편
+
+기준 자료는 `Self-Improving.pdf`이며 총 62쪽이다. **13편까지 main 병합과 공개 배포를 확인했다.**
+
+| 글 | 상편 원본 페이지 | 내용 |
 |---|---|---|
 | [01](https://jjo-0.github.io/posts/self-improving-ai-01-overview/) | 1–5 | 자기개선의 범위, 재귀적 개선, 피드백과 평가 |
 | [02](https://jjo-0.github.io/posts/self-improving-ai-02-learning-targets/) | 6–10 | 학습 목표, 손실, 지식 증류, 자기 생성 의사 정답 |
@@ -16,15 +20,25 @@ Hung-yi Lee의 NTU Machine Learning 2026 Spring, **Self-Improving 상편**을 �
 | [10](https://jjo-0.github.io/posts/self-improving-ai-10-self-play-and-external-feedback/) | 46–50 | 문제 생성과 자기대결, 의사정답의 신뢰도, 외부 정보 |
 | [11](https://jjo-0.github.io/posts/self-improving-ai-11-automated-post-training/) | 51–55 | 후학습 자동화, 시간 예산, 가중 평가와 데이터 오염 |
 | [12](https://jjo-0.github.io/posts/self-improving-ai-12-weak-to-strong-generalization/) | 56–60 | 약한 감독에서 강한 모델로의 일반화, PGR, 자동 정렬 연구와 전이 한계 |
-| [13 원고](../../spaceship-ui/site/content/posts/self-improving-ai-13-agent-harness-and-system-improvement.mdx) | 61–62 | 에이전트 하네스, 도구·메모리·상호작용 기록의 개선 — 발행 준비 |
+| [13](https://jjo-0.github.io/posts/self-improving-ai-13-agent-harness-and-system-improvement/) | 61–62 | 에이전트 하네스, 도구·메모리·상호작용 기록의 개선 |
 
-2026-11-18 소스 체크포인트: **12편까지 main 병합과 공개 배포를 확인했다.** [PR #208](https://github.com/JJo-0/JJo-0.github.io/pull/208)은 `125d83eb68d671983c7b6711ff4bacd0584d5ed1`에 2026-11-18 13:34:37 KST로 병합됐다. [최종 Pages 실행](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44238709964), [공개 사이트 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44241403884), [모바일 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44241403877)가 모두 성공했다. 공개 읽기 검사는 2026-11-18 14:05:15 KST에 완료됐으며 24개 화면과 이미지 108개의 공개 바이트 해시를 확인했다. 정확한 트리·아티팩트·해시 기록은 `progress.json`에 보존한다.
+## 하편 — 14편부터
 
-이번 리비전의 **13편(61–62쪽)은 본 강의 이미지 2장과 보충 이미지 4장, 총 6장을 포함한다.** 수식은 8개이며, 두 교육용 계산 예제의 검산 14개와 로컬 빌드·타입 검사가 통과했다. 슬라이드별 영상 위치 표도 이 두 쪽에 대응하는 2행이다. 13편은 발행 준비 상태이며, 이 문서의 준비 기록을 공개 배포 완료로 취급하지 않는다. 실제 병합·Pages 결과·공개 읽기 검사는 이번 발행 PR의 최종 기록으로 확인한다.
+기준 자료는 [공식 하편 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf)이며 총 64쪽이다. 상편의 63쪽으로 이어서 세지 않는다.
 
-**상편 원본 62쪽의 집필 범위는 13편에서 끝난다. 다음 집필은 14편, 공식 하편 PDF의 1쪽부터다.** [공식 강의 페이지](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)의 5월 22일 `Self-Improving -2`는 [하편 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf)(64쪽)와 [하편 영상](https://www.youtube.com/watch?v=cQLKVzbwN7I)으로 연결된다. 다음 자료는 확인했으며 아직 집필하지 않았다. `progress.json`은 현재 상편의 발행 확인 범위(1–60쪽), 준비 범위(61–62쪽), 별도 하편의 다음 집필 시작점(1쪽)을 구분한다. 아래의 이전 날짜 기록은 당시 작업 범위와 증거를 보존한다.
+| 글 | 하편 원본 페이지 | 내용·현재 상태 |
+|---|---|---|
+| [14 원고](../../spaceship-ui/site/content/posts/self-improving-ai-14-proposer-solver-verifier.mdx) | 1–5 | 출제자·풀이자·검증자, 학습 손실과 평가 손실, 자기학습의 외부 신호 — 원고·원전 검토와 로컬 빌드 완료 |
 
-이전 10편 발행 기록: [PR #207](https://github.com/JJo-0/JJo-0.github.io/pull/207)은 `bbcf0b60c8b5eeb9d82260547c17ef507a892773`에 2026-11-18 10:59:49 KST로 병합됐다. [Pages 실행의 두 번째 시도](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44219959680/attempts/2)는 build·deploy·live-smoke가 모두 성공했고, [배포 후 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44232521807)도 성공했다. 이 배포에는 1–9편의 읽기 흐름 정리도 포함된다.
+## 현재 발행과 집필 위치
+
+2026-11-18 확인: [PR #209](https://github.com/JJo-0/JJo-0.github.io/pull/209)는 `5eda387a88c6b7851617cd7b73e65451f4faae08`에 **16:26:39 KST**로 병합됐다. Pages 배포는 16:29:32 KST에 완료됐고 [최종 Pages 실행](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44258924444)은 attempt 2에서 성공했다. [공개 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44261729663)는 16:54:44 KST에 완료됐으며 **26개 화면·공개 이미지 114/114 해시 일치**를 확인했다. [공개 모바일 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44261729689)도 성공했다.
+
+13편 PR 검사는 18개 모두 성공했다. 병합 후 push 검사는 17개가 성공했고, 기존 Sept22 검사 한 건은 Ubuntu 한글 폰트 다운로드 정체로 세 시도 모두 설치 단계에서 취소됐다. 이 환경 문제를 13편의 성공한 공개 검증과 구분한다. 상세 근거는 [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json)에 보존한다.
+
+현재 **14편, 하편 1–5쪽의 원고와 이미지가 준비됐다.** 본강의 5장과 보충 원전 그림 4장, 수식 14개, 계산 검산 16개를 포함하며 원전·자막 대조와 독립 원고 검토를 마쳤다. 기존 글의 번호·URL·연속 탐색은 유지하며, 목록과 글 안의 시리즈 안내를 상편·하편으로 나눈다. 준비 기록은 공개 배포 완료를 뜻하지 않는다. 14편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **다음 집필은 15편, 하편 PDF 6쪽부터다.** [14편 준비 기록](reviews/2026-11-18-chapter-14-preparation.json)에서 범위와 검증을 확인할 수 있다.
+
+이전 11·12편 발행 기록은 [PR #208](https://github.com/JJo-0/JJo-0.github.io/pull/208), 이전 10편과 1–9편 읽기 흐름 정리는 [PR #207](https://github.com/JJo-0/JJo-0.github.io/pull/207)에 있다. `progress.json`의 과거 준비·발행 기록은 당시 날짜와 범위를 보존한다.
 
 ## 독자 본문 편집 기준
 
@@ -44,11 +58,15 @@ PR #207의 읽기 흐름 정리에서 1–9편의 수식 298개와 이미지 81�
 독자 화면은 슬라이드 다음에 한국어 해설을 배치한다. 이미지의 중국어를 옮긴 자료는 비공식 영어 편집본이며, 공식 영문판으로 소개하지 않는다. 그림과 수식의 원본 페이지는 각 이미지에서 직접 연결한다. 원래 영어로 구성된 페이지는 원본 렌더를 그대로 사용한다. 계산 예의 설정은 해당 설명에서 밝히며, 제작 과정 자체에 대한 반복 안내는 위 편집 기준에 따라 본문에서 생략한다.
 
 - [공식 강의](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
-- [공식 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf)
-- [공식 PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx)
-- [강의 영상](https://www.youtube.com/watch?v=s06mSAGN4gM)
+- [공식 상편 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf)
+- [공식 상편 PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx)
+- [상편 영상](https://www.youtube.com/watch?v=s06mSAGN4gM)
+- [공식 하편 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf)
+- [하편 영상](https://www.youtube.com/watch?v=cQLKVzbwN7I)
 
-원문·제공 자막 대조일은 2026-11-12, 영어 편집본의 준비일은 2026-11-16이다. 영상 시간은 제공 자막의 주제 설명 구간이며 정확한 화면 전환 프레임과 동일하다고 주장하지 않는다.
+초기 1–3편의 원문·제공 자막 대조일은 2026-11-12, 영어 편집본의 준비일은 2026-11-16이다. 이후 편의 조회일·버전·해시는 각 manifest와 transcript provenance에 기록한다. 하편 1–5쪽과 제공 자막은 2026-11-18에 대조했다. 영상 시간은 제공 자막의 주제 설명 구간이며 정확한 화면 전환 프레임과 동일하다고 주장하지 않는다.
+
+하편 5쪽은 원본 PDF에서 서로 겹치거나 하단에 잘린 논문 URL 텍스트만 같은 문구로 재배치했다. 원본 도형·수식·사진·빨간 X 요소는 보존했으며, 세부 변경은 14편 manifest에 기록한다.
 
 ## 기록
 
@@ -58,9 +76,13 @@ PR #207의 읽기 흐름 정리에서 1–9편의 수식 298개와 이미지 81�
 - `source-assets/11/manifest.json`: 51–55쪽과 보충 자료 4개의 이미지 메타데이터
 - `source-assets/12/manifest.json`: 56–60쪽과 보충 자료 4개의 이미지 메타데이터
 - `source-assets/13/manifest.json`: 마지막 61–62쪽과 보충 자료 4개의 이미지 메타데이터
+- `source-assets/14/manifest.json`: 하편 1–5쪽과 보충 논문 그림 4개의 이미지 메타데이터
 - `source-assets/11/transcript-provenance.json`, `source-assets/12/transcript-provenance.json`: 제공 자막과 영상 위치의 근거
 - `source-assets/13/transcript-provenance.json`: 1:03:02–1:03:40과 1:03:40–끝의 제공 자막 근거
+- `source-assets/14/transcript-provenance.json`: 하편 첫 5쪽에 대응하는 0:00·0:07·0:45·3:36·4:45의 제공 자막 근거
 - `reviews/verify_examples_13.py`, `reviews/numeric-checks-13.json`: 13편의 계산 예제와 검산 결과
+- `reviews/verify_examples_14.py`, `reviews/numeric-checks-14.json`: 14편의 계산 예제와 검산 결과
+- `spaceship-ui/src/data/self-improving-series.json`: 상편·하편의 표시 이름과 연속 글 번호 범위
 - `progress.json`: 현재 작성 범위와 다음 시작 페이지
 
 원본 자료의 재사용·수정 조건은 `unverified`로 기록한다. 공개 접근과 출처 표시를 라이선스로 취급하지 않으며, 포함된 제3자 이미지에도 별도 권리가 있을 수 있다.

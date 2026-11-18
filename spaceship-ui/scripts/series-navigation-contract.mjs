@@ -136,6 +136,37 @@ for (const [id, entries] of readingGroups) {
   }
 }
 console.log(`series-reading: PASS ${readingGroups.size} series, ${readingPostCount} published posts`);
+// The two source lectures share a continuous reading order, with separate shelves.
+const selfParts = JSON.parse(read('src/data/self-improving-series.json')).parts;
+assert.deepEqual(selfParts.map(part => [part.number, part.label, part.firstOrder, part.lastOrder]), [[1, '상편', 1, 13], [2, '하편', 14, null]]);
+const selfEntries = readingGroups.get('self-improving-ai') || [];
+assert.equal(selfEntries.length, 14, 'Self-Improving chapters 01–14');
+const writingTree = nodes(parse(read('dist/posts/index.html')));
+assert(!writingTree.some(node => attr(node, 'data-series-group') === 'self-improving-ai'), 'Replace the unsplit shelf with two lecture parts');
+for (const part of selfParts) {
+  const expected = selfEntries.filter(entry => entry.order >= part.firstOrder && (part.lastOrder === null || entry.order <= part.lastOrder));
+  const group = writingTree.find(node => attr(node, 'data-series-group') === part.groupId);
+  assert(group?.tagName === 'details' && attr(group, 'open') === undefined, `${part.label} shelf starts closed`);
+  assert.equal(nodes(group).filter(node => node.tagName === 'article').length, expected.length, `${part.label} shelf count`);
+  assert(text(group).includes(part.title), `${part.label} shelf title`);
+  for (const entry of expected) {
+    const page = nodes(parse(read(`dist/posts/${entry.slug}/index.html`)));
+    const map = page.find(node => attr(node, 'data-self-improving-map') !== undefined);
+    assert(map && attr(map, 'data-current-part') === String(part.number), `${entry.slug} current lecture part`);
+    const sections = nodes(map).filter(node => attr(node, 'data-series-map-part') !== undefined);
+    assert.equal(sections.length, 2, `${entry.slug} two lecture parts`);
+    assert(sections.every(section => section.tagName === 'details' && attr(section, 'open') === undefined), 'Article part lists start closed');
+    const links = nodes(map).filter(node => node.tagName === 'a');
+    assert.equal(links.length, selfEntries.length, `${entry.slug} all published chapters remain reachable`);
+    assert.equal(links.filter(node => attr(node, 'aria-current') === 'page').length, 1, `${entry.slug} one current article`);
+    assert.equal(attr(entry.nav, 'data-series-part'), String(part.number));
+  }
+}
+const boundaryPrevious = selfEntries.find(entry => entry.order === 13);
+const boundaryNext = selfEntries.find(entry => entry.order === 14);
+assert(text(nodes(boundaryPrevious.nav).find(node => attr(node, 'rel') === 'next')).includes('하편'), '13→14 announces the lower part');
+assert(text(nodes(boundaryNext.nav).find(node => attr(node, 'rel') === 'prev')).includes('상편'), '14→13 announces the upper part');
+console.log('self-improving-parts: PASS two collapsed shelves, two article part lists and continuous 13↔14 links');
 const goalTable = firstRobotPost.find(n => n.tagName === 'table' && text(n).includes('강의의 네 목표'));
 assert(goalTable?.parentNode && attr(goalTable.parentNode, 'class') === 'table-scroll');
 assert.equal(attr(goalTable.parentNode, 'tabindex'), '0');

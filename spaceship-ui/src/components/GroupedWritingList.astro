@@ -4,6 +4,7 @@ import WritingListItem from './WritingListItem.astro';
 import SeriesGroup from './SeriesGroup.astro';
 import { getPostSlug, getPostSeriesId, compareSeriesPosts } from '@/lib/utils/posts';
 import { getReadTime } from '@/lib/utils/readTime';
+import { getSelfImprovingPart, selfImprovingSeries } from '@/lib/self-improving-series';
 interface Props { posts: CollectionEntry<'posts'>[]; }
 const { posts } = Astro.props;
 const names: Record<string, string> = {
@@ -20,14 +21,20 @@ const names: Record<string, string> = {
 const grouped = new Map<string, CollectionEntry<'posts'>[]>();
 for (const post of posts) { const key = getPostSeriesId(post); if (key) grouped.set(key, [...(grouped.get(key) || []), post]); }
 const emitted = new Set<string>();
-interface ListItem { post: CollectionEntry<'posts'>; key?: string; members: CollectionEntry<'posts'>[]; }
+interface ListItem { post: CollectionEntry<'posts'>; key?: string; title?: string; description?: string; members: CollectionEntry<'posts'>[]; }
 const items = posts.flatMap<ListItem>(post => {
   const key = getPostSeriesId(post);
-  if (!key || ((grouped.get(key)?.length || 0) < 2 && key !== 'human-motion-study' && key !== 'rl-robot-learning' && key !== 'segmentation')) return [{ post, key: undefined, members: [] }];
+  if (!key || ((grouped.get(key)?.length || 0) < 2 && key !== 'human-motion-study' && key !== 'rl-robot-learning' && key !== 'segmentation' && key !== selfImprovingSeries.id)) return [{ post, key: undefined, members: [] }];
   if (emitted.has(key)) return [];
   emitted.add(key);
   const members = [...grouped.get(key)!].sort((a, b) => compareSeriesPosts(a, b, key));
+  if (key === selfImprovingSeries.id) {
+    return selfImprovingSeries.parts.flatMap(part => {
+      const partMembers = members.filter(member => getSelfImprovingPart(member.data.series)?.number === part.number);
+      return partMembers.length ? [{ post: partMembers[0], key: part.groupId, title: part.title, description: part.description, members: partMembers }] : [];
+    });
+  }
   return [{ post, key, members }];
 });
 ---
-{items.map(({ post, key, members }) => key ? <SeriesGroup groupId={key} title={names[key] || post.data.title.split(' — ')[0]} count={members.length}>{members.map(member => <WritingListItem post={member} slug={getPostSlug(member)} readTime={getReadTime(member.body || '')} />)}</SeriesGroup> : <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}
+{items.map(({ post, key, title, description, members }) => key ? <SeriesGroup groupId={key} title={title || names[key] || post.data.title.split(' — ')[0]} {description} count={members.length}>{members.map(member => <WritingListItem post={member} slug={getPostSlug(member)} readTime={getReadTime(member.body || '')} />)}</SeriesGroup> : <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}

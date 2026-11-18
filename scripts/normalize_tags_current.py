@@ -629,6 +629,12 @@ POST_TAXONOMY.update({
     "self-improving-ai-11-automated-post-training.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "post-training", "llm-agents", "fine-tuning", "ntu")),
     "self-improving-ai-12-weak-to-strong-generalization.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "weak-to-strong", "alignment", "automated-research", "ntu")),
     "self-improving-ai-13-agent-harness-and-system-improvement.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "harness", "memory", "ntu")),
+    "self-improving-ai-14-proposer-solver-verifier.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-play", "reinforcement-learning", "verification", "ntu")),
+})
+
+# Preserve the existing November 18 candidate's taxonomy and draft visibility.
+POST_TAXONOMY.update({
+    "2026-11-18-nvidia-fovi-dex-foveated-robot-learning-news.mdx": Taxonomy("robotics-embedded", "foveated-dexterous-manipulation", "research-report", ("frontier-candidate", "physical-ai", "dexterous-manipulation", "robot-learning")),
 })
 
 if __name__ == "__main__":
