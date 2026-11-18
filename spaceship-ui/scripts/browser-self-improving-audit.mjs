@@ -12,7 +12,8 @@ const chapters = [
   { number: 5, math: 26, slug: 'self-improving-ai-05-reward-design-to-ai-feedback', previous: 'self-improving-ai-04-sparse-rewards-and-shaping', next: 'self-improving-ai-06-self-evaluation-and-entropy' },
   { number: 6, math: 20, slug: 'self-improving-ai-06-self-evaluation-and-entropy', previous: 'self-improving-ai-05-reward-design-to-ai-feedback', next: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training' },
   { number: 7, math: 22, slug: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', previous: 'self-improving-ai-06-self-evaluation-and-entropy', next: 'self-improving-ai-08-entropy-estimation-and-gradients' },
-  { number: 8, math: 32, slug: 'self-improving-ai-08-entropy-estimation-and-gradients', previous: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', next: null },
+  { number: 8, math: 32, slug: 'self-improving-ai-08-entropy-estimation-and-gradients', previous: 'self-improving-ai-07-unsupervised-rlvr-and-test-time-training', next: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs' },
+  { number: 9, math: 31, slug: 'self-improving-ai-09-entropy-paths-and-self-generated-inputs', previous: 'self-improving-ai-08-entropy-estimation-and-gradients', next: null },
 ];
 const manifests = new Map();
 const evidence = { checkedAt: new Date().toISOString(), publicBase: process.env.JJO_SMOKE_BASE_URL || null, views: [], assets: [], series: [] };
@@ -76,9 +77,14 @@ try {
         assert(figure.alt.length > 10 && figure.caption.length > 20);
         assert(figure.source?.includes('#page='));
       }
-      if (chapter.number === 7 || chapter.number === 8) {
+      if (chapter.number >= 7) {
         const transcriptLinks = await evaluate(cdp, session, `Array.from(document.querySelectorAll('article a[href*="youtube.com/watch"]')).map(a=>a.href)`);
-        for (const seconds of (chapter.number === 7 ? [1873, 1918, 1972, 2014, 2086] : [2160, 2193, 2395, 2471, 2564])) {
+        const timestampGroups = {
+          7: [1873, 1918, 1972, 2014, 2086],
+          8: [2160, 2193, 2395, 2471, 2564],
+          9: [2603, 2647, 2690, 2695, 2719],
+        };
+        for (const seconds of timestampGroups[chapter.number]) {
           assert(transcriptLinks.some(href => { const url = new URL(href); return url.searchParams.get('v') === 's06mSAGN4gM' && url.searchParams.get('t') === `${seconds}s`; }), `Missing transcript timestamp ${seconds}`);
         }
         view.transcriptLinks = transcriptLinks;
@@ -106,10 +112,10 @@ try {
     await waitExpression(cdp, session, "!!document.querySelector('[data-series-group=" + '"self-improving-ai"' + "]')", 'Self-Improving series group');
     const group = await evaluate(cdp, session, `(()=>{const g=document.querySelector('[data-series-group="self-improving-ai"]');return {title:g.querySelector('.series-group__title')?.textContent,count:g.querySelector('.series-group__count')?.textContent,links:[...new Set(Array.from(g.querySelectorAll('a[href^="/posts/"]')).map(a=>a.getAttribute('href')))]};})()`);
     assert.equal(group.title, '자가개선 AI');
-    assert.equal(group.count, '8편');
+    assert.equal(group.count, '9편');
     // List cards omit the optional trailing slash; retain exact path membership checks.
     const groupPaths = new Set(group.links.map(href => href.replace(/\/+$/, '')));
-    assert.equal(groupPaths.size, 8);
+    assert.equal(groupPaths.size, 9);
     for (const slug of ['self-improving-ai-01-overview', 'self-improving-ai-02-learning-targets', 'self-improving-ai-03-self-correction-to-rl']) assert(groupPaths.has(`/posts/${slug}`), `Series missing ${slug}`);
     for (const chapter of chapters) assert(groupPaths.has(`/posts/${chapter.slug}`), `Series missing ${chapter.slug}`);
     await evaluate(cdp, session, "(()=>{const g=document.querySelector('[data-series-group=\"self-improving-ai\"]');g.open=true;g.scrollIntoView({block:'center',behavior:'instant'});})()");

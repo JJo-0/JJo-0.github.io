@@ -624,6 +624,7 @@ POST_TAXONOMY.update({
 # Register the transcript-aligned Self-Improving AI chapter 08.
 POST_TAXONOMY.update({
     "self-improving-ai-08-entropy-estimation-and-gradients.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "entropy-minimization", "policy-gradient", "test-time-adaptation", "ntu")),
+    "self-improving-ai-09-entropy-paths-and-self-generated-inputs.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "entropy-minimization", "policy-gradient", "synthetic-data", "ntu")),
 })
 
 if __name__ == "__main__":
