@@ -29,18 +29,18 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 | 글 | 하편 원본 페이지 | 내용·현재 상태 |
 |---|---|---|
 | [14](https://jjo-0.github.io/posts/self-improving-ai-14-proposer-solver-verifier/) | 1–5 | 출제자·풀이자·검증자, 학습 손실과 평가 손실, 자기학습의 외부 신호 — 발행·공개 검증 완료 |
-| [15 원고](../../spaceship-ui/site/content/posts/self-improving-ai-15-harness-optimization-and-evaluation.mdx) | 6–10 | 모델과 하네스, AI의 수정안 생성, 비교 조건·토큰 예산·반복 신뢰성 — 원고·원전 검토와 로컬 빌드 완료 |
-| [16 원고](../../spaceship-ui/site/content/posts/self-improving-ai-16-prompt-memory-code-evolution.mdx) | 11–15 | OPRO·GEPA·ALMA·DGM — 프롬프트·메모리·코드의 개선; 원고·이미지·수치·출처 검토 완료, 발행 검증 진행 |
+| [15](https://jjo-0.github.io/posts/self-improving-ai-15-harness-optimization-and-evaluation/) | 6–10 | 모델과 하네스, AI의 수정안 생성, 비교 조건·토큰 예산·반복 신뢰성 — 발행·공개 검증 완료 |
+| [16](https://jjo-0.github.io/posts/self-improving-ai-16-prompt-memory-code-evolution/) | 11–15 | OPRO·GEPA·ALMA·DGM — 프롬프트·메모리·코드의 개선; 발행·공개 검증 완료 |
 
 ## 현재 발행과 집필 위치
 
-2026-11-18 확인: [PR #210](https://github.com/JJo-0/JJo-0.github.io/pull/210)는 `17df9790c2494d5bbd0bc6920e0b64938b8af7e1`에 **20:32:40 KST**로 병합됐다. Pages 배포는 20:34:57 KST에 완료됐고, 후속 검사를 포함한 [전체 Pages 실행](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44295652150)은 20:52:17 KST에 성공으로 종료됐다. [공개 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44298594773)는 20:54:38 KST에 **28개 화면·공개 이미지 123/123 해시 일치**를 확인했다. [공개 모바일 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44298594721)도 성공했다.
+2026-11-18 **22:14:39 KST**에 [PR #212](https://github.com/JJo-0/JJo-0.github.io/pull/212)를 `4573241cc51b0418e84a2dc5a25263d26d82a936`으로 병합했고, **22:18:28 KST**에 Pages 배포가 완료됐다. 기존 PR #211의 14·15편 강의 보강 내용을 보존했으며, 15·16편과 보강된 14편을 공개 사이트에서 확인했다.
 
-14편 PR 검사는 18개 모두 성공했다. 병합 후 Pages를 제외한 push 검사는 17개가 성공했고, 기존 September 21 검사 한 건은 Ubuntu 한글 폰트 설치 중 시간 제한으로 취소됐다. 배포 직후 직접 확인한 공개 화면과 이미지 검증, 뒤이어 완료된 자동 검증의 관측 시점을 [14편 발행 기록](reviews/2026-11-18-chapter-14-publication.json)에 구분해 보존한다. [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json)과 이전 준비 기록도 유지한다.
+[PR 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44308915605)는 1–16편의 390px·1440px 화면 32개, 이미지 147개, 수식 오류 0개와 가로 넘침 0개를 확인했다. 16편의 실제 그림 스크린샷 18개도 시각 검토했다. 공개 HTTP 확인은 글 16개·글 목록·새 PNG 24개, 총 41개 URL에서 모두 200을 받았으며 새 PNG 24개의 공개·로컬·병합 커밋 SHA-256이 일치했다. 직접 공개 화면에서도 16편의 그림 9개·수식 11개, 영상 위치 표, 상편·하편 메뉴, 15↔16 이동을 확인했다.
 
-현재 **14·15편에 외부 강의 슬라이드와 영상 해설을 보강했다.** 각 편은 NTU 본강의 5장, 보충 논문 자료 4개, 추가 외부 강의 슬라이드 3개로 총 12개 이미지를 포함한다. 14편은 Lambert L9·L7과 CMU L9, 15편은 CMU L12·NAIRR·MIT 강의를 해당 논점 곁에 연결했다. 네 영상의 실제 영어 자동 자막 구간을 확인했다. 15편의 기존 수식 15개와 계산 검산 20개는 보존한다. 독립 원고 검토와 별도 수치 검산 12개 묶음도 통과했다. 문제 생성 지시에 담긴 사람의 설계에서 출발해, 가중치 θ와 하네스 h의 구분, 하네스에 경사하강식을 바로 적용하기 어려운 이유, AI가 만든 수정안의 평가·선택을 설명한다. 기존 상편·하편 구분과 글 번호·URL·연속 탐색을 유지한다. 준비 기록은 공개 배포 완료를 뜻하지 않으며, 15편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **16편은 하편 PDF 11–15쪽까지 집필했으며, 다음 집필은 17편·하편 PDF 16쪽부터다.** [15편 준비 기록](reviews/2026-11-18-chapter-15-preparation.json)에서 범위와 검증을 확인할 수 있다.
+PR workflow 18개 중 17개가 성공했다. October 3의 두 PR 시도는 한글 폰트 다운로드 중 취소됐으며, **같은 source tree의 main October 3 검사**는 빌드·계약·브라우저 검사까지 성공했다. Pages의 build/deploy 성공과 사이트 전체 후속 live-smoke 상태는 구분한다. 후속 검사 첫 시도는 기존 9월 20일 글의 이동/로딩 대기에서 시간 제한에 걸렸고, 동일 코드의 해당 job만 재실행 중이다. 전체 workflow 성공을 미리 주장하지 않는다. 관측 시점과 예외는 [16편 발행 기록](reviews/2026-11-18-chapter-16-publication.json)에 남겼다.
 
-이전 11·12편 발행 기록은 [PR #208](https://github.com/JJo-0/JJo-0.github.io/pull/208), 이전 10편과 1–9편 읽기 흐름 정리는 [PR #207](https://github.com/JJo-0/JJo-0.github.io/pull/207)에 있다. `progress.json`의 과거 준비·발행 기록은 당시 날짜와 범위를 보존한다.
+현재 하편 **1–15쪽, 14–16편까지 발행**했다. 다음 집필은 **17편·하편 PDF 16쪽부터**다. 하편은 총 64쪽이므로 전체 연재 완료 상태가 아니다. 이전 [14편 발행 기록](reviews/2026-11-18-chapter-14-publication.json), [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json), 준비 기록은 당시의 날짜와 검증 범위를 보존한다.
 
 ## 16편 작성 위치
 
