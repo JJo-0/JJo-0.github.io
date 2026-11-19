@@ -632,6 +632,7 @@ POST_TAXONOMY.update({
     "self-improving-ai-14-proposer-solver-verifier.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-play", "reinforcement-learning", "verification", "ntu")),
     "self-improving-ai-15-harness-optimization-and-evaluation.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "harness", "evaluation", "ntu")),
     "self-improving-ai-16-prompt-memory-code-evolution.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "prompt-optimization", "ai-agents", "memory", "ntu")),
+    "self-improving-ai-17-archive-dspy-experience.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "dspy", "retrieval-augmented-generation", "memory", "ntu")),
 })
 
 # Preserve the existing November 18 candidate's taxonomy and draft visibility.
