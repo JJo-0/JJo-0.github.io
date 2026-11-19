@@ -1,0 +1,45 @@
+name: Render Self-Improving AI Chapter 17 Sources
+
+on:
+  push:
+    branches:
+      - content/self-improving-ai-17-dgm-dspy-experience-20261119
+    paths:
+      - docs/self-improving-ai/tools/render_17.py
+      - spaceship-ui/site/content/posts/self-improving-ai-17-archive-dspy-experience.mdx
+      - .github/workflows/render-self-improving-17.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-self-improving-17
+  cancel-in-progress: true
+
+jobs:
+  render-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install source renderer
+        run: python -m pip install 'pymupdf>=1.25,<2'
+      - name: Verify PDFs and render originals
+        run: python docs/self-improving-ai/tools/render_17.py
+      - name: Commit provenance and rendered figures
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/self-improving-ai/source-assets/17/manifest.json
+          git add spaceship-ui/site/assets/assets/posts/self-improving-ai-17-archive-dspy-experience/
+          if ! git diff --cached --quiet; then
+            git commit -m 'assets: render chapter 17 slides and research figures from source PDFs'
+            git push origin HEAD:content/self-improving-ai-17-dgm-dspy-experience-20261119
+          fi
