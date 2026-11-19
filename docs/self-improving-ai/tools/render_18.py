@@ -27,7 +27,7 @@ FIGURES=[
  ("lecture",30,"khattab-dspy-30-optimized-multihop.png",None,"external-lecture-1"),
  ("lecture",35,"khattab-dspy-35-module-training-metric.png",None,"external-lecture-2"),
  ("lecture",36,"khattab-dspy-36-optimization-constraints.png",None,"external-lecture-3"),
- ("paper",2,"better-together-v2-algorithm1.png",(307,552,580,724),"paper-algorithm-1")
+ ("paper",2,"better-together-v2-algorithm1.png",(307,559,580,724),"paper-algorithm-1")
 ]
 def digest(data): return hashlib.sha256(data).hexdigest()
 def draw_translation(im, rectangles):
