@@ -32,6 +32,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 | [15 원고](../../spaceship-ui/site/content/posts/self-improving-ai-15-harness-optimization-and-evaluation.mdx) | 6–10 | 모델과 하네스, AI의 수정안 생성, 비교 조건·토큰 예산·반복 신뢰성 — 원고·원전 검토와 로컬 빌드 완료 |
 | [16 원고](../../spaceship-ui/site/content/posts/self-improving-ai-16-prompt-memory-code-evolution.mdx) | 11–15 | OPRO·GEPA·ALMA·DGM — 프롬프트·메모리·코드의 개선; 원고·이미지·수치·출처 검토 완료, 발행 검증 진행 |
 | [17 원고](../../spaceship-ui/site/content/posts/self-improving-ai-17-archive-dspy-experience.mdx) | 16–20 | DGM 아카이브 계보·DSPy·하네스와 모델·ExpRAG 경험 검색 학습 — 원고 작성, 원본 이미지 및 보충 자료 렌더·배포 검증 진행 |
+| [18 원고](../../spaceship-ui/site/content/posts/self-improving-ai-18-better-together-and-evolving-goals.mdx) | 21–25 | ExpRAG 경험 활용, BetterTogether, E-SPL, 목표 변화 — 원본·외부 강의 해설 9개 이미지 준비 및 17편 중국어 레이블 수정 |
 
 ## 현재 발행과 집필 위치
 
@@ -39,7 +40,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 
 14편 PR 검사는 18개 모두 성공했다. 병합 후 Pages를 제외한 push 검사는 17개가 성공했고, 기존 September 21 검사 한 건은 Ubuntu 한글 폰트 설치 중 시간 제한으로 취소됐다. 배포 직후 직접 확인한 공개 화면과 이미지 검증, 뒤이어 완료된 자동 검증의 관측 시점을 [14편 발행 기록](reviews/2026-11-18-chapter-14-publication.json)에 구분해 보존한다. [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json)과 이전 준비 기록도 유지한다.
 
-현재 **14·15편에 외부 강의 슬라이드와 영상 해설을 보강했다.** 각 편은 NTU 본강의 5장, 보충 논문 자료 4개, 추가 외부 강의 슬라이드 3개로 총 12개 이미지를 포함한다. 14편은 Lambert L9·L7과 CMU L9, 15편은 CMU L12·NAIRR·MIT 강의를 해당 논점 곁에 연결했다. 네 영상의 실제 영어 자동 자막 구간을 확인했다. 15편의 기존 수식 15개와 계산 검산 20개는 보존한다. 독립 원고 검토와 별도 수치 검산 12개 묶음도 통과했다. 문제 생성 지시에 담긴 사람의 설계에서 출발해, 가중치 θ와 하네스 h의 구분, 하네스에 경사하강식을 바로 적용하기 어려운 이유, AI가 만든 수정안의 평가·선택을 설명한다. 기존 상편·하편 구분과 글 번호·URL·연속 탐색을 유지한다. 준비 기록은 공개 배포 완료를 뜻하지 않으며, 15편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **17편은 하편 PDF 16–20쪽 원고를 작성했다. 원본 이미지 자동 생성과 원격 검증은 독립적으로 완료 여부를 확인해야 한다. 다음 집필은 18편·하편 PDF 21쪽부터다.** [15편 준비 기록](reviews/2026-11-18-chapter-15-preparation.json)에서 범위와 검증을 확인할 수 있다.
+현재 **14·15편에 외부 강의 슬라이드와 영상 해설을 보강했다.** 각 편은 NTU 본강의 5장, 보충 논문 자료 4개, 추가 외부 강의 슬라이드 3개로 총 12개 이미지를 포함한다. 14편은 Lambert L9·L7과 CMU L9, 15편은 CMU L12·NAIRR·MIT 강의를 해당 논점 곁에 연결했다. 네 영상의 실제 영어 자동 자막 구간을 확인했다. 15편의 기존 수식 15개와 계산 검산 20개는 보존한다. 독립 원고 검토와 별도 수치 검산 12개 묶음도 통과했다. 문제 생성 지시에 담긴 사람의 설계에서 출발해, 가중치 θ와 하네스 h의 구분, 하네스에 경사하강식을 바로 적용하기 어려운 이유, AI가 만든 수정안의 평가·선택을 설명한다. 기존 상편·하편 구분과 글 번호·URL·연속 탐색을 유지한다. 준비 기록은 공개 배포 완료를 뜻하지 않으며, 15편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **17편은 하편 PDF 16–20쪽 원고를 작성했다. 원본 이미지 자동 생성과 원격 검증은 독립적으로 완료 여부를 확인해야 한다. 다음 집필은 19편·하편 PDF 26쪽부터다.** [15편 준비 기록](reviews/2026-11-18-chapter-15-preparation.json)에서 범위와 검증을 확인할 수 있다.
 
 이전 11·12편 발행 기록은 [PR #208](https://github.com/JJo-0/JJo-0.github.io/pull/208), 이전 10편과 1–9편 읽기 흐름 정리는 [PR #207](https://github.com/JJo-0/JJo-0.github.io/pull/207)에 있다. `progress.json`의 과거 준비·발행 기록은 당시 날짜와 범위를 보존한다.
 
