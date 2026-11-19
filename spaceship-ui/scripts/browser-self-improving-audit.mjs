@@ -23,7 +23,8 @@ const chapters = [
   { number: 13, math: 8, figures: 6, primarySlides: 2, timingRows: 2, slug: 'self-improving-ai-13-agent-harness-and-system-improvement', previous: 'self-improving-ai-12-weak-to-strong-generalization', next: 'self-improving-ai-14-proposer-solver-verifier' },
   { number: 14, math: 14, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-14-proposer-solver-verifier', previous: 'self-improving-ai-13-agent-harness-and-system-improvement', next: 'self-improving-ai-15-harness-optimization-and-evaluation' },
   { number: 15, math: 15, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-15-harness-optimization-and-evaluation', previous: 'self-improving-ai-14-proposer-solver-verifier', next: 'self-improving-ai-16-prompt-memory-code-evolution' },
-  { number: 16, math: 11, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-16-prompt-memory-code-evolution', previous: 'self-improving-ai-15-harness-optimization-and-evaluation', next: null },
+  { number: 16, math: 11, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-16-prompt-memory-code-evolution', previous: 'self-improving-ai-15-harness-optimization-and-evaluation', next: 'self-improving-ai-17-archive-dspy-experience' },
+  { number: 17, math: 4, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-17-archive-dspy-experience', previous: 'self-improving-ai-16-prompt-memory-code-evolution', next: null },
 ];
 const mappingSummary = '슬라이드별 영상 위치';
 const lectureParts = [
@@ -103,9 +104,9 @@ function loadChapterManifest(chapter) {
     assert.equal(mainSlides.length, chapter.primarySlides, 'Chapter 13 has exactly two main slides');
     assert.deepEqual(mainSlides.map(asset => asset.pdf_page), [61, 62], 'Chapter 13 concludes the 62-page source deck');
   }
-  if (chapter.number === 14 || chapter.number === 15 || chapter.number === 16) {
+  if (chapter.number >= 14 && chapter.number <= 17) {
     const mainSlides = records.filter(asset => /^main-\d+$/.test(asset.slot || ''));
-    const pageRange = { 14: [1, 5], 15: [6, 10], 16: [11, 15] }[chapter.number];
+    const pageRange = { 14: [1, 5], 15: [6, 10], 16: [11, 15], 17: [16, 20] }[chapter.number];
     const expectedPages = Array.from({ length: 5 }, (_, index) => pageRange[0] + index);
     assert.equal(primary.source_pdf_total_pages, 64, `Chapter ${chapter.number} uses the separate 64-page lower lecture`);
     assert.deepEqual(primary.primary_page_range, pageRange, `Chapter ${chapter.number} lower lecture source range`);
@@ -187,7 +188,7 @@ async function verifyArticleParts(cdp, session, chapter, width) {
   }
   const currentLinks = map.parts.flatMap(part => part.links).filter(link => link.current === 'page');
   assert.deepEqual(currentLinks.map(link => link.href), [`/posts/${chapter.slug}/`]);
-  if (chapter.number === 13 || chapter.number === 14 || chapter.number === 15 || chapter.number === 16) {
+  if (chapter.number >= 13 && chapter.number <= 17) {
     for (const part of lectureParts) {
       const selector = `[data-self-improving-map] [data-series-map-part="${part.number}"]`;
       await clickSummarySelector(cdp, session, `${selector} > summary`);
@@ -211,7 +212,9 @@ try {
   for (const chapter of chapters) {
     assert(Number.isInteger(chapter.math) && chapter.math > 0, `Set the exact math count for chapter ${chapter.number}`);
     assert(Number.isInteger(chapter.figures) && chapter.figures > 0, `Exact figure count for chapter ${chapter.number}`);
-    if (chapter.timingRows !== null) assert.equal(chapter.timingRows, timestampGroups[chapter.number]?.length, `Exact timestamp count for chapter ${chapter.number}`);
+    // The five chapter 17 video links have no verified timestamps. Check disclosure rows
+    // without inventing or asserting a corresponding list of timed transcript links.
+    if (chapter.timingRows !== null && timestampGroups[chapter.number]) assert.equal(chapter.timingRows, timestampGroups[chapter.number].length, `Exact timestamp count for chapter ${chapter.number}`);
     const manifest = loadChapterManifest(chapter);
     manifests.set(chapter.number, manifest);
     for (const asset of manifest.assets) {
@@ -272,7 +275,8 @@ try {
       if (chapter.number === 14) assert.equal(view.nextLabel, '다음 편 · 하편');
       if (chapter.number === 15) assert.equal(view.previousLabel, '이전 편 · 하편');
       if (chapter.number === 15) assert.equal(view.nextLabel, '다음 편 · 하편');
-      if (chapter.number === 16) assert.equal(view.previousLabel, '이전 편 · 하편');
+      if (chapter.number >= 16) assert.equal(view.previousLabel, '이전 편 · 하편');
+      if (chapter.number === 16) assert.equal(view.nextLabel, '다음 편 · 하편');
       view.articleParts = articleParts;
       if (timingDetails) view.timingDetails = timingDetails;
       for (const figure of view.figures) {
