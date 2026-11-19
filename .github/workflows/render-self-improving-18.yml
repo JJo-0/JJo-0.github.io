@@ -1,0 +1,48 @@
+name: Render self-improving AI 17 English fix and chapter 18
+
+on:
+  push:
+    branches:
+      - content/self-improving-ai-18-better-together-english-fix-20261119
+    paths:
+      - docs/self-improving-ai/tools/render_18.py
+      - spaceship-ui/site/content/posts/self-improving-ai-18-better-together-and-evolving-goals.mdx
+      - spaceship-ui/site/content/posts/self-improving-ai-17-archive-dspy-experience.mdx
+      - .github/workflows/render-self-improving-18.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: self-improving-18-render
+  cancel-in-progress: true
+
+jobs:
+  source-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install validated source renderers
+        run: python -m pip install 'pymupdf>=1.25,<2' 'pillow>=11,<13'
+      - name: Verify and render NTU and external lecture PDFs
+        run: python docs/self-improving-ai/tools/render_18.py
+      - name: Commit original and translated source assets
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/self-improving-ai/source-assets/17/manifest.json
+          git add docs/self-improving-ai/source-assets/18/manifest.json
+          git add spaceship-ui/site/assets/assets/posts/self-improving-ai-17-archive-dspy-experience/ntu-19-english.png
+          git add spaceship-ui/site/assets/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/
+          if ! git diff --cached --quiet; then
+            git commit -m 'assets: publish chapter 18 source slides and English-labelled page 19'
+            git push origin HEAD:content/self-improving-ai-18-better-together-english-fix-20261119
+          fi
