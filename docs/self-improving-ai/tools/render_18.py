@@ -27,7 +27,7 @@ FIGURES=[
  ("lecture",30,"khattab-dspy-30-optimized-multihop.png",None,"external-lecture-1"),
  ("lecture",35,"khattab-dspy-35-module-training-metric.png",None,"external-lecture-2"),
  ("lecture",36,"khattab-dspy-36-optimization-constraints.png",None,"external-lecture-3"),
- ("paper",2,"better-together-v2-algorithm1.png",(307,515,580,735),"paper-algorithm-1")
+ ("paper",2,"better-together-v2-algorithm1.png",(307,552,580,724),"paper-algorithm-1")
 ]
 def digest(data): return hashlib.sha256(data).hexdigest()
 def draw_translation(im, rectangles):
@@ -53,7 +53,8 @@ def translate_previous():
     target=directory/"ntu-19-english.png"
     before=original.read_bytes()
     record=next(r for r in manifest["assets"] if r.get("pdf")=="ntu" and r.get("pdf_page")==19)
-    if digest(before)!=record["sha256"]:
+    expected_source_hash = (record.get("edits") or [{}])[0].get("original_image_sha256", record["sha256"])
+    if digest(before)!=expected_source_hash:
         raise ValueError("Chapter 17 unmodified PNG changed, refusing English overlay")
     image=Image.open(original).convert("RGB")
     if image.size!=(1800,1013): raise ValueError("Unexpected prior slide geometry")
