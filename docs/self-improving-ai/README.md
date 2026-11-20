@@ -35,6 +35,10 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 | [18 원고](../../spaceship-ui/site/content/posts/self-improving-ai-18-better-together-and-evolving-goals.mdx) | 21–25 | ExpRAG 경험 활용, BetterTogether, E-SPL, 목표 변화 — 원본·외부 강의 해설 9개 이미지 준비 및 17편 중국어 레이블 수정 |
 | [19 한국어](../../spaceship-ui/site/content/posts/self-improving-ai-19-test-time-training-and-forgetting.mdx) · [English](../../spaceship-ui/site/content/english/en-self-improving-ai-19-test-time-training-and-forgetting.mdx) | 26–30 | 입력별·연속 TTT, 소음 속 음성인식의 빠른 적응과 느린 갱신, 경험 재생과 망각 |
 
+### 하편 14–19편의 식 풀이
+
+각 글 첫머리의 **식 풀이 바로가기**에서 해당 슬라이드의 계산 예제로 이동할 수 있다. 14–18편에는 각각 세 곳, 19편에는 다섯 곳을 연결했다. 한국어판과 영어판에서 같은 예제와 수식을 사용한다. 다음 신규 강의의 집필 위치는 하편 31쪽이다.
+
 ## 현재 발행과 집필 위치
 
 2026-11-18 확인: [PR #210](https://github.com/JJo-0/JJo-0.github.io/pull/210)는 `17df9790c2494d5bbd0bc6920e0b64938b8af7e1`에 **20:32:40 KST**로 병합됐다. Pages 배포는 20:34:57 KST에 완료됐고, 후속 검사를 포함한 [전체 Pages 실행](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44295652150)은 20:52:17 KST에 성공으로 종료됐다. [공개 읽기 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44298594773)는 20:54:38 KST에 **28개 화면·공개 이미지 123/123 해시 일치**를 확인했다. [공개 모바일 검사](https://github.com/JJo-0/JJo-0.github.io/actions/runs/44298594721)도 성공했다.
