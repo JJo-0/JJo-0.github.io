@@ -33,6 +33,8 @@ The lights dim above a factory inspection camera. You adjust the vision model on
 
 [Episode 18](/en/posts/self-improving-ai-18-better-together-and-evolving-goals/) ended just as the goal changed. Pages 26–30 of the second lecture ask what to keep at that moment. [Episode 7](/en/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/) introduced test-time training (TTT). Here we follow an update from one input to the next, then look at a speech recognition experiment that measured the consequences.
 
+<strong>Worked examples</strong>　[Gradient conflict](#worked-example--when-does-learning-a-new-task-raise-the-old-tasks-loss) · [Rotation gradient](#worked-example--differentiate-a-rotation-loss-without-knowing-the-object-class) · [Brightness correction](#worked-example--when-does-the-correction-error-halve-on-each-frame) · [Speech shift](#worked-example--detect-a-possible-change-without-a-reference-transcript) · [Forgetting](#worked-example--how-much-forgetting-does-a-final-accuracy-of-803-conceal)
+
 <details>
 <summary>Find each topic in the lecture</summary>
 
@@ -63,6 +65,22 @@ The robot on the left changes to meet goal H. In the middle, a new goal H′ spl
 
 The lecture moves from this analogy to speech recognition. It helps to ask <strong>what changed</strong> in each case. The robot’s criterion for success changes from traveling on the ground to flying. For speech recognition, success still means transcribing the words correctly. The background noise reaching the microphone changes the input distribution. We can therefore compare performance before and after adaptation using the same metric.
 
+### Worked example · When does learning a new task raise the old task’s loss?
+
+Translate the radar example into two weights. Keep a few examples of the earlier task A and call the gradient of their mean loss g_A. Call the gradient for the new task B g_B. A gradient points toward <em>increasing</em> loss, so an optimizer <em>subtracts</em> a chosen direction d scaled by the learning rate η. For a small step, a dot product approximates the change in A’s loss.
+
+<Math tex={String.raw`\Delta L_A\approx g_A^\top(-\eta d)=-\eta\,g_A^\top d`} display />
+
+Take g_A = (1, 0), g_B = (−1, 2), and η = 0.1. Following B’s gradient increases the first weight by 0.1. That is precisely the weight whose increase raises A’s loss.
+
+<Math tex={String.raw`g_A^\top g_B=1(-1)+0(2)=-1,\qquad \Delta L_A\approx-0.1(-1)=+0.1`} display />
+
+For A’s loss to stay level or fall to first order, the first coordinate of d must be at least zero. The closest vector to (−1, 2) satisfying that constraint is (0, 2). It removes the conflicting coordinate and keeps the second one.
+
+<Math tex={String.raw`g_A^\top(0,2)=0,\qquad \Delta L_B\approx-0.1\,[(-1)(0)+2(2)]=-0.4`} display />
+
+A’s estimated change is zero, while B’s loss falls by about 0.4. This is a two-coordinate example of gradient projection in Gradient Episodic Memory (GEM). GEM checks a constraint for each earlier task using examples stored in memory. Those losses and full-task accuracy measure different things. Evaluate on held-out examples to see which skills survived. [Lopez-Paz and Ranzato, NeurIPS 2017, Eqs. 7–8](https://arxiv.org/pdf/1706.08840#page=4)
+
 ## Part II, p. 27 — All three rows start with the same blue robot
 
 <LearningFigure
@@ -79,6 +97,22 @@ Read down the left side first. The inputs differ, but the model starts blue ever
 <Math tex={String.raw`\tilde\theta_t=A(\theta_0,x_t),\qquad \hat y_t=f_{\tilde\theta_t}(x_t)`} display />
 
 <strong>What can the model learn without the correct class label?</strong> In the vision experiments by Sun and colleagues, the program rotates an image by 0°, 90°, 180°, or 270°. It knows the angle it applied even when it does not know what object is in the photo. During training, object classification and rotation prediction share a feature extractor. At test time, the rotation loss updates the shared features. The object classifier then uses those features to read the original image. Imagine photographing a circular washer. If the image looks nearly identical under rotation, the angle provides little information. Which features the auxiliary task shares with the task we care about matters. [Sun et al., ICML 2020, §2](https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=2)
+
+### Worked example · Differentiate a rotation loss without knowing the object class
+
+The program rotates the image by 90°. The model assigns one score to each of four angles. For a calculation we can do by hand, let z be the score (logit) of the known angle and hold the other three scores at zero. The 3 in the softmax denominator comes from three contributions of exp(0) = 1. Let p be the probability of the known rotation and let L be its negative natural log. [Stanford CS231n, Softmax classifier](https://cs231n.github.io/linear-classify/#softmax)
+
+<Math tex={String.raw`p(z)=\frac{e^z}{e^z+3},\qquad L(z)=-\ln p(z)=\ln(e^z+3)-z`} display />
+
+Initially z = 0. All four angles are equally likely, so p = 1/4 and L = ln 4 ≈ 1.3863. Differentiate the logarithm and the final term −z separately.
+
+<Math tex={String.raw`\frac{dL}{dz}=\frac{e^z}{e^z+3}-1=p(z)-1`} display />
+
+The slope is 0.25 − 1 = −0.75. With a learning rate of 0.4, subtracting that negative slope increases the score of the known angle.
+
+<Math tex={String.raw`z_1=0-0.4\,(0.25-1)=0.3,\qquad p(z_1)=\frac{e^{0.3}}{e^{0.3}+3}\approx0.3103`} display />
+
+The new loss is −ln p(z₁) ≈ 1.1701. This verifies a <strong>decrease in the loss for the known rotation</strong>. In TTT the chain rule carries this gradient back into the shared feature extractor. The calculation used no object label. Whether defect classification improved still requires a separate measurement. [Sun et al., ICML 2020, Eqs. 2–3](https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=2)
 
 ### Supplementary lecture · What changes when a model spends longer on an answer?
 
@@ -119,6 +153,18 @@ Let’s put numbers on the camera example. Imagine there is a brightness referen
 | First frame from the bright camera | 0 | 0 | 1.5 |
 
 On the second frame, the remaining errors are 2 and 1, respectively. Keeping the previous correction helped. On the third, the errors are 0 and 1.5, and the ranking reverses. Both procedures took one update per frame. <strong>The starting state</strong> explains the difference.
+
+### Worked example · When does the correction error halve on each frame?
+
+Replace the factor 1/2 in the table with a learning rate η. On the carry-forward path, bₜ = bₜ₋₁ + η(z − bₜ₋₁). Subtract the same target z from both sides and factor out the common term. As long as the lighting stays constant for t frames, we can substitute this relation t times.
+
+<Math tex={String.raw`b_t-z=(1-\eta)(b_{t-1}-z),\qquad b_t-z=(1-\eta)^t(b_0-z)`} display />
+
+Use target 4, initial value 0, and η = 0.5. The correction reaches 3 after two frames. On the third frame the target changes, so we stop using the closed form derived for target 4 and substitute the new target 0 into the one-step update.
+
+<Math tex={String.raw`b_2=4+(0.5)^2(0-4)=3,\qquad b_3=3+0.5(0-3)=1.5`} display />
+
+With a fresh start on every frame, the first relation is applied only once each time. At the switch to the brighter camera, the reference value happens to equal the new target, giving zero error. If the darker scene continues instead, carry-forward halves its remaining error each time. That accounts for the change in ranking in the table.
 
 ### Supplementary paper · Which bars show the effect of carrying an image update forward?
 
@@ -161,9 +207,29 @@ Dynamic SUTA (DSUTA) starts each utterance from a copy of the current reference 
 
 <strong>How does the model detect a change in noise?</strong> The dynamic reset procedure tracks how well the recent speech fits the model adapted to the earlier noise environment. Its indicator compares losses with those of the pretrained model. The procedure checks for a departure from the earlier range across multiple utterances before resetting the reference weights. It receives neither reference transcripts nor the true times at which the noise changes. [Paper, §3.3](https://arxiv.org/html/2406.11064v2#S3.SS3)
 
+### Worked example · Detect a possible change without a reference transcript
+
+In the DSUTA paper, L is a speech adaptation loss computed without labels. Evaluate the same utterance xᵢ with a reference model from the earlier environment, φ_D, and with the pretrained model, φ_pre. The paper calls the difference the Loss Improvement Index (LII). The order of subtraction matters. In the example below, −0.06 means the earlier environment’s model achieved a loss lower by 0.06.
+
+<Math tex={String.raw`I_i=L(\phi_D,x_i)-L(\phi_{\rm pre},x_i),\qquad I_1=0.64-0.70=-0.06`} display />
+
+Suppose the four latest utterances give indices −0.06, −0.02, 0.00, and +0.04. The mean is still negative. To tell whether conditions have deteriorated, compare it with the mean recorded in the previous environment.
+
+<Math tex={String.raw`\bar I=\frac{-0.06-0.02+0.00+0.04}{4}=-0.01`} display />
+
+Let the previous mean μ be −0.10 and its standard deviation σ be 0.08. For M = 4 utterances, the calculation uses a standard error of 0.08/√4. Substituting into the paper’s buffer-average rule gives the following value.
+
+<Math tex={String.raw`Z=\frac{\bar I-\mu}{\sigma/\sqrt M}=\frac{-0.01-(-0.10)}{0.08/\sqrt4}=\frac{0.09}{0.04}=2.25`} display />
+
+The statistic 2.25 exceeds the paper’s threshold of 2. The adapted reference still has a small average advantage over the pretrained model, but much of the advantage it used to have has disappeared. This establishes <strong>one threshold crossing</strong>. The implementation also uses a patience condition to handle transient changes. Strong correlations between successive utterances can make the standard error of their mean larger than expected. The statistic itself gives no probability that the noise changed. [Lin et al., §3.3 and Appendix Algorithm 2](https://arxiv.org/html/2406.11064v2#S3.SS3)
+
 Word error rate (WER) counts the substitutions S, deletions D, and insertions I needed to match a reference transcript, then divides by the number of reference words N. Two substitutions, one deletion, and one insertion against a 20-word reference give a WER of 20%.
 
 <Math tex={String.raw`\mathrm{WER}=100\,\frac{S+D+I}{N}\;\%`} display />
+
+The denominator counts the 20 reference words. A word added by the model increases only the numerator.
+
+<Math tex={String.raw`100\,\frac{2+1+1}{20}=20\;\%`} display />
 
 | Method in Table 2 | State retained for the next utterance | MD-Hard WER ↓ |
 |---|---|---:|
@@ -175,6 +241,12 @@ Word error rate (WER) counts the substitutions S, deletions D, and insertions I 
 | DSUTA + Dynamic reset | Reset when the loss indicator signals an environment change | 39.8% |
 
 These are means over three runs on MD-Hard, a stream with changing noise conditions. Adding dynamic reset to DSUTA reduced WER from 45.6% to 39.8%, a <strong>5.8 percentage-point drop</strong>. Resetting the same method every 50 utterances raised WER by 3.8 points to 49.4%. Carrying every update forward (CSUTA) put WER 9.0 points above the fixed model. These results describe transcription on the changing stream. Measuring retention in a previous environment requires evaluating the model again on a separate set from that environment. [Lin et al., EMNLP 2024, Table 2](https://arxiv.org/html/2406.11064v2#S4.T2)
+
+The change from 45.6% to 39.8% can also be reported as a relative error reduction. The denominator is the WER of DSUTA before adding dynamic reset, 45.6%.
+
+<Math tex={String.raw`\frac{45.6-39.8}{45.6}\times100\approx12.7\;\%`} display />
+
+Using the rounded entries in the table, the absolute difference is 5.8 percentage points and the relative reduction is about 12.7%. The two calculations use different denominators.
 
 ## Part II, p. 30 — After teaching a new skill, ask for the old one again
 
@@ -212,5 +284,27 @@ Pages 28–30 of the 2025 post-training lecture compare sequential fine-tuning, 
 <Math tex={String.raw`\Delta_B=78-60=+18\;\mathrm{pp},\qquad \Delta_A=82-90=-8\;\mathrm{pp}`} display />
 
 The new camera gained 18 points and the original camera lost 8. To measure the effect of replay, start two runs from the same model. Use only B’s training images in the first. Mix in some of A’s training images in the second. Give both runs the same update budget, then measure both models on the same held-out A and B sets. This gives separate readings for retention and adaptation.
+
+### Worked example · How much forgetting does a final accuracy of 80.3% conceal?
+
+Read the table above as a history of learning two tasks. The GEM paper’s backward transfer (BWT) metric compares accuracy just after a task was learned with accuracy on the same evaluation set after the final task. With just one earlier task A, BWT is 82 − 90 = −8 percentage points. The +18 points on B measure adaptation to the new task. [GEM, Eqs. 2–4](https://arxiv.org/pdf/1706.08840#page=3)
+
+Now introduce a third camera C. Each row marks the point just after learning from that camera. Each column uses a fixed test set from one camera. The diagonal gives each camera’s accuracy immediately after learning it. The row for C is hypothetical.
+
+| Training completed through | Accuracy on A | Accuracy on B | Accuracy on C |
+|---|---:|---:|---:|
+| A | 90% | — | — |
+| B | 82% | 78% | — |
+| C | 86% | 71% | 84% |
+
+Read the last row across for the final performance. If each camera gets equal weight, average accuracy (ACC) is as follows.
+
+<Math tex={String.raw`\mathrm{ACC}=(86+71+84)/3=241/3\approx80.3\;\%`} display />
+
+To measure forgetting, read down each column. A fell from 90% when learned to 86% at the end. B fell from 78% to 71%. Average these two changes. C has experienced no subsequent task, so it does not enter the denominator.
+
+<Math tex={String.raw`\mathrm{BWT}=\frac{(86-90)+(71-78)}{2}=\frac{-4-7}{2}=-5.5\;\mathrm{pp}`} display />
+
+On A, accuracy recovered by 4 percentage points since the preceding checkpoint. It still sits 4 points below its value just after learning A. Recovery and residual forgetting can coexist because their reference times differ. The final average of 80.3% does not expose that history.
 
 The blue starting models on page 27, the colors passed between rows on page 28, and the slowly updated reference model on page 29 each answer the same question: <strong>Which changes made for this input should the next input inherit?</strong> Episode 20 continues on page 31 of the second lecture.

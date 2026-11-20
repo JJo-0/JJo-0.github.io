@@ -32,20 +32,22 @@ import Math from '@/components/post/Math.astro';
 
 > <strong>An agent’s prompts and model weights can both change. Updating both does not guarantee a gain. The outcome depends on which component is optimized first, which score guides selection, and whether the result holds when the goal changes.</strong>
 
-[Episode 17](/posts/self-improving-ai-17-archive-dspy-experience/) examined agent code, archives of candidates, DSPy programs, and models that retrieve past experience. Pages 21–25 of the second lecture ask a further question. <strong>How does improving external components such as memory and instructions interact with training the weights θ directly?</strong>
+[Episode 17](/en/posts/self-improving-ai-17-archive-dspy-experience/) examined agent code, archives of candidates, DSPy programs, and models that retrieve past experience. Pages 21–25 of the second lecture ask a further question. <strong>How does improving external components such as memory and instructions interact with training the weights θ directly?</strong>
+
+<strong>Worked examples</strong>　[Retrieval and accuracy](#worked-example-1-how-can-the-agent-retrieve-the-right-memory-and-still-fail) · [E-SPL selection](#worked-example-2-why-test-a-candidate-with-a-lower-mean-rating) · [Inspection costs](#worked-example-3-when-can-the-winner-change-with-both-models-frozen)
 
 <details>
 <summary>Video and papers by slide</summary>
 
 | Slide | Lecture and related material | Question |
 |---|---|---|
-| Part II, p. 21 | [Full NTU lecture](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [ExpRAG paper](https://arxiv.org/abs/2603.18272) | What changes when we train the model that reads the retrieved experience? |
-| Part II, p. 22 | [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [BetterTogether paper](https://aclanthology.org/2024.emnlp-main.597/) | Does the order of prompt and weight updates matter? |
-| Part II, p. 23 | [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [DSPy lecture slides](https://llmagents-learning.org/slides/dspy_lec.pdf#page=35) | Can we apply gradient descent directly to a harness? |
-| Part II, p. 24 | [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [E-SPL paper](https://arxiv.org/abs/2602.14697) | What roles do evolution and reinforcement learning play? |
-| Part II, p. 25 | [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [Original PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=25) | Should the previous best candidate still be used when the goal changes? |
+| Part II, p. 21 | [21:00](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1260s) · [ExpRAG paper](https://arxiv.org/abs/2603.18272) | What changes when we train the model that reads the retrieved experience? |
+| Part II, p. 22 | [22:11](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1331s) · [BetterTogether paper](https://aclanthology.org/2024.emnlp-main.597/) | Does the order of prompt and weight updates matter? |
+| Part II, p. 23 | [24:15](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1455s) · [DSPy lecture slides](https://llmagents-learning.org/slides/dspy_lec.pdf#page=35) | Can we apply gradient descent directly to a harness? |
+| Part II, p. 24 | [24:35](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1475s) · [E-SPL paper](https://arxiv.org/abs/2602.14697) | What roles do evolution and reinforcement learning play? |
+| Part II, p. 25 | [25:19](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1519s) · [Original PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=25) | Should the previous best candidate still be used when the goal changes? |
 
-The links locate the source material. No <em>verified video timestamps</em> were available for pages 21–25, so none are estimated. The additional paper discussions and examples below are the article’s commentary.
+Each time link opens the spoken explanation for that concept. The times follow the start of the corresponding cue in NTU’s Traditional Chinese caption track.
 
 </details>
 
@@ -60,7 +62,7 @@ The links locate the source material. No <em>verified video timestamps</em> were
   width={1800} height={1013}
 />
 
-This slide extends the [side-by-side comparison on page 20](/posts/self-improving-ai-17-archive-dspy-experience/). The upper path, <strong>information and input → AI → output → answer</strong>, depicts <strong>retrieval-augmented generation (RAG)</strong>. Past documents enter as external input. The lower arrow adds <strong>fine-tuning</strong> so the model can make better use of the same information and input.
+This slide extends the [side-by-side comparison on page 20](/en/posts/self-improving-ai-17-archive-dspy-experience/). The upper path, <strong>information and input → AI → output → answer</strong>, depicts <strong>retrieval-augmented generation (RAG)</strong>. Past documents enter as external input. The lower arrow adds <strong>fine-tuning</strong> so the model can make better use of the same information and input.
 
 ### What changes during retrieval and training?
 
@@ -74,9 +76,9 @@ ExpRAG stores execution trajectories in an Experience Bank. For a new problem it
 
 The following notation illustrates the distinction and abstracts away implementation details of the paper.
 
-<Math tex="m(x)=\operatorname{Retrieve}_{K}(\mathcal M,x),\qquad y\sim A_{\theta,h}(x,m(x))" display />
+<Math tex={String.raw`m(x)=\operatorname{Retrieve}_{K}(\mathcal M,x),\qquad y\sim A_{\theta,h}(x,m(x))`} display />
 
-<Math tex="\theta^{\prime}=\operatorname{Train}(\theta;\{(x_i,m(x_i),y_i)\})" display />
+<Math tex={String.raw`\theta^{\prime}=\operatorname{Train}(\theta;\{(x_i,m(x_i),y_i)\})`} display />
 
 The first equation <strong>adds information during inference</strong>. The second <strong>produces a new model trained to use that kind of input</strong>. Training can also hurt performance. To compare systems, hold the retrieval index and evaluation set fixed and record token costs and whether retrieval was enabled.
 
@@ -92,6 +94,20 @@ The first equation <strong>adds information during inference</strong>. The secon
 />
 
 Omar Khattab’s DSPy lecture compares the same MultiHop program before and after optimization. With GPT-3.5, its score rises from 36.9 to 54.7. This is <strong>the lecture’s HotPotQA comparison</strong>. Other models and datasets require separate tests. The BootstrapFinetune results for the smaller T5-770M also use different models and training conditions and should be read separately. [Lecture, p. 30](https://llmagents-learning.org/slides/dspy_lec.pdf#page=30)
+
+### Worked example 1. How can the agent retrieve the right memory and still fail?
+
+Imagine 100 new problems. A retrieval counts as a hit if at least one returned experience contains evidence useful for solving that problem. Let r be the hit rate, u the probability of a correct answer given a hit, and v the probability of a correct answer given a miss. The model can still solve some problems on its own. Weight the two groups by their frequency to obtain the overall accuracy A. The counts below are illustrative.
+
+<Math tex={String.raw`A=ru+(1-r)v`} display />
+
+Suppose the retriever hits on 80 problems and the model answers 60 of those correctly. Then r = 0.80 and u = 60/80 = 0.75. It also solves five of the 20 misses, giving v = 5/20 = 0.25.
+
+<Math tex={String.raw`A=0.80(0.75)+0.20(0.25)=0.65`} display />
+
+That gives 65 correct answers. Raising the hit rate alone to 90% gives 70% accuracy if u and v stay fixed. Keeping the retrieved contexts identical and raising only u to 85% gives 73% accuracy. In a real system a new retriever can change which problems count as hits and how long their contexts are. Record retrieval hits and final correctness for each problem to diagnose a change.
+
+Liu and colleagues isolated a further variable in *Lost in the Middle*. In multi-document question answering, moving the answer-bearing document from the beginning or end toward the middle reduced accuracy for several models. An analogous agent experiment could keep the retrieved experience and distractors fixed and vary only their order. That would test whether the agent uses evidence **once it has been retrieved**. The paper tested document QA and key–value retrieval. Reordering agent trajectories is the application proposed here. [Liu et al., TACL 2024](https://aclanthology.org/2024.tacl-1.9/)
 
 ## Part II, p. 22 — BetterTogether combines prompt optimization and fine-tuning
 
@@ -121,6 +137,8 @@ On the slide, Π denotes <strong>prompt optimization</strong> and Θ denotes <st
 On HotPotQA with Mistral-7B-Instruct-v0.2, Π alone scores 33.8 and Π→Θ→Π scores 37.6, a gain of <strong>3.8 percentage points</strong>. No sequence wins everywhere. On Iris with Llama-3-8B-Instruct, Π→Π scores 82.0 and Π→Θ→Π scores 79.3, a decline of 2.7 points.
 
 A dash in the table marks <strong>an unreported condition with too few training examples</strong>. It does not mean a 0% failure rate. Changing the dataset or initial prompt can change which sequence wins. [Soylu et al., Table 1](https://arxiv.org/pdf/2407.10930v2#page=4)
+
+To isolate order more closely, compare rows with the same number of stages. In the Mistral-7B HotPotQA column, Π→Θ scores 36.3% and Θ→Π scores 33.0%, a 3.3-point difference. On GSM8K the same model scores 47.3% and 48.3%, reversing the ranking. Each number averages held-out accuracy over three seeds. In the HotPotQA program, two modules generate successive search queries and a third generates the answer. Even with a frozen retriever, changing the first query prompt can change the documents returned and the input to the second module. Starting with Π can thus change which successful traces are available for Θ to learn from. This gives a mechanism for an order effect. The scores alone cannot attribute a share of it to a specific module. [Soylu et al., Table 1 and experimental setup](https://aclanthology.org/2024.emnlp-main.597.pdf#page=4)
 
 ### What does the algorithm do?
 
@@ -161,17 +179,17 @@ On page 35 of Khattab’s lecture, “Instructions” and “Few-Shot Examples�
 
 The slide’s first equation shows ordinary gradient descent. With continuous model parameters θ and a differentiable training loss L, the update is:
 
-<Math tex="\theta_{t+1}=\theta_t-\eta\nabla_{\theta}L(\theta_t,h_t)" display />
+<Math tex={String.raw`\theta_{t+1}=\theta_t-\eta\nabla_{\theta}L(\theta_t,h_t)`} display />
 
 A question mark accompanies the next expression.
 
-<Math tex="h_{t+1}\overset{?}{=}h_t-\gamma\nabla_{h}L(\theta_t,h_t)" display />
+<Math tex={String.raw`h_{t+1}\overset{?}{=}h_t-\gamma\nabla_{h}L(\theta_t,h_t)`} display />
 
 When <strong>h contains strings, JSON tool descriptions, a memory index, program branches, or code</strong>, treating it all as a continuous vector and applying the same gradient update is unjustified. A single word can cause a discontinuous change of execution path, and some components have no defined derivative.
 
 A more general formulation is to <strong>generate, evaluate and select candidates</strong>.
 
-<Math tex="\mathcal{C}_{t}=\operatorname{Propose}(h_t,\mathcal H_t),\qquad h_{t+1}\in\operatorname{Select}(\mathcal C_t,\widehat{S}(\theta_t,\cdot))" display />
+<Math tex={String.raw`\mathcal{C}_{t}=\operatorname{Propose}(h_t,\mathcal H_t),\qquad h_{t+1}\in\operatorname{Select}(\mathcal C_t,\widehat{S}(\theta_t,\cdot))`} display />
 
 Harness editing can be combined with weight training. The two may require different update rules. OPRO and GEPA propose and select prompt candidates, while DSPy and BetterTogether compose optimizers for individual modules.
 
@@ -189,6 +207,14 @@ Harness editing can be combined with weight training. The two may require differ
 Page 36 of Khattab’s lecture lists three constraints. (1) An API-only model may expose neither log probabilities nor weights. (2) Human labels may be unavailable for intermediate modules. (3) Both experimental model calls and training data have budgets. Under these conditions, backpropagating through every component in one pass is not a general solution. [Lecture, p. 36](https://llmagents-learning.org/slides/dspy_lec.pdf#page=36)
 
 When fine-tuning or LoRA is available, part of θ can be trained. To attribute any improvement, specify the trainable parameters θ, the fixed harness h, the data split, hyperparameters and model version.
+
+### Which instruction deserves the credit, the query or the answer?
+
+Follow MIPRO across pages 69–74 of Khattab’s lecture. Imagine that the first module writes queries and the second writes answers. Picking one instruction and one set of demonstrations for each module specifies one complete program. The slide sequence illustrates three trials scoring 75%, 50% and 80%. Each score belongs to the full combination. Moving the query instruction from the 80% trial into a different answer module could change the result. [Khattab, lecture slides 69–74](https://llmagents-learning.org/slides/dspy_lec.pdf#page=69)
+
+MIPRO’s Bayesian optimizer uses the choices made in each trial and the score observed for the full program to propose another combination. At 54:13 in the Berkeley recording, Khattab illustrates the budget with 200 validation examples. A trial can sample 30, evaluate the selected combination and feed the observed score back into the surrogate model. The sampled examples affect that score. [Berkeley lecture at 54:13](https://www.youtube.com/watch?v=JEMYuzrKLUw&t=3253s)
+
+Slide 74 shows a return to the full validation set at regular intervals, which helps check whether a promising score came from unusually easy examples in a small batch. This gives a concrete answer to the question mark on slide 23. Even when a sentence has no numerical gradient, **two complete programs can be run on the same problems and compared**. [Opsahl-Ong et al., Algorithm 1](https://aclanthology.org/2024.emnlp-main.525.pdf#page=2)
 
 ## Part II, p. 24 — E-SPL runs system-prompt evolution alongside RL
 
@@ -210,9 +236,17 @@ Evolutionary System Prompt Learning (E-SPL) goes beyond replicating DGM. Inside 
 
 Since both the prompt population and the model weights change, absolute scores across rounds need not be comparable. E-SPL ranks candidates that share the same problems and model within a round and combines these comparisons using a TrueSkill-style running assessment. [E-SPL, section 3](https://arxiv.org/abs/2602.14697)
 
-<Math tex="\operatorname{score}_i=\mu_i+\lambda\sigma_i,\qquad p(i)\propto \exp(\operatorname{score}_i/T)" display />
+<Math tex={String.raw`\operatorname{score}_i=\mu_i+\lambda\sigma_i,\qquad p(i)\propto \exp(\operatorname{score}_i/T)`} display />
 
 Here μ is a candidate’s estimated mean skill and σ its uncertainty. The parameters λ and T control exploration and exploitation. A candidate can be explored for its uncertainty as well as for high mean performance. This expression illustrates the search model. The paper gives the choices for individual settings.
+
+### Worked example 2. Why test a candidate with a lower mean rating?
+
+Appendix B of E-SPL sets λ to 2. Suppose prompt A has a mean rating and standard deviation of (25, 1), while B has (23, 2.5). These are illustrative values on the TrueSkill rating scale. A rating of 25 does not imply 25% accuracy. A’s selection score is 25 + 2 × 1 = 27. B’s is 23 + 2 × 2.5 = 28. Set the temperature T in the paper’s selection equation to 1. For one draw from these two candidates, the probability of choosing B is
+
+<Math tex={String.raw`p(B)=\frac{e^{28}}{e^{27}+e^{28}}=\frac{1}{1+e^{-1}}\approx 0.731`} display />
+
+B has a lower mean rating and still gets a 73.1% chance of being tested. Testing an uncertain candidate provides evidence that can distinguish an early lucky result from a reproducible one. Being sampled does not automatically make B the parent of a new prompt. The algorithm runs the sampled candidates on the same problems under the current weights and mutates the candidate with the highest average reward in that round. **Selection for a trial** and **winning that trial** are different events. [E-SPL, Algorithm 1 and section 3](https://arxiv.org/pdf/2602.14697#page=5) · [Appendix B](https://arxiv.org/pdf/2602.14697#page=22)
 
 ### What do the three curves compare?
 
@@ -220,11 +254,11 @@ The paper reports the following AIME-to-BeyondAIME success rates.
 
 | Method | Success rate | Interpretation |
 |---|---:|---|
-| RL only | 38.8% | Update weights with a fixed prompt |
+| RL only (GRPO) | 38.8% | Update weights with a fixed prompt |
 | Prompt evolution | 40.0% | Evolve the prompt with fixed weights |
 | Evolution + RL (E-SPL) | 45.1% | Combine prompt evolution and weight training |
 
-E-SPL gains <strong>6.3 percentage points</strong> over RL only and <strong>5.1 points</strong> over prompt evolution. These are reported scores on the same dataset. Other models, tasks and budgets can yield different gains. A strong result on this test also needs verification on subsequent evaluation problems. [Figure 1 and section 4](https://arxiv.org/abs/2602.14697)
+E-SPL gains <strong>6.3 percentage points</strong> over RL only and <strong>5.1 points</strong> over prompt evolution. These are reported scores on the same dataset. Other models, tasks and budgets can yield different gains. A strong result on this test also needs verification on subsequent evaluation problems. [Figure 7, DeepSeek-v3.1](https://arxiv.org/pdf/2602.14697#page=6)
 
 ### Why combine the two updates?
 
@@ -245,11 +279,21 @@ The final drawing is titled <strong>Goals Can Change</strong>. A robot acquires 
 
 If the objective H varies with time, a single fixed score cannot determine whether a change counts as an improvement.
 
-<Math tex="h_t^*\in\operatorname*{argmin}_{h\in\mathcal H}L(A_{\theta_t,h},H_t),\qquad H_{t+1}\ne H_t" display />
+<Math tex={String.raw`h_t^*\in\operatorname*{argmin}_{h\in\mathcal H}L(A_{\theta_t,h},H_t),\qquad H_{t+1}\ne H_t`} display />
 
 This notation illustrates objectives that depend on context. It does not imply that optimization finds a global optimum at every time step.
 
 Consider a robot initially tasked with moving objects quickly. Aggressive path planning and high acceleration may help. When its objective becomes safe collaboration near a person, <strong>collision risk, approach speed, safe stopping and sensor latency</strong> become priority constraints. A candidate that violates them should be rejected even if it reports a high task success rate. A change of goal can alter the <strong>evaluation function, constraints and operating environment together</strong>.
+
+### Worked example 3. When can the winner change with both models frozen?
+
+Suppose two vision agents read labels and inspect surfaces for scratches. On fixed evaluation sets, A achieves 96% accuracy for labels and 60% for scratches. B achieves 82% and 90%, respectively. Assume each inspection is worth the same. Let w be the fraction of inspections that involve labels and 1 − w the fraction involving scratches. S is the expected accuracy across the workload, expressed in percent.
+
+<Math tex={String.raw`\begin{aligned}S_A(w)&=96w+60(1-w)=60+36w\\S_B(w)&=82w+90(1-w)=90-8w\end{aligned}`} display />
+
+When labels account for 80% of work, A scores 88.8% and B scores 83.6%. At a 20% label share, A scores 67.2% and B scores 88.4%. Neither model was retrained. Solving 60 + 36w = 90 − 8w gives w = 30/44 ≈ 0.682. **A leads when labels make up more than about 68.2% of inspections.**
+
+Now keep the **same 80% label workload** and change only the price of an error. Charge one loss unit for each wrong label decision and four for each wrong scratch inspection, with a uniform cost within each task. A’s expected loss per inspection is 0.8 × 0.04 + 4 × 0.2 × 0.40 = **0.352 units**. B’s is 0.8 × 0.18 + 4 × 0.2 × 0.10 = **0.224 units**. A wins on accuracy, but B incurs less loss. If missed defects and false alarms have different costs within the scratch task, aggregate accuracy cannot determine this choice. The calculation would need the error rates for each type. [Episode 19](/en/posts/self-improving-ai-19-test-time-training-and-forgetting/) separately examines forgetting by retesting performance on the same earlier task.
 
 ### Keeping the best candidates when the current goal changes
 
@@ -267,9 +311,9 @@ A system that updates both θ and h should preserve their versions and evaluatio
 Across these five slides, <strong>improvement is an experimental claim: specify the component changed and the objective it was changed to serve</strong>. Episode 19 starts on page 26 of Part II with test-time training (TTT) and forgetting.
 
 <details>
-<summary>Worked example and code</summary>
+<summary>Check the calculations</summary>
 
-The example computes percentage-point differences from the original Table 1 and the published E-SPL results and distinguishes missing entries from observed outcomes. The [source manifest](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/source-assets/18/manifest.json) documents figure files, attribution and unofficial English-label edits beginning in episode 17. These calculations do not reproduce model training or the papers’ benchmarks.
+Turn off the uncertainty bonus in example 2 by setting λ = 0. The remaining scores are the means, 25 and 23, so the chance of selecting B falls to 1/(1 + e²) ≈ 11.9%. In example 3, set w = 0.5. A scores 78% and B scores 86%. Both scores use unchanged per-task accuracies, so this gap measures the workload mix rather than a loss of prior skill.
 
 </details>
 

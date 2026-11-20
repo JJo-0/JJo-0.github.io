@@ -34,18 +34,20 @@ import Math from '@/components/post/Math.astro';
 
 [Part 16](/posts/self-improving-ai-16-prompt-memory-code-evolution/) compared ways to change prompts (OPRO and GEPA), memory design (ALMA), and agent code (DGM). Here we read an actual DGM family tree, then turn to declarative agent programs in DSPy and learning from retrieved experience. We move from <strong>search lineages to program optimization, then to harnesses and parameters, and finally to retrieval and learning</strong>.
 
+<strong>Worked examples</strong>　[Parent selection](#calculating-which-archived-agent-gets-to-be-a-parent) · [Answer and evidence](#why-might-the-more-accurate-module-return-weaker-evidence) · [Reretrieval](#a-second-lookup-against-the-same-experience-bank)
+
 <details>
 <summary>Video locations by slide</summary>
 
 | Source | Video or original material | What to look for |
 |---|---|---|
 | Second half, slide 16 | [From 17:12](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1032s) | The discussion leading into DGM lineages and staged evaluation |
-| Second half, slide 17 | [Same video](https://www.youtube.com/watch?v=cQLKVzbwN7I) | The archive tree, performance colors, and evaluation sizes |
-| Second half, slide 18 | [Same video](https://www.youtube.com/watch?v=cQLKVzbwN7I) | Declarative language model programs in DSPy |
-| Second half, slide 19 | [Same video](https://www.youtube.com/watch?v=cQLKVzbwN7I) | How the harness differs from model parameters |
-| Second half, slide 20 | [Same video](https://www.youtube.com/watch?v=cQLKVzbwN7I) | How experience retrieval connects to fine-tuning |
+| Second half, slide 17 | [17:35](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1055s) | The archive tree, performance colors, and evaluation sizes |
+| Second half, slide 18 | [19:24](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1164s) | Declarative language model programs in DSPy |
+| Second half, slide 19 | [20:04](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1204s) | How the harness differs from model parameters |
+| Second half, slide 20 | [20:30](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1230s) | How experience retrieval connects to fine-tuning |
 
-[The previous part's check against the supplied transcript](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/source-assets/16/transcript-provenance.json) places the start of the DGM lineage discussion on slide 16 at **17:12**. This is a topic boundary, not the exact frame when the slide changes. The individual start times for slides 17–20 have not been verified. The paper explanations and examples below are the author's own commentary.
+The times point to spoken topics in the supplied Traditional Chinese captions. Lee explains the node colors at 17:35, introduces DSPy at 19:24, compares harness and weight updates at 20:04, and turns to the experience-retrieval study at 20:30.
 
 </details>
 
@@ -79,6 +81,20 @@ A rule that keeps only the best performer at each step would discard A2 at 34%. 
 
 Candidates need not have equal selection probabilities. The point is to keep a single high score from locking the search permanently into one lineage. Maintaining diversity carries storage and evaluation costs, and running weak candidates still requires limits.
 
+### Calculating which archived agent gets to be a parent
+
+Appendix C.2 of DGM makes the preference for less-explored branches explicit. For an eligible agent i with an imperfect score, let αᵢ be its success rate and nᵢ its number of children with functioning codebase editing. The authors set the sigmoid slope to 10 and its midpoint to 0.5. Adjust the resulting score weight for the child count, then normalize over all eligible parents. [DGM, Appendix C.2, equations 1–7](https://arxiv.org/pdf/2505.22954v3#page=28)
+
+<Math tex={String.raw`s_i=\frac{1}{1+e^{-10(\alpha_i-0.5)}},\qquad w_i=\frac{s_i}{1+n_i},\qquad p_i=\frac{w_i}{\sum_{j\in E}w_j}.`} display />
+
+Suppose the archive contains only A and B. In this invented example, A scores 0.60 and has three functioning children, while B scores 0.40 and has none.
+
+<Math tex={String.raw`w_A=\frac{1}{4(1+e^{-1})}\approx0.18276,\qquad w_B=\frac{1}{1+e^{1}}\approx0.26894.`} display />
+
+<Math tex={String.raw`p_B\approx\frac{0.26894}{0.18276+0.26894}=0.5954,\qquad p_A\approx0.4046.`} display />
+
+B has about a 59.5% chance on one draw. A scores higher, but its branch has already yielded three children capable of editing code. The parent-selection probability quantifies exploration of a branch. Predicting whether B's proposed child will succeed requires different evidence. Adding another eligible parent changes the normalization denominator.
+
 ## Second half, slide 17 — Reading the colors, borders, and star in the DGM lineage
 
 <LearningFigure
@@ -109,7 +125,7 @@ Figure 3 in the original paper plots three curves alongside the lineage.
 
 The last curve temporarily dips. The best-so-far curve never falls *because it tracks the running maximum*. An individual child can score lower than its parent.
 
-<Math tex="B_t=\max_{a\in\mathcal A_t}S(a)" display />
+<Math tex={String.raw`B_t=\max_{a\in\mathcal A_t}S(a)`} display />
 
 The expression gives the highest score among archived candidates <strong>for a fixed benchmark and scoring rule</strong>. If all earlier candidates remain in the archive, B cannot decrease. Combining scores from different evaluation sizes or different conditions without adjustment can produce a misleading ranking.
 
@@ -172,6 +188,16 @@ Slide 31 explains the different roles optimizers can play. The BootstrapFewShot 
 
 In DSPy, compilation means tuning a language model program's <strong>instructions, examples, and sometimes weights</strong> for a particular input distribution and metric. It differs from compiling C++ into machine code. After optimization, evaluate the result on separate held-out data.
 
+### Why might the more accurate module return weaker evidence?
+
+Khattab's program on slide 20 generates two queries, retrieves three passages at each hop, then answers from the accumulated context. In the author’s birth-year example on slide 35, the first hop links a work to its author and the next links that author to a year. A correct final guess can still leave either link unsupported. [Slide 20](https://llmagents-learning.org/slides/dspy_lec.pdf#page=20) · [Slide 35](https://llmagents-learning.org/slides/dspy_lec.pdf#page=35)
+
+On ten questions, set aᵢ to one for a correct answer and eᵢ to one when the retrieved passages support both links. Consider two hypothetical systems. P earns nine answer passes and eight evidence passes, with seven on the same questions. Q earns eight answer passes and nine evidence passes, with eight joint passes. A metric requiring both conditions multiplies the indicators within each item before averaging.
+
+<Math tex={String.raw`G=\frac{1}{10}\sum_{i=1}^{10}a_i e_i,\qquad G_P=\frac{7}{10}=0.70,\quad G_Q=\frac{8}{10}=0.80.`} display />
+
+For P, seven items satisfy both conditions, two have only a correct answer and one has only sufficient evidence. P wins on answers alone, while Q leads by ten percentage points on grounded answers. Multiplying P's marginal rates gives 0.72, different from the actual joint rate of 0.70. To verify the difference, keep the evidence rule and the paired decisions for each item.
+
 ## Second half, slide 19 — AI agent = harness + LLM
 
 <LearningFigure
@@ -185,7 +211,7 @@ In DSPy, compilation means tuning a language model program's <strong>instruction
 
 As defined in [Part 15](/posts/self-improving-ai-15-harness-optimization-and-evaluation/), the harness h includes instructions, tool calls, retrieval, memory, and program control. The model parameters θ are its weights. The figure's <strong>Language Model</strong> label translates the original Chinese 「語言模型」. The equations, arrows, and shapes are reproduced from the source. Flames above both boxes indicate that either component can be improved. A deployed product may still restrict which parts can learn.
 
-<Math tex="A_{\theta,h}(x),\qquad (\theta,h)\longrightarrow (\theta',h')" display />
+<Math tex={String.raw`A_{\theta,h}(x),\qquad (\theta,h)\longrightarrow (\theta',h')`} display />
 
 | Experiment | θ (model weights) | h (harness) | What it measures |
 |---|---|---|---|
@@ -226,10 +252,22 @@ The 2026 paper [Retrieval-Augmented LLM Agents: Learning to Learn from Experienc
 
 Figure 1 shows an experience bank that stores and indexes earlier agent trajectories. The current task and execution history form a query, and the top K relevant experiences are inserted into a memory block. Static retrieval runs once at the start. Dynamic retrieval updates the result at each step in light of new observations. [Paper, Figure 1](https://arxiv.org/pdf/2603.18272v2#page=1)
 
-<Math tex="m_t=\operatorname{TopK}_{\tau_i\in\mathcal M}\operatorname{sim}(\phi(h_t),\phi(\tau_i))" display />
-<Math tex="a_t\sim\pi_\theta(\cdot\mid x,h_t,m_t)" display />
+<Math tex={String.raw`m_t=\operatorname{TopK}_{\tau_i\in\mathcal M}\operatorname{sim}(\phi(h_t),\phi(\tau_i))`} display />
+<Math tex={String.raw`a_t\sim\pi_\theta(\cdot\mid x,h_t,m_t)`} display />
 
 This <strong>simplified notation</strong> explains the paper's architecture. \(\\mathcal M\) denotes the stored trajectories, h<sub>t</sub> the current execution history, m<sub>t</sub> the selected experience, and π the policy proposing an action. The expression omits details of the paper's implementation.
+
+### A second lookup against the same experience bank
+
+In the ExpRAG experiment, static retrieval uses task descriptions as queries and keys. Dynamic retrieval uses the partial interaction trajectory as the query and stored full trajectories as keys. New observations can make a different experience relevant. The paper also accounts for re-encoding the prompt when the retrieved context changes. [EMNLP final paper, §4.3, page 6](https://aclanthology.org/2026.emnlp-main.57.pdf#page=6)
+
+Consider an invented two-record bank. In a two-dimensional teaching space, k₁=(1,0) encodes a setup record and k₂=(0,1) a diagnostic record. Retrieve one item using cosine similarity. The initial query is q₀=(1,0). Suppose an error observation changes it to q₁=(1,2).
+
+<Math tex={String.raw`c(q,k)=\frac{q^\top k}{\lVert q\rVert_2\lVert k\rVert_2},\qquad (c(q_0,k_1),c(q_0,k_2))=(1,0).`} display />
+
+<Math tex={String.raw`\lVert q_1\rVert_2=\sqrt{1^2+2^2}=\sqrt{5},\qquad (c(q_1,k_1),c(q_1,k_2))=\left(\frac1{\sqrt5},\frac2{\sqrt5}\right)\approx(0.447,0.894).`} display />
+
+Keeping the initial retrieval leaves the setup record k₁ in context. Re-querying selects the diagnostic record k₂. This calculation identifies the selected record. To establish whether the new record improves the action, run both retrieval policies from matching initial states and measure final success and cost. The coordinates and cosine scores belong to the worked example.
 
 ### Having experience available and learning from it are different capabilities
 
@@ -254,7 +292,7 @@ Suppose a robot agent retrieves records of earlier failures before starting a ne
 
 Combining these methods does not automatically improve the agent. Store the code produced by search, the compiled DSPy modules, the retrieval configuration, and the model version as <strong>separately identifiable artifacts</strong>. When something fails, that record lets you trace the outcome to the change that produced it.
 
-[Part 18](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=21) starts with slide 21 of the second half. It examines the benefits of combining <strong>prompt optimization</strong> and <strong>fine-tuning</strong> and the evaluation conditions needed to assess them.
+[Part 18](/en/posts/self-improving-ai-18-better-together-and-evolving-goals/) starts with slide 21 of the second half. It examines the benefits of combining <strong>prompt optimization</strong> and <strong>fine-tuning</strong> and the evaluation conditions needed to assess them.
 
 ## Further reading
 
