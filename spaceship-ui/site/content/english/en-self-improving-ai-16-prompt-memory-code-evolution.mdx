@@ -36,6 +36,8 @@ import Math from '@/components/post/Math.astro';
 
 Slides 11–15 of the second lecture provide four answers. OPRO uses earlier instructions and scores to generate new instructions. GEPA reads traces from failed runs and keeps candidates that excel on different problems. ALMA changes the code for storing and retrieving experiences. The Darwin Gödel Machine (DGM) revises the coding agent's own tools and workflow. For each, follow <strong>what changes → what feedback is available → how candidates are selected</strong>.
 
+<strong>Worked examples</strong>　[Paired outcomes](#which-items-changed-behind-an-eight-point-gain) · [GEPA screening](#what-can-the-screening-batch-miss) · [Memory design](#when-does-a-different-memory-design-win)
+
 <details>
 <summary>Video locations by slide</summary>
 
@@ -157,6 +159,14 @@ The eight-point difference is an observation on this test set. It does not alone
 
 OPRO also discusses prompt-search overfitting. Its default setting uses no separate validation set, and a further analysis investigates using one. The splits above illustrate a comparison design for this article. [OPRO, section 5.4](https://arxiv.org/html/2309.03409v3#S5.SS4)
 
+### Which items changed behind an eight-point gain?
+
+The evaluator on CMU slide 58 returns one score per candidate. That score can guide the next proposal. To investigate whether the new instruction broke previously correct answers, retain the item-level predictions as well. In the hypothetical 50-item test above, suppose both instructions get 30 right, only A gets four right, only B gets eight right, and both miss eight. [CMU, slide 58](https://deeplearning.cs.cmu.edu/S25/document/slides/lec20.LLMs.pdf#page=58)
+
+<Math tex={String.raw`S_A=\frac{30+4}{50}=0.68,\qquad S_B=\frac{30+8}{50}=0.76,\qquad S_B-S_A=\frac{8-4}{50}=0.08.`} display />
+
+Items that both candidates solve or both miss cancel in the difference. B repairs eight failures and introduces four errors. If all four new errors involve unit conversion, those items suggest a specific diagnostic case for the next meta-prompt. The decomposition requires matching item IDs, answer keys and model settings. Once these 50 items inform another edit, use a fresh holdout to report final performance.
+
 ### Where does search incur costs?
 
 In a <strong>separate hypothetical example</strong>, evaluate eight candidates on 25 problems each and two finalists on 100 each. With one target-model call per problem, the number of target-model runs is:
@@ -257,6 +267,18 @@ Under the usual definition of Pareto dominance, a candidate is dominated if anot
 
 Thus the general nondominated set is A, B, and C, while the GEPA parent-selection set in this example is A and B. A dominates D on every item. The algorithm differs from uniformly sampling all nondominated candidates. Exclusion from this parent-selection step does not imply permanent deletion from the candidate record. [GEPA, Algorithm 2](https://arxiv.org/pdf/2507.19457v2#page=6)
 
+### What can the screening batch miss?
+
+Figure 3 of GEPA shows two evaluations. A mutation that improves on its parent on a small batch gets evaluated on a larger validation set and enters the pool. How can that cheap screen miss regressions? In this invented example, a proposed instruction gains 0.2 on each of three items, loses 0.4 on each of two, and leaves five unchanged. [GEPA, Figure 3, page 5](https://arxiv.org/pdf/2507.19457v2#page=5)
+
+<Math tex={String.raw`\Delta_{10}=\frac{3(0.2)+2(-0.4)+5(0)}{10}=\frac{-0.2}{10}=-0.02.`} display />
+
+Sample three of the ten uniformly without replacement. There are 56 triples among the eight non-regressing items. Ten of those triples contain only unchanged items. The other 46 reveal at least one improvement and no losses.
+
+<Math tex={String.raw`P(\Delta_{3}>0)=\frac{\binom{8}{3}-\binom{5}{3}}{\binom{10}{3}}=\frac{56-10}{120}=\frac{23}{60}\approx0.383.`} display />
+
+Although the full mean declines, this batch shows a strict improvement and advances the candidate about 38.3% of the time. Two gains and one loss sum to exactly zero and fail the strict screen. The probability follows from this particular item mix and sampling rule. The [paper’s search procedure](https://arxiv.org/pdf/2507.19457v2#page=6) supplies the comparison rule.
+
 ### What do GEPA's results establish?
 
 In the paper's Qwen3-8B comparison, GEPA averages 54.85 over six tasks and GRPO averages 48.91. On AIME-2025 in the same table, GRPO scores 38.00 against GEPA's 32.00. “Can Outperform Reinforcement Learning” in the title refers to experimental settings where GEPA performs better, not a universal ranking. [GEPA, Table 1 and section 4](https://arxiv.org/html/2507.19457v2#S4)
@@ -320,6 +342,18 @@ The table covers ALFWorld, TextWorld, Baba Is AI, and MiniHack. In the displayed
 On Baba Is AI with GPT-5-mini, Dynamic Cheatsheet scores 38.0% versus ALMA's 33.3%. The mean gain does not establish a win over every baseline in every environment. Individual cells are already rounded, so averaging them may differ in the final digit from averaging the underlying data.
 
 The research question is more specific than whether memory capacity can grow: <strong>Can we find storage, update, and retrieval rules that let the same agent use experience more effectively?</strong> In your own system, examine success rate alongside retrieved context length, storage and retrieval cost, and failures due to stale experience.
+
+### When does a different memory design win?
+
+ALMA Figure 4 varies the number of trajectories available during **collection**, then freezes the memory during **evaluation**. This isolates the value of the collected memory from any further writes during deployment. Figure 5 asks a separate question about a shift in the deployment task distribution. Consider the following invented inspection-equipment example. [ALMA §3.2 and Figures 4–5](https://arxiv.org/html/2602.07755v1#S4.SS4)
+
+Test memory designs U and V on the same held-out tasks. There are ten routine setup problems and ten unfamiliar diagnostic problems. U solves eight setup and four diagnostic problems, while V solves six setup and seven diagnostic problems. Let q be the fraction of setup requests in deployment. The expected success rate weights the two within-type rates by the incoming mix.
+
+<Math tex={String.raw`S_U(q)=q\frac{8}{10}+(1-q)\frac{4}{10}=0.4+0.4q,\quad S_V(q)=q\frac{6}{10}+(1-q)\frac{7}{10}=0.7-0.1q.`} display />
+
+<Math tex={String.raw`S_U(q)>S_V(q)\iff 0.5q>0.3\iff q>0.6.`} display />
+
+With an even mix, U scores 60% and V scores 65%. With 80% setup requests, U scores 72% and V scores 62%. The ranking changes because the task mix changes. This calculation assumes the within-type rates hold after deployment. A shift in difficulty within either type calls for a new measurement there.
 
 ## Second half, slide 15 — DGM edits the agent's own code
 

@@ -21,12 +21,12 @@ const chapters = [
   { number: 11, math: 16, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-11-automated-post-training', previous: 'self-improving-ai-10-self-play-and-external-feedback', next: 'self-improving-ai-12-weak-to-strong-generalization' },
   { number: 12, math: 12, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-12-weak-to-strong-generalization', previous: 'self-improving-ai-11-automated-post-training', next: 'self-improving-ai-13-agent-harness-and-system-improvement' },
   { number: 13, math: 8, figures: 6, primarySlides: 2, timingRows: 2, slug: 'self-improving-ai-13-agent-harness-and-system-improvement', previous: 'self-improving-ai-12-weak-to-strong-generalization', next: 'self-improving-ai-14-proposer-solver-verifier' },
-  { number: 14, math: 14, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-14-proposer-solver-verifier', previous: 'self-improving-ai-13-agent-harness-and-system-improvement', next: 'self-improving-ai-15-harness-optimization-and-evaluation' },
-  { number: 15, math: 15, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-15-harness-optimization-and-evaluation', previous: 'self-improving-ai-14-proposer-solver-verifier', next: 'self-improving-ai-16-prompt-memory-code-evolution' },
-  { number: 16, math: 11, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-16-prompt-memory-code-evolution', previous: 'self-improving-ai-15-harness-optimization-and-evaluation', next: 'self-improving-ai-17-archive-dspy-experience' },
-  { number: 17, math: 4, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-17-archive-dspy-experience', previous: 'self-improving-ai-16-prompt-memory-code-evolution', next: 'self-improving-ai-18-better-together-and-evolving-goals' },
-  { number: 18, math: 7, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-18-better-together-and-evolving-goals', previous: 'self-improving-ai-17-archive-dspy-experience', next: 'self-improving-ai-19-test-time-training-and-forgetting' },
-  { number: 19, math: 5, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-19-test-time-training-and-forgetting', previous: 'self-improving-ai-18-better-together-and-evolving-goals', next: null },
+  { number: 14, math: 17, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-14-proposer-solver-verifier', previous: 'self-improving-ai-13-agent-harness-and-system-improvement', next: 'self-improving-ai-15-harness-optimization-and-evaluation' },
+  { number: 15, math: 18, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-15-harness-optimization-and-evaluation', previous: 'self-improving-ai-14-proposer-solver-verifier', next: 'self-improving-ai-16-prompt-memory-code-evolution' },
+  { number: 16, math: 16, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-16-prompt-memory-code-evolution', previous: 'self-improving-ai-15-harness-optimization-and-evaluation', next: 'self-improving-ai-17-archive-dspy-experience' },
+  { number: 17, math: 10, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-17-archive-dspy-experience', previous: 'self-improving-ai-16-prompt-memory-code-evolution', next: 'self-improving-ai-18-better-together-and-evolving-goals' },
+  { number: 18, math: 11, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-18-better-together-and-evolving-goals', previous: 'self-improving-ai-17-archive-dspy-experience', next: 'self-improving-ai-19-test-time-training-and-forgetting' },
+  { number: 19, math: 20, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-19-test-time-training-and-forgetting', previous: 'self-improving-ai-18-better-together-and-evolving-goals', next: null },
 ];
 const mappingSummary = '슬라이드별 영상 위치';
 const lectureParts = [
@@ -47,6 +47,8 @@ const timestampGroups = {
   14: [0, 7, 45, 216, 285],
   15: [285, 315, 336, 348, 427],
   16: [500, 584, 779, 833, 931],
+  17: [1032, 1055, 1164, 1204, 1230],
+  18: [1260, 1331, 1455, 1475, 1519],
   19: [1616, 1675, 1726, 1747, 1777],
 };
 const productionPhrases = [
@@ -215,8 +217,6 @@ try {
   for (const chapter of chapters) {
     assert(Number.isInteger(chapter.math) && chapter.math > 0, `Set the exact math count for chapter ${chapter.number}`);
     assert(Number.isInteger(chapter.figures) && chapter.figures > 0, `Exact figure count for chapter ${chapter.number}`);
-    // The five chapter 17 video links have no verified timestamps. Check disclosure rows
-    // without inventing or asserting a corresponding list of timed transcript links.
     if (chapter.timingRows !== null && timestampGroups[chapter.number]) assert.equal(chapter.timingRows, timestampGroups[chapter.number].length, `Exact timestamp count for chapter ${chapter.number}`);
     const manifest = loadChapterManifest(chapter);
     manifests.set(chapter.number, manifest);
