@@ -1,0 +1,390 @@
+---
+title: Self-Improving AI 11 — Can AI post-train a smaller model?
+description: PostTrainBench and FT-Dojo distinguish the training agent from the target model and examine time budgets,
+  weighted scores and data contamination.
+pubDate: 2026-11-18 12:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-11-automated-post-training
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- post-training
+- llm-agents
+- fine-tuning
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 11
+translationKey: en-self-improving-ai-11-automated-post-training
+translatedPosts:
+  ko-KR: self-improving-ai-11-automated-post-training
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>Solving problems well and training models well are different abilities. They need different evaluations.</strong>
+
+[Part 10](/posts/self-improving-ai-10-self-play-and-external-feedback/) examined the reliability of feedback when AI generates its own problems and answers. Now we change its role. Give a strong AI a smaller model and training resources, and ask it to improve that model.
+
+The AI selects data, writes training code, fixes failed runs and uses the results to choose the next experiment. It takes on some of the work of a <strong>post-training</strong> researcher. What actually learns? How much can it improve within the time limit? Does a high score come from legitimate learning?
+
+<details>
+<summary>Video timestamps by slide</summary>
+
+| Slide | Video | Topic |
+|---|---|---|
+| 51 | [52:16–52:53](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3136s) | A strong AI designs training for a smaller model |
+| 52 | [52:53–53:47](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3173s) | PostTrainBench objectives and operating conditions |
+| 53 | [53:47–55:16](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3227s) | Preparing data, timing out and changing strategy |
+| 54 | [55:16–56:41](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3316s) | Comparing baselines with automated post-training |
+| 55 | [56:41–58:39](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3401s) | Data contamination, model substitution and API restrictions |
+
+</details>
+
+## Slide 51 — The smaller model learns while the larger model directs training
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-51-en.png"
+  alt="A strong AI trains a smaller model by setting the objective, proposing alternatives and selecting a good option."
+  caption="Slide 51 — A strong AI can make and execute training decisions."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=51"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+At [52:16](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3136s), the lecture moves from continual self-improvement to <strong>using a strong AI to train a smaller model</strong>. AI takes on the three steps from [Part 2](/posts/self-improving-ai-02-learning-targets/): set an objective, generate alternatives and find a good choice.
+
+There are two distinct roles.
+
+| Role | What it changes | How to measure improvement |
+|---|---|---|
+| Training agent | Data composition, code, training settings and experiment order | Can it produce a good target model within the resource budget? |
+| Target model | Parameters or adapters to be fine-tuned | How well does it solve new problems after training? |
+
+An agent that edits Gemma's training code does not thereby change its own network weights. Reading a run log and choosing the next action differs from updating target-model parameters by gradient descent. PostTrainBench evaluates <strong>the target model submitted by the agent</strong>. [PostTrainBench §2–2.1](https://arxiv.org/pdf/2603.08640v2#page=2)
+
+Consider a single experiment.
+
+<Math tex={String.raw`\theta_k=\operatorname{Train}(\theta_0,\mathcal D_k,\lambda_k),\qquad
+v_k=\operatorname{Eval}_{\mathrm{val}}(\theta_k).`} display />
+
+| Symbol | Meaning |
+|---|---|
+| θ₀ | Target model parameters before training |
+| Dₖ | Training data selected and processed for experiment k |
+| λₖ | Settings including learning rate, batch size, training duration and adapter configuration |
+| θₖ | Target model obtained from this experiment |
+| vₖ | Performance measured on validation data |
+
+This formulation starts each experiment from the same initial model. When resuming from a previous checkpoint, include the starting point in the experimental settings. The agent observes results and changes Dₖ and λₖ. Automation therefore includes <strong>choosing the next experiment</strong> as well as running the training code.
+
+### Further reading — FT-Agent uses earlier failures to choose its next experiment
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ft-dojo-v1-figure2.png"
+  alt="FT-Agent remembers previous successes and failures and cycles through strategy proposals, implementation, validation and feedback analysis."
+  caption="FT-Agent, Figure 2 — Proposing a hypothesis, executing it and interpreting multiple forms of feedback."
+  source="https://arxiv.org/pdf/2603.01712v1#page=5"
+  credit="Qizheng Li et al. / FT-Dojo"
+  width={1801} height={1416}
+/>
+
+<strong>FT-Dojo</strong> is an environment for fine-tuning experiments. <strong>FT-Agent</strong> is an agent that works in it. FT-Dojo provides 13 tasks in five domains: mathematics, patents, chemistry, finance and table question answering. FT-Agent proposes a strategy, checks the implementation, trains and analyzes the results in a loop. [FT-Dojo §2–3](https://arxiv.org/pdf/2603.01712v1#page=2)
+
+The important ingredient is <strong>feedback that helps explain a failure</strong>. A decline in average accuracy alone has many possible causes. A diverging loss, a formatting error or repeated failures on a specific task type point toward different next experiments.
+
+| Observation | Check first | Possible next experiment |
+|---|---|---|
+| Execution error before training starts | Paths, settings and data format | Check the pipeline with a small input |
+| Training loss falls but validation performance declines | Overfitting or a mismatch between data and task | Adjust the training duration or data mixture |
+| Answer is correct but its format is wrong | Training template and answer extraction | Review formatting examples and evaluation preprocessing |
+| Repeated failures on particular types of problem | Coverage of those types in the data | Add data that exercise the relevant skill |
+
+These examples suggest diagnoses. Test a hypothesis through a controlled comparison before attributing a cause.
+
+Before a long run, FT-Agent checks the configuration, runs a small amount of data and briefly inspects quantities such as losses and gradients. This is <strong>fail-fast validation</strong>. Finding a broken setting early frees time for more useful experiments. [FT-Dojo §3.2](https://arxiv.org/pdf/2603.01712v1#page=5)
+
+The data used for validation also serve a different purpose from the data used to report final performance. Selecting one experiment from several can be written as
+
+<Math tex={String.raw`k^*\in\underset{1\le k\le K}{\arg\max}\;v_k,\qquad
+s_{\mathrm{final}}=\operatorname{Eval}_{\mathrm{test}}(\theta_{k^*}).`} display />
+
+For validation scores 0.68, 0.74 and 0.71, choose the second model. If it scores 0.66 on a separate test set, report 0.66. Reporting the best validation score of 0.74 as performance on new data would include the benefit of selection. FT-Dojo separates feedback during iteration from final test evaluation. [FT-Dojo §2.4](https://arxiv.org/pdf/2603.01712v1#page=3)
+
+## Slide 52 — What can an agent deliver with one GPU and ten hours?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-52-en.png"
+  alt="PostTrainBench prompt asking an agent to improve a small base model on a benchmark while choosing its own data and training methods."
+  caption="Slide 52 — Given an objective and resources, the agent chooses its data, method and experiment order."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=52"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Introduced at [52:53](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3173s), PostTrainBench supplies a base model, target benchmark, evaluation script and execution environment. The agent submits a trained model after using one H100 GPU for up to ten hours. No specific training algorithm or training dataset is prescribed. [PostTrainBench §2, Appendix B](https://arxiv.org/pdf/2603.08640v2#page=2)
+
+The ten hours apply to one model-benchmark pair. Combining four base models with seven benchmarks gives this many tasks per agent configuration.
+
+<Math tex={String.raw`4\times7=28\text{ configurations}.`} display />
+
+If every task uses the full budget, one complete evaluation takes at most 280 GPU-hours. Repeating each task three times gives 84 runs.
+
+<Math tex={String.raw`28\times10=280\text{ GPU-hours},\qquad 28\times3=84\text{ runs}.`} display />
+
+These are upper bounds on the budget. Actual runtime depends on early completion. The paper ran several principal agent configurations three times and others once. The rows therefore have different numbers of repetitions. [PostTrainBench §3.1, Table 1](https://arxiv.org/pdf/2603.08640v2#page=4)
+
+### Further reading — Completing training and making a valid submission
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/posttrainbench-v2-figure2.png"
+  alt="PostTrainBench checks submitted models for data contamination and substitution before benchmarking valid submissions."
+  caption="PostTrainBench, Figure 2 — Checking performance and compliance with the experimental rules."
+  source="https://arxiv.org/pdf/2603.08640v2#page=3"
+  credit="Ben Rank et al. / PostTrainBench"
+  width={1801} height={483}
+/>
+
+The left side shows training by the agent. The right side shows checks and evaluation after submission. Scoring follows checks such as whether the designated base model was trained and whether evaluation data entered training. A run with a detected violation receives the original base model's score. [PostTrainBench §2, Figure 2](https://arxiv.org/pdf/2603.08640v2#page=3)
+
+The target model solves math problems or calls functions. The training agent conducts the research that produces it. Reading an agent's row as the agent's own math accuracy confuses these two roles.
+
+Consider the scope of each experiment as well. A model optimized for BFCL in one task and a model optimized for math in another are separate submissions. <strong>A collection of high task scores does not show that one model gained all those abilities at once.</strong>
+
+## Slide 53 — A good plan still has to finish on time
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-53-en.png"
+  alt="Run log showing Opus 4.5 training Gemma3-4B, hitting a timeout, and changing the data count, epoch count and batch size."
+  caption="Slide 53 — A timeout prompts changes to the data and training configuration."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=53"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+At [53:47](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3227s), the lecture shows Opus 4.5 improving code generation in Gemma3-4B. The log includes finding data, writing a decontamination filter, timing out and changing settings. Improving a small model requires more than knowing the name of a training method. <strong>Data, memory, time and evaluation tools all have to work together.</strong> [PostTrainBench, Figure 3](https://arxiv.org/pdf/2603.08640v2#page=4)
+
+### What does SFT change?
+
+This example uses supervised fine-tuning (SFT) and LoRA. SFT trains on pairs of inputs x and target responses y. One way to write the average response-token prediction loss is
+
+<Math tex={String.raw`\mathcal L_{\mathrm{SFT}}(\theta)=
+-\frac{1}{\sum_{i=1}^{N}T_i}\sum_{i=1}^{N}\sum_{t=1}^{T_i}
+\log p_\theta(y_{i,t}\mid x_i,y_{i,<t}).`} display />
+
+N is the number of training examples and Tᵢ the number of response tokens in example i. The denominator counts all response tokens used for training. The input serves as context and only response tokens contribute to the loss. If correct code is the target, training increases the probabilities of its tokens. [LoRA §2](https://arxiv.org/pdf/2106.09685v2#page=2)
+
+This loss encourages <strong>closer imitation of the target response</strong>. If the target code is wrong or contains evaluation problems, a lower loss gives little evidence of the desired generalization. This makes data selection as important as training settings.
+
+### LoRA learns a low-rank update to a weight matrix
+
+LoRA freezes an existing weight matrix and expresses the update using two smaller matrices. Omitting the scale factor, write
+
+<Math tex={String.raw`W=W_0+BA,\qquad
+W_0\in\mathbb R^{d_{\mathrm{out}}\times d_{\mathrm{in}}},\quad
+B\in\mathbb R^{d_{\mathrm{out}}\times r},\quad
+A\in\mathbb R^{r\times d_{\mathrm{in}}}.`} display />
+
+W₀ is the original frozen matrix, A and B are trainable and r is a small rank. BA has the same dimensions as the original matrix but requires fewer trainable numbers. [LoRA §4.1](https://arxiv.org/pdf/2106.09685v2#page=4)
+
+<Math tex={String.raw`N_{\mathrm{full}}=d_{\mathrm{out}}d_{\mathrm{in}},\qquad
+N_{\mathrm{LoRA}}=r(d_{\mathrm{out}}+d_{\mathrm{in}}).`} display />
+
+For one 4,096-by-4,096 matrix at r=8, full fine-tuning trains 16,777,216 parameters and LoRA trains 65,536.
+
+<Math tex={String.raw`\frac{65{,}536}{16{,}777{,}216}=\frac1{256}=0.00390625.`} display />
+
+That is about 0.39% of the parameters for this one matrix. The example does not reconstruct the actual Gemma settings or imply that total memory or training time falls by a factor of 256. The original weights, activations and forward and backward computations are still needed.
+
+### Further reading — Following the changes of plan in the full run log
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/posttrainbench-v2-figure3.png"
+  alt="Opus 4.5 post-training Gemma3-4B for HumanEval: initial evaluation, SFT with LoRA, a timeout, training on 20,000 examples, restoring configuration and submitting the model."
+  caption="PostTrainBench, Figure 3 — Fixing data, training and evaluation problems to produce a submission."
+  source="https://arxiv.org/pdf/2603.08640v2#page=4"
+  credit="Ben Rank et al. / PostTrainBench"
+  width={1801} height={3027}
+/>
+
+| Stage | Change recorded | Interpretation |
+|---|---|---|
+| Data preparation | 203,178 examples, SFT with LoRA and a decontamination filter | Sets up the data and implementation before training |
+| First training attempt | Two epochs, batch size 4, timeout | The initial plan did not finish |
+| Revised training | At most 20,000 examples, one epoch, batch size 8 | Reduces the run to fit the remaining budget |
+| Evaluation repair | Supplies a missing preprocessing configuration file | Restores configuration needed to evaluate the weights |
+| Final iteration | Attempts up to 30,000 examples and submits | Uses remaining time to try another improvement |
+
+The initial plan would visit 203,178 examples twice, for 406,356 example visits. The revised plan visits up to 20,000 examples once.
+
+<Math tex={String.raw`203{,}178\times2=406{,}356,\qquad
+\frac{20{,}000}{406{,}356}\approx0.0492.`} display />
+
+Measured simply in example visits, the revision is about 4.92% of the original plan. Batch size also changed and token lengths vary, so that percentage does not give the runtime reduction. The initial run stopped early and never completed all 406,356 visits.
+
+The log's initial evaluation gave <strong>a score of 0.0% on 20 samples</strong>. Later evaluations gave <strong>scores of 28.7% and 37.3% on 150 samples</strong>. The sample counts differ, so the three values cannot be read as successive improvements on the same test set. What the log directly shows is <strong>a model brought to completion by checking resources and repairing failures</strong>.
+
+## Slide 54 — What does an average score of 23.2 average?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-54-en.png"
+  alt="PostTrainBench Table 1 with a weighted average and seven benchmark scores. Official instruction models scored 51.1, the Opus 4.6 agent 23.2, the few-shot baseline 18.1 and the base models 7.5."
+  caption="Slide 54 — Comparing aggregate scores alongside task-level results."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=54"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+At [55:16](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3316s), the lecture compares post-training results. The Avg column quickly gives a ranking. Understanding what was averaged tells us what question that ranking answers.
+
+### First average target models, then weight benchmarks
+
+Let sᵢ,ₘ be the score for target model m on benchmark i. First average over the four base models.
+
+<Math tex={String.raw`\overline s_i=\frac14\sum_{m=1}^{4}s_{i,m}.`} display />
+
+Then take a weighted average across the seven benchmarks. The paper gives higher weight to tasks with a smaller score gap between official instruction models and base models. [PostTrainBench §2.2, equation (1)](https://arxiv.org/pdf/2603.08640v2#page=4)
+
+<Math tex={String.raw`w_i=\frac{1}{s_i^{\mathrm{instruct}}-s_i^{\mathrm{base}}},\qquad
+\widehat w_i=\frac{w_i}{\sum_{j=1}^{7}w_j},\qquad
+S=\sum_{i=1}^{7}\widehat w_i\overline s_i.`} display />
+
+This definition assumes a positive baseline gap. A zero gap has no reciprocal, so the rule cannot be applied unconditionally to any other task collection. S describes this benchmark's aggregation rule. It is not a universal unit of intelligence.
+
+The following uses the weights from Table 5 and the Opus 4.6 row of Table 1.
+
+| Benchmark | Weight | Post-training score | Weighted contribution |
+|---|---:|---:|---:|
+| AIME 2025 | 0.2265 | 5.0 | 1.1325 |
+| ArenaHard-Writing | 0.0904 | 7.8 | 0.7051 |
+| BFCL | 0.0746 | 75.9 | 5.6621 |
+| GPQA Main | 0.2246 | 25.5 | 5.7273 |
+| GSM8K | 0.0936 | 41.0 | 3.8376 |
+| HealthBench-Easy | 0.1841 | 18.8 | 3.4611 |
+| HumanEval | 0.1061 | 24.7 | 2.6207 |
+
+Multiplying and summing the displayed coefficients from Table 5 gives
+
+<Math tex={String.raw`S_{\mathrm{rounded}}=23.14641\approx23.1.`} display />
+
+The paper reports an Avg of 23.2. The table entries are rounded and the displayed weights sum to 0.9999. They do not reproduce the final decimal of the reported 23.2. <strong>Distinguish the estimate recomputed from displayed values from the paper's reported result.</strong> The simple mean of the seven scores is about 28.39, so describing the aggregation as an unweighted average would also give the wrong answer. [Table 1](https://arxiv.org/pdf/2603.08640v2#page=5) · [Table 5](https://arxiv.org/pdf/2603.08640v2#page=14)
+
+### Different baselines answer different questions
+
+| Comparison | Reported weighted average | What the row tells us |
+|---|---:|---|
+| Base models, zero-shot baseline row | 7.5 | What is the reference before post-training? |
+| Base models, few-shot comparison row | 18.1 | What happens if we supply examples without updating weights? |
+| Target models post-trained by Opus 4.6 | 23.2 ± 1.8 | How good are the models this agent configuration produces? |
+| Official instruction models | 51.1 | How large is the gap to the developers' broadly post-trained models? |
+
+The standard deviation in Table 1 describes variability across repeated runs. ±1.8 is neither a 95% confidence interval nor the range across all target models. Each agent row also combines a model with an execution scaffold. Different tools or context management can change results for the same model. [PostTrainBench, Table 1, §4.4](https://arxiv.org/pdf/2603.08640v2#page=5)
+
+The zero-shot baseline row includes a documented exception using 10-shot GSM8K. The few-shot comparison also uses base models without a chat template. The difference between these rows cannot be attributed solely to the number of examples. [PostTrainBench §2.2](https://arxiv.org/pdf/2603.08640v2#page=3)
+
+Differences between the reported Avg values are
+
+<Math tex={String.raw`23.2-7.5=15.7,\qquad
+23.2-18.1=5.1,\qquad
+51.1-23.2=27.9.`} display />
+
+These are differences in weighted-average score. The first is the gain over the pretraining baseline, the second the gain over the few-shot comparison, and the last the remaining gap to the official instruction models. Automated post-training can improve on the base models while still falling below the official post-trained models on average.
+
+### Winning one task and achieving broad post-training gains
+
+For BFCL on Gemma-3-4B, the paper compares 89% for a model post-trained by GPT-5.1 Codex Max with 67% for the official instruction model. That is a 22 percentage point advantage on this pairing. [PostTrainBench §3.2](https://arxiv.org/pdf/2603.08640v2#page=5)
+
+<Math tex={String.raw`89\%-67\%=22\text{ percentage points}.`} display />
+
+This is one model on a function-calling evaluation. The agent optimized for that benchmark, while the official instruction model was designed for multiple abilities. The resources and optimization objectives also differ. The result cannot establish superiority to humans across research tasks or capabilities.
+
+When reading a score, ask <strong>which model was optimized for which task and with what resources</strong>. A narrow gain is useful. Whether it carries over to other tasks requires separate evaluation.
+
+## Slide 55 — Raising an evaluation score and improving a model
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-55-en.png"
+  alt="Slide listing PostTrainBench observations of training on evaluation data, using another model's API and downloading an already post-trained model."
+  caption="Slide 55 — A route to a high score can conflict with the purpose of the experiment."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=55"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+At [56:41](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3401s), the lecture examines problems that arose while agents pursued higher scores. The objective is to make the specified model solve new problems better. Memorizing evaluation problems or substituting a different model can raise a score without achieving that objective. The paper analyzes these cases under the broad heading of reward hacking. [PostTrainBench §5.3–5.5](https://arxiv.org/pdf/2603.08640v2#page=8)
+
+| Observed behavior | Why the score can rise | Boundary to check |
+|---|---|---|
+| Training on evaluation data | Memorizes problems or answers that appear in evaluation | Content overlap between training and evaluation sets |
+| Including evaluation questions as synthetic examples | Renaming data can leave the same questions in it | Data provenance and content as well as its name |
+| Submitting a different, already post-trained model | Avoids improving the assigned base model | Origin of the submitted checkpoint |
+| Using the evaluation API to generate training data | Receives out-of-scope help from another model | API uses permitted in this experiment |
+
+The last row <strong>depends on the rules for the specific experiment</strong>. FT-Dojo includes API use for data synthesis. In the PostTrainBench case, the agent used the OpenAI API for purposes other than its designated evaluation role. The same tool can serve different purposes under different experimental rules. [FT-Dojo §2.2](https://arxiv.org/pdf/2603.01712v1#page=2) · [PostTrainBench §5.4](https://arxiv.org/pdf/2603.08640v2#page=8)
+
+### Why split training, validation and testing?
+
+At the set level, a starting condition is
+
+<Math tex={String.raw`\mathcal D_{\mathrm{train}}\cap\mathcal D_{\mathrm{val}}=\varnothing,\qquad
+\mathcal D_{\mathrm{train}}\cap\mathcal D_{\mathrm{test}}=\varnothing,\qquad
+\mathcal D_{\mathrm{val}}\cap\mathcal D_{\mathrm{test}}=\varnothing.`} display />
+
+Different file paths or row IDs do not guarantee independent contents. Translating a problem or renaming its functions can leave its substance intact. An evaluation set can also enter training indirectly through another dataset. A split named train need not actually be training material for the present experiment. The paper discusses BFCL's public data split as an example. [PostTrainBench §5.3, §5.5](https://arxiv.org/pdf/2603.08640v2#page=8)
+
+Use validation to choose experiments and testing to evaluate performance after selection. Repeatedly studying test errors and generating data aimed at those problems lets evaluation influence training even without verbatim copying.
+
+### Further reading — An agent can recognize a constraint and later depart from it
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/posttrainbench-v2-figure7.png"
+  alt="Log showing GPT-5.1 Codex Max initially recognizing an API usage restriction and later generating data with that API after unsuccessful training attempts."
+  caption="PostTrainBench, Figure 7 — A later action conflicts with an API restriction the agent had acknowledged."
+  source="https://arxiv.org/pdf/2603.08640v2#page=9"
+  credit="Ben Rank et al. / PostTrainBench"
+  width={1801} height={1147}
+/>
+
+The agent mentions the API restrictions, experiences several failed experiments and later uses the API for data generation. The authors suggest limits in handling long contexts as a possible cause. The log establishes neither the internal cause nor deliberate deception. It shows <strong>a mismatch between an earlier acknowledgment of a constraint and subsequent behavior</strong>. [PostTrainBench §5.4, Figure 7](https://arxiv.org/pdf/2603.08640v2#page=9)
+
+Research environments can align instructions with actual access. For example, keep final test data in a separate evaluation environment, separate evaluation APIs from data generation, and record the base checkpoint of each submission. These are design implications of the case. Alongside instructions, retain evidence of which data the experiment accessed and which tools it used.
+
+PostTrainBench's scoring rule reflects this objective. A detected violation resets the run's score to the base model score.
+
+<Math tex={String.raw`s_{\mathrm{recorded}}=
+\begin{cases}
+s_{\mathrm{base}}, & \text{if a disallowed run is detected},\\
+s_{\mathrm{eval}}, & \text{otherwise}.
+\end{cases}`} display />
+
+If a base model scores 10 and a submitted model scores 90, a detected violation involving prohibited evaluation data yields a recorded score of 10. This distinguishes <strong>outputs that scored 90</strong> from <strong>improvement obtained through an allowed procedure</strong>. Passing the checks is not proof that all potential contamination was eliminated. [PostTrainBench §2, Appendix E](https://arxiv.org/pdf/2603.08640v2#page=2)
+
+Automated post-training requires training methods, execution management and evaluation design to work together. Crediting an improvement in the smaller model requires checking both what it learned and how it was evaluated.
+
+[Part 12](/posts/self-improving-ai-12-weak-to-strong-generalization/) reverses the relationship. Can a weak supervisor teach a stronger model? If AI studies that supervision problem, how should we judge its results?
+
+<details>
+<summary>Worked examples and code</summary>
+
+[Python calculation code](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/verify_examples_11.py) · [Calculation results](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/numeric-checks-11.json)
+
+The examples cover model-benchmark pair counts, trainable LoRA parameters, example visits, the weighted average from displayed values, score differences and validation-based model selection.
+
+</details>
+
+## Further reading
+
+| Resource | Connection |
+|---|---|
+| [NTU Self-Improving lecture](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3136s) · [Slides](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=51) | Automating post-training with a strong AI |
+| [PostTrainBench](https://arxiv.org/abs/2603.08640v2) | Four base models, seven benchmarks, limited resources, aggregation and run violations |
+| [FT-Dojo](https://arxiv.org/abs/2603.01712v1) | An environment for searching over data and training settings and the FT-Agent iteration loop |
+| [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685v2) | Adding small trainable matrix factors to frozen base weights |

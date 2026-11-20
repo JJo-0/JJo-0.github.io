@@ -15,6 +15,15 @@ async function enter(selector){
   await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',text:'\r',unmodifiedText:'\r',windowsVirtualKeyCode:13},sessionId);
   await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
 }
+async function checkNumberBaseball(lang) {
+  for (const [guess, strikes] of [['9465888', 4], ['9465201', 7]]) {
+    await evaluate(cdp, sessionId, `document.querySelector('#guess').value = '${guess}'`);
+    await enter('#number-baseball-game button');
+    const result = await evaluate(cdp, sessionId, "document.querySelector('#result-text').innerText");
+    assert(result.startsWith(lang === 'en' ? `${strikes} strikes` : `${strikes} 스트라이크`));
+    assert.equal(result.includes(lang === 'en' ? 'all seven' : '축하합니다'), strikes === 7);
+  }
+}
 async function checkHomeParity(cdp, sessionId) {
   const state = `(() => {
     const home = document.querySelector('[data-experience-page="home"]');
@@ -69,6 +78,7 @@ try{
       const visualSelector=soc?'[data-soc-figure]':powerBank?'[data-pb-visual]':'[data-news-figure]';
       const parentNav=(powerBank||soc||seriesTranslation)?'/en/posts/':'/en/news/';
       await navigate(cdp,sessionId,`/posts/${pair.koSlug}/`);
+      if(pair.koFile==='2024-08-09.md')await checkNumberBaseball('ko');
       if(powerBank)powerBankResults.push(await checkPowerBankPage({cdp,sessionId,width,lang:'ko',enter,screen}));
       if(soc)socResults.push(await checkSocOverviewPage({cdp,sessionId,width,lang:'ko',enter,screen}));
       await enter('header a[data-locale-choice="en"]');
@@ -76,6 +86,7 @@ try{
       if(seriesTranslation){
         await waitExpression(cdp,sessionId,`[...document.querySelectorAll('[data-english-article] iframe[src^="/en/assets/"]')].every(frame=>frame.contentDocument?.readyState==='complete' && frame.contentDocument.body?.innerText.length>200)`,'complete English embedded research body');
       }
+      if(pair.koFile==='2024-08-09.md')await checkNumberBaseball('en');
       await checkEnglishInteractivePage({cdp,sessionId,slug:pair.enSlug,enter,width});
       for(const dark of [false,true]){
         await evaluate(cdp,sessionId,`document.documentElement.classList.toggle('dark',${dark})`);

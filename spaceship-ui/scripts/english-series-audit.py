@@ -13,7 +13,10 @@ ko_guides = json.loads((root / 'src/data/robot-equation-guides.json').read_text(
 en_guides = json.loads((root / 'src/data/robot-equation-guides.en.json').read_text())
 pairs = [p for p in manifest['pairs'] if p.get('translationMethod') == 'direct-chat-translation']
 ids = []
-urls = lambda s: collections.Counter(re.findall(r'https?://[^\s"\')]+', s))
+def urls(s):
+    # A literal URL used as its own link label is still a single destination.
+    s = re.sub(r'\[(https?://[^\]\s]+)\]\(\1\)', r'[source](\1)', s)
+    return collections.Counter(re.findall(r'https?://[^\s"\')]+', s))
 images = lambda s: re.findall(r'(?:src="|!\[[^\]]*\]\()([^"\s)]+)', s)
 for pair in pairs:
     source = (root / 'site/content/posts' / pair['koFile']).read_text().split('---', 2)[2]

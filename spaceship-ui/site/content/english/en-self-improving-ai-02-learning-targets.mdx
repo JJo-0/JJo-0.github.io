@@ -1,0 +1,444 @@
+---
+title: Self-Improving AI 02 — Who sets the learning target?
+description: Loss functions, knowledge distillation and self-generated pseudo-labels illustrate when a model’s own
+  outputs provide a new learning signal.
+pubDate: 2026-11-16
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-02-learning-targets
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- knowledge-distillation
+- self-training
+- ntu
+- study
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 2
+translationKey: en-self-improving-ai-02-learning-targets
+translatedPosts:
+  ko-KR: self-improving-ai-02-learning-targets
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+[Self-Improving AI 01 — What Changes When AI Gets Better?](/posts/self-improving-ai-01-overview/) distinguished the target of change, the scope of automation, and the evaluation criteria. We now follow **the process that trains model parameters**.
+
+## Slide 6 — How does AI learn?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/ntu-self-improving-06-en.png"
+  alt="The slide points to a 2025 introductory machine learning lecture that reviews the basics of training."
+  caption="NTU slide 6 — The basic structure of machine learning."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=6"
+  credit="Hung-yi Lee · NTU"
+  width={1672}
+  height={941}
+/>
+
+[Original slide 6](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=6) · [Video at approximately 03:37–04:01](https://www.youtube.com/watch?v=s06mSAGN4gM&t=217s)
+
+This transition slide reviews machine learning before introducing self-improvement. The central thumbnail points to the instructor's [fifth lecture in the 2025 introductory course](https://www.youtube.com/watch?v=Taj1eHmZyWw).
+
+To understand self-improvement, first identify **what changes in ordinary training**. For illustration, write a model as follows.
+
+<Math tex={String.raw`y=f_\theta(x).`} display />
+
+- <Math tex={String.raw`x`} />: the input.
+- <Math tex={String.raw`f_\theta`} />: the model specified by parameters <Math tex={String.raw`\theta`} />.
+- <Math tex={String.raw`y`} />: the model's output.
+- <Math tex={String.raw`\theta`} />: trainable values, such as weights and biases.
+
+In estimating human joint positions from an image, for example, <Math tex={String.raw`x`} /> is the image and <Math tex={String.raw`y`} /> gives the joint coordinates. A language model takes an input context, computes a distribution over the next token, and builds a sentence by choosing successive tokens from these distributions.
+
+<strong>Inference</strong> computes an output with a given model. <strong>Parameter learning</strong> changes <Math tex={String.raw`\theta`} /> according to a specified criterion. From this slide onward we focus on the latter.
+
+The question about self-improvement now becomes more precise.
+
+> Can AI produce the training data or targets that change a model? If so, how can we judge the quality of those targets?
+
+Slide 7 breaks the question into three parts.
+
+## Slide 7 — The objective, candidates, and optimization
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/ntu-self-improving-07-en.png"
+  alt="Three boxes distinguish the goal, the possible choices, and the method for selecting the best choice. The goal is highlighted."
+  caption="NTU slide 7 — The goal, possible choices, and optimization procedure."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=7"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 7](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=7) · [Video at approximately 04:01–04:56](https://www.youtube.com/watch?v=s06mSAGN4gM&t=241s)
+
+The diagram distinguishes **what we seek**, **the available choices**, and **the procedure for choosing a good one**. A red border around the first blue box marks the particular focus of this lecture.
+
+Here is that distinction in machine learning terms.
+
+| Question on the slide | Machine learning concept | Joint position estimation example |
+|---|---|---|
+| What are we looking for? | Problem definition and criteria for a good output | Output coordinates close to the ground-truth joints in the image |
+| What choices are available? | Hypothesis space, the set of functions the model can express | The selected network architecture and possible parameter values |
+| How do we select a good choice? | Optimization | Compute a loss and update parameters using gradient descent or another optimizer |
+
+### Model architecture and training objectives play different roles
+
+Even with the same network architecture, different values of <Math tex={String.raw`\theta`} /> produce different functions. Write the candidate set as follows.
+
+<Math tex={String.raw`\mathcal H=\{f_\theta:\theta\in\Theta\}.`} display />
+
+Here <Math tex={String.raw`\Theta`} /> is the set of allowed parameter values, and <Math tex={String.raw`\mathcal H`} /> is the set of functions those values can express.
+
+A loss function <Math tex={String.raw`L(\theta)`} /> evaluates how well a candidate model performs. The ideal objective of finding the best parameters under this criterion can be written as follows.
+
+<Math tex={String.raw`\theta^\star\in\arg\min_{\theta\in\Theta}L(\theta).`} display />
+
+A training algorithm searches candidates in pursuit of this objective. The basic gradient descent update is
+
+<Math tex={String.raw`\theta_{t+1}=\theta_t-\eta\nabla_\theta L(\theta_t).`} display />
+
+- <Math tex={String.raw`\eta`} />: the learning rate, which sets the step size.
+- <Math tex={String.raw`\nabla_\theta L`} />: the gradient, pointing in the direction of increasing loss at the current position.
+- The minus sign specifies a step in the opposite direction to reduce the loss.
+
+This equation does not guarantee a global minimum for every neural network. Initialization, data, model architecture, and optimizer settings all influence the solution. A good candidate on training data also requires separate evaluation for generalization to new data. [Supplement: Stanford CS229 notes on supervised learning and gradient descent](https://cs229.stanford.edu/lectures-spring2022/main_notes.pdf)
+
+### Supplementary lecture · Stanford CS229 — What value does optimization change?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/cs229-midterm-review-p09.png"
+  alt="The gradient descent equation updates parameter theta using learning rate alpha and the gradient to reduce cost J."
+  caption="Stanford CS229, PDF page 9 — Updating parameters by gradient descent."
+  source="https://cs229.stanford.edu/lectures-spring2023/cs229-mid_term_review_slides.pdf#page=9"
+  credit="Nandita Bhaskhar / Stanford CS229"
+  width={1800}
+  height={1013}
+/>
+
+On the Stanford slide, <Math tex={String.raw`J(\theta)`} /> corresponds to our total loss <Math tex={String.raw`L(\theta)`} />, and learning rate <Math tex={String.raw`\alpha`} /> to <Math tex={String.raw`\eta`} />. The update changes parameter <Math tex={String.raw`\theta`} />. The discussion of stochastic gradient descent (SGD) below it distinguishes which training examples contribute to a single update.
+
+Compare the equation with the first box on the NTU slide. If a different teacher supplies different target labels, the same gradient descent algorithm may receive a different loss and gradient. Examine both the optimizer and the target it receives.
+
+### Why highlight the first box?
+
+In self-improvement, the model architecture is only one possible target of change. AI can also generate or propose **the data, answers, rewards, and losses that define a good answer**.
+
+For example, even with the same model and optimizer, the following training procedures differ.
+
+- Use human-reviewed joint coordinates as targets.
+- Use joint coordinates predicted by an existing model as targets.
+
+The search procedure may stay the same while changing what the model learns to approximate. This distinction runs through slides 8–10.
+
+## Slide 8 — The difference between the output and the target provides a learning signal
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/ntu-self-improving-08-en.png"
+  alt="Given input x, compute output y and compare it with training target y-hat to obtain the overall loss L."
+  caption="NTU slide 8 — A loss comparing the model output with the training target."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=8"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 8](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=8) · [Video at approximately 04:56–07:02](https://www.youtube.com/watch?v=s06mSAGN4gM&t=296s)
+
+In this figure, **<Math tex={String.raw`y`} /> is the model output, and <Math tex={String.raw`\hat y`} /> is the correct answer or training target**. Other texts use <Math tex={String.raw`\hat y`} /> for a prediction, so check the role of each symbol here.
+
+### Reading the diagram from left to right
+
+The same model maps inputs <Math tex={String.raw`x^1,\ldots,x^N`} /> to outputs <Math tex={String.raw`y^1,\ldots,y^N`} />. Superscript <Math tex={String.raw`n`} /> indexes examples rather than raising a value to a power.
+
+<Math tex={String.raw`y^n=f_\theta(x^n).`} display />
+
+Compute an individual loss from the discrepancy between each output and its corresponding target.
+
+<Math tex={String.raw`\ell^n=d(y^n,\hat y^n).`} display />
+
+Here <Math tex={String.raw`d`} /> evaluates the discrepancy. It need not be a mathematical metric satisfying symmetry and the triangle inequality.
+
+Denote the overall loss aggregating individual losses by <Math tex={String.raw`L`} />.
+
+<Math tex={String.raw`L(\theta)=\sum_{n=1}^{N}\ell^n
+=
+\sum_{n=1}^{N}d\!\left(f_\theta(x^n),\hat y^n\right).`} display />
+
+**Define a good output for an individual example, then adjust parameters to satisfy that criterion across the data.**
+
+### A numerical regression loss example
+
+Consider a hypothetical distance prediction task measured in meters, with squared error as the individual loss.
+
+<Math tex={String.raw`\ell=(y-\hat y)^2.`} display />
+
+| Example | Target <Math tex={String.raw`\hat y`} /> | Model A output | A squared error | Model B output | B squared error |
+|---|---:|---:|---:|---:|---:|
+| 1 | 1.0 | 1.2 | 0.04 | 1.1 | 0.01 |
+| 2 | 2.0 | 1.9 | 0.01 | 2.5 | 0.25 |
+| Total |  |  | **0.05** |  | **0.26** |
+
+B is more accurate on the first example. A does better under the criterion aggregated across both.
+
+For mean squared error (MSE), divide the sum by <Math tex={String.raw`N`} />. A's MSE is 0.025 and B's is 0.13. On the same fixed data, sums and means rank models identically but give gradients of different magnitudes. Read the learning rate alongside the loss definition in implementations.
+
+### Cross-entropy for classification
+
+If <Math tex={String.raw`p_\theta(\hat y\mid x)`} /> denotes the probability assigned to the correct class, a common loss is
+
+<Math tex={String.raw`\ell_{\mathrm{CE}}=-\log p_\theta(\hat y\mid x).`} display />
+
+In a hypothetical example using natural logarithms, a probability of 0.8 for the correct class produces a loss of approximately 0.223, while 0.2 yields about 1.609. Unlike accuracy, which counts correct final choices, the loss responds to changes in the probability assigned to the correct class. [Supplement: classification and logistic regression in CS229](https://cs229.stanford.edu/lectures-spring2022/main_notes.pdf)
+
+So far the target has been given. Next we change **who fills in the answer box** at the bottom of the diagram.
+
+## Slide 9 — Knowledge distillation from a strong AI's answers
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/ntu-self-improving-09-en.png"
+  alt="The slide introduces knowledge distillation, in which another strong AI supplies the training targets."
+  caption="NTU slide 9 — Knowledge distillation using another AI's answers as targets."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=9"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 9](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=9) · [Video at approximately 07:02–08:03](https://www.youtube.com/watch?v=s06mSAGN4gM&t=422s)
+
+Compared with the previous slide, **a strong AI with a different appearance now stands beside the lower answer box**. It supplies the training targets. The lecture introduces this as knowledge distillation.
+
+The model that teaches is the teacher, and the one that learns is the student. Training moves the student's outputs toward the teacher's targets.
+
+### Transferring an answer or a probability distribution
+
+Start with the answer box on the slide. The teacher produces answer <Math tex={String.raw`\tilde y`} /> to question <Math tex={String.raw`x`} />. We introduce <Math tex={String.raw`\tilde y`} /> to distinguish the AI-generated target. It occupies the position labeled <Math tex={String.raw`\hat y`} /> on the slide.
+
+One loss for a language model learning from that answer is
+
+<Math tex={String.raw`L_{\mathrm{answer}}(\theta)
+=
+-\frac1N\sum_{n=1}^{N}\log p_\theta(\tilde y^n\mid x^n).`} display />
+
+The probability of an entire sentence is a product of token-level conditional probabilities. Taking its negative logarithm gives a sum of token losses.
+
+Another approach uses the teacher's output distribution as the target. For class <Math tex={String.raw`c`} />, let <Math tex={String.raw`q_\phi(c\mid x)`} /> be the teacher distribution and <Math tex={String.raw`p_\theta(c\mid x)`} /> the student distribution.
+
+<Math tex={String.raw`L_{\mathrm{soft}}(\theta)
+=
+-\sum_c q_\phi(c\mid x)\log p_\theta(c\mid x).`} display />
+
+The teacher distribution is a fixed target during the student update. Both approaches use the teacher's output, but they communicate different information. Hinton and colleagues' 2015 paper describes distillation using output distributions and temperature. [Original paper, section 2](https://arxiv.org/pdf/1503.02531)
+
+### Supplementary lecture · Lambert — Fix the teacher distribution and update the student
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/lambert-lec7-p14.png"
+  alt="A KL loss compares the distributions of a frozen teacher and a trainable student on the same input. Gradients flow only to the student."
+  caption="Nathan Lambert, Lecture 7, PDF page 14 — Knowledge distillation with a frozen teacher and a trainable student."
+  source="https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/slides.pdf#page=14"
+  credit="Nathan Lambert / RLHF Book"
+  width={1800}
+  height={1013}
+/>
+
+The upper teacher is labeled Frozen and the lower student Trained. Both receive the same input, but the gradient along the dashed arrow changes only the student. Updating the teacher's target would move what the student is trying to match, so the diagram holds the teacher distribution fixed.
+
+Temperature <Math tex={String.raw`\tau`} /> in the middle adjusts how sharp the distribution is when logits become probabilities. The setting <Math tex={String.raw`\tau>1`} /> reveals information beyond the largest probability. This differs from supplying a completed answer as a target. The student matches the teacher's distribution across possibilities.
+
+### What extra information does the distribution retain?
+
+Consider a hypothetical three-class example.
+
+| Target representation | Class A | Class B | Class C |
+|---|---:|---:|---:|
+| Target retaining only the most probable class | 1.0 | 0.0 | 0.0 |
+| Teacher's soft target | 0.7 | 0.2 | 0.1 |
+
+Both targets identify A as the most likely class. The soft target also records that the teacher considered B a more plausible alternative than C. The student can learn these relative relationships.
+
+The teacher distribution can contain errors. Receiving a detailed distribution does not by itself make it a correct target.
+
+### Must a “strong teacher” be a larger model?
+
+Distillation extends beyond compressing a large model into a small one. What matters is what supplies a better learning signal. Noisy Student studies students of equal or greater size and introduces noise during training. Distinguish model size from the quality of the teacher's signal. [Noisy Student, CVPR 2020](https://arxiv.org/pdf/1911.04252)
+
+A **different teacher** supplies the target on this slide. Slide 10 puts the model being trained in that teacher's place.
+
+## Slide 10 — Can a model teach itself with its own answer?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/ntu-self-improving-10-en.png"
+  alt="The same model as the one being trained supplies pseudo-answers."
+  caption="NTU slide 10 — Using self-generated answers as training targets."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=10"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 10](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=10) · [Video at approximately 08:03–08:31](https://www.youtube.com/watch?v=s06mSAGN4gM&t=483s)
+
+The most visible change is that **the teacher robot below now looks like the model being trained above**.
+
+The slide asks whether self-generated pseudo-answers can serve as training targets. A pseudo-answer is a target assigned for training. Its correctness has yet to be established.
+
+When a model learns from its own output, first ask **which form of output becomes the target**.
+
+### Case A. Matching the model's own probability distribution directly
+
+Let <Math tex={String.raw`\theta_0`} /> be the model's current weights. Use the distribution obtained on the same input as a fixed target.
+
+<Math tex={String.raw`q(c\mid x)
+=
+\operatorname{stopgrad}\!\left[p_{\theta_0}(c\mid x)\right].`} display />
+
+Stop-gradient means derivatives do not flow through the target-producing branch. Suppose the student starts at <Math tex={String.raw`\theta=\theta_0`} /> and that identical inputs, temperatures, and execution conditions produce exactly identical distributions.
+
+At temperature 1, the gradient of cross-entropy with respect to student logit <Math tex={String.raw`z_c`} /> is
+
+<Math tex={String.raw`\frac{\partial L_{\mathrm{soft}}}{\partial z_c}
+=
+p_\theta(c\mid x)-q(c\mid x).`} display />
+
+When both distributions agree,
+
+<Math tex={String.raw`\nabla_\theta L_{\mathrm{soft}}\big|_{\theta=\theta_0}=0.`} display />
+
+**This distillation loss itself supplies no learning direction.** The result follows by substituting identical distributions into the logit gradient. [Hinton et al., 2015, section 2](https://arxiv.org/pdf/1503.02531)
+
+All assumptions matter. Dropout or input augmentation may make the distributions differ. A separate ground-truth loss or regularization term can also change the result. Optimizer momentum or weight decay may still move parameters, so the claim here concerns only the gradient of this distillation loss.
+
+Also, **zero gradient and zero loss are different conditions.**
+
+<Math tex={String.raw`\operatorname{CE}(q,q)=H(q),
+\qquad
+D_{\mathrm{KL}}(q\|q)=0.`} display />
+
+With identical distributions, their cross-entropy still equals the distribution's entropy. For example, <Math tex={String.raw`q=(0.8,0.2)`} /> gives cross-entropy of approximately 0.5004. That remaining value does not give the student a further direction to move.
+
+### Supplementary lecture · Lambert — What decreases in cross-entropy?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/lambert-lec7-p21.png"
+  alt="Cross-entropy between teacher q and student p expands into the teacher's entropy H(q) plus KL divergence."
+  caption="Nathan Lambert, Lecture 7, PDF page 21 — Decomposing cross-entropy into entropy and KL divergence."
+  source="https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/slides.pdf#page=21"
+  credit="Nathan Lambert / RLHF Book"
+  width={1800}
+  height={1013}
+/>
+
+The slide's <Math tex={String.raw`H(q,p)`} /> is our <Math tex={String.raw`\operatorname{CE}(q,p)`} />. The last line separates it into the teacher's uncertainty <Math tex={String.raw`H(q)`} /> and KL divergence measuring the difference between the distributions. With a fixed teacher, only the KL term can change through student updates.
+
+The residual <Math tex={String.raw`H(q)`} /> after the distributions agree is therefore not unresolved student error. Treating KL as the only reducible term requires a fixed teacher. Recomputing the teacher with the same parameters and differentiating through that branch would optimize a different objective.
+
+### Case B. Turning a prediction into one hard label
+
+Consider a hypothetical defect classifier that predicts a defect probability of 0.8. Based on this prediction, assign the pseudo-label “defective,” or <Math tex={String.raw`\tilde y=1`} />.
+
+In binary cross-entropy, the gradient with respect to defect logit <Math tex={String.raw`z`} /> is
+
+<Math tex={String.raw`\frac{\partial L_{\mathrm{hard}}}{\partial z}
+=
+p-\tilde y
+=
+0.8-1
+=
+-0.2.`} display />
+
+Gradient descent increases the logit. In a calculation directly updating one logit, with <Math tex={String.raw`z=\log 4`} /> and learning rate <Math tex={String.raw`\eta=0.1`} />,
+
+<Math tex={String.raw`z_{\mathrm{new}}=\log4+0.02,
+\qquad
+\sigma(z_{\mathrm{new}})\approx0.8032.`} display />
+
+A learning signal arises even though it originated from the same model's prediction. The procedure changed the probability target <Math tex={String.raw`0.8`} /> into hard label <Math tex={String.raw`1`} />.
+
+If the item is actually normal, the model has become **more confident in an incorrect judgment**. An increase in predicted probability and an increase in actual accuracy require separate checks. A model score of 0.8 does not guarantee 80% empirical correctness.
+
+This calculation illustrates the movement of one logit. Real networks share weights across inputs, so we cannot infer that outputs for all examples change the same way.
+
+### In depth. What if we train on every randomly generated answer?
+
+Making the most likely answer a hard label differs from randomly sampling an answer from the model distribution. Suppose we fit all sampled answers by maximum likelihood without selection.
+
+<Math tex={String.raw`\tilde y\sim p_{\theta_0}(\cdot\mid x)`} display />
+
+Under that sampling distribution, the expected gradient at the starting point is
+
+<Math tex={String.raw`\mathbb E_{\tilde y\sim p_{\theta_0}}
+\left[
+-\nabla_\theta\log p_\theta(\tilde y\mid x)
+\right]_{\theta=\theta_0}
+=0`} display />
+
+This follows from probabilities summing to one when the output space is fixed and differentiation can be exchanged with summation.
+
+A finite sample can give a nonzero gradient. Movement due to sampling alone, however, is insufficient evidence of a signal pointing toward the correct answer. This observation does not rule out all effects over multiple actual training rounds.
+
+### What changes in actual self-training?
+
+Research using self-generated data changes the target-generation procedure, the data, or the conditions under which the student learns.
+
+| What changes | Why the learning signal changes |
+|---|---|
+| Filter generations using answers, tests, or rewards | The distribution of outputs retained for training changes |
+| Augment student inputs | The student learns the teacher's target across different observations of the same content |
+| Add noise to the student | The student runs under different conditions from the teacher that produced the targets |
+| Add new unlabeled inputs | Training constrains input regions previously unseen |
+| Change the student's initialization, capacity, or training procedure | The same signal can be represented by different functions and optimization paths |
+
+Three original studies illustrate these possibilities.
+
+**Noisy Student, CVPR 2020.** A teacher assigns pseudo-labels to unlabeled images, and a student trains on both labeled and pseudo-labeled data. The student uses data augmentation and model noise and may be as large as or larger than the teacher. [Original paper](https://arxiv.org/pdf/1911.04252)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-02-learning-targets/noisy-student-figure1.png"
+  alt="A teacher trains on labeled data, creates pseudo-labels for unlabeled data, and trains a noisy student that becomes the next teacher."
+  caption="Noisy Student, Figure 1 — Generating pseudo-labels and training a noisy student."
+  source="https://arxiv.org/pdf/1911.04252v4#page=2"
+  credit="Qizhe Xie, Minh-Thang Luong, Eduard Hovy, Quoc V. Le (2020). Example images: ImageNet."
+  label="Supplementary paper · Noisy Student"
+  width={1458}
+  height={1056}
+/>
+
+The upper-left teacher starts with labeled data and then labels unlabeled inputs. The student below uses both kinds of data. Data augmentation, dropout, and stochastic depth, marked in blue, apply during student training. The teacher turns these sources of noise off when generating pseudo-labels.
+
+The figure differs from matching the same distribution on identical inputs under identical execution conditions: it adds new inputs and changes the student's training conditions. The final arrow reuses the trained student as the next teacher. That arrow alone does not establish improvement, which requires separate evaluation.
+
+**STaR, NeurIPS 2022.** STaR trains on generated rationales that reach a correct answer. After a failure, it regenerates a rationale conditioned on the correct answer. Problems, answers, and initial worked examples enter the procedure. [Original paper](https://arxiv.org/abs/2203.14465)
+
+**ReST, August 2023.** ReST separates Grow, which generates data, from Improve, which trains on data filtered by reward. The paper considers negative log-likelihood and several offline reinforcement learning losses, so the method extends beyond a single loss. [Original paper, section 3](https://arxiv.org/html/2308.08998v2)
+
+None of these ingredients guarantees improvement. Incorrect pseudo-labels, inaccurate selection criteria, or augmentations that change a label's meaning can cause problems. Check the direction of change and the outcome on new data.
+
+The question on slide 10 can now be phrased more precisely.
+
+> What new learning signal was constructed from the model's outputs, and how did the experiment establish that the signal improves the desired capability?
+
+Next, [Self-Improving AI 03 — When Does Self-Correction Become Learning?](/posts/self-improving-ai-03-self-correction-to-rl/) covers <strong>self-correction beginning on slide 11</strong>. It distinguishes revising an answer from using the revised answer as training data to update parameters.
+
+## Further reading
+
+[Lecture PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx) · [PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) · [Lecture video](https://www.youtube.com/watch?v=s06mSAGN4gM)
+
+1. [Hung-yi Lee, official NTU ML 2026 course](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php). Self-Improving, Part 1, PDF pages 6–10: learning targets and AI-generated answers.
+2. [Stanford CS229 lecture notes](https://cs229.stanford.edu/lectures-spring2022/main_notes.pdf). Foundations of supervised learning, gradient descent, and classification losses.
+3. [Nandita Bhaskhar, Stanford CS229 Midterm Review](https://cs229.stanford.edu/lectures-spring2023/cs229-mid_term_review_slides.pdf#page=9). May 6, 2022. PDF page 9: parameter updates in gradient descent.
+4. [Hinton, Vinyals, Dean, Distilling the Knowledge in a Neural Network](https://arxiv.org/pdf/1503.02531). March 9, 2015. Knowledge distillation using probability distributions.
+5. [Xie et al., Self-training with Noisy Student improves ImageNet classification](https://arxiv.org/pdf/1911.04252v4). CVPR 2020, arXiv v4 (June 19, 2020). Figure 1 on PDF page 2: iterative teacher–student training.
+6. [Zelikman et al., STaR: Bootstrapping Reasoning With Reasoning](https://arxiv.org/abs/2203.14465). NeurIPS 2022. Filtering and learning from generated rationales.
+7. [Gulcehre et al., Reinforced Self-Training (ReST) for Language Modeling](https://arxiv.org/html/2308.08998v2). arXiv v2 (August 21, 2023). Iterating generation, selection, and training.
+8. [Nathan Lambert, Post-training Course, Lecture 7](https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/) · [Official PDF](https://rlhfbook.com/teach/course/lec7-chap12-synthetic-data/slides.pdf). PDF page 14: teacher–student distillation. Page 21: the relationship between cross-entropy and KL divergence.
