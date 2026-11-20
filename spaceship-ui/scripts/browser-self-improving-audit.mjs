@@ -25,7 +25,8 @@ const chapters = [
   { number: 15, math: 15, figures: 12, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-15-harness-optimization-and-evaluation', previous: 'self-improving-ai-14-proposer-solver-verifier', next: 'self-improving-ai-16-prompt-memory-code-evolution' },
   { number: 16, math: 11, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-16-prompt-memory-code-evolution', previous: 'self-improving-ai-15-harness-optimization-and-evaluation', next: 'self-improving-ai-17-archive-dspy-experience' },
   { number: 17, math: 4, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-17-archive-dspy-experience', previous: 'self-improving-ai-16-prompt-memory-code-evolution', next: 'self-improving-ai-18-better-together-and-evolving-goals' },
-  { number: 18, math: 7, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-18-better-together-and-evolving-goals', previous: 'self-improving-ai-17-archive-dspy-experience', next: null },
+  { number: 18, math: 7, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-18-better-together-and-evolving-goals', previous: 'self-improving-ai-17-archive-dspy-experience', next: 'self-improving-ai-19-test-time-training-and-forgetting' },
+  { number: 19, math: 5, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-19-test-time-training-and-forgetting', previous: 'self-improving-ai-18-better-together-and-evolving-goals', next: null },
 ];
 const mappingSummary = '슬라이드별 영상 위치';
 const lectureParts = [
@@ -46,6 +47,7 @@ const timestampGroups = {
   14: [0, 7, 45, 216, 285],
   15: [285, 315, 336, 348, 427],
   16: [500, 584, 779, 833, 931],
+  19: [1616, 1675, 1726, 1747, 1777],
 };
 const productionPhrases = [
   /(?:자막|자료|원문|원고|보충 자료)[·\s]*(?:조회|대조|확인)일/,
@@ -105,9 +107,9 @@ function loadChapterManifest(chapter) {
     assert.equal(mainSlides.length, chapter.primarySlides, 'Chapter 13 has exactly two main slides');
     assert.deepEqual(mainSlides.map(asset => asset.pdf_page), [61, 62], 'Chapter 13 concludes the 62-page source deck');
   }
-  if (chapter.number >= 14 && chapter.number <= 18) {
+  if (chapter.number >= 14 && chapter.number <= 19) {
     const mainSlides = records.filter(asset => /^main-\d+$/.test(asset.slot || ''));
-    const pageRange = { 14: [1, 5], 15: [6, 10], 16: [11, 15], 17: [16, 20], 18: [21, 25] }[chapter.number];
+    const pageRange = { 14: [1, 5], 15: [6, 10], 16: [11, 15], 17: [16, 20], 18: [21, 25], 19: [26, 30] }[chapter.number];
     const expectedPages = Array.from({ length: 5 }, (_, index) => pageRange[0] + index);
     assert.equal(primary.source_pdf_total_pages, 64, `Chapter ${chapter.number} uses the separate 64-page lower lecture`);
     assert.deepEqual(primary.primary_page_range, pageRange, `Chapter ${chapter.number} lower lecture source range`);
@@ -189,7 +191,7 @@ async function verifyArticleParts(cdp, session, chapter, width) {
   }
   const currentLinks = map.parts.flatMap(part => part.links).filter(link => link.current === 'page');
   assert.deepEqual(currentLinks.map(link => link.href), [`/posts/${chapter.slug}/`]);
-  if (chapter.number >= 13 && chapter.number <= 18) {
+  if (chapter.number >= 13) {
     for (const part of lectureParts) {
       const selector = `[data-self-improving-map] [data-series-map-part="${part.number}"]`;
       await clickSummarySelector(cdp, session, `${selector} > summary`);
@@ -277,7 +279,7 @@ try {
       if (chapter.number === 15) assert.equal(view.previousLabel, '이전 편 · 하편');
       if (chapter.number === 15) assert.equal(view.nextLabel, '다음 편 · 하편');
       if (chapter.number >= 16) assert.equal(view.previousLabel, '이전 편 · 하편');
-      if (chapter.number === 16 || chapter.number === 17) assert.equal(view.nextLabel, '다음 편 · 하편');
+      if (chapter.number >= 16 && chapter.next) assert.equal(view.nextLabel, '다음 편 · 하편');
       view.articleParts = articleParts;
       if (timingDetails) view.timingDetails = timingDetails;
       for (const figure of view.figures) {
