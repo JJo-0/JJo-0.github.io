@@ -1,4 +1,5 @@
 ---
+import { englishPostPathForSlug } from '@/lib/locales';
 import { formatDate } from '@/lib/utils/date';
 import { getPostCategoryMeta, getPostTypeLabel } from '@/lib/taxonomy.mjs';
 
@@ -18,18 +19,22 @@ interface Props {
   };
   slug: string;
   readTime: string;
+  en?: boolean;
 }
 
-const { post, slug, readTime } = Astro.props;
-const category = getPostCategoryMeta(post.data.category);
+const { post, slug, readTime, en = false } = Astro.props;
+const href = en ? englishPostPathForSlug(slug) : `/posts/${slug}`;
+const linkSlug = en ? href.split('/').filter(Boolean).at(-1) : slug;
+const category = getPostCategoryMeta(post.data.category, en);
 // Root-scoped selectors avoid repeating an Astro scope attribute on every card node.
 ---
 
 <article class="writing-list-item group border-b border-border/70 py-5 first:pt-0 last:border-b-0 last:pb-0">
   <a
-    href={`/posts/${slug}`}
+    href={href}
+    data-english-card={en ? linkSlug : undefined}
     class="block rounded-xl -mx-3 px-3 py-2 no-underline hover:bg-accent/70"
-    data-post-transition-slug={slug}
+    data-post-transition-slug={linkSlug}
   >
     <div class="flex flex-col gap-2">
       <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5">

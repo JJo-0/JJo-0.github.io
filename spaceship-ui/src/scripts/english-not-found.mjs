@@ -2,7 +2,7 @@
 // alone cannot localize that response. Preserve the status and requested URL.
 function localizeEnglishNotFound() {
   if (!document.querySelector('[data-not-found-page]')) return;
-  if (location.pathname !== '/en' && !location.pathname.startsWith('/en/')) return;
+  if (document.documentElement.lang === 'en' || (location.pathname !== '/en' && !location.pathname.startsWith('/en/'))) return;
   document.documentElement.lang = 'en';
   document.documentElement.dataset.englishNotFound = 'true';
   document.querySelector('base')?.setAttribute('href', location.pathname);
@@ -31,19 +31,23 @@ function localizeEnglishNotFound() {
     switcher.textContent = 'KO';
   }
   const labels = new Map([
-    ['/notices/2026-09-11-biblical-studies-and-policies', 'Editorial notice (Korean)'],
-    ['/policies', 'Editorial and AI-use policy (Korean)'],
-    ['/policies/disclaimer', 'Disclaimer (Korean)'],
-    ['/policies/copyright', 'Copyright and reuse (Korean)'],
-    ['/bible/reading-guide', 'Biblical studies reading guide (Korean)'],
+    ['/notices/2026-09-11-biblical-studies-and-policies', 'Editorial notice'],
+    ['/policies', 'Editorial and AI-use policy'],
+    ['/policies/disclaimer', 'Disclaimer'],
+    ['/policies/copyright', 'Copyright and reuse'],
+    ['/bible/reading-guide', 'Biblical studies reading guide'],
   ]);
   for (const anchor of document.querySelectorAll('footer a[href]')) {
     const label = labels.get(anchor.getAttribute('href'));
-    if (label) { anchor.textContent = label; anchor.setAttribute('data-astro-reload', ''); }
+    if (label) {
+      anchor.textContent = label;
+      anchor.setAttribute('href', `/en${anchor.getAttribute('href')}/`);
+      anchor.setAttribute('data-astro-reload', '');
+    }
   }
   const policyNav = document.querySelector('footer nav[lang="ko"]');
   policyNav?.setAttribute('lang', 'en');
-  policyNav?.setAttribute('aria-label', 'Policies and reading guides (Korean originals)');
+  policyNav?.setAttribute('aria-label', 'Notices and editorial policies');
   const skip = document.querySelector('body > a[href="#main-content"]');
   if (skip) skip.textContent = 'Skip to main content';
   document.querySelector('meta[property="og:locale"]')?.setAttribute('content', 'en_US');

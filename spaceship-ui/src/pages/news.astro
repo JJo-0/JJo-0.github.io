@@ -4,9 +4,15 @@ import Layout from '@/layouts/Layout.astro';
 import NewsListItem from '@/components/NewsListItem.astro';
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
 import { getReadTime } from '@/lib/utils/readTime';
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getLocalizedPosts } from '@/lib/localized-posts';
+import { englishPostPathForSlug } from '@/lib/locales';
+import { getPostSlug } from '@/lib/utils/posts';
 import { getBreadcrumbSchema } from '@/lib/schemas';
 import mediaCatalogue from '../../site/news-media.json';
+
+interface Props { en?: boolean; }
+const { en = false } = Astro.props;
+const newsPath = en ? '/en/news/' : '/news';
 
 // NewsListItem selects the first image for each article. Use that same entry's
 // order so later in-article figures cannot silently reorder the NEWS cards.
@@ -14,13 +20,23 @@ const mediaOrder = new Map<string, number>();
 for (const item of Object.values(mediaCatalogue)) {
   if (!mediaOrder.has(item.slug)) mediaOrder.set(item.slug, item.order);
 }
-const newsPosts = (await getPublishedPosts())
+const newsPosts = (await getLocalizedPosts(en))
   .filter((post) => post.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate'))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() ||
     (mediaOrder.get(getPostSlug(a)) ?? 1000) - (mediaOrder.get(getPostSlug(b)) ?? 1000));
 const dates = [...new Set(newsPosts.map((post) => formatDateKey(post.data.pubDate, post.data.publicationTimeZone)))];
 // Navigation facets use existing tags/subcategories; article taxonomy stays unchanged.
-const fieldLabels: Record<string, string> = {
+const fieldLabels: Record<string, string> = en ? {
+  'ai-machine-learning': 'AI and machine learning',
+  'vision-perception-neuroscience': 'Vision, perception and neuroscience',
+  'robotics-embedded': 'Robotics and embedded systems',
+  'software-engineering-cs': 'Software and computer science',
+  'research-methods-tools': 'Research methods and tools',
+  'health-lifestyle': 'Life sciences and medicine',
+  semiconductor: 'Semiconductors and computing hardware',
+  energy: 'Energy, batteries and the environment',
+  'finance-industry': 'Industry and business',
+} : {
   'ai-machine-learning': 'AI·머신러닝',
   'vision-perception-neuroscience': '비전·지각·뇌과학',
   'robotics-embedded': '로봇·임베디드',
@@ -39,36 +55,36 @@ const fieldFor = (post: (typeof newsPosts)[number]) => {
 };
 const fields = Object.entries(fieldLabels).map(([id, label]) => ({ id, label, posts: newsPosts.filter((post) => fieldFor(post) === id) })).filter((field) => field.posts.length > 0);
 
-const schema = getBreadcrumbSchema([{ name: 'News', url: new URL('/news', Astro.site).toString() }]);
+const schema = getBreadcrumbSchema([{ name: 'News', url: new URL(newsPath, Astro.site).toString() }]);
 ---
-<Layout title="News" description="AI·바이오·에너지·반도체 연구를 기초 개념과 수식, 원문 그림으로 읽는 Frontier One." schema={schema} lang="ko" adsEnabled={false}>
-  <Breadcrumbs items={[{ name: 'News', href: '/news' }]} />
+<Layout title="News" description={en ? 'Frontier One explains research in AI, life sciences, energy and semiconductors through concepts, equations and original figures.' : 'AI·바이오·에너지·반도체 연구를 기초 개념과 수식, 원문 그림으로 읽는 Frontier One.'} schema={schema} lang={en ? 'en' : 'ko'} adsEnabled={false}>
+  <Breadcrumbs homeHref={en ? '/en/' : '/'} items={[{ name: 'News', href: newsPath }]} />
   <section aria-labelledby="latest-news-heading" class="news-page" data-news-edition="2026-09-05-10-published">
     <header class="news-heading">
       <p>Latest &amp; Follow-up</p>
       <h1 id="latest-news-heading">Frontier One</h1>
     </header>
-    <nav class="news-browse" aria-label="NEWS 탐색">
-      <a href="#news-by-date">날짜순으로 보기</a>
-      <a href="#news-by-field">분야별로 찾기</a>
+    <nav class="news-browse" aria-label={en ? 'Browse news' : 'NEWS 탐색'}>
+      <a href="#news-by-date">{en ? 'Browse by date' : '날짜순으로 보기'}</a>
+      <a href="#news-by-field">{en ? 'Browse by field' : '분야별로 찾기'}</a>
     </nav>
     <details id="news-by-field" class="news-fields">
-      <summary>분야별로 모아보기 <span>{fields.length}개 분야 · {newsPosts.length}편</span></summary>
+      <summary>{en ? 'Browse by research field' : '분야별로 모아보기'} <span>{en ? `${fields.length} fields · ${newsPosts.length} articles` : `${fields.length}개 분야 · ${newsPosts.length}편`}</span></summary>
       <div class="news-field-grid">
         {fields.map((field) => (
           <details class="news-field" data-news-field={field.id}>
-            <summary>{field.label} <span>{field.posts.length}편</span></summary>
-            <ul>{field.posts.map((post) => <li><a href={`/posts/${getPostSlug(post)}/`}>{post.data.title}</a><time datetime={post.data.pubDate.toISOString()}>{formatDateKey(post.data.pubDate, post.data.publicationTimeZone)}</time></li>)}</ul>
+            <summary>{field.label} <span>{en ? `${field.posts.length} ${field.posts.length === 1 ? 'article' : 'articles'}` : `${field.posts.length}편`}</span></summary>
+            <ul>{field.posts.map((post) => <li><a href={en ? englishPostPathForSlug(getPostSlug(post)) : `/posts/${getPostSlug(post)}/`}>{post.data.title}</a><time datetime={post.data.pubDate.toISOString()}>{formatDateKey(post.data.pubDate, post.data.publicationTimeZone)}</time></li>)}</ul>
           </details>
         ))}
       </div>
     </details>
-    <h2 id="news-by-date" class="news-date-heading">날짜순으로 읽기</h2>
+    <h2 id="news-by-date" class="news-date-heading">{en ? 'Read by date' : '날짜순으로 읽기'}</h2>
     {dates.map((date) => (
       <section class="news-date" data-news-date={date} aria-labelledby={`date-${date}`}>
         <h2 id={`date-${date}`}><time datetime={date}>{date.replaceAll('-', '.')}</time></h2>
         <div>{newsPosts.filter((post) => formatDateKey(post.data.pubDate, post.data.publicationTimeZone) === date).map((post) => (
-          <NewsListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} priority={post === newsPosts[0]} />
+          <NewsListItem {en} {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} priority={post === newsPosts[0]} />
         ))}</div>
       </section>
     ))}

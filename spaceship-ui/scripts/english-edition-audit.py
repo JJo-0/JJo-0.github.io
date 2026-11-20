@@ -43,13 +43,60 @@ for p in manifest['pairs']:
     koh=Page((root/'dist/posts'/p['koSlug']/'index.html').read_text())
     check(koh.select('link',rel='alternate',hreflang='en',href=f"https://jjo-0.github.io/en/posts/{p['enSlug']}/"),p['key']+' KO to EN hreflang')
     pages.append({'key':p['key'],'headings':len(re.findall(r'^## ',b,re.M)),'figures':len(bm),'references':len(refs),'citations':len(links),'equations':len(math(b))})
-for route in ['','research','about','news','posts','translations']:
+for route in ['', 'research', 'about', 'news', 'posts', 'translations', 'bible', 'bible/reading-guide',
+              'policies', 'policies/copyright', 'policies/disclaimer', 'policies/health', 'policies/finance',
+              'notices/2026-09-11-biblical-studies-and-policies']:
     html=(root/'dist/en'/route/'index.html').read_text();p=Page(html)
     check(p.select('html',lang='en'),route+' English lang')
     check('translate.google.com' not in html,route+' no proxy')
-    check(not p.select('link',rel='alternate',hreflang='ko-KR') if route in ['posts','translations'] else p.select('link',rel='alternate',hreflang='ko-KR'),route+' only equivalent alternates')
+    check(not p.select('link',rel='alternate',hreflang='ko-KR') if route == 'translations' else p.select('link',rel='alternate',hreflang='ko-KR'),route+' only equivalent alternates')
 search=json.loads((root/'dist/en/api/search.json').read_text())
-check(len(search)==len(pages) and all(p['href'].startswith('/en/posts/') for p in search),'locale scoped search')
+sources=json.loads((root/'dist/api/search.json').read_text())
+by_source={p['koSlug']:p['enSlug'] for p in manifest['pairs']}
+# The reader follows the same subjects, series, publication dates and articles
+# in either locale, including originals whose full translation is still pending.
+def rendered(route):
+    return Page((root/'dist'/route/'index.html').read_text())
+
+def values(page, attribute):
+    return [attrs[attribute] for _, attrs in page.tags if attribute in attrs]
+
+def article_links(page):
+    return [a['href'].strip('/').rsplit('/', 1)[-1] for tag, a in page.tags
+            if tag == 'a' and 'data-post-transition-slug' in a]
+
+for route, markers in [('posts', ['aria-controls', 'data-series-group', 'data-acts-card']),
+                       ('research', ['data-research-section', 'data-series-group']),
+                       ('news', ['data-news-date', 'data-news-field', 'data-news-figure'])]:
+    ko, en = rendered(route), rendered('en/'+route)
+    for marker in markers:
+        check(values(ko,marker) == values(en,marker), f'{route} matching {marker} and order')
+    links = article_links(ko)
+    check(links and [by_source.get(slug, slug) for slug in links] == article_links(en),
+          f'{route} matching article order')
+    check(all(a.get('href', '').startswith('/en/posts/') for tag,a in en.tags
+              if tag == 'a' and 'data-post-transition-slug' in a), route+' English article destinations')
+
+topic_path = Path('posts/tag')
+ko_tags = {p.name for p in (root/'dist'/topic_path).iterdir() if p.is_dir()}
+en_tags = {p.name for p in (root/'dist/en'/topic_path).iterdir() if p.is_dir()}
+check(ko_tags and ko_tags == en_tags, 'Matching topic pages')
+for tag in ko_tags:
+    ko, en = rendered(topic_path/tag), rendered('en'/topic_path/tag)
+    links = article_links(ko)
+    check(links and [by_source.get(slug, slug) for slug in links] == article_links(en),
+          f'{tag} matching topic articles')
+    check(en.select('html', lang='en') and all(a['href'].startswith('/en/posts/')
+          for t,a in en.tags if t == 'a' and 'data-post-transition-slug' in a),
+          f'{tag} English topic destinations')
+expected={f"/en/posts/{by_source.get(p['id'],p['id'])}/" for p in sources}
+check(len(search)==len(sources) and {p['href'] for p in search}==expected,'locale scoped search covers every published original')
+for item in search:
+    check(all(isinstance(item['data'].get(k),str) and item['data'][k].strip() for k in ('title','description')),
+          item['href']+' missing card copy')
+    check(not re.search('[가-힣]', item['data']['title']+' '+item['data']['description']),
+          item['href']+' missing English card copy (add title and description to src/data/english-post-cards.json)')
+    check((root/'dist'/item['href'].strip('/')/'index.html').is_file(),item['href']+' search destination')
 rss=(root/'dist/en/rss.xml').read_text();check('<language>en</language>' in rss and rss.count('<item>')==len(pages),'English RSS')
 check(len([p for p in (root/'site/content/english').iterdir() if p.suffix in {'.md', '.mdx'}])==len(pages),'every published translation registered')
 output=root/'english-review';output.mkdir(exist_ok=True)

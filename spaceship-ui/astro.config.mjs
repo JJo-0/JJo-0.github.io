@@ -30,6 +30,9 @@ import {
 } from '@shikijs/transformers';
 
 import { SITE } from './site/config';
+import edition from './site/english-edition.json' with { type: 'json' };
+
+const englishArticles = new Set(edition.pairs.map(pair => pair.enSlug));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +40,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function includeInSitemap(page) {
   const pathname = new URL(page).pathname;
 
+  const englishPost = /^\/en\/posts\/([^/]+)\/?$/.exec(pathname);
+  if (englishPost && !englishArticles.has(englishPost[1])) return false;
   if (isLegacyPathname(pathname)) return false;
   if (pathname === '/analytics/' || pathname.startsWith('/analytics/')) return false;
   if (!SITE.publicSections.projects && pathname.startsWith('/projects')) return false;

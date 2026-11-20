@@ -70,9 +70,9 @@ const writingIntro = postsSource.match(/<header class="writing-intro\b[\s\S]*?<\
 for (const required of [
   '콘텐츠 이용 안내',
   '개인 연구의 입장, 인용과 AI 활용, 저작권·면책 및 수정 원칙을 안내합니다.',
-  'href="/policies"',
-  'href="/policies/disclaimer"',
-  'href="/policies/copyright"',
+  "sectionPath('/policies')",
+  "sectionPath('/policies/disclaimer')",
+  "sectionPath('/policies/copyright')",
 ]) {
   if (!writingIntro.includes(required)) issues.push(`Writing shared header missing: ${required}`);
 }

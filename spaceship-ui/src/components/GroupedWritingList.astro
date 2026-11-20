@@ -3,10 +3,11 @@ import type { CollectionEntry } from 'astro:content';
 import WritingListItem from './WritingListItem.astro';
 import SeriesGroup from './SeriesGroup.astro';
 import { getPostSlug, getPostSeriesId, compareSeriesPosts } from '@/lib/utils/posts';
+import { ENGLISH_SERIES_TITLES } from '@/lib/english-series';
 import { getReadTime } from '@/lib/utils/readTime';
 import { getSelfImprovingPart, selfImprovingSeries } from '@/lib/self-improving-series';
-interface Props { posts: CollectionEntry<'posts'>[]; }
-const { posts } = Astro.props;
+interface Props { posts: CollectionEntry<'posts'>[]; en?: boolean; }
+const { posts, en = false } = Astro.props;
 const names: Record<string, string> = {
   'modern-artificial-intelligence': '현대 인공지능',
   'ai-consciousness-deep-research': 'AI가 의식이 있는가?',
@@ -31,10 +32,10 @@ const items = posts.flatMap<ListItem>(post => {
   if (key === selfImprovingSeries.id) {
     return selfImprovingSeries.parts.flatMap(part => {
       const partMembers = members.filter(member => getSelfImprovingPart(member.data.series)?.number === part.number);
-      return partMembers.length ? [{ post: partMembers[0], key: part.groupId, title: part.title, description: part.description, members: partMembers }] : [];
+      return partMembers.length ? [{ post: partMembers[0], key: part.groupId, title: en ? part.englishTitle : part.title, description: en ? part.englishDescription : part.description, members: partMembers }] : [];
     });
   }
   return [{ post, key, members }];
 });
 ---
-{items.map(({ post, key, title, description, members }) => key ? <SeriesGroup groupId={key} title={title || names[key] || post.data.title.split(' — ')[0]} {description} count={members.length}>{members.map(member => <WritingListItem post={member} slug={getPostSlug(member)} readTime={getReadTime(member.body || '')} />)}</SeriesGroup> : <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}
+{items.map(({ post, key, title, description, members }) => key ? <SeriesGroup {en} groupId={key} title={title || (en ? ENGLISH_SERIES_TITLES[key] : names[key]) || post.data.title.split(' — ')[0]} {description} count={members.length}>{members.map(member => <WritingListItem {en} post={member} slug={getPostSlug(member)} readTime={getReadTime(member.body || '')} />)}</SeriesGroup> : <WritingListItem {en} {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}

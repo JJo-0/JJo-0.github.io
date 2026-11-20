@@ -4,7 +4,7 @@ import '@/styles/experience.css';
 import '@/styles/transitions.css';
 import '@/styles/performance.css';
 import { SITE } from '@/config';
-import { EN_DESCRIPTION, nativeAlternates } from '@/lib/locales';
+import { EN_DESCRIPTION, englishSwitchPath, koreanSwitchPath, nativeAlternates } from '@/lib/locales';
 import LanguageHint from '@/components/LanguageHint.astro';
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
@@ -55,7 +55,8 @@ const pageOgImage = new URL(ogImage || SITE.ogImage, Astro.site);
 // Refresh previously cached Latin-only preview images without changing original media URLs.
 if (pageOgImage.pathname.startsWith('/og/')) pageOgImage.searchParams.set('v', 'ko-font-20261024');
 const canonicalUrl = new URL(languageAlternates[isEnglish ? 'en' : 'ko-KR'] || (isEnglish ? `${Astro.url.pathname.replace(/\/+$/, '')}/` : Astro.url.pathname), Astro.site);
-const englishPath = languageAlternates.en;
+const englishPath = languageAlternates.en || (isNotFoundPage ? '/en/404/' : ogType === 'article' ? englishSwitchPath(Astro.url.pathname) : undefined);
+const koreanPath = isEnglish ? languageAlternates['ko-KR'] || koreanSwitchPath(Astro.url.pathname) : undefined;
 
 const sectionIsPrivate =
   (!SITE.publicSections.projects && Astro.url.pathname.startsWith('/projects')) ||
@@ -272,9 +273,9 @@ const adsenseLoaderScript = adsenseClientId
       )
     }
     <div class="site-frame mx-auto container-padding">
-      <Header pageLang={pageLang} {englishPath} />
+      <Header {englishPath} {koreanPath} />
       <main id="main-content" class="py-10 sm:py-14 lg:py-20" tabindex="-1">
-        <LanguageHint lang={isEnglish ? "en" : "ko"} />
+        <LanguageHint englishPath={!isEnglish ? englishPath : undefined} />
         <slot />
       </main>
       {adsenseClientId && <AdSense />}

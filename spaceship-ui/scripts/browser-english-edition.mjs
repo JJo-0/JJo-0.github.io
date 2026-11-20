@@ -15,11 +15,52 @@ async function enter(selector){
   await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',text:'\r',unmodifiedText:'\r',windowsVirtualKeyCode:13},sessionId);
   await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
 }
+async function checkHomeParity(cdp, sessionId) {
+  const state = `(() => {
+    const home = document.querySelector('[data-experience-page="home"]');
+    const list = selector => [...home.querySelectorAll(selector)];
+    return {
+      sections: list('section[aria-labelledby]').map(section => section.getAttribute('aria-labelledby')),
+      areas: list('[data-world-chapter]').map(section => section.dataset.worldChapter),
+      layout: getComputedStyle(home.querySelector('[data-world-shell]')).display,
+      profile: home.querySelector('.experience-mouse-frame img')?.getAttribute('src'),
+      cards: list('[data-post-transition-slug]').map(a => a.pathname),
+      graph: list('[data-post-graph-node]').map(a => a.pathname),
+      edges: JSON.parse(home.querySelector('[data-post-graph-source]').textContent).edges,
+      overflow: document.documentElement.scrollWidth > innerWidth + 2,
+      hasKoreanCopy: /[가-힣]/.test(home.innerText),
+      coverageLink: Boolean(home.querySelector('a[href^="/en/translations"]')),
+    };
+  })()`;
+  await navigate(cdp, sessionId, '/');
+  const ko = await evaluate(cdp, sessionId, state);
+  await enter('header a[data-locale-choice="en"]');
+  await waitExpression(cdp, sessionId, `location.pathname === '/en/' && document.documentElement.lang === 'en' && !!document.querySelector('[data-post-graph-node]')`, 'English home after switching language');
+  const en = await evaluate(cdp, sessionId, state);
+  assert.deepEqual(en.sections, ko.sections, 'Both homepages show the same sections in order');
+  assert.deepEqual(en.areas, ko.areas);
+  assert.equal(en.layout, ko.layout);
+  assert.equal(en.profile, '/image/mouse_surprised.gif');
+  assert.equal(en.profile, ko.profile);
+  assert(en.sections.includes('popular-heading'));
+  assert(!en.overflow && !ko.overflow);
+  assert(!en.hasKoreanCopy && !en.coverageLink);
+  const enSlugs = new Map(manifest.pairs.map(pair => [pair.koSlug, pair.enSlug]));
+  const englishPath = pathname => {
+    const slug = pathname.replace(/^\/posts\//, '').replace(/\/+$/, '');
+    return `/en/posts/${enSlugs.get(slug) ?? slug}/`;
+  };
+  assert(ko.cards.length > 0 && ko.graph.length > 0);
+  assert.deepEqual(en.cards, ko.cards.map(englishPath), 'Selected and latest cards keep their order');
+  assert.deepEqual(en.graph, ko.graph.map(englishPath), 'Every map node opens its English interface');
+  assert.deepEqual(en.edges, ko.edges, 'Switching language keeps the same graph relationships');
+}
 async function screen(name){const {data}=await cdp.send('Page.captureScreenshot',{format:'png'},sessionId);fs.writeFileSync(`${out}/${name}.png`,Buffer.from(data,'base64'));}
 try{
   preview=await startPreview();chrome=await startChrome();cdp=await Cdp.connect(chrome.url);({sessionId}=await attach(cdp,{normalizeHistoryPath:false}));
   for(const width of [390,1440]){
     await viewport(cdp,sessionId,{width,height:900,mobile:width===390,touch:width===390,reduced:false});
+    await checkHomeParity(cdp, sessionId);
     writingCategoryResults.push(await checkWritingCategoryPage({cdp,sessionId,width,enter,screen}));
     for(const pair of manifest.pairs){
       const seriesTranslation=pair.translationMethod==='direct-chat-translation';
@@ -75,6 +116,21 @@ try{
         await waitExpression(cdp,sessionId,`['/posts','/posts/'].includes(location.pathname) && document.readyState === 'complete'`,'KO keeps the Writing archive context');
       }
     }
+  }
+  await navigate(cdp,sessionId,'/posts/#biblical-studies');
+  await enter('header a[data-locale-choice="en"]');
+  await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/' && location.hash === '#biblical-studies' && Boolean(document.getElementById('biblical-studies'))`,'Writing switch keeps the category');
+  await enter('header a[data-locale-choice="ko"]');
+  await waitExpression(cdp,sessionId,`['/posts','/posts/'].includes(location.pathname) && location.hash === '#biblical-studies'`,'Writing category round trip');
+  const translatedSlugs = new Set(manifest.pairs.map(pair => pair.koSlug));
+  const sourceIndex = JSON.parse(fs.readFileSync(new URL('../dist/api/search.json',import.meta.url),'utf8'));
+  const pending = sourceIndex.find(entry => !translatedSlugs.has(entry.id));
+  if (pending) {
+    await navigate(cdp,sessionId,`/posts/${pending.id}/`);
+    await enter('header a[data-locale-choice="en"]');
+    await waitExpression(cdp,sessionId,`location.pathname === ${JSON.stringify('/en/posts/'+pending.id+'/')} && document.documentElement.lang === 'en' && Boolean(document.querySelector('article[lang^="ko"]'))`,'Korean original in the English interface');
+    await enter('header a[data-locale-choice="ko"]');
+    await waitExpression(cdp,sessionId,`location.pathname === ${JSON.stringify('/posts/'+pending.id+'/')}`,'Original article round trip');
   }
   console.log('english-browser: article/locale/citation/index cases passed');
   await navigate(cdp,sessionId,'/en/news/');await enter('header button[aria-label="Search"]');

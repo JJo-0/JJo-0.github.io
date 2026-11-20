@@ -3,16 +3,21 @@ import Layout from '@/layouts/Layout.astro';
 import GroupedWritingList from '@/components/GroupedWritingList.astro';
 import ActsShelf from '@/components/ActsShelf.astro';
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
-import { getPublishedPosts } from '@/lib/utils/posts';
+import { getLocalizedPosts } from '@/lib/localized-posts';
 import { POST_CATEGORIES, getPostCategoryMeta } from '@/lib/taxonomy.mjs';
 import { SITE } from '@/config';
 import { getBreadcrumbSchema } from '@/lib/schemas';
 
+interface Props { en?: boolean; }
+const { en = false } = Astro.props;
+const lang = en ? 'en' : undefined;
+const sectionPath = (path: string) => en ? `/en${path}/` : path;
+
 const schema = getBreadcrumbSchema([
-  { name: 'Writing', url: new URL('/posts', Astro.site).toString() },
+  { name: 'Writing', url: new URL(sectionPath('/posts'), Astro.site).toString() },
 ]);
 
-const posts = (await getPublishedPosts())
+const posts = (await getLocalizedPosts(en))
   .filter((post) => !post.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate'))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
@@ -36,7 +41,7 @@ const categoryNoticeLinks: Readonly<Record<string, string>> = {
 const categorySections: CategorySection[] = (POST_CATEGORIES as readonly string[])
   .map((category) => ({
     id: category,
-    ...getPostCategoryMeta(category),
+    ...getPostCategoryMeta(category, en),
     noticeHref: categoryNoticeLinks[category],
     posts: posts.filter((post) => post.data.category === category),
   }))
@@ -57,8 +62,8 @@ const sortedTags = Object.entries(tagCounts)
   .slice(0, 18);
 ---
 
-<Layout title="Writing" description={`${SITE.blogDescription} 성경 본문 주해와 신학적 고찰을 함께 기록합니다.`} schema={schema}>
-  <Breadcrumbs items={[{ name: 'Writing', href: '/posts' }]} />
+<Layout title="Writing" {lang} adsEnabled={en ? false : undefined} description={en ? 'Study notes and essays on technology, research, everyday life and biblical studies.' : `${SITE.blogDescription} 성경 본문 주해와 신학적 고찰을 함께 기록합니다.`} schema={schema}>
+  <Breadcrumbs homeHref={en ? '/en/' : '/'} items={[{ name: 'Writing', href: sectionPath('/posts') }]} />
 
   <header class="writing-intro mb-12 sm:mb-16 max-w-4xl">
     <p class="text-xs font-black uppercase tracking-[0.22em] text-muted-foreground mb-3">
@@ -70,19 +75,18 @@ const sortedTags = Object.entries(tagCounts)
       Writing
     </h1>
     <p class="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-      기술·연구·생활과 성경에 관한 개인의 학습 기록입니다. 먼저 분야를 고른 뒤 관련 글을
-      이어서 볼 수 있습니다. 최신 연구·산업 트리거는 News의 Frontier One에서 별도로 정리합니다.
+      {en ? 'Study notes on technology, research, everyday life and the Bible. Choose a subject to explore related articles. Frontier One in News covers current research and industry developments.' : '기술·연구·생활과 성경에 관한 개인의 학습 기록입니다. 먼저 분야를 고른 뒤 관련 글을 이어서 볼 수 있습니다. 최신 연구·산업 트리거는 News의 Frontier One에서 별도로 정리합니다.'}
     </p>
-    <aside aria-label="콘텐츠 이용 안내" class="mt-6 rounded-xl border border-border bg-secondary/30 p-5">
-      <p class="text-xs font-bold tracking-wide text-muted-foreground">콘텐츠 이용 안내</p>
-      <p class="mt-2 text-sm leading-relaxed text-muted-foreground">개인 연구의 입장, 인용과 AI 활용, 저작권·면책 및 수정 원칙을 안내합니다.</p>
+    <aside aria-label={en ? 'Reader guide' : '콘텐츠 이용 안내'} class="mt-6 rounded-xl border border-border bg-secondary/30 p-5">
+      <p class="text-xs font-bold tracking-wide text-muted-foreground">{en ? 'Reader guide' : '콘텐츠 이용 안내'}</p>
+      <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{en ? 'Read about the author’s research approach, citation and AI use, copyright, disclaimers and corrections.' : '개인 연구의 입장, 인용과 AI 활용, 저작권·면책 및 수정 원칙을 안내합니다.'}</p>
     </aside>
     <p class="mt-4 text-sm text-muted-foreground">
-      <a href="/policies" class="underline underline-offset-4">운영·AI 활용 원칙</a>
+      <a href={sectionPath('/policies')} class="underline underline-offset-4">{en ? 'Editorial and AI policy' : '운영·AI 활용 원칙'}</a>
       {' · '}
-      <a href="/policies/disclaimer" class="underline underline-offset-4">콘텐츠 활용·면책 안내</a>
+      <a href={sectionPath('/policies/disclaimer')} class="underline underline-offset-4">{en ? 'Content use and disclaimers' : '콘텐츠 활용·면책 안내'}</a>
       {' · '}
-      <a href="/policies/copyright" class="underline underline-offset-4">저작권·재사용</a>
+      <a href={sectionPath('/policies/copyright')} class="underline underline-offset-4">{en ? 'Copyright and reuse' : '저작권·재사용'}</a>
     </p>
   </header>
 
@@ -141,12 +145,12 @@ const sortedTags = Object.entries(tagCounts)
                         <>
                           {' '}
                           <a
-                            href={section.noticeHref}
+                            href={sectionPath(section.noticeHref)}
                             data-category-notice={section.id}
-                            aria-label={`${section.label} 공지: 저작권·면책·자료 이용 원칙`}
+                            aria-label={en ? `${section.label} notice on copyright, disclaimers and use` : `${section.label} 공지: 저작권·면책·자료 이용 원칙`}
                             class="inline-block whitespace-nowrap rounded-sm font-bold underline underline-offset-4 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
                           >
-                            [공지]
+                            {en ? '[Notice]' : '[공지]'}
                           </a>
                         </>
                       )}
@@ -160,8 +164,8 @@ const sortedTags = Object.entries(tagCounts)
 
               <div>
                 {section.id === 'biblical-studies' ? (
-                  <ActsShelf />
-                ) : section.posts.length > 0 ? <GroupedWritingList posts={section.posts} /> : <p class="text-sm leading-relaxed text-muted-foreground">현재 공개된 글이 없습니다. Deep Research·프롬프트 설계·검증 가능한 조사 워크플로는 재작성 예정입니다.</p>}
+                  <ActsShelf {en} />
+                ) : section.posts.length > 0 ? <GroupedWritingList {en} posts={section.posts} /> : <p class="text-sm leading-relaxed text-muted-foreground">{en ? 'No articles are published in this section yet.' : '현재 공개된 글이 없습니다. Deep Research·프롬프트 설계·검증 가능한 조사 워크플로는 재작성 예정입니다.'}</p>}
               </div>
             </section>
           ))
@@ -200,7 +204,7 @@ const sortedTags = Object.entries(tagCounts)
             {
               sortedTags.map(([tag, count]) => (
                 <a
-                  href={`/posts/tag/${tag}`}
+                  href={sectionPath(`/posts/tag/${tag}`)}
                   class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium no-underline hover:border-foreground/20 hover:bg-accent"
                 >
                   <span class="text-foreground">{tag}</span>
