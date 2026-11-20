@@ -35,7 +35,7 @@ async function checkHomeParity(cdp, sessionId) {
   await navigate(cdp, sessionId, '/');
   const ko = await evaluate(cdp, sessionId, state);
   await enter('header a[data-locale-choice="en"]');
-  await waitExpression(cdp, sessionId, `location.pathname === '/en/' && document.documentElement.lang === 'en' && !!document.querySelector('[data-post-graph-node]')`, 'English home after switching language');
+  await waitExpression(cdp, sessionId, `location.pathname === '/en/' && document.documentElement?.lang === 'en' && !!document.querySelector('[data-post-graph-node]')`, 'English home after switching language');
   const en = await evaluate(cdp, sessionId, state);
   assert.deepEqual(en.sections, ko.sections, 'Both homepages show the same sections in order');
   assert.deepEqual(en.areas, ko.areas);
@@ -128,7 +128,7 @@ try{
   if (pending) {
     await navigate(cdp,sessionId,`/posts/${pending.id}/`);
     await enter('header a[data-locale-choice="en"]');
-    await waitExpression(cdp,sessionId,`location.pathname === ${JSON.stringify('/en/posts/'+pending.id+'/')} && document.documentElement.lang === 'en' && Boolean(document.querySelector('article[lang^="ko"]'))`,'Korean original in the English interface');
+    await waitExpression(cdp,sessionId,`location.pathname === ${JSON.stringify('/en/posts/'+pending.id+'/')} && document.documentElement?.lang === 'en' && Boolean(document.querySelector('article[lang^="ko"]'))`,'Korean original in the English interface');
     await enter('header a[data-locale-choice="ko"]');
     await waitExpression(cdp,sessionId,`location.pathname === ${JSON.stringify('/posts/'+pending.id+'/')}`,'Original article round trip');
   }
@@ -152,7 +152,7 @@ try{
   const missingResponse=await fetch(new URL(missing,BASE));
   assert.equal(missingResponse.status,404,'Unknown English URL must remain a real HTTP 404');
   await navigate(cdp,sessionId,missing);
-  await waitExpression(cdp,sessionId,`document.documentElement.lang === 'en' && document.documentElement.dataset.englishNotFound === 'true'`,'root 404 recovery recognizes the requested English path');
+  await waitExpression(cdp,sessionId,`document.documentElement?.lang === 'en' && document.documentElement.dataset.englishNotFound === 'true'`,'root 404 recovery recognizes the requested English path');
   assert.equal(await evaluate(cdp,sessionId,`document.querySelector('header [data-site-brand]').getAttribute('href')`),'/en/');
   assert.equal(await evaluate(cdp,sessionId,`document.querySelector('header [data-locale-choice="ko"]').getAttribute('href')`),'/posts');
   assert.equal(await evaluate(cdp,sessionId,`[...document.querySelectorAll('header nav a')].every(a=>a.getAttribute('href').startsWith('/en/'))`),true);

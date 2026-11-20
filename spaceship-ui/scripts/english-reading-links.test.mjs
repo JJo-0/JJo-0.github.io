@@ -7,6 +7,7 @@ const render = html => localizeReadingLinks(html, source, path => map.get(path))
 const original = '<a class="article" href="/posts/target/?a=1&amp;b=2#section">Read next</a>';
 const target = '<a class="article" href="/en/posts/translated/?a=1&amp;b=2#section">Read next</a>';
 assert.equal(render(original), target);
+assert.equal(render('<a HREF = "/posts/target/">Read</a>'), '<a href="/en/posts/translated/">Read</a>');
 for (const href of ['../target/', '/posts/target/', 'https://jjo-0.github.io/posts/target/']) {
   assert.equal(render(`<a href="${href}">Read</a>`), '<a href="/en/posts/translated/">Read</a>');
 }

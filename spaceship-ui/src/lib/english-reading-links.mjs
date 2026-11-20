@@ -6,7 +6,7 @@ function anchorText(node) {
 
 /** Change href values in authored prose without serializing the surrounding Markdown, MDX or islands. */
 export function localizeReadingLinks(html, originalURL, destinationFor) {
-  if (!html.includes('href=')) return html;
+  if (!/\bhref\s*=/i.test(html)) return html;
   const root = parseFragment(html, { sourceCodeLocationInfo: true });
   const changes = [];
 
