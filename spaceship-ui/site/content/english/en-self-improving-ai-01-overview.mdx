@@ -1,0 +1,475 @@
+---
+title: Self-Improving AI 01 — What changes when an AI improves?
+description: Which part of a system changes, and what feedback drives it? Evaluation and generalization evidence
+  put claims about recursive self-improvement in context.
+pubDate: 2026-11-16
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-01-overview
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- self-correction
+- reinforcement-learning
+- ntu
+- study
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 1
+translationKey: en-self-improving-ai-01-overview
+translatedPosts:
+  ko-KR: self-improving-ai-01-overview
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+When an AI corrects an answer, has the model learned anything? To understand self-improvement, ask **what changed, what feedback it used, and whether the benefit carries over to new problems**.
+
+<details>
+<summary>Video timestamps by slide</summary>
+
+| Slide | Topic in this article | Video segment |
+|---|---|---|
+| 1 | How can we make the question of AI improving itself more precise? | Approximately 00:01–00:10 |
+| 2 | What assumptions underlie Good's account of recursive self-improvement? | Approximately 00:10–00:51 |
+| 3 | How should we read forecasts for 2028 alongside current experiments? | Approximately 00:51–01:40 |
+| 4 | Does repeated feedback actually improve performance? | Approximately 01:40–02:39 |
+| 5 | What changes, where do people contribute, and how do we evaluate the result? | Approximately 02:39–03:37 |
+
+</details>
+
+## Slide 1 — Can AI improve itself?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/ntu-self-improving-01-en.png"
+  alt="The lecture's title slide asks whether AI can improve itself."
+  caption="NTU slide 1 — Can AI improve itself?"
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=1"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 1](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=1) · [Video at approximately 00:01](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1s)
+
+The first slide asks the question that runs through the lecture. Start by specifying **what “itself” refers to and what counts as “improvement.”**
+
+### Different changes can all look like improvement
+
+Suppose an AI fixes an arithmetic error while solving a math problem. Its answer to that problem has improved. If that experience disappears when the next conversation starts, what we observed was an improvement to the current answer. That alone says little about whether the model's weights were updated.
+
+If the system instead uses previous solutions as training data for fine-tuning, its weights change. If it saves a failure as a rule such as “check whether the denominator is zero first” and uses it on the next problem, persistent memory changes while the weights stay fixed. Improving the order of code execution or the testing tools changes how the agent works.
+
+Ask both questions together.
+
+1. **Did the outcome change on this problem?**
+2. **Did the experience also change the system that handles later problems?**
+
+Both effects merit study, but they require different evidence. An experiment that measures a higher solve rate on current problems and an experiment that measures better performance on new problems after accumulating experience require distinct designs.
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/ucl-distinct-reasons-to-learn-p17.png"
+  alt="The slide distinguishes learning a solution from adapting to new situations during operation. The latter requires continued learning during deployment."
+  caption="DeepMind × UCL, PDF page 17 — A solution learned before deployment and a system that keeps adapting in use."
+  source="https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=17"
+  credit="Hado van Hasselt · DeepMind × UCL 2021"
+  label="Supplementary lecture · DeepMind × UCL"
+  width={1600}
+  height={901}
+/>
+
+Hado van Hasselt distinguishes two aims of learning. One is to acquire a solution, such as playing chess well or performing a specific manufacturing task. The other is to keep learning during operation, perhaps to adapt to an unfamiliar opponent or terrain. The first also requires learning, but the policy can be fixed once training ends. In the second case we also need to establish how new experience affects subsequent actions. [Original lecture, page 17](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf#page=17)
+
+Applied to self-improving AI, this distinction lets us evaluate generalization to new problems separately from online adaptation through accumulated experience. Answering an unfamiliar question well is evidence of generalization. To credit better performance on a later question to remembering a failure or updating parameters, compare runs with and without that update. This example applies the lecture's distinction to LLMs.
+
+### Self-improvement and reinforcement learning
+
+This series uses self-improvement as an umbrella term and distinguishes self-correction, self-training, reinforcement learning, and improvements to prompts or agent architecture by their actual procedures.
+
+For example, DeepSeek-R1-Zero trains the model using rewards. GEPA optimizes prompts while keeping the underlying model's weights fixed. Both seek improvement, but the target and update procedure differ. When using the term “self-reinforcement,” specify whether the procedure actually trains the weights using rewards. [R1](https://arxiv.org/html/2501.12948v1), [GEPA](https://proceedings.iclr.cc/paper_files/paper/2026/file/0e9e708b6f48e14fd0ac29e167413f76-Paper-Conference.pdf)
+
+Take this question from the first slide.
+
+> When an AI reuses its experience, what changes, and on which problems does that change help?
+
+This question identifies what to look for when a paper claims that a system successfully improved itself.
+
+## Slide 2 — The premise behind “humanity's last invention”
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/ntu-self-improving-02-en.png"
+  alt="A slide introducing I. J. Good's 1965 account of self-improvement."
+  caption="NTU slide 2 — Good's account of recursive self-improvement."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=2"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 2](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=2) · [Video at approximately 00:10](https://www.youtube.com/watch?v=s06mSAGN4gM&t=10s)
+
+This slide introduces I. J. Good's 1965 argument.
+
+Good imagines a machine that greatly surpasses even the most capable human in every intellectual activity. Since designing machines is itself an intellectual activity, such a machine could design a better one, potentially triggering an intelligence explosion. The passage appears on printed page 33 of the original. It is a historical conditional argument, whereas experimental evidence about modern LLMs is a separate matter. [Good, 1965, section 2](https://scienceplusplus.org/metascience/assets/Good1965.pdf#page=3)
+
+### Distinguishing task performance from the ability to improve
+
+Suppose a model solves math problems well. That observation concerns its ability to solve problems. Its ability to propose better learning algorithms, run experiments, analyze results, and produce an actual successor model requires additional evidence.
+
+We can examine the ability to improve at four levels.
+
+| Level | Capability to establish | Example evidence |
+|---|---|---|
+| Perform a task | Solve the given problem | Accuracy or success rate on new problems |
+| Carry out an improvement | Produce better prompts, data, or code | A comparison of the system before and after the change |
+| Repeat the improvement process | Use the results of an earlier change to inform the next one | Performance, cost, and failures across rounds |
+| Improve the procedure itself | Discover a better way to make improvements | Finding better candidates with the same resources or increasing the rate of improvement |
+
+These distinctions help identify which stages a study automated and what evidence it supplied.
+
+### Repeated improvement can slow down
+
+Repeated improvements do not imply that growth will keep accelerating. Consider a simple hypothetical model.
+
+Let <Math tex={String.raw`C_k`} /> denote performance between 0 and 1 on a fixed task. Suppose each round closes a fixed fraction of the remaining gap.
+
+<Math tex={String.raw`C_{k+1}=C_k+\alpha(1-C_k), \qquad 0<\alpha<1.`} display />
+
+With <Math tex={String.raw`C_0=0.5`} /> and <Math tex={String.raw`\alpha=0.2`} />, performance evolves as follows.
+
+<Math tex={String.raw`0.5 \rightarrow 0.6 \rightarrow 0.68 \rightarrow 0.744.`} display />
+
+Performance keeps improving, but the gains shrink to <Math tex={String.raw`0.1, 0.08, 0.064`} />. This model proposes no law of intelligence growth. It is **a numerical example showing that repeated improvement and sustained acceleration are logically distinct claims**.
+
+Empirical research should likewise distinguish a one-time gain, cumulative gains over multiple rounds, and an increase in the efficiency of improvement itself. It also matters how each round obtains data, compute, and criteria for judging results.
+
+Good's argument is a starting point for considering a possibility. To evaluate an existing system, examine the evidence for each link in the chain that would lead there.
+
+## Slide 3 — Reading a forecast for 2028
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/ntu-self-improving-03-en.png"
+  alt="A slide quoting Jack Clark's forecast about the automation of AI research and development by 2028."
+  caption="NTU slide 3 — Jack Clark's forecast for the automation of AI R&D."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=3"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 3](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=3) · [Video at approximately 00:51](https://www.youtube.com/watch?v=s06mSAGN4gM&t=51s)
+
+This slide quotes Jack Clark's Import AI 455, published on **May 4, 2026**. Clark personally assigns **at least a 60% probability that by the end of 2028 AI R&D can proceed without human intervention, to the point where a system can autonomously develop its successor**. [Original article](https://importai.substack.com/p/import-ai-455-automating-ai-research)
+
+| Item | How to read it |
+|---|---|
+| Date of statement | May 4, 2026 |
+| Forecast horizon | End of 2028 |
+| What is forecast | AI R&D capable of developing a successor AI system without human intervention |
+| Meaning of at least 60% | The author's subjective probability |
+| What the figure cannot establish | The success rate of self-improvement experiments, benchmark accuracy, or consensus among researchers |
+
+Recording both the dates and the kind of number helps readers distinguish established capabilities from a forecast.
+
+### Recent papers show which parts have been automated
+
+Recent examples help establish the actual scope of self-improvement.
+
+**GEPA — ICLR 2026.** GEPA uses execution traces and feedback to generate and evaluate candidate prompts. Section 3 of the paper states that the underlying LLM's weights stay fixed during optimization. The study demonstrates system improvement through prompts. [Official paper, printed page 4](https://proceedings.iclr.cc/paper_files/paper/2026/file/0e9e708b6f48e14fd0ac29e167413f76-Paper-Conference.pdf#page=4)
+
+#### Supplementary lecture · How GEPA improves prompts
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/gepa-algorithm-diagram-p34.png"
+  alt="Diagram showing how a candidate is selected from a prompt pool using per-problem scores, then execution traces and textual feedback guide a new prompt proposal and its evaluation."
+  caption="Stanford CS329T, PDF page 34 — Generating and evaluating GEPA prompt candidates."
+  source="https://web.stanford.edu/class/cs329t/slides/Lecture%209%20-%2020251028%20GEPA_Talk.pdf#page=34"
+  credit="Lakshya A Agrawal et al. · GEPA: Reflective Evolution of Compound AI Systems"
+  width={1800}
+  height={1013}
+/>
+
+The candidate pool at left holds several prompts. Their per-problem scores show that different prompts may do well on different problems. The right-hand path reads one candidate's execution traces and textual feedback to propose a new prompt. Another path combines components of two candidates. If a small evaluation shows improvement, the new candidate receives a full evaluation and joins the pool. Candidates that show no improvement are discarded. The process repeatedly <strong>searches for a prompt to use in subsequent runs</strong>, going beyond regenerating an answer. [Authors' lecture, page 34](https://web.stanford.edu/class/cs329t/slides/Lecture%209%20-%2020251028%20GEPA_Talk.pdf#page=34)
+
+#### Supplementary paper · Code modification and task evaluation in DGM
+
+**Darwin Gödel Machine — first released in May 2025, with arXiv v3 dated March 12, 2026.** A coding agent modifies its own code and evaluates candidates. The underlying model is frozen. Changes affect the agent implementation, including its tools and workflow. Parts of the search procedure are fixed as well. [Paper, sections 1, 3, and 4.1](https://arxiv.org/html/2505.22954v3)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/dgm-original-figure1-p02.png"
+  alt="Cycle showing selection of a parent from archived agents, modification of its own code repository, evaluation on coding tasks, and storage of the new agent."
+  caption="Darwin Gödel Machine, arXiv v3 Figure 1 — Repeated agent code modification and task evaluation."
+  source="https://arxiv.org/pdf/2505.22954v3#page=2"
+  credit="Jenny Zhang et al. · ICLR 2026 · CC BY 4.0"
+  width={1604}
+  height={456}
+/>
+
+At upper right, the agent modifies <strong>its own code repository</strong>. At lower right, the modified agent solves a problem in a separate task repository. Both produce code changes, but for different purposes. The upper change modifies the agent's implementation, including tools and workflow. The lower change addresses the assigned coding problem. The archive at left retains multiple agent versions as starting points for subsequent modifications. [Original paper, Fig. 1 and section 3](https://arxiv.org/html/2505.22954v3#S3)
+
+The agent code changes in this design. In the experiments, the pretrained foundation model stayed fixed, and the search procedure for managing the archive and selecting parents was outside the scope of modification. When reading “modifies itself,” identify both the editable code and the fixed outer procedure. The study assumes that better coding performance indicates greater ability to self-modify. That assumption needs separate support for other tasks. [Original paper, sections 1 and 3](https://arxiv.org/html/2505.22954v3#S3)
+
+To interpret these findings, write down exactly what changed. Improving prompts, improving agent code, retraining the underlying model, and automating all R&D for a successor model each have a different scope.
+
+### Connecting forecasts to experimental results
+
+When drawing connections between studies, describe the scope of the evidence explicitly.
+
+> Research has demonstrated increasingly concrete methods for automatically improving prompts and agent code. To assess autonomous R&D for a successor AI, identify both the automated steps and those performed by people.
+
+A forecast can motivate research while individual experiments establish specific results. This slide helps explain why the techniques discussed next have attracted interest.
+
+## Slide 4 — Receiving feedback does not guarantee improvement
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/ntu-self-improving-04-en.png"
+  alt="The slide uses crossing the Rubicon as a metaphor for a turning point in AI self-improvement."
+  caption="NTU slide 4 — Crossing the Rubicon and a turning point in self-improvement."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=4"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 4](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=4) · [Video at approximately 01:40](https://www.youtube.com/watch?v=s06mSAGN4gM&t=100s)
+
+Crossing the Rubicon evokes the major transition self-improvement could bring. A working system needs a feedback process that proposes and evaluates changes.
+
+1. Generate a **candidate change** to the current system.
+2. **Evaluate** the candidate on development problems.
+3. Incorporate a candidate that meets the acceptance criterion into the next version. If it fails, generate another candidate.
+4. Repeat from the new version. Once the rounds are complete, check performance with a **separate final evaluation** that played no role in selecting candidates.
+
+Actual methods can be more complex. They may keep several candidates or retain a low-scoring one to preserve diversity. Distinguish the evaluation used for selection from the evaluation used to establish final performance.
+
+### Measuring another review and a better answer separately
+
+Calculate the net effect of revision in this **hypothetical example**.
+
+Suppose a model initially answers 80 of 100 questions correctly. Asking it to review its answers produces the following changes.
+
+| Before revision → after revision | Problems |
+|---|---:|
+| Correct → correct | 72 |
+| Correct → incorrect | 8 |
+| Incorrect → correct | 6 |
+| Incorrect → incorrect | 14 |
+| Total | 100 |
+
+The model fixes six incorrect answers but also spoils eight correct ones.
+
+<Math tex={String.raw`\text{Final number correct}=80-8+6=78.`} display />
+
+Accuracy falls from 80% to 78%. Finding some successful corrections is insufficient evidence of an overall improvement.
+
+We can generalize this calculation.
+
+- <Math tex={String.raw`p`} />: probability that the initial answer is correct.
+- <Math tex={String.raw`q=P(\text{correct after revision}\mid\text{incorrect before revision})`} />: probability of fixing an incorrect answer.
+- <Math tex={String.raw`d=P(\text{incorrect after revision}\mid\text{correct before revision})`} />: probability of spoiling a correct answer.
+
+The accuracy after revision, <Math tex={String.raw`p'`} />, is given by
+
+<Math tex={String.raw`p'=p(1-d)+(1-p)q.`} display />
+
+The first term is the fraction of initially correct answers retained. The second is the fraction of initially incorrect answers fixed. Performance therefore improves under the following condition.
+
+<Math tex={String.raw`p'>p
+\quad \Longleftrightarrow \quad
+(1-p)q>pd.`} display />
+
+**The gain from fixing incorrect answers must exceed the loss from spoiling correct ones.** The equation assumes binary grading. With partial credit, generalize it using changes in score.
+
+### Reading empirical findings in light of their evaluation conditions
+
+The ICLR 2024 paper *Large Language Models Cannot Self-Correct Reasoning Yet* examined intrinsic self-correction, in which a model revises its answer without external feedback. In the reasoning settings studied, improvements were difficult to obtain, and sometimes performance fell after revision. The findings concern the models, tasks, and methods examined at the time. They do not establish an impossibility theorem for all later models or for systems with a verifier. [Official paper page](https://proceedings.iclr.cc/paper_files/paper/2024/hash/8b4add8b0aa8749d80a34ca5d941c355-Abstract-Conference.html)
+
+This raises an experimental question. If revision uses extra compute, does it still help compared with generating several answers from scratch and selecting one under the same total budget? The hypothetical table cannot answer that question. It takes a separate comparison.
+
+### External feedback and independent final evaluation
+
+Code execution results and comparisons with answer keys supply feedback from outside the generation process. If those same problems repeatedly guide candidate selection, their scores have informed development.
+
+Independence in final evaluation is a separate requirement. Reserve problems never used to generate or select candidates, then evaluate the finalized system on them to test generalization. An external verifier alone does not ensure that separation.
+
+#### Supplementary lecture · Candidate selection and final evaluation in GEPA
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/gepa-algorithm-p33.png"
+  alt="Algorithm that divides training data into dev and val, proposes prompts from dev execution traces, and updates the candidate pool using val scores."
+  caption="Stanford CS329T, PDF page 33 — Data for generating prompts and data for selecting candidates."
+  source="https://web.stanford.edu/class/cs329t/slides/Lecture%209%20-%2020251028%20GEPA_Talk.pdf#page=33"
+  credit="Lakshya A Agrawal et al. · GEPA: Reflective Evolution of Compound AI Systems"
+  width={1800}
+  height={1013}
+/>
+
+On this slide, `dev` supplies traces and feedback for changing prompts. `val` helps decide which candidates to keep. Although separate, both sets participate in optimization. In particular, <strong>a validation score used repeatedly for candidate selection serves a different purpose from a final test score held apart from selection.</strong> The first figure in the GEPA paper likewise distinguishes the validation performance curve from performance on a separate test set. [Authors' lecture, page 33](https://web.stanford.edu/class/cs329t/slides/Lecture%209%20-%2020251028%20GEPA_Talk.pdf#page=33) · [Official paper, Fig. 1](https://proceedings.iclr.cc/paper_files/paper/2026/file/0e9e708b6f48e14fd0ac29e167413f76-Paper-Conference.pdf#page=1)
+
+Examine the verifier's coverage as well. Passing all supplied code tests establishes that the code satisfies the conditions those tests check. Correct behavior on all untested inputs requires further evidence.
+
+## Slide 5 — Three dimensions of self-improvement
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-01-overview/ntu-self-improving-05-en.png"
+  alt="The slide discusses definitions of AI self-improvement and the gradual reduction in human involvement."
+  caption="NTU slide 5 — Defining self-improvement and the scope of human involvement."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=5"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 5](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=5) · [Video at approximately 02:39](https://www.youtube.com/watch?v=s06mSAGN4gM&t=159s)
+
+The slide observes that AI self-improvement has no single clear definition and that many studies describe a gradual reduction in human involvement.
+
+We will read papers along three dimensions.
+
+1. **Target of change:** What changes?
+2. **Scope of automation:** Which steps does AI perform?
+3. **Evidence for improvement:** How do we know the change helped?
+
+### First dimension — What changes?
+
+For this discussion, divide the persistent system state as follows.
+
+<Math tex={String.raw`S_k=(\theta_k,h_k,m_k).`} display />
+
+| Symbol | Meaning | Concrete example |
+|---|---|---|
+| <Math tex={String.raw`\theta_k`} /> | Model weights | Parameters updated through fine-tuning or reinforcement learning |
+| <Math tex={String.raw`h_k`} /> | Prompts, tools, and execution rules | Model call order, search tools, and test execution code |
+| <Math tex={String.raw`m_k`} /> | Memory reused on later tasks | Rules extracted from failures and stored problem-solving experience |
+
+A harness is the runtime code and rules that call the model, connect tools, and sequence work. A temporary answer or conversation context used while solving one problem is distinct from the persistent memory above.
+
+Apply these distinctions to several methods.
+
+| Method | What changes directly | What to examine |
+|---|---|---|
+| Ordinary inference-time self-correction | Current answer, solution, or context | Post-revision accuracy, harmful revisions, extra compute |
+| Fine-tuning on self-generated data | <Math tex={String.raw`\theta`} /> | Data selection criteria and performance on new problems |
+| Reinforcement learning with verifiable rewards (RLVR) | <Math tex={String.raw`\theta`} /> | Reward design, verification coverage, and how reward relates to evaluation |
+| Prompt or agent architecture improvement | <Math tex={String.raw`h`} /> | Actual changes and the models and tools used in evaluation |
+| Memory-based adaptation | <Math tex={String.raw`m`} /> | How experience is retained and retrieved, and transfer to other tasks |
+
+When something changes is a separate question. Inference may keep weights fixed and change only the answer. Test-time training can update weights while processing a problem. Check the actual update procedure before inferring the target of a change from its timing. [Test-Time Training, ICML 2020](https://arxiv.org/abs/1909.13231)
+
+### What external information enters self-generated data?
+
+STaR, introduced in 2022, connects these ideas. Starting with a few worked examples, it generates rationales. After an incorrect answer, it generates another rationale conditioned on the correct answer. It repeatedly fine-tunes on rationales that reach the correct answer. Account for the supplied problems, correct answers, and initial examples. Using the model's output as part of the training data is compatible with using external criteria. A correct final answer also does not guarantee that every reasoning step is valid. [Original STaR paper](https://arxiv.org/abs/2203.14465)
+
+In the 2025 report, DeepSeek-R1-Zero applied reinforcement learning to pretrained DeepSeek-V3-Base without preceding supervised fine-tuning (SFT). It used rule-based rewards for answer accuracy and output format. “Without preceding SFT” still allows pretraining and human-designed scoring criteria. R1 itself includes multiple stages, among them cold-start data and SFT, so distinguish it from R1-Zero. [2025 report, sections 2.2–2.3](https://arxiv.org/html/2501.12948v1)
+
+These examples motivate a set of questions about self-improvement.
+
+> Who produced the experience, what determined which experiences were valuable, and where was the result stored?
+
+### Second dimension — Where do people contribute?
+
+Breaking the process into steps gives a clearer account than simply saying that no human intervened. This checklist is for reading studies in general, independent of any specific paper's implementation.
+
+| Element of the process | Question to ask |
+|---|---|
+| Goal | Who defines the problems and success criteria? |
+| Starting model | Which pretrained model is the starting point? |
+| Data | Who creates and provides the problems, answers, and experience? |
+| Verifier or reward | What does it check, and who designed the criteria? |
+| Candidate changes | Who changes which prompts, data, code, or weights? |
+| Selection and stopping | Who chooses the next version and decides when to stop? |
+
+A system where people design the goal and verification environment and an AI generates and selects candidates is worth studying. Autonomy can vary by step. Describe the automated steps when calling a system self-improving.
+
+### Third dimension — How do we distinguish change from improvement?
+
+A change in state can be written as
+
+<Math tex={String.raw`S_{k+1}\neq S_k`} display />
+
+Performance improvement, however, requires a separate measurement.
+
+Whether weights, harness, or memory change, the outcome of interest is performance on specified evaluation problems. Define an evaluation function as follows.
+
+<Math tex={String.raw`J(S;B)
+=
+\mathbb{E}_{x\sim\mathcal D_{\mathrm{test}},\,\xi}
+\left[u\!\left(x,A_S(x;B,\xi)\right)\right].`} display />
+
+- <Math tex={String.raw`S`} />: the system state under evaluation.
+- <Math tex={String.raw`A_S`} />: the complete system that uses state <Math tex={String.raw`S`} /> to solve a problem.
+- <Math tex={String.raw`x`} />: an evaluation problem.
+- <Math tex={String.raw`\mathcal D_{\mathrm{test}}`} />: the target distribution of evaluation problems.
+- <Math tex={String.raw`\xi`} />: randomness in execution, such as sampling.
+- <Math tex={String.raw`B`} />: the specified inference resource constraint.
+- <Math tex={String.raw`u`} />: an evaluation score computed from the answer key or grading criteria.
+
+The difference before and after the change is
+
+<Math tex={String.raw`\Delta J(B)=J(S_{\mathrm{after}};B)-J(S_{\mathrm{before}};B).`} display />
+
+Under the same conditions, <Math tex={String.raw`\Delta J(B)>0`} /> indicates improvement on that criterion. Actual experiments estimate this value from finite problems and runs, so interpret small differences alongside their variability.
+
+Two cautions apply to this expression.
+
+First, <Math tex={String.raw`u`} /> is the evaluation criterion we selected. Expressing it mathematically does not make it a perfect measure of practical usefulness. Distinguish a higher training reward <Math tex={String.raw`r`} /> from improvement on the final evaluation of interest, <Math tex={String.raw`u`} />.
+
+Second, define <Math tex={String.raw`B`} />. Generated tokens, tool calls, and elapsed time measure different resources. The same number of tokens need not imply the same cost or compute. Report the cost of searching for improvements or training a model separately from the final system's inference costs.
+
+Two comparisons are valid within this framework.
+
+| Comparison | Question |
+|---|---|
+| Performance at similar inference budgets | Does the system solve problems better with the same resources? |
+| Performance curves as the budget increases | How far can performance improve with more compute? |
+
+Comparing systems with different budgets is also informative when the purpose and cost are explicit. Design the comparison so that readers can distinguish the effect of extra compute from the effect of learning or a design change.
+
+### Applying the framework to machine vision
+
+Consider a **hypothetical experiment** that applies these criteria.
+
+Suppose a defect detector assigns pseudo-labels to unlabeled images, selects high-confidence predictions, and retrains on them. Generated outputs become training data, and <Math tex={String.raw`\theta`} /> changes.
+
+If we measure only how well it predicts its own labels, the model may appear to improve simply by becoming more confident in incorrect predictions. Compare on a separate test set with human ground truth and examine whether the effect persists across imaging conditions or equipment.
+
+Placing images from one capture session, or near-duplicates, in both development and test sets weakens a generalization claim. Choose the unit of splitting to reflect what counts as a new situation. Specify whether the improvement concerns new images from the same equipment or transfer to different equipment.
+
+This example connects self-improvement with a practical machine vision problem. Trace the origin of generated data, the selection criteria, the update target, and the evaluation conditions within a single experiment.
+
+## Four questions for reading self-improvement research
+
+Try completing four sentences when reading a study.
+
+1. **The system changes its own ______.**
+2. **It uses ______ to decide whether a change is good.**
+3. **People design or provide ______.**
+4. **The change was evaluated on new problems under ______ conditions.**
+
+Concrete answers connect the broad claim of self-improvement to an implementation and an experiment.
+
+The next article, [Self-Improving AI 02 — Who Sets the Learning Target?](/posts/self-improving-ai-02-learning-targets/), follows **slides 6–10**. It starts with the basic structure of learning and distinguishes loss functions, knowledge distillation, and self-generated pseudo-answers. It examines the conditions under which training a model on its own answers can help, along with examples of failure.
+
+---
+
+## Further reading
+
+1. Hung-yi Lee. Machine Learning 2026 Spring, Self-Improving. Official schedule: May 8, 2026. [Lecture page](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php), [PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx), [PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf), [Video](https://www.youtube.com/watch?v=s06mSAGN4gM).
+2. I. J. Good. Speculations Concerning the First Ultraintelligent Machine. Advances in Computers 6, 31–88, 1965. The passage discussed appears in section 2, printed page 33. [Scanned original](https://scienceplusplus.org/metascience/assets/Good1965.pdf).
+3. Jack Clark. Import AI 455. May 4, 2026. Source for the forecast. [Original article](https://importai.substack.com/p/import-ai-455-automating-ai-research).
+4. Agrawal et al. GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning. ICLR 2026. [Official PDF](https://proceedings.iclr.cc/paper_files/paper/2026/file/0e9e708b6f48e14fd0ac29e167413f76-Paper-Conference.pdf).
+5. Zhang et al. Darwin Gödel Machine: Open-Ended Evolution of Self-Improving Agents. First released May 29, 2025. arXiv v3, March 12, 2026. [v3 text](https://arxiv.org/html/2505.22954v3).
+6. DeepSeek-AI. DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. The training description follows v1, January 22, 2025. [v1 text](https://arxiv.org/html/2501.12948v1). arXiv also lists v2, dated January 4, 2026, so distinguish the versions.
+7. Zelikman et al. STaR: Bootstrapping Reasoning With Reasoning. First released March 28, 2022, NeurIPS 2022. [Paper](https://arxiv.org/abs/2203.14465).
+8. Huang et al. Large Language Models Cannot Self-Correct Reasoning Yet. First released October 3, 2023, ICLR 2024. [Official paper page](https://proceedings.iclr.cc/paper_files/paper/2024/hash/8b4add8b0aa8749d80a34ca5d941c355-Abstract-Conference.html).
+
+9. Sun et al. Test-Time Training with Self-Supervision for Generalization under Distribution Shifts. ICML 2020. [Paper](https://arxiv.org/abs/1909.13231).
+10. Hado van Hasselt. Reinforcement Learning, Lecture 1: Introduction. DeepMind × UCL, 2021. Learning objectives and adaptation during operation: PDF page 17. [Official PDF](https://storage.googleapis.com/deepmind-media/UCL%20x%20DeepMind%202021/Lecture%201%20-%20introduction.pdf).
+11. Lakshya A Agrawal et al. GEPA: Reflective Evolution of Compound AI Systems. Stanford CS329T guest lecture, October 28, 2025. Prompt generation and selection: PDF pages 33 and 34. [Official course schedule](https://web.stanford.edu/class/cs329t/syllabus.html) · [Original slides](https://web.stanford.edu/class/cs329t/slides/Lecture%209%20-%2020251028%20GEPA_Talk.pdf). The lecture and the ICLR 2026 paper have different titles.

@@ -1,0 +1,287 @@
+---
+title: Self-Improving AI 18 — Optimizing prompts and weights as goals change
+description: Pages 21–25 connect ExpRAG, BetterTogether and E-SPL. Papers and Omar Khattab’s lecture explain experience
+  retrieval, alternating optimization and reevaluation when goals change.
+pubDate: 2026-11-19 13:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-18-better-together-and-evolving-goals
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- ai-agents
+- prompt-optimization
+- fine-tuning
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 18
+translationKey: en-self-improving-ai-18-better-together-and-evolving-goals
+translatedPosts:
+  ko-KR: self-improving-ai-18-better-together-and-evolving-goals
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>An agent’s prompts and model weights can both change. Updating both does not guarantee a gain. The outcome depends on which component is optimized first, which score guides selection, and whether the result holds when the goal changes.</strong>
+
+[Episode 17](/posts/self-improving-ai-17-archive-dspy-experience/) examined agent code, archives of candidates, DSPy programs, and models that retrieve past experience. Pages 21–25 of the second lecture ask a further question. <strong>How does improving external components such as memory and instructions interact with training the weights θ directly?</strong>
+
+<details>
+<summary>Video and papers by slide</summary>
+
+| Slide | Lecture and related material | Question |
+|---|---|---|
+| Part II, p. 21 | [Full NTU lecture](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [ExpRAG paper](https://arxiv.org/abs/2603.18272) | What changes when we train the model that reads the retrieved experience? |
+| Part II, p. 22 | [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [BetterTogether paper](https://aclanthology.org/2024.emnlp-main.597/) | Does the order of prompt and weight updates matter? |
+| Part II, p. 23 | [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [DSPy lecture slides](https://llmagents-learning.org/slides/dspy_lec.pdf#page=35) | Can we apply gradient descent directly to a harness? |
+| Part II, p. 24 | [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [E-SPL paper](https://arxiv.org/abs/2602.14697) | What roles do evolution and reinforcement learning play? |
+| Part II, p. 25 | [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [Original PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=25) | Should the previous best candidate still be used when the goal changes? |
+
+The links locate the source material. No <em>verified video timestamps</em> were available for pages 21–25, so none are estimated. The additional paper discussions and examples below are the article’s commentary.
+
+</details>
+
+## Part II, p. 21 — Retrieve a memory, then train the model to use it
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/ntu-21-original.png"
+  alt="Two stages: a model answers using a current input and past experience retrieved from RAG memory, and fine-tuning teaches it to make better use of these inputs."
+  caption="Part II, p. 21 — Experience retrieval enriches the harness, followed by training of the model weights."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=21"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+This slide extends the [side-by-side comparison on page 20](/posts/self-improving-ai-17-archive-dspy-experience/). The upper path, <strong>information and input → AI → output → answer</strong>, depicts <strong>retrieval-augmented generation (RAG)</strong>. Past documents enter as external input. The lower arrow adds <strong>fine-tuning</strong> so the model can make better use of the same information and input.
+
+### What changes during retrieval and training?
+
+| Mechanism | What changes | Possible without training? | Possible failure |
+|---|---|---|---|
+| RAG or memory retrieval | The index, top K, and assembled context in h | Yes | Irrelevant experience, long context, stale information |
+| Fine-tuning | Weights θ or LoRA adapters | No | Overfitting, training-data leakage, regression on earlier capabilities |
+| Training to use retrieved experience | The interaction between learned θ and retrieved context h | Training required | Memorizing experience patterns seen only in training |
+
+ExpRAG stores execution trajectories in an Experience Bank. For a new problem it retrieves the top K relevant experiences and supplies them to an LLM policy. The research question is <strong>whether the model interprets the retrieved experience well enough to change its actions</strong>. Retrieval quality and the ability to use the results require separate measurements. [ExpRAG, EMNLP 2026](https://aclanthology.org/2026.emnlp-main.57/)
+
+The following notation illustrates the distinction and abstracts away implementation details of the paper.
+
+<Math tex="m(x)=\operatorname{Retrieve}_{K}(\mathcal M,x),\qquad y\sim A_{\theta,h}(x,m(x))" display />
+
+<Math tex="\theta^{\prime}=\operatorname{Train}(\theta;\{(x_i,m(x_i),y_i)\})" display />
+
+The first equation <strong>adds information during inference</strong>. The second <strong>produces a new model trained to use that kind of input</strong>. Training can also hurt performance. To compare systems, hold the retrieval index and evaluation set fixed and record token costs and whether retrieval was enabled.
+
+### DSPy lecture — A RAG program has more than one parameter
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/khattab-dspy-30-optimized-multihop.png"
+  alt="Omar Khattab’s slide comparing DSPy MultiHop RAG before and after optimization, including BootstrapFinetune results for a smaller language model."
+  caption="Supplementary lecture, p. 30 — Optimizing the modules changes the performance of the same program."
+  source="https://llmagents-learning.org/slides/dspy_lec.pdf#page=30"
+  credit="Omar Khattab / Compound AI Systems & DSPy, 2024"
+  width={1800} height={1013}
+/>
+
+Omar Khattab’s DSPy lecture compares the same MultiHop program before and after optimization. With GPT-3.5, its score rises from 36.9 to 54.7. This is <strong>the lecture’s HotPotQA comparison</strong>. Other models and datasets require separate tests. The BootstrapFinetune results for the smaller T5-770M also use different models and training conditions and should be read separately. [Lecture, p. 30](https://llmagents-learning.org/slides/dspy_lec.pdf#page=30)
+
+## Part II, p. 22 — BetterTogether combines prompt optimization and fine-tuning
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/ntu-22-original.png"
+  alt="Table from Fine-Tuning and Prompt Optimization: Two Great Steps that Work Better Together comparing the order of prompt and weight optimization for three models on HotPotQA, GSM8K and Iris."
+  caption="Part II, p. 22 — Performance for different sequences of prompt optimization Π and weight optimization Θ."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=22"
+  credit="Hung-yi Lee / NTU ML 2026 · Soylu et al. (2024)"
+  width={1800} height={1013}
+/>
+
+This slide reproduces Table 1 from <em>Fine-Tuning and Prompt Optimization: Two Great Steps that Work Better Together</em> by Soylu, Potts and Khattab (EMNLP 2024). The authors tested whether the final task score could guide optimization of a modular language-model pipeline <strong>without ground truth for intermediate steps or gradient information for every module</strong>. [Paper](https://aclanthology.org/2024.emnlp-main.597/)
+
+On the slide, Π denotes <strong>prompt optimization</strong> and Θ denotes <strong>weight optimization</strong>. Arrows give the order of optimization. Π → Θ → Π describes how to prepare the system: <strong>improve the prompt, fine-tune the weights, and optimize the prompt again for the new weights</strong>. These are training stages, not three prompts run in sequence at inference.
+
+| Paper notation | Update order | Component changed |
+|---|---|---|
+| Π | Prompt optimization only | Instructions and examples in h |
+| Θ | Fine-tuning only | Model weights θ |
+| Π → Θ | Prompts → weights | First h, then θ |
+| Θ → Π | Weights → prompts | First θ, then h |
+| Π → Θ → Π | Prompts → weights → prompts | Search again for h under the new θ |
+
+### Reading the original table
+
+On HotPotQA with Mistral-7B-Instruct-v0.2, Π alone scores 33.8 and Π→Θ→Π scores 37.6, a gain of <strong>3.8 percentage points</strong>. No sequence wins everywhere. On Iris with Llama-3-8B-Instruct, Π→Π scores 82.0 and Π→Θ→Π scores 79.3, a decline of 2.7 points.
+
+A dash in the table marks <strong>an unreported condition with too few training examples</strong>. It does not mean a 0% failure rate. Changing the dataset or initial prompt can change which sequence wins. [Soylu et al., Table 1](https://arxiv.org/pdf/2407.10930v2#page=4)
+
+### What does the algorithm do?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/better-together-v2-algorithm1.png"
+  alt="Excerpt from Algorithm 1 of BetterTogether showing prompt optimization followed by weight training and another round of prompt optimization."
+  caption="Soylu et al., Algorithm 1 — A meta-optimizer invokes the prompt and weight optimizers in sequence."
+  source="https://arxiv.org/pdf/2407.10930v2#page=2"
+  credit="Soylu, Potts & Khattab / EMNLP 2024"
+  width={1801} height={1089}
+/>
+
+The meta-optimizer alternates between collecting good few-shot demonstrations for a prompt and training module weights on data synthesized from intermediate program trajectories. Each stage needs a <strong>measurable end-task quality metric</strong>. Running the three stages more often does not necessarily help. Measure performance on fresh evaluation data alongside model-call and training costs. [BetterTogether, section 3](https://arxiv.org/pdf/2407.10930v2#page=2)
+
+### Supplementary lecture — A final metric can guide module improvement
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/khattab-dspy-35-module-training-metric.png"
+  alt="Training and validation inputs, a two-stage LM program, its final metric, and the positions of generated instructions and few-shot examples."
+  caption="Supplementary lecture, p. 35 — A final metric allows comparison of entire programs even without intermediate labels."
+  source="https://llmagents-learning.org/slides/dspy_lec.pdf#page=35"
+  credit="Omar Khattab / Compound AI Systems & DSPy, 2024"
+  width={1800} height={1013}
+/>
+
+On page 35 of Khattab’s lecture, “Instructions” and “Few-Shot Examples” appear between the inputs and LM Program P′. The evaluator observes a metric for the final result. The query-generating module and the answer-generating module may each lack human-labeled targets. Candidate training examples can instead be drawn from actual program trajectories, after which candidate programs must be evaluated on the entire task. [Lecture, p. 35](https://llmagents-learning.org/slides/dspy_lec.pdf#page=35)
+
+## Part II, p. 23 — Why weight updates and harness updates differ
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/ntu-23-original.png"
+  alt="Performance before and after an agent change. A question mark appears beside a formal gradient-descent update for the harness, alongside the update for the weights."
+  caption="Part II, p. 23 — A gradient is available for the model parameters. The same update rule is not directly defined for an arbitrary harness."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=23"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The slide’s first equation shows ordinary gradient descent. With continuous model parameters θ and a differentiable training loss L, the update is:
+
+<Math tex="\theta_{t+1}=\theta_t-\eta\nabla_{\theta}L(\theta_t,h_t)" display />
+
+A question mark accompanies the next expression.
+
+<Math tex="h_{t+1}\overset{?}{=}h_t-\gamma\nabla_{h}L(\theta_t,h_t)" display />
+
+When <strong>h contains strings, JSON tool descriptions, a memory index, program branches, or code</strong>, treating it all as a continuous vector and applying the same gradient update is unjustified. A single word can cause a discontinuous change of execution path, and some components have no defined derivative.
+
+A more general formulation is to <strong>generate, evaluate and select candidates</strong>.
+
+<Math tex="\mathcal{C}_{t}=\operatorname{Propose}(h_t,\mathcal H_t),\qquad h_{t+1}\in\operatorname{Select}(\mathcal C_t,\widehat{S}(\theta_t,\cdot))" display />
+
+Harness editing can be combined with weight training. The two may require different update rules. OPRO and GEPA propose and select prompt candidates, while DSPy and BetterTogether compose optimizers for individual modules.
+
+### Supplementary lecture — What can the optimizer actually access?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/khattab-dspy-36-optimization-constraints.png"
+  alt="Slide listing optimization constraints, including unavailable model log probabilities and weights, missing intermediate labels, and a limited call budget."
+  caption="Supplementary lecture, p. 36 — API access, missing intermediate labels and limited budgets constrain the choice of optimizer."
+  source="https://llmagents-learning.org/slides/dspy_lec.pdf#page=36"
+  credit="Omar Khattab / Compound AI Systems & DSPy, 2024"
+  width={1800} height={1013}
+/>
+
+Page 36 of Khattab’s lecture lists three constraints. (1) An API-only model may expose neither log probabilities nor weights. (2) Human labels may be unavailable for intermediate modules. (3) Both experimental model calls and training data have budgets. Under these conditions, backpropagating through every component in one pass is not a general solution. [Lecture, p. 36](https://llmagents-learning.org/slides/dspy_lec.pdf#page=36)
+
+When fine-tuning or LoRA is available, part of θ can be trained. To attribute any improvement, specify the trainable parameters θ, the fixed harness h, the data split, hyperparameters and model version.
+
+## Part II, p. 24 — E-SPL runs system-prompt evolution alongside RL
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/ntu-24-original.png"
+  alt="Generalization from AIME to BeyondAIME. An agent evolution tree accompanies curves for E-SPL Evolution + RL, RL only, and prompt evolution."
+  caption="Part II, p. 24 — E-SPL tests system-prompt evolution together with weight training."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=24"
+  credit="Hung-yi Lee / NTU ML 2026 · Zhang et al. (2026)"
+  width={1800} height={1013}
+/>
+
+The NTU slide shows an <strong>agent evolution tree</strong> on the left and <strong>easy-to-hard generalization from AIME to BeyondAIME</strong> on the right. The source is the 2026 paper <em>Evolutionary System Prompt Learning for Reinforcement Learning in LLMs</em>. [arXiv](https://arxiv.org/abs/2602.14697)
+
+Evolutionary System Prompt Learning (E-SPL) goes beyond replicating DGM. Inside a single RL training loop, it <strong>generates answer trajectories with different candidate system prompts</strong> and reuses the outcomes in two ways.
+
+- Weight update: RL updates the model parameters θ using rewards for individual problems.
+- Context update: Relative prompt scores and records of failures inform mutation and crossover, producing the next instructions.
+
+Since both the prompt population and the model weights change, absolute scores across rounds need not be comparable. E-SPL ranks candidates that share the same problems and model within a round and combines these comparisons using a TrueSkill-style running assessment. [E-SPL, section 3](https://arxiv.org/abs/2602.14697)
+
+<Math tex="\operatorname{score}_i=\mu_i+\lambda\sigma_i,\qquad p(i)\propto \exp(\operatorname{score}_i/T)" display />
+
+Here μ is a candidate’s estimated mean skill and σ its uncertainty. The parameters λ and T control exploration and exploitation. A candidate can be explored for its uncertainty as well as for high mean performance. This expression illustrates the search model. The paper gives the choices for individual settings.
+
+### What do the three curves compare?
+
+The paper reports the following AIME-to-BeyondAIME success rates.
+
+| Method | Success rate | Interpretation |
+|---|---:|---|
+| RL only | 38.8% | Update weights with a fixed prompt |
+| Prompt evolution | 40.0% | Evolve the prompt with fixed weights |
+| Evolution + RL (E-SPL) | 45.1% | Combine prompt evolution and weight training |
+
+E-SPL gains <strong>6.3 percentage points</strong> over RL only and <strong>5.1 points</strong> over prompt evolution. These are reported scores on the same dataset. Other models, tasks and budgets can yield different gains. A strong result on this test also needs verification on subsequent evaluation problems. [Figure 1 and section 4](https://arxiv.org/abs/2602.14697)
+
+### Why combine the two updates?
+
+Prompts can express readable declarative knowledge such as solution strategies and cautions. Weight updates can change how the model executes those strategies through repeated experience. E-SPL proposes and tests the idea that this division of labor can help generalization. It does not establish that all procedural knowledge resides exclusively in weights or all declarative knowledge exclusively in prompts.
+
+## Part II, p. 25 — The improvement goal itself can change
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-18-better-together-and-evolving-goals/ntu-25-english.png"
+  alt="Goals Can Change: an AI robot becomes a tank, then receives a flying objective and considers removing parts because it is too heavy."
+  caption="Part II, p. 25 — A change that served an earlier goal can become a liability under a new one."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=25"
+  credit="Hung-yi Lee / NTU ML 2026 · Edited English labels"
+  width={1800} height={1013}
+/>
+
+The final drawing is titled <strong>Goals Can Change</strong>. A robot acquires a heavy tank-like structure to become stronger. When the new goal is to fly, the added parts weigh it down. The analogy illustrates why <strong>an improvement under one objective needs another test under the next</strong>.
+
+If the objective H varies with time, a single fixed score cannot determine whether a change counts as an improvement.
+
+<Math tex="h_t^*\in\operatorname*{argmin}_{h\in\mathcal H}L(A_{\theta_t,h},H_t),\qquad H_{t+1}\ne H_t" display />
+
+This notation illustrates objectives that depend on context. It does not imply that optimization finds a global optimum at every time step.
+
+Consider a robot initially tasked with moving objects quickly. Aggressive path planning and high acceleration may help. When its objective becomes safe collaboration near a person, <strong>collision risk, approach speed, safe stopping and sensor latency</strong> become priority constraints. A candidate that violates them should be rejected even if it reports a high task success rate. A change of goal can alter the <strong>evaluation function, constraints and operating environment together</strong>.
+
+### Keeping the best candidates when the current goal changes
+
+A system that updates both θ and h should preserve their versions and evaluation conditions separately. Obsolete memories or tool calls should be removable from the active system, while its earlier behavior and safety regression tests remain reproducible. Without a record of past objectives, it is difficult to verify a claim of self-improvement.
+
+## Five slides together: what changes, and what is evaluated?
+
+| Approach | Optimization target | Improvement signal | Evaluation detail |
+|---|---|---|---|
+| ExpRAG + fine-tuning | Retrieved experience and model weights | Past trajectories, correct answers, rewards and training loss | Isolate the effects of retrieval and weight changes |
+| BetterTogether | Module prompts Π and weights Θ | Final metric and intermediate trajectories | Specify the sequence, dataset and experimental budget |
+| E-SPL | System-prompt population and RL policy | Within-round relative performance and reward | Keep absolute scores from different model versions separate |
+| Goal change | Objective H and selection criteria | New evaluation metrics and constraints | Reevaluate past optima under the current goal |
+
+Across these five slides, <strong>improvement is an experimental claim: specify the component changed and the objective it was changed to serve</strong>. Episode 19 starts on page 26 of Part II with test-time training (TTT) and forgetting.
+
+<details>
+<summary>Worked example and code</summary>
+
+The example computes percentage-point differences from the original Table 1 and the published E-SPL results and distinguishes missing entries from observed outcomes. The [source manifest](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/source-assets/18/manifest.json) documents figure files, attribution and unofficial English-label edits beginning in episode 17. These calculations do not reproduce model training or the papers’ benchmarks.
+
+</details>
+
+## Further reading
+
+| Source | Material used here |
+|---|---|
+| [NTU Part II, pp. 21–25](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=21) · [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) | Five primary lecture slides |
+| [ExpRAG, EMNLP 2026](https://aclanthology.org/2026.emnlp-main.57/) | Retrieving experience and learning to use it |
+| [BetterTogether, EMNLP 2024](https://aclanthology.org/2024.emnlp-main.597/) · [arXiv v2](https://arxiv.org/pdf/2407.10930v2) | Alternating prompt and weight optimization, Table 1 and Algorithm 1 |
+| [Omar Khattab, Compound AI Systems & DSPy](https://llmagents-learning.org/slides/dspy_lec.pdf#page=30) | Supplementary lecture slides 30, 35 and 36 |
+| [DSPy BetterTogether documentation](https://dspy.ai/current/api/optimizers/BetterTogether/) | Optimizer concepts and conditions for invoking them |
+| [E-SPL, 2026](https://arxiv.org/abs/2602.14697) · [Official implementation](https://github.com/LunjunZhang/E-SPL) | Joint prompt evolution and RL, and generalization from easier to harder problems |
+
+The numerical results from the papers apply to their experimental settings. Page 25 of Part II is an unofficial edit with English labels. Consult the original for its wording.

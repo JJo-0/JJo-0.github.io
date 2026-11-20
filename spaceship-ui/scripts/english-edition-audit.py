@@ -11,6 +11,18 @@ class Page(HTMLParser):
 def check(value,message):
     if not value: raise AssertionError(message)
 def body(s): return s.split('---',2)[2]
+# These labels are prose inside TeX. Keep every operator, variable and number exact.
+translated_math_labels = {
+    '최종 정답 수': 'Final number correct',
+    '수정 후 정답': 'correct after revision',
+    '수정 전 오답': 'incorrect before revision',
+    '수정 후 오답': 'incorrect after revision',
+    '수정 전 정답': 'correct before revision',
+}
+def expected_english_math(source):
+    for ko,en in translated_math_labels.items():
+        source=source.replace(r'\text{'+ko+'}', r'\text{'+en+'}')
+    return math(source)
 def math(s):
     return re.findall(r'<Math\b[^>]*tex=\{(?:String\.raw`([^`]+)`|("(?:[^"\\]|\\.)*"))\}',s)
 pages=[]
@@ -21,7 +33,7 @@ for p in manifest['pairs']:
     a,b=body(ko.read_text()),body(en.read_text())
     check(len(re.findall(r'^## ',a,re.M))==len(re.findall(r'^## ',b,re.M)),p['key']+' H2 coverage')
     check(len(re.findall(r'^### ',a,re.M))==len(re.findall(r'^### ',b,re.M)),p['key']+' H3 coverage')
-    check(sorted(math(a))==sorted(math(b)) if p.get('translationMethod')=='direct-chat-translation' else math(a)==math(b),p['key']+' equations')
+    check(sorted(expected_english_math(a))==sorted(math(b)) if p.get('translationMethod')=='direct-chat-translation' else math(a)==math(b),p['key']+' equations')
     check(len(re.findall(r'^\s*\|',a,re.M))==len(re.findall(r'^\s*\|',b,re.M)),p['key']+' table row coverage')
     am=re.findall(r'<NewsFigure media="([^"]+)"',a);bm=re.findall(r'<NewsFigure media="([^"]+)"',b)
     check(am==bm,p['key']+' source figures and order')
