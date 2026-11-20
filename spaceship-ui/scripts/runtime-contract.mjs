@@ -29,21 +29,20 @@ function scalar(frontmatter, key) {
   return frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'))?.[1]?.trim();
 }
 
-function expectedChartRoutes(contentDir, prefix) {
+function chartSettings(contentDir) {
   const now = new Date();
-  const routes = new Set();
+  const settings = new Map();
   for (const file of filesUnder(contentDir, (p) => /\.mdx?$/.test(p) && !path.basename(p).startsWith('_'))) {
     const raw = fs.readFileSync(file, 'utf8');
     const fm = getFrontmatter(raw);
-    if (!/^usesChart:\s*true\s*$/m.test(fm)) continue;
     if (/^draft:\s*true\s*$/m.test(fm)) continue;
 
     const pubDate = scalar(fm, 'pubDate');
     if (!pubDate) {
-      issues.push(`${path.relative(root, file)}: chart-enabled post is missing pubDate`);
+      issues.push(`${path.relative(root, file)}: post is missing pubDate`);
       continue;
     }
-    const parsedDate = new Date(`${pubDate}T00:00:00Z`);
+    const parsedDate = new Date(pubDate);
     if (Number.isNaN(parsedDate.valueOf())) {
       issues.push(`${path.relative(root, file)}: invalid pubDate ${pubDate}`);
       continue;
@@ -52,10 +51,10 @@ function expectedChartRoutes(contentDir, prefix) {
 
     const explicitSlug = scalar(fm, 'slug');
     const id = path.basename(file).replace(/\.mdx?$/, '');
-    const slug = explicitSlug || `${pubDate}-${id}`;
-    routes.add(`${prefix}/${slug}/index.html`);
+    const slug = explicitSlug || `${parsedDate.toISOString().slice(0, 10)}-${id}`;
+    settings.set(slug, /^usesChart:\s*true\s*$/m.test(fm));
   }
-  return routes;
+  return settings;
 }
 
 if (!fs.existsSync(dist)) {
@@ -105,7 +104,21 @@ for (const retiredTarget of ['x.com/intent', 't.me/share', 'facebook.com/sharer'
   }
 }
 
-const expected = new Set([...expectedChartRoutes(postsDir, 'posts'), ...expectedChartRoutes(path.join(root,'site','content','english'), 'en/posts')]);
+const originals = chartSettings(postsDir);
+const translations = chartSettings(path.join(root, 'site', 'content', 'english'));
+const edition = JSON.parse(fs.readFileSync(path.join(root, 'site', 'english-edition.json'), 'utf8'));
+const translatedSlugs = new Map(edition.pairs.map(pair => [pair.koSlug, pair.enSlug]));
+const expected = new Set();
+for (const [slug, usesChart] of originals) {
+  if (usesChart) expected.add(`posts/${slug}/index.html`);
+  const translatedSlug = translatedSlugs.get(slug);
+  // Evaluate the frontmatter of the body actually served at the English route.
+  if (translatedSlug && translations.has(translatedSlug)) {
+    if (translations.get(translatedSlug)) expected.add(`en/posts/${translatedSlug}/index.html`);
+  } else if (usesChart) {
+    expected.add(`en/posts/${slug}/index.html`);
+  }
+}
 const vendorFile=path.join(dist,CHART_SRC.slice(1));
 if (!fs.existsSync(vendorFile) || crypto.createHash('sha256').update(fs.readFileSync(vendorFile)).digest('hex') !== CHART_SHA256) issues.push('Pinned self-hosted Chart.js asset is missing or changed');
 const actual = new Set();

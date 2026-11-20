@@ -1,0 +1,57 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import Layout from '@/layouts/Layout.astro';
+import PostCard from '@/components/PostCard.svelte';
+import Breadcrumbs from '@/components/Breadcrumbs.svelte';
+import { getBreadcrumbSchema } from '@/lib/schemas';
+import { getReadTime } from '@/lib/utils/readTime';
+import { getPostSlug } from '@/lib/utils/posts';
+import { englishPostPathForSlug } from '@/lib/locales';
+
+interface Props {
+  tag: string;
+  posts: CollectionEntry<'posts'>[];
+  en?: boolean;
+}
+const { tag, posts, en = false } = Astro.props;
+const writingPath = en ? '/en/posts/' : '/posts';
+
+const schema = getBreadcrumbSchema([
+  { name: 'Blog', url: new URL(writingPath, Astro.site).toString() },
+  { name: tag, url: new URL(Astro.url.pathname, Astro.site).toString() },
+]);
+---
+
+<Layout
+  title={`Posts tagged with "${tag}"`}
+  description={`Blog posts tagged with ${tag}`}
+  lang={en ? 'en' : undefined}
+  adsEnabled={en ? false : undefined}
+  schema={schema}
+>
+  <Breadcrumbs homeHref={en ? '/en/' : '/'}
+    items={[
+      { name: 'Blog', href: writingPath },
+      { name: `#${tag}`, href: '#' },
+    ]}
+  />
+
+  <div class="mb-10 sm:mb-12">
+    <h1
+      class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-foreground leading-[1.1]"
+    >
+      Topic: <span class="text-primary">#{tag}</span>
+    </h1>
+    <p class="mt-3 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
+      {`A collection of ${posts.length} ${posts.length === 1 ? 'post' : 'posts'} about ${tag}.`}
+    </p>
+  </div>
+
+  <div class="flex flex-col gap-3 sm:gap-4">
+    {
+      posts.map((post) => (
+        <PostCard post={post} slug={getPostSlug(post)} href={en ? englishPostPathForSlug(getPostSlug(post)) : undefined} readTime={getReadTime(post.body || '')} />
+      ))
+    }
+  </div>
+</Layout>

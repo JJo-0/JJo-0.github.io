@@ -3,12 +3,15 @@ import type { CollectionEntry } from 'astro:content';
 import { getPostSlug } from '@/lib/utils/posts';
 import { getSelfImprovingPart, selfImprovingSeries } from '@/lib/self-improving-series';
 
+import { englishSwitchPath } from '@/lib/locales';
+
 interface Props {
+  en?: boolean;
   posts: CollectionEntry<'posts'>[];
   currentPostId: string;
 }
 
-const { posts, currentPostId } = Astro.props;
+const { posts, currentPostId, en = false } = Astro.props;
 const currentPost = posts.find((post) => post.id === currentPostId);
 const currentPart = getSelfImprovingPart(currentPost?.data.series);
 const parts = selfImprovingSeries.parts.map((part) => ({
@@ -17,21 +20,21 @@ const parts = selfImprovingSeries.parts.map((part) => ({
 })).filter((part) => part.posts.length > 0);
 ---
 
-<nav class="self-improving-map" aria-label="자가개선 AI 상편과 하편" data-self-improving-map data-current-part={currentPart?.number}>
+<nav class="self-improving-map" aria-label={en ? 'Self-Improving AI, Parts 1 and 2' : '자가개선 AI 상편과 하편'} data-self-improving-map data-current-part={currentPart?.number}>
   <div class="self-improving-map__heading">
-    <strong>{selfImprovingSeries.title}</strong>
-    <span data-current-series-part>{currentPart?.label} · 현재 {currentPost?.data.series?.order}편</span>
+    <strong>{en ? 'Self-Improving AI' : selfImprovingSeries.title}</strong>
+    <span data-current-series-part>{en ? `Part ${currentPart?.number} · Article ${currentPost?.data.series?.order}` : `${currentPart?.label} · 현재 ${currentPost?.data.series?.order}편`}</span>
   </div>
   {parts.map((part) => (
     <details data-series-map-part={part.number}>
       <summary>
-        <span>{part.label} <span class="self-improving-map__range">{part.rangeLabel}</span></span>
-        <span class="self-improving-map__count">{part.posts.length}편 <span aria-hidden="true">⌄</span></span>
+        <span>{en ? `Part ${part.number}` : part.label} <span class="self-improving-map__range">{en ? (part.lastOrder ? `${part.firstOrder}–${part.lastOrder}` : `From article ${part.firstOrder}`) : part.rangeLabel}</span></span>
+        <span class="self-improving-map__count">{part.posts.length}{en ? ' articles' : '편'} <span aria-hidden="true">⌄</span></span>
       </summary>
-      <ol start={part.firstOrder} aria-label={`${part.title} 글 목록`}>
+      <ol start={part.firstOrder} aria-label={en ? `Articles in Part ${part.number}` : `${part.title} 글 목록`}>
         {part.posts.map((post) => (
           <li value={post.data.series?.order}>
-            <a href={`/posts/${getPostSlug(post)}/`} aria-current={post.id === currentPostId ? 'page' : undefined}>
+            <a href={en ? englishSwitchPath(`/posts/${getPostSlug(post)}/`) : `/posts/${getPostSlug(post)}/`} aria-current={post.id === currentPostId ? 'page' : undefined}>
               {post.data.title}
             </a>
           </li>

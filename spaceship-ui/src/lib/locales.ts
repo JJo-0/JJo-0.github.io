@@ -1,18 +1,51 @@
 import edition from '../../site/english-edition.json';
+
 export const EN_DESCRIPTION = 'Research notes on robotics, artificial intelligence, computer vision, and systems engineering by Jiho Park.';
-const fixedPairs: Array<[string, string]> = [
-  ['/', '/en/'], ['/research', '/en/research/'], ['/about', '/en/about/'], ['/news', '/en/news/'],
-];
-export const normalizeLocalePath = (path: string): string => path === '/' ? '/' : path.replace(/\/+$/, '');
-/** Only equivalent published content is an SEO alternate. Pending writing is not. */
+export const normalizeLocalePath = (path: string): string => path.replace(/\/+$/, '') || '/';
+
+const sectionPaths = new Set([
+  '/', '/research', '/about', '/news', '/posts', '/bible', '/bible/reading-guide',
+  '/policies', '/policies/copyright', '/policies/disclaimer', '/policies/health', '/policies/finance',
+  '/notices/2026-09-11-biblical-studies-and-policies',
+]);
+const enByKo = new Map(edition.pairs.map(({ koSlug, enSlug }) => [koSlug, enSlug]));
+const koByEn = new Map(edition.pairs.map(({ koSlug, enSlug }) => [enSlug, koSlug]));
+
+export function englishPostPathForSlug(koSlug: string): string {
+  return `/en/posts/${enByKo.get(koSlug) ?? koSlug}/`;
+}
+
+/** Only full translations and equivalent index pages are SEO alternates. */
 export function nativeAlternates(path: string): Record<string, string> {
   const key = normalizeLocalePath(path);
-  const pairs = [...fixedPairs, ...edition.pairs.map((p): [string, string] => [`/posts/${p.koSlug}/`, `/en/posts/${p.enSlug}/`])];
-  const pair = pairs.find((p) => p.some((item) => normalizeLocalePath(item) === key));
-  return pair ? { 'ko-KR': pair[0], en: pair[1], 'x-default': pair[0] } : {};
+  const isEnglish = key === '/en' || key.startsWith('/en/');
+  const source = isEnglish ? key.slice(3) || '/' : key;
+  if (sectionPaths.has(source) || /^\/posts\/tag\/[^/]+$/.test(source)) {
+    const en = source === '/' ? '/en/' : `/en${source}/`;
+    return { 'ko-KR': source, en, 'x-default': source };
+  }
+  if (!source.startsWith('/posts/')) return {};
+  const slug = source.slice('/posts/'.length);
+  const koSlug = isEnglish ? koByEn.get(slug) : enByKo.has(slug) ? slug : undefined;
+  if (!koSlug) return {};
+  const ko = `/posts/${koSlug}/`;
+  return { 'ko-KR': ko, en: englishPostPathForSlug(koSlug), 'x-default': ko };
 }
-export function englishSwitchPath(path: string): string {
-  const translated = nativeAlternates(path).en;
-  if (translated) return translated;
-  return `/en/translations/?from=${encodeURIComponent(path)}`;
+
+/** Also accepts a published original whose body is offered inside the English interface. */
+export function englishSwitchPath(path: string): string | undefined {
+  const native = nativeAlternates(path).en;
+  if (native) return native;
+  const source = normalizeLocalePath(path);
+  return source.startsWith('/posts/') ? englishPostPathForSlug(source.slice('/posts/'.length)) : undefined;
+}
+
+export function koreanSwitchPath(path: string): string | undefined {
+  const native = nativeAlternates(path)['ko-KR'];
+  if (native) return native;
+  const key = normalizeLocalePath(path);
+  if (key.startsWith('/en/posts/')) return `${key.slice(3)}/`;
+  if (key === '/en/translations') return '/posts';
+  if (key === '/en/404') return '/404';
+  return undefined;
 }

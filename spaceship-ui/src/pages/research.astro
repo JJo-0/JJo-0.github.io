@@ -5,19 +5,25 @@ import MotionRuntime from '@/components/experience/MotionRuntime.astro';
 import ResearchMap from '@/components/experience/ResearchMap.astro';
 import '@/styles/world.css';
 import { RESEARCH_FOCUS } from '@/lib/research';
+import { RESEARCH_FOCUS as ENGLISH_FOCUS } from '@/lib/research-en';
+import { getLocalizedPosts } from '@/lib/localized-posts';
+import { englishPostPathForSlug } from '@/lib/locales';
 import GroupedWritingList from '@/components/GroupedWritingList.astro';
 import { getPostTypeLabel } from '@/lib/taxonomy.mjs';
 import { formatDate } from '@/lib/utils/date';
-import { getPublishedPosts, getPostSeriesId, getPostSlug } from '@/lib/utils/posts';
+import { getPostSeriesId, getPostSlug } from '@/lib/utils/posts';
 import { getBreadcrumbSchema } from '@/lib/schemas';
 import { buildPostGraph } from '@/lib/experience/post-graph';
 
-const posts = await getPublishedPosts();
-const postGraph = buildPostGraph(posts);
+interface Props { en?: boolean; }
+const { en = false } = Astro.props;
+const researchPath = en ? '/en/research/' : '/research';
+const posts = await getLocalizedPosts(en);
+const postGraph = await buildPostGraph(posts, en);
 
 const technicalSeriesPosts = posts.filter((post) => getPostSeriesId(post) && !['biblical-studies', 'health-lifestyle'].includes(post.data.category) && !post.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate'));
 const featuredSeries = new Set(posts.filter((post) => post.data.researchFeatured).map(getPostSeriesId).filter(Boolean));
-const focusWithPosts = RESEARCH_FOCUS.map((focus) => ({
+const focusWithPosts = (en ? ENGLISH_FOCUS : RESEARCH_FOCUS).map((focus) => ({
   ...focus,
   posts: posts
     .filter((post) => post.data.researchArea === focus.id && (post.data.researchFeatured || featuredSeries.has(getPostSeriesId(post))))
@@ -30,18 +36,20 @@ const focusWithPosts = RESEARCH_FOCUS.map((focus) => ({
 }));
 
 const schema = getBreadcrumbSchema([
-  { name: 'Research', url: new URL('/research', Astro.site).toString() },
+  { name: 'Research', url: new URL(researchPath, Astro.site).toString() },
 ]);
 ---
 
 <Layout
   title="Research"
-  description="Park JiHo의 로보틱스, AI, 컴퓨터 비전 연구·엔지니어링 주제와 공개 기술 기록을 정리합니다."
+  lang={en ? 'en' : undefined}
+  adsEnabled={en ? false : undefined}
+  description={en ? 'Research and engineering notes on robotics, AI and computer vision by Jiho Park.' : 'Park JiHo의 로보틱스, AI, 컴퓨터 비전 연구·엔지니어링 주제와 공개 기술 기록을 정리합니다.'}
   schema={schema}
 >
   <div class="experience-page" data-experience-page="research">
     <MotionRuntime scope="research" />
-    <Breadcrumbs items={[{ name: 'Research', href: '/research' }]} />
+    <Breadcrumbs homeHref={en ? '/en/' : '/'} items={[{ name: 'Research', href: researchPath }]} />
 
 
 
@@ -59,17 +67,16 @@ const schema = getBreadcrumbSchema([
             </h1>
             <p class="experience-role" data-motion="hero-copy">Problem → Method → Evidence</p>
             <p class="research-experience-copy" data-motion="hero-copy">
-              로보틱스·AI·컴퓨터 비전에서 공부하고 실험한 내용을 공개 가능한 기술 글과 연구 노트로
-              연결합니다. 시리즈는 묶음을 펼쳐 첫 편부터 순서대로 읽을 수 있습니다.
+              {en ? 'Technical articles and research notes from studies and experiments in robotics, AI and computer vision. Open a series to read the articles in order.' : '로보틱스·AI·컴퓨터 비전에서 공부하고 실험한 내용을 공개 가능한 기술 글과 연구 노트로 연결합니다. 시리즈는 묶음을 펼쳐 첫 편부터 순서대로 읽을 수 있습니다.'}
             </p>
           </div>
         </header>
 
     <section class="research-series-index" aria-labelledby="research-series-heading">
       <p class="experience-section-label">Learning Series</p>
-      <h2 id="research-series-heading">시리즈로 차근차근 읽기</h2>
-      <p>관심 있는 묶음을 펼치면 각 편을 학습 순서대로 찾을 수 있습니다.</p>
-      <GroupedWritingList posts={technicalSeriesPosts} />
+      <h2 id="research-series-heading">{en ? 'Read by series' : '시리즈로 차근차근 읽기'}</h2>
+      <p>{en ? 'Expand a series to see its chapters in reading order.' : '관심 있는 묶음을 펼치면 각 편을 학습 순서대로 찾을 수 있습니다.'}</p>
+      <GroupedWritingList {en} posts={technicalSeriesPosts} />
     </section>
 
         <div class="research-focus-stack">
@@ -97,15 +104,15 @@ const schema = getBreadcrumbSchema([
                   </div>
 
                   <div>
-                    <p class="research-notes-label">시리즈와 연구 기록</p>
+                    <p class="research-notes-label">{en ? 'Series and research notes' : '시리즈와 연구 기록'}</p>
                     {focus.posts.length > 0 ? (
                       <>
-                        <GroupedWritingList posts={focus.posts.filter((post) => getPostSeriesId(post))} />
+                        <GroupedWritingList {en} posts={focus.posts.filter((post) => getPostSeriesId(post))} />
                       {focus.posts.filter((post) => !getPostSeriesId(post)).map((post) => {
                         const slug = getPostSlug(post);
                         return (
                           <a
-                            href={`/posts/${slug}`}
+                            href={en ? englishPostPathForSlug(slug) : `/posts/${slug}`}
                             class="research-note-link"
                             data-post-transition-slug={slug}
                           >
@@ -132,7 +139,7 @@ const schema = getBreadcrumbSchema([
                       </>
                     ) : (
                       <p class="py-4 text-sm text-muted-foreground">
-                        관련 공개 기록을 정리하고 있습니다.
+                        {en ? 'Research notes for this topic are being prepared.' : '관련 공개 기록을 정리하고 있습니다.'}
                       </p>
                     )}
                   </div>
@@ -149,14 +156,13 @@ const schema = getBreadcrumbSchema([
         <div class="max-w-2xl">
           <p class="experience-section-label">Research Notes</p>
           <h2 class="mt-4 text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            전체 학습·구현·리서치 기록은 Writing에서 분야별로 탐색할 수 있습니다.
+            {en ? 'Explore study notes, implementation guides and research by subject in Writing.' : '전체 학습·구현·리서치 기록은 Writing에서 분야별로 탐색할 수 있습니다.'}
           </h2>
           <p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
-            대분류, 콘텐츠 형식, 세부 태그와 시리즈를 분리해 연구 대표 글과 전체 기록을 서로 다른
-            기준으로 관리합니다.
+            {en ? 'The Writing archive groups all articles by subject, type, tag and series. This index highlights selected research.' : '대분류, 콘텐츠 형식, 세부 태그와 시리즈를 분리해 연구 대표 글과 전체 기록을 서로 다른 기준으로 관리합니다.'}
           </p>
         </div>
-        <a href="/posts" class="experience-button experience-button--primary">Browse Writing</a>
+        <a href={en ? '/en/posts/' : '/posts'} class="experience-button experience-button--primary">Browse Writing</a>
       </div>
     </section>
   </div>

@@ -12,7 +12,7 @@ const FRAGILE_IMAGE_HOSTS = /(?:^|\.)(?:google\.com|googleusercontent\.com|bing\
 const d4rtSourceMedia = JSON.parse(fs.readFileSync(path.join(root, 'site/assets/assets/posts/d4rt-20260914/provenance.json'), 'utf8'));
 
 function isDocumentedOfficialImage(relative, url, html) {
-  return relative === 'posts/2026-09-14-d4rt-dynamic-4d-vision-news/index.html'
+  return relative.replace(/^en\//, '') === 'posts/2026-09-14-d4rt-dynamic-4d-vision-news/index.html'
     && html.includes('data-official-media="d4rt-sintel"')
     && d4rtSourceMedia.externalMedia.some((item) => item.url === url.href
       && item.delivery === 'remote-embed'

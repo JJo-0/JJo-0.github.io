@@ -1,5 +1,11 @@
-import { getEnglishPosts, englishPostPath } from '@/lib/english';
+import { getLocalizedPosts } from '@/lib/localized-posts';
+import { englishPostPathForSlug } from '@/lib/locales';
+import { getPostSlug } from '@/lib/utils/posts';
+
 export async function GET() {
-  const posts=await getEnglishPosts();
-  return new Response(JSON.stringify(posts.map(post=>({id:post.data.slug,href:englishPostPath(post),data:{title:post.data.title,description:post.data.description}}))),{headers:{'Content-Type':'application/json; charset=utf-8'}});
+  const posts = await getLocalizedPosts(true);
+  return Response.json(posts.map(post => {
+    const href = englishPostPathForSlug(getPostSlug(post));
+    return { id: href.split('/').filter(Boolean).at(-1), href, data: { title: post.data.title, description: post.data.description } };
+  }));
 }
