@@ -1,0 +1,216 @@
+---
+title: "Self-Improving AI 19 — What should a model keep after adapting to one input?"
+description: "Pages 26–30 of NTU’s second lecture compare resetting a model for each input with carrying its updates forward. Rotation prediction, noisy speech recognition, and experience replay show how to measure both adaptation and forgetting."
+pubDate: 2026-11-20T20:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-19-test-time-training-and-forgetting
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - test-time-training
+  - test-time-adaptation
+  - fine-tuning
+  - ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 19
+translationKey: en-self-improving-ai-19-test-time-training-and-forgetting
+translatedPosts:
+  ko-KR: self-improving-ai-19-test-time-training-and-forgetting
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+The lights dim above a factory inspection camera. You adjust the vision model on the first frame, and it can pick out the part again. <strong>Which model should read the second frame?</strong> The recent adjustment could help if the lighting stays the same. If the next frame comes from a brightly lit camera on the adjacent line, that same adjustment could put the model at a disadvantage.
+
+[Episode 18](/en/posts/self-improving-ai-18-better-together-and-evolving-goals/) ended just as the goal changed. Pages 26–30 of the second lecture ask what to keep at that moment. [Episode 7](/en/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/) introduced test-time training (TTT). Here we follow an update from one input to the next, then look at a speech recognition experiment that measured the consequences.
+
+<details>
+<summary>Find each topic in the lecture</summary>
+
+| Original slide | NTU lecture, May 22, 2026 | What to listen for |
+|---|---|---|
+| p. 26 | [26:56](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1616s) | When a tank must become an aircraft, is the radar worth keeping? |
+| p. 27 | [27:55](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1675s) | Observe the input, update the model, then make the prediction. |
+| p. 28 | [28:46](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1726s) | The updated parameters become the starting point for the next input. |
+| p. 29 | [29:07](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1747s) | Lee points to a previous lecture and a study that combines the two approaches. |
+| p. 30 | [29:37](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1777s) | What happens to an old skill after an update to the weights or the harness? |
+
+The timestamps mark the start of the relevant discussion.
+
+</details>
+
+## Part II, p. 26 — Could an aircraft use the tank’s radar?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/ntu-26-english.png"
+  alt="A simple robot develops into a tank. The upper branch returns to the original robot, while the lower branch carries all the tank equipment forward."
+  caption="Part II, p. 26 · Two choices when the goal changes. Discard all the equipment or take it all along."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=26"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The robot on the left changes to meet goal H. In the middle, a new goal H′ splits its path. The robot above starts over with its original body. The robot below keeps the heavy equipment. Lee asks us to consider the radar. It can still serve the aircraft, even though the tracks would only weigh it down. [Lee’s radar example, 27:29](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1649s)
+
+The lecture moves from this analogy to speech recognition. It helps to ask <strong>what changed</strong> in each case. The robot’s criterion for success changes from traveling on the ground to flying. For speech recognition, success still means transcribing the words correctly. The background noise reaching the microphone changes the input distribution. We can therefore compare performance before and after adaptation using the same metric.
+
+## Part II, p. 27 — All three rows start with the same blue robot
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/ntu-27-english.png"
+  alt="The model on the left is blue for all three inputs. Each row updates that model on the current input and produces its own prediction."
+  caption="Part II, p. 27 · Episodic adaptation starts each input from the same reference model."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=27"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Read down the left side first. The inputs differ, but the model starts blue every time. Now read across any row: <strong>input → reference model → update → adapted model → output</strong>. The weights adjusted for the first input do not pass into the second row. Let θ₀ denote the reference weights, xₜ the current input, and A the adaptation procedure.
+
+<Math tex={String.raw`\tilde\theta_t=A(\theta_0,x_t),\qquad \hat y_t=f_{\tilde\theta_t}(x_t)`} display />
+
+<strong>What can the model learn without the correct class label?</strong> In the vision experiments by Sun and colleagues, the program rotates an image by 0°, 90°, 180°, or 270°. It knows the angle it applied even when it does not know what object is in the photo. During training, object classification and rotation prediction share a feature extractor. At test time, the rotation loss updates the shared features. The object classifier then uses those features to read the original image. Imagine photographing a circular washer. If the image looks nearly identical under rotation, the angle provides little information. Which features the auxiliary task shares with the task we care about matters. [Sun et al., ICML 2020, §2](https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=2)
+
+### Supplementary lecture · What changes when a model spends longer on an answer?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/lambert-lecture5-07-inference-scaling.png"
+  alt="Two graphs from Lambert’s lecture relate math performance to compute spent during training and compute spent on each answer."
+  caption="Lambert, Lecture 5, p. 7 · The horizontal axes distinguish when compute is spent."
+  source="https://rlhfbook.com/teach/course/lec5-chap7/slides.pdf#page=7"
+  credit="Nathan Lambert / Post-Training Course · plots from OpenAI (2024)"
+  width={1800} height={1013}
+/>
+
+Nathan Lambert’s two plots have different horizontal axes. The left varies the compute spent training the policy. The right gives an already trained reasoning model more compute to answer a problem. In the recording, Lambert discusses the right-hand plot first, then returns to the left between 5:51 and 6:33. On the next slide, a sum-of-primes example shows the model using tokens to check candidate numbers and its arithmetic. The weights can stay the same for the next request. By comparison, implementing the <em>update</em> arrow on NTU’s page 27 requires a signal from the current input to change some parameters. Tracking generated tokens and weight updates separately tells us where computation went. [Lambert, Lecture 5, slides 7–8](https://rlhfbook.com/teach/course/lec5-chap7/slides.pdf#page=7) · [Lecture video, 5:51](https://www.youtube.com/watch?v=o4AB5xHIDdM&t=351s)
+
+## Part II, p. 28 — Look at the model that starts the next row
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/ntu-28-english.png"
+  alt="The orange result of row one starts row two. The purple result of row two starts row three."
+  caption="Part II, p. 28 · Continual adaptation passes the updated weights on to the next input."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=28"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Compare the colors with page 27. The orange robot at the end of the first row reappears at the start of the second. The purple robot makes the same transition one row later. The adaptation procedure A is unchanged. Its first argument now holds the previous weights.
+
+<Math tex={String.raw`\theta_t=A(\theta_{t-1},x_t),\qquad \hat y_t=f_{\theta_t}(x_t)`} display />
+
+Let’s put numbers on the camera example. Imagine there is a brightness reference chart in view, and it gives us a target correction zₜ. The baseline correction is zero. On each frame, we move the current correction b halfway to the target. These are illustrative values.
+
+<Math tex={String.raw`b_{\mathrm{new}}=b_{\mathrm{start}}+\tfrac12(z_t-b_{\mathrm{start}})`} display />
+
+| Frame | Target correction | Value after starting from zero | Value after starting from the previous correction |
+|---|---:|---:|---:|
+| First frame from the dim camera | 4 | 2 | 2 |
+| Second frame from the same camera | 4 | 2 | 3 |
+| First frame from the bright camera | 0 | 0 | 1.5 |
+
+On the second frame, the remaining errors are 2 and 1, respectively. Keeping the previous correction helped. On the third, the errors are 0 and 1.5, and the ranking reverses. Both procedures took one update per frame. <strong>The starting state</strong> explains the difference.
+
+### Supplementary paper · Which bars show the effect of carrying an image update forward?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/sun-ttt-figure1-cifar10c.png"
+  alt="For each corruption on CIFAR-10-C, Sun and colleagues plot classification error for standard training, joint training, TTT, and online TTT."
+  caption="Sun et al., Figure 1 · Compare standard and online TTT within each corruption type."
+  source="https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=3"
+  credit="Sun et al. / ICML 2020"
+  width={1801} height={526}
+/>
+
+Choose one corruption on the horizontal axis and read the four bars in its group. The vertical axis shows classification error, so lower is better. The first two models were trained on object classification alone or jointly on classification and rotation prediction. The final two adjust features using test images. For the highest corruption severity, level 5, standard TTT resets and takes ten gradient steps per image. TTT-Online carries the updated state forward and takes one step per new image. <strong>The two bars differ in update budget as well as starting state.</strong> Comparing them tells us how the two procedures performed under the same type of corruption. To isolate the effect of retaining state, we would also need a comparison with matched step counts. To measure residual error immediately after switching cameras, we would need the order of corruptions and measurements taken just after the switch. [Sun et al., Figure 1 and §3.1](https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=3)
+
+## Part II, p. 29 — One model for this utterance, another to prepare for the next
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/ntu-29-english.png"
+  alt="Portraits of Wei-Ping Huang and Guan-Ting Lin appear beside a link to the noisy-speech paper and a diagram of standard TTT from the 2025 lecture."
+  caption="Part II, p. 29 · The earlier lecture’s per-input TTT diagram leads into the speech recognition study."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=29"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The diagram on the right starts each input from the same model. In the paper linked on the left, Lin, Huang, and Lee ask a follow-up question: <strong>How much of a quick adjustment made to hear one sentence should the next sentence inherit?</strong> In Lecture 8 from 2025, Lee distinguishes fast adaptation to one utterance from slower learning across several utterances. The time around 1 hour and 54 minutes printed on the slide belongs to that earlier recording. [Lecture 8, 1:54:32](https://www.youtube.com/watch?v=EnWz5XuOnIQ&t=6872s) · [Fast and slow updates, 1:56:16](https://www.youtube.com/watch?v=EnWz5XuOnIQ&t=6976s)
+
+### Supplementary paper · Two update speeds in DSUTA
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/lin-dsuta-figure2-three-approaches.png"
+  alt="Figure 2 compares resetting for each utterance, carrying every update forward, and separating fast adaptation from slow updates."
+  caption="Lin et al., Figure 2 · Trace which model each of the three methods passes to the next utterance."
+  source="https://aclanthology.org/2024.emnlp-main.1116.pdf#page=3"
+  credit="Lin, Huang & Lee / EMNLP 2024"
+  width={1801} height={1254}
+/>
+
+Dynamic SUTA (DSUTA) starts each utterance from a copy of the current reference weights. The <strong>fast update</strong> adjusts that copy several times on the current audio and uses it to produce a transcript. The <strong>slow update</strong> collects recent utterances in a buffer and updates the reference weights using their average adaptation loss. The next utterance starts from those reference weights. A final adjustment made for one unusual pronunciation can thus remain local to the utterance. The experiment uses reference transcripts to evaluate performance. Adaptation uses unlabeled speech and a loss computed from model predictions. [Paper, §§3.1–3.2 and Algorithm 1](https://arxiv.org/html/2406.11064v2#S3)
+
+<strong>How does the model detect a change in noise?</strong> The dynamic reset procedure tracks how well the recent speech fits the model adapted to the earlier noise environment. Its indicator compares losses with those of the pretrained model. The procedure checks for a departure from the earlier range across multiple utterances before resetting the reference weights. It receives neither reference transcripts nor the true times at which the noise changes. [Paper, §3.3](https://arxiv.org/html/2406.11064v2#S3.SS3)
+
+Word error rate (WER) counts the substitutions S, deletions D, and insertions I needed to match a reference transcript, then divides by the number of reference words N. Two substitutions, one deletion, and one insertion against a 20-word reference give a WER of 20%.
+
+<Math tex={String.raw`\mathrm{WER}=100\,\frac{S+D+I}{N}\;\%`} display />
+
+| Method in Table 2 | State retained for the next utterance | MD-Hard WER ↓ |
+|---|---|---:|
+| Source model | Fixed pretrained weights | 74.6% |
+| SUTA | Return to pretrained weights for each utterance | 60.4% |
+| CSUTA | Weights adapted on the preceding utterance | 83.6% |
+| DSUTA | Reference weights updated on batches of recent utterances | 45.6% |
+| DSUTA + Fixed reset | Reset reference weights at fixed intervals | 49.4% |
+| DSUTA + Dynamic reset | Reset when the loss indicator signals an environment change | 39.8% |
+
+These are means over three runs on MD-Hard, a stream with changing noise conditions. Adding dynamic reset to DSUTA reduced WER from 45.6% to 39.8%, a <strong>5.8 percentage-point drop</strong>. Resetting the same method every 50 utterances raised WER by 3.8 points to 49.4%. Carrying every update forward (CSUTA) put WER 9.0 points above the fixed model. These results describe transcription on the changing stream. Measuring retention in a previous environment requires evaluating the model again on a separate set from that environment. [Lin et al., EMNLP 2024, Table 2](https://arxiv.org/html/2406.11064v2#S4.T2)
+
+## Part II, p. 30 — After teaching a new skill, ask for the old one again
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/ntu-30-english.png"
+  alt="A puzzled robot sits beside the title of the 2025 lecture on post-training and forgetting."
+  caption="Part II, p. 30 · The slide points back to the 2025 lecture on forgetting."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=30"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Lee recalls that repeated weight updates can erode a previously learned skill. He then asks what happens if only the harness changes, for example through a new system instruction or a change to external memory. The diagnostic differs. Suppose an agent stops reporting units after an instruction edit. Give it the same input and weights, and restore the previous instruction. If the units return, the instruction change explains the behavioral difference in this case. [NTU lecture, 30:18](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1818s)
+
+### Supplementary lecture · Rehearse on old examples and evaluate on held-out ones
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-19-test-time-training-and-forgetting/ntu-2025-29-experience-replay.png"
+  alt="Some training examples from an earlier task are mixed with training examples for the new task before fitting the next model."
+  caption="NTU’s 2025 post-training lecture, p. 29 · Show examples from the first task while teaching the second."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2025-course-data/post_training.pdf#page=29"
+  credit="Hung-yi Lee / NTU ML 2025"
+  width={1800} height={1013}
+/>
+
+Pages 28–30 of the 2025 post-training lecture compare sequential fine-tuning, a regularization method that limits changes to important weights (MAS), and experience replay. Follow the plus sign on the middle slide: add a sample of old training examples to the training set for the new task. Revisiting those original inputs and targets can help preserve a mapping the model might otherwise lose. Lee’s example adds about five old examples per hundred <em>new</em> training examples. A suitable replay ratio depends on how much data can be retained and how closely the tasks resemble each other. [Lecture 6, 42:56](https://www.youtube.com/watch?v=Z6b5-77EfGk&t=2576s) · [Slides 28–30](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2025-course-data/post_training.pdf#page=28)
+
+<strong>How would we check for forgetting in a vision system?</strong> Set aside separate training and evaluation images for each of two cameras, A and B. The hypothetical results below compare predictions on the same held-out images before and after adaptation on camera B’s training data. Only A’s training images can go into the replay buffer. Its evaluation images remain held out throughout.
+
+| Same held-out evaluation set | Before adapting to B | After adapting to B | Accuracy change |
+|---|---:|---:|---:|
+| Original camera A | 90% | 82% | −8 percentage points |
+| New camera B | 60% | 78% | +18 percentage points |
+
+<Math tex={String.raw`\Delta_B=78-60=+18\;\mathrm{pp},\qquad \Delta_A=82-90=-8\;\mathrm{pp}`} display />
+
+The new camera gained 18 points and the original camera lost 8. To measure the effect of replay, start two runs from the same model. Use only B’s training images in the first. Mix in some of A’s training images in the second. Give both runs the same update budget, then measure both models on the same held-out A and B sets. This gives separate readings for retention and adaptation.
+
+The blue starting models on page 27, the colors passed between rows on page 28, and the slowly updated reference model on page 29 each answer the same question: <strong>Which changes made for this input should the next input inherit?</strong> Episode 20 continues on page 31 of the second lecture.
