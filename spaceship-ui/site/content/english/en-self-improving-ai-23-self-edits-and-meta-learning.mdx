@@ -1,0 +1,284 @@
+---
+title: "Self-Improving AI 23 — Can a learning rule transfer to a new task?"
+description: "NTU Part II, pages 46–50. Seven worked examples connect SEAL self-edit rewards, two timescales of learning, learned optimizers and MAML. Follow the inner and outer updates and check each reported result against its evaluation unit."
+pubDate: 2026-11-21T11:32:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-23-self-edits-and-meta-learning
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - ai-agents
+  - prompt-optimization
+  - ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 23
+translationKey: en-self-improving-ai-23-self-edits-and-meta-learning
+translatedPosts:
+  ko-KR: self-improving-ai-23-self-edits-and-meta-learning
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+Training an inspection camera brings its error count from ten to zero on the same 20 held-out photos of a new part. That shows <strong>this classifier improved on these photos</strong>. Would a fresh camera adapt from fewer examples if it used the same learning procedure? To answer the second question, reset the task-specific weights and try the procedure on another task.
+
+[Chapter 22](/en/posts/self-improving-ai-22-learning-the-parameter-update-rule/) compared rules for changing model weights. Part II, pages 46–50, begins with SEAL, which evaluates training material proposed by the model itself. We then separate an <strong>inner update</strong> that teaches a model from an <strong>outer update</strong> that revises the learning procedure using the outcomes. The cameras and calibration targets are illustrative. For the SEAL and MAML results, the paper tables specify exactly what each percentage counts.
+
+<strong>Worked examples</strong>　[Rewarding edits](#worked-example-1-what-do-two-successful-model-copies-send-back) · [ARC success rate](#worked-example-2-what-is-the-denominator-in-seals-725-success-rate) · [Learning speed](#worked-example-3-both-inspectors-finish-with-16-correct-which-one-learned-sooner) · [Transferring a rule](#worked-example-4-what-transfers-to-the-next-camera-a-correction-or-a-calibration-method) · [Differentiating a step size](#worked-example-5-what-do-we-differentiate-to-change-a-learning-rate) · [Learning an initialization](#worked-example-6-which-initialization-would-maml-learn-from-two-cameras) · [Counting shots](#worked-example-7-what-grows-fivefold-from-5-way-1-shot-to-5-shot)
+
+<details>
+<summary>Video guide by slide</summary>
+
+| Part II page | Lecture video | Question to listen for |
+|---|---|---|
+| 46 | [40:22](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2422s) | Which self-edits should the model learn to generate again? |
+| 47 | [42:02](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2522s) | How does learning a task differ from improving the learning rule? |
+| 48 | [44:14](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2654s) | Why compare a lifetime with a succession of generations? |
+| 49 | [42:54](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2574s) | What does φ control in the function that updates θ? |
+| 50 | [42:45](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2565s) | Which older meta-learning lectures does the instructor revisit? |
+
+The table and chapter follow PDF page order. The video presents the material in the order <strong>46→47→50→49→48</strong>. Each link opens the discussion of the corresponding topic. [NTU lecture, May 22, 2026](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+</details>
+
+## Part II, page 46 — Which answer earns a self-edit its reward?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-46-original.png"
+  alt="Three self-edits branch from one model. Each trains a copy; the answers provide rewards for the outer policy update."
+  caption="Part II, page 46. Follow one edit through adaptation, testing and the reward returned to the outer policy."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=46"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+A single line on the left splits into three branches. <strong>One model has proposed several ways to learn the same task.</strong> SEAL (Self-Adapting LLMs) calls each proposal a self-edit (SE). To remember a passage, the model can generate training sentences derived from it. For an ARC task involving colored grids, it can specify how to rotate or reflect examples, which learning rate to use, and how many epochs to train. [NTU lecture at 40:22](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2422s) · [SEAL paper, examples of both kinds of edit](https://arxiv.org/pdf/2506.10943v2#page=5)
+
+Follow one branch. The current model θₜ reads context C and writes edit eⱼ. Supervised fine-tuning (SFT) applies the edit to a copy starting at θₜ and produces weights θ′ⱼ. That copy solves a query held out from the demonstrations. Its answer is checked against the target. The <strong>inner update</strong> changes the copy that solves the query. The <strong>outer update</strong> uses the result to train the model that will propose future edits. To construct θₜ₊₁ on the right of the figure, the outer update starts from θₜ. [SEAL, Figure 1](https://arxiv.org/pdf/2506.10943v2#page=2) · [Algorithm 1, lines 4–8](https://arxiv.org/pdf/2506.10943v2#page=4)
+
+### Worked example 1. What do two successful model copies send back?
+
+In an <strong>illustrative grid task</strong>, suppose the model samples three edits, numbered 1 to 3, from the same demonstrations. Apply each edit to its own fresh copy. Copies 1 and 2 get every color and position right on the new grid. Copy 3 misses one cell. All candidates in this example meet the same compute budget. Write rⱼ for a reward of one on an exact match and zero otherwise. Here y⋆ is the reference grid and ŷⱼ is the grid predicted by copy j.
+
+<Math tex={String.raw`\theta'_j=\operatorname{SFT}(\theta_t,e_j),\qquad r_j=\mathbf 1[\hat y_j=y^\star],\qquad (r_1,r_2,r_3)=(1,1,0).`} display />
+
+Represent the three edits as single-token choices. Given the same input context, let the starting model assign the three choices probabilities pⱼ of 1/2, 1/4 and 1/4 in order. As in Equation 3 of the paper, average over the three samples and hold the reward fixed when computing the negative log-likelihood loss.
+
+<Math tex={String.raw`\ell=-\tfrac13\sum_{j=1}^{3}r_j\ln p_j=-\tfrac13\bigl(\ln 0.5+\ln 0.25+0\bigr)=\ln 2\approx0.693.`} display />
+
+The final term is zero because edit 3 earned zero reward. The records returned by copies 1 and 2 pair <strong>the input context with a successful edit</strong>. The outer model trains to generate those edits. A real edit has multiple tokens, so its log probability is a sum over tokens. The team used ReST<sup>EM</sup>, which fine-tunes on selected successful outputs. For ARC, it also excluded configurations that required more than 375 training steps. [SEAL, Equations 3–4](https://arxiv.org/pdf/2506.10943v2#page=4) · [Training budget in Appendix A.2](https://arxiv.org/pdf/2506.10943v2#page=18) · [Official code selecting successful edits](https://github.com/Continual-Intelligence/SEAL/blob/6d9c9f9ee392c6cc618e771f399d436d190f6ca4/few-shot/BC-self-edit.py#L61-L80)
+
+### Worked example 2. What is the denominator in SEAL's 72.5% success rate?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/seal-arc-success.png"
+  alt="Reported ARC success rates are 0% for in-context learning, 20% for untrained self-edits, 72.5% for SEAL and 100% for oracle TTT."
+  caption="ARC results from SEAL Table 1. The middle two conditions count trials with one generated edit applied to a task."
+  source="https://arxiv.org/pdf/2506.10943v2#page=7"
+  credit="JJo illustration · based on Adam Zweiger et al."
+  label="Supplementary material"
+  width={1800} height={1375}
+/>
+
+The supplementary chart puts numbers on the check marks in the lecture diagram. The researchers used Llama-3.2-1B-Instruct and selected ARC tasks that the model could solve with a suitable test-time training (TTT) configuration. It learned to propose edits on 11 training tasks. For each of eight separate evaluation tasks, it generated five edits. Each edit was applied independently from the same starting weights. In the two self-edit conditions, a trial therefore means <strong>one edit applied to one task</strong>. [SEAL, experimental setup in §4.1](https://arxiv.org/pdf/2506.10943v2#page=6) · [Appendix A.3, unit of evaluation](https://arxiv.org/pdf/2506.10943v2#page=19)
+
+<Math tex={String.raw`N=8\times5=40,\qquad 0.725\times40=29,\qquad 0.20\times40=8.`} display />
+
+<Math tex={String.raw`\Delta=\frac{29-8}{40}=0.525=52.5\ \mathrm{pp}.`} display />
+
+SEAL with outer training succeeded in 29 of 40 trials. Generating edits without that prior training produced eight successes. The difference is 21 trials, or 52.5 percentage points. The five attempts for a given task share its grid rule. The aggregate counts do not tell us how many tasks were solved at least once in five tries. The chart's 0% is the condition that used only demonstrations in the prompt (ICL). Its 100% is the condition with the human-selected TTT configuration. [SEAL, Table 1](https://arxiv.org/pdf/2506.10943v2#page=7)
+
+<strong>Knowledge incorporation</strong> uses a different measure. Qwen2.5-7B learned one passage at a time, then answered questions without seeing the passage again. Mean accuracy was 33.5% after training on the passage alone, 39.7% after adding sentences generated before outer training, and 47.0% after adding sentences generated by SEAL. With the single-passage setting held fixed, the difference for the learned generation procedure is 47.0−39.7=7.3 percentage points. During outer training in this experiment, the team evaluated each of five candidate edits per passage with three random seeds and kept the edit with the highest mean score. [SEAL, first column of Table 2](https://arxiv.org/pdf/2506.10943v2#page=8) · [Appendix B.2, selecting edits](https://arxiv.org/pdf/2506.10943v2#page=20)
+
+## Part II, page 47 — Did the robot improve, or did it learn faster?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-47-original.png"
+  alt="Four agents change along the upper row, while the lower row connects two robots holding tools."
+  caption="Part II, page 47. Changes to the agent and changes to its learning rule call for separate measurements."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=47"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Start with the robots across the top. Each arrow takes an agent from one state to the next. Now look below the braces. A small robot holding a tool sits below each group, and an arrow also connects the two lower robots. The instructor identifies two levels of change. At the top, <strong>the agent that performs the task</strong> changes. At the bottom, <strong>the rule that determines how the agent changes next</strong> can change as well. The slide supplies no scores or time scale. A more elaborate robot drawing gives us no numerical estimate of learning speed. [NTU Part II, page 47](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=47) · [Lecture at 42:02](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2522s)
+
+### Worked example 3. Both inspectors finish with 16 correct. Which one learned sooner?
+
+In this <strong>illustrative experiment</strong>, make two copies of the same initial scratch detector. Update one with rule A and the other with rule B. They receive the same training photos in the same order and have the same compute budget per update. Immediately after each update, score both copies on a fixed set of 20 photos excluded from training. Each entry is the number correct on those same 20 photos.
+
+| Updates completed | Start | 1 | 2 | 3 |
+|---|---:|---:|---:|---:|
+| Inspector trained with A | 10 | 12 | 14 | 16 |
+| Inspector trained with B | 10 | 15 | 16 | 16 |
+
+Final accuracy is 16/20=80% for both. If the factory needs the inspector after the second update, A scores 70% and B scores 80%. Let T count <strong>the updates needed to first reach 80%</strong>. The count cₖ is the number correct after k updates. The minimum selects the earliest update that meets the threshold.
+
+<Math tex={String.raw`T_{0.8}=\min\{k:c_k/20\ge 0.8\},\qquad T_{0.8}(A)=3,\quad T_{0.8}(B)=2.`} display />
+
+Suppose deployment is equally likely after any of the three updates. Give each post-update accuracy the same weight. The starting model is identical for both rules, and the average here covers <strong>the three post-update checkpoints</strong>.
+
+<Math tex={String.raw`\bar a_A=\frac{12+14+16}{3\cdot20}=0.700,\qquad \bar a_B=\frac{15+16+16}{3\cdot20}\approx0.783.`} display />
+
+B leads by about 8.3 percentage points in mean checkpoint accuracy. The denominator 60 counts <strong>20 photos assessed three times</strong>. It does not give 60 independent photos. To evaluate the lower arrow, decide which outcome matters. Does the inspector need the strongest final score after its full budget, or must it reach a usable score sooner? The two questions yield different conclusions from this table.
+
+## Part II, page 48 — What changes within a lifetime and across generations?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-48-original.png"
+  alt="Two groups illustrate growth within lifetimes. An arrow connects the DNA symbols below them."
+  caption="Part II, page 48. The analogy distinguishes change within a lifetime from change across generations."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=48"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Each brace at the top contains a sequence from childhood to adulthood. Below are two DNA drawings joined by an arrow. The instructor uses this analogy to distinguish <strong>changes in brain connections over one lifetime</strong> from <strong>changes across generations in the distribution of traits that influence learning</strong>. In the recorded lecture this analogy follows the notation on page 49. The useful correspondence concerns the two timescales. The picture gives no basis for assuming that a person's learned memories pass intact to the next generation, or that the group on the right performs better in every environment. [NTU Part II, page 48](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=48) · [Lecture at 44:14](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2654s)
+
+### Worked example 4. What transfers to the next camera: a correction or a calibration method?
+
+Apply the analogy to <strong>an illustrative camera calibration experiment</strong>. Each new camera starts with its brightness correction θ reset to zero. Measure the brightness offset three times for each device. Rule U uses <strong>the most recent measurement</strong> as the current θ. Rule V uses <strong>the median so far</strong>. The table shows the result after both rules have seen all three measurements. An independent reference instrument supplies the offset at that instant. The rules have no access to it. Corrections and errors are in brightness units.
+
+| Camera and condition | Measurements in order | Reference | Correction from U | Correction from V |
+|---|---|---:|---:|---:|
+| A · stable, noisy final reading | 3, 4, 17 | 4 | 17 | 4 |
+| B · stable | −1, −3, −2 | −2 | −2 | −2 |
+| C · underlying offset changes rapidly | 1, 5, 9 | 9 | 9 | 5 |
+
+First compare the rules on the stable cameras A and B. Take the absolute difference between the correction and the reference for each camera. Mean absolute error (MAE) averages the two differences.
+
+<Math tex={String.raw`\mathrm{MAE}_{A,B}(U)=\frac{|17-4|+|-2-(-2)|}{2}=6.5,\qquad \mathrm{MAE}_{A,B}(V)=0.`} display />
+
+Under that criterion V wins. What transfers to C is <strong>the instruction to use the median of its measurements</strong>. C receives neither A's correction of 4 nor B's correction of −2. It estimates a fresh correction of 5 from its own readings 1, 5 and 9. On C the ranking reverses.
+
+<Math tex={String.raw`e_C(U)=|9-9|=0,\qquad e_C(V)=|5-9|=4.`} display />
+
+Rejecting an outlying reading helped on the stable devices. On C the last reading best represented a real change. A <strong>method</strong> can transfer to a new device, but its performance still needs to be measured there. Page 49 introduces θ and φ for these two levels. The value θ changes while the learner works on a task. The parameter φ specifies how that value gets updated.
+
+## Part II, page 49 — When does θ change, and when does φ change?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-49-original.png"
+  alt="Model weights θ change several times within each brace. The parameter φ below each brace controls its update rule."
+  caption="Part II, page 49. Index t counts model updates; t′ counts updates to the learning rule."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=49"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Start with one arrow inside the left brace. The update function F takes the model's current weights θ and returns the next weights. The parameter φ below the brace determines <strong>what F computes</strong>. The weights θ can change several times while the same φ stays in effect. The right brace uses a revised learning rule. The subscript t counts inner updates. The index t′ counts updates to the rule itself. Advancing each counter by one can represent very different amounts of work. [NTU Part II, page 49](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=49) · [Lecture at 42:54](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2574s)
+
+### Worked example 5. What do we differentiate to change a learning rate?
+
+Consider an <strong>illustrative camera calibration</strong>. A small training sample suggests a brightness correction of 2. A separate validation sample suggests 3. Let θ be the current correction and φ the size of a learning step. Fix the starting correction at θ₀=0. For training, use half the squared distance to 2. The starting gradient is −2, so a learning rate of 0.25 gives a correction of 0.5 after one step.
+
+<Math tex={String.raw`L_S(\theta)=\tfrac12(\theta-2)^2,\quad \theta_1=\theta_0-\phi(\theta_0-2)=2\phi.`} display />
+
+<Math tex={String.raw`J(\phi)=\tfrac12(\theta_1-3)^2=\tfrac12(2\phi-3)^2,\qquad J(0.25)=3.125.`} display />
+
+
+The question changes from “Which way should the correction move?” to “Which step size reduces validation error <strong>after one update</strong>?” Multiply two rates of change. The validation gradient at the new correction is 0.5−3=−2.5. The updated correction changes by two units per unit change in φ. The outer gradient is therefore −5.
+
+<Math tex={String.raw`\frac{dJ}{d\phi}=\frac{\partial J}{\partial\theta_1}\frac{\partial\theta_1}{\partial\phi}=(2\phi-3)\cdot2=-5\quad(\phi=0.25).`} display />
+
+<Math tex={String.raw`\phi_{\rm new}=0.25-0.05(-5)=0.50,\qquad \theta_1^{\rm new}=1,\qquad J(0.50)=2.`} display />
+
+
+Here 0.05 controls the <strong>update to the rule</strong>. The resulting 0.50 controls the <strong>rule's update to the model</strong>. Starting again from zero and taking the same single step reduces validation loss from 3.125 to 2. Since the validation example helped select φ, a fresh task is needed to find out whether the rule transfers to a new camera.
+
+### Supplementary paper · From a step size to a learned optimizer
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/learned-optimizer-coordinate-update.png"
+  alt="Two coordinates use the same optimizer weights φ. Each gradient and local state produce an increment and the next local state."
+  caption="Schematic based on Andrychowicz et al., Equation 3 and Figure 3. Optimizer weights are shared, and each coordinate keeps its own state."
+  source="https://papers.nips.cc/paper_files/paper/2016/file/fb87582825f9d28a8d42c5e5e5e8b23d-Paper.pdf#page=3"
+  credit="JJo illustration · based on Marcin Andrychowicz et al."
+  label="Supplementary material"
+  width={1800} height={1237}
+/>
+
+In a 2016 study by Andrychowicz and colleagues, a small recurrent network acts as an optimizer. Given a task gradient and its own previous state, it returns <strong>an increment to add</strong> to the weights and a new state. The coordinates share optimizer parameters φ but have separate internal states. In the hand calculation, F could only scale a gradient. Here two identical current gradients can produce different updates if the preceding gradient histories differ. [Equation 3, updates and training objective](https://papers.nips.cc/paper_files/paper/2016/file/fb87582825f9d28a8d42c5e5e5e8b23d-Paper.pdf#page=3) · [Figure 3, per-coordinate state and shared parameters](https://papers.nips.cc/paper_files/paper/2016/file/fb87582825f9d28a8d42c5e5e5e8b23d-Paper.pdf#page=4)
+
+How can identical gradients give different updates? Consider a simple momentum rule. Halve the previous accumulator and add the current gradient. With a gradient of 1 for both coordinates but previous accumulators of +2 and −2, the new accumulators are 2 and 0. At a step size of 0.1, the two increments are −0.2 and 0. The coordinates <strong>share the rule but carry different histories</strong>. This calculation isolates the role of state. The LSTM in the paper can represent a more complex function.
+
+## Part II, page 50 — How do we evaluate meta-learning on a new task?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-50-english.png"
+  alt="Two thumbnails link to the 2021 meta-learning lectures. The video titles below the thumbnails are translated into English."
+  caption="Part II, page 50. The first lecture builds a score across tasks. The second examines what a learning algorithm can learn."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=50"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The slide points to two NTU lectures from 2021. The first asks <strong>how to score a learning algorithm after it runs on a task</strong>. The second asks <strong>which part of the learning procedure to learn</strong>. Although this slide follows page 49 in the PDF, the instructor introduces the videos before returning to the equation for θ and φ. [Main lecture at 42:45](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2565s) · [NTU 2021 course materials](https://speech.ee.ntu.edu.tw/~hylee/ml/2021-spring.html)
+
+Pause the first video at 19:20 to see the losses from different tasks combined to score a learning rule. Each task contributes a score obtained after learning from its own examples. At 13:20 in the second video, the slide zooms in on the operation that turns a gradient into a weight update. An outer task score can guide different inner choices, including the initial weights, step size or optimizer. [First video at 19:20](https://www.youtube.com/watch?v=xoastiYx9JU&t=1160s) · [Corresponding slide 19](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/meta_v3.pdf#page=19) · [Second video at 13:20](https://www.youtube.com/watch?v=Q68Eh-wm1Ts&t=800s) · [Corresponding slide 41](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/meta_v3.pdf#page=41)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/stanford-cs330-inner-outer-datasets.png"
+  alt="The four-step algorithm samples tasks, adapts parameters on task training examples and uses separate examples for the outer update."
+  caption="Stanford CS330, algorithm from page 20 with its update equations enlarged. Inner adaptation and outer training use separate examples from each task."
+  source="https://cs330.stanford.edu/materials/cs330_optbased_metalearning_2023.pdf#page=20"
+  credit="Chelsea Finn / Stanford CS330"
+  label="Supplementary material"
+  width={1801} height={958}
+/>
+
+In a task, or episode, shown in the Stanford CS330 lecture, a small <strong>support set</strong> provides examples for adaptation. A separate <strong>query set</strong> measures performance after adaptation. During meta-training, query loss supplies the signal for learning the outer parameters. Final meta-testing introduces new tasks that played no part in selecting the learning procedure. There are two splits to keep track of: support and query examples within a task, and training and test tasks across the experiment. [Stanford CS330, page 20](https://cs330.stanford.edu/materials/cs330_optbased_metalearning_2023.pdf#page=20)
+
+### Worked example 6. Which initialization would MAML learn from two cameras?
+
+Model-Agnostic Meta-Learning (MAML) learns <strong>initial weights from which a few updates work well on a new task</strong>. On page 49, φ parameterized the learning rule. Here the outer loop selects the shared starting value w, while the inner step size stays fixed at α=0.5. Treat cameras A and B as distinct tasks. Let s denote a target correction measured on support images and q a target measured on separate query images. The numbers below are <strong>illustrative</strong>. [MAML, Algorithm 1](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=3) · [Algorithm 2 for supervised learning](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=4)
+
+| Camera | Support target s | Query target q | One update from w=0 | Query loss |
+|---|---:|---:|---:|---:|
+| A | −2 | −3 | −1 | 2 |
+| B | 4 | 5 | 2 | 4.5 |
+
+Use half the squared error. One update on the support set moves the correction halfway between its starting value and the support target. The query error for A is −1−(−3)=2. For B it is 2−5=−3.
+
+<Math tex={String.raw`w'_i=w-0.5(w-s_i)=0.5w+0.5s_i,\qquad J(w)=\tfrac12\sum_{i\in\{A,B\}}\tfrac12(w'_i-q_i)^2.`} display />
+
+<Math tex={String.raw`J(0)=\frac{2+4.5}{2}=3.25,\qquad \frac{dJ}{dw}\bigg|_0=\frac{2(0.5)+(-3)(0.5)}{2}=-0.25.`} display />
+
+
+Each query gradient is multiplied by 0.5 because moving the initialization by one unit moves the adapted correction by only half a unit. With an outer step size of 0.4, the new initialization is 0.1. Give the two cameras the same support data again.
+
+<Math tex={String.raw`w_{\rm new}=0-0.4(-0.25)=0.1,\qquad (w'_A,w'_B)=(-0.95,2.05).`} display />
+
+<Math tex={String.raw`J(0.1)=\frac{(2.05)^2+(-2.95)^2}{4}=3.22625.`} display />
+
+
+Average loss falls slightly, even though A's error grows. The outer objective selects the starting value using the average across tasks. MAML applies this calculation to many weights. Its choice of initial weights differs both from tuning a single learning rate and from rewarding discrete self-edit text in SEAL.
+
+### Worked example 7. What grows fivefold from 5-way 1-shot to 5-shot?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/maml-miniimagenet-accuracy.png"
+  alt="MAML reports 48.70±1.84% for 5-way 1-shot miniImageNet and 63.11±0.92% for 5-shot."
+  caption="Means and 95% confidence intervals from the lower half of MAML Table 1. Shots count adaptation examples per class."
+  source="https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=7"
+  credit="JJo illustration · based on Chelsea Finn, Pieter Abbeel and Sergey Levine"
+  label="Supplementary material"
+  width={1800} height={1162}
+/>
+
+The lower half of Table 1 in Finn et al. reports classification on new miniImageNet classes. <strong>5-way</strong> means distinguishing five classes in each task. <strong>1-shot and 5-shot</strong> count labeled support images per class. The model therefore sees five or 25 images during adaptation. Accuracy measures how often the adapted classifier predicts a query image's class. [MAML, experimental setup](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=6) · [Table 1, miniImageNet results](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=7)
+
+<Math tex={String.raw`N_{\rm support}=5\times 1=5\quad\text{or}\quad 5\times 5=25,\qquad 63.11\%-48.70\%=14.41\ \mathrm{pp}.`} display />
+
+
+The MAML row reports 48.70±1.84% for 1-shot and 63.11±0.92% for 5-shot. <strong>14.41 percentage points</strong> is the difference between the reported means. The error bars show a 95% confidence interval over tasks for each mean. The table does not give a confidence interval for the difference itself. In the SEAL experiment a success meant solving an ARC grid after adapting with a self-edit. Here the underlying observations are classifications of new images. Each percentage has to be read in the context of its own task.
+
+Chapter 22 compared training algorithms. We can now say <strong>what each method selects and which data score that choice</strong>. Page 51 turns to the changing state of a recurrent network as it reads new inputs. [Preview of Part II, page 51](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=51)

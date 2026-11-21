@@ -638,6 +638,7 @@ POST_TAXONOMY.update({
     "self-improving-ai-20-retaining-skills-and-improving-the-improver.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
     "self-improving-ai-21-learning-to-improve-the-improver.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
     "self-improving-ai-22-learning-the-parameter-update-rule.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
+    "self-improving-ai-23-self-edits-and-meta-learning.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
 })
 
 # Preserve the existing November 18 candidate's taxonomy and draft visibility.
