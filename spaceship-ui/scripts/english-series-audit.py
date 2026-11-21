@@ -25,6 +25,7 @@ for pair in pairs:
     assert urls(source) + collections.Counter(pair.get('editorialAdditionUrls', [])) == urls(target), pair['key'] + ': external source links'
     expected_images = [s.replace('reasoning-control.svg', 'reasoning-control.en.svg').replace('deployment-learning.svg', 'deployment-learning.en.svg') for s in images(source)]
     expected_images = [x[:-4] + '.en.svg' if '/ai-consciousness-2026/' in x and x.endswith('.svg') else x for x in expected_images]
+    expected_images = [x.replace('/semiconductor-universe-2026/cover.svg', '/semiconductor-universe-2026/cover.en.svg') for x in expected_images]
     assert expected_images == images(target), pair['key'] + ': image preservation'
     current_ids = re.findall(r'<RobotEquationGuide id="([^"]+)"', target)
     assert current_ids == re.findall(r'<RobotEquationGuide id="([^"]+)"', source)

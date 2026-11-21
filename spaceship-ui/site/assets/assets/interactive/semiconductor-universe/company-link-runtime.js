@@ -1,4 +1,5 @@
 (() => {
+  const english = document.documentElement.lang === 'en';
   const marketRegistryUrl = './company-links-korea.json';
   const officialRegistryUrl = './company-links-korea-private.json';
   const globalListedRegistryUrl = './company-links-global-listed.json';
@@ -22,12 +23,12 @@
     const panel = document.createElement('section');
     panel.className = 'company-link-panel';
     panel.hidden = true;
-    panel.setAttribute('aria-label', '기업 외부 정보 링크');
+    panel.setAttribute('aria-label', english ? 'Company information and external resources' : '기업 외부 정보 링크');
     panel.innerHTML = `
       <div class="company-link-heading">
         <div>
           <p class="company-link-eyebrow" data-company-link-eyebrow>COMPANY LINKS</p>
-          <h3 data-company-link-title>기업 정보</h3>
+          <h3 data-company-link-title>${english ? 'Company information' : '기업 정보'}</h3>
         </div>
         <span class="company-link-market" data-company-link-market></span>
       </div>
@@ -65,24 +66,32 @@
     return anchor;
   }
 
+  function companyName(profile, nodeId) {
+    return (english ? document.querySelector('#node-title')?.textContent : profile.nameKo) || nodeId;
+  }
+
   function renderMarketProfile(panel, nodeId, profile) {
-    const { ticker, exchange, nameKo } = profile;
+    const { ticker, exchange } = profile;
+    const name = companyName(profile, nodeId);
     const templates = state.marketRegistry?.urlTemplates || {};
     const actions = panel.querySelector('[data-company-link-actions]');
     panel.querySelector('[data-company-link-eyebrow]').textContent = 'MARKET / RESEARCH LINKS';
-    panel.querySelector('[data-company-link-title]').textContent = nameKo || nodeId;
+    panel.querySelector('[data-company-link-title]').textContent = name;
     panel.querySelector('[data-company-link-market]').textContent = `${exchange} · ${ticker}`;
-    panel.querySelector('[data-company-link-description]').textContent = `${nameKo || nodeId} (${ticker})의 시세, 투자자 정보, 재무·컨센서스 페이지로 이동합니다.`;
-    panel.querySelector('[data-company-link-note]').textContent = '외부 시세·리서치 페이지는 참고용입니다. Atlas의 공급관계·고객상태와 투자판단을 동일시하지 않습니다.';
+    panel.querySelector('[data-company-link-description]').textContent = english
+      ? `View prices, investor information, financial statements, and consensus estimates for ${name} (${ticker}).`
+      : `${name} (${ticker})의 시세, 투자자 정보, 재무·컨센서스 페이지로 이동합니다.`;
+    panel.querySelector('[data-company-link-note]').textContent = english ? 'External market and research pages are for reference. The supply relationships and customer status recorded in the atlas are separate from investment judgments.' : '외부 시세·리서치 페이지는 참고용입니다. Atlas의 공급관계·고객상태와 투자판단을 동일시하지 않습니다.';
     actions.classList.remove('is-resource-grid');
     actions.replaceChildren(
-      createAnchor({ href: buildUrl(templates.naver, ticker), title: 'Naver 증권', role: 'MARKET', publisher: 'Naver' }),
-      createAnchor({ href: buildUrl(templates.toss, ticker), title: 'Toss 증권', role: 'MARKET', publisher: 'Toss' }),
-      createAnchor({ href: buildUrl(templates.fnguide, ticker), title: 'FnGuide / 컨센서스', role: 'MARKET', publisher: 'FnGuide' }),
+      createAnchor({ href: buildUrl(templates.naver, ticker), title: english ? 'Naver Finance' : 'Naver 증권', role: 'MARKET', publisher: 'Naver' }),
+      createAnchor({ href: buildUrl(templates.toss, ticker), title: english ? 'Toss Securities' : 'Toss 증권', role: 'MARKET', publisher: 'Toss' }),
+      createAnchor({ href: buildUrl(templates.fnguide, ticker), title: english ? 'FnGuide / Consensus' : 'FnGuide / 컨센서스', role: 'MARKET', publisher: 'FnGuide' }),
     );
   }
 
   function renderOfficialProfile(panel, nodeId, profile) {
+    const name = companyName(profile, nodeId);
     const actions = panel.querySelector('[data-company-link-actions]');
     const classLabel = profile.companyClass === 'IPO_STAGE'
       ? 'IPO STAGE'
@@ -91,19 +100,21 @@
         : 'PRIVATE / UNLISTED';
 
     panel.querySelector('[data-company-link-eyebrow]').textContent = 'OFFICIAL COMPANY RESOURCES';
-    panel.querySelector('[data-company-link-title]').textContent = profile.nameKo || nodeId;
+    panel.querySelector('[data-company-link-title]').textContent = name;
     panel.querySelector('[data-company-link-market]').textContent = classLabel;
-    panel.querySelector('[data-company-link-description]').textContent = `${profile.nameKo || nodeId}의 공식 홈페이지, 반도체 제품·기술, IR·공시 또는 뉴스룸으로 이동합니다.`;
-    panel.querySelector('[data-company-link-note]').textContent = '비상장·IPO 단계 기업에는 Naver/Toss/FnGuide 주식 링크를 임의 생성하지 않습니다. DEGRADED 표시는 공식 도메인은 확인됐지만 2026-08-21 자동 점검에서 직접 응답 확인이 제한된 링크입니다.';
+    panel.querySelector('[data-company-link-description]').textContent = english
+      ? `Explore the official website, semiconductor products and technologies, investor disclosures, or newsroom for ${name}.`
+      : `${name}의 공식 홈페이지, 반도체 제품·기술, IR·공시 또는 뉴스룸으로 이동합니다.`;
+    panel.querySelector('[data-company-link-note]').textContent = english ? 'Unlisted and pre-IPO companies have no generated Naver, Toss, or FnGuide stock links. DEGRADED identifies a verified official domain whose individual page could not be confirmed in the automated check on August 21, 2026.' : '비상장·IPO 단계 기업에는 Naver/Toss/FnGuide 주식 링크를 임의 생성하지 않습니다. DEGRADED 표시는 공식 도메인은 확인됐지만 2026-08-21 자동 점검에서 직접 응답 확인이 제한된 링크입니다.';
     actions.classList.add('is-resource-grid');
     actions.replaceChildren();
 
     for (const resource of profile.resources || []) {
       actions.append(createAnchor({
         href: resource.url,
-        title: resource.title,
+        title: (english && resource.titleEn) || resource.title,
         role: resource.role,
-        publisher: resource.publisher,
+        publisher: (english && resource.publisherEn) || resource.publisher,
         degraded: resource.availability === 'DEGRADED',
       }));
     }
@@ -114,17 +125,19 @@
     panel.querySelector('[data-company-link-eyebrow]').textContent = 'GLOBAL LISTED COMPANY';
     panel.querySelector('[data-company-link-title]').textContent = profile.name || nodeId;
     panel.querySelector('[data-company-link-market]').textContent = `${profile.exchange} · ${profile.ticker}`;
-    panel.querySelector('[data-company-link-description]').textContent = `${profile.name || nodeId}의 공식 IR, 반도체 제품·기술 페이지와 primary listing 기준 시장정보로 이동합니다.`;
-    panel.querySelector('[data-company-link-note]').textContent = 'MARKET 링크는 2026-08-21 확인한 primary listing identity를 Google Finance 형식으로 연결한 탐색용 링크입니다. ADR·secondary listing이 있어도 Atlas의 canonical ticker는 primary listing을 유지하며, 외부 링크는 공급관계 evidence를 자동 승격하지 않습니다.';
+    panel.querySelector('[data-company-link-description]').textContent = english
+      ? `Explore investor relations, semiconductor products and technologies, and market information for the primary listing of ${profile.name || nodeId}.`
+      : `${profile.name || nodeId}의 공식 IR, 반도체 제품·기술 페이지와 primary listing 기준 시장정보로 이동합니다.`;
+    panel.querySelector('[data-company-link-note]').textContent = english ? 'MARKET links use Google Finance to look up the primary listing verified on August 21, 2026. The atlas uses the primary ticker even when ADRs or secondary listings exist. The evidence for supply relationships is assessed separately.' : 'MARKET 링크는 2026-08-21 확인한 primary listing identity를 Google Finance 형식으로 연결한 탐색용 링크입니다. ADR·secondary listing이 있어도 Atlas의 canonical ticker는 primary listing을 유지하며, 외부 링크는 공급관계 evidence를 자동 승격하지 않습니다.';
     actions.classList.add('is-resource-grid');
     actions.replaceChildren();
 
     for (const resource of profile.resources || []) {
       actions.append(createAnchor({
         href: resource.url,
-        title: resource.title,
+        title: (english && resource.titleEn) || resource.title,
         role: resource.role,
-        publisher: resource.publisher,
+        publisher: (english && resource.publisherEn) || resource.publisher,
         degraded: resource.availability === 'DEGRADED',
         generated: resource.availability === 'GENERATED',
       }));
