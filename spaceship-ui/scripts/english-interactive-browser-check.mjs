@@ -2,6 +2,8 @@ import { evaluate, waitExpression } from './browser-smoke-harness.mjs';
 
 export async function checkEnglishInteractivePage({cdp,sessionId,slug,enter,width}) {
   const charts = {
+    '2025-05-20-2025-05-20': ['caffeineContentChart','sleepQualityChart','neuroProtectionChart'],
+    '2025-08-06-2025-08-06': ['nutrientChart'],
     '2025-06-27-2025-06-27': ['bioavailabilityChart','priceChart'],
     '2025-07-23-2025-07-23': ['vitaminBChart'],
     '2025-07-23-2025-07-23-2': ['absorptionChart'],
@@ -18,6 +20,19 @@ export async function checkEnglishInteractivePage({cdp,sessionId,slug,enter,widt
       await waitExpression(cdp,sessionId,`Boolean(Chart.getChart(${JSON.stringify(id)})?.data.datasets.length)`,'English '+id+' initialized');
     }
     console.log('english-interactive: PASS '+JSON.stringify({slug,width,charts:charts[slug],magnesiumSelection:slug==='2025-06-27-2025-06-27'}));
+  }
+  if (slug === '2024-03-17-english-word') {
+    await enter('#start-quiz');
+    await waitExpression(cdp,sessionId,`document.querySelector('#study-section').hidden || getComputedStyle(document.querySelector('#study-section')).display === 'none'`,'Hide vocabulary list while answering');
+    for (let i = 0; i < 10; i++) {
+      await enter('#options-container button');
+      await waitExpression(cdp,sessionId,`document.querySelectorAll('#options-container button:disabled').length === 4`,'Record one answer per question');
+      await enter('#next-btn');
+    }
+    await waitExpression(cdp,sessionId,`document.querySelector('#final-score').innerText.includes('Your score')`,'Show vocabulary quiz result');
+    await enter('#final-score button');
+    await waitExpression(cdp,sessionId,`document.querySelector('#current-question').textContent === '1' && document.querySelectorAll('#options-container button:enabled').length === 4`,'Restart vocabulary quiz');
+    await enter('#return-study');
   }
   if (slug === 'isaiah-43-18-21-3') {
     const doc=`document.querySelector('iframe[src*="isaiah-dashboard-3"]').contentDocument`;

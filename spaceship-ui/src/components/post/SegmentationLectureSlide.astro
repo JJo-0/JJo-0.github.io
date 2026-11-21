@@ -3,14 +3,20 @@ interface Props { page: number; caption: string; priority?: boolean; }
 const { page, caption, priority = false } = Astro.props;
 if (!Number.isInteger(page) || page < 32 || page > 64) throw new Error('Invalid segmentation source page');
 const label = `P${String(page).padStart(3, '0')}`;
+const en = Astro.url.pathname.startsWith('/en/');
+const openLabel = en ? `Open original PDF at page ${page}` : `${label} 원본 PDF 열기`;
+const slideAlt = en
+  ? `${label}: ${caption}. Original slide from Stanford CS231n 2026 Lecture 9.`
+  : `${label}: ${caption}. Stanford CS231n 2026 Lecture 9 원본 슬라이드.`;
+const sourceLabel = en ? `Original PDF, page ${page}` : `원본 PDF ${page}쪽`;
 const source = `https://cs231n.stanford.edu/slides/2026/lecture_9.pdf#page=${page}`;
 const src = `/assets/posts/segmentation-from-pixels-to-robot-observations/slides/slide-${String(page).padStart(3, '0')}.webp`;
 ---
 <figure class="segmentation-slide" data-segmentation-slide={label} aria-labelledby={`segmentation-${label}`}>
-  <a href={source} target="_blank" rel="noopener noreferrer" aria-label={`${label} 원본 PDF 열기`}>
-    <img src={src} alt={`${label}: ${caption}. Stanford CS231n 2026 Lecture 9 원본 슬라이드.`} width="1400" height="788" loading={priority ? 'eager' : 'lazy'} decoding="async" fetchpriority={priority ? 'high' : 'auto'} />
+  <a href={source} target="_blank" rel="noopener noreferrer" aria-label={openLabel}>
+    <img src={src} alt={slideAlt} width="1400" height="788" loading={priority ? 'eager' : 'lazy'} decoding="async" fetchpriority={priority ? 'high' : 'auto'} />
   </a>
-  <figcaption id={`segmentation-${label}`}>{label} · {caption} · Stanford CS231n, Lecture 9 (2026-04-28). <a href={source} target="_blank" rel="noopener noreferrer">원본 PDF {page}쪽</a></figcaption>
+  <figcaption id={`segmentation-${label}`}>{label} · {caption} · Stanford CS231n, Lecture 9 (2026-04-28). <a href={source} target="_blank" rel="noopener noreferrer">{sourceLabel}</a></figcaption>
 </figure>
 <style>
 .segmentation-slide { width:100%; min-width:0; margin:2.5rem 0 1.25rem; }

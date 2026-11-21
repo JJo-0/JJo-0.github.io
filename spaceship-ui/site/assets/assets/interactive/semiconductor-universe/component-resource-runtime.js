@@ -1,4 +1,5 @@
 (() => {
+  const english = document.documentElement.lang === 'en';
   const registryUrl = './node-resources-equipment-components.json';
   const state = { registry: null, panel: null };
 
@@ -11,18 +12,18 @@
     const panel = document.createElement('section');
     panel.className = 'company-link-panel component-resource-panel';
     panel.hidden = true;
-    panel.setAttribute('aria-label', '반도체 장비 핵심부품 외부 기술 링크');
+    panel.setAttribute('aria-label', english ? 'Technical resources for semiconductor equipment components' : '반도체 장비 핵심부품 외부 기술 링크');
     panel.innerHTML = `
       <div class="company-link-heading">
         <div>
           <p class="company-link-eyebrow">EQUIPMENT COMPONENT RESOURCES</p>
-          <h3 data-component-resource-title>장비 핵심부품 자료</h3>
+          <h3 data-component-resource-title>${english ? 'Equipment component resources' : '장비 핵심부품 자료'}</h3>
         </div>
         <span class="company-link-market" data-component-resource-scope></span>
       </div>
       <p class="company-link-description" data-component-resource-description></p>
       <div class="company-link-actions is-resource-grid" data-component-resource-actions></div>
-      <p class="company-link-note">OFFICIAL은 부품 제조사·공급사의 1차 자료, LEARN은 산업협회·공공기관의 독립 참고자료입니다. 링크는 부품 기능 이해를 위한 것이며 특정 fab/OEM 공급관계나 점유율을 입증하지 않습니다.</p>
+      <p class="company-link-note">${english ? 'OFFICIAL links lead to component manufacturers and suppliers. LEARN links lead to independent references from industry associations and public institutions. These sources explain component functions. Supply relationships with individual fabs or OEMs and market-share claims need separate evidence.' : 'OFFICIAL은 부품 제조사·공급사의 1차 자료, LEARN은 산업협회·공공기관의 독립 참고자료입니다. 링크는 부품 기능 이해를 위한 것이며 특정 fab/OEM 공급관계나 점유율을 입증하지 않습니다.'}</p>
     `;
     (scoreGrid || inspector.firstElementChild)?.insertAdjacentElement('afterend', panel);
     state.panel = panel;
@@ -72,7 +73,9 @@
     const scope = nodeId.startsWith('SEM.AUTO.') ? 'WAFER CARRIER' : 'EQ COMPONENT';
     panel.querySelector('[data-component-resource-title]').textContent = profile.name || nodeId;
     panel.querySelector('[data-component-resource-scope]').textContent = scope;
-    panel.querySelector('[data-component-resource-description]').textContent = `${profile.name || nodeId}의 실제 부품·서브시스템과 기술적 역할을 확인하는 외부 자료입니다.`;
+    panel.querySelector('[data-component-resource-description]').textContent = english
+      ? `These sources describe the components and subsystems used in ${profile.name || nodeId} and explain their technical roles.`
+      : `${profile.name || nodeId}의 실제 부품·서브시스템과 기술적 역할을 확인하는 외부 자료입니다.`;
     actions.replaceChildren();
     for (const resource of profile.resources || []) actions.append(createAnchor(resource));
 

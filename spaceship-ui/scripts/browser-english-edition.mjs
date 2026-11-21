@@ -76,8 +76,11 @@ try{
       const powerBank=pair.key==='lifestyle-power-bank-20260926';
       const soc=pair.key==='soc-00-20260928';
       const visualSelector=soc?'[data-soc-figure]':powerBank?'[data-pb-visual]':'[data-news-figure]';
-      const parentNav=(powerBank||soc||seriesTranslation)?'/en/posts/':'/en/news/';
       await navigate(cdp,sessionId,`/posts/${pair.koSlug}/`);
+      const sourceSection = await evaluate(cdp,sessionId,
+        "document.querySelector('header nav a[aria-current=page]')?.pathname.replace(/\\/$/, '')");
+      assert(['/news','/posts'].includes(sourceSection), pair.koSlug + ' has an active archive');
+      const parentNav = '/en' + sourceSection + '/';
       if(pair.koFile==='2024-08-09.md')await checkNumberBaseball('ko');
       if(powerBank)powerBankResults.push(await checkPowerBankPage({cdp,sessionId,width,lang:'ko',enter,screen}));
       if(soc)socResults.push(await checkSocOverviewPage({cdp,sessionId,width,lang:'ko',enter,screen}));
