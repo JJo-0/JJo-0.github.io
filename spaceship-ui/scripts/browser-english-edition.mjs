@@ -8,7 +8,9 @@ import { checkSocOverviewPage } from './soc-overview-browser-check.mjs';
 const manifest=JSON.parse(fs.readFileSync(new URL('../site/english-edition.json',import.meta.url),'utf8'));
 const out='english-review';fs.mkdirSync(out,{recursive:true});
 const results=[];const powerBankResults=[];const writingCategoryResults=[];const socResults=[];let preview,chrome,cdp,sessionId;let citationBackCases=0;
-const hardStop=setTimeout(()=>{console.error('English audit timed out');process.exit(1)},420_000);
+// Each article makes a round trip between translations at both viewport sizes.
+const auditTimeoutMs = Math.max(420_000, 90_000 + 4_000 * manifest.pairs.length);
+const hardStop=setTimeout(()=>{console.error('English audit timed out');process.exit(1)},auditTimeoutMs);
 async function enter(selector){
   await waitExpression(cdp,sessionId,`document.readyState === 'complete' && (()=>{const element=document.querySelector(${JSON.stringify(selector)});return Boolean(element) && !element.closest('astro-island')?.hasAttribute('ssr')})()`,'interactive element ready before one native input');
   await evaluate(cdp,sessionId,`(()=>{const a=document.querySelector(${JSON.stringify(selector)});if(!a)throw new Error('Missing native link');a.scrollIntoView({block:'center',behavior:'instant'});a.focus()})()`);
