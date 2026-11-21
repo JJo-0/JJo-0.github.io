@@ -1,0 +1,265 @@
+---
+title: "Self-Improving AI 22 — Can AI design the rule that updates model weights?"
+description: "NTU Part II, pages 41–45. Seven worked examples connect gradient descent, PostTrainBench, autoresearch and program evolution. Calculate what changes when an agent edits a training algorithm."
+pubDate: 2026-11-21T10:38:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-22-learning-the-parameter-update-rule
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - ai-agents
+  - prompt-optimization
+  - ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 22
+translationKey: en-self-improving-ai-22-learning-the-parameter-update-rule
+translatedPosts:
+  ko-KR: self-improving-ai-22-learning-the-parameter-update-rule
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+An inspection camera reads the zero in a part number as the letter O. [Chapter 21](/en/posts/self-improving-ai-21-learning-to-improve-the-improver/) followed an <strong>editor</strong> that used failures like this to revise the reading instructions. Now imagine using those photos to train the recognition model again. Someone chooses the images and the loss. Training code uses those choices to update the weights. How can we tell which part improved?
+
+On pages 41–45 of Part II, follow each arrow to its output. Page 41 yields <strong>new weights</strong>. Page 44 keeps <strong>a validation record across training experiments</strong>. Page 45 produces <strong>an algorithm that can run again</strong>. The camera examples below use small illustrative numbers. The paper results and experiment counts come from the linked sources.
+
+<strong>Worked examples</strong>　[A gradient step](#worked-example-1-how-much-loss-disappears-when-a-brightness-offset-increases-by-one) · [Paired photos](#worked-example-2-if-the-trained-inspector-gets-seven-more-images-right-whose-score-increased) · [Post-training gap](#worked-example-3-how-much-of-the-gap-between-the-base-and-official-models-was-closed) · [Bits per byte](#worked-example-4-how-much-probability-did-the-model-assign-to-the-same-four-bytes) · [Retained experiments](#worked-example-5-if-15-of-83-runs-were-kept-how-many-new-changes-survived) · [Comparing learning rates](#worked-example-6-does-the-best-learning-rate-for-one-task-also-win-on-two) · [Scoring expert balance](#worked-example-7-how-does-shinkaevolve-score-both-prediction-loss-and-expert-imbalance)
+
+<details>
+<summary>Video guide by slide</summary>
+
+| Part II page | Lecture video | Question to follow |
+|---|---|---|
+| 41 | [38:44](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2324s) | Once a loss is specified, which quantity gets updated? |
+| 42 | [39:09](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2349s) | Why does the instructor point back to 52:17 in Part I? |
+| 43 | [39:17](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2357s) | When one model trains another, which one is scored? |
+| 44 | [39:48](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2388s) | What do the dots and staircase mean across training runs? |
+| 45 | [40:06](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2406s) | Given an algorithm and its score, what can an agent propose? |
+
+For pages 41–44, the links start as the instructor introduces each topic. The link for page 45 opens the question about learning to propose update rules. By 40:10 the SEAL figure from the next page is on screen. The discussion of the two projects named on page 45 draws on their papers. [NTU lecture, May 22, 2026](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+</details>
+
+## Part II, page 41 — Who decides how far a weight should move for the same error?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/ntu-41-original.png"
+  alt="Two models are connected by a weight update. Dotted arrows point to the rule from a human and an AI."
+  caption="Part II, page 41. The upper arrow updates weights. The lower arrows identify who can design the rule."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=41"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Start with the solid arrow across the middle. The numbers used by the model on the left are its parameters, θ. The model on the right uses θ′ after one update. The loss L measures how far the current prediction misses its target. Below the arrow, a person and an AI both point <strong>to the update equation</strong>. Are they taking turns in a single training step? Lee names gradient descent, Adam and AdamW as examples of human-designed methods, then asks whether a machine can design an algorithm that updates the parameters. The top row shows <strong>the model being trained</strong>. The bottom row identifies <strong>who might design the training rule</strong>. [NTU lecture, 38:44](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2324s)
+
+### Worked example 1. How much loss disappears when a brightness offset increases by one?
+
+A camera reads a reference patch at 100 brightness units. An independent reference instrument measures 104 on the same patch. Suppose we add a correction θ to the camera output to predict the reference reading. This <strong>one-observation, one-parameter example is illustrative</strong>. With θ equal to zero, the prediction is 100, and the signed error, prediction minus reference, is −4. Half the squared error gives a loss of 8. The factor of ½ cancels the factor of 2 when we differentiate the square.
+
+<Math tex={String.raw`\hat y=100+\theta,\qquad L(\theta)=\tfrac12(\hat y-104)^2=\tfrac12(\theta-4)^2,\qquad \frac{dL}{d\theta}=\theta-4.`} display />
+
+The slope here is −4. A small increase in θ decreases the loss. Choose a learning rate η of 0.25, multiply the slope by that rate, and subtract the product from the old θ. Subtracting a negative number moves θ up to 1. The slide uses ∇ to collect one partial derivative per parameter. Our example has just one derivative.
+
+<Math tex={String.raw`\theta'=\theta-\eta\frac{dL}{d\theta}=0-0.25(-4)=1,\qquad \hat y'=101,\qquad L(1)=\tfrac12(101-104)^2=4.5.`} display />
+
+The absolute error falls from 4 to 3, and the loss falls from 8 to 4.5. Keep the data and slope fixed and try a learning rate of 2.5. The new θ is 10, and the prediction reaches 110. It overshoots the reference value of 104, raising the absolute error to 6 and the loss to 18. <strong>A local slope supplies a direction. The choice of step size determines where the update lands.</strong> These numbers describe the particular quadratic loss in this example.
+
+### Supplementary lecture · How to find one update on a contour map
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/stanford-cs229-gradient-descent-path.png"
+  alt="Successive gradient descent iterates appear as crosses on elliptical contours in a two-parameter plane."
+  caption="Stanford CS229 notes, upper plot on page 6. Both axes are parameters. Points on one contour have equal loss."
+  source="https://cs229.stanford.edu/summer2023/cs229-notes1.pdf#page=6"
+  credit="Andrew Ng / Stanford CS229"
+  label="Supplementary material"
+  width={1801} height={1435}
+/>
+
+The diagram in Stanford’s CS229 notes has two parameters. A point in the plane is one combination of their values. <strong>Every point on one ellipse has the same loss</strong>. Ellipses closer to the center have lower loss. A line segment between two successive × marks represents one update, like the brightness correction above. Both axes are parameters. Reading the vertical position as the loss would give the wrong interpretation. To calculate the loss reduction between two points, we would need the loss function or numerical contour values. [Stanford CS229 lecture notes, p. 6](https://cs229.stanford.edu/summer2023/cs229-notes1.pdf#page=6)
+
+In his lecture, Andrew Ng explains gradient descent by imagining a walk down a hill. After each step, the next direction is computed <strong>at the new location</strong>. For our camera, the slope after the first step is 1−4=−3. Keeping the rate at 0.25 takes the offset from 1 to 1.75 on the second step. [Stanford lecture, gradient descent chapter at 26:17](https://www.youtube.com/watch?v=5u4G23_OohI&t=1577s) · [Official lecture transcript](https://see.stanford.edu/materials/aimlcs229/transcripts/MachineLearning-Lecture02.html)
+
+## Part II, page 42 — What roles do the two models play at 52:17 in Part I?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/ntu-42-english.png"
+  alt="A thumbnail from Part I with the timestamp 52:17. The slide heading and thumbnail text are translated into English."
+  caption="Part II, page 42. The link returns to the point in Part I where one model can direct the training of another."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=42"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Page 42 points back to the first lecture. Start at 52:17 to hear Lee explain how a stronger model can direct training for a smaller model. At 52:53 he takes up the specific case of PostTrainBench. An agent receives a goal and a base model, then prepares and runs training code. The code changes <strong>the base model’s weights</strong>. That trained model then attempts the task. Keep those roles in mind for the diagram on the next slide. [Part I lecture, 52:17](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3137s) · [Part I lecture, 52:53](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3173s) · [Part I slides, p. 51](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=51)
+
+### Worked example 2. If the trained inspector gets seven more images right, whose score increased?
+
+In an <strong>illustrative inspection experiment</strong>, a training agent trains an inspector using images of manufactured parts. An evaluator sets aside 50 images that were never used in training and tests the inspector on the same images before and after the update. Pair the two answers for each image. The inspector originally got 32 right. Training corrects 10 previously wrong answers but introduces errors on 3 images the original inspector got right. Both changes enter the final count.
+
+<Math tex={String.raw`n_{\rm after}=32-3+10=39,\qquad a_{\rm before}=\frac{32}{50}=0.64,\quad a_{\rm after}=\frac{39}{50}=0.78.`} display />
+
+<Math tex={String.raw`\Delta a=\frac{10-3}{50}=0.14=14\ \mathrm{pp}.`} display />
+
+The gain of 14 percentage points belongs to <strong>the trained inspector</strong> on these 50 images. Pairing the outcomes also reveals the 10 corrections and 3 new errors. The training agent itself never classified the images, so its own classification accuracy was not measured. To compare two training methods, start them from identical copies of the base model, give them the same compute budget, and evaluate the resulting copies on the same held-out images. Apply that distinction to PostTrainBench on the next slide. <strong>Who designed the training, and whose outputs did the evaluator score?</strong> [Chapter 11 describes the tasks and time budget for this benchmark.](/en/posts/self-improving-ai-11-automated-post-training/)
+
+## Part II, page 43 — Which model designs the training, and which model learns?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/ntu-43-original.png"
+  alt="A training agent reads the goal, materials and examples in H. The resulting loss supplies the gradient for updating the target model."
+  caption="Part II, page 43. H holds task information supplied by a human. The weights θ belong to the model being trained."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=43"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The flag at the bottom left stands for a goal, the books for reference material, and the folder for examples. The lecturer groups this human-provided information under H. The robot uses H to decide <strong>what to train and on which data</strong>. On the right, L(Aθ, H) is the training loss for the model A with current weights θ. Once the loss is specified, the training algorithm computes a gradient and updates θ to θ′. To read this diagram against a real experiment, first identify whose weights θ represents. [NTU Part II, page 43](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=43) · [Lecture at 39:17](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2357s)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/posttrainbench-fig2-evaluation.png"
+  alt="The diagram shows the training assignment and the path from submission to judging, with separate outcomes for valid and disallowed runs."
+  caption="Rank et al., Figure 2, with the judging stage enlarged below. Follow the trained checkpoint to evaluation."
+  source="https://arxiv.org/pdf/2603.08640v2#page=3"
+  credit="Ben Rank et al. / CC BY 4.0"
+  label="Supplementary material"
+  width={1801} height={1348}
+/>
+
+In Figure 2 of <strong>PostTrainBench</strong>, the researchers give an agent one base language model, one target benchmark, and ten hours on one H100 GPU. The agent selects training data and writes a post-training pipeline. The gradient changes <strong>the base model that the agent will submit</strong>. If Opus runs the experiment through Claude Code and Qwen is the target, the file that is scored at the end is the trained Qwen checkpoint. Follow the fork on the right of the figure. A valid submission is evaluated on the target benchmark. If a run is flagged for using test data in training or substituting a different model, it receives the original base model's score. [PostTrainBench, §2 and Figure 2](https://arxiv.org/pdf/2603.08640v2#page=3)
+
+### Worked example 3. How much of the gap between the base and official models was closed?
+
+In Table 1, the base models score 7.5%, the models post-trained by Claude Code with Opus 4.6 score 23.2%, and the providers' official instruction-tuned models score 51.1%. These are aggregate scores covering four base models and seven benchmarks. Put the three values on the same scale and calculate two distances. [PostTrainBench, Table 1](https://arxiv.org/pdf/2603.08640v2#page=5)
+
+<Math tex={String.raw`\begin{aligned}G_{\mathrm{agent}}&=23.2-7.5=15.7\ \mathrm{pp},\\G_{\mathrm{official}}&=51.1-7.5=43.6\ \mathrm{pp}.\end{aligned}`} display />
+
+<Math tex={String.raw`\frac{G_{\mathrm{agent}}}{G_{\mathrm{official}}}=\frac{15.7}{43.6}\approx 0.360,\qquad 51.1-23.2=27.9\ \mathrm{pp}.`} display />
+
+The denominator is the 43.6-percentage-point gap from the base models to the official instruction-tuned models. The agent's post-training closed about <strong>36.0%</strong> of that gap, leaving 27.9 percentage points. The fraction of the gap is our calculation from the rounded table entries. The 23.2% figure is a weighted benchmark score, so it cannot be read as the probability of answering a randomly chosen question correctly. The ten-hour, one-GPU budget applied to the post-training agent. The official models serve as an external reference, so this table cannot establish efficiency at equal cost. [PostTrainBench, evaluation method](https://arxiv.org/pdf/2603.08640v2#page=4) · [Benchmark weights in Table 5](https://arxiv.org/pdf/2603.08640v2#page=14)
+
+## Part II, page 44 — Which changes survive five-minute language-model training runs?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/ntu-44-original.png"
+  alt="A green staircase tracks the lowest retained validation BPB in a chart headed 83 experiments and 15 kept improvements."
+  caption="Part II, page 44. Read left to right across experiments. Lower values mean fewer bits per byte on validation text."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=44"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+In Andrej Karpathy's <strong>autoresearch</strong>, a person writes the experiment instructions in `program.md`. The agent modifies `train.py` to try a different model architecture, optimizer, or batch size. The data preparation and validation scoring in `prepare.py` stay fixed. Within a run, the weights that change belong to the small language model trained by the new code. What carries forward to the next experiment is the <strong>version of the training code</strong> that was kept. We use the March 26 revision available before the May 2026 lecture. [autoresearch README at the lecture-era revision](https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/README.md) · [Lecture at 39:48](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2388s)
+
+### Worked example 4. How much probability did the model assign to the same four bytes?
+
+The vertical axis shows BPB, or bits per byte. It measures the <strong>average number of bits needed to predict a byte of validation text</strong>. If the probability assigned to the observed next token is p, its prediction costs −log₂ p bits. A probability of one half costs one bit, one quarter costs two bits, and one eighth costs three. The code sums the negative log probabilities in natural-log units (nats) and divides by the number of bytes and ln 2. It excludes special tokens with zero byte length. [Official evaluation function](https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/prepare.py#L344-L365)
+
+<Math tex={String.raw`\mathrm{BPB}=\frac{-\sum_t\ln p(x_t\mid x_{<t})}{B\ln 2}=\frac{-\sum_t\log_2 p(x_t\mid x_{<t})}{B}.`} display />
+
+In a <strong>toy example</strong>, two tokens together encode B=4 bytes of validation text. Model A assigns the two observed tokens probabilities of 1/2 and 1/8, for a total cost of four bits. Model B assigns the same tokens probabilities of 1/2 and 1/4, for a total cost of three bits.
+
+<Math tex={String.raw`\mathrm{BPB}_A=\frac{1+3}{4}=1.00,\qquad \mathrm{BPB}_B=\frac{1+2}{4}=0.75.`} display />
+
+The models saw the same text. Model B assigned more probability to the second token and saved 0.25 bits per byte. This is why lower values are better on the slide. The default experiment gives each run <strong>five minutes of training</strong> on one GPU. Startup and compilation fall outside that budget. Faster code can complete more training steps in the same time, so the comparison measures what can be achieved on a specified machine within that budget. [Time budget and comparison conditions](https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/README.md#how-it-works)
+
+### Worked example 5. If 15 of 83 runs were kept, how many new changes survived?
+
+Start at the green dot on the far left. The `baseline` was the first run of the original code, and it is included in the `KEEP` count. In the slide title, 83 counts all log entries and 15 counts all rows marked `KEEP`. We can calculate the <strong>fraction kept among all entries</strong> and the <strong>fraction kept among the subsequent entries</strong>. [NTU Part II, page 44](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=44) · [Baseline and log format](https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/program.md)
+
+<Math tex={String.raw`\frac{15}{83}\approx18.1\%,\qquad \frac{15-1}{83-1}=\frac{14}{82}\approx17.1\%.`} display />
+
+The second fraction means that 14 of the subsequent 82 entries were kept. The analysis notebook's separate keep-rate statistic uses `KEEP + DISCARD` as its denominator and excludes crashes. For the plot, it also removes crashes before numbering the horizontal axis and hides points more than 0.0005 BPB above baseline. Counting visible points alone will therefore miss entries from the log. [Notebook that produces the title, points and keep-rate statistic](https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/analysis.ipynb)
+
+The green staircase tracks <strong>the lowest BPB among the runs retained so far</strong>. A worse proposal leaves the previous record in place. The last green dot near the right edge is labeled as a random-seed change. How much of a gain from one seed should we attribute to a new training principle? Training both code versions on the same set of several seeds, then checking whether their differences persist on fresh evaluation text, would more directly test page 45's question about a better learning algorithm. [Experiment chart at the pinned revision](https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/progress.png)
+
+## Part II, page 45 — Who chooses the rule that updates the weights?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/ntu-45-original.png"
+  alt="An algorithm and a score enter the agent. A new algorithm comes out. The slide cites AlphaEvolve and ShinkaEvolve."
+  caption="Part II, page 45. The proposed algorithm must run before it has a score to compare."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=45"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+On the left are a program and a number. The algorithm can be run again. The score tells us what happened when it ran. The agent reads the pair and proposes the new program on the right. That proposal earns its own score <strong>after it runs</strong>. When the program implements a learning rule, the inner step updates a model's weights. The outer step compares the results of training with different rules. [NTU Part II, page 45](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=45)
+
+The instructor goes one step further and asks <strong>whether the language model that proposes learning algorithms can itself be trained to make better proposals</strong>. In AlphaEvolve and ShinkaEvolve, the two examples named on the slide, candidate programs change through evaluation. That search can work with a fixed proposer. Keep this distinction in mind when looking for what each study actually changed. [Lecture at 40:06](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2406s)
+
+### Worked example 6. Does the best learning rate for one task also win on two?
+
+Suppose two inspection cameras each need a calibration correction. In this <strong>illustrative example</strong>, the optimum correction θ is zero for both cameras. At the same error, camera B's loss curve has three times the curvature of camera A's. Write that curvature as a, with a=1 for A and a=3 for B. The candidate rules differ only in their learning rate η. Both cameras start at θ₀=2 and get one update.
+
+<Math tex={String.raw`L_a(\theta)=\tfrac12 a\theta^2,\quad \nabla_\theta L_a=a\theta,\quad \theta_1=\theta_0-\eta a\theta_0=2(1-\eta a).`} display />
+
+
+| Candidate rule | A's new correction → loss | B's new correction → loss | Mean loss |
+|---|---:|---:|---:|
+| η=0.25 | 1.5 → 1.125 | 0.5 → 0.375 | 0.750 |
+| η=0.75 | 0.5 → 0.125 | −2.5 → 9.375 | 4.750 |
+
+Try the larger step on B. The starting gradient is 3×2=6. Subtracting 4.5 from 2 takes the correction past the optimum at zero to −2.5. Its loss now exceeds the initial loss of 6.
+
+<Math tex={String.raw`\theta_1=2-0.75\cdot6=-2.5,\qquad L_3(-2.5)=\tfrac12\cdot3\cdot(-2.5)^2=9.375.`} display />
+
+<Math tex={String.raw`J(0.25)=\frac{1.125+0.375}{2}=0.75,\qquad J(0.75)=\frac{0.125+9.375}{2}=4.75.`} display />
+
+
+The inner update produces <strong>a new correction θ₁</strong>. The outer comparison returns <strong>a choice of rule</strong>. A alone favors 0.75. Giving the two cameras equal weight favors 0.25. To measure the quality of a learning rule, specify the tasks and the budget it gets on each.
+
+### Supplementary paper · How does AlphaEvolve score a new program?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/alphaevolve-4x4-complex-scalar-multiplications.png"
+  alt="Scalar multiplications for a 4×4 complex product: 64 by direct evaluation, 49 for two Strassen levels, and 48 for the AlphaEvolve discovery."
+  caption="Scalar multiplication counts by method. The direct and Strassen counts are derived here and plotted alongside the result in Table 2 of Novikov et al."
+  source="https://arxiv.org/pdf/2506.13131v1#page=9"
+  credit="Chart by JJo · data from Novikov et al."
+  label="Supplementary material"
+  width={1800} height={1312}
+/>
+
+There are several ways to multiply two matrices. In this 2025 DeepMind study, the agent edited <strong>a program that searches for matrix multiplication algorithms</strong>. Earlier programs go into a prompt. The language model revises components such as the initialization, loss or optimizer. The evaluator checks whether a candidate represents a correct matrix product and how many multiplications it requires. Figure 2 in the paper shows where the starting program and evaluator enter the process, and how results inform the next choice. [AlphaEvolve, Figure 2 and §2.1](https://arxiv.org/pdf/2506.13131v1#page=4) · [The DeepMind team's account](https://deepmind.google/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/)
+
+Work through the supplementary chart from the first entry. A 4×4 matrix product has 16 output entries, each a dot product of length four. Direct evaluation takes 16×4=64 scalar multiplications. Strassen's method uses seven products at the 2×2 block level. Applying it twice gives 7×7=49. The discovered procedure uses 48 for the same <strong>4×4 complex matrix product</strong>. Going from 49 to 48 saves one multiplication. Additions, memory transfers and elapsed time on particular hardware require separate measurements. [AlphaEvolve, Table 2](https://arxiv.org/pdf/2506.13131v1#page=9) · [Complex arithmetic and the reported result](https://arxiv.org/pdf/2506.13131v1#page=10)
+
+### Worked example 7. How does ShinkaEvolve score both prediction loss and expert imbalance?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-22-learning-the-parameter-update-rule/shinkaevolve-fig1-program-search.png"
+  alt="A parent program is sampled and modified. The pipeline checks novelty and evaluates the candidate before archiving it."
+  caption="Lange et al., Figure 1, left panel. Trace candidate generation and evaluation around the cycle."
+  source="https://arxiv.org/pdf/2509.19349v1#page=1"
+  credit="Robert Tjarko Lange, Yuki Imajuku and Edoardo Cetin / CC BY 4.0"
+  label="Supplementary material"
+  width={1801} height={1296}
+/>
+
+In a mixture of experts (MoE), a router chooses which experts process each token. In the September 2025 ShinkaEvolve paper, <strong>the code under evolution</strong> computed an auxiliary loss that discouraged unbalanced routing during training. The team evaluated candidates on a 556-million-parameter model with 64 experts, activating eight per token. Inner training added 0.01 times the candidate auxiliary loss to next-token cross-entropy (CE). Outer evaluation measured the trained model's CE and its actual routing imbalance. Follow the arrow from evaluation back to the archive in the supplementary figure to locate this second comparison. [ShinkaEvolve, §4.4](https://arxiv.org/pdf/2509.19349v1#page=9)
+
+Work through Equations 4–5 in the appendix. <strong>For this example</strong>, use two experts and send each token to one expert. After training with candidate A, 60 of 100 tokens go to one expert and 40 to the other. The final CE is 2.00. For candidate B the counts are 52 and 48, and CE is 2.05. Uniform routing would give each expert a share of 0.5. Sum the absolute differences between each observed share fᵢ and that target, then divide by two. [ShinkaEvolve, Appendix B.4, Equations 4–5](https://arxiv.org/pdf/2509.19349v1#page=25)
+
+<Math tex={String.raw`D=\tfrac12\sum_{i=1}^{2}\left|f_i-\tfrac12\right|,\qquad r=-(L_{\mathrm{CE}}+D).`} display />
+
+<Math tex={String.raw`\begin{aligned}D_A&=(|0.60-0.50|+|0.40-0.50|)/2=0.10,\\D_B&=(|0.52-0.50|+|0.48-0.50|)/2=0.02.\end{aligned}`} display />
+
+<Math tex={String.raw`r_A=-(2.00+0.10)=-2.10,\qquad r_B=-(2.05+0.02)=-2.07.`} display />
+
+
+Higher scores win, so B leads by 0.03. It pays 0.05 in CE and gains 0.08 by reducing imbalance. The earlier <strong>0.01 controls the candidate auxiliary loss during model training</strong>. Multiplying D by it during outer scoring would change the selection criterion. The actual search ran for 30 iterations because each pretraining run was expensive. Final CE was averaged over the last ten million tokens. [Evaluation procedure and fitness equation](https://arxiv.org/pdf/2509.19349v1#page=25)
+
+The θ′ on page 41, the staircase on page 44 and the proposed algorithm on page 45 record three different outputs. The first is a model's weights, the second tracks the validation record across training runs, and the third is a procedure ready for another run. Page 46 turns to SEAL. When a model proposes material for its own training, what result should earn that proposal a good score? [NTU Part II, page 46](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=46)
+
+Paper figure licenses. [PostTrainBench and ShinkaEvolve](https://creativecommons.org/licenses/by/4.0/)
