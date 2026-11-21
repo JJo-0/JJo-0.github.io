@@ -35,10 +35,11 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 | [18 원고](../../spaceship-ui/site/content/posts/self-improving-ai-18-better-together-and-evolving-goals.mdx) | 21–25 | ExpRAG 경험 활용, BetterTogether, E-SPL, 목표 변화 — 원본·외부 강의 해설 9개 이미지 준비 및 17편 중국어 레이블 수정 |
 | [19 한국어](../../spaceship-ui/site/content/posts/self-improving-ai-19-test-time-training-and-forgetting.mdx) · [English](../../spaceship-ui/site/content/english/en-self-improving-ai-19-test-time-training-and-forgetting.mdx) | 26–30 | 입력별·연속 TTT, 소음 속 음성인식의 빠른 적응과 느린 갱신, 경험 재생과 망각 |
 | [20 한국어](../../spaceship-ui/site/content/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver.mdx) · [English](../../spaceship-ui/site/content/english/en-self-improving-ai-20-retaining-skills-and-improving-the-improver.mdx) | 31–35 | 하네스의 망각, 워크플로 성공률과 능력 유지율, 고정 편집자와 DGM 비교 |
+| [21 한국어](../../spaceship-ui/site/content/posts/self-improving-ai-21-learning-to-improve-the-improver.mdx) · [English](../../spaceship-ui/site/content/english/en-self-improving-ai-21-learning-to-improve-the-improver.mdx) | 36–40 | 다음 편집자의 학습, 부모 선택 실험, 손실 차이로 계산하는 편집 보상 |
 
-### 하편 14–20편의 식 풀이
+### 하편 14–21편의 식 풀이
 
-각 글 첫머리의 **식 풀이 바로가기**에서 해당 슬라이드의 계산 예제로 이동할 수 있다. 14–18편에는 각각 세 곳, 19편에는 다섯 곳, 20편에는 여섯 곳을 연결했다. 한국어판과 영어판에서 같은 예제와 수식을 사용한다. 다음 신규 강의는 21편이며 하편 36쪽에서 시작한다.
+각 글 첫머리의 **식 풀이 바로가기**에서 해당 슬라이드의 계산 예제로 이동할 수 있다. 14–18편에는 각각 세 곳, 19편에는 다섯 곳, 20편에는 여섯 곳, 21편에는 일곱 곳을 연결했다. 한국어판과 영어판에서 같은 예제와 수식을 사용한다. 다음 신규 강의는 22편이며 하편 41쪽에서 시작한다.
 
 ## 현재 발행과 집필 위치
 
@@ -46,7 +47,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 
 14편 PR 검사는 18개 모두 성공했다. 병합 후 Pages를 제외한 push 검사는 17개가 성공했고, 기존 September 21 검사 한 건은 Ubuntu 한글 폰트 설치 중 시간 제한으로 취소됐다. 배포 직후 직접 확인한 공개 화면과 이미지 검증, 뒤이어 완료된 자동 검증의 관측 시점을 [14편 발행 기록](reviews/2026-11-18-chapter-14-publication.json)에 구분해 보존한다. [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json)과 이전 준비 기록도 유지한다.
 
-현재 **14·15편에 외부 강의 슬라이드와 영상 해설을 보강했다.** 각 편은 NTU 본강의 5장, 보충 논문 자료 4개, 추가 외부 강의 슬라이드 3개로 총 12개 이미지를 포함한다. 14편은 Lambert L9·L7과 CMU L9, 15편은 CMU L12·NAIRR·MIT 강의를 해당 논점 곁에 연결했다. 네 영상의 실제 영어 자동 자막 구간을 확인했다. 15편의 기존 수식 15개와 계산 검산 20개는 보존한다. 독립 원고 검토와 별도 수치 검산 12개 묶음도 통과했다. 문제 생성 지시에 담긴 사람의 설계에서 출발해, 가중치 θ와 하네스 h의 구분, 하네스에 경사하강식을 바로 적용하기 어려운 이유, AI가 만든 수정안의 평가·선택을 설명한다. 기존 상편·하편 구분과 글 번호·URL·연속 탐색을 유지한다. 준비 기록은 공개 배포 완료를 뜻하지 않으며, 15편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **17편은 하편 PDF 16–20쪽 원고를 작성했다. 원본 이미지 자동 생성과 원격 검증은 독립적으로 완료 여부를 확인해야 한다. 19편은 하편 PDF 26–30쪽을 다룬다. 20편은 31–35쪽을 다루며, 21편은 36쪽부터 이어진다.** [15편 준비 기록](reviews/2026-11-18-chapter-15-preparation.json)에서 범위와 검증을 확인할 수 있다.
+현재 **14·15편에 외부 강의 슬라이드와 영상 해설을 보강했다.** 각 편은 NTU 본강의 5장, 보충 논문 자료 4개, 추가 외부 강의 슬라이드 3개로 총 12개 이미지를 포함한다. 14편은 Lambert L9·L7과 CMU L9, 15편은 CMU L12·NAIRR·MIT 강의를 해당 논점 곁에 연결했다. 네 영상의 실제 영어 자동 자막 구간을 확인했다. 15편의 기존 수식 15개와 계산 검산 20개는 보존한다. 독립 원고 검토와 별도 수치 검산 12개 묶음도 통과했다. 문제 생성 지시에 담긴 사람의 설계에서 출발해, 가중치 θ와 하네스 h의 구분, 하네스에 경사하강식을 바로 적용하기 어려운 이유, AI가 만든 수정안의 평가·선택을 설명한다. 기존 상편·하편 구분과 글 번호·URL·연속 탐색을 유지한다. 준비 기록은 공개 배포 완료를 뜻하지 않으며, 15편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **17편은 하편 PDF 16–20쪽 원고를 작성했다. 원본 이미지 자동 생성과 원격 검증은 독립적으로 완료 여부를 확인해야 한다. 19편은 하편 PDF 26–30쪽을 다룬다. 20편은 31–35쪽, 21편은 36–40쪽을 다룬다. 22편은 41쪽부터 이어진다.** [15편 준비 기록](reviews/2026-11-18-chapter-15-preparation.json)에서 범위와 검증을 확인할 수 있다.
 
 이전 11·12편 발행 기록은 [PR #208](https://github.com/JJo-0/JJo-0.github.io/pull/208), 이전 10편과 1–9편 읽기 흐름 정리는 [PR #207](https://github.com/JJo-0/JJo-0.github.io/pull/207)에 있다. `progress.json`의 과거 준비·발행 기록은 당시 날짜와 범위를 보존한다.
 
