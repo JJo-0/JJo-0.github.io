@@ -140,7 +140,7 @@ console.log(`series-reading: PASS ${readingGroups.size} series, ${readingPostCou
 const selfParts = JSON.parse(read('src/data/self-improving-series.json')).parts;
 assert.deepEqual(selfParts.map(part => [part.number, part.label, part.firstOrder, part.lastOrder]), [[1, '상편', 1, 13], [2, '하편', 14, null]]);
 const selfEntries = readingGroups.get('self-improving-ai') || [];
-assert.equal(selfEntries.length, 19, 'Self-Improving chapters 01–19');
+assert.equal(selfEntries.length, 20, 'Self-Improving chapters 01–20');
 const writingTree = nodes(parse(read('dist/posts/index.html')));
 assert(!writingTree.some(node => attr(node, 'data-series-group') === 'self-improving-ai'), 'Replace the unsplit shelf with two lecture parts');
 for (const part of selfParts) {
@@ -166,7 +166,7 @@ const boundaryPrevious = selfEntries.find(entry => entry.order === 13);
 const boundaryNext = selfEntries.find(entry => entry.order === 14);
 assert(text(nodes(boundaryPrevious.nav).find(node => attr(node, 'rel') === 'next')).includes('하편'), '13→14 announces the lower part');
 assert(text(nodes(boundaryNext.nav).find(node => attr(node, 'rel') === 'prev')).includes('상편'), '14→13 announces the upper part');
-console.log('self-improving-parts: PASS two collapsed shelves, two article part lists and continuous links through chapter 19');
+console.log('self-improving-parts: PASS two collapsed shelves, two article part lists and continuous links through chapter 20');
 const goalTable = firstRobotPost.find(n => n.tagName === 'table' && text(n).includes('강의의 네 목표'));
 assert(goalTable?.parentNode && attr(goalTable.parentNode, 'class') === 'table-scroll');
 assert.equal(attr(goalTable.parentNode, 'tabindex'), '0');
