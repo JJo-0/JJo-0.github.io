@@ -1,0 +1,165 @@
+---
+title: A soft robot swims in three dimensions with two pneumatic inputs
+description: Flexible fins modeled on a feather star produced vertical motion, forward and backward swimming, and
+  turns. Tests reached 1.64 body lengths per second and 90 degrees per second with an external air supply. Long-term
+  durability remains open.
+pubDate: 2026-10-09 00:02:00+09:00
+updatedDate: 2026-10-21
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-09-feather-star-soft-swimmer-news
+category: robotics-embedded
+subcategory: minimal-actuation-soft-swimmers
+type: paper-review
+tags:
+- frontier-candidate
+- soft-robotics
+- underwater-robotics
+- mechanical-intelligence
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-10-09-feather-star-soft-swimmer-news
+translationKey: en-2026-10-09-feather-star-soft-swimmer-news
+---
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+
+> **Candidate status:** `BACKLOG_CANDIDATE` · October 9, 2026 top three · 91/100 · `PEER_REVIEWED_FRONTIER`.
+>
+> **Review scope:** The original review checked the university announcement against the PMC paper’s performance comparison, discussion, and selected methods. The draft recorded the equation, supplement, figure, reader, and screen reviews as incomplete.
+
+## The finding in one sentence
+
+A feather-star-inspired soft underwater robot used **two pneumatic actuation inputs and mechanical instability in flexible wings** to move in three dimensions, including vertical motion, forward and backward swimming, and turning.
+
+## Why it matters
+
+A robot can gain new behaviors by letting the shape and compliance of its body produce different motion modes, without adding a separate actuator and control channel for every behavior. The candidate review described this as mechanical intelligence. Producing multiple motions with fewer inputs is interesting, but the number of inputs alone does not establish lower total power or mass.
+
+## How the design differs
+
+The swimmer has four monostable wings and two pneumatic actuation channels. Different actuation timings produce modes resembling a jellyfish, a fish, and a rotor. Deformation of the flexible structure contributes to propulsion and steering.
+
+A monostable wing returns to its original shape after the bending force is removed. A bistable structure has two stable shapes and can remain in either after switching. The team cut and heat-treated its initial structure to produce monostable wings. Pressurization causes a sudden snap-through for the downstroke. On depressurization, elastic restoring forces produce snapback. A separate input to push the wing back is unnecessary.
+
+“Two inputs” counts the pneumatic channels that actuate the swimmer. The air supply, valves, power, and controls are separate hardware. In the underwater tests, a 3 m rubber tube connected the swimmer to an open-loop pneumatic controller. The applied pressure for snapping the wings was 40 kPa in jellyfish mode and 45 kPa in fish and rotor modes. Pressure, timing, and frequency all matter. This setup did not test a self-contained swimmer carrying its own compressor and power source. [Methods, Aquatic experimental setup]
+
+<NewsFigure media="oct09-feather-original-fig2" lang="en" priority />
+
+Start with the high-speed images on black backgrounds in E, G, and I. Pressurizing one side alone, both sides together, or the two sides alternately produces different wing motions. The adjacent F, H, and J panels trace the corresponding wing-tip trajectories. The photographs show the changing shape and the trajectories show the end points’ paths.
+
+Panel A shows assembly, cutting, and heat treatment. Panels B and C describe force–displacement and energy characteristics of the structure. They do not measure swimming speed or efficiency of the entire system. Panel D gives **analytical model predictions** of structural shape at different wing lengths. It is neither a photograph nor a fluid CFD result. Open the full-size figure to read the smaller labels.
+
+## What does the structural model in Figure 2D calculate?
+
+The slender strips making up a wing stretch, shear, twist, and bend under load. The supplement models them as Cosserat rods, tracking both the centerline and the orientation of each cross section. Its immediate question is what shape the connected structure takes. Predicting speed in water requires further information.
+
+<details>
+<summary>In depth: The paper’s equations linking force, stiffness, and strain</summary>
+
+<CandidateEquation lang="en" id="feather-rod-strain" title="Supplementary Equation (2): From force and moment to strain" tex={String.raw`\mathbf v_i=\mathbf K_\eta^{-1}\mathbf F_i+\boldsymbol\eta_i,\qquad \boldsymbol\Omega_i=\mathbf K_\omega^{-1}\mathbf M_i+\bar{\boldsymbol\omega}_i`}>
+
+This constitutive relation appears on supplementary PDF p. 2. Index i identifies a rod forming the wing. F_i is internal cross-sectional force (N) and M_i is moment (N·m). The dimensionless v_i describes shear and extension. Ω_i describes bending and twist, with units m⁻¹. Neither variable denotes a speed. The reference strains η_i and ω̄_i have the corresponding dimensions.
+
+K_η and K_ω are stiffness matrices for extension/shear and bending/twist, respectively. Their inverses give deformation under load. Strips of different materials or cross sections can deform differently under the same force. Components in these equations must be expressed in the same cross-section frame.
+
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="feather-rod-stiffness" title="Supplementary Equation (4): Where do the material and cross section enter?" tex={String.raw`\mathbf K_\eta=\operatorname{diag}(GA,GA,EA),\qquad\mathbf K_\omega=\operatorname{diag}(EI_x,EI_y,GI_z)`}>
+
+This is Equation (4) on supplementary PDF p. 3. The notation diag puts the listed values on the diagonal and sets the remaining entries to zero. E and G are the tensile and shear elastic moduli (Pa), A is cross-sectional area (m²), and I_x, I_y, and I_z are cross-sectional geometric factors for bending and twist (m⁴). Entries of K_η have units N and entries of K_ω have units N·m². The first relation therefore maps force to dimensionless strain and the second maps moment to inverse meters.
+
+These equations alone do not determine the final wing shape. Supplementary Equation (5) relates the centerline along the rod, and Equation (7) describes changes in cross-section orientation. Differentiation is with respect to arc length s (m), rather than time. Junction force and moment balance and geometric closure must be solved together.
+
+The supplement defines the strain variables more explicitly than some wording in the main text. This review did not reproduce the numerical implementation, convergence, or all boundary conditions. The rectangular cross-section formulas, rotation representation, and full junction conditions are in the supplement. The structural model does not directly calculate pneumatic supply power or swimming speed.
+
+</CandidateEquation>
+
+### Does satisfying the stiffness law determine a unique shape?
+
+A stiffness law relates force and deformation at a given section. Forces and moments exerted by adjoining elements must also balance. The supplement connects them with the following two equations.
+
+<CandidateEquation lang="en" id="feather-rod-equilibrium" title="Supplementary Equations (10) and (11): Do forces and moments balance along the strip?" tex={String.raw`\begin{aligned}\frac{d\mathbf F_i}{ds}+\boldsymbol\Omega_i\times\mathbf F_i+\mathbf f_i&=\mathbf0\\\frac{d\mathbf M_i}{ds}+\boldsymbol\Omega_i\times\mathbf M_i+\mathbf v_i\times\mathbf F_i+\mathbf m_i&=\mathbf0\end{aligned}`}>
+
+These equations appear together on supplementary PDF p. 4. The coordinate s is length (m), and F_i and M_i are the internal force (N) and moment (N·m) defined above. The external force density f_i is in N/m, and the external moment density m_i is in N·m/m, equivalent to N. This m_i differs from the swimmer mass m introduced later. Ω_i and v_i retain their meanings as curvature/twist (m⁻¹) and dimensionless strain.
+
+The cross product × gives a vector perpendicular to the two operands. Terms involving Ω_i arise because the cross-sectional coordinate axes rotate along the strip. Terms in the first equation have units N/m and those in the second N. These are static structural equilibrium equations. Swimming dynamics would also involve inertia.
+
+</CandidateEquation>
+
+Supplementary Equations (12)–(17), PDF p. 5, impose the conditions that connect the strips into a star. A shooting method guesses the starting state of each rod, integrates along its length, and adjusts the guess to satisfy the conditions at the far end. At a junction the positions and orientations must match, and forces and moments transformed to the same frame must balance. A single substitution into a stiffness matrix cannot yield that solution.
+
+The resulting model generates the predicted shapes in Figure 2D. This review explains the role of the component and junction equations without independently reproducing the implementation, starting guesses, convergence, or sign conventions at every junction. Validation of flow and energy costs is a separate task.
+
+**Check your understanding.** If two structures differ in shape under the same force, is the force measurement necessarily wrong? Changes in stiffness, reference strain, or junction conditions can explain the difference. Conversely, agreement between the model shape and a photograph alone validates neither fluid thrust nor whole-system energy cost.
+
+</details>
+
+## Evidence and numbers
+
+The journal abstract and NC State’s official release report a maximum swimming speed of **1.64 body lengths/s**, a maximum turning speed of **90°/s**, and a minimum cost of transport (CoT) of **17.6**.
+
+The paper reports both 1.64 body lengths/s and a CoT of about 17.6 in jellyfish mode at 4 Hz. The 90°/s turning speed belongs to rotor mode. These are separate maneuvers. In CoT = E/(mgd), E is energy consumed (J), m is swimmer mass (kg), g is gravitational acceleration (m/s²), and d is travel distance (m). The result is a dimensionless normalized cost, not an efficiency percentage. Whether E includes losses in the external air supply needs further checking.
+
+Body lengths/s (BL/s) gives the number of reference body lengths traveled per second. The paper uses the 55 mm body diameter. Multiplying 1.64 BL/s by 55 mm gives about 90.2 mm/s, consistent with the approximately 90 mm/s in the table. This converts the units of the same observation. Robots of different lengths can have a different ordering in absolute speed.
+
+The Methods specify open-loop pneumatic control with 3 m tubing. Particle image velocimetry (PIV) measures flow optically, while computational fluid dynamics (CFD) computes flow from a numerical model. The paper used both. This review did not independently reproduce them under matched conditions.
+
+### Does a larger radar chart mean better performance on every measure?
+
+A radar chart places several performance measures on axes radiating from the center. Their scales here follow different rules. Supplementary PDF pp. 12–13 normalize swimming and turning speed by the maximum in the comparison group. The lightweight score is categorical: up to 0.5 kg earns 1 point, above 0.5 kg through 1 kg earns 0.5, and above 1 kg earns 0. Halving the mass need not double the score.
+
+Maneuverability likewise receives fixed scores for three-dimensional, two-dimensional, or surface motion. Functionality is scored by whether the robot can perform a task beyond swimming. These are **the authors’ comparison rules** for displaying several characteristics together. They do not measure integrated efficiency for identical tasks and energy boundaries. Changing the comparison group or scoring rule can change the polygon’s size and shape.
+
+For CoT, a smaller number means less energy consumed per unit weight and distance. The supplement describes normalization by the maximum in the group. One therefore cannot automatically interpret farther from the center as better for every axis. Twice the area does not imply twice the performance. Inspect the original values, axis direction, and conditions.
+
+**Check your understanding.** Would hypothetical robots of 0.4 kg and 0.2 kg receive different lightweight scores? Both are at or below 0.5 kg, so both get 1 point despite their different masses.
+
+## Is the flow field a single three-dimensional recording?
+
+PIV estimates fluid velocity from images of small tracer particles in water. The supplement describes supporting the robot in the center of a channel while sequentially measuring flow at different heights. This differs from simultaneously imaging an entire volume surrounding a freely swimming robot.
+
+The researchers measured 17 planes in jellyfish mode and 19 in fish mode. They reflected the planes about the center plane under a symmetry assumption, averaged observations at matching phases of repeated motion, and combined the layers into a reconstructed three-dimensional velocity field. Phase identifies the point in a repeated stroke. Grouping images from just before the hands meet in successive claps is an analogy for the grouping, though the quantity averaged here is fluid velocity.
+
+This method exposes repeatable flow structures. Phase averaging can suppress small cycle-to-cycle fluctuations, and interpretation depends on repeatability and symmetry. The reconstructed field alone does not establish instantaneous thrust or stability in irregular open water.
+
+**Check your understanding.** Do three-dimensional arrows or vortex surfaces imply direct simultaneous measurements everywhere? The reconstruction combines measured layers with reflection, averaging, and calculation. Supplementary PDF pp. 7–8 describe how to read the figure.
+
+## Main limitations and failure conditions
+
+The prototype is an **open-loop swimmer tethered to an external air supply**. The Discussion identifies range, drag, possible entanglement, and the lack of closed-loop feedback as limitations. Counting only the two actuation inputs while omitting the supply’s weight and power can distort whole-system comparisons.
+
+Performance in real turbulence and obstacle fields, fatigue under repeated wing loading, and changes in deformation caused by fouling still require testing. Main-text Figure 6 includes exploration with a small camera. It does not establish long-term autonomous operation or the payload’s full energy cost.
+
+## Reproducibility and interests
+
+The paper’s data-availability statement says the data and code needed to evaluate and reproduce the results appear in the article or supplement. The public supplementary PDF was obtained. This review did not inventory every item, determine how the executable code was organized, or rerun it. The availability statement and the scope of this review are therefore different.
+
+NC State’s release identifies a related invention disclosure by Qing and Yin, along with NSF and ONR support. Those disclosures do not constitute independent commercial performance testing.
+
+## Check your understanding
+
+Would reducing actuation inputs from six to two establish that power consumption fell to one third? Channel count does not specify pressure, flow, or supply losses. An energy comparison would need to use the same boundary for the complete air supply.
+
+Which of Figure 2D and 2E records actual motion? Panel E does. Panel D predicts structural shape, so the panels represent different types of evidence.
+
+Would a swimmer traveling at 1 BL/s necessarily be slower? With a hypothetical 100 mm reference length its speed would be 100 mm/s, faster in absolute terms than the approximately 90 mm/s reported here.
+
+## Why the candidate was held and what would prompt another review
+
+The mechanical design merits attention for achieving multiple motions with few inputs. The original selection retained it as a candidate because wireless operation, long-term durability, and usefulness in actual underwater tasks remained unverified.
+
+A wireless self-contained prototype, independent PIV and trajectory comparisons, released simulations and data, prolonged membrane and wing fatigue tests, or underwater field trials carrying sensors would provide grounds to revisit it.
+
+## Sources and identifiers
+
+- Paper: *Minimal-actuation feather star–inspired soft swimmers for multimodal 3D maneuverability*.
+- Published in *Science Advances*, October 7, 2026.
+- DOI: `10.1126/sciadv.aeg9211`.
+- Paper DOI: https://doi.org/10.1126/sciadv.aeg9211
+- [Open full text on PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC13644798/). On October 21, 2026 the review checked the performance comparisons, discussion, methods for fabrication, mechanical testing, motion tracking, tank tests, structural modeling and flow measurement, and the final data-availability statement. It visually inspected original Figure 2 and the equations on PDF p. 12. The supplement was obtained and read in part. A full account of its structural equations, an exhaustive supplement check, and review of the remaining original figures were outstanding.
+- Official NC State release, October 8, 2026: https://engr.ncsu.edu/news/2026/10/08/feather-star-inspired-underwater-robot-gets-3d-maneuverability-from-only-two-actuators/
+- Candidate-card evidence: the journal abstract and the university release’s account of peak performance, actuation design, and invention disclosure.
+- Archive identifier: `2026-10-09-feather-star-soft-swimmer`.
+- Score: problem significance 18/20, novelty 15/15, evidence and reproducibility 21/25, impact 17/20, timeliness 10/10, and explainability 10/10. No additional deduction.

@@ -1,0 +1,162 @@
+---
+title: Why more freedom to fill in a sentence can narrow a diffusion LLM's reasoning
+description: JustGRPO, an ICML 2026 Outstanding Paper, compares left-to-right and arbitrary-order generation during reward-based training.
+  The original figures and public code help separate measured changes in Pass@k from questions the experiments leave open.
+pubDate: 2026-09-14
+updatedDate: 2026-09-14
+slug: 2026-09-14-justgrpo-diffusion-reasoning-news
+category: ai-machine-learning
+subcategory: diffusion-language-models
+type: research-report
+tags:
+- frontier-one
+- diffusion-language-models
+- reinforcement-learning
+- reasoning
+- open-source
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-14-justgrpo-diffusion-reasoning-news
+translationKey: en-2026-09-14-justgrpo-diffusion-reasoning-news
+---
+
+import Math from "@/components/post/Math.astro";
+import NewsFigure from "@/components/post/NewsFigure.astro";
+
+<NewsFigure media="justgrpo-mechanism" lang="en" priority />
+
+## 1. More ways to fill a blank do not always produce better reasoning
+
+Many language models generate text one piece at a time, left to right. A <strong>diffusion language model (dLLM)</strong> can consider blanks throughout a sentence and fill the positions it is most confident about first. That freedom promises efficiency, but how does it affect reasoning? JustGRPO, an ICML 2026 Outstanding Paper, tested this intuition.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+On mathematics and coding problems that require a coherent line of reasoning, the authors report that **training with left-to-right answer generation** retained a broader range of solutions and performed better than letting the model choose any order.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> The finding concerns **how the order of generation and the rewards attached to that process can change the range of reasoning paths**.
+
+The ICML announcement confirms the Outstanding Paper distinction.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a> General superiority of left-to-right writing would be a much broader claim. The public experiments center on three dLLM families and four math and coding benchmarks.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> They do not evaluate human thought, creative writing, or the cost and safety of a deployed product.
+
+<strong>JustGRPO changes the order in which an existing diffusion language model produces its answers during reward-based training.</strong> That small intervention is distinct from a model evolving on its own. Why might such a change matter?
+
+## 2. How a language model produces text
+
+A language model predicts choices among <strong>tokens</strong>, the small pieces into which text is divided. One token might be part of a Korean word group, part of an English word, or a symbol. For present purposes, think of tokens as fragments of words.
+
+A familiar strategy is <strong>autoregressive (AR)</strong> generation. After writing “Since it is raining, I packed my ___,” the model selects the next token. That choice becomes part of the context for the following token. Progress runs left to right, and earlier choices constrain what follows.
+
+A diffusion language model can instead start with many masked positions and restore them over several updates. In “It was ___, so I packed an umbrella,” it could fill “raining” first, or settle on the ending before the middle. Processing several slots in parallel could speed up reconstruction of a long sentence. Here <strong>arbitrary order (AO)</strong> refers to choosing freely which positions to restore at each stage.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+The distinction concerns the <strong>generation path</strong>. A dLLM can be constrained to generate one token at a time in AR order. An AR model can sample several answers and compare them. JustGRPO asks <strong>what changes when the same dLLM uses a different generation order during training</strong>.
+
+<details>
+  <summary><strong>Four terms used in the article</strong></summary>
+
+  - <strong>Generation</strong> is the process of filling positions to produce an answer.
+  - <strong>Reasoning</strong> here refers broadly to the intermediate choices and logical development leading to an answer. The benchmarks do not measure everything a person does when thinking.
+  - <strong>Probability</strong> expresses how plausible the model finds each token given its training and context. A high value alone cannot establish factual truth.
+  - <strong>A mask</strong> marks a token position that has yet to be filled. A diffusion model completes the sentence by resolving masks over successive steps.
+</details>
+
+<NewsFigure media="justgrpo-order-map" lang="en" />
+
+## 3. How an arbitrary order can narrow the available paths
+
+Consider a worked solution: “Substituting x=3 gives 12. ___ The answer is 12.” Short connectives such as “therefore,” “thus,” or “since” determine how two parts of an argument relate. The choice can support a natural continuation or force the writer to patch two claims together.
+
+The authors suggest that arbitrary-order restoration can postpone <strong>uncertain tokens that mark a logical branch</strong>. If confident numbers and common phrases go first, the remaining connective must fit a structure that is already partly fixed. They cite “Therefore,” “Thus,” and “Since” as examples and link this early avoidance of a branch to reduced solution diversity.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+This is an observation about <strong>the dLLM sampling and reward-training conditions tested here</strong>. Some tasks can benefit from starting in the middle. In fill-in-the-blank tasks, editing, and parallel drafting, later context can help determine earlier choices. The result gives no universal rule for every form of generation.
+
+One indicator of diversity is <strong>Pass@k</strong>. Pass@1 measures success with one sampled answer. Pass@k asks whether at least one of k independently drawn answers is correct. For a math or coding problem, a later attempt may find a valid solution that the first missed. The metric can therefore reveal whether valid alternatives remain available.
+
+Four nearly identical samples might repeat the same programming error four times. Four distinct approaches give another route a chance to pass. A higher Pass@k does not by itself establish that a single answer is safer or better. It does reveal something about <strong>how quickly the available solutions narrow when multiple attempts are possible</strong>.
+
+In the project's HumanEval example, AR-only generation achieved 21.3% Pass@1024 and AO-only generation 0.6%.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> Each value denotes the fraction of problems with at least one passing answer across 1,024 samples in that experiment. It differs from single-attempt success or conversational accuracy. The result shows how strongly generation order can affect the reach of a search for solutions.
+
+## 4. What did the experiments compare?
+
+The paper reports comparisons on three dLLM families, LLaDA-Instruct, Dream-Instruct, and LLaDA 1.5, across two math and two coding tasks.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> <strong>GSM8K</strong> consists of school-level word problems. <strong>MATH-500</strong> covers harder mathematics. <strong>HumanEval</strong> and <strong>MBPP</strong> require writing programs that are checked by tests. The first pair emphasizes calculation and solution development. The second requires executable code.
+
+The central comparison asks whether the dLLM unmasks training answers in <strong>AR order</strong> or <strong>AO</strong> during reward-based learning. AO includes adaptive choices driven by the model's confidence at each position. It need not mean a fixed random permutation. The experiment therefore changes <strong>which paths the model experiences during reward training</strong>.
+
+A high score in one table does not guarantee transfer across models. The base model, training data, reward judgment, generation length, number of samples, and compute budget all contribute. Along with the results, the repository provides training and evaluation code and model checkpoints.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a> These allow independent inspection and reproduction. The release itself does not establish reproduction on other hardware or data.
+
+## 5. The JustGRPO intervention: complete training answers from left to right
+
+<NewsFigure media="justgrpo-loop" lang="en" />
+
+<strong>Group Relative Policy Optimization (GRPO)</strong> generates several answers to one question, compares rewards within that group, and changes model probabilities to favor relatively successful choices. A reward can come from checking a final math answer or running code tests. It does not require a person to grade every sentence.
+
+During this training, JustGRPO makes the dLLM reveal the answer's masks in AR order. The probability of a sampled answer is then straightforward to evaluate, enabling more direct use of standard GRPO. The authors explain that this avoids the combinatorial complexity of arbitrary-order paths, approximate likelihood calculation, and a mismatch between the training sampler and the model used at evaluation.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+Suppose the same question x yields K answers y₁, …, yᴋ with respective rewards rᵢ. A simple standardized value shows how far each reward lies above or below the group's mean.
+
+<Math display label="Illustrative equation 1" tex={String.raw`A_i=\frac{r_i-\overline r}{s_r+\varepsilon}.`} />
+
+Aᵢ is the relative score of the ith answer. The group mean is r̄, sᵣ measures reward dispersion, and a small ε prevents division by zero. The update makes choices from high-Aᵢ answers more likely. This expression illustrates GRPO. Its implementation also uses terms such as a probability ratio relative to the previous policy and clipping. The full objective requires the paper and code.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+Under AR order, the probability of a complete answer factors into conditional probabilities at successive positions.
+
+<Math display label="Illustrative equation 2" tex={String.raw`p_\theta(y\mid x)=\prod_{t=1}^{T}p_\theta(y_t\mid x,y_{1:t-1}).`} />
+
+Here yₜ is token t, T is answer length, and θ denotes adjustable model parameters. Each token is evaluated conditional on the preceding tokens y₁ through yₜ₋₁. This gives a definite probability for producing the answer along that order. Arbitrary restoration admits many possible paths, complicating both the choice of training target and its approximation. JustGRPO <strong>chooses a single order during training</strong>, sidestepping that calculation.
+
+The authors use AR order <strong>during training only</strong>. At inference time the dLLM can retain parallel restoration.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a> The model remains a diffusion language model. Fixing its reward-training path to AR order makes standard GRPO applicable.
+
+## 6. Reading the results under the reported conditions
+
+<NewsFigure media="justgrpo-results" lang="en" />
+
+In the authors' full fine-tuning table, generation length 256 gives 89.1 on GSM8K, 45.1 on MATH-500, 49.4 on HumanEval, and 52.4 on MBPP.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a> The table below reproduces the results by length. The rows use different tasks and scoring rules. A value of 89.1 on one cannot be described as twice as good as 49.4 on another.
+
+| Task | Length 128 | Length 256 | Length 512 | What is assessed? |
+|---|---:|---:|---:|---|
+| GSM8K | 83.8 | 89.1 | 89.8 | Math word problems |
+| MATH-500 | 39.0 | 45.1 | 45.2 | More difficult mathematical solutions |
+| HumanEval | 37.8 | 49.4 | 48.7 | Implementing a function and passing executable tests |
+| MBPP | 50.6 | 52.4 | 49.0 | Basic program synthesis |
+
+All four scores rose from length 128 to 256, but they did not all rise again at 512. A larger token budget can allow a more detailed derivation or a longer excursion down an incorrect path. Evaluation and sampling settings matter to any inference about length and reasoning.
+
+The original comparison figure includes several other reward-training methods for diffusion models. <strong>Do not assume that every bar comes from the same base model, training budget, and generation length.</strong> The project explains its settings, but aggregating numbers from separate studies can introduce implementation and budget differences.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> The strongest conclusion supported here is that AR-order training performed well under the authors' published setup.
+
+The surprising point is the simplicity of the method. Faced with a problem often treated as requiring a special reward objective to preserve arbitrary order, the authors returned to standard AR-style GRPO. If a degree of freedom obscures the learning signal, temporarily restricting it may help.
+
+## 7. In what sense does the system improve itself?
+
+In a narrow sense, the model produces several answers and makes the patterns associated with better rewards more likely in the next update. The loop is <strong>generate answers → grade or test them → compute relative rewards → update probabilities</strong>. The post-training model differs from the starting model, and measured performance can improve.
+
+The researchers still chose the problems, the success criterion, the permissible answer length, and when to stop training. The system does not select its own research direction or redesign its objective. Relatively clear rewards, such as final math answers and code tests, make this approach easier to apply. Defining an adequate reward for policy decisions, creative work, or safety-sensitive conversations is harder.
+
+Rewards can also capture only part of correctness. Code may pass public tests while missing hidden conditions. A correct final number need not validate a general argument. JustGRPO <strong>simplifies the order of generation on the way to the reward</strong>. Incomplete reward judgments can still limit what the model learns.
+
+## 8. Limits of the evidence
+
+Improvement on four benchmarks does not establish improvement across scientific experiment design, long-horizon planning, multilingual dialogue, or creative writing. Each needs separate testing. Pass@k also measures an opportunity available when several answers can be tried and checked. A service that returns one answer to a user without a verifier may care more about Pass@1, error types, cost, and latency.
+
+The authors compared reward-based post-training of public dLLMs on selected tasks. They did not pretrain new models from scratch. The evidence speaks most directly to the design of current post-training systems. The ICML Outstanding Paper Award recognizes the contribution. Independent reproduction and in-product validation remain separate.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Published training scripts, evaluation scripts, and checkpoints give others a starting point for tracing claims to results.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a> An executable command does not guarantee identical numbers under different compute, preprocessing, or randomness. Reproduction includes matching the environment and scoring rules, then explaining any differences.
+
+## 9. Four questions for the next dLLM result
+
+When a model advertises parallel generation, more reasoning paths, or improved reward training, these questions help interpret the claim.
+
+1. <strong>What changed?</strong> Was it the model architecture, generation order, reward function, sample count, or evaluation procedure?
+2. <strong>What was measured?</strong> Was it single-answer accuracy, Pass@k, executable code tests, or human-rated quality?
+3. <strong>Which conditions matched?</strong> Were the base model, training data, generation length, and compute budget comparable?
+4. <strong>Who can check?</strong> Are code, checkpoints, and evaluation rules available, and have independent teams reported results?
+
+JustGRPO makes these questions concrete. It examines what happens when a diffusion model temporarily gives up arbitrary-order generation during reward training on math and code. For future dLLMs, ask <strong>which measurable problem the extra freedom actually solves</strong>.
+
+## 10. Sources and original figures
+
+<a id="news-ref-1" href="https://blog.icml.cc/2026/07/05/announcing-the-icml-2026-awards/" data-news-reference="1" target="_blank" rel="noopener noreferrer">[1]</a> [ICML 2026 Awards — official Outstanding Paper announcement](https://blog.icml.cc/2026/07/05/announcing-the-icml-2026-awards/). Confirms the award.
+
+<a id="news-ref-2" href="https://nzl-thu.github.io/the-flexibility-trap/" data-news-reference="2" target="_blank" rel="noopener noreferrer">[2]</a> [Authors' project page — The Flexibility Trap](https://nzl-thu.github.io/the-flexibility-trap/). Research question, AR/AO comparison, Pass@k, method, and results. Accessed September 14, 2026.
+
+<a id="news-ref-3" href="https://github.com/LeapLabTHU/JustGRPO" data-news-reference="3" target="_blank" rel="noopener noreferrer">[3]</a> [LeapLabTHU/JustGRPO public repository](https://github.com/LeapLabTHU/JustGRPO). Training and evaluation code, checkpoints, result tables, and two original figures. The repository uses the [MIT license](https://github.com/LeapLabTHU/JustGRPO/blob/master/LICENSE). The two original figure files are reproduced unchanged with their authors, sources, and license credited. Accessed September 14, 2026.
+
+<a id="news-ref-4" href="https://arxiv.org/abs/2601.15165" data-news-reference="4" target="_blank" rel="noopener noreferrer">[4]</a> [arXiv:2601.15165 — Why Arbitrary Order Limits Reasoning Potential in Diffusion Language Models](https://arxiv.org/abs/2601.15165). Authors' manuscript and version history.
+
+The original diagrams are preserved copies of `mechanism_to_passk.png` and `acc_compare.png` from the authors' repository. JJo created the two green-and-brown explanatory diagrams for this article. They add no measurements or numerical results and do not redraw figures from the paper.

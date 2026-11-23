@@ -1,0 +1,100 @@
+---
+title: Better Measurements for Power-Grid AI
+description: Real time series from 200 low-voltage distribution feeders illustrate power and energy units, daily
+  and seasonal patterns, missing values, time dependence, and leakage in forecast evaluation.
+pubDate: 2026-09-06
+updatedDate: 2026-09-12
+slug: 2026-09-06-feederbw-news
+category: finance-industry
+subcategory: power-grid-data
+type: paper-review
+tags:
+- frontier-one
+- power-grid-data
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translationKey: en-2026-09-06-feederbw-news
+translatedPosts:
+  ko-KR: 2026-09-06-feederbw-news
+---
+
+import Math from '@/components/post/Math.astro';
+import ReferenceFigure from '@/components/post/ReferenceFigure.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+<NewsFigure media="cover-feederbw" lang="en" priority />
+
+## What a new dataset makes possible
+
+FeederBW provides minute-level measurements and metadata from 200 German low-voltage distribution feeders between 2023 and 2025. Its contribution is access to real grid data against which researchers can test forecasting methods and other distribution-grid applications. [Scientific Data paper][primary]
+
+## The network between a power plant and a home
+
+Can total generation at a large power plant tell us what is happening on a neighborhood grid? Households use power at different times. Rooftop solar, EV charging, and heating equipment can coincide, concentrating the load on one line even when the total stays the same.
+
+A feeder is a circuit that distributes power to several points of demand. The load at one home can have a very different profile from the net power measured upstream of several homes. Before interpreting a trace, establish where the meter sits and what crosses that boundary.
+
+## Power and energy have different units
+
+Power P is the instantaneous rate of energy transfer, measured in units such as kW. Energy E includes a time dimension, as in kWh.
+
+<Math display tex={String.raw`E=\int P(t)\,dt\simeq\sum_i P_i\Delta t_i`} label="Integrating power over time to obtain energy" />
+
+A constant 6 kW sustained for one minute delivers 0.1 kWh. A minute is 1/60 of an hour. This calculation is illustrative. Whether a reading is an instantaneous sample or an interval average changes how to interpret the integration approximation. Filling gaps with zeros can make actual energy use appear lower.
+
+A simple expression for net power is:
+
+<Math display tex={String.raw`P_{\rm net}=P_{\rm consumption}-P_{\rm local\ generation}`} label="Net power balance with consumption taken as positive" />
+
+Check the sign convention in the file documentation. Automatically dropping negative values as sensor errors could erase power fed back into the grid by solar generation.
+
+## More timestamps do not necessarily mean more independent observations
+
+One-minute sampling gives 1,440 observations per day. Neighboring minutes are not independent trials. Temperature, daily routines, and sunlight persist from one reading to the next and can create strong temporal correlations.
+
+Millions of rows alone do not establish statistical coverage. The number of regions, seasons, and equipment configurations matters. Two hundred feeders cannot represent every distribution system in another country.
+
+## How information leaks into a forecast evaluation
+
+<Math display tex={String.raw`\operatorname{MAE}=\frac{1}{n}\sum_{i=1}^{n}|\widehat P_i-P_i|`} label="Mean absolute error between predicted and measured power in the same units" />
+
+If P is measured in kW, MAE is also in kW. Comparing feeders of different capacities requires a normalization reference. Percentage errors can become very large when the denominator approaches zero.
+
+Randomly shuffling timestamps into training and test sets puts similar patterns from adjacent times on both sides. To test future forecasts, train on the past and evaluate on a later period. To test generalization to new locations, conduct a separate evaluation on held-out feeders.
+
+Computing a normalization mean or standard deviation, or fitting a model for imputing missing values, on the full dataset also leaks information. Define what would be available at training time first.
+
+## What to look for in the published graphs
+
+Read the diagrams of meter locations and equipment metadata alongside quality flags, gaps over time, and daily and seasonal load patterns. One sunny day cannot characterize the full effect of solar generation. Averaging to a coarser resolution can hide short peaks, so distinguish the native sampling interval from aggregation used for display.
+
+Where voltage, current, or per-phase readings are supplied, verify the units and meter positions. Compare the documented fields with the columns in the downloaded files. Check the license for the data files separately from the article license.
+
+## What could researchers compare?
+
+Possible tests include peak underestimation, robustness to missing sensors, transfer to new feeders, and empirical coverage of uncertainty intervals, alongside forecast accuracy. These are experiments the dataset makes possible. The release itself does not establish an improvement on any of them.
+
+<strong>FeederBW gives researchers common real-world records on which to compare what works and where a method falls short.</strong> Reproducible data splits and quality handling come before the choice of algorithm.
+
+## Reading the original plots by week and season
+
+<ReferenceFigure src="/assets/posts/frontier-sep5-8/feeder-weekly.webp" alt="FeederBW Figure 4 shows average power by day of the week and time of day for multiple feeders" caption="Figure 4. Examine the repeating weekly pattern for each feeder. Check the axes and series in each panel, keeping power distinct from energy over an interval." source="https://www.nature.com/articles/s41597-026-08152-9" credit="Original authors · Scientific Data · CC BY 4.0" width={1200} height={1555} />
+
+Follow the recurring times of day along the horizontal axis and compare feeders. Similar average patterns can conceal different day-to-day variability and different gaps. Strong correlations between nearby timestamps can flatter a forecaster tested with a random split.
+
+<ReferenceFigure src="/assets/posts/frontier-sep5-8/feeder-seasonal.webp" alt="FeederBW Figure 5 compares feeder power profiles across seasons" caption="Figure 5. Compare the seasonal profiles with the weekly patterns. Interpret positive and negative power according to the paper’s metering convention." source="https://www.nature.com/articles/s41597-026-08152-9" credit="Original authors · Scientific Data · CC BY 4.0" width={1200} height={784} />
+
+A shift in a seasonal average cannot be attributed to a single cause from this plot. Consumption, solar generation, temperature, and the observation period can all change. Holding out a season or a feeder provides a more informative test.
+
+## Sources
+
+Original publication date: September 5, 2026.
+
+
+[primary]: https://www.nature.com/articles/s41597-026-08152-9 "Real-world energy data of 200 feeders from low-voltage grids with metadata in Germany over two years"
+
+- [Real-world energy data of 200 feeders from low-voltage grids with metadata in Germany over two years][primary]
+
+[All Frontier One news](/en/news/)

@@ -1,0 +1,93 @@
+---
+title: Finding tens of thousands of neurons without processing every voxel in 3D
+description: How DeepWonder3D extracts neurons from multiview calcium images using projections and reconstruction, and why localization
+  error, compute cost, imaging conditions, and dataset splits matter when interpreting its performance.
+pubDate: 2026-09-08
+updatedDate: 2026-09-12
+slug: 2026-09-08-deepwonder3d-news
+category: ai-machine-learning
+subcategory: biomedical-image-analysis
+type: paper-review
+tags:
+- frontier-one
+- biomedical-image-analysis
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-08-deepwonder3d-news
+translationKey: en-2026-09-08-deepwonder3d-news
+---
+
+import Math from '@/components/post/Math.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+<NewsFigure media="cover-deepwonder3d" lang="en" priority />
+
+> <strong>Research stage: a computational imaging method for extracting neurons from calcium recordings.</strong> It does not report a clinical treatment for human disease or the decoding of thoughts.
+
+## Alternatives to processing the entire volume
+
+DeepWonder3D combines projections from multiple viewpoints to extract neurons in three dimensions. In the comparisons reported in the paper, it improved localization while reducing computational cost by about an order of magnitude. Code and data are available. <strong>The roughly tenfold difference describes the computational burden under those particular conditions. Speed on another microscope may differ.</strong> [Original paper][primary]
+
+## Why is finding cells in microscope images difficult?
+
+Counting bright spots seems straightforward until out-of-focus signals, scattering, movement, and background fluorescence mix together. Nearby cells can overlap in the image. Recording changes in brightness over time increases the volume of data again.
+
+Calcium fluorescence is an indirect observation associated with neuronal activity. Separating cells successfully does not establish that every neural signal has been reconstructed accurately. Image preprocessing, cell localization, and the activity time series each need evaluation.
+
+## How an image is formed
+
+A general observation model can be written as follows.
+
+<Math display tex={String.raw`y_m=H_mx+b_m+\varepsilon_m`} label="How the spatial signal, optics, background, and noise contribute to the image at each viewpoint" />
+
+Here x is the spatial signal distribution, H_m is the optical and projection operator at viewpoint m, b represents the background, and ε is noise. In some settings H can be approximated as convolution with a point-spread function (PSF), although microscopes need not share the same linear model. The expression illustrates the inverse problem. It does not specify the paper's actual neural-network training objective.
+
+Different views provide different information. However, inaccurate registration can give a single cell several apparent positions in the combined result. Adding views does not guarantee an improvement.
+
+## What a projection retains and what it discards
+
+Consider a projection that sums the signal along the depth axis.
+
+<Math display tex={String.raw`p(x,y)=\sum_z v(x,y,z)`} label="Illustrative sum projection along the depth axis" />
+
+Reducing a volume to two dimensions makes the representation smaller, but signals from different depths can overlap. The example illustrates the need to check what each projection retains and loses. The paper need not use this particular sum projection alone.
+
+Multiple directions can separate structures that overlap in a single view. Fast projection is only one step. Registration, background removal, neuron extraction, and multiview fusion must also work consistently together. [Methods summary][primary]
+
+## Distinguishing localization error from detection performance
+
+<Math display tex={String.raw`e_i=\|\widehat{\mathbf x}_i-\mathbf x_i\|_2,\qquad \operatorname{Recall}=\frac{TP}{TP+FN},\quad \operatorname{Precision}=\frac{TP}{TP+FP}`} label="Cell localization error, recall, and precision" />
+
+When localization error is given in µm, check the voxel dimensions and coordinate transformation. The error may cover only the cells that were matched. A method that misses difficult cells and localizes only the easy ones can report a small error despite poor extraction.
+
+Suppose a method finds only 50 of 100 cells and places those 50 exactly. Its localization accuracy and its detection recall tell very different stories. An evaluation also needs a distance threshold for matching and a rule for duplicate detections.
+
+## Comparing processing speed fairly
+
+Match the CPU, GPU, memory, input size, number of views, and pretraining conditions. Check whether the reported runtime includes reading data and preprocessing. Latency for one small sample differs from throughput across a long recording.
+
+In the original figures, look for baseline localizations, missed cells, false detections, changes in noise and density, and computational cost. Attractive renderings alone cannot establish performance. Public code makes inspection possible, while reproduction in an independent environment requires a separate test.
+
+## What could change in practice?
+
+Faster analysis of large neural recordings could make it practical to revisit more experimental conditions. Performance still requires evaluation with a new microscope, a different PSF or signal-to-noise ratio, or a different cell density. <strong>The study illustrates why an approximation that saves compute must fit the physical process that generated the images.</strong>
+
+## Sources
+
+Original publication date: September 7, 2026.
+
+
+[primary]: https://www.nature.com/articles/s41592-026-03215-6 "Rapid robust high-fidelity 3D neuronal extraction from multiview calcium imaging datasets"
+
+- [Rapid robust high-fidelity 3D neuronal extraction from multiview calcium imaging datasets][primary]
+- [Authors' code][s2]
+
+[s2]: https://github.com/yujiachenjerry/DeepWonder3D
+- [Public data][s3]
+
+[s3]: https://doi.org/10.5281/zenodo.15383434
+
+[All Frontier One news](/en/news/)
