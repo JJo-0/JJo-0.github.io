@@ -27,13 +27,13 @@ const chapters = [
   { number: 17, math: 10, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-17-archive-dspy-experience', previous: 'self-improving-ai-16-prompt-memory-code-evolution', next: 'self-improving-ai-18-better-together-and-evolving-goals' },
   { number: 18, math: 11, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-18-better-together-and-evolving-goals', previous: 'self-improving-ai-17-archive-dspy-experience', next: 'self-improving-ai-19-test-time-training-and-forgetting' },
   { number: 19, math: 20, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-19-test-time-training-and-forgetting', previous: 'self-improving-ai-18-better-together-and-evolving-goals', next: 'self-improving-ai-20-retaining-skills-and-improving-the-improver' },
-  { number: 20, math: 13, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-20-retaining-skills-and-improving-the-improver', previous: 'self-improving-ai-19-test-time-training-and-forgetting', next: 'self-improving-ai-21-learning-to-improve-the-improver' },
+  { number: 20, math: 14, figures: 10, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-20-retaining-skills-and-improving-the-improver', previous: 'self-improving-ai-19-test-time-training-and-forgetting', next: 'self-improving-ai-21-learning-to-improve-the-improver' },
   { number: 21, math: 15, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-21-learning-to-improve-the-improver', previous: 'self-improving-ai-20-retaining-skills-and-improving-the-improver', next: 'self-improving-ai-22-learning-the-parameter-update-rule' },
-  { number: 22, math: 15, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-22-learning-the-parameter-update-rule', previous: 'self-improving-ai-21-learning-to-improve-the-improver', next: 'self-improving-ai-23-self-edits-and-meta-learning' },
-  { number: 23, math: 17, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-23-self-edits-and-meta-learning', previous: 'self-improving-ai-22-learning-the-parameter-update-rule', next: 'self-improving-ai-24-learning-inside-the-hidden-state' },
+  { number: 22, math: 15, figures: 10, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-22-learning-the-parameter-update-rule', previous: 'self-improving-ai-21-learning-to-improve-the-improver', next: 'self-improving-ai-23-self-edits-and-meta-learning' },
+  { number: 23, math: 18, figures: 10, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-23-self-edits-and-meta-learning', previous: 'self-improving-ai-22-learning-the-parameter-update-rule', next: 'self-improving-ai-24-learning-inside-the-hidden-state' },
   { number: 24, math: 16, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-24-learning-inside-the-hidden-state', previous: 'self-improving-ai-23-self-edits-and-meta-learning', next: 'self-improving-ai-25-memory-and-intrinsic-motivation' },
-  { number: 25, math: 18, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-25-memory-and-intrinsic-motivation', previous: 'self-improving-ai-24-learning-inside-the-hidden-state', next: 'self-improving-ai-26-when-the-score-and-the-goal-diverge' },
-  { number: 26, math: 15, figures: 8, primarySlides: 4, timingRows: 4, slug: 'self-improving-ai-26-when-the-score-and-the-goal-diverge', previous: 'self-improving-ai-25-memory-and-intrinsic-motivation', next: null },
+  { number: 25, math: 18, figures: 11, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-25-memory-and-intrinsic-motivation', previous: 'self-improving-ai-24-learning-inside-the-hidden-state', next: 'self-improving-ai-26-when-the-score-and-the-goal-diverge' },
+  { number: 26, math: 15, figures: 10, primarySlides: 4, timingRows: 5, slug: 'self-improving-ai-26-when-the-score-and-the-goal-diverge', previous: 'self-improving-ai-25-memory-and-intrinsic-motivation', next: null },
 ];
 const mappingSummary = '슬라이드별 영상 위치';
 const lectureParts = [
@@ -63,7 +63,7 @@ const timestampGroups = {
   23: [2422, 2522, 2654, 2574, 2565],
   24: [2747, 2854, 2874, 2922, 3025],
   25: [3142, 3323, 3547, 3557, 3709],
-  26: [3801, 3855, 3928, 4013],
+  26: [3801, 3855, 3928, 4013, 4102],
 };
 const productionPhrases = [
   /(?:자막|자료|원문|원고|보충 자료)[·\s]*(?:조회|대조|확인)일/,
@@ -104,6 +104,12 @@ function loadChapterManifest(chapter) {
     const sourceType = asset.source_type ?? 'pdf';
     if (sourceType === 'pdf') {
       assert(source.includes('#page='), `Missing source page in ${assetPath}`);
+    } else if (sourceType === 'video_frame') {
+      const videoId = chapter.number <= 13 ? 's06mSAGN4gM' : 'cQLKVzbwN7I';
+      assert.equal(asset.youtube_video_id, videoId, assetPath);
+      assert(Number.isInteger(asset.capture_seconds) && asset.capture_seconds >= 0, assetPath);
+      assert.equal(source, `https://www.youtube.com/watch?v=${videoId}&t=${asset.capture_seconds}s`, assetPath);
+      assert.match(asset.capture_frame_sha256, /^[a-f0-9]{64}$/, assetPath);
     } else if (sourceType === 'author_diagram') {
       assert.equal(chapter.number, 26, 'Original welfare example belongs to chapter 26');
       assert.equal(src, `/assets/posts/${chapter.slug}/welfare-two-rules.png`);

@@ -9,6 +9,7 @@ import hashlib
 import json
 import urllib.request
 import pymupdf as fitz
+from upper_lecture_artwork import restore_lecture_artwork
 
 ROOT = Path(__file__).resolve().parents[3]
 SOURCES = {
@@ -38,7 +39,7 @@ MAIN_ALT = {
     20: 'LLM이 대리 보상을 수정하고, 그 보상으로 학습한 정책을 평가하는 두 반복을 보여준다. 정책이 반드시 LLM인 것은 아니다.',
     21: 'RF-Agent 논문에서 가져온 원본 영어 비교 그림. Eureka, REvolve, RF-Agent의 보상 후보 탐색 구조를 비교한다.',
     22: '보상 후보의 설계 이력과 트리 탐색을 이용하는 RF-Agent의 원본 영어 구성 그림이다.',
-    23: '도파민과 보상 형성이라는 제목의 영어 편집본. 공개 PDF 원본처럼 제목 아래 영역은 가려진 상태를 유지했다.',
+    23: '세 칸 만화. 왼쪽은 자손 유무에 따른 최종 보상, 가운데는 사냥에서 번식까지 지연된 보상, 오른쪽은 중간 행동에 붙인 도파민 신호를 보여 준다.',
     24: '사람의 선호를 이용해 보상 모델을 학습하고 그 모델로 생성 정책을 평가하는 RLHF 구성을 보여준다.',
     25: '학습 평가 자료의 출처를 AI 피드백으로 바꾸는 RLAIF 구성을 보여준다.',
 }
@@ -92,6 +93,7 @@ def render_asset(document, key, number, chapter, filename, slot, caption, alt, c
     target = ROOT / path
     target.parent.mkdir(parents=True, exist_ok=True)
     pix.save(target)
+    restoration = restore_lecture_artwork(target, document, number) if key == 'ntu' else {}
     origin, digest, author, _ = SOURCES[key]
     return {'slot': slot, 'chapter': chapter, 'path': str(path),
         'src': '/assets/posts/' + SLUGS[chapter] + '/' + filename,
@@ -99,7 +101,7 @@ def render_asset(document, key, number, chapter, filename, slot, caption, alt, c
         'source_pdf_sha256': digest, 'pdf_page': number, 'caption': caption, 'alt': alt,
         'credit': author + ('. Unofficial English text adaptation; original diagrams retained.' if edits else '. Original source, not redrawn.'),
         'width': pix.width, 'height': pix.height, 'sha256': hashlib.sha256(target.read_bytes()).hexdigest(),
-        'crop_pdf_points': crop, 'edits': edit_records, 'rights_status': 'unverified'}
+        'crop_pdf_points': crop, 'edits': edit_records, **restoration, 'rights_status': 'unverified'}
 
 def main():
     documents = dict(ThreadPoolExecutor(max_workers=4).map(fetch_source, SOURCES.items()))
@@ -107,8 +109,10 @@ def main():
     for number in range(16, 26):
         chapter = 4 if number < 21 else 5
         operation = '비공식 영어 편집본' if number in EDITS else '원본 영어 슬라이드·내용 변경 없음'
-        if number == 23:
-            operation += ' · 원본의 가려진 영역 유지; 설명은 발표자 노트와 별도 문헌을 구분해 제시'
+        if number in {18, 19, 24}:
+            operation = '강의 PPTX의 사람 아이콘을 원래 위치에 표시한 영어 편집본'
+        elif number == 23:
+            operation = 'PPTX의 만화 세 칸과 영어 제목'
         assets.append(render_asset(documents['ntu'], 'ntu', number, chapter,
             f'ntu-self-improving-{number:02d}-en.png', f'main-{number}',
             f'P{number:03d} — NTU Self-Improving 원본 {number}쪽 · {operation}.',
