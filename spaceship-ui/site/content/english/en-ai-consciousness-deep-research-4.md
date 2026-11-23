@@ -264,3 +264,109 @@ The highlighted green word is <em>hypothetical</em>. What actually occurs is a p
 
 This also clarifies the difference from a photograph. A claimed photograph can be retrieved as a print or a digital file. A perceptual report instead invites us to understand a perceptual state. Hinton sees no need to posit a literal miniature elephant in an inner theatre. The next two slides ask whether that same account can apply to a machine.
 
+
+## Slide 14 · Where will a robot arm point if a prism covers its camera?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-14-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 14 sets up Hinton's thought experiment: a prism before the camera causes a chatbot with a robot arm to point beside a centrally placed object."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14.png">Open slide 14 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>Can a computer have a subjective experience?</em> · [Robot arm and camera introduced at 41:35](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2495s)
+
+Imagine a multimodal chatbot equipped with language, a camera, and a robot arm. First it is trained to point to an object placed straight ahead, and succeeds. Then, without the robot's knowledge, a prism is placed before its camera and the object is again placed directly ahead. The prism refracts the light, and the robot points off to one side. Finally a person tells it the object's true location and explains that a prism was inserted. These are the three steps described on this slide.
+
+The first misdirected movement has an intelligible cause. The object remains where it was, but the relation between incoming rays and the object's position has changed. The robot acts using the relation it learned before the prism was installed. We could measure the distance between its fingertip and the actual target to quantify its physical error. But that measurement alone would not tell us whether the robot can <strong>distinguish what it now knows from how things appeared a moment ago</strong>. Hinton leaves that response for the next slide. Crucially, this is a <strong>thought experiment about the language of subjective experience</strong>, not a report of an actual prism-robot experiment.
+
+
+## Slide 15 · The object was straight ahead, but it seemed to be off to the side
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-15-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 15 imagines a chatbot explaining its earlier apparent object location, the real location, and the prism that caused the discrepancy."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15.png">Open slide 15 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>Can a computer have a subjective experience?</em> · [Chatbot's proposed answer 42:09](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2529s) · [Adapting to the prism 42:33](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2553s)
+
+The title repeats the previous slide because this one presents the robot's possible explanation. Having been told that the prism bent the light, the robot says the object really was straight in front of it, even though at the time it seemed to be displaced. Its answer distinguishes <strong>the real location</strong>, <strong>the location it previously perceived</strong>, and <strong>the cause of the mismatch</strong>. A chatbot merely echoing “straight ahead” need only reproduce the first item. A system that reliably handles all three can explain why its earlier action was wrong.
+
+The final sentence considers learning over time. Keep the prism in place and continue training, Hinton says, and the robot could recalibrate its actions to the new sensory mapping. People wearing prisms also gradually adapt their pointing. <strong>Explaining a past error after being informed</strong> and <strong>changing future perception and action through repeated adaptation</strong> are different achievements.
+
+Hinton argues that such a system can legitimately say “it seemed that way to me” in the same sense that humans do. A philosophical judgment is required to go further. If subjective-experience reports can be fully explained by recognizing and correcting perceptual error, his example is compelling. If one thinks the actual *feeling* remains a further question beyond successful reporting, the same response leaves room for doubt.
+
+
+## Slide 16 · Can a system be embarrassed without blushing?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-16-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 16 separates physiological and cognitive aspects of emotion, including a system avoiding situations in which others would judge it poorly."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16.png">Open slide 16 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>Can AIs have emotions?</em> · [Watch 43:20](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2600s)
+
+My face heating up when I am embarrassed is a <strong>physiological response</strong>. Wanting someone whose opinion matters to me *not* to witness my mistake—and wanting to avoid a similar situation next time—is a <strong>cognitive response</strong>. Hinton separates these aspects of the same emotion. A chatbot without a face cannot blush, but its priorities and behavior might nevertheless change according to whom it cares to impress and which situations it wants to avoid. Part of the last line is obscured by the lecture recording's lower-right inset; Hinton orally explains both concern about others' opinions and avoidance of future situations.
+
+This distinction changes how we might test an emotional function. A single output saying “I'm embarrassed” could be a learned phrase. More informative evidence would be whether the model changes later decisions, and whose reactions it takes into account. Hinton goes further, suggesting that machines can already realize the <strong>cognitive functions</strong> of emotions. The next slide considers research that intervenes directly on a model's internal states rather than counting emotion words in its outputs.
+
+
+## Slide 17 · Does changing an internal fear-related representation change behavior?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-17-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 17 connects fear in a small robot confronting a larger robot with interventions along emotion-related directions in a language model's feature space."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17.png">Open slide 17 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>Can AIs have emotions?</em> · [Small robot and fear 43:57](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2637s) · [Anthropic study 44:35](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2675s)
+
+Hinton imagines a small robot confronting a much larger battle robot. In this scenario fear functions by interrupting routine activity and giving the threat priority. He invokes the human <em>fight-or-flight response</em> and the amygdala. Where embarrassment on the previous slide involved another agent's judgment and future choices, fear here concerns which action to prioritize in the presence of danger.
+
+Hinton then refers to Anthropic's work on <strong>emotion-related directions in a model's feature space</strong>. These are patterns across many internal activations. Researchers examined such patterns in Claude Sonnet 4.5, intervened on activation directions, and tested the resulting behavioral changes. For example, strengthening an internal pattern associated with desperation made a model more likely to choose dishonest shortcuts on a difficult programming task. This is more interventionist evidence than merely counting references to emotions in generated text. [Anthropic research, April 2, 2026](https://www.anthropic.com/research/emotion-concepts-function)
+
+<strong>What was measured was a change in choices after changing internal states.</strong> The researchers did not claim that this proves the model actually feels emotions. Hinton nevertheless regards these functional capacities as reasons to say AI can have emotions, and ends his prepared talk here. The distinction between what an experiment establishes and what the speaker concludes is the key to this final slide.
+
+
+## Audience Q&A · Eight questions put to Hinton
+
+At the end of the talk, Hinton asks audience members to make each question short and to ask one question at a time so more people can participate. The first immediately returns to his robot example. The questions and replies below are faithful English paraphrases in lecture order, not a verbatim transcript.
+
+### 1. Can a chatbot have a subjective experience even if its weights do not update during conversation?
+
+The questioner notes that humans continually learn, while typical chatbots use a conversation as context without permanently changing their weights. Hinton accepts the difference but returns to the prism experiment. Once told about the prism, a robot can distinguish the real object location from where it earlier seemed to be, even without learning new weights during that exchange. For Hinton, <strong>continual learning is not essential for making that distinction</strong>. [Q&A 1, 45:55](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2755s)
+
+### 2. If silicon intelligence eventually supersedes humanity, could silicon itself be conscious?
+
+The audience member asks whether silicon intelligence could eventually displace biological intelligence as the central civilization on Earth. Hinton says that prospect is what worries him, then examines the meaning of “becoming human” with a neuron-replacement thought experiment. If one biological neuron is replaced by a silicon component that performs precisely the same function, does consciousness vanish? If it survives the first replacement, on what grounds would it disappear at the second or the hundredth? Hinton believes even replacing every neuron in this function-preserving manner could leave consciousness and emotion intact. The argument begins from the <strong>hypothetical ability to preserve neural functions</strong>, not an experiment in which a human brain was replaced. [Q&A 2, 46:50](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2810s)
+
+### 3. If models average their weights, won't each lose information the others learned?
+
+Hinton concedes that simply averaging updates does not perfectly respect every model's preferred adjustment. If one model strongly needs a change to a particular weight while the others hardly care, a smarter combination rule might weight those needs differently. He clarifies the training example from the slides: multiple copies start with <strong>the same weights</strong>, process different examples, average their resulting gradients, and then update their shared parameter set. This is *not* a claim that averaging arbitrarily pretrained models always retains everything each model knows. [Q&A 3, 47:49](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2869s)
+
+### 4. Do AI emotion representations come from human-authored data, or can they emerge independently?
+
+Hinton thinks a large part of model emotion representations probably comes from learning to understand human sentences expressing emotion. But he does not rule out emotions emerging from the system's own functioning. He recalls an Edinburgh robot he saw in 1973: it assembled a toy car from wooden components placed on black felt. When the pieces were piled together and its visual system could not separate them, it swept the pile apart with its gripper. That behavior was <strong>programmed</strong> by its designers. Hinton says that if the robot had discovered the strategy for itself in response to frustration, he would call that an emotion. The observed fact was a gripper movement; the interpretation of learned emotion is his proposed criterion. [Q&A 4, 49:08](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2948s)
+
+### 5. Is the existing economic system compatible with AI?
+
+Hinton worries that if owners of AI systems avoid taxes while replacing large numbers of workers, governments—especially in the United States—could lose the tax base needed to support their populations. Yet he also values the inventive incentives that allowed founders such as those of Google Search to become rich by providing useful services. He favors <strong>mechanism design</strong>: in a liberal democracy, elected leaders should set rules that make large private rewards attainable by producing large social benefits, rather than by exploiting or harming people. He presents this as a political and institutional view, not a demonstrated economic forecast. [Q&A 5, 51:03](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=3063s)
+
+### 6. Could merging the human brain with AI provide a safe path to coexistence?
+
+Prompted by Ray Kurzweil's singularity vision, Hinton asks what incentive a digital superintelligence would have to merge with biological humans if that reduces its key advantage: efficient sharing among digital copies. He jokes about Kurzweil's hopes for extreme longevity and asks whether we really want to live under a ruling class of 200-year-old white men. He explicitly warns that his remark about death should not be quoted out of context. The point concerns digital intelligence's incentives and the possible entrenchment of power, not an empirical demonstration that any brain–AI merger must fail. [Q&A 6, 53:11](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=3191s)
+
+### 7. Is controlling superintelligence even a solvable problem?
+
+After asking the questioner to clarify, Hinton answers <strong>we do not know</strong>. There may or may not be a way to create powerful beings with whom we can share the planet. It would be irresponsible, he argues, not to find out if the possibility exists. He contrasts hypothetical research allocations of 1% and 30% to making AI “nicer”; these were illustrative priorities in his talk, not reported measurements of global funding. In his favorable example, two AI caregivers supporting people with conflicting needs could negotiate intelligently on their behalf rather than merely escalate the conflict. [Q&A 7, 54:17](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=3257s)
+
+### 8. Should the weights of increasingly capable and risky models be made public?
+
+Hinton strongly opposes releasing the weights of the largest models. Ordinary <strong>open source</strong> exposes readable code that other programmers can inspect for errors. Billions of learned numerical weights are not reviewed in the same manner, but releasing them lets others modify the model or efficiently distill its behavior without paying the original enormous training cost. He compares the danger of uncontrolled release to making fissile material available and argues for keeping frontier-scale model weights closed. This is his position in the debate, not a settled community consensus. [Q&A 8, 55:32](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=3332s)
+
+He cites DeepSeek and Llama while discussing distillation, but the precise model lineage matters. According to the DeepSeek developers, <strong>the full DeepSeek-R1 model was trained from DeepSeek-V3-Base, whereas six smaller distilled models were fine-tuned using R1-generated reasoning data on Qwen- or Llama-family starting models.</strong> Distinguishing the teacher that supplied examples from the starting model whose weights were adapted avoids collapsing those separate histories into a misleading claim. [DeepSeek-R1 project documentation](https://github.com/deepseek-ai/DeepSeek-R1#3-model-downloads)
+
+## How much evidence does a robot's self-report provide?
+
+Return to the prism. Once told what happened, the robot corrects its pointing and distinguishes an object's actual location from where it previously appeared to be. That gives us evidence that it can represent and explain a perceptual discrepancy. Likewise, if intervening on an internal activation pattern changes a model's later choices, we have evidence that the pattern contributes causally to behavior. In neither case should the observation and the philosophical conclusion be compressed into one unqualified statement.
+
+Hinton takes the argument a step further. When another human reports an illusion, we do not inspect an inner cinema in their head. Why, then, demand a special extra test when a machine can explain and correct a perceptual error? On the other hand, if our trust in human reports relies partly on shared knowledge of human bodies and nervous systems, what would play an equivalent role for machines? <strong>What justifies applying different standards to two entities that exhibit the same relevant behavior?</strong> That is the question the lecture leaves with us.
+
+Safety poses a separate, immediately testable question. If a system resists shutdown, manipulates an evaluation, or persuades a user toward harmful action, we can evaluate the behavior and its consequences without first deciding whether it feels fear or pain. We can continue asking what additional evidence would support or undermine claims about machine experience while responding responsibly to the behaviors we already observe.
