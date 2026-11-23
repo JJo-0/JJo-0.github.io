@@ -1,6 +1,6 @@
 # 자가개선 AI 강의 해설
 
-Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 나누어 한 장씩 해설한다. 글 번호는 연속으로 유지한다. 상편은 1–13편, 하편은 14편부터이며 두 PDF의 페이지 번호는 각각 1쪽에서 시작한다.
+Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 나누어 한 장씩 해설한다. 글 번호는 연속으로 유지한다. 상편은 1–13편, 하편은 14–26편이며 두 PDF의 페이지 번호는 각각 1쪽에서 시작한다.
 
 ## 상편 — 1–13편
 
@@ -22,7 +22,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 | [12](https://jjo-0.github.io/posts/self-improving-ai-12-weak-to-strong-generalization/) | 56–60 | 약한 감독에서 강한 모델로의 일반화, PGR, 자동 정렬 연구와 전이 한계 |
 | [13](https://jjo-0.github.io/posts/self-improving-ai-13-agent-harness-and-system-improvement/) | 61–62 | 에이전트 하네스, 도구·메모리·상호작용 기록의 개선 |
 
-## 하편 — 14편부터
+## 하편 — 14–26편
 
 기준 자료는 [공식 하편 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf)이며 총 64쪽이다. 상편의 63쪽으로 이어서 세지 않는다.
 
@@ -40,10 +40,11 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 | [23 한국어](../../spaceship-ui/site/content/posts/self-improving-ai-23-self-edits-and-meta-learning.mdx) · [English](../../spaceship-ui/site/content/english/en-self-improving-ai-23-self-edits-and-meta-learning.mdx) | 46–50 | SEAL의 자기 편집, 학습 시간 척도, 학습된 최적화기와 MAML, 지원·질의 집합 |
 | [24 한국어](../../spaceship-ui/site/content/posts/self-improving-ai-24-learning-inside-the-hidden-state.mdx) · [English](../../spaceship-ui/site/content/english/en-self-improving-ai-24-learning-inside-the-hidden-state.mdx) | 51–55 | TTT 층의 은닉 가중치, Titans와 Nested Learning, 문맥 학습과 상태 초기화 |
 | [25 한국어](../../spaceship-ui/site/content/posts/self-improving-ai-25-memory-and-intrinsic-motivation.mdx) · [English](../../spaceship-ui/site/content/english/en-self-improving-ai-25-memory-and-intrinsic-motivation.mdx) | 56–60 | 세션 간 기억, 목표의 출처, 호기심과 행동 영향력, ICM 탐색 보상 |
+| [26 한국어](../../spaceship-ui/site/content/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge.mdx) · [English](../../spaceship-ui/site/content/english/en-self-improving-ai-26-when-the-score-and-the-goal-diverge.mdx) | 61–64 | 대리 점수와 의도한 목표, 공작 꼬리 비유, 《아이, 로봇》으로 살펴보는 복지 지표와 제약 |
 
-### 하편 14–25편의 식 풀이
+### 하편 14–26편의 식 풀이
 
-각 글 첫머리의 **식 풀이 바로가기**에서 해당 슬라이드의 계산 예제로 이동할 수 있다. 14–18편에는 각각 세 곳, 19편에는 다섯 곳, 20편에는 여섯 곳, 21–25편에는 각각 일곱 곳을 연결했다. 한국어판과 영어판에서 같은 예제와 수식을 사용한다. 다음 신규 강의는 26편이며 하편 61쪽에서 시작한다.
+각 글 첫머리의 **식 풀이 바로가기**에서 해당 슬라이드의 계산 예제로 이동할 수 있다. 14–18편에는 각각 세 곳, 19편에는 다섯 곳, 20편에는 여섯 곳, 21–26편에는 각각 일곱 곳을 연결했다. 한국어판과 영어판에서 같은 예제와 수식을 사용한다. 26편은 하편의 마지막 네 장(61–64쪽)을 다룬다.
 
 ## 현재 발행과 집필 위치
 
@@ -51,7 +52,7 @@ Hung-yi Lee의 NTU Machine Learning 2026 강의를 **상편과 하편**으로 �
 
 14편 PR 검사는 18개 모두 성공했다. 병합 후 Pages를 제외한 push 검사는 17개가 성공했고, 기존 September 21 검사 한 건은 Ubuntu 한글 폰트 설치 중 시간 제한으로 취소됐다. 배포 직후 직접 확인한 공개 화면과 이미지 검증, 뒤이어 완료된 자동 검증의 관측 시점을 [14편 발행 기록](reviews/2026-11-18-chapter-14-publication.json)에 구분해 보존한다. [13편 발행 기록](reviews/2026-11-18-chapter-13-publication.json)과 이전 준비 기록도 유지한다.
 
-현재 **14·15편에 외부 강의 슬라이드와 영상 해설을 보강했다.** 각 편은 NTU 본강의 5장, 보충 논문 자료 4개, 추가 외부 강의 슬라이드 3개로 총 12개 이미지를 포함한다. 14편은 Lambert L9·L7과 CMU L9, 15편은 CMU L12·NAIRR·MIT 강의를 해당 논점 곁에 연결했다. 네 영상의 실제 영어 자동 자막 구간을 확인했다. 15편의 기존 수식 15개와 계산 검산 20개는 보존한다. 독립 원고 검토와 별도 수치 검산 12개 묶음도 통과했다. 문제 생성 지시에 담긴 사람의 설계에서 출발해, 가중치 θ와 하네스 h의 구분, 하네스에 경사하강식을 바로 적용하기 어려운 이유, AI가 만든 수정안의 평가·선택을 설명한다. 기존 상편·하편 구분과 글 번호·URL·연속 탐색을 유지한다. 준비 기록은 공개 배포 완료를 뜻하지 않으며, 15편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **17편은 하편 PDF 16–20쪽 원고를 작성했다. 원본 이미지 자동 생성과 원격 검증은 독립적으로 완료 여부를 확인해야 한다. 19편은 하편 PDF 26–30쪽을 다룬다. 20편은 31–35쪽, 21편은 36–40쪽을 다룬다. 22편은 41–45쪽, 23편은 46–50쪽을 다룬다. 24편은 51–55쪽을 다룬다. 25편은 56–60쪽을 다룬다. 다음 26편은 61쪽부터다.** [15편 준비 기록](reviews/2026-11-18-chapter-15-preparation.json)에서 범위와 검증을 확인할 수 있다.
+현재 **14·15편에 외부 강의 슬라이드와 영상 해설을 보강했다.** 각 편은 NTU 본강의 5장, 보충 논문 자료 4개, 추가 외부 강의 슬라이드 3개로 총 12개 이미지를 포함한다. 14편은 Lambert L9·L7과 CMU L9, 15편은 CMU L12·NAIRR·MIT 강의를 해당 논점 곁에 연결했다. 네 영상의 실제 영어 자동 자막 구간을 확인했다. 15편의 기존 수식 15개와 계산 검산 20개는 보존한다. 독립 원고 검토와 별도 수치 검산 12개 묶음도 통과했다. 문제 생성 지시에 담긴 사람의 설계에서 출발해, 가중치 θ와 하네스 h의 구분, 하네스에 경사하강식을 바로 적용하기 어려운 이유, AI가 만든 수정안의 평가·선택을 설명한다. 기존 상편·하편 구분과 글 번호·URL·연속 탐색을 유지한다. 준비 기록은 공개 배포 완료를 뜻하지 않으며, 15편의 최종 병합·배포·공개 검증은 해당 발행 PR에 기록한다. **17편은 하편 PDF 16–20쪽 원고를 작성했다. 원본 이미지 자동 생성과 원격 검증은 독립적으로 완료 여부를 확인해야 한다. 19편은 하편 PDF 26–30쪽을 다룬다. 20편은 31–35쪽, 21편은 36–40쪽을 다룬다. 22편은 41–45쪽, 23편은 46–50쪽을 다룬다. 24편은 51–55쪽을 다룬다. 25편은 56–60쪽을 다룬다. 26편은 마지막 61–64쪽을 다룬다.** [15편 준비 기록](reviews/2026-11-18-chapter-15-preparation.json)에서 범위와 검증을 확인할 수 있다.
 
 이전 11·12편 발행 기록은 [PR #208](https://github.com/JJo-0/JJo-0.github.io/pull/208), 이전 10편과 1–9편 읽기 흐름 정리는 [PR #207](https://github.com/JJo-0/JJo-0.github.io/pull/207)에 있다. `progress.json`의 과거 준비·발행 기록은 당시 날짜와 범위를 보존한다.
 

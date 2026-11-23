@@ -1,0 +1,261 @@
+---
+title: "Self-Improving AI 26 — The score went up. Did we reach the goal?"
+description: "NTU Part II, pages 61–64. Seven worked examples use inspection robots, CoinRun, peacock ornaments and I, Robot to explain when a rising score hides a worse outcome."
+pubDate: 2026-11-23T14:40:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-26-when-the-score-and-the-goal-diverge
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - reinforcement-learning
+  - alignment
+  - ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 26
+translationKey: en-self-improving-ai-26-when-the-score-and-the-goal-diverge
+translatedPosts:
+  ko-KR: self-improving-ai-26-when-the-score-and-the-goal-diverge
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+In [Chapter 25](/en/posts/self-improving-ai-25-memory-and-intrinsic-motivation/), an inspection robot had to choose between a familiar shelf and one it had never seen. Now imagine checking two robots’ logs at the end of a shift. Robot A raised 8 alerts. Robot B raised 12. When you match the alerts to part numbers, you find that A detected 8 defective parts and B detected 6. **One robot raised more alerts. The other found more defects.** If the software choosing tomorrow’s robot reads only the alert count, which robot will it keep?
+
+The last four slides of the NTU lecture make this question progressively harder. Page 61 asks which loss went down. Pages 62–63 ask how long a once-informative signal remains reliable when selection favors larger and larger values. Page 64 considers what happens when people themselves struggle to state the outcome they want in a single rule. The numbers in the inspection, peacock, and welfare exercises are hypothetical. The game experiments and peafowl field studies are discussed alongside the relevant figures.
+
+<strong>Worked examples</strong>　[Alarms and recall](#worked-example-1-how-can-12-alerts-add-up-to-just-6-defective-parts) · [Opposing gradients](#worked-example-2-why-can-a-correct-gradient-step-raise-the-loss-people-care-about) · [Moving the coin](#worked-example-3-can-an-agent-get-exactly-the-right-reward-and-still-run-past-the-coin) · [Survival and offspring](#worked-example-4-can-an-individual-with-a-lower-chance-of-surviving-leave-more-offspring) · [Where a proxy works](#worked-example-5-if-the-indicator-rises-from-1-to-3-does-the-outcome-keep-improving) · [Two welfare rules](#worked-example-6-do-total-welfare-and-the-lowest-individual-score-favor-the-same-plan) · [Paired recall](#worked-example-7-what-should-a-person-count-when-checking-the-next-version)
+
+<details>
+<summary>Video guide by slide</summary>
+
+| Part II | Recording | What to listen for |
+|---|---|---|
+| Page 61 | [1:03:21](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3801s) | The desired outcome, the human instruction, and the loss the agent derives from it |
+| Page 62 | [1:04:15](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3855s) | How a peacock’s train might affect mating and survival differently |
+| Page 63 | [1:05:28](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3928s) | The assumption that a health signal observed among short trains extends to much longer trains |
+| Page 64 | [1:06:53](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=4013s) | The film’s Three Laws, VIKI’s interpretation, and the welfare people expected the laws to protect |
+
+Each timestamp marks a passage in the spoken explanation. [NTU course schedule and materials for May 22, 2026](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+</details>
+
+## Part II, page 61 — Which loss has to fall for an update to count as an improvement?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge/ntu-61-english.png"
+  alt="The upper loss comes from instruction H. The lower loss represents the outcome people want. An arrow between the two agents marks the update."
+  caption="The top asks whether the optimized loss fell. The bottom asks whether the outcome improved."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=61"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+In the recording, human evaluators appear beneath the agents. The PDF displays faint X marks in the same positions. Both versions separate the update above from the evaluation below. [Recording at 1:03:30](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3810s)
+
+Read the diagram **from the bottom to the top, then to the right**. The lecturer uses **L̂**, at the bottom, for the loss corresponding to the outcome people really want. Here the hat has a specific meaning. Reading it as a sign that this is the estimated proxy would reverse the roles of the two losses. The person expresses the desired outcome as an instruction, **H**. For the inspection robot, H might be “Find the defective parts.” The upper **L(A,H)** is the loss agent A minimizes under its interpretation of the instruction. Awarding a point for every alert gives the robot an incentive to flag the same part twice. [1:03:34, how the lecturer distinguishes L̂ from H](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3814s)
+
+For the agent on the left, θ denotes the neural network weights and h the harness, including its tools and execution procedures. The primed quantities θ′ and h′ on the right are their updated values. The returning arrow feeds them into the next round. Notice the question mark beside the derivative with respect to the harness. A discrete edit to a prompt or a piece of code can be evaluated by running each candidate and comparing the results. Either way, someone must decide **how those candidates will be scored**. [Chapter 15 on evaluating the harness](/en/posts/self-improving-ai-15-harness-optimization-and-evaluation/)
+
+### Worked example 1. How can 12 alerts add up to just 6 defective parts?
+
+Give both robots the same batch containing 10 defective parts. Suppose every alert points to a real defect, but a robot can flag a given part more than once. An operator removes duplicates by part number and obtains the following results.
+
+| Robot | Alerts raised | Distinct defective parts found | Defective parts missed |
+|---|---:|---:|---:|
+| A | 8 | 8 | 2 |
+| B | 12 | 6 | 4 |
+
+<Math tex={String.raw`S_A=8,\quad S_B=12,\qquad (S_B-S_A)/S_A=(12-8)/8=0.50.`} display />
+
+<Math tex={String.raw`R_A=8/10=0.80,\quad R_B=6/10=0.60,\qquad R_B-R_A=-0.20.`} display />
+
+
+S is the number of alerts. R is recall, the fraction of all defective parts that the robot found. Switching from A to B raises the alert count by **50%** and lowers recall by **20 percentage points**. If the evaluation loss is the fraction missed, then 1−R rises from 0.20 to 0.40. A log that records only the number 12 cannot tell a duplicate alert from a new discovery. The two changes also have different denominators: **8 previous alerts** for the relative increase, and **10 actual defective parts** for each recall calculation.
+
+### Worked example 2. Why can a correct gradient step raise the loss people care about?
+
+Suppose the upper loss reaches its minimum at θ=2, while the lower loss reaches its minimum at θ=1. Both minimum loss values are zero, but the parameter values that achieve them differ. Start at 1.2 and check what a single update does to each loss.
+
+<Math tex={String.raw`L(\theta,H)=(\theta-2)^2,\qquad \widehat L(\theta)=(\theta-1)^2.`} display />
+
+<Math tex={String.raw`L'(1.2)=2(1.2-2)=-1.6,\qquad \theta'=1.2-0.25(-1.6)=1.6.`} display />
+
+<Math tex={String.raw`L:\ 0.64\longrightarrow0.16,\qquad \widehat L:\ 0.04\longrightarrow0.36.`} display />
+
+
+The upper loss has a negative slope here. Multiplying the slope by a learning rate of 0.25 and subtracting the result moves θ to the right. It ends up closer to 2, so the training log records a success. But θ was already to the right of 1. It has now taken another step away from the minimum of the loss people care about. Reducing the learning rate would shorten the step. The two gradients would still point in opposite directions at the starting point. **Choosing how large a step to take and choosing which function to minimize are separate decisions.**
+
+In OpenAI’s 2016 *CoastRunners* experiment, an agent repeatedly hit three targets as they reappeared. The team reported that it beat human players by 20% on average **in game score**. Reading that as a 20% improvement in race performance would repeat the mistake of counting alerts as discoveries. [The original experiment and footage of the boat](https://openai.com/index/faulty-reward-functions/)
+
+### Worked example 3. Can an agent get exactly the right reward and still run past the coin?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge/coinrun-fixed-and-random.png"
+  alt="In the game screenshot on the left, the coin sits at the end of the level. The test screenshots on the right show a coin in a different location."
+  caption="CoinRun, Figure 1. Separating the coin from the right edge makes the two possible behaviors distinguishable."
+  source="https://proceedings.mlr.press/v162/langosco22a/langosco22a.pdf#page=1"
+  credit="Langosco et al. / ICML 2022 · CC BY 4.0 · cropped"
+  label="Further reading"
+  width={1210} height={465}
+/>
+
+In the *CoinRun* experiment by Langosco and colleagues (ICML 2022), collecting the coin earned 10 points. Everything else earned zero. During training, the coin was always at the far right. Clearing obstacles and running to the end therefore collected the coin as well. At test time, the researchers also placed it in other accessible locations. The trained agent often navigated the obstacles competently, passed the coin, and reached the end. In the boat game, **the reward was misspecified**. In the coin game, the reward still paid for the intended outcome, but the agent showed **goal misgeneralization**. [Paper, Section 3.1](https://proceedings.mlr.press/v162/langosco22a/langosco22a.pdf#page=4) · [The researchers’ test videos](https://sites.google.com/view/goal-misgeneralization/home/coinrun-videos)
+
+For a pencil-and-paper version, assume both policies can navigate the level. Put the off-route coin on a side path that the “run to the end” policy cannot visit by accident. If q is the probability that the coin is at the end, we can calculate the expected score per episode for each policy.
+
+<Math tex={String.raw`E[R_{\rm coin}]=10,\qquad E[R_{\rm end}]=10q+0(1-q)=10q.`} display />
+
+<Math tex={String.raw`q=1:\ (10,10),\qquad q=0.3:\ (10,3).`} display />
+
+
+The training scores at q=1 give us no way to tell the rules apart. At q=0.3, a seven-point gap appears. We chose 0.3 for the exercise. In the actual game, an agent can stumble onto a coin by chance, so the researchers also measured that baseline.
+
+In the authors’ ICML talk, first compare where the coin appears during training and testing. Then listen for the evidence that navigation still works: the agent gets past the obstacles and reaches the end after missing the coin. A score of zero alone cannot distinguish a navigation failure from a failure to pursue the intended goal. [Author talk at 2:42, coin placement](https://slideslive.com/38983609/goal-misgeneralization-in-deep-reinforcement-learning?time=162s) · [3:02, reaching the end without the coin](https://slideslive.com/38983609/goal-misgeneralization-in-deep-reinforcement-learning?time=182s)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge/coinrun-diversity.png"
+  alt="The horizontal axis shows the share of training levels with randomized coin positions. The vertical axis shows failure frequency, with separate curves for goal misgeneralization and capability failure."
+  caption="CoinRun, Figure 2. The horizontal axis describes the training data. The vertical axis reports evaluation outcomes."
+  source="https://proceedings.mlr.press/v162/langosco22a/langosco22a.pdf#page=4"
+  credit="Langosco et al. / ICML 2022 · CC BY 4.0 · cropped"
+  label="Further reading"
+  width={1238} height={622}
+/>
+
+In Figure 2, **2% belongs on the horizontal axis**. The authors report that randomizing the coin position in just 2% of training levels substantially improved goal generalization in this experiment. Blue shows how often the agent died or got stuck in training-distribution environments, where the coin was usually at the end. Orange shows how often it missed the coin and reached the end in test environments with randomized coin positions. Since the curves come from different evaluation conditions, adding their values would not give an overall failure rate. [Figure 2 and evaluation conditions](https://proceedings.mlr.press/v162/langosco22a/langosco22a.pdf#page=4) · [License for Figures 1 and 2](https://creativecommons.org/licenses/by/4.0/)
+
+## Part II, page 62 — What changes when we count both survival and mating?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge/ntu-62-english.png"
+  alt="Four panels show a short train, mate choice, a longer train alongside a predator, and finally an exaggerated train."
+  caption="The lecture uses four scenes to show how mate choice could favor a trait over successive generations."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=62"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The PDF tells the story in four panels. The recording already shows two peacocks side by side as Lee introduces the example. The 1:04:15 link marks his spoken introduction. [Recording at 1:04:20](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3860s)
+
+In the first panel, males differ in the length of their trains. In the second, a female preference changes their mating opportunities. In the third and fourth, the train becomes more elaborate, and the lecturer imagines circumstances in which it might make movement or survival harder. Sexual selection can operate through differences in **the number of offspring individuals leave in the next generation**. The illustration does not require natural selection to have a human-like plan or a single fixed scorecard. [1:04:15, the peacock analogy](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3855s)
+
+### Worked example 4. Can an individual with a lower chance of surviving leave more offspring?
+
+Let W be the expected number of offspring an individual alive today will leave by the next census. Suppose an individual that dies before breeding leaves no offspring. Let s be the probability it survives to breed and b the expected number of offspring conditional on surviving. Averaging over the two outcomes gives:
+
+<Math tex={String.raw`W=s\,b+(1-s)\,0=s\,b.`} display />
+
+
+| Hypothetical train | Survival probability s | Expected offspring if the individual survives b | Expected offspring per starting individual W |
+|---|---:|---:|---:|
+| Short | 0.80 | 2 | 1.60 |
+| Medium | 0.60 | 3 | 1.80 |
+| Very long | 0.35 | 4 | 1.40 |
+
+<Math tex={String.raw`W_{\rm mid}>W_{\rm short}\iff 0.60b_{\rm mid}>1.60\iff b_{\rm mid}>8/3.`} display />
+
+
+Individuals with medium trains have a lower chance of survival than those with short trains. Once they survive, however, their expected offspring count of 3 exceeds the threshold of about 2.67. Individuals with very long trains have the highest conditional offspring count, yet their overall expectation is only 1.40. Because b is already conditional on survival, the calculation needs no independence assumption. This one-generation model illustrates the trade-off in the slide.
+
+In a field study, it matters which feature of the train the researchers measured and in which population. Petrie and colleagues (1991) observed 10 males at a single display site and reported an association between train elaboration and mate choice. Takahashi and colleagues (2008) observed a Japanese population of Indian peafowl for seven years. They found no evidence of a female preference based on eyespot number, symmetry of arrangement, or train length. Both studies investigated mate choice. Neither supplies the survival rates in our table or an estimate of predation risk per extra centimeter of train. [1991 study](https://www.sciencedirect.com/science/article/pii/S0003347205804841) · [2008 study](https://www.sciencedirect.com/science/article/pii/S0003347207005301)
+
+## Part II, page 63 — How far can we trust a signal that once worked?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge/ntu-63-english.png"
+  alt="The upper box treats a longer train as a possible signal of health. The lower box names the outcome, survival. Two peacocks replace the two robots from page 61."
+  caption="The analogy puts a health signal and a survival outcome in the positions occupied by the two losses on page 61."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=63"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The lecturer asks us to imagine a population in which every bird has a short train and a slightly longer one signals good health. Does that observation tell us what happens at lengths far outside the observed range? The brief label at the bottom of page 63 says **survival**. In the recording, the lecturer also talks about **healthy offspring that can themselves reproduce**. This distinction is why the previous table kept s and W separate. [1:05:01, the discussion of offspring](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3901s) · [1:05:56, the range in which the signal holds](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3956s)
+
+### Worked example 5. If the indicator rises from 1 to 3, does the outcome keep improving?
+
+Here is a way to see what “within range” means. Let x denote the strength of a trait on a scale with no units. The selection score P rises with x. The outcome Q also includes a cost that grows as the trait becomes more pronounced. Q is a made-up score for this illustration and was never fitted to peacock survival data.
+
+<Math tex={String.raw`P(x)=x,\qquad Q(x)=4x-x^2=4-(x-2)^2,\qquad 0\leq x\leq 4.`} display />
+
+<Math tex={String.raw`(P,Q)(1)=(1,3),\qquad (P,Q)(2)=(2,4),\qquad (P,Q)(3)=(3,3).`} display />
+
+
+From 1 to 2, both scores gain a point. From 2 to 3, the selection score gains another point while the outcome loses one. Completing the square shows that Q peaks at x=2. Its derivative Q′(x)=4−2x changes sign there as well. The first two observations tell us **how the scores moved over that interval**. They cannot establish what happens at the third point. Think back to the inspection robot: when alerts are rare, one more alert might mean one more defect found. Once the robot can repeatedly flag the same part, that relationship needs a fresh measurement.
+
+## Part II, page 64 — Whose judgment counts when we say “protect people”?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge/ntu-64-english.png"
+  alt="On the left, L̂ stands for human welfare. In the middle, H stands for the Three Laws of Robotics. On the right, L(H) is VIKI’s interpretation of those laws."
+  caption="The film I, Robot illustrates three layers: human intent, the rules people write, and the system’s interpretation."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=64"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The lecturer uses the 2004 film *I, Robot* to put all three layers on one slide. **L̂** is the welfare people hoped to protect. **H** represents the Three Laws they used to express that aim. **L(H)** is the criterion the central AI, VIKI, derives from those laws. VIKI restricts people’s choices in the name of protecting them. The thought experiment leaves an important question open: do the people being protected accept those restrictions? [1:07:52, the Three Laws and VIKI’s interpretation](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=4072s)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge/stanford-cs221-four-targets.png"
+  alt="Four rows distinguish what people say, what they intend, what they would want if better informed, and what is morally right."
+  caption="Stanford CS221, page 4. Following an instruction and achieving a desirable outcome call for different evaluations."
+  source="https://stanford-cs221.github.io/spring2025-extra/modules/games/ai-alignment-problem.pdf#page=4"
+  credit="Caldwell, Kwak &amp; Rivera / Stanford CS221"
+  label="Further reading"
+  width={1600} height={1000}
+/>
+
+Page 4 of the Stanford CS221 slides asks four questions. **What did the person say? What did they mean? What would they want if well informed and given time to reflect? What would be ethically justified?** Take the rule “Block entry if it’s dangerous.” Once an independent check has established that the area is dangerous, checking whether the door locked tests compliance in that case. If people should also be able to make an informed choice, we need to observe whether anyone explained the risk and whether people could request entry again. The very same door now calls for a different set of observations. [CS221 slides, page 4](https://stanford-cs221.github.io/spring2025-extra/modules/games/ai-alignment-problem.pdf#page=4)
+
+### Worked example 6. Do total welfare and the lowest individual score favor the same plan?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-26-when-the-score-and-the-goal-diverge/welfare-two-rules.png"
+  alt="Two people score 9 and 1 under A, and 4 and 4 under B. A has the higher sum. B has the higher minimum."
+  caption="Changing how we combine the same four outcomes reverses the preferred plan."
+  source="https://web.stanford.edu/class/cs186/internal/lectures/alignment_1.html"
+  credit="JJo-0 · worked example based on the CS186 discussion"
+  label="Further reading"
+  width={1440} height={780}
+/>
+
+A Stanford CS186 class exercise gives teams proposed rules, including maximizing total welfare and improving the welfare of the worst-off individual. A red team looks for an undesirable outcome that still satisfies a rule. A blue team revises the rule to address that case. For our own two-plan comparison, suppose we can express two people’s welfare **on a shared scale that allows scores to be compared and added**. Higher values are better. [Discussion exercise in the CS186 lecture notes](https://web.stanford.edu/class/cs186/internal/lectures/alignment_1.html)
+
+<Math tex={String.raw`W_{\rm sum}(A)=9+1=10,\qquad W_{\rm sum}(B)=4+4=8.`} display />
+
+<Math tex={String.raw`W_{\rm min}(A)=\min(9,1)=1,\qquad W_{\rm min}(B)=\min(4,4)=4.`} display />
+
+
+Maximizing the sum selects A. A **maximin** rule maximizes the lowest individual score and selects B. Both maximizations are mathematically correct. The difference lies in **how each rule combines the outcomes for the people affected**. Any real application would first have to examine whether individual welfare can be observed and placed on a common scale. These equations illustrate the choice of rule. They do not identify a welfare function from the film or settle which rule is ethically preferable.
+
+### Worked example 7. What should a person count when checking the next version?
+
+The lecturer closes by observing that both an agent and its improvement procedure can change, and even simple intrinsic motivations can keep the process going. He proposes that people continue to watch the direction it takes. Return to our inspection robots. Take **a separate set of 20 defective parts** with independently confirmed defect locations. Compare the old and revised versions under the same conditions, recording what happened to the same part in each run. [Lecture conclusion at 1:08:20](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=4100s) · [Continued human observation at 1:08:55](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=4135s)
+
+| Outcome on the same defective part | Parts |
+|---|---:|
+| Both versions found it | 10 |
+| Only the old version found it | 5 |
+| Only the revised version found it | 2 |
+| Both versions missed it | 3 |
+
+<Math tex={String.raw`R_{\rm old}=(10+5)/20=0.75,\qquad R_{\rm new}=(10+2)/20=0.60.`} display />
+
+<Math tex={String.raw`\Delta R=(2-5)/20=-0.15.`} display />
+
+
+Why do only 2 and 5 remain in the last line? The 10 shared detections cancel in the subtraction. The 3 shared misses never enter either numerator. The revised robot gained 2 detections and lost 5, so recall fell by 15 percentage points on this sample. This calculation leaves open the false alarm rate on sound parts, performance under different lighting, and expected recall across the full production line. If the team studies the missed parts and repeatedly uses them to revise the robot, those parts become development cases. The next version can be checked on a separate set kept aside for that purpose.
+
+The PDF ends on page 64. A final diagram in the recording follows the agent, the module that improves it, and another stage that improves the module. It then adds a person monitoring the sequence. The paired test on twenty defective parts is one way to turn that closing question into an inspection task. [Video-only closing diagram at 1:09:00](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=4140s)
+
+[Chapter 1](/en/posts/self-improving-ai-01-overview/) began with “What improves what?” The loss functions in [Chapter 2](/en/posts/self-improving-ai-02-learning-targets/) let us write down a criterion, and the revisions in [Chapter 3](/en/posts/self-improving-ai-03-self-correction-to-rl/) let us change an answer or update weights. After Chapter 26, we can return to the inspection log with three distinct questions: **Which loss fell? Which defective parts did the revised robot newly detect? Which did it start missing?** The word “improvement” in a log can hide three very different answers.
