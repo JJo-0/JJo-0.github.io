@@ -1,0 +1,186 @@
+---
+title: How a drone senses walls with whiskers
+description: A 44.1 g drone uses a 3.2 g whisker sensor to estimate its distance from a wall. The figures trace
+  calibration, Kalman filtering and flight control, including the separate sensor setup used in complete darkness.
+pubDate: 2026-09-19 00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+category: robotics-embedded
+subcategory: tactile-flight
+type: paper-review
+tags:
+- frontier-candidate
+- tactile-flight
+slug: 2026-09-19-whisker-tactile-flight-news
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-19-whisker-tactile-flight-news
+translationKey: en-2026-09-19-whisker-tactile-flight-news
+---
+
+import NewsFigure from "@/components/post/NewsFigure.astro";
+import CandidateTable from "@/components/post/CandidateTable.astro";
+import Math from "@/components/post/Math.astro";
+import CandidateEquation from "@/components/post/CandidateEquation.astro";
+
+<NewsFigure media="whisker-fig-1" lang="en" priority />
+
+## 1. A small drone can feel a wall before it sees it
+
+<strong>Converting whisker deflection into a distance estimate and using it to steer lets a small drone follow transparent walls and surfaces in darkness.</strong> A study published in Nature Communications on September 18, 2026 mounted a 3.2 g whisker assembly on a small drone. Signal compensation, learned distance estimation, and flight control ran on board. The complete platform in Figure 1a weighs 44.1 g. Distinguishing sensor mass from all-up mass makes the payload cost clear.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Small drones have limited compute for interpreting camera or laser signals, limited thrust to carry sensors, and little margin for disturbances near a wall. Optical sensors may locate transparent objects unreliably, and in complete darkness vision-based state estimation becomes difficult. This study uses light contact through long whiskers to address those conditions.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+A tactile sensor alone does not confer autonomous flight. Its raw pressure signals must be interpreted as distance, and the aircraft must remain stable as contact applies a torque. The artificial whiskers make most sense as part of a sequence: <strong>contact → signal compensation → distance estimation → change of behavior</strong>.
+
+<small>Published September 18, 2026. Reviewed September 19, 2026. Values and experimental configurations follow the final Nature Communications paper. The October 3, 2025 arXiv abstract reports earlier summary figures. The Kalman-filter calculation below is an illustration rather than a fit to flight data.</small>
+
+## 2. Figure 1: What does the whisker base measure?
+
+### How a slender wire produces a pressure signal
+
+From top to bottom, Figure 1b shows a 20 cm nitinol wire, a resin-filled sensor package, three barometric sensors, a circuit board, and a data-acquisition chip. Contact bends the wire, transmitting force and moment to the base. The resulting deformation changes the pressure readings inside the package. Here barometric sensors measure deformation instead of flight altitude.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Several sensors on one whisker provide richer information than a binary contact signal. Three readings do not directly give three spatial coordinates. Contact position, wire deformation, mounting orientation, and aircraft motion all influence the signals. The quantity the researchers train their estimator to predict is obstacle depth along the aircraft’s forward direction.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Figure 1c compares the functional chain with a biological whisker. Sensory structures near the follicle turn contact of a hair into neural signals. The artificial device similarly reads deformation at the base of a long, lightweight structure. It borrows that principle without reproducing an animal’s entire tactile processing system.
+
+### What weighs 3.2 g, and what weighs 44.1 g?
+
+The pie chart in Figure 1a separates the airframe, battery, whiskers, laser and optical-flow equipment, and other components. The whisker system contributes 3.2 g to the 44.1 g assembly. These two figures describe the sensing hardware and the complete test platform, respectively.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+The flight-control microcontroller had 192 KB of RAM. The authors report that their algorithm used 34 KB and ran at 50 Hz. This demonstrates onboard tactile processing and action selection on a small computer. The network was not trained on the drone, and inference did not require a request to a powerful external computer for each decision.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 3. Even light contact can rotate an aircraft
+
+### A long lever arm gives a small force a moment
+
+When a whisker touches a wall, the aircraft experiences a reaction force. Stability depends on more than the magnitude of that force. A point of application far from the aircraft’s center produces torque. A small drone has limited excess thrust, so the same contact can disturb its attitude more than it would on a larger vehicle.
+
+The paper varies mounting angle and travel speed to investigate this interaction. It compares 72 flights across six mounting angles, three speeds, and four repetitions per condition. The selected 45° configuration offered a favorable balance between forward sensing range and flight stability under the tested conditions.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+A longer whisker can detect the wall before the body gets close, but the contact location can create a long moment arm. Changing the angle affects stability and forward reach at the same time. Characterizing the sensor therefore requires measuring both sensing range and attitude stability.
+
+### From contact detection to distance estimation
+
+A bumper switch can indicate contact with one bit. A continuous whisker signal can carry more information, but making it useful for control takes a model. During wall following, the aircraft must distinguish moving too far away and losing contact from moving too close and applying excessive force.
+
+The system uses continuously estimated tactile depth to follow a surface. Fluctuations in the estimate can feed straight into the controller. The next stages compensate the signal and estimate distance as part of an explicit path from measurement error to flight behavior.
+
+## 4. Figure 3: Four steps from pressure readings to a flight command
+
+<NewsFigure media="whisker-fig-3" lang="en" />
+
+### Panels a and b: Compensating for baseline drift
+
+The lower path in Figure 3a sends whisker readings through online compensation and tactile distance estimation to the flight state machine. The upper path contains velocity, attitude, and angular-rate controllers with feedback from the IMU and state estimator. Following the whiskers traces the sensing path. Following the return arrows from the vehicle closes the control loop.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+Panel b expands Tactile Drift Online Recurrent Compensation (TDORC). Temperature changes, convection from the propellers, recovery after contact, and vibration can all affect the raw signal. The algorithm collects data during intervals without contact, fits the changing baseline, and subtracts that component before filtering and contact detection.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+Why isolate intervals without contact? If a sustained push against a wall were included in the baseline, compensation could gradually erase the actual force signal. Slow thermal drift and sustained contact can occupy similar frequency bands. Selecting the right data for calibration matters.
+
+Figure 3b shows the sequence of data collection, least-squares fitting, parameter updates, and clearing the accumulated data. Compensation stabilizes the input to the distance estimator. It does not identify the obstacle. Separating baseline drift from distance-model error helps locate the source of a bad estimate.
+
+### Panel c: Combining a neural measurement with a motion prediction
+
+Each whisker’s three channels feed a small multilayer perceptron (MLP), yielding a left or right distance measurement. A Kalman filter (KF) combines those measurements with a prediction based on vehicle motion. The full model uses more of the relationship between the two whiskers and the direction of the wall. A simplified model uses a simpler relationship. Both are evaluated on the same data.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+The network learns a nonlinear mapping from sensor readings to distance. The Kalman filter weighs differences between the predicted state and a new measurement according to their uncertainties. Keeping these roles separate helps explain what changed when the authors added a motion model to the MLP.
+
+### Panel d: Estimated distance triggers behavior changes
+
+The state diagram connects initialization, hovering, forward motion, wall following, retreat, rotation, and landing. Contact can trigger wall following. Once the aircraft clears the obstacle it can resume forward motion. During exploration of a wider area, the system uses observed surfaces to represent the environment and considers remaining uncertainty and collision-prone corners when selecting the next direction.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+The attitude controller rapidly adjusts the aircraft to execute a commanded motion. The state machine chooses that motion. A small distance error can sometimes cause an incorrect state transition. Evaluating that effect requires looking beyond the error of an individual prediction.
+
+## 5. Why does a Kalman filter choose a value between the prediction and the measurement?
+
+<CandidateEquation lang="en" id="whisker-kalman" title="How much weight should a new distance measurement receive?" tex={String.raw`K=\frac{P^-}{P^-+R},\qquad d^+=d^-+K(m-d^-)\tag{1}`}>
+
+This one-dimensional example explains the vector Kalman filter in the paper. <Math tex={String.raw`d^-`} /> is the predicted distance before seeing the measurement m, and <Math tex={String.raw`d^+`} /> is the updated distance. <Math tex={String.raw`P^-`} /> is the prediction-error variance, R the measurement-error variance, and K the Kalman gain that sets the size of the correction.
+
+The innovation <Math tex={String.raw`m-d^-`} /> subtracts the prediction from the measurement. It is negative when the measurement is smaller and positive when it is larger. Multiplication by K selects how much of that discrepancy to add to the prediction, updating the estimate with the new information.
+
+The denominator adds prediction and measurement variances. Both have units of squared distance, making K dimensionless. A less certain prediction increases the weight assigned to the measurement. A larger measurement variance R decreases it. Substituting standard deviations for variances would give a different calculation.
+
+Suppose the predicted distance is 80 mm, the measurement is 74 mm, and their respective error variances are 9 mm² and 4 mm². K is 9/13 and the innovation is −6 mm. The updated distance is
+
+<Math display tex={String.raw`d^+=80+\frac{9}{13}(74-80)\approx75.846\;\mathrm{mm}\tag{2}`} />
+
+The measurement has smaller variance, so the result is closer to 74 mm. The updated variance is <Math tex={String.raw`(1-K)P^-=36/13\;\mathrm{mm}^2`} />. The full model in the paper uses matrix operations for two-sided measurements and their geometry. Elementwise division cannot substitute for matrix inversion. The example uses hypothetical values to illustrate the calculation.
+
+</CandidateEquation>
+
+Motion prediction can suppress an isolated measurement spike when the motion model stays consistent. If the aircraft motion or wall shape violates the model assumptions, the prediction itself can be wrong. The comparison table shows why adding a filter need not improve every dataset and every sensor channel.
+
+## 6. Figure 5 and Table 1: Where did accuracy improve?
+
+<NewsFigure media="whisker-fig-5" lang="en" />
+
+Figures 5a and 5d show the aircraft sweeping across a white board and a transparent wall during data collection. Panels b and e plot error magnitude horizontally and probability density vertically, showing whether observations concentrate at small errors. Panels c and f compare depth across consecutive samples for ground truth (orange), the laser, and the whisker estimates.<a href="#news-ref-4" data-news-citation="4" aria-label="Go to reference 4" data-astro-reload>[4]</a>
+
+Ground truth (GT) came from an external OptiTrack system measuring drone and wall positions. This reference evaluated the accuracy of the onboard estimator. For each surface, nine of twelve flights were assigned to training and three to testing.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The following entries come from Table 1 of the paper. All are mean absolute errors (MAE), with distance and reconstruction in millimeters and orientation in degrees. Smaller is better. The separate RMSE column is omitted here.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<CandidateTable id="whisker-results" label="Tactile distance estimation by surface, using MAE from Table 1 of the paper">
+
+| Surface and model | Left depth (mm) | Right depth (mm) | Orientation (°) | Reconstruction (mm) |
+|---|---:|---:|---:|---:|
+| White board · MLP | 6.40 | 5.36 | 6.18 | 5.34 |
+| White board · simplified KF | 6.19 | 5.13 | 5.96 | 4.73 |
+| White board · full KF | 4.23 | 4.72 | 5.55 | 4.12 |
+| Glass · MLP | 11.33 | 5.78 | 11.41 | 8.13 |
+| Glass · simplified KF | 10.09 | 5.11 | 10.01 | 8.49 |
+| Glass · full KF | 5.91 | 5.38 | 5.06 | 5.71 |
+
+</CandidateTable>
+
+The full KF improved left depth, orientation, and reconstruction in this comparison. However, <strong>for right depth on glass the simplified KF achieved 5.11 mm MAE, lower than the full KF’s 5.38 mm.</strong> The simplified KF also produced a larger reconstruction error on glass than the MLP alone. Performance depends on both the surface and the metric.
+
+These exceptions help explain what the model contributes. Combining the two sides with motion and geometric constraints can improve overall orientation while leaving an individual measurement axis worse. The relevant outcome for a controller might be depth, orientation, or the shape of the environment.
+
+Mean errors do not give worst-case errors. A single large error in a narrow passage can trigger a behavior change even when the mean is small. This motivates examining the tails and the time series. Assessing safety beyond these experiments would require other measures such as failure frequency, peak contact, recovery, and long-term drift.
+
+## 7. What configuration flew in complete darkness?
+
+### Exploring transparent walls and following a wall in darkness were separate tests
+
+The experiments include indoor navigation among transparent acrylic walls, active exploration to build an environmental representation, and wall following in complete darkness. The study did not demonstrate every function at its best accuracy simultaneously in darkness. The transparent-wall exploration used the IMU and optical flow for state estimation.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The dark-room experiment used an <strong>IMU and downward-facing time-of-flight sensor</strong>, with the <strong>MLP alone</strong> estimating tactile depth. The full-KF numbers in Table 1 belong to a separate experiment. The authors showed the aircraft following a rigid wall and a soft fabric surface for about seven seconds before retreating and landing.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The whiskers sensed contact with the surface ahead. The IMU measured inertial motion, and the downward-facing ToF sensor measured the distance below. The vehicle followed a forward surface without vision while still relying on these complementary sensors.
+
+### A soft wall is both a measurement target and a moving environment
+
+Fabric can deflect or wrinkle on contact. The aircraft seeks its distance to an obstacle, but the obstacle touching the whisker can move as well. Whisker deflection may therefore reflect both vehicle motion and surface deformation. This complicates transferring a distance relationship learned on a rigid plane to another material.
+
+The authors discuss friction and folding on soft surfaces and drift in state estimation. The laboratory demonstration establishes the feasibility of tactile flight. Long rescue missions with smoke, dust, heat, and strong winds would require separate validation. Those are prospective applications beyond the tested environment.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 8. Connecting measurement, learning, and control
+
+The paper shows how much information a small tactile sensor can provide and what it takes to use that information in flight. The mechanical placement of the whiskers, the airborne sensor baseline, the distance model, motion prediction, and behavior changes can each be tested separately.
+
+A reproduction study can proceed in three stages. First, test whether raw sensor readings respond consistently to actual contact. Next, evaluate distance generalization on data split by whole flights. Finally, test how stably the controller maintains contact and attitude with the measured errors. This is a suggested evaluation sequence for another device. The results reported here have not been independently reproduced.
+
+A practical limitation is variation between units. Small mechanical differences and variations in the pressure sensors make direct transfer difficult. For best performance the authors report roughly five or six calibration sweeps per device using an external reference, taking about 15–20 minutes. <strong>Successful onboard inference and calibration-free transfer to another device are distinct milestones.</strong><a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The authors’ GitHub repository provides the raw data and implementation, separating simulation, Crazyflie firmware, and materials for reproducing the distance estimates. The simulation instructions use Isaac Sim 4.1 and modified OmniDrones and Isaac Lab components. Recording the paper’s environment and any changed dependencies is necessary for comparison with a newer setup.<a href="#news-ref-5" data-news-citation="5" aria-label="Go to reference 5" data-astro-reload>[5]</a>
+
+Reporting estimation errors, in-flight failures, time spent recalibrating each unit, and performance on new surfaces separately reveals which subsystem actually improved. For another project this evaluation chain offers more guidance than a single best score.
+
+<strong>The accomplishment reaches beyond a flight in the dark.</strong> A small microcontroller interpreted weak contact signals, handled uncertainty, and fed the result back into the aircraft’s behavior. How well that chain transfers across sensors, airframes, and surfaces remains an open research question.
+
+## 9. Sources
+
+<a id="news-ref-1" href="https://www.nature.com/articles/s41467-026-77366-7" data-news-reference="1" target="_blank" rel="noopener noreferrer">[1]</a> Ye, C., de Croon, G., Hamaza, S. Whisker-based tactile flight for tiny drones. Nature Communications 17, 9743, 2026-09-18.
+
+<a id="news-ref-2" href="https://www.nature.com/articles/s41467-026-77366-7/figures/1" data-news-reference="2" target="_blank" rel="noopener noreferrer">[2]</a> Figure 1 of the same paper. Platform mass breakdown and whisker sensor construction.
+
+<a id="news-ref-3" href="https://www.nature.com/articles/s41467-026-77366-7/figures/3" data-news-reference="3" target="_blank" rel="noopener noreferrer">[3]</a> Figure 3 of the same paper. Connections between TDORC, the MLP, the KF, and the flight state machine.
+
+<a id="news-ref-4" href="https://www.nature.com/articles/s41467-026-77366-7/figures/5" data-news-reference="4" target="_blank" rel="noopener noreferrer">[4]</a> Figure 5 of the same paper. Error distributions and distance estimates on the test data.
+
+<a id="news-ref-5" href="https://github.com/BioMorphic-Intelligence-Lab/Whiskered-drone" data-news-reference="5" target="_blank" rel="noopener noreferrer">[5]</a> Official author repository with simulation, Crazyflie firmware, data, and reproduction code.

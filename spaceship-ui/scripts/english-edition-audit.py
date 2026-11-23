@@ -13,6 +13,8 @@ def check(value,message):
 def body(s): return s.split('---',2)[2]
 # These labels are prose inside TeX. Keep every operator, variable and number exact.
 translated_math_labels = {
+    'score가 제안한 작은 이동': 'small step proposed by the score',
+    '필요한 무작위성': 'required randomness',
     '최종 정답 수': 'Final number correct',
     '수정 후 정답': 'correct after revision',
     '수정 전 오답': 'incorrect before revision',

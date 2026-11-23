@@ -1,0 +1,153 @@
+---
+title: WeatherNext 3 Builds Forecasts Directly from Observations
+description: Google DeepMind’s WeatherNext 3 uses low-latency satellite observations to update global forecasts
+  every hour. The article examines its architecture, deployment, forecast skill, extreme rainfall, and reproducibility.
+pubDate: 2026-09-05
+slug: 2026-09-05-weathernext-3-frontier-one
+category: ai-machine-learning
+subcategory: weather-forecasting
+type: research-report
+tags:
+- frontier-one
+- ai-weather
+- weather-forecasting
+- google-deepmind
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+updatedDate: 2026-09-12
+translationKey: en-2026-09-05-weathernext-3-frontier-one
+translatedPosts:
+  ko-KR: 2026-09-05-weathernext-3-frontier-one
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+<NewsFigure media="cover-weathernext-3" lang="en" priority />
+
+> <strong>Frontier One · 2026-09-05</strong>
+> Editorial score: <strong>96 / 100</strong>
+> Evidence classification: <strong>INDUSTRY_TRIGGER + EARLY_SIGNAL</strong>
+> Google’s announcement of product and Cloud integration is an industry development. The performance paper, `arXiv:2609.03582v1`, was posted on September 3, 2026. Peer-reviewed publication had not been confirmed at the time of this review.
+
+## 1. What changed
+
+<strong>WeatherNext 3 adds low-latency satellite observations to a global forecast pipeline that previously waited for numerical weather analyses. This lets it initialize a new forecast every hour.</strong>
+
+## 2. Why the problem is difficult
+
+In operational forecasting, <strong>the age of the observations</strong> matters as much as accuracy. Many global AI systems start from an analysis produced by numerical weather prediction (NWP). The WeatherNext 3 paper explains that analyses are produced every six hours. Once release latency is included, the newest available state may lag the atmosphere by six to twelve hours.
+
+That delay matters most for rapidly changing conditions, including precipitation, surface temperature, and storms. Combining high spatial and temporal resolution with a global 15-day probabilistic ensemble also increases the computational load and the range of data the system must handle.
+
+## 3. Limits of the earlier approach
+
+WeatherNext 2 used a Functional Generative Network (FGN) and showed strong medium-range probabilistic performance. Its basic structure relied on a 0.25° grid and six-hour steps. Higher temporal resolution required a separate upsampler.
+
+WeatherNext 3 extends the same FGN family. Its design <strong>handles analyses, satellite imagery, precipitation, station data, and tropical cyclone data at different resolutions within a single model.</strong>
+
+## 4. The method in three steps
+
+### ① Ingest recent satellite observations directly
+
+The model receives an 11-channel geostationary satellite mosaic on a 0.1° grid at one-hour intervals. Operational latency for the latest frame is about an hour, letting the system incorporate recent atmospheric conditions sooner than if it waited for the next analysis alone.
+
+![Inputs and outputs of WeatherNext 3](https://arxiv.org/html/2609.03582v1/Figures/fig1_alt2.png)
+
+*Figure 1. WeatherNext 3 inputs and outputs. Source: Rasp et al., arXiv:2609.03582v1, Figure 1. Paper licensed under CC BY 4.0.*
+
+### ② Combine resolutions on a common mesh
+
+The 0.25° and 0.1° data have their own encoders and decoders and interact on a common icosahedral processor mesh. WeatherNext 3 generates a 64-member ensemble out to 15 days. For selected surface variables it directly predicts hourly outputs at 0.1° resolution.
+
+### ③ Predict observations at off-grid locations
+
+A sparse output head for stations uses elevation and land–sea information alongside latitude and longitude. It supports queries for 2 m temperature and dew point at arbitrary locations and times. The authors tested generalization at stations excluded from training.
+
+## 5. Experiments and results
+
+In a held-out 2024 evaluation, medium-range upper-air variables showed roughly a <strong>5% improvement in continuous ranked probability score (CRPS)</strong> over WeatherNext 2. The authors interpreted this as about <strong>six extra hours of forecast lead time</strong> at comparable skill.
+
+At held-out METAR stations and short lead times, CRPS for 2 m temperature was up to <strong>30%</strong> lower than for WeatherNext 2 and up to <strong>40%</strong> lower than for ECMWF ENS. Lower CRPS indicates a better probabilistic forecast.
+
+![Evaluation at METAR stations excluded from training](https://arxiv.org/html/2609.03582v1/Figures/fig2_station_eval_standalone.png)
+
+*Figure 2. Evaluation at held-out METAR stations. Source: Rasp et al., arXiv:2609.03582v1, Figure 3. CC BY 4.0.*
+
+For precipitation at early lead times, the WN3 PARDIG head reportedly reduced CRPS by up to approximately <strong>60%</strong> against IMERG, <strong>30%</strong> against MRMS, and <strong>10%</strong> against rain gauges. Initializing every hour instead of every six hours provided about <strong>two to three additional hours</strong> of operational lead time.
+
+![WeatherNext 3 precipitation evaluation and hourly initialization](https://arxiv.org/html/2609.03582v1/Figures/fig3_combined.png)
+
+*Figure 3. Precipitation CRPS, Brier scores, hourly initialization, and reliability. Source: Rasp et al., arXiv:2609.03582v1, Figure 4. CC BY 4.0.*
+
+In a separate announcement, Google said it had begun integrating WeatherNext 3 into Search, Gemini, Google Maps, the Google Maps Platform Weather API, and Earth Engine. This is <strong>Google’s account of its own rollout</strong>. Peer review of forecast performance addresses a different question.
+
+## 6. Limitations and counterevidence
+
+Three limitations qualify these results.
+
+First, the report was an <strong>arXiv v1 preprint</strong>. Second, too few true positives were available to evaluate extreme precipitation reliably. The authors <strong>limited the evaluation to moderate precipitation up to 4 mm per six hours</strong> and left extremes to future work. Performance in heavy rain remains an open question.
+
+Third, individual ensemble samples exhibit hexagonal artifacts that trace the model mesh, along with temporal discontinuities at six-hour outer-step boundaries. The authors report that these effects are especially apparent in precipitation and station outputs.
+
+![Spatial and temporal artifacts in WeatherNext 3](https://arxiv.org/html/2609.03582v1/Figures/fig5_combined.png)
+
+*Figure 4. Mesh artifacts in precipitation and a temperature discontinuity at a six-hour boundary. Source: Rasp et al., arXiv:2609.03582v1, Figure 7. CC BY 4.0.*
+
+The 2026 quasi-real-time comparison covered only about six weeks, from July 1 to August 11. Small differences over this window cannot establish long-term performance. The review also did not confirm the release of full WN3 weights or complete reproduction code.
+
+## 7. What could change in practice?
+
+An important competitive question for AI weather forecasting may become <strong>how quickly a model can use real observations</strong>, alongside how well it reproduces an existing analysis.
+
+A conventional system separates observation, data assimilation, forecasting, and post-processing. Connecting these steps more directly in a probabilistic model could change the architecture of an operational forecast system beyond simply providing a surrogate for NWP.
+
+Outputs such as 100 m wind, cloud cover, and solar radiation could support wind and solar operations. The material reviewed contained <strong>no independent operational evidence</strong> of a reduction in power-generation forecast error or grid costs.
+
+## 8. What evidence to watch for
+
+The following developments would strengthen the case:
+
+- Peer-reviewed publication
+- At least a year of independent comparison in real-time operations
+- Separate validation for extreme precipitation and hazardous weather
+- Full model weights and code, or a publicly reproducible implementation
+- Measured operational outcomes in renewable energy, logistics, or disaster response
+
+Such evidence would support treating WeatherNext 3 as a <strong>change in weather infrastructure</strong> as well as a new AI model.
+
+## 9. Sources
+
+1. Stephan Rasp et al., <strong>WeatherNext 3: Increasing resolution and performance of global weather models with raw observations</strong>, arXiv:2609.03582v1, 2026-09-03.
+   - Abstract: https://arxiv.org/abs/2609.03582
+   - HTML / Figures: https://arxiv.org/html/2609.03582
+   - Paper license: CC BY 4.0
+2. Google, <strong>Introducing WeatherNext 3, our most advanced and accurate global weather AI model</strong>, 2026-09-03.
+   - https://blog.google/innovation-and-ai/models-and-research/google-deepmind/introducing-weathernext-3/
+3. Google Korea, <strong>Introducing WeatherNext 3, a more precise and powerful AI model for global weather forecasting</strong>, September 3, 2026.
+   - https://blog.google/intl/ko-kr/company-news/technology/introducing-weathernext-3-kr/
+4. Google DeepMind, WeatherNext.
+   - https://deepmind.google/science/weathernext/
+
+## Original images on the official website
+
+The following Google Blog images are <strong>official visual references</strong> for the system. The blog page supplied no separate reuse license that this review could confirm. Links lead directly to the originals.
+
+- WeatherNext 3 hero image
+  https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_Title.width-200.format-webp.webp
+- Google Blog system architecture image
+  https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_diagrams_fig-01.wid.width-1200.format-webp.webp
+- Google Blog precipitation comparison image
+  https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_diagrams_fig-03.width-1200.format-webp.webp
+
+### Links to the CC BY 4.0 paper figures used in the article
+
+- Figure 1 · Model overview
+  https://arxiv.org/html/2609.03582v1/Figures/fig1_alt2.png
+- Figure 3 · Held-out station evaluation
+  https://arxiv.org/html/2609.03582v1/Figures/fig2_station_eval_standalone.png
+- Figure 4 · Precipitation evaluation
+  https://arxiv.org/html/2609.03582v1/Figures/fig3_combined.png
+- Figure 7 · Artifact visualization
+  https://arxiv.org/html/2609.03582v1/Figures/fig5_combined.png

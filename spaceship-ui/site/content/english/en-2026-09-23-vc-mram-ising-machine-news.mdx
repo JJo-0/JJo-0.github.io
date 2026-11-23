@@ -1,0 +1,162 @@
+---
+title: How 96,000 magnetic spins tackle a routing problem
+description: A VC-MRAM system uses random magnetization reversals as Ising spins. The study measures 45 ns iterations
+  and projects a 1 ns iteration time, with an estimated device energy of 40 fJ.
+pubDate: 2026-09-23 00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: 2026-09-23-vc-mram-ising-machine-news
+category: finance-industry
+subcategory: spintronic-ising-machine
+type: paper-review
+tags:
+- frontier-candidate
+- semiconductor
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-23-vc-mram-ising-machine-news
+translationKey: en-2026-09-23-vc-mram-ising-machine-news
+---
+
+import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import BeginnerGuide from '@/components/post/BeginnerGuide.astro';
+
+<BeginnerGuide lang="en" title="How a difficult optimization problem becomes an arrangement of magnets">
+
+<NewsFigure media="sep23-mram-fig-1" priority compact lang="en" />
+
+Chip designers must connect many blocks with wires. Excessively long routes and conflicts use space and slow the chip. Trying every placement and route quickly becomes impractical. The researchers encoded candidate answers as zeros and ones, or small magnets pointing up and down, and let coupled magnetic states search for low-energy arrangements.
+
+- An <strong>Ising spin</strong> is a two-state variable originally used to describe magnetism. In an optimization problem, <Math tex={String.raw`s_i\in\{-1,+1\}`} /> represents one choice.
+- A <strong>Hamiltonian</strong> is an energy function that scores candidate answers. The problem is encoded so the lowest energy corresponds to the desired solution.
+- <strong>MRAM</strong> is nonvolatile memory that stores information as a resistance determined by magnetic orientation.
+- <strong>VCMA</strong> stands for voltage-controlled magnetic anisotropy. A short voltage pulse changes the barrier to reversing a magnet.
+- <strong>EDA</strong> stands for electronic design automation, including chip placement, routing, and verification.
+
+Figure 1 connects four stages. Panel a shows how pulse width controls a magnet’s switching probability, b shows the VC-MRAM chip and FPGA controller, c maps an optimization problem to an Ising energy, and d introduces global routing and layer assignment in chip design.
+
+<strong>The problem must first be encoded in an energy function. The stochastic hardware can then search repeatedly and rapidly for candidate answers with low energy.</strong>
+
+</BeginnerGuide>
+
+## 1. How memory fluctuations became a computing resource
+
+A study published in *Nature Electronics* on September 22, 2026, demonstrated a spintronic Ising machine on a VC-MRAM chip containing 96,000 voltage-controlled magnetic anisotropy magnetic tunnel junctions (VCMA-MTJs). Varying the pulse width tunes the probability of a bit flip from near zero to near one. The system uses those stochastic updates to search for solutions to combinatorial optimization problems.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The demonstrations included global routing and layer assignment for chip design. The authors translated each problem into an Ising Hamiltonian and showed how candidate solutions improved on the hardware. In a separate dense Max-cut evaluation with 60 nodes, the measured system used approximately 45 ns per iteration and 40 mW. A time-to-solution of 130.5 μs gave <Math tex={String.raw`1.92\times10^5`} /> solutions/s/W.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+The headline 0.3–1 ns and 40 fJ refer to a different scale. The 0.3–1 ns range describes the short write pulses applied to a device and the target timescale of a spin update. The 40 fJ/spin value is a device-level estimate assuming 2 V, 100 kΩ, and 1 ns. The demonstrated system used 45 ns per iteration and 40 mW.
+
+The authors project a 1 ns iteration and <Math tex={String.raw`3.45\times10^8`} /> solutions/s/W for a future integrated ASIC. Those figures describe a proposed implementation.
+
+<small>Evidence reviewed includes the peer-reviewed paper, its public Supplementary Information, and the researchers’ public code and data repository. Figures 1–4 are reproduced in full with original colors for commentary. Parts of the paper require a subscription. The account here uses claims that can be checked in the public abstract, figures, and supplement.</small>
+
+## 2. Why can a chip-routing problem be represented by magnets?
+
+Global routing connects terminals on a grid while reducing total wire length and congestion. A shortest path between two points is relatively straightforward. With multiple terminals, obstacles, right-angle routes, shared segments, and collision constraints, the number of candidates grows quickly. Layer assignment distributes wire segments across metal layers to reduce vias and conflicts. Each choice changes the cost of neighboring choices.
+
+CPUs and GPUs can also solve these problems. Simulated annealing, integer programming, heuristic search, and specialized accelerators reduce the search space in different ways. An Ising machine encodes binary decisions as spins, combines the objective and constraints in one energy function, and searches for low energy through stochastic updates. A faulty mapping may give low energy to an invalid route. Understanding the objective and its penalties is therefore essential to interpreting the hardware speed.
+
+<CandidateEquation lang="en" id="mram-ising" title="How can a good answer be given a low energy?" tex={String.raw`H(\mathbf{s})=-\sum_{i<j}J_{ij}s_i s_j-\sum_i h_i s_i\tag{1}`}>
+
+<Math tex={String.raw`s_i`} /> is the spin for choice i and takes the value +1 or −1. The coupling <Math tex={String.raw`J_{ij}`} /> rewards or penalizes spins i and j for pointing in the same or opposite directions. <Math tex={String.raw`h_i`} /> biases an individual spin. Spins are dimensionless and discrete. The coefficients used in the mapping determine the units of the Hamiltonian. For optimization, the ordering of candidate energies matters more than their absolute values.
+
+For a problem that favors two equal spins, choose <Math tex={String.raw`J_{12}>0`} />.
+
+The term <Math tex={String.raw`-J_{12}s_1s_2`} /> then equals −J for equal spins and +J for unequal spins. Minimizing energy favors equal states. Reversing the sign can favor unequal states, as in Max-cut. Real routing adds requirements such as connecting terminals, avoiding cycles, and following rectilinear paths. The supplement combines an objective term with four constraint Hamiltonians weighted by penalties.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+This is an approximate optimization method. The authors express the combinatorial problem in quadratic Ising form, then use stochastic hardware to explore low-energy candidates. A weak penalty can favor a short route that breaks connectivity rules, while an excessive penalty can obscure differences in the objective. Supplementary Note 5 examines how solution probability varies with penalty choice.
+
+</CandidateEquation>
+
+## 3. Figure 2. Why make a magnet switch probabilistically?
+
+<NewsFigure media="sep23-mram-fig-2" lang="en" />
+
+Panel a shows the layers of a VCMA-MTJ. Magnetic layers on either side of an MgO barrier have low resistance when parallel (P) and high resistance when antiparallel (AP), making the two states readable as bits. Panel b illustrates a voltage pulse lowering the magnetic energy barrier temporarily. Pulse width and operating conditions determine the chance of reversal.
+
+Panel c plots switching probability versus external magnetic field, and d gives P→AP and AP→P probabilities versus pulse width. A pulse near 0.4 ns rarely flips the magnet. Pulses around 0.6–0.7 ns give intermediate probabilities and longer pulses switch it nearly every time. Panel e shows repeated resistance measurements. At 0.50 ns one state persists, at 0.65 ns the state changes irregularly, and at 0.80 ns it changes on almost every pulse. Panel f relates this behavior to an Ising spin’s flip probability.
+
+<CandidateEquation lang="en" id="mram-switch" title="How does a sigmoid translate pulse width into switching probability?" tex={String.raw`P_{\mathrm{sw}}(W_v)=\frac{1}{1+\exp[-\alpha(W_v-W_0)]}\tag{2}`}>
+
+<Math tex={String.raw`P_{\mathrm{sw}}`} /> is the probability of magnetization reversal after one pulse. <Math tex={String.raw`W_v`} /> is pulse width, <Math tex={String.raw`W_0`} /> is the width at which switching probability is one half, and <Math tex={String.raw`\alpha`} /> sets the steepness of the curve. The exponent must be dimensionless, so α has units of inverse time when W is a time. The equation gives an empirical calibration for the S-shaped curve in Figure 2d.
+
+When <Math tex={String.raw`W_v=W_0`} />, the exponent is zero, the denominator is two, and the probability is 0.5. Pulses much shorter than the midpoint give probabilities near zero. Much longer pulses approach one. Intermediate probabilities permit occasional energetically unfavorable moves, which can help the search escape a local minimum.
+
+If W₀ and α vary across devices, the same pulse gives different probabilities. The authors use calibration and pulse-width generation. The supplement examines variation and tests of true randomness. Stochastic switching by itself does not guarantee the intended Boltzmann distribution without calibration.
+
+</CandidateEquation>
+
+## 4. Figure 3. Did all 96,000 spins optimize one problem simultaneously?
+
+<NewsFigure media="sep23-mram-fig-3" lang="en" />
+
+Figure 3a shows the fabricated VC-MRAM chip, including its write/read circuit, MRAM array, and power and bias blocks. Panels b–c show memory-cell cross sections. Panel d shows how the system operates. The user supplies J and h, the FPGA calculates the local energy change, and the controller translates it into pulse width for reading and writing VC-MRAM spins.
+
+This is a <strong>hybrid system</strong>. There are 96,000 physical spins on the chip, while the pink FPGA region in Figure 3 performs part of the coupling computation and control. Physical storage capacity and the number of variables updated together in a particular problem are distinct. Likewise, a pulse at a device and an iteration of the complete system have different durations.
+
+The study connects a physical memory process and rapid stochastic updates to an EDA problem mapping. A remaining bottleneck is the integration of coupling calculations, data movement, and pulse generation. The projected ASIC figures in the supplement assume a shorter control path than the one measured in the Figure 3 system.
+
+## 5. Figure 4. How does a route emerge?
+
+<NewsFigure media="sep23-mram-fig-4" lang="en" />
+
+The red dots in panel a are required terminals. Purple dots are optional Steiner vertices where paths can meet. In b, spins represent horizontal and vertical edges. Panel c combines Hamiltonians for minimum cost, terminal connectivity, acyclicity, Steiner-vertex use, and rectilinearity.
+
+In panel d the Hamiltonian falls over successive iterations. Approaching the dashed red ground-state line means the candidate route has improved. Panel e shows routes at iterations 0, 900, 925, and 935. Extraneous edges and violations gradually disappear, leaving a short rectilinear tree connecting the terminals. Across repeated runs, panel f shows the share of invalid solutions falling and the share of optimal solutions increasing with iteration count.
+
+The example does not give a fixed requirement of 935 iterations. Success probability and iteration count vary with the instance, initial state, penalties, and annealing schedule. This is why comparisons use the time-to-solution at a chosen success probability as well as the duration of one run.
+
+<CandidateEquation lang="en" id="mram-efficiency" title="How was the efficiency of 1.92×10⁵ solutions/s/W calculated?" tex={String.raw`\eta_{\mathrm{sys}}=\frac{1}{P_{\mathrm{sys}}\,T_{\mathrm{sol}}}\tag{3}`}>
+
+<Math tex={String.raw`P_{\mathrm{sys}}`} /> is system power in watts and <Math tex={String.raw`T_{\mathrm{sol}}`} /> is the time in seconds required to reach the target success probability. Their product has units of watt-seconds, so the result is expressed as solutions/s/W. Using the measured system values <Math tex={String.raw`P=0.040\,\mathrm{W}`} /> and <Math tex={String.raw`T=130.5\,\mu\mathrm{s}`} /> from the supplement gives <Math tex={String.raw`1/(0.040\times130.5\times10^{-6})\approx1.92\times10^5`} />.
+
+Here T applies to a 60-node dense Max-cut problem with 50% connectivity and an 80% success criterion. It cannot be applied unchanged to arbitrary global-routing problems. The 40 fJ/spin estimate uses <Math tex={String.raw`V^2t/R`} /> with 2 V, 100 kΩ, and 1 ns for one device update. The 40 mW figure covers the FPGA and current system operation. Neither value represents the energy required for all 96,000 spins to solve a problem.
+
+The ASIC projection assumes a 1 ns iteration and higher efficiency. Testing that projection requires a fabricated ASIC evaluated on the same problem, at the same success rate, and with power measured across the same system boundary.
+
+</CandidateEquation>
+
+## 6. What differs from existing approaches?
+
+<CandidateTable id="mram-baselines" label="How VC-MRAM and other optimization approaches search for solutions">
+
+| Approach | How candidates change | Strength | What a comparison needs to include |
+|---|---|---|---|
+| CPU/GPU simulated annealing | Random numbers and numerical calculations update spins | Flexible, easily reconfigured for large problems | Software overhead and data movement under comparable conditions |
+| FPGA Ising machine | Digital logic computes local fields and flips | Explicit control and reconfigurability | Energy of the physical random device and system-level integration |
+| Oscillators and other annealers | Oscillator phases or other physical states are coupled | Parallel search | Embedding overhead and coupling density |
+| Existing STT/SOT MRAM designs | Current switches the magnetization of a stochastic bit | Nonvolatile storage and memory-process compatibility | Write energy, duration, and peripheral circuitry |
+| This VCMA-MTJ design | Pulse width controls switching probability | Sub-nanosecond pulses and potential for low device energy | Measured FPGA-coupled iteration of 45 ns. ASIC performance is projected. |
+
+</CandidateTable>
+
+The Ising equation, Max-cut and routing mappings, and annealing with stochastic bits all have precedents. Here the researchers demonstrate pulse-width-controlled probability in a CMOS-integrated VC-MRAM array and connect a physical memory with 96,000 spins to a system controller running industrial EDA problems.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The machine implements a heuristic that can quickly find good answers to particular instances. It does not prove that all NP-hard problems can be solved exactly in polynomial time. Comparing machines requires solution quality, success probability, mapping overhead, and controller energy.
+
+## 7. What did the researchers demonstrate, and what remains open?
+
+First, device stochasticity became a controllable computational resource. Figure 2 shows the continuous relation between pulse width and switching probability, alongside repeated switching traces. Second, the array and controller operated together, documented by the chip photograph, cross sections, and system diagram in Figure 3. Third, the team formally mapped EDA problems and showed candidate routes improving.
+
+End-to-end integration remains open. The measured 45 ns iteration includes FPGA-based local-field calculation and control. A 1 ns iteration requires the memory, local fields, schedule, reads, and writes to operate together within an ASIC. Dense coupling adds another cost. Spins do not all share direct physical connections, so calculating and transmitting the J matrix can become more expensive as problems grow.
+
+Variation and endurance also matter. Calibration can correct probability differences, but temperature, time, or aging may shift W₀ and require recalibration. A low-energy pulse may still lead to a high energy per solution if a run needs many iterations and retries. Fair benchmarking must also match solution quality and target probability and count host preprocessing, mapping time, and controller power.
+
+## 8. What to look for next
+
+First, can a fully integrated ASIC deliver the projected 1 ns iteration in silicon? Second, how do solution quality and time-to-solution change on larger routing and layer-assignment instances beyond the 60-node Max-cut test? Third, detailed mappings would show how many spins operate simultaneously on a real instance and how defects and variation are handled. Fourth, wall-plug power and a system boundary including the host and I/O would clarify the end-to-end cost.
+
+<strong>The experiment shows how tunable stochastic MRAM devices can act as spins in a physical optimization system.</strong> The measured figures are 45 ns per iteration, 40 mW, and 1.92×10⁵ solutions/s/W. The future ASIC projection is 1 ns and 3.45×10⁸ solutions/s/W. Those measurements and engineering targets describe different stages of development.
+
+## 9. Sources
+
+<a id="news-ref-1" data-news-reference="1" href="https://www.nature.com/articles/s41928-026-01700-6" target="_blank" rel="noopener noreferrer">[1] A CMOS-integrated spintronic Ising machine with 96,000 spins. Nature Electronics, September 22, 2026. Abstract, Figures 1–5, Methods, and rights information.</a>
+
+<a id="news-ref-2" data-news-reference="2" href="https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41928-026-01700-6/MediaObjects/41928_2026_1700_MOESM1_ESM.pdf" target="_blank" rel="noopener noreferrer">[2] Supplementary Information. Ising mapping, penalties, device calibration, randomness tests, system latency and power, and measured and projected benchmarks.</a>
+
+<a id="news-ref-3" data-news-reference="3" href="https://github.com/SpinX-Lab/Voltage-controlled-Spintronic-Ising-Machine" target="_blank" rel="noopener noreferrer">[3] SpinX-Lab, Voltage-controlled Spintronic Ising Machine. Public repository with code, data, and reproduction materials for the paper.</a>

@@ -1,0 +1,172 @@
+---
+title: Can more GPUs speed up optimization? Inside mPDLP
+description: NVIDIA’s multi-GPU linear programming solver illustrates how communication can become the bottleneck. Its reported iteration
+  and end-to-end times tell different stories, particularly for small problems and uneven partitions.
+pubDate: 2026-10-10
+updatedDate: 2026-10-21
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-10-cuopt-mpdlp-multi-gpu-news
+category: software-engineering-cs
+subcategory: distributed-linear-optimization
+type: research-report
+tags:
+- frontier-one
+- linear-programming
+- gpu-computing
+- numerical-optimization
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-10-10-cuopt-mpdlp-multi-gpu-news
+translationKey: en-2026-10-10-cuopt-mpdlp-multi-gpu-news
+---
+import Math from '@/components/post/Math.astro';
+
+> **Commentary in progress.** `SELECTED` · Top pick for October 10, 2026 KST · Editorial score 86/100 · `INDUSTRY_TRIGGER`. This review covers NVIDIA’s own announcement. Independent replication, a complete comparison against the original figures, and a review of actual search data are still pending.
+
+## 1. Will adding GPUs get us to an answer sooner?
+
+More processors alone do little for an optimization problem unless we also decide who computes what and where the inputs to the next calculation come from. NVIDIA’s mPDLP distributes a large linear program across GPUs while trying to limit transfers. Its central design decision is **how to partition the connections between variables and constraints**.
+
+The evidence comes from a technical article NVIDIA published on October 7 and measurements the company made itself. This review has not established an independent replication, a peer-reviewed version, the precise announcement time, or the implementation version used for benchmarking.
+
+## 2. Why can’t we simply split a large problem?
+
+If one warehouse ships more, another can ship less because their combined shipments have to meet demand. Decisions in a large planning problem interact in the same way. One constraint can tie together many variables, and one variable can affect several constraints. Even when two devices split the arithmetic, each may need the other’s current values.
+
+A GPU that finishes its arithmetic still has to wait for the next input from another device. Copying everything on every iteration may increase the volume of transfers. Fitting the problem in memory, running iterations, and verifying that the solution satisfies the actual constraints are different tasks. A single runtime obscures which task improved.
+
+## 3. Variables, constraints, and sparse matrices
+
+Linear programming (LP) finds continuous variable values that minimize a linear cost subject to linear constraints. A low-cost plan that falls short of demand is infeasible. When several plans meet demand, their costs can be compared. A decision such as the number of vehicles requires an additional integrality constraint. An ordinary LP solution need not solve that integer program.
+
+NVIDIA explains the method using the following equality-constrained form. Practical models can also use inequalities and other forms of the objective.
+
+<span id="mpdlp-lp" />
+
+<Math display label="Source equation for a linear program with equality constraints and variable bounds" tex={"\\min_x c^T x \\quad \\text{s.t.}\\quad Ax=b,\\qquad l\\le x\\le u."} />
+
+`x` contains the `n` decision variables, and `c` contains their cost coefficients. Vector `b` holds the right-hand sides of `m` constraints. Matrix `A` links them to the variables and has dimensions `m×n`. Vectors `l,u` specify each variable’s lower and upper bounds. Units depend on the model. If shipments are measured in units of goods and `c` in cost per unit, the objective measures cost. Different constraint rows may have different units.
+
+Most entries of a sparse matrix are zero. A zero indicates the absence of a direct connection through that coefficient. Sparsity can reduce storage and arithmetic, but multi-GPU communication depends on how the remaining connections cross device boundaries.
+
+## 4. What gets partitioned and what gets exchanged?
+
+The first diagram distinguishes the input model, the iterative calculations, and the solution check. Faster iterations leave the other stages in the total runtime. The reported end-to-end time includes presolve, transposing matrix A on the CPU, graph partitioning, and postsolve. These tasks matter when interpreting a speedup in the GPU iteration stage.
+
+<figure>
+<a href="/news/editorial-mpdlp-20261010/system.en.svg" target="_blank" rel="noopener noreferrer"><img src="/news/editorial-mpdlp-20261010/system.en.svg" alt="Roles of the input model, partitioning and iteration, stopping checks during iteration, and final solution verification" width="960" height="260" /></a>
+<p><a href="/news/editorial-mpdlp-20261010/system.en.svg" target="_blank" rel="noopener noreferrer">Open full-size figure in a new tab</a></p>
+<figcaption>Explanatory diagram by JJo. The boxes identify the roles of the calculations in the source. They do not specify execution order, relative duration, or product architecture.</figcaption>
+</figure>
+
+In the next diagram, circles and squares represent variables and constraints. A device boundary that cuts an edge can create a need for a value on the other side. This illustrative graph uses invented connections to show both the edges crossing the boundary and the work assigned to each device. It contains no measurements from the original figure.
+
+<figure>
+<a href="/news/editorial-mpdlp-20261010/partition.en.svg" target="_blank" rel="noopener noreferrer"><img src="/news/editorial-mpdlp-20261010/partition.en.svg" alt="A graph of variables and constraints, with connections crossing the boundary between two partitions" width="960" height="340" /></a>
+<p><a href="/news/editorial-mpdlp-20261010/partition.en.svg" target="_blank" rel="noopener noreferrer">Open full-size figure in a new tab</a></p>
+<figcaption>Explanatory diagram by JJo. The node counts and connections are examples devised for this article.</figcaption>
+</figure>
+
+## 5. How the methods differ in three steps
+
+Single-GPU PDLP avoids inter-device communication and uses the memory and compute available on one device. D-PDLP divides a matrix into two-dimensional blocks and requires communication to combine distributed partial results. Google OR-Tools PDLP is a reference for the underlying mathematics. It uses a different implementation from NVIDIA’s multi-GPU product and does not supply the benchmark baseline here.
+
+First, mPDLP represents variables and constraints as two types of nodes, with an edge for each nonzero entry of `A`. Second, it uses a minimum-cut approach to reduce the connections crossing device boundaries. Third, each device performs its assigned calculations and exchanges the remote values it needs. The partitioning takes relationships on both the variable and the constraint side into account.
+
+A minimum cut aims to sever relatively few connections. Minimizing edge crossings or transfer volume and balancing work across GPUs are separate objectives. If one GPU does nearly all the work, the others can wait even with little data to exchange. NVIDIA acknowledges that the current partitioner does not adequately account for compute load.
+
+## 6. Where communication enters the equations
+
+The primal-dual hybrid gradient (PDHG) method underlies PDLP. The two updates below follow the sign convention in the source. Here `k` counts iterations, `y` is the dual variable for the equality constraints, and `τ,σ` are step sizes. Convergence requires appropriate scaling and step sizes. The cost coefficient c and Aᵀy must share units of cost per variable unit. Within each constraint row, b and Ax must also have matching units. The step sizes control the numerical updates at these scales and carry no interpretation as elapsed seconds.
+
+<span id="mpdlp-primal" />
+
+<Math display label="Source equation for the PDHG primal update" tex={"x^{k+1}=\\operatorname{proj}_{[l,u]}\\!\\left(x^k-\\tau(c-A^Ty^k)\\right),"} />
+
+The first equation moves `x` in response to cost and the constraints, then projects each variable back into its permitted interval `[l,u]`. For example, a value above the upper bound can be clipped to the bound. Checking the equality constraints still requires comparing `Ax` with `b`.
+
+Consider the shipment example below. Two warehouses have capacities of 6 and 8. If a provisional update gives shipments of 7 and 3, projection yields 6 and 3. Both now meet their capacity bounds, but the total of 9 falls short of demand of 10. These are **invented values illustrating projection**. They are neither intermediate results nor a convergence test from an mPDLP run.
+
+<span id="mpdlp-dual" />
+
+<Math display label="Source equation for the PDHG dual update" tex={"y^{k+1}=y^k+\\sigma\\left(b-A(2x^{k+1}-x^k)\\right)."} />
+
+The term `2x^{k+1}−x^k` extrapolates by adding the change from the previous value to the new one. The matrix products `Aᵀy` and `Ax` use the links between variables and constraints. Partition the matrix and some input values may live on another device. That is where the updates require communication.
+
+<figure>
+<a href="/news/editorial-mpdlp-20261010/updates.en.svg" target="_blank" rel="noopener noreferrer"><img src="/news/editorial-mpdlp-20261010/updates.en.svg" alt="Iterative updates showing cost and dual effects, variable projection, extrapolation, and the constraint residual" width="960" height="330" /></a>
+<p><a href="/news/editorial-mpdlp-20261010/updates.en.svg" target="_blank" rel="noopener noreferrer">Open full-size figure in a new tab</a></p>
+<figcaption>Explanatory diagram by JJo showing the roles of the two source equations. It does not establish an optimized execution order or the actual kernel structure.</figcaption>
+</figure>
+
+The source also uses a simplified pair of matrix–vector products, first Aᵀy and then Ax, to isolate communication dependencies. This omits the cost c, bound projection, step sizes τ and σ, and extrapolation. The two products reveal which values must cross a device boundary. The full PDHG updates show how those values enter optimization, and additional checks assess feasibility.
+
+## 7. Work through a shipping plan
+
+For an **illustrative calculation independent of the benchmark**, let two warehouses ship amounts `a,b` to meet demand of 10 units. Their capacities are 6 and 8, and their costs per unit are 2 and 3. The constraints are `a+b=10`, `0≤a≤6`, and `0≤b≤8`. Capacities correspond to upper bounds `u` in the general LP. These numbers are invented for the example.
+
+Substituting `b=10−a` into the cost `2a+3b` gives `30−a`. Increasing `a` lowers the cost while the constraints hold. At the first warehouse’s upper bound, `a=6,b=4` and cost is 24. The shipments sum to 10 and both fit. Moving one unit from the first warehouse to the second raises cost by 1, which verifies optimality directly.
+
+If the first warehouse’s capacity falls to 4, the solution becomes `a=4,b=6` and costs 26. The objective stays the same while the feasible set changes. If capacity falls to 1, even 8 units from the second warehouse give only 9 in total. The specified constraints then have no feasible solution at any cost.
+
+Would splitting this tiny example across two GPUs save time? With so little arithmetic, communication and setup can dominate. The numbers 24 and 26 compare optimal objective values. They provide no timing measurement. A solution, a tolerance, and a runtime answer different questions.
+
+## 8. Why did iterations speed up 11.4× while the full solve sped up 4.2×?
+
+NVIDIA reports testing over 100 LPs on a DGX B200 with all-to-all NVLink, a target tolerance of `10⁻⁶`, and a one-hour limit. For `tsp-gaia-10m`, the reported iteration speedup reached 11.4× and the full solve sped up 4.2×. Both compare mPDLP on eight B200s with cuOpt PDLP on one B200. The D-PDLP comparison below uses another baseline. The announcement’s HTML did not establish the exact residual definitions, normalization, or stopping implementation behind the target. Equivalence to the tutorial settings remains unconfirmed. Partitioning, setup, and postsolve still contribute to the total.
+
+<figure>
+<a href="/news/editorial-mpdlp-20261010/speedup.en.svg" target="_blank" rel="noopener noreferrer"><img src="/news/editorial-mpdlp-20261010/speedup.en.svg" alt="Reported speedups on the same instance, with separate bars for up to 11.4× on iterations and 4.2× for the full solve" width="960" height="320" /></a>
+<p><a href="/news/editorial-mpdlp-20261010/speedup.en.svg" target="_blank" rel="noopener noreferrer">Open full-size figure in a new tab</a></p>
+<figcaption>Chart by JJo using NVIDIA’s reported speedups for one instance. It shows relative speedups from the technical article. It does not reproduce NVIDIA’s figure, give absolute runtimes or a cross-instance average, or report an independent experiment.</figcaption>
+</figure>
+
+A longer bar indicates a larger reported speedup against its baseline. The 11.4× figure cannot predict another instance’s performance. Neither bar represents an absolute runtime. Even knowing both ratios leaves the number of seconds spent on setup undetermined without original stage times.
+
+### Reading the axes and baselines in the source scatterplots
+
+[Figure 5 in the announcement](https://developer-blogs.nvidia.com/wp-content/uploads/2026/10/wall-clock-speedup-comparison-cuopt-mpdlp-versus-single-gpu-cuopt.webp) places the number of matrix nonzeros (nnz) on the horizontal axis. This differs from the number of variables. The vertical axis divides single-GPU runtime by multi-GPU runtime. Above 1, multiple GPUs were faster on that instance. Below 1, one GPU was faster. Equal horizontal intervals on the logarithmic scale represent equal ratios.
+
+[Figure 6](https://developer-blogs.nvidia.com/wp-content/uploads/2026/10/performance-comparison-cuopt-mpdlp-d-pdlp-benchmark-datasets.webp) compares two configurations that both use eight B200s. The numerator is D-PDLP time and the denominator is mPDLP time. A point at the same height in Figures 5 and 6 therefore has different baselines. Each point is one instance. Even at large nnz, some points lie below the line at 1. Size alone cannot guarantee a speedup.
+
+**Check your understanding.** If a point in each plot shows a speedup of 2×, are the runtimes equal? Each ratio divides by its own comparison time. The absolute runtimes cannot be inferred.
+
+## 9. Counterexamples and tolerances
+
+Reducing communication still leaves other bottlenecks. NVIDIA’s discussion of future work says the partitioner currently ignores compute load per GPU, and communication and computation run sequentially in the core matrix–vector operations. Load-aware partitioning and overlapping communication with computation are planned improvements. The tests therefore do not demonstrate that these features achieved even GPU utilization. Minimizing cuts and balancing work are related but distinct goals. [Official announcement, “Continuing to improve cuOpt mPDLP”]
+
+Even among very large problems, mPDLP ran slower than D-PDLP on three instances. Cross-boundary edges, per-GPU work, and partitioning and presolve overhead can differ by instance. Reporting only the device count and the best case hides this variation. A follow-up comparison should examine instances that improved alongside those that slowed down.
+
+The number `10⁻⁶` needs a definition. The official tutorial sets separate relative primal, dual, and gap tolerances. Primal checks quantify satisfaction of the original variable and constraint conditions, dual checks assess the dual conditions, and the objective gap helps assess proximity to optimality. Exact formulas and normalization depend on the implementation and version. The tutorial alone cannot establish that every benchmark used its three settings.
+
+In the shipment example, an attractive cost with deliveries below 10 still fails demand. Numerical tolerances must be related to the application’s permitted shortfall on each constraint. A solver’s termination status and satisfaction of business, safety, and operating requirements need separate checks.
+
+## 10. Limits of the evidence on communication, work, and implementation
+
+A minimum cut that reduces communication can leave uneven computational work. Changing the connectivity of the input can change performance even with the same number of devices. NVIDIA lists load-aware partitioning and other changes as future work.
+
+Overlapping transfers with computation is also planned. The current core sparse matrix–vector multiplication (SpMV) iteration performs them sequentially. Computing device-local results while waiting for data is a proposed improvement. Feasibility polishing, which can trade some optimality for a feasible solution sooner, is another future item. Feasibility and proximity to an optimal objective require different checks.
+
+This review covered the technical article, the cuOpt README, LICENSE and VERSION files, tutorial cells, and OR-Tools PDLP definition files. It included a visual check of the axes and baselines in original Figures 5 and 6. It did not include a GPU solver run or reanalysis of raw benchmark data. Figure reuse rights and raw times remain unverified. No estimates read from tick marks are presented as measurements. Further verification requires per-instance inputs, an exact implementation version, raw times, and failed runs.
+
+
+
+## 11. Practical implications and questions for follow-up
+
+The approach shows how to distribute a large problem by representing the values that computations depend on. Whether it helps a particular shipping, power, or resource allocation problem requires representative inputs, baseline end-to-end times, and the quality of feasible solutions.
+
+The next checks are per-instance solve and partitioning times, work per GPU, the precise solver version, and stopping criteria. The tutorial pins package 26.8.0, while the README reviewed here identifies 26.10.00. The benchmark version cannot be inferred from the public code alone. An independent replication or failures on the same instances would also warrant another review.
+
+## 12. Sources and review scope
+
+<details>
+<summary>Primary sources, code, usage rights, and review record</summary>
+
+- [NVIDIA technical announcement](https://developer.nvidia.com/blog/scaling-decision-optimization-to-100-million-variables-and-beyond-with-mpdlp-in-nvidia-cuopt/), October 7, 2026. The review checked the LP and PDHG equations, partitioning method, benchmark conditions, and limitations in the HTML article. On October 22, 2026, it also checked the original axes, legends, and comparisons in Figures 5 and 6. On October 23, a parallel media review examined the images and descriptions for Figures 1–4. No figure-specific reuse license or written permission was identified. The article uses its own explanatory diagrams. Raw benchmark data remain unverified.
+- [NVIDIA cuOpt source](https://github.com/NVIDIA/cuopt). The README, Apache-2.0 LICENSE, and VERSION files were reviewed. The benchmark commit is unconfirmed. The software license does not establish reuse rights for figures in the technical blog.
+- [Official multi-GPU tutorial](https://github.com/NVIDIA/cuopt-examples/blob/main/multi_GPU_PDLP_example/mPDLP_tutorial.ipynb). The notebook cells were read. Installation and GPU execution were outside this review.
+- [Google OR-Tools PDLP](https://github.com/google/or-tools/tree/stable/ortools/pdlp). The review consulted residual definitions in `solve_log.proto` on main (lines 143–189) and termination criteria in `solvers.proto` on stable (lines 82–107). Equivalence to NVIDIA’s benchmark criteria remains unconfirmed. The shipment plan and graph are original examples. See also the [introduction to LP](https://developers.google.com/optimization/lp/lp_example).
+
+</details>

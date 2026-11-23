@@ -1,0 +1,263 @@
+---
+title: Can a drone’s collision avoidance be guaranteed mathematically?
+description: MIT’s SANDO plans paths through unknown environments using time-dependent corridors that account for
+  moving obstacles. The analysis examines the continuous-time safety assumptions, the comparison behind a 7.4-fold
+  optimization speedup and failures on hardware.
+pubDate: 2026-10-09 00:00:00+09:00
+category: ai-machine-learning
+subcategory: safe-autonomous-robotics
+type: paper-review
+tags:
+- frontier-one
+- robotics
+- safety-critical-planning
+- trajectory-optimization
+draft: false
+lang: en
+updatedDate: 2026-10-21
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-09-sando-safe-dynamic-trajectory-news
+researchFeatured: false
+translatedPosts:
+  ko-KR: 2026-10-09-sando-safe-dynamic-trajectory-news
+translationKey: en-2026-10-09-sando-safe-dynamic-trajectory-news
+---
+
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+> **An explanation of arXiv v3. Comparison with the published version remains incomplete.** On October 7, 2026 MIT described the work as published in IEEE Transactions on Robotics. That institutional report is distinct from inspecting the journal version. The account of methods and experiments below follows arXiv v3 of September 25. Differences from the IEEE version remain unverified. Conditional safety over the current planning horizon and safety across an entire real operation are separate claims.
+
+## 1. The finding in one sentence: How long does empty space remain safe?
+
+**SANDO computes where moving obstacles can reach during successive time intervals and confines the drone’s continuous path outside those regions. The guarantee covers the current finite horizon when its assumptions hold.** It guarantees neither a solution at the next replanning step nor indefinite safety after stopping.
+
+Three distinctions guide this reading: avoidance costs versus hard constraints, full-horizon versus time-layered inflation, and experiments supplied with obstacle positions versus experiments starting from sensor data.
+
+## 2. Why it is difficult: Avoiding future obstacles while leaving room to pass
+
+A corridor may be empty now and blocked moments later by a crossing forklift. A drone must choose both where to pass and when.
+
+A planner can trade an avoidance cost against other costs. Every feasible solution must satisfy a hard constraint. An overly large exclusion region can eliminate all paths. **Specifying a safety constraint and finding a solution that satisfies it are different problems.**
+
+A sensor may see only the front of an object or detect it late because of occlusion. At the boundaries between position estimation, sizing, corridor construction, computation delay, and physical tracking, one must ask who ensures each assumption holds.
+
+## 3. Points, bodies, reachable sets, and curves
+
+Three coordinates x, y, and z specify a position. An axis-aligned bounding box (AABB) encloses an object in a box parallel to the coordinate axes. Each half-width is the distance from its center to a face. Avoiding an obstacle with the drone’s center does not ensure that its body or rotors clear the obstacle, so the body dimensions matter.
+
+A reachable set contains all displacements possible within an interval. A bound on each velocity component, such as 2 m/s on each axis, differs from a 2 m/s bound on total three-dimensional speed. The former gives a box, the latter a ball. The chosen assumption changes the region to avoid.
+
+In a convex region, the line segment between any two points stays inside. A Bézier curve has a further property: it lies in the convex hull of its control points. Constraining those points to a convex safe corridor therefore constrains the continuous curve between samples.
+
+## 4. Comparing prior approaches on common terms
+
+| Method | Distinction in the paper’s literature comparison | Question for comparison with SANDO |
+|---|---|---|
+| FASTER | Hard corridors and continuous-time paths in static environments | Can assumptions about moving obstacles be added? |
+| ViGO | Soft collision cost in dynamic environments | Is a preference for avoidance distinguished from a formal constraint? |
+| FAPP | Fast soft avoidance combining perception and planning | Are the inputs, clearance, and dynamics constraints comparable? |
+| I-MPC | Hard constraints at discrete MPC time points | How are intervals between samples and actual tracking dynamics evaluated? |
+| PANTHER | Continuous-time safety in dynamic environments | How do open versus confined space and obstacle count affect computation? |
+
+Each row identifies a prior planner. The first two columns explain the classification in arXiv v3 Section II and Table I. The last gives this article’s comparison questions. This is not a head-to-head trial of five methods under identical conditions. SANDO connects time-layered corridors with continuous path constraints. Speed and success rates must be read within each experiment.
+
+In Section IX-C different methods receive different obstacle information, and I-MPC’s violation rate also includes tracking dynamics. The numbers do not directly rank complete systems with matched sensors and controllers.
+
+## 5. Three steps in the proposed method
+
+The [captions and text for Figures 1, 2, and 4](https://arxiv.org/html/2604.07599v3) address where to go, when to pass, and whether the entire curve stays inside the corridor. Figure 1 describes avoidance, Figure 2 the pipeline, and Figure 4 the time layers. The actual problem is three-dimensional. The original review did not inspect the figure pixels. The five diagrams below were drawn independently from the described concepts and values.
+
+<NewsFigure media="oct09-sando-system" lang="en" />
+
+**Reading the diagram.** Identify the cost used to choose a candidate route and the constraints the curve must satisfy. Success in the optimizer alone cannot establish physical safety when perception or control violates the assumptions.
+
+First, a map is constructed from a sensor point cloud and moving obstacles are tracked. An adaptive extended Kalman filter (AEKF) uses observed positions to update obstacle state and noise covariances. Heat-map A* adds cost around predicted paths to find a candidate detour. Predictions and costs guide route choice. They do not replace a worst-case reachable set in the safety argument.
+
+Second, the planner constructs a spatiotemporal safe flight corridor (STSFC) around the route. The time-layer index n and spatial-corridor index p are distinct. In an early layer an obstacle has less time to move than in a later layer. Layering can leave more early corridor space usable than applying the final, maximum inflation throughout.
+
+Third, a mixed-integer quadratic program (MIQP) selects a corridor for each trajectory segment. Continuous variables determine the curve and binary variables select corridors. Variable elimination reduces the continuous variables and equality constraints in the same problem. Replanning uses new observations. A successfully committed new plan extends the guarantee into its own horizon.
+
+## 6. Where time and uncertainty enter the equations
+
+Known obstacles are inflated first. Equation (1) forms a Minkowski sum of four regions. A Minkowski sum collects all results obtained by adding a displacement from one set to a displacement from the other.
+
+<CandidateEquation lang="en" id="sando-inflation" title="How large a region must the drone’s center avoid?" tex={"\\hat{\\mathcal O}_{k}^{n}=\\hat{\\mathcal O}_{k}(t_0)\\oplus\\mathcal R_n\\oplus C_\\infty(\\epsilon)\\oplus\\mathcal D"}>
+
+
+**Original equation.** ArXiv v3 Section IV-B, Eq. (1), PDF p. 5. Index k denotes the obstacle and n the time layer. The terms are the current estimated AABB, the reachable displacement by the layer’s end, a position-error buffer, and the drone’s origin-centered AABB. Each is a three-dimensional spatial region whose lengths are in meters.
+
+The implementation uses per-axis speed bounds for known obstacles. Each half-width of the reachable box is the corresponding speed bound multiplied by (n+1)dt, where dt is the duration of a segment in seconds. C∞(ε) is the box in which every coordinate’s absolute value is bounded by the same scalar ε. This half-width is in meters, so it can be added to speed times time. Allowing different error bounds on each axis would modify the original expression.
+
+The theorem assumes bounds on obstacle velocity and position error, a box that does not underestimate the true size, and exact path tracking. To cover physical errors with a buffer would require checking worst-case allowances for estimation, size, and tracking together. A small mean error does not establish such a bound.
+
+</CandidateEquation>
+
+Unobserved space is treated differently from observed free space. A moving object can emerge from behind a wall, so the planner inflates the unobserved boundary by a reachable set.
+
+<CandidateEquation lang="en" id="sando-unknown-inflation" title="How does the planner handle an obstacle that could emerge from an unseen area?" tex={"\\hat{\\mathcal U}^{n}=\\mathcal U(t_0)\\cup\\bigl(\\mathcal B_{\\mathcal U}(t_0)\\oplus\\mathcal R_n^\\epsilon\\oplus B_2(r_{\\mathrm{drone}})\\bigr)"}>
+
+
+**Original equation.** Section IV-C, Eq. (2), PDF pp. 5–6. U denotes the unobserved voxel region, B_U its boundary, and R_n^ε the reachable set for the chosen speed-bound geometry plus an error allowance. B₂(r_drone) models the body as a ball of radius r_drone (m). The union excludes both the unobserved region and its inflated boundary.
+
+The drone box D is used for known objects. A spherical body model is used for the unknown boundary and static obstacles. Body size should be included exactly once. Moving between the two representations requires checking whether the sphere encloses the actual body adequately. This review did not establish the correspondence between the radius and the conservatism of the AABB. When a goal lies in unobserved space, the planner traces the route back to a safe intermediate goal.
+
+A further assumption places untracked obstacles in unobserved space. An object already visible in the map but awaiting classification as dynamic can fall between these cases. Inflating unobserved space does not cover all detection failures.
+
+</CandidateEquation>
+
+<NewsFigure media="oct09-sando-control-points" lang="en" />
+
+**Reading the diagram.** Four control points lie in the same convex corridor. The entire curve stays within their convex hull, so the test covers more than a few sampled points on the curve. The coordinates are illustrative.
+
+The next step ties the whole curve to the corridor. If the selection variable is one, all four control points must satisfy the linear inequalities defining the selected polytope.
+
+<CandidateEquation lang="en" id="sando-polytope" title="What keeps the curve inside between time samples?" tex={"z_{np}=1\\implies \\mathbf F_{np}\\mathbf p_{nj}\\leq\\mathbf g_{np},\\quad j\\in\\{0,1,2,3\\}"}>
+
+
+**Original equation.** Section VI-A, Eq. (6), PDF p. 9. The dimensionless z is binary and p_nj denotes a control point position (m). F and g describe the face boundaries of the spatial polytope in the same layer. Each row requires the point to lie on the interior side of one face. Both sides must have matching units. The paper does not prescribe a separate normalization of the face coefficients here.
+
+Together with the convex-hull property, the condition bounds the entire segment. An additional prerequisite is that the corridor be disjoint from the actual inflated obstacle regions. Putting a valid curve inside a corridor based on a faulty estimate breaks the safety argument.
+
+</CandidateEquation>
+
+The drone also has limits on velocity, acceleration, and jerk, the rate of change of acceleration. Its motion limits are separate from the obstacle velocity bounds.
+
+<CandidateEquation lang="en" id="sando-dynamic-limits" title="Can the drone execute the motion while maintaining clearance?" tex={"\\|\\mathbf v_{nj}\\|_\\infty\\leq v_{\\max},\\quad \\|\\mathbf a_{nj}\\|_\\infty\\leq a_{\\max},\\quad \\|\\mathbf j_n\\|_\\infty\\leq j_{\\max}"}>
+
+
+**Original equation.** Section VI-A, Eq. (9), PDF pp. 9–10. The v and a variables are velocity and acceleration control points for the segment, and j is its constant jerk. Their units are m/s, m/s², and m/s³. The infinity norm is the greatest absolute coordinate value. The bounds apply to all three velocity control points and both acceleration control points.
+
+The convex-hull property of the Bézier derivative curves also bounds continuous motion within the segment. Position, velocity, and acceleration are continuous across segment boundaries. Jerk need not be continuous. The degree to which a physical aircraft tracks the command is a separate control question.
+
+</CandidateEquation>
+
+<details>
+<summary>More detail: How the curve, corridor choice, objective, and proof fit together</summary>
+
+The four equations above do not fully define the optimization. The following equations trace the remaining connections.
+
+<CandidateEquation lang="en" id="sando-polynomial-state" title="How do polynomial coefficients determine the four control points?" tex={"\\begin{aligned}\\mathbf r_n(\\tau)&=\\mathbf a_n\\tau^3+\\mathbf b_n\\tau^2+\\mathbf c_n\\tau+\\mathbf d_n\\\\\\mathbf p_{n0}&=\\mathbf d_n,\\quad \\mathbf p_{n1}=(\\mathbf c_n dt+3\\mathbf d_n)/3\\\\\\mathbf p_{n2}&=(\\mathbf b_n dt^2+2\\mathbf c_n dt+3\\mathbf d_n)/3\\\\\\mathbf p_{n3}&=\\mathbf a_n dt^3+\\mathbf b_n dt^2+\\mathbf c_n dt+\\mathbf d_n\\end{aligned}"}>
+
+
+**Combined restatement of Eqs. (3) and (5).** Section VI-A, PDF p. 9. Here r_n denotes the position curve to distinguish it from the complete state x_n, which includes position, velocity, and acceleration. The original uses differences in typeface. Local time τ runs from 0 to dt. The polynomial coefficient a_n (m/s³) differs from the acceleration control point a_nj above. Coefficients b_n, c_n, and d_n have units m/s², m/s, and m, respectively. Every term in a control-point expression has units of meters.
+
+Equation (4) matches the final state of one segment to the initial state of the next. This includes velocity and acceleration as well as position. Symbolically solving these equalities with the initial and terminal state constraints eliminates continuous variables. Section VI-A1 gives the reduction, per axis, from 4N coefficients subject to 3N+3 equalities to N−3 free variables. It does not eliminate the binary corridor choices.
+
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="sando-assignment-boundary" title="Must the trajectory choose a corridor, and where does it end?" tex={"\\sum_{p=0}^{P-1}z_{np}\\geq1,\\quad \\mathbf x_0(0)=\\mathbf x_{\\mathrm{init}},\\quad \\mathbf x_{N-1}(dt)=\\mathbf x_{\\mathrm{final}}"}>
+
+
+**Combined restatement of Eqs. (7) and (8).** Section VI-A, PDF p. 9. Each segment must be assigned to at least one polytope. N counts time segments, P spatial polytopes per layer. The two counts are independent. The state x contains position, velocity, and acceleration.
+
+The terminal state is at the intermediate goal at the end of the P route segments, with zero velocity and acceleration. The horizon is T=Ndt. In replanning, only an initial part may execute before a new plan takes over. Including a stopped terminal state does not make that location safe after T.
+
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="sando-objective" title="What does the objective minimize among feasible trajectories?" tex={"\\min J,\\qquad J=\\sum_{n=0}^{N-1}\\|\\mathbf j_n\\|^2"}>
+
+
+**Condensed restatement of the objective and Eq. (10).** Section VI-A, PDF pp. 9–10. The constraints are Eqs. (4), (6), (7), (8), and (9). The objective sums the squared vector norm of jerk over the finite set of segments. Jerk has units m/s³, so each term and the sum have units m²/s⁶. The original includes no dt weighting and does not write a time integral. Minimizing path length or flight time directly would define a different optimization.
+
+For each candidate time allocation, a thread builds its corridor and problem. The method uses the first thread to return a feasible solution. It does not guarantee a global optimum over all time allocations.
+
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="sando-safety-chain" title="What relationship must hold between a safe corridor and the physical obstacles?" tex={"\\mathcal C[n][p]\\cap\\hat{\\mathcal O}_k^n=\\varnothing,\\qquad \\mathcal C[n][p]\\cap\\hat{\\mathcal U}^{n}=\\varnothing"}>
+
+
+**Combined restatement of Eqs. (13) and (14).** Section VIII-B, PDF p. 12. The first condition applies to every tracked obstacle k, time layer n, and spatial polytope p. The second applies to every n and p if unobserved-space inflation is enabled. An empty intersection means there is no point of overlap. Checking only one obstacle or instant is insufficient.
+
+The proof connects three claims: the curve lies in the corridor, the actual obstacle lies within its inflated region, and the two regions are disjoint. Excess size, speed, or error invalidates the second claim. Theorem 1 requires Assumptions 1–4 for tracked obstacles. Extending coverage to untracked obstacles additionally requires unobserved-space inflation, Eq. (14), and Assumption 5 placing those obstacles in unobserved space initially. Static-obstacle clearance is handled separately when constructing corridors using the body radius. The theorem does not certify that an estimator always meets those assumptions.
+
+</CandidateEquation>
+
+Section VII-C gives the AEKF noise-covariance updates in Eqs. (11) and (12), using observation residuals, innovations, and Kalman gain. The tracker implementation derivation is left to the source. Estimated covariance and a deterministic worst-case error bound ε are different quantities. Having a filter does not establish the safety assumption.
+
+</details>
+
+## 7. Worked example: What does “moves one meter” mean?
+
+<NewsFigure media="oct09-sando-layers" lang="en" />
+
+The 0.5, 1, and 1.5 s layers and half-widths of 1.6, 2.6, and 3.6 m in the diagram are **illustrative calculations**, not paper measurements or an experimental choice of N=3. Suppose each of the x, y, and z velocity components is bounded by 2 m/s in magnitude. After 0.5 s each coordinate displacement is bounded by ±1 m. The possible center positions fill a box of that half-width, whose corner is about 1.73 m away. A different assumption bounding total speed at 2 m/s would instead give a ball of radius 1 m.
+
+Along x, add a 0.2 m estimated obstacle half-width, 0.1 m position buffer, and 0.3 m drone half-width. The expanded half-width is 0.2+1+0.1+0.3=1.6 m. At the end of a two-second layer the motion term is 4 m, giving 4.6 m overall. Applying that far-horizon value to the earliest layer blocks more of the initial passage.
+
+This one-axis calculation cannot establish corridor feasibility, controllability, or compliance with a computation deadline. The other axes, obstacles, walls, and unobserved regions also constrain the solution.
+
+**Change one condition.** Would increasing the error buffer from 0.1 m to 0.2 m improve the speed bound or detection performance? It adds 0.1 m to the expanded half-width in this example. Extra margin can reduce the number of feasible paths through tight spaces. That loss of usable space is part of the cost of conservatism.
+
+## 8. What did the reported success rates compare?
+
+| Experiment | Inputs and comparison | Reported result | Interpretation boundary |
+|---|---|---|---|
+| Variable elimination, Table IX | Static standard environment, N=4, same constraints with/without elimination | 1.3 ms / 9.6 ms per optimization, both at 93.4% optimization success | Does not measure total pipeline speed or actual flight success |
+| Time-layered corridor, Table X | Current obstacle positions supplied, no future paths, P=2, drone speed limited to 5 m/s per axis | Hard: 100% with time layers, 30% with maximum inflation across the horizon | Compares inflation methods, excluding full sensor performance |
+| Sensor pipeline, Table VII | Point cloud only, N=5 and P=2, ten trials per setting | Easy 80%, Medium 60%, Hard 40% | Small samples of 8/10, 6/10, and 4/10 |
+
+<NewsFigure media="oct09-sando-optimizer-ablation" lang="en" />
+
+The ratio 9.6/1.3≈7.4 compares mean optimization times in Table IX. It does not give a 7.4-fold speedup for corridor construction or sensing. Table X uses the environment in Section IX-C. Its exact repeat count was not separately established in this review, so 100% should not be interpreted as a population probability.
+
+Late detection of dynamic obstacles was a major cause of collisions in Table VII. Quickly finding a mathematically correct corridor and including every relevant obstacle in time are separate achievements.
+
+## 9. Limits and counterevidence: Is stopping safe?
+
+<NewsFigure media="oct09-sando-limits" lang="en" />
+
+The paper reports six hardware flights in static settings and twelve in dynamic settings. Successful runs do not establish zero collision probability under all conditions. Section X explicitly states that estimation and tracking on the actual platform do not strictly satisfy the theorem’s assumptions, so its formal guarantee does not transfer unchanged.
+
+If replanning fails, the aircraft can continue its previously committed trajectory and stop at its end. A moving object can still enter that stopped location after the horizon. **A finite path ending at rest does not guarantee safe indefinite waiting.** A new plan takes over after a feasible solution has been found and committed. During computation or after failure, the aircraft relies on the remaining committed path. Safety beyond its expiration is a separate question. Recursive feasibility, the existence of a feasible solution at the next step, remains open.
+
+**Check your understanding.** Can sensor success rates and hardware flights dispense with the theorem’s assumptions? They represent observations under specified conditions, not a new theorem. Slow obstacles and repeated replanning may provide more margin. Worst-case validation is still needed to establish the operating envelope.
+
+## 10. What changes in a physical system? The assumptions between subsystems
+
+The design connects position estimates, object dimensions, velocity bounds, drone size, and control error in one safety boundary. A similar framing can inform autonomous mobile robot design. The paper does not provide industrial safety certification for such machines or sites.
+
+An observed obstacle speed above the configured bound, or estimation and tracking errors above the available buffer, invalidates an assumption. True positions are not always known, so worst-case error margins cannot simply be claimed as verified online. Choosing whether stopping, retreating, or another avoidance action is safe requires separate validation. SANDO’s hover behavior is not itself a field-certified safety function.
+
+### Checking the public configuration separately from the paper’s flight settings
+
+The public hardware configuration in commit `1a738df`, reviewed October 22, 2026, sets `inflate_unknown_boundary: false` and `obst_position_error: 0.0`. Unknown-boundary inflation and a position-error allowance are therefore not automatically active on every run.
+
+The source review followed the configuration into the same pinned revision. In hardware mode, `onboard_sando.launch.py` selects that YAML file. The node reads both parameters into internal state. In `HGPManager::obstacle_to_vec`, the calculation adds a position-error allowance to a speed bound times planning time, and a conditional enters the unknown-boundary inflation block when the switch is true. The configuration therefore controls an actual code path.
+
+Disabling that switch does not disable all moving-obstacle inflation. Later in the same function, a separate block takes a dynamic obstacle’s position and bounding box and adds the computed motion and error allowances to its half-widths. The caller passes the end time of each layer. This separates unknown-boundary processing from handling an already tracked dynamic object. The finding is limited to the inspected revision.
+
+In the same commit, `cvxEllipsoidDecompTimeLayered` separates N time layers from P spatial intervals and produces N×P corridor entries. It first constructs each layer’s obstacle set, uses it to form a polytope around each spatial interval, then stores the linear inequality coefficients. The inflated sets thus feed the actual corridor constraints. The review did not verify the decomposition library’s internals or the complete downstream optimization and controller.
+
+This is a **static reading of the code**. It does not establish which executable and settings were used in each published flight, whether installed packages contained the same bytes, or whether parameters changed at runtime. Checking one branch also differs from validating the whole corridor and control system. These settings alone establish neither a safety violation nor a bug in the experiments. Conversely, a number in a configuration cannot prove a worst-case physical bound.
+
+<details>
+<summary>Where the configuration enters the implementation</summary>
+
+At the same commit the review inspected [time-layered corridor construction, lines 462–562](https://github.com/mit-acl/sando/blob/1a738df919f9abe60cee3c1afbecd72579da8f6f/src/hgp/hgp_manager.cpp#L462), [hardware launch file, lines 162–225](https://github.com/mit-acl/sando/blob/1a738df919f9abe60cee3c1afbecd72579da8f6f/launch/onboard_sando.launch.py#L162), [node parameter reads, lines 579–580](https://github.com/mit-acl/sando/blob/1a738df919f9abe60cee3c1afbecd72579da8f6f/src/sando/sando_node.cpp#L579), and [boundary inflation, lines 620–669](https://github.com/mit-acl/sando/blob/1a738df919f9abe60cee3c1afbecd72579da8f6f/src/hgp/hgp_manager.cpp#L620). These are code locations, not flight logs.
+
+</details>
+
+**Check your understanding.** Does a configured position-error allowance of zero mean the real sensor error was zero? That value is a setting. Linking it to a safety assumption would require measured error evidence, the actual configuration and software version, and execution records.
+
+The [pinned configuration](https://github.com/mit-acl/sando/blob/1a738df919f9abe60cee3c1afbecd72579da8f6f/config/sando_hw_quadrotor.yaml) documents one observation about the public code. Matching it to arXiv v3, the journal article, and the recorded flights, or independently reproducing those flights, remains a separate task.
+
+## 11. What to test next
+
+Independent reproduction should cover sudden obstacle appearance, underestimated dimensions, speeds above the bound, missed sensing, and long computation delays alongside success on nominal trajectories. Report tail latency for the full replanning cycle, the committed path time remaining after failure, and the response after it expires, as well as mean optimization time. Operational speed and error bounds and computation deadlines must be stated and validated. The paper’s figures alone cannot define a site threshold.
+
+The review checked a public commit and hardware configuration. Their correspondence to arXiv v3, the final publication, and the code actually used in the experiments, along with independent execution, remained unverified. The source described this explainer as a research working draft pending media and manuscript review.
+
+## 12. Sources, rights, and review scope
+
+<details>
+<summary>Versions, source locations, and material left unverified</summary>
+
+- Kota Kondo et al., [SANDO, arXiv v3](https://arxiv.org/html/2604.07599v3), September 25, 2026. The review checked Sections IV-B/C, Eqs. (1)–(2), Section VI-A, Eqs. (3)–(10), Section VII-C, Eqs. (11)–(12), Sections VIII-A–E on assumptions, Eqs. (13)–(14), theorem and limitations, Sections IX-D/F/G and Tables VII, IX, X, Section X on hardware, and Section XI.
+- [PDF of the same v3](https://arxiv.org/pdf/2604.07599v3), 25 pages. Text locations of selected equations and tables were checked. An inventory of captions for 13 figures and 13 tables is distinct from inspecting pixels. Original figure pixels were not inspected, and no original plates or photographs with reuse permission were included. The originals were not replicated with AI. JJo independently drew the five explanatory SVGs. Geometry and time-layer examples are illustrative. The Table IX diagram uses reported values in an original layout.
+- [MIT News publication announcement, October 7, 2026](https://news.mit.edu/2026/planning-system-ensures-robots-flight-path-will-remain-collision-free-1007). No official conference award was confirmed, and the article is not classified as a best paper.
+- IEEE Transactions on Robotics, DOI [10.1109/TRO.2026.3738474](https://doi.org/10.1109/TRO.2026.3738474). Comparison of the final full text and supplements against v3 remained incomplete.
+- [MIT ACL public code](https://github.com/mit-acl/sando). The public README lists T-RO acceptance and links an unversioned arXiv identifier. The October 22, 2026 review inspected commit `1a738df919f9abe60cee3c1afbecd72579da8f6f` and its hardware configuration. Correspondence to the final article and flight binaries is unverified. Software usage terms and figure rights need separate checks. Independent execution and the scope of available experimental data were not established.
+- The authors are affiliated with MIT and Comillas/TRAIL, and the paper acknowledges DSTA support. Experimental values throughout are author-reported.
+
+</details>
