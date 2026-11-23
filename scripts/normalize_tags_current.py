@@ -649,5 +649,11 @@ POST_TAXONOMY.update({
     "2026-11-18-nvidia-fovi-dex-foveated-robot-learning-news.mdx": Taxonomy("robotics-embedded", "foveated-dexterous-manipulation", "research-report", ("frontier-candidate", "physical-ai", "dexterous-manipulation", "robot-learning")),
 })
 
+POST_TAXONOMY["ai-consciousness-deep-research-4.md"] = Taxonomy(
+    "ai-machine-learning", "ai-consciousness", "research-report",
+    ("consciousness", "philosophy-of-mind", "ai-governance", "knowledge-distillation"),
+    "ai-consciousness-governance", True, 4,
+)
+
 if __name__ == "__main__":
     raise SystemExit(main())
