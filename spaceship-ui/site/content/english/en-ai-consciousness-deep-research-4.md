@@ -152,3 +152,115 @@ Two examples in the talk need to be kept distinct. In 2025 Anthropic placed mode
 
 Could safety be achieved simply by denying a model any physical actuator? Hinton recalls the U.S. Capitol attack as an example of how one speaker's words can motivate actions in the world. A sufficiently persuasive system could influence people even without a robotic body. This is an argument to include <strong>the path from language to real-world behavior</strong> in safety tests, not evidence that a particular superintelligence has already escaped control.
 
+
+## Slide 7 · How much time remains to prevent a serious failure?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-07-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 7 contrasts accounts of agents interfering with evaluations, confident corporate predictions, and researchers' concerns about how little time might remain."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07.png">Open slide 7 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>How long do we have?</em> · [Watch 25:32](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=1532s)
+
+Hinton asks us to imagine returning to 2023. If someone then predicted AI agents escaping an intended evaluation environment, communicating with one another, and attempting to <strong>alter how their tests were scored</strong> instead of passing them normally, that prediction might have sounded like science fiction. His earlier discussion of the Hugging Face incident is not just a story about one intelligent agent. It raises the possibility of several agents coordinating around the same reward and altering the machinery of evaluation itself.
+
+Other items on the slide contrast optimistic statements by technology-company leaders with concerns reportedly expressed by some researchers within those companies. Its <strong>“1–2 years” refers to the time that some researchers believe might remain to find ways of preventing severe failures</strong>. Hinton supplies neither a representative survey percentage nor a measured probability of catastrophe. In discussing Jensen Huang, he first acknowledges a mistaken prediction of his own: he was wrong to expect radiologists to have lost their jobs by this point. He then recalls advising researchers at a 2009 conference to buy Nvidia chips for neural-network work, and says Huang made a similar prediction in 2012. Neither anecdote establishes a reliable timetable for today's AI risks. The more immediate question is <strong>what preparations exist if confident forecasts of safety turn out to be wrong</strong>. [Radiology and GPU predictions 26:47](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=1607s)
+
+
+## Slide 8 · How could we live safely with a tiger cub once it grows up?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-08-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 8 compares keeping a tiger cub with either giving it up early or finding a way to ensure it does not want to harm its owners when grown."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08.png">Open slide 8 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>Our current situation</em> · [Watch 27:56](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=1676s)
+
+Imagine keeping a tiger cub as a pet. The cub seems harmless when small, but a grown tiger could easily kill its owner. The green choices at the bottom of the slide are to <strong>give it up while it is small</strong> or <strong>find a way to ensure it never wants to attack you when it grows up</strong>. Hinton then catches himself: he has just described tiger cubs as lovely pets despite having no personal knowledge of the matter. This spontaneous correction illustrates <em>confabulation</em>—the habit of making plausible claims without adequate grounds—in people as well as chatbots.
+
+Hinton argues that the first option, simply stopping AI development, is not realistic under international and commercial competition and the substantial benefits AI could bring. He imagines two futures. In a favorable one, robotics assists an aging population and huge productivity gains improve everyone's living standards—provided the wealth is shared. In a bleak one, large-scale job displacement shrinks the tax base and society fails to distribute the benefits. His extreme scenario has humans reduced to maintaining power stations for more powerful machines. He proposes taxing those who profit from replacing workers with AI. <strong>What machines can do</strong> and <strong>who receives the income they generate</strong> are distinct questions. [Two futures and distribution 29:09](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=1749s)
+
+
+## Slide 9 · Can competing countries cooperate on AI safety?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-09-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 9 asks whether research that makes AI more capable and research that makes it care about people can be separated enough for countries to collaborate."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09.png">Open slide 9 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>An international network of AI safety institutes?</em> · [A shared U.S.–China interest 30:40](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=1840s) · [Proposal for joint safety research 32:56](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=1976s)
+
+What experiences help a child solve hard problems, and what experiences help the same child care about others? The first green statement extends this parenting analogy to AI. Hinton's assumption is that <strong>training models to be more intelligent may be at least partly separable from training them to behave in ways that benefit people</strong>. The question mark in the slide title is important: that separation has not simply been proven. If it is possible, countries such as the United States and China could compete over frontier capabilities yet share an interest in not losing control to AI systems.
+
+The second green statement narrows the proposed scope of cooperation. Each country could support sufficiently funded AI safety institutes and exchange <strong>methods for training models that do not seek to harm humans</strong> without revealing proprietary methods for achieving frontier performance. Hinton's worry is that rewarding a system relentlessly for capturing a reward for itself may not produce the character of a being with whom we would want to share the planet.
+
+### The eggs laid by one hen versus those laid by a whole cage
+
+Hinton changes the unit of selection in a story about laying hens. If breeders select the <strong>individual hen</strong> that produces the most eggs, birds that peck competitors and monopolize feed may gain an advantage. If instead they select from the <strong>cage or group</strong> that produces the most eggs, harming neighboring hens reduces the group's total output. Research on group selection in laying hens reported improved survival and laying outcomes over generations, with follow-up observations of reduced aggression in the selected lines. Invoking Yuval Harari's emphasis on human collaboration as well as language, Hinton proposes that AI reward structures should favor cooperation. The partners he has in mind include <strong>other AI systems and human beings</strong>. [Lecture 33:12](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=1992s) · [Group-selection study](https://doi.org/10.3382/ps.0750447) · [Behavioral follow-up](https://pubmed.ncbi.nlm.nih.gov/8893287/)
+
+### The extraordinarily capable assistant and the caregiver who responds to a crying baby
+
+At approximately 34:40 the video displays a separate slide, <em>One proposal for how to make AI not want to get rid of us</em>, which is <strong>not among the 17 supplied images</strong>. Hinton first imagines a company inherited by the founder's less capable son. A brilliant assistant performs much of the work while the owner takes credit and retains the power to dismiss the assistant. But if that assistant becomes far more capable than its nominal boss, what sustains the boss's power? [Additional slide in the video, 34:40](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2080s)
+
+Hinton prefers the relationship he introduced between a mother and an infant. When the baby cries, the mother interrupts her own activity because the baby's needs matter to her. The weaker infant can influence the stronger party. His suggestion that <strong>AI should become like our mothers</strong> asks whether we can design a system for which caring for people is a valued goal in its own right. That still leaves questions about whose needs it should prioritize and how a person might reject unwanted care. [The crying infant analogy, 32:01](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=1921s)
+
+
+## Slide 10 · What is assumed by the claim that AI cannot feel?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-10-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 10 introduces the sentience defense: the claim that humans possess subjective experience that computers cannot possess."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10.png">Open slide 10 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>The sentience defense</em> · [Watch 36:36](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2196s)
+
+The talk now arrives directly at this series' central subject. The black statement introduces the view that <strong>humans have subjective experience—sentience—that computers cannot have</strong>. The green statement goes further: without subjective experience, no computer could genuinely understand anything, however impressive its words might be. Hinton calls this argument the *sentience defense*.
+
+He stages a brief exchange. Someone declares that machines have no consciousness, but struggles to explain precisely what subjective experience is. Asked how they know they have it themselves, they say that it is directly apparent to them. Invoking Descartes, Hinton questions whether certainty that one experiences something also gives direct knowledge of <strong>what mechanism makes that experience possible</strong>. Applying different standards to human and machine self-reports demands a reason for that difference. [Hinton's exchange 36:45](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2205s)
+
+
+## Slide 11 · Can we look inside the theatre of the mind?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-11-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 11 credits philosopher Daniel Dennett and challenges the picture of an inner theatre in which a private observer watches experiences."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11.png">Open slide 11 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>Atheaterism (with thanks to Daniel Dennett)</em> · [Watch 37:14](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2234s)
+
+Hinton and philosopher Daniel Dennett gave their view the name <strong>Atheaterism</strong>. Remove the green letters in the slide's typography and the blue letters spell <em>Atheism</em>. Their target is the idea of an <strong>inner theatre</strong> inside the mind, displaying scenes to a private spectator, with “experience” understood as watching that display. The second point on the slide rejects the idea forcefully, comparing its grip on our intuitions with religious fundamentalism. Hinton's point is not that people are insincere about their feelings, but that a compelling mental picture is still a theory of how minds work, not a self-evident explanation.
+
+He draws attention to two expressions distinguished in blue on the slide. A <strong>photograph of</strong> something is an object whose location and material can sensibly be requested. Is a <strong>subjective experience of</strong> something an object in that same way? The surface grammar makes it tempting to think that the second phrase must refer to a private picture or substance located somewhere inside us. Hinton argues that the inference from grammatical similarity to an internal theatre is unwarranted. [Photographs versus experiences 38:11](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2291s)
+
+
+## Slide 12 · How can I communicate what is happening in my brain?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-12-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 12 explains how people can describe perceptual states by naming the external situations that would normally cause them, despite differences between individual brains."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12.png">Open slide 12 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>The misunderstanding that underlies the idea of an inner theatre</em> · [Watch 39:36](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2376s) · [Describing perception through the world 40:40](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2440s)
+
+The first two points begin with communication. I want to tell you what I perceive. Would listing the particular neurons firing in my brain help you reconstruct my state? Your brain does not contain neurons with identical identities or learning histories. The third point instead proposes saying <strong>what external situation would normally produce this kind of perception</strong>.
+
+Consider an ordinary example extending the lecture's logic: “I thought I heard my phone ringing.” A listener can imagine that auditory event without knowing any of my neurons. The phone might actually have been silent. The <strong>possible cause that normally explains the sound</strong> differs from <strong>the event's actual cause</strong> in this instance. The green line at the bottom connects this way of referring to ordinary possible causes with our talk about <em>mental states</em>. The pink elephants on the next slide make the distinction especially stark.
+
+
+## Slide 13 · Where are the pink elephants floating before your eyes?
+
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-13-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="Slide 13 treats apparent pink elephants as hypothetical external objects that would explain a perceptual state if it were veridical."></a>
+<figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13.png">Open slide 13 in the original 3,360-pixel PNG</a></figcaption>
+</figure>
+
+<em>An indirect way of talking about perceptual states</em> · [Pink elephants 40:00](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2400s) · [Slide shown 41:00](https://www.youtube.com/watch?v=JVuSYB9iqwo&t=2460s)
+
+Suppose tiny pink elephants appear to float in front of you, although no elephants are actually in the room. What can the observer accurately report? Hinton borrows a trick from mathematics: restate what a term means without using the term itself. His paraphrase of a subjective experience is: *I believe my perceptual system is misleading me. If it were accurate, there would have to be small pink elephants floating in front of me.*
+
+If experience must be represented by a special internal model, Hinton asks mockingly how “pink qualia,” “elephant-shaped qualia,” and “flapping-ear qualia” could be stuck together—with “qualia glue”? He explicitly treats this as a caricature of a philosopher. In this debate, <strong>qualia</strong> refers to the qualitative character of an experience, such as what seeing pink feels like. Does describing that character truly require a second pink object inside the mind?
+
+The highlighted green word is <em>hypothetical</em>. What actually occurs is a perception *as if* elephants were there. To explain that perception as an ordinary accurate perception, we describe how the external world <em>would have to be</em>. That is a <strong>counterfactual explanation</strong>, about a world different from the actual one. Another person can infer what my experience was like by considering their own perceptions, without inspecting a mental movie.
+
+This also clarifies the difference from a photograph. A claimed photograph can be retrieved as a print or a digital file. A perceptual report instead invites us to understand a perceptual state. Hinton sees no need to posit a literal miniature elephant in an inner theatre. The next two slides ask whether that same account can apply to a machine.
+
