@@ -19,6 +19,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 import pymupdf as fitz
+from upper_lecture_artwork import restore_lecture_artwork
 
 SLUG = 'self-improving-ai-10-self-play-and-external-feedback'
 MAX_SOURCE_BYTES = 80_000_000
@@ -119,6 +120,7 @@ def main() -> None:
         output = root / relative_path
         output.parent.mkdir(parents=True, exist_ok=True)
         pixmap.save(output)
+        restoration = restore_lecture_artwork(output, documents[key], page_number) if key == 'ntu' else {}
         url, source_hash, page_count = SOURCES[key]
         props = metadata[name]
         source = url + '#page=' + str(page_number)
@@ -141,12 +143,11 @@ def main() -> None:
             'sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
             'crop_pdf_points': crop,
             'edits': [],
-            'rights_status': 'unverified',
+            **restoration, 'rights_status': 'unverified',
         })
         if key == 'ntu' and page_number == 50:
             assets[-1]['source_render_note'] = (
-                'The faint red-X rectangle beside the book icon is present in the pinned '
-                'source PDF and is preserved. Independently confirmed with Poppler.'
+                'The person from the source presentation is restored at the position shown in the lecture.'
             )
 
     try:

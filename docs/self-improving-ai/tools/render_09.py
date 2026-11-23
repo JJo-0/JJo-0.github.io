@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 import pymupdf as fitz
+from upper_lecture_artwork import restore_lecture_artwork
 
 SLUG = 'self-improving-ai-09-entropy-paths-and-self-generated-inputs'
 SOURCES = {
@@ -132,6 +133,7 @@ def main():
         output = root / path
         output.parent.mkdir(parents=True, exist_ok=True)
         pixmap.save(output)
+        restoration = restore_lecture_artwork(output, documents[key], page_number) if key == 'ntu' else {}
         url, digest, _, credit = SOURCES[key]
         assets.append({
             'slot': slot,
@@ -152,7 +154,7 @@ def main():
             'sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
             'crop_pdf_points': crop,
             'edits': edit_records,
-            'rights_status': 'unverified',
+            **restoration, 'rights_status': 'unverified',
             'source_equation_note': (
                 'Original page 41 omits log in the score term; retained unchanged in the image '
                 'and explicitly corrected in the commentary using paper Eq. (8f).'

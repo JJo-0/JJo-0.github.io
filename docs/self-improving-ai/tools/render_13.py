@@ -17,6 +17,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 import pymupdf as fitz
+from upper_lecture_artwork import restore_lecture_artwork
 
 SLUG = 'self-improving-ai-13-agent-harness-and-system-improvement'
 SOURCES = {
@@ -163,6 +164,7 @@ def main() -> None:
             target = root / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             pixmap.save(target)
+            restoration = restore_lecture_artwork(target, documents[key], page_number) if key == 'ntu' else {}
             source = SOURCES[key]['url'] + '#page=' + str(page_number)
             props = metadata.get(name, {})
             if props and props['source'] != source:
@@ -179,7 +181,7 @@ def main() -> None:
                 'width': pixmap.width, 'height': pixmap.height,
                 'sha256': digest(target.read_bytes()),
                 'crop_pdf_points': crop, 'edits': edits,
-                'rights_status': 'unverified',
+                **restoration, 'rights_status': 'unverified',
             })
             document.close()
 

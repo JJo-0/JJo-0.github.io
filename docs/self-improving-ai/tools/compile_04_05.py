@@ -61,7 +61,7 @@ for chapter, slug in SLUGS.items():
         assert old in body
         body = body.replace(old, '다음 [자가개선 AI 05 — 보상을 만드는 AI와 답을 평가하는 AI](/posts/' + SLUGS[5] + '/)는 원본 **21–25쪽**을 다룬다. 보상 설계 관련 연구를 비교하고, RLHF와 RLAIF의 학습 신호를 구별한다.')
         body = body.replace('이 원고는 자료 조사와 집필 초안이며, 이미지 편집·권리 확인·본문 화면 검수·공개 배포의 완료를 뜻하지 않는다.', '')
-        intro = '\n\n중국어 제목과 문구는 원본 도형을 유지한 비공식 영어 편집본으로 제시한다. 원래 영어인 19쪽은 그대로 사용한다. 18쪽 원본에 보이는 연결 이미지 누락 표시도 임의의 새 그림으로 바꾸지 않았다. 원문에 없는 계산과 유도는 추가 해설로 구별한다.\n\n'
+        intro = '\n\n중국어 제목과 문구는 원본 도형을 유지한 비공식 영어 편집본으로 제시한다. 18·19쪽에서는 원본 PPTX에 있는 사람 아이콘을 강의 화면과 같은 위치에 표시했다. 원문에 없는 계산과 유도는 추가 해설로 구별한다.\n\n'
         anchor = '\n| 원본 페이지 |'
         assert anchor in body
         body = body.replace(anchor, intro + '| 원본 페이지 |', 1)
