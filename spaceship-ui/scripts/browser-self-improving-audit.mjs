@@ -31,7 +31,8 @@ const chapters = [
   { number: 21, math: 15, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-21-learning-to-improve-the-improver', previous: 'self-improving-ai-20-retaining-skills-and-improving-the-improver', next: 'self-improving-ai-22-learning-the-parameter-update-rule' },
   { number: 22, math: 15, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-22-learning-the-parameter-update-rule', previous: 'self-improving-ai-21-learning-to-improve-the-improver', next: 'self-improving-ai-23-self-edits-and-meta-learning' },
   { number: 23, math: 17, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-23-self-edits-and-meta-learning', previous: 'self-improving-ai-22-learning-the-parameter-update-rule', next: 'self-improving-ai-24-learning-inside-the-hidden-state' },
-  { number: 24, math: 16, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-24-learning-inside-the-hidden-state', previous: 'self-improving-ai-23-self-edits-and-meta-learning', next: null },
+  { number: 24, math: 16, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-24-learning-inside-the-hidden-state', previous: 'self-improving-ai-23-self-edits-and-meta-learning', next: 'self-improving-ai-25-memory-and-intrinsic-motivation' },
+  { number: 25, math: 18, figures: 9, primarySlides: 5, timingRows: 5, slug: 'self-improving-ai-25-memory-and-intrinsic-motivation', previous: 'self-improving-ai-24-learning-inside-the-hidden-state', next: null },
 ];
 const mappingSummary = '슬라이드별 영상 위치';
 const lectureParts = [
@@ -60,6 +61,7 @@ const timestampGroups = {
   22: [2324, 2349, 2357, 2388, 2406],
   23: [2422, 2522, 2654, 2574, 2565],
   24: [2747, 2854, 2874, 2922, 3025],
+  25: [3142, 3323, 3547, 3557, 3709],
 };
 const productionPhrases = [
   /(?:자막|자료|원문|원고|보충 자료)[·\s]*(?:조회|대조|확인)일/,
@@ -119,9 +121,9 @@ function loadChapterManifest(chapter) {
     assert.equal(mainSlides.length, chapter.primarySlides, 'Chapter 13 has exactly two main slides');
     assert.deepEqual(mainSlides.map(asset => asset.pdf_page), [61, 62], 'Chapter 13 concludes the 62-page source deck');
   }
-  if (chapter.number >= 14 && chapter.number <= 24) {
+  if (chapter.number >= 14 && chapter.number <= 25) {
     const mainSlides = records.filter(asset => /^main-\d+$/.test(asset.slot || ''));
-    const pageRange = { 14: [1, 5], 15: [6, 10], 16: [11, 15], 17: [16, 20], 18: [21, 25], 19: [26, 30], 20: [31, 35], 21: [36, 40], 22: [41, 45], 23: [46, 50], 24: [51, 55] }[chapter.number];
+    const pageRange = { 14: [1, 5], 15: [6, 10], 16: [11, 15], 17: [16, 20], 18: [21, 25], 19: [26, 30], 20: [31, 35], 21: [36, 40], 22: [41, 45], 23: [46, 50], 24: [51, 55], 25: [56, 60] }[chapter.number];
     const expectedPages = Array.from({ length: 5 }, (_, index) => pageRange[0] + index);
     assert.equal(primary.source_pdf_total_pages, 64, `Chapter ${chapter.number} uses the separate 64-page lower lecture`);
     assert.deepEqual(primary.primary_page_range, pageRange, `Chapter ${chapter.number} lower lecture source range`);
