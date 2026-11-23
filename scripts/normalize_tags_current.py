@@ -641,6 +641,7 @@ POST_TAXONOMY.update({
     "self-improving-ai-23-self-edits-and-meta-learning.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
     "self-improving-ai-24-learning-inside-the-hidden-state.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "test-time-training", "memory", "ntu")),
     "self-improving-ai-25-memory-and-intrinsic-motivation.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "memory", "ntu")),
+    "self-improving-ai-26-when-the-score-and-the-goal-diverge.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "alignment", "ntu")),
 })
 
 # Preserve the existing November 18 candidate's taxonomy and draft visibility.
