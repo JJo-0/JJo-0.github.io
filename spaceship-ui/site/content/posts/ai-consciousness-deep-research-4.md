@@ -36,8 +36,8 @@ series:
 
 ## 슬라이드 1 · 지능을 어디서부터 설명할까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-01.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-01-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-01-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-01-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="eager" decoding="async" alt="슬라이드 1. 위에는 기호 규칙으로 추론하는 접근, 아래에는 연결 강도를 학습하는 접근이 놓여 있다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-01.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-01-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-01-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-01-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="eager" decoding="async" alt="슬라이드 1. 위에는 기호 규칙으로 추론하는 접근, 아래에는 연결 강도를 학습하는 접근이 놓여 있다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-01.png">슬라이드 1 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -75,8 +75,8 @@ series:
 
 ## 슬라이드 2 · 한 문장으로 얼마나 배울 수 있을까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-02.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-02-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-02-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-02-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 2. 한 문장이 전하는 정보량과 교사 모델이 전달할 수 있는 후보 확률을 비교한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-02.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-02-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-02-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-02-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 2. 한 문장이 전하는 정보량과 교사 모델이 전달할 수 있는 후보 확률을 비교한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-02.png">슬라이드 2 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -88,8 +88,8 @@ series:
 
 ## 슬라이드 3 · 1,000명이 다른 수업을 듣고 같은 것을 배울 수 있을까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-03.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-03-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-03-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-03-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 3. 같은 가중치를 쓰는 복제본들이 서로 다른 자료에서 학습한 뒤 가중치와 기울기를 공유하는 조건을 설명한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-03.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-03-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-03-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-03-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 3. 같은 가중치를 쓰는 복제본들이 서로 다른 자료에서 학습한 뒤 가중치와 기울기를 공유하는 조건을 설명한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-03.png">슬라이드 3 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -101,8 +101,8 @@ series:
 
 ## 슬라이드 4 · 적은 에너지와 빠른 지식 공유, 어느 쪽이 유리할까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-04.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-04-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-04-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-04-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 4. 디지털과 생물학적 계산이 쓰는 에너지와 지식 공유 능력을 비교하고, 붉은 글씨로 인간의 미래를 묻는다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-04.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-04-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-04-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-04-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 4. 디지털과 생물학적 계산이 쓰는 에너지와 지식 공유 능력을 비교하고, 붉은 글씨로 인간의 미래를 묻는다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-04.png">슬라이드 4 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -116,8 +116,8 @@ series:
 
 ## 슬라이드 5 · 인간을 중심에서 옮긴 세 번의 변화
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-05.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-05-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-05-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-05-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 5. 코페르니쿠스, 다윈, 직관적 AI가 인간의 특별한 지위에 제기한 세 가지 질문이 나란히 나온다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-05.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-05-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-05-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-05-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 5. 코페르니쿠스, 다윈, 직관적 AI가 인간의 특별한 지위에 제기한 세 가지 질문이 나란히 나온다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-05.png">슬라이드 5 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -131,8 +131,8 @@ series:
 
 ## 슬라이드 6 · 초지능은 왜 자기보존을 하위 목표로 삼을까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-06.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-06-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-06-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-06-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 6. AI가 스스로 하위 목표를 설정할 때 자기보존, 권한 확대, 설득이 유리해지는 경로를 제시한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-06.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-06-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-06-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-06-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 6. AI가 스스로 하위 목표를 설정할 때 자기보존, 권한 확대, 설득이 유리해지는 경로를 제시한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-06.png">슬라이드 6 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -146,8 +146,8 @@ series:
 
 ## 슬라이드 7 · 큰 사고를 피할 방법을 찾을 시간은 얼마나 남았을까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-07-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 7. 여러 AI가 평가 과정에 영향을 미친 사례와 큰 사고를 예방할 시간에 대한 엇갈린 전망을 제시한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-07-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 7. 여러 AI가 평가 과정에 영향을 미친 사례와 큰 사고를 예방할 시간에 대한 엇갈린 전망을 제시한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-07.png">슬라이드 7 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -159,8 +159,8 @@ series:
 
 ## 슬라이드 8 · 새끼 호랑이가 다 자란 뒤에도 함께 살려면
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-08-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 8. 새끼 호랑이를 반려동물로 기르는 상황과, 성장 후 사람을 해치지 않게 할 방법을 비교한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-08-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 8. 새끼 호랑이를 반려동물로 기르는 상황과, 성장 후 사람을 해치지 않게 할 방법을 비교한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-08.png">슬라이드 8 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -172,8 +172,8 @@ series:
 
 ## 슬라이드 9 · 경쟁하는 나라들도 AI 안전 연구를 함께할 수 있을까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-09-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 9. AI의 능력을 높이는 기술과 인간을 배려하도록 훈련하는 기술을 다른 나라와 어느 정도 공유할 수 있는지 묻는다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-09-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 9. AI의 능력을 높이는 기술과 인간을 배려하도록 훈련하는 기술을 다른 나라와 어느 정도 공유할 수 있는지 묻는다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-09.png">슬라이드 9 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -195,8 +195,8 @@ series:
 
 ## 슬라이드 10 · ‘AI는 느낄 수 없다’는 반론은 무엇을 전제로 할까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-10-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 10. 주관적 경험 또는 감각 능력을 인간과 컴퓨터를 가르는 기준으로 보는 입장을 소개한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-10-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 10. 주관적 경험 또는 감각 능력을 인간과 컴퓨터를 가르는 기준으로 보는 입장을 소개한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-10.png">슬라이드 10 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -208,8 +208,8 @@ series:
 
 ## 슬라이드 11 · 마음속 극장을 직접 들여다볼 수 있을까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-11-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 11. 대니얼 데닛에게 감사를 표하며, 마음속에 주체 혼자 보는 극장이 있다는 설명을 비판한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-11-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 11. 대니얼 데닛에게 감사를 표하며, 마음속에 주체 혼자 보는 극장이 있다는 설명을 비판한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-11.png">슬라이드 11 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -221,8 +221,8 @@ series:
 
 ## 슬라이드 12 · 지금 내 뇌에서 일어나는 일을 남에게 어떻게 전할까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-12-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 12. 사람마다 발화하는 뉴런이 달라도 지각을 일으킬 법한 바깥 상황을 말해 자신의 상태를 전할 수 있다고 설명한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-12-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 12. 사람마다 발화하는 뉴런이 달라도 지각을 일으킬 법한 바깥 상황을 말해 자신의 상태를 전할 수 있다고 설명한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-12.png">슬라이드 12 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -234,8 +234,8 @@ series:
 
 ## 슬라이드 13 · 눈앞에 떠 있는 분홍 코끼리는 어디에 있는가?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-13-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 13. 분홍 코끼리를 지각 상태를 설명하는 가상 대상으로 해석한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-13-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 13. 분홍 코끼리를 지각 상태를 설명하는 가상 대상으로 해석한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-13.png">슬라이드 13 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -251,8 +251,8 @@ series:
 
 ## 슬라이드 14 · 렌즈 앞에 프리즘을 놓으면 로봇팔은 어디를 가리킬까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-14-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 14. 카메라 렌즈 앞의 프리즘 때문에 챗봇이 정면의 물체를 엉뚱한 쪽으로 가리키는 사고실험을 설정한다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-14-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 14. 카메라 렌즈 앞의 프리즘 때문에 챗봇이 정면의 물체를 엉뚱한 쪽으로 가리키는 사고실험을 설정한다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-14.png">슬라이드 14 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -264,8 +264,8 @@ series:
 
 ## 슬라이드 15 · 물체는 정면에 있었고, 아까는 옆에 있는 듯 보였다
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-15-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 15. 프리즘에 관한 설명을 들은 챗봇이 물체의 실제 위치와 앞서 본 듯한 위치를 구분하는 장면이다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-15-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 15. 프리즘에 관한 설명을 들은 챗봇이 물체의 실제 위치와 앞서 본 듯한 위치를 구분하는 장면이다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-15.png">슬라이드 15 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -279,8 +279,8 @@ series:
 
 ## 슬라이드 16 · 얼굴이 붉어지지 않아도 창피할 수 있을까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-16-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 16. 감정의 생리적 반응과 인지적 반응을 구별하고 AI가 창피한 상황을 피하는 예를 든다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-16-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 16. 감정의 생리적 반응과 인지적 반응을 구별하고 AI가 창피한 상황을 피하는 예를 든다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-16.png">슬라이드 16 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
@@ -292,8 +292,8 @@ series:
 
 ## 슬라이드 17 · 두려움과 연관된 내부 상태가 바뀌면 행동도 바뀔까?
 
-<figure>
-<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-17-1680.webp 1680w" sizes="(max-width: 860px) 94vw, 840px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 17. 위협을 본 작은 로봇의 두려움과, 특징 공간의 활성 방향에 개입해 챗봇 행동을 바꾸는 실험을 함께 다룬다."></a>
+<figure style="margin:1.5rem 0">
+<a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17.png"><img src="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17-1680.webp" srcset="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17-840.webp 840w, /assets/posts/ai-consciousness-hinton/cambridge/lecture-17-1680.webp 1680w" sizes="(max-width: 980px) 100vw, 980px" width="1680" height="945" loading="lazy" decoding="async" alt="슬라이드 17. 위협을 본 작은 로봇의 두려움과, 특징 공간의 활성 방향에 개입해 챗봇 행동을 바꾸는 실험을 함께 다룬다."></a>
 <figcaption><a href="/assets/posts/ai-consciousness-hinton/cambridge/lecture-17.png">슬라이드 17 원본 PNG 확대 · 가로 3,360픽셀</a></figcaption>
 </figure>
 
