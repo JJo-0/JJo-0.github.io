@@ -1,0 +1,99 @@
+---
+title: How cell arrangement shapes waves of ferroptosis
+description: A Cell study examines how density, alignment, YAP and NRF2 signaling, and lipid polarity influence
+  where oxidative cell death spreads and stops.
+pubDate: 2026-10-18 00:00:00+09:00
+updatedDate: 2026-10-18
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-18-ferroptosis-self-organization-news
+category: health-lifestyle
+subcategory: ferroptosis-spatial-biology
+type: research-report
+tags:
+- frontier-candidate
+- ferroptosis
+- spatial-biology
+- cell-death
+researchFeatured: false
+draft: false
+lang: en
+translationKey: en-2026-10-18-ferroptosis-self-organization-news
+translatedPosts:
+  ko-KR: 2026-10-18-ferroptosis-self-organization-news
+---
+
+import Math from '@/components/post/Math.astro';
+
+> **Cultured-cell experiments and a computational model · private review copy.** This study examines how cell arrangement changes the direction in which cell death spreads and where it stops. The experiments did not test a treatment in patients.
+
+<details>
+<summary>Selection record and scope of review</summary>
+
+As of October 18, 2026 KST, the paper ranked second, with 91/100 and an evidence rating of PEER_REVIEWED_FRONTIER. The review covered the first Results section of the public Cell article, the mathematical-model portions of Results and Methods, and selected passages on resource availability. A full review of the figures, supplement and code, and independent reproduction, remain outstanding.
+
+## Study record
+
+- **rank / contentId / status:** 2 / `jjo-2026-10-18-ferroptosis-self-organization` / `BACKLOG_CANDIDATE`
+- **title / normalizedTitle:** Cellular self-organization orchestrates ferroptosis propagation / `cellular self organization orchestrates ferroptosis propagation`
+- **date / venue:** 2026-10-15 / Cell
+- **DOI / arXiv ID:** `10.1016/j.cell.2026.09.039` / no arXiv identifier verified
+- **officialUrl:** https://www.cell.com/cell/fulltext/S0092-8674(26)01142-6
+- **Score:** research question 18 + novelty 13 + evidence and reproducibility 24 + impact 18 + timeliness 9 + clarity of explanation 9 = **91**, with no deductions
+
+</details>
+
+## The finding in one sentence
+
+How densely cells cluster and the direction in which they align can change the path and boundaries of oxidative cell death. The proposed mechanism links cell arrangement to the defenses inside each cell. Its therapeutic relevance in humans remains untested.
+
+Ferroptosis is a form of cell death in which iron-dependent reactions oxidize lipids in cell membranes. YAP/TEAD1 and NRF2 are protein pathways that regulate gene activity. The starting question is whether the arrangement of cells can change how damage spreads to a neighbor. The findings below connect that physical arrangement to the two pathways.
+
+## Why cell arrangement matters
+
+In ferroptosis, iron-dependent reactions oxidize lipids. A “wave” here means that the region of cell death spreads over time. Why does it spread in one direction but stop elsewhere on the same culture surface? Density describes how closely the cells pack together. Alignment describes how consistently their long axes point in the same direction.
+
+Previous accounts focused on molecular triggers of ferroptosis and propagation between cells. This study treats tissue geometry and self-organization as boundary conditions. Loosely packed, disordered regions were susceptible, while dense, aligned regions formed resistant boundaries. The distinction offers a way to think about collective cell death in wound responses, development and cancer.
+
+## Evidence and comparison conditions
+
+The abstract describes both in silico models and pharmacological perturbations. It links propagation to YAP/TEAD1 in sparse and disordered areas, NRF2 in dense and aligned areas, and the distribution of oxidizable lipids at cell poles. The abstract alone does not establish the contribution or effect size of each experiment and model. Details about live-cell imaging, single-cell RNA analysis and genetic perturbations in an institutional summary still require comparison with the full paper.
+
+## What do the equations describe?
+
+The team analyzed cell arrangement and propagation in cultured human retinal pigment epithelium-derived RPE-1 cells. The cell experiments provide observations, and the computational model takes the observed arrangements as input. The next two expressions restate equations 17 and 19 from the paper’s STAR Methods with shorter notation. They form part of a larger coupled model.
+
+<Math display tex={"\\frac{\\partial u}{\\partial t}=\\alpha u(1-u)(u-f)"} />
+
+Here u is the normalized intracellular oxidation state, t is model time, α is a reaction rate and f is a switching threshold determined by cell density and alignment. The model has low and high states, 0 and 1. The direction of change depends on which side of the threshold the state occupies. The units of α are inverse model time. The notation shortens ROScell to u and f(ρ,c) to f. The state variable is distinct from a directly measured concentration.
+
+<Math display tex={"\\frac{\\partial v}{\\partial t}=D\\nabla^2v-k_dv"} />
+
+Here v is the modeled extracellular oxidation state, D is the spatial diffusion coefficient and kd is a decay rate. In grid coordinates, D has dimensions of grid length squared per unit model time, and kd has dimensions of inverse model time. The archived code uses a computational grid downsampled tenfold from the image region, so one grid interval cannot be equated with one original image pixel. Converting grid length and model time into tissue dimensions and real time requires calibration. Equations 20 and 21 add release and uptake between cells and their surroundings. Exchange is restricted to modeled regions of oxidizable lipid, and dead cells stop participating in reaction and exchange.
+
+The authors fitted some coefficients to maximize overlap between the calculated and observed waves at a particular time in Figure 6F. Agreement at that time is informative, but it does not establish that the model can predict waves in arbitrary tissues. Cross-checking all of equations 16–21 against the calibration procedure and code remains outstanding.
+
+**Check your understanding.** Is the diffusion coefficient D enough to predict the wave boundary? **Answer.** The model also needs the reaction threshold, cell arrangement, lipid distribution and exchange with the surroundings.
+
+## Limits and alternative evidence
+
+The reviewed main text and resource table identify human hTERT-RPE1 cells. Identifying the line leaves open the per-figure sample sizes, biological replicates and controls. This review did not establish whether the same rules operate in animal tissue or patients. Their dependence on culture conditions and cell line requires examination in the full paper. Treatment efficacy remains a separate question.
+
+## What the public code establishes
+
+Zenodo distinguishes a DOI for the entire code history from one for a specific release. The review examined a toy-environment configuration file in the linked repository’s `first` release. It places cells and lipid regions on a specified grid and calculates overlap. These are generated arrangements, distinct from newly measured microscopy images.
+
+Reviewing the layout file covers only part of the analysis. Reproducing the full reaction–diffusion equations, calibration and experimental-image analysis requires comparison with the other modeling and analysis files and their inputs. Public code, a successful run and independent reproduction of the paper’s findings are separate milestones.
+
+The review also examined the time update in `reaction_diffusion/react_diff_model.m` from the same release. Each cell’s oxidation state changes according to the reaction term and uptake calculated over its lipid regions. Cells in a high state contribute to the environment through these regions. Once a cell’s death countdown ends, the model skips its reaction and exchange updates. The environmental field undergoes diffusion and decay and is constrained to stay nonnegative. These dynamics go beyond drawing a layout of living cells.
+
+The code approximates continuous spatial equations on a grid. The reviewed script takes differences over four neighboring sites, updates the state at each iteration, sets the exterior field to zero and clips negative values. The exterior value is a numerical boundary condition. Connecting the coefficients to physical length and time requires the neighborhood rule and the definition of the time step. The file also reads experiment-specific boundaries, alignment, density, segmentation and nuclear locations from separate inputs. Possession of this one file establishes neither that every input is available nor that predictive performance transfers to new cell images.
+
+## Code, data and competing interests
+
+The paper lists single-cell RNA data under GEO GSE344231, differentially expressed genes under Figshare DOI 10.6084/m9.figshare.30632780, and code under Zenodo DOI 10.5281/zenodo.21975303. The review checked the Zenodo metadata and one environment configuration file from a fixed release of the linked repository. A full comparison and execution of all code and inputs, and a review of the reuse terms, remain outstanding. Additional microscopy data are available through a separate author-request process. In the declaration indexed by PubMed, the authors report no competing interests. Independent reproduction and data availability require their own evidence.
+
+## Sources and reasons to revisit
+
+- [Official Cell article](https://www.cell.com/cell/fulltext/S0092-8674(26)01142-6) — DOI `10.1016/j.cell.2026.09.039`.
+- [PubMed record](https://pubmed.ncbi.nlm.nih.gov/42880281/) — confirms publication on October 15, 2026.
+- Revisit when full-text, supplementary, code or data materials become available for further review, when independent studies test other cell lines, organoids or animal tissue, or when quantitative spatial perturbation results or substantial contrary evidence emerge.

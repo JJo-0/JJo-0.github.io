@@ -1,0 +1,365 @@
+---
+title: 'Navier–Stokes: From Vortex Images to Equations'
+description: Follow the terms of the equations, the energy balance, and the contraction rates in the original
+  figures. Coordinates and velocity formulas from the formalization clarify the difference between an
+  order estimate and a complete proof.
+pubDate: 2026-09-09
+updatedDate: 2026-09-10
+slug: 2026-09-09-navier-stokes-openai-frontier-one
+category: ai-machine-learning
+subcategory: ai-mathematical-discovery
+type: research-report
+tags:
+- frontier-one
+- ai-mathematics
+- formal-verification
+- navier-stokes
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translationKey: en-2026-09-09-navier-stokes-openai-frontier-one
+translatedPosts:
+  ko-KR: 2026-09-09-navier-stokes-openai-frontier-one
+---
+
+import Math from "@/components/post/Math.astro";
+import NewsFigure from "@/components/post/NewsFigure.astro";
+import NewsDiagram from "@/components/post/NewsDiagram.astro";
+import ReferenceFigure from "@/components/post/ReferenceFigure.astro";
+
+## 1. The question this article addresses
+
+For an introduction, see the [Blogger explainer on the Navier–Stokes equations and the claim that AI solved a famous problem](https://jjo-0.blogspot.com/2026/09/navierstokes-ai.html). It introduces vortices and singularities. Here we follow the same question through the material derivative, energy balance and contracting coordinates.
+
+Stirring coffee creates a vortex. This article asks two more precise questions: <strong>Why does finite total energy fail to bound velocity at every point?</strong> And <strong>why is keeping the external force smooth harder than making a velocity field large?</strong>
+
+The starting tools are exponents, derivatives, integrals, vectors and the chain rule. We read the equation, examine the illustration, and then follow the coordinates and velocities in the official formalization. Each mathematical tool is introduced before it is needed.
+
+<strong>Can a flow with finite energy and smooth external forcing concentrate in a shrinking region so strongly that a smooth solution can no longer be maintained?</strong>
+
+## 2. Applying F = ma to a fluid
+
+Treating a whole parcel of water as one particle hides the different motions within it. Instead assign a velocity to each point in space. The resulting function is a <strong>velocity field</strong>.
+
+<Math display label="Equation 1" tex={String.raw`\mathbf u(\mathbf x,t)=\begin{bmatrix}u_x(\mathbf x,t)\\u_y(\mathbf x,t)\\u_z(\mathbf x,t)\end{bmatrix}.`} />
+
+Given position x and time t, the field returns the direction and speed of the fluid there. Pressure is also a function of position and time. For an incompressible Newtonian fluid of constant density and viscosity, the momentum equation can be written as follows.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<Math display label="Equation 2" tex={String.raw`\rho\left[\partial_t\mathbf u+(\mathbf u\cdot\nabla)\mathbf u\right]
+=-\nabla P+\mu\Delta\mathbf u+\rho\mathbf b.`} />
+
+The left side is mass per unit volume times acceleration. On the right are pressure, viscosity and external forces. Here ρ denotes density, P physical pressure, μ dynamic viscosity and b external force per unit mass.
+
+With constant density, divide the equation by ρ and set p = P/ρ, ν = μ/ρ and f = b to obtain the following form.
+
+<Math display label="Equation 3" tex={String.raw`\begin{aligned}
+\frac{\partial\mathbf u}{\partial t}+(\mathbf u\!\cdot\!\nabla)\mathbf u
+&=-\nabla p+\nu\Delta\mathbf u+\mathbf f,\\[0.65em]
+\nabla\!\cdot\!\mathbf u&=0.
+\end{aligned}`} />
+
+This is the Navier–Stokes equation used here. Theorem 1.1 in the paper also puts the external forcing on the right-hand side of the momentum equation.<a href="#news-ref-9" data-news-citation="9" aria-label="Go to reference 9" data-astro-reload>[9]</a> <strong>Absorbing density into the notation is distinct from nondimensionalizing every variable.</strong> Physical units remain at this stage. <a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+| Symbol or term | Meaning | Units or interpretation |
+|---|---|---|
+| u | Velocity field | m/s |
+| ∂ₜu | Change in velocity over time at a fixed position | m/s² |
+| (u·∇)u | Change in velocity as fluid moves through space | m/s² |
+| p = P/ρ | Pressure divided by density | m²/s², whereas physical pressure P is measured in Pa |
+| −∇p | Acceleration due to a pressure gradient | m/s² |
+| νΔu | Viscous diffusion of velocity differences | ν has units of m²/s |
+| f | External force per unit mass | m/s² |
+
+The inverted triangle ∇ denotes spatial differentiation. The gradient ∇p tells us how pressure varies in space. The divergence ∇·u measures net outflow from a small volume. The Laplacian Δu sums spatial second derivatives for each velocity component.
+
+<Math display label="Equation 4" tex={String.raw`\nabla p=\begin{bmatrix}\partial_xp\\\partial_yp\\\partial_zp\end{bmatrix},\qquad
+\Delta u_x=\partial_{xx}u_x+\partial_{yy}u_x+\partial_{zz}u_x.`} />
+
+The terms in the momentum balance must all have units of acceleration. Checking units before comparing magnitudes is a useful habit when reading engineering papers.
+
+<NewsDiagram lang="en" diagram="navier-equation-map" />
+
+## 3. A fluid can accelerate in a steady velocity field
+
+Perhaps the least familiar term is (u·∇)u. To see where it comes from, follow a moving parcel of water.
+
+If the parcel is at X(t), its velocity is u(X(t), t). Differentiating by the chain rule gives the expression below.
+
+<Math display label="Equation 5" tex={String.raw`\frac{d}{dt}\mathbf u(\mathbf X(t),t)
+=\partial_t\mathbf u+\sum_{j=1}^{3}\frac{dX_j}{dt}\partial_{x_j}\mathbf u
+=\partial_t\mathbf u+(\mathbf u\cdot\nabla)\mathbf u.`} />
+
+The parcel’s rate of change of position, dX/dt, is the fluid velocity u. The entire derivative is the <strong>material derivative</strong>. A fixed camera and a moving parcel can observe different changes in velocity.
+
+Consider this <strong>local example for illustration</strong>.
+
+<Math display label="Equation 6" tex={String.raw`\mathbf u(x,y,z)=(ax,-ay,0),\qquad a>0.`} />
+
+There is no explicit t, so ∂ₜu = 0. But a parcel moving along the positive x-axis enters positions with larger x and experiences a larger velocity ax.
+
+<Math display label="Equation 7" tex={String.raw`[(\mathbf u\cdot\nabla)\mathbf u]_x=(ax)\partial_x(ax)+(-ay)\partial_y(ax)=a^2x.`} />
+
+<strong>A parcel can accelerate even when the velocity field is steady.</strong> Extended across all of infinite space, this linear field would fail the finite-energy condition. Its purpose is to illustrate the derivative.
+
+## 4. Incompressibility allows structures to shrink
+
+Written out in components, the incompressibility constraint is
+
+<Math display label="Equation 8" tex={String.raw`\nabla\cdot\mathbf u=\partial_xu_x+\partial_yu_y+\partial_zu_z=0.`} />
+
+Outflow in one direction balances inflow in another for a small volume. The constraint permits contraction in an individual direction.
+
+For a flow with no dependence on θ, cylindrical coordinates make this especially clear.
+
+<Math display label="Equation 9" tex={String.raw`\frac{1}{r}\partial_r(ru_r)+\partial_zu_z=0.`} />
+
+For a <strong>local illustration</strong>, set uᵣ = −αr and u_z = 2αz. Fluid flows toward the center radially and away from the middle axially.
+
+<Math display label="Equation 10" tex={String.raw`\frac{1}{r}\partial_r(-\alpha r^2)+\partial_z(2\alpha z)
+=-2\alpha+2\alpha=0.`} />
+
+Axial extension can compensate for radial contraction and preserve volume. A material region Ω(t) that follows the same fluid particles satisfies the relation below.
+
+<Math display label="Equation 11" tex={String.raw`\frac{d}{dt}\operatorname{Vol}(\Omega(t))
+=\int_{\Omega(t)}\nabla\cdot\mathbf u\,dV=0.`} />
+
+The high-speed region marked in a diagram need not consist of the same particles over time. <strong>The volume of a material region and the size of a high-speed region are different quantities.</strong> A shrinking high-speed region does not require compressing the water.
+
+## 5. Reading Figure 1
+
+<NewsFigure media="vortex" lang="en" priority />
+
+The times are ordered t₁ &lt; t₂ &lt; t₃ &lt; 1. From left to right, they approach the singular time. The choice of 1 fixes the time scale in the construction. It does not describe an event in a glass of water after one physical second.
+
+The caption describes fluid spiraling inward and moving axially on either side of a separation layer near z = 0. As time passes, the region of intense flow shrinks and velocity increases. Crucially, <strong>the radius decreases faster than the height.</strong>
+
+The height also decreases. <strong>The region becomes relatively more slender because the radius shrinks faster.</strong> The caption says this difference is exaggerated in the illustration. Measuring pixel lengths would not recover the contraction exponents.
+
+<ReferenceFigure
+  src="/assets/posts/navier-stokes-education/official-vortex.webp"
+  alt="OpenAI visualization of a local vortex with inward rotation and axial flow."
+  caption="The official visualization uses color for angular velocity. It illustrates the contraction scales discussed below. It is not an experimental photograph of a singularity."
+  source="https://openai.com/index/navier-stokes-solution/"
+  credit="OpenAI · official research announcement"
+/>
+
+The official announcement relates color to angular velocity. At radius r and angular velocity Ω, the circumferential speed is uθ = rΩ. <strong>The fastest angular rotation need not give the greatest linear speed.</strong> Read the legend before interpreting the colors.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+## 6. Total energy and speed at a point contain different information
+
+With density normalized to one, the kinetic energy is
+
+<Math display label="Equation 12" tex={String.raw`E(t)=\frac12\int_{\Omega}|\mathbf u(\mathbf x,t)|^2\,d\mathbf x
+=\frac12\|\mathbf u(t)\|_{L^2}^2.`} />
+
+The integral sums contributions across space. The L∞ norm instead captures the largest velocities.
+
+<Math display label="Equation 13" tex={String.raw`\|\mathbf u(t)\|_{L^\infty}=\operatorname*{ess\,sup}_{\mathbf x\in\Omega}|\mathbf u(\mathbf x,t)|.`} />
+
+The essential supremum ignores exceptional sets of measure zero. For the smooth fields considered here, think of an upper bound approached by the largest values. On an unbounded domain, the supremum need not be attained at a point, which is why “sup” is more precise than “max.”
+
+<strong>An integral and a peak measure different features of a field.</strong> Knowing E is finite does not supply a bound on peak speed.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Here is a mathematical example. Take a smooth vector field Φ supported in a bounded region with ∇·Φ = 0. For ℓ > 0, rescale it as follows.
+
+<Math display label="Equation 14" tex={String.raw`\mathbf u_\ell(\mathbf x)=\ell^{-1}\Phi(\mathbf x/\ell).`} />
+
+As ℓ shrinks, the spatial width decreases and the amplitude rises. Peak speed scales as
+
+<Math display label="Equation 15" tex={String.raw`\|\mathbf u_\ell\|_{L^\infty}=\ell^{-1}\|\Phi\|_{L^\infty}\longrightarrow\infty.`} />
+
+Changing variables to y = x/ℓ gives the three-dimensional volume element dx = ℓ³dy.
+
+<Math display label="Equation 16" tex={String.raw`E_\ell=\frac12\int\ell^{-2}|\Phi(\mathbf x/\ell)|^2d\mathbf x
+=\frac{\ell}{2}\int|\Phi(\mathbf y)|^2d\mathbf y\longrightarrow0.`} />
+
+This example shows that <strong>peak speed can increase while energy decreases</strong>. Each field may be smooth and divergence-free. The family is not yet a time-dependent Navier–Stokes solution. Allowing ℓ to depend on time raises a new question: is the required forcing smooth? Bridging that gap is a substantial part of the proof problem.
+
+## 7. The energy balance reveals what viscosity does
+
+Assume a sufficiently smooth solution for t &lt; T. Take either a periodic domain or a field that decays sufficiently fast at infinity for the boundary terms to vanish. In a pipe with arbitrary inlets and outlets those boundary terms cannot simply be discarded.
+
+Take the dot product of the momentum equation with u and integrate over space. The time-derivative term gives the rate of change of kinetic energy. The convective term can be rearranged with the following identity.
+
+<Math display label="Equation 17" tex={String.raw`\mathbf u\cdot[(\mathbf u\cdot\nabla)\mathbf u]
+=\nabla\cdot\left(\frac12|\mathbf u|^2\mathbf u\right)
+-\frac12|\mathbf u|^2\nabla\cdot\mathbf u.`} />
+
+Its integral vanishes because the field has zero divergence and there is no boundary contribution. The integrated pressure term also vanishes. Integration by parts makes the viscous contribution nonpositive.
+
+<Math display label="Equation 18" tex={String.raw`\nu\int\mathbf u\cdot\Delta\mathbf u\,d\mathbf x
+=-\nu\int|\nabla\mathbf u|^2d\mathbf x.`} />
+
+The result is
+
+<Math display label="Equation 19" tex={String.raw`\boxed{\frac{dE}{dt}+\nu\int|\nabla\mathbf u|^2d\mathbf x
+=\int\mathbf f\cdot\mathbf u\,d\mathbf x}.`} />
+
+This is the energy balance derived from the governing equation above. The second term on the left is viscous dissipation of kinetic energy. The right side is work done by the external force. <strong>Forcing can increase kinetic energy.</strong> Without forcing, kinetic energy cannot increase under these assumptions.
+
+Convection produces no net kinetic energy in this balance, but it can redistribute energy in space. <strong>Controlling the total and preventing local concentration are distinct problems.</strong>
+
+## 8. Why three-dimensional vortices are harder
+
+Define <strong>vorticity</strong> as the curl of velocity, ω = ∇×u. It describes the direction and strength of local rotation. Taking the curl of the momentum equation at constant density under incompressibility gives<a href="#news-ref-7" data-news-citation="7" aria-label="Go to reference 7" data-astro-reload>[7]</a>
+
+<Math display label="Equation 20" tex={String.raw`\partial_t\boldsymbol\omega+(\mathbf u\cdot\nabla)\boldsymbol\omega
+=(\boldsymbol\omega\cdot\nabla)\mathbf u+\nu\Delta\boldsymbol\omega+\nabla\times\mathbf f.`} />
+
+The first term on the right allows the velocity gradient to stretch or reorient vorticity. It includes <strong>vortex stretching</strong>. While viscosity diffuses variations, deformation of the flow can amplify vorticity in particular directions.
+
+In planar two-dimensional flow, u_z = 0 and the velocity is independent of z. Vorticity points along z and ∂zu = 0, so the stretching term vanishes. It generally survives in three dimensions. Its presence helps explain the difficulty but does not establish a singularity.
+
+In the balance for the squared integral of vorticity, the stretching contribution has no fixed sign.
+
+<Math display label="Equation 21" tex={String.raw`\frac12\frac{d}{dt}\|\boldsymbol\omega\|_2^2+\nu\|\nabla\boldsymbol\omega\|_2^2
+=\int\boldsymbol\omega\cdot[(\boldsymbol\omega\cdot\nabla)\mathbf u]d\mathbf x
++\int\boldsymbol\omega\cdot(\nabla\times\mathbf f)d\mathbf x.`} />
+
+Viscosity alone therefore does not settle the question. This identity follows from the vorticity equation under the same regularity and boundary assumptions.
+
+## 9. Reading contraction rates from the formalization’s coordinates
+
+We now turn from general background to <strong>definitions in the official formalization</strong>. Equation (3.2) in section 3.1 of the paper defines the following relations. The same coordinate relations appear in `CoordinateAlgebra.lean` and `SimilarityCoordinates.lean`.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a><a href="#news-ref-4" data-news-citation="4" aria-label="Go to reference 4" data-astro-reload>[4]</a><a href="#news-ref-9" data-news-citation="9" aria-label="Go to reference 9" data-astro-reload>[9]</a>
+
+<Math display label="Equation 22" tex={String.raw`A=\frac12+h,\qquad D=\frac12-h,\qquad\tau=1-t.`} />
+
+<Math display label="Equation 23" tex={String.raw`\tau=q(1-\eta^2),\qquad z=q^D\eta,\qquad X=\frac{r^2}{2q}.`} />
+
+Here τ is time remaining to the singularity, r is distance from the axis and z is the axial coordinate. The positive scale variable q depends on time and axial position. X and η are rescaled coordinates. D is an exponent here.
+
+Eliminating η gives
+
+<Math display label="Equation 24" tex={String.raw`\tau=q-z^2q^{2h}.`} />
+
+Thus q cannot be replaced everywhere by τ. They coincide at z = 0, but in general q must satisfy the relation above. The formalization separately addresses the existence and uniqueness of this positive coordinate.<a href="#news-ref-4" data-news-citation="4" aria-label="Go to reference 4" data-astro-reload>[4]</a>
+
+Why introduce these coordinates? In the original coordinates, a contracting structure changes its apparent shape. Adjusting the scale with the structure allows its profile to be expressed on a fixed range.
+
+<strong>Within a fixed core interval</strong>, suppose |η| ≤ η₀ &lt; 1. Then q is comparable to τ up to constant factors. Taking X in a fixed bounded range and using r = √(2qX) gives the following contraction rates.
+
+<Math display label="Equation 25" tex={String.raw`R(\tau)\propto\tau^{1/2},\qquad H(\tau)\propto\tau^{1/2-h},\qquad
+\frac{H}{R}\propto\tau^{-h}.`} />
+
+For small positive h, both lengths tend to zero while the aspect ratio H/R grows. This explains how <strong>the structure can shrink overall and still become relatively slender</strong>. The comparison does not automatically extend to the ends where η approaches ±1.
+
+Section 3.1 of the paper sets 0 &lt; h &lt; 1/100 and later chooses h small. The local construction in `NaturalAxisData.lean` records the more specific ranges 0 &lt; h ≤ 1/1000 and 0 &lt; j ≤ 1/1000. These conditions belong to a local module. They leave the rest of the proof to establish. With exponents this small, the illustrated change in aspect ratio should not be used as a quantitative scale.<a href="#news-ref-5" data-news-citation="5" aria-label="Go to reference 5" data-astro-reload>[5]</a>
+
+## 10. Which component of velocity becomes large?
+
+In `NaturalCore.lean`, `coreVelocity_swirl` gives the circumferential component below. The code calls its profile f. We write F here to distinguish it from the external force f.<a href="#news-ref-6" data-news-citation="6" aria-label="Go to reference 6" data-astro-reload>[6]</a>
+
+<Math display label="Equation 26" tex={String.raw`u_\theta=q^{-A}\sqrt{2X}\,F(X,\eta).`} />
+
+F describes the shape in rescaled coordinates. The factor q⁻ᴬ sets the amplitude. Since A > 0, decreasing q increases the characteristic speed.
+
+The circumferential basis may look singular on the rotation axis. A coordinate singularity does not necessarily imply a singular physical field. Rewriting the expression using r gives
+
+<Math display label="Equation 27" tex={String.raw`u_\theta=rq^{-(1+h)}F(X,\eta).`} />
+
+At fixed t &lt; 1, q stays positive as r tends to zero at the origin. A smooth profile does not start with infinite swirl on the axis.
+
+The definition `coreVelocity_at_origin` instead gives the <strong>axial velocity at the origin</strong> directly.<a href="#news-ref-6" data-news-citation="6" aria-label="Go to reference 6" data-astro-reload>[6]</a>
+
+<Math display label="Equation 28" tex={String.raw`\mathbf u_{\mathrm{core}}(\mathbf 0,t)=j(1-t)^{-(1/2+h)}\mathbf e_z.`} />
+
+Here j is positive and e_z is the axial unit vector. The speed is finite at each t &lt; 1 but has no common upper bound as t approaches 1. The local core must still be connected to the final global flow. The code distinguishes local core existence from regularity of the final forcing.
+
+To connect this with energy, make an <strong>order-of-magnitude estimate</strong>. Suppose the profile is controlled on a fixed rescaled core and its characteristic speed is proportional to U. Then
+
+<Math display label="Equation 29" tex={String.raw`E_{\mathrm{core}}\approx U^2R^2H
+\propto\tau^{-2(1/2+h)}\tau^{1}\tau^{1/2-h}
+=\tau^{1/2-3h}.`} />
+
+For h &lt; 1/6 the exponent is positive. On these scales, core energy can therefore decrease while speed increases. The local parameter range in the formalization satisfies this condition.
+
+<strong>This calculation shows that the energy and velocity scales are compatible. It does not prove bounded energy for the complete solution.</strong> The exterior flow, corrections, derivatives and integrals over the entire domain still need control. A scaling calculation and a complete theorem have different burdens of proof.
+
+On the same scales the local Reynolds number U R/ν is proportional to τ⁻ʰ/ν. Even a shrinking region need not have a smaller Reynolds number when its speed rises. This too is a scaling observation. It is not a proof that the construction overcomes viscosity.
+
+## 11. The difficulty of leaving a smooth external force
+
+Suppose one proposes a velocity field U and pressure p₀. Substitute them into the governing equation and call what remains the <strong>residual</strong>.
+
+<Math display label="Equation 30" tex={String.raw`\mathcal R(\mathbf U,p_0)=\partial_t\mathbf U+(\mathbf U\cdot\nabla)\mathbf U
++\nabla p_0-\nu\Delta\mathbf U.`} />
+
+Setting f equal to this residual makes the equation hold formally. <strong>The resulting f need not be smooth.</strong> If U grows without bound and its derivatives become large, f can diverge with it. An infinite driving force would not meet the problem’s conditions.
+
+Even bounded values of f are insufficient if its derivatives lose regularity. The official announcement describes the central challenge as arranging precise cancellations among large acceleration, momentum transport, pressure and viscosity terms so that the external forcing stays smooth.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+To see the structure, expand a <strong>general correction identity</strong>. Write u = U + w and p = p₀ + π. Then
+
+<Math display label="Equation 31" tex={String.raw`\begin{aligned}
+\mathcal R(\mathbf U+\mathbf w,p_0+\pi)
+={}&\mathcal R(\mathbf U,p_0)+\partial_t\mathbf w
++(\mathbf U\cdot\nabla)\mathbf w+(\mathbf w\cdot\nabla)\mathbf U\\
+&+(\mathbf w\cdot\nabla)\mathbf w+\nabla\pi-\nu\Delta\mathbf w.
+\end{aligned}`} />
+
+This teaching identity comes from expanding the governing equation. It is not cited as a numbered equation in the manuscript. Adding a correction flow introduces interactions, time derivatives and viscous costs as well as the term one wants.
+
+If ∇·w = 0, the nonlinear part of the correction can be written as
+
+<Math display label="Equation 32" tex={String.raw`(\mathbf w\cdot\nabla)\mathbf w=\nabla\cdot(\mathbf w\otimes\mathbf w).`} />
+
+Here ⊗ is the outer product, giving a matrix with entries wᵢwⱼ. It differs from the vector cross product. Through quadratic terms, small oscillations with zero mean can influence the mean flow.
+
+Consider a <strong>scalar illustration</strong> averaged over one period.
+
+<Math display label="Equation 33" tex={String.raw`\langle a\sin\theta\rangle=0,\qquad
+\langle a^2\sin^2\theta\rangle=\frac{a^2}{2}.`} />
+
+An oscillation may have zero mean while its square has positive mean. This illustrates the connection to mean stresses. The sine wave itself is not a three-dimensional correction for this problem. Spatial dependence, divergence, boundary conditions, pressure and viscosity still have to be consistent.
+
+In particular, high spatial frequencies also increase second derivatives, raising the cost of the viscous term. <strong>Fast oscillation alone cannot guarantee cancellation.</strong> The difficulty is to control every generated term within the same equation.
+
+## 12. The claimed result and the scope of this reading
+
+The Clay problem statement treats the unforced alternatives in A and B. Alternatives C and D allow breakdown constructions with admissible smooth forcing. The official formalization records results corresponding to C and D. <strong>The forced construction does not settle the unforced case.</strong><a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-8" data-news-citation="8" aria-label="Go to reference 8" data-astro-reload>[8]</a>
+
+The equations above connect the governing equation to the coordinate definitions and local core velocity. Correct energy and correction identities still leave the existence of the global flow and all boundary and regularity conditions to be proved.
+
+The official metadata report `sorry_count: 0`, indicating no unfinished-proof placeholders in the principal formalization. Its review status is listed as `self-assessed`. Independent review still matters for which theorems and assumptions were checked and whether the definitions correspond to the original problem.<a href="#news-ref-8" data-news-citation="8" aria-label="Go to reference 8" data-astro-reload>[8]</a>
+
+<strong>Deriving an identity, constructing a local core, constructing a global flow and satisfying the full statement each establish something different.</strong> The documentation of `NaturalCore.lean` explicitly leaves regularity of the final forcing outside that module.<a href="#news-ref-6" data-news-citation="6" aria-label="Go to reference 6" data-astro-reload>[6]</a>
+
+<NewsDiagram lang="en" diagram="navier-verification-path" />
+
+## 13. Three questions to check understanding
+
+<strong>First, is acceleration zero if the field contains no t?</strong> No. The material derivative includes changes experienced while moving through space. In the earlier example ∂ₜu = 0, but the x acceleration was a²x.
+
+<strong>Second, does a shrinking high-speed region contradict incompressibility?</strong> No. A high-speed region can contain different particles over time. A material region that follows the same particles has its own volume-conservation condition.
+
+<strong>Third, does a positive exponent in the energy scaling τ^(1/2−3h) finish the proof?</strong> No. The exterior flow, corrections, required forcing derivatives and conditions on the whole domain remain. The calculation establishes compatibility of scales.
+
+These distinctions make it possible to explain the mathematical obstacles behind the headline claim about AI solving a difficult problem.
+
+## 14. In one sentence
+
+<strong>A contracting spatial scale and increasing velocity can be consistent with finite energy. The construction must also keep the Navier–Stokes residual smooth enough to serve as the prescribed external force.</strong>
+
+## Sources
+
+<a id="news-ref-1" href="https://www.claymath.org/wp-content/uploads/2022/06/navierstokes.pdf" data-news-reference="1" target="_blank" rel="noopener noreferrer">[1]</a> Charles L. Fefferman / Clay Mathematics Institute, [official problem statement](https://www.claymath.org/wp-content/uploads/2022/06/navierstokes.pdf), pp. 1–2, equations (1)–(7) and alternatives A–D.
+
+<a id="news-ref-2" href="https://openai.com/index/navier-stokes-solution/" data-news-reference="2" target="_blank" rel="noopener noreferrer">[2]</a> OpenAI, [On the Navier–Stokes Millennium Prize Problem](https://openai.com/index/navier-stokes-solution/), September 8, 2026. The official announcement describes the color scale and precise cancellation. The research claim and independent verification have separate status.
+
+<a id="news-ref-3" href="https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/CoordinateAlgebra.lean" data-news-reference="3" target="_blank" rel="noopener noreferrer">[3]</a> OpenAI, [CoordinateAlgebra.lean](https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/CoordinateAlgebra.lean), `A`, `D`, `forward_coordinate_identity` and the coordinate comments.
+
+<a id="news-ref-4" href="https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/SimilarityCoordinates.lean" data-news-reference="4" target="_blank" rel="noopener noreferrer">[4]</a> OpenAI, [SimilarityCoordinates.lean](https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/SimilarityCoordinates.lean), the positive q coordinate and the existence and uniqueness theorem.
+
+<a id="news-ref-5" href="https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/NaturalAxisData.lean" data-news-reference="5" target="_blank" rel="noopener noreferrer">[5]</a> OpenAI, [NaturalAxisData.lean](https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/NaturalAxisData.lean), `SmallParameters`, `A_bounds`, `D_bounds`.
+
+<a id="news-ref-6" href="https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/NaturalCore.lean" data-news-reference="6" target="_blank" rel="noopener noreferrer">[6]</a> OpenAI, [NaturalCore.lean](https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/NaturalCore.lean), `similarityPoint`, `coreVelocity_swirl`, `coreVelocity_at_origin`, `extension_speedUnbounded` and module notes. The natural core’s radial coordinate follows `radialEnergy` in [AxisymmetricFields.lean](https://github.com/openai/NavierStokesAndEuler/blob/main/NavierStokes/AxisymmetricFields.lean).
+
+<a id="news-ref-7" href="https://ocw.mit.edu/courses/1-63-advanced-fluid-dynamics-of-the-environment-fall-2002/resources/17vorti/" data-news-reference="7" target="_blank" rel="noopener noreferrer">[7]</a> MIT OpenCourseWare, [Vorticity Theorem for a Viscous Fluid](https://ocw.mit.edu/courses/1-63-advanced-fluid-dynamics-of-the-environment-fall-2002/resources/17vorti/), 1.63, Fall 2002. Background on the vorticity equation.
+
+<a id="news-ref-8" href="https://github.com/openai/NavierStokesAndEuler/blob/main/formalization.yaml" data-news-reference="8" target="_blank" rel="noopener noreferrer">[8]</a> OpenAI, [formalization.yaml](https://github.com/openai/NavierStokesAndEuler/blob/main/formalization.yaml). Correspondence between manuscript and formalization, with self-reported verification status.
+
+
+<a id="news-ref-9" href="https://cdn.openai.com/pdf/32d9f210-8b73-45e0-91bc-82a30aef8a9a/navier-stokes.pdf" data-news-reference="9" target="_blank" rel="noopener noreferrer">[9]</a> OpenAI, [Finite Time Blowup for Navier–Stokes](https://cdn.openai.com/pdf/32d9f210-8b73-45e0-91bc-82a30aef8a9a/navier-stokes.pdf), Theorem 1.1, sections 2.1–2.4, equations (3.1)–(3.3) in section 3.1, and section 3.3. Released September 8, 2026.
+
+[Related article: Reading AI research automation metrics](/en/posts/2026-09-07-openai-research-automation-frontier-one/) · [News](/en/news/)
