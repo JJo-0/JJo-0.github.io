@@ -28,6 +28,11 @@ POST_TAXONOMY.update(
             "ai-machine-learning", "ai-safety", "research-report",
             ("ai-safety", "alignment", "ai-governance", "ai-lectures-interviews"),
         ),
+        "ai-consciousness-deep-research-5.mdx": Taxonomy(
+            "ai-machine-learning", "ai-consciousness", "research-report",
+            ("consciousness", "philosophy-of-mind", "ai-welfare", "ai-governance", "ai-lectures-interviews"),
+            "ai-consciousness-governance", True, 5,
+        ),
         "lecun-ntu-world-models.mdx": Taxonomy(
             "ai-machine-learning", "computer-vision", "research-report",
             ("world-models", "computer-vision", "robot-learning", "ai-lectures-interviews"),
