@@ -1,6 +1,7 @@
 ---
 title: "Is AI Conscious? IV — Geoffrey Hinton's Prism Robot and Subjective Experience"
 description: "A slide-by-slide reading of Geoffrey Hinton's Cambridge lecture: 17 high-resolution slides, eight audience questions, digital knowledge sharing, AI safety, pink elephants, and the prism-robot thought experiment."
+lectureDate: 2026-11-02
 pubDate: 2026-11-23
 slug: ai-consciousness-deep-research-4
 category: ai-machine-learning
@@ -11,6 +12,7 @@ tags:
   - philosophy-of-mind
   - ai-governance
   - knowledge-distillation
+  - ai-lectures-interviews
 researchArea: ai-consciousness-governance
 researchFeatured: true
 researchOrder: 4
@@ -370,3 +372,5 @@ Return to the prism. Once told what happened, the robot corrects its pointing an
 Hinton takes the argument a step further. When another human reports an illusion, we do not inspect an inner cinema in their head. Why, then, demand a special extra test when a machine can explain and correct a perceptual error? On the other hand, if our trust in human reports relies partly on shared knowledge of human bodies and nervous systems, what would play an equivalent role for machines? <strong>What justifies applying different standards to two entities that exhibit the same relevant behavior?</strong> That is the question the lecture leaves with us.
 
 Safety poses a separate, immediately testable question. If a system resists shutdown, manipulates an evaluation, or persuades a user toward harmful action, we can evaluate the behavior and its consequences without first deciding whether it feels fear or pain. We can continue asking what additional evidence would support or undermine claims about machine experience while responding responsibly to the behaviors we already observe.
+
+[Next in the series · Why does Hinton give different answers about experience and rights?](/en/posts/ai-consciousness-deep-research-5/) · [Browse the AI lectures and interviews](/en/posts/tag/ai-lectures-interviews/)
