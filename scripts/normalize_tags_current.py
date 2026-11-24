@@ -20,9 +20,22 @@ POST_TAXONOMY.update({
 
 POST_TAXONOMY.update(
     {
+        "bengio-berlin-safe-by-design-ai.mdx": Taxonomy(
+            "ai-machine-learning", "ai-safety", "research-report",
+            ("ai-safety", "alignment", "scientist-ai", "ai-lectures-interviews"),
+        ),
+        "hinton-lectures-2026-paul-christiano.mdx": Taxonomy(
+            "ai-machine-learning", "ai-safety", "research-report",
+            ("ai-safety", "alignment", "ai-governance", "ai-lectures-interviews"),
+        ),
+        "ai-consciousness-deep-research-5.mdx": Taxonomy(
+            "ai-machine-learning", "ai-consciousness", "research-report",
+            ("consciousness", "philosophy-of-mind", "ai-welfare", "ai-governance", "ai-lectures-interviews"),
+            "ai-consciousness-governance", True, 5,
+        ),
         "lecun-ntu-world-models.mdx": Taxonomy(
             "ai-machine-learning", "computer-vision", "research-report",
-            ("world-models", "computer-vision", "robot-learning"),
+            ("world-models", "computer-vision", "robot-learning", "ai-lectures-interviews"),
         ),
         "segmentation-from-pixels-to-robot-observations.mdx": Taxonomy(
             "ai-machine-learning", "semantic-segmentation", "study-note",
@@ -655,7 +668,7 @@ POST_TAXONOMY.update({
 
 POST_TAXONOMY["ai-consciousness-deep-research-4.md"] = Taxonomy(
     "ai-machine-learning", "ai-consciousness", "research-report",
-    ("consciousness", "philosophy-of-mind", "ai-governance", "knowledge-distillation"),
+    ("consciousness", "philosophy-of-mind", "ai-governance", "knowledge-distillation", "ai-lectures-interviews"),
     "ai-consciousness-governance", True, 4,
 )
 

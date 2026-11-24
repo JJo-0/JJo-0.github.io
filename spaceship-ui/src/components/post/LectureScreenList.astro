@@ -1,0 +1,38 @@
+---
+import SourceFrame from './LectureSourceFrame.astro';
+
+interface Screen { time: number; title: string; caption?: string }
+interface Props { video: string; day: number; screens: Screen[] }
+const { video, day, screens } = Astro.props;
+function timecode(t: number) {
+  const parts = [Math.floor(t / 60) % 60, t % 60].map(n => String(n).padStart(2, '0'));
+  if (t >= 3600) parts.unshift(String(Math.floor(t / 3600)));
+  return parts.join(':');
+}
+---
+<details open class="screens" data-lecture-day={day}>
+  <summary>{day}일차 발표 화면 {screens.length}개</summary>
+  <details class="screen-index">
+    <summary>제목으로 장면 찾기</summary>
+    <ol>
+      {screens.map((screen, i) => <li><a href={'#night-' + day + '-screen-' + (i + 1)}>{screen.title}</a></li>)}
+    </ol>
+  </details>
+  {screens.map((screen, i) => (
+    <figure id={'night-' + day + '-screen-' + (i + 1)} data-recording-screen={i + 1}>
+      <figcaption><span>{day}일차 · {i + 1}</span> {screen.title}</figcaption>
+      <SourceFrame {video} time={screen.time} label={timecode(screen.time) + ' · ' + screen.title} />
+      {screen.caption && <p>{screen.caption}</p>}
+    </figure>
+  ))}
+</details>
+<style>
+  .screens {margin:1.4rem 0 2.35rem}
+  summary {cursor:pointer;font-weight:650}
+  .screen-index {margin:.75rem 0}
+  .screen-index summary {font-size:.92rem;font-weight:500}
+  .screen-index ol {padding-inline-start:1.65rem}
+  figure {margin:1.6rem 0 2.25rem;scroll-margin-top:6rem}
+  figcaption {font-weight:650;color:var(--color-foreground);text-align:left}
+  figcaption span {font-size:.83rem;font-weight:500;color:var(--color-muted-foreground);margin-inline-end:.5rem}
+</style>

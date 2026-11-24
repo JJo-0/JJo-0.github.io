@@ -16,15 +16,23 @@ interface Props {
 const { tag, posts, en = false } = Astro.props;
 const writingPath = en ? '/en/posts/' : '/posts';
 
+const lectureCollection = tag === 'ai-lectures-interviews';
+const heading = lectureCollection ? (en ? 'AI lectures and interviews' : 'AI 강연·인터뷰') : tag;
+const introduction = lectureCollection
+  ? (en ? 'Read the lectures and interviews in event or broadcast order. Each article links to the original recording.' : '행사와 방송 날짜순으로 읽는 AI 강연과 인터뷰. 각 글에서 발표 화면, 발언 해설, 원본 영상을 함께 볼 수 있습니다.')
+  : `A collection of ${posts.length} ${posts.length === 1 ? 'post' : 'posts'} about ${tag}.`;
+const ordered = lectureCollection
+  ? [...posts].sort((a, b) => (a.data.lectureDate ?? a.data.pubDate).getTime() - (b.data.lectureDate ?? b.data.pubDate).getTime())
+  : posts;
 const schema = getBreadcrumbSchema([
   { name: 'Blog', url: new URL(writingPath, Astro.site).toString() },
-  { name: tag, url: new URL(Astro.url.pathname, Astro.site).toString() },
+  { name: heading, url: new URL(Astro.url.pathname, Astro.site).toString() },
 ]);
 ---
 
 <Layout
-  title={`Posts tagged with "${tag}"`}
-  description={`Blog posts tagged with ${tag}`}
+  title={lectureCollection ? heading : `Posts tagged with "${tag}"`}
+  description={lectureCollection ? introduction : `Blog posts tagged with ${tag}`}
   lang={en ? 'en' : undefined}
   adsEnabled={en ? false : undefined}
   schema={schema}
@@ -32,7 +40,7 @@ const schema = getBreadcrumbSchema([
   <Breadcrumbs homeHref={en ? '/en/' : '/'}
     items={[
       { name: 'Blog', href: writingPath },
-      { name: `#${tag}`, href: '#' },
+      { name: lectureCollection ? heading : `#${tag}`, href: '#' },
     ]}
   />
 
@@ -40,17 +48,24 @@ const schema = getBreadcrumbSchema([
     <h1
       class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-foreground leading-[1.1]"
     >
-      Topic: <span class="text-primary">#{tag}</span>
+      {lectureCollection ? heading : <>Topic: <span class="text-primary">#{tag}</span></>}
     </h1>
     <p class="mt-3 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-      {`A collection of ${posts.length} ${posts.length === 1 ? 'post' : 'posts'} about ${tag}.`}
+      {introduction}
     </p>
   </div>
 
   <div class="flex flex-col gap-3 sm:gap-4">
     {
-      posts.map((post) => (
-        <PostCard post={post} slug={getPostSlug(post)} href={en ? englishPostPathForSlug(getPostSlug(post)) : undefined} readTime={getReadTime(post.body || '')} />
+      ordered.map((post) => (
+        <Fragment>
+          {lectureCollection && post.data.lectureDate && (
+            <p class="mt-3 text-sm font-semibold text-muted-foreground">
+              {en ? 'Event or broadcast' : '행사·방송'} · <time datetime={post.data.lectureDate.toISOString().slice(0, 10)}>{post.data.lectureDate.toISOString().slice(0, 10)}</time>
+            </p>
+          )}
+          <PostCard post={post} slug={getPostSlug(post)} href={en ? englishPostPathForSlug(getPostSlug(post)) : undefined} readTime={getReadTime(post.body || '')} />
+        </Fragment>
       ))
     }
   </div>
