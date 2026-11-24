@@ -14,6 +14,7 @@ const postSchema = z
     publicationTimeZone: z.enum(['UTC', 'Asia/Seoul']).default('UTC'),
     slug: z.string().optional(),
     updatedDate: z.date().optional(),
+    lectureDate: z.date().optional(),
     category: z.enum(POST_CATEGORIES),
     subcategory: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     type: z.enum(POST_TYPES),

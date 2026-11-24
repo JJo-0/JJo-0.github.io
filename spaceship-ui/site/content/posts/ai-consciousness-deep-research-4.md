@@ -1,6 +1,7 @@
 ---
 title: 'AI가 의식이 있는가? IV — 제프리 힌턴의 프리즘 로봇과 주관적 경험'
 description: '제프리 힌턴의 케임브리지 강연을 슬라이드 17장과 현장 문답 8개로 읽는다. 디지털 지식 공유, AI 안전 연구소, 분홍 코끼리와 프리즘 로봇을 따라 주관적 경험의 의미를 살핀다.'
+lectureDate: 2026-11-02
 pubDate: 2026-11-23
 slug: 'ai-consciousness-deep-research-4'
 category: ai-machine-learning
@@ -11,6 +12,7 @@ tags:
   - philosophy-of-mind
   - ai-governance
   - knowledge-distillation
+  - ai-lectures-interviews
 researchArea: ai-consciousness-governance
 researchFeatured: true
 researchOrder: 4
@@ -350,3 +352,5 @@ series:
 힌턴은 한 걸음 더 나아간다. 사람이 착각했다고 말했을 때도 우리는 그 사람 머릿속의 상영관을 찾아가 확인하지 않는다. 그렇다면 자기 지각을 설명하고 오류를 고치는 기계에만 어떤 추가 증거를 요구하는가? 반대로, 우리가 행위자의 보고를 믿는 이유에 인간의 몸과 신경계에 대한 배경지식도 들어 있다면 기계에는 무엇이 그 역할을 할까? <strong>똑같은 행동을 보이는 두 존재에게 서로 다른 기준을 적용할 때, 그 차이를 무엇으로 정당화할지</strong>가 강연 뒤에 남는다.
 
 안전에는 당장 관찰할 수 있는 별도의 질문이 있다. 종료를 막거나 사용자를 설득하는 행동이 나타나면, 그 행동이 사람에게 미치는 결과는 시험할 수 있다. 시스템이 두려움이나 고통을 느끼는지에 관해서는 어떤 증거가 더 필요한지 계속 물을 수 있다. 두 질문을 함께 들고 가면 기계의 마음을 성급히 단정하지 않으면서도, 이미 드러난 행동에 책임 있게 대응할 수 있다.
+
+[AI 강연·인터뷰 모아보기](/posts/tag/ai-lectures-interviews/)
