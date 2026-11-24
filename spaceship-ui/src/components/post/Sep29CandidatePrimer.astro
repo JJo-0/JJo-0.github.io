@@ -1,9 +1,39 @@
 ---
 interface Props {
   kind: 'silicon' | 'lc1';
+  lang?: 'ko' | 'en';
 }
-const { kind } = Astro.props;
+const { kind, lang = 'ko' } = Astro.props;
 const battery = kind === 'silicon';
+const silicon = lang === 'en' ? {
+  heading: "① Ions and electrons follow separate paths",
+  title: "How charge moves inside a battery",
+  description: "Ions travel through the internal electrolyte and electrons through the external circuit. This is a schematic of transport.",
+  electrode: "Electrode",
+  storage: "Stores lithium",
+  otherElectrode: "Other electrode",
+  paths: "Ions inside · electrons outside",
+  transport: "Charging and discharging reverse direction. The electrolyte conducts ions and must prevent an internal electrical short.",
+  contactHeading: "② Expansion changes contact",
+  contact: "When silicon takes up lithium and expands, contact with the electrolyte can crack. High storage capacity alone cannot guarantee a durable cell.",
+  design: "This study designs contact among silicon, zinc, carbon and the polymer electrolyte.",
+  boundaryHeading: "③ Check the denominator",
+  boundary: "Retention compares capacity with the same cell’s initial capacity. Wh/kg divides energy by the mass of the included components. Neither metric establishes safety.",
+} : {
+  heading: "① 이온과 전자는 다른 길로 간다",
+  title: "배터리 전하 이동의 개념도",
+  description: "이온은 내부 전해질로, 전자는 외부 회로로 이동한다. 실제 전극 단면이 아니다.",
+  electrode: "전극",
+  storage: "리튬 저장",
+  otherElectrode: "다른 전극",
+  paths: "이온: 내부 / 전자: 외부 회로",
+  transport: "충전·방전은 방향이 반대다. 전해질은 이온 이동을 돕되 전자가 내부에서 곧장 건너가는 단락을 막아야 한다.",
+  contactHeading: "② 부풀면 접촉도 흔들린다",
+  contact: "실리콘이 리튬을 담으며 팽창하면 전극과 전해질의 접촉이 갈라질 수 있다. 재료의 큰 저장량과 오래 쓰는 셀은 별개의 문제다.",
+  design: "이번 연구는 실리콘·아연·탄소와 고분자 전해질의 접촉을 함께 설계한다.",
+  boundaryHeading: "③ 성능 숫자의 분모부터 확인한다",
+  boundary: "용량 유지율은 같은 전지의 시작 용량과 비교한다. Wh/kg은 포함한 부품의 무게로 나눈 값이다. 두 지표 모두 안전성의 증거는 아니다.",
+};
 const marker = battery ? { 'data-silicon-primer': true } : { 'data-lc1-primer': true };
 ---
 
@@ -11,7 +41,7 @@ const marker = battery ? { 'data-silicon-primer': true } : { 'data-lc1-primer': 
   <div class="candidate-primer__grid">
     <section>
       <h3>
-        {battery ? '① 이온과 전자는 다른 길로 간다' : '① 들어가는 것과 빠져나오는 것은 다르다'}
+        {battery ? silicon.heading : '① 들어가는 것과 빠져나오는 것은 다르다'}
       </h3>
       <svg
         viewBox="0 0 600 240"
@@ -19,13 +49,11 @@ const marker = battery ? { 'data-silicon-primer': true } : { 'data-lc1-primer': 
         aria-labelledby={`${kind}-primer-title ${kind}-primer-desc`}
       >
         <title id={`${kind}-primer-title`}>
-          {battery ? '배터리 전하 이동의 개념도' : 'mRNA의 세포 진입과 엔도솜 탈출 개념도'}
+          {battery ? silicon.title : 'mRNA의 세포 진입과 엔도솜 탈출 개념도'}
         </title>
         <desc id={`${kind}-primer-desc`}
           >{
-            battery
-              ? '이온은 내부 전해질로, 전자는 외부 회로로 이동한다. 실제 전극 단면이 아니다.'
-              : '운반체가 세포 안 주머니에 들어간 뒤 RNA가 세포질로 나와야 단백질이 만들어진다. 실제 LNP 구조가 아니다.'
+            battery ? silicon.description : '운반체가 세포 안 주머니에 들어간 뒤 RNA가 세포질로 나와야 단백질이 만들어진다. 실제 LNP 구조가 아니다.'
           }</desc
         >
         <rect
@@ -48,54 +76,46 @@ const marker = battery ? { 'data-silicon-primer': true } : { 'data-lc1-primer': 
           stroke-width="3"></rect>
         <path d="M210 100H380m-18-14 18 14-18 14" fill="none" stroke="currentColor" stroke-width="4"
         ></path>
-        <text x="105" y="98" text-anchor="middle">{battery ? '전극' : '엔도솜'}</text>
-        <text x="105" y="135" text-anchor="middle">{battery ? '리튬 저장' : '세포 안 주머니'}</text>
-        <text x="490" y="98" text-anchor="middle">{battery ? '다른 전극' : '세포질'}</text>
-        <text x="490" y="135" text-anchor="middle">{battery ? '리튬 저장' : 'RNA → 단백질'}</text>
+        <text x="105" y="98" text-anchor="middle">{battery ? silicon.electrode : '엔도솜'}</text>
+        <text x="105" y="135" text-anchor="middle">{battery ? silicon.storage : '세포 안 주머니'}</text>
+        <text x="490" y="98" text-anchor="middle">{battery ? silicon.otherElectrode : '세포질'}</text>
+        <text x="490" y="135" text-anchor="middle">{battery ? silicon.storage : 'RNA → 단백질'}</text>
         <text class="plain" x="295" y="205" text-anchor="middle"
-          >{battery ? '이온: 내부 / 전자: 외부 회로' : '진입 → 탈출 → 번역, 각각 확인'}</text
+          >{battery ? silicon.paths : '진입 → 탈출 → 번역, 각각 확인'}</text
         >
       </svg>
       <p>
         {
-          battery
-            ? '충전·방전은 방향이 반대다. 전해질은 이온 이동을 돕되 전자가 내부에서 곧장 건너가는 단락을 막아야 한다.'
-            : 'mRNA는 단백질 설계도다. 세포 안으로 들어간 양만으로 설계도가 실제로 읽힌 양을 알 수 없다.'
+          battery ? silicon.transport : 'mRNA는 단백질 설계도다. 세포 안으로 들어간 양만으로 설계도가 실제로 읽힌 양을 알 수 없다.'
         }
       </p>
     </section>
     <section>
-      <h3>{battery ? '② 부풀면 접촉도 흔들린다' : '② 긴 설계도에 맞춰 포장도 평가한다'}</h3>
+      <h3>{battery ? silicon.contactHeading : '② 긴 설계도에 맞춰 포장도 평가한다'}</h3>
       <p>
         {
-          battery
-            ? '실리콘이 리튬을 담으며 팽창하면 전극과 전해질의 접촉이 갈라질 수 있다. 재료의 큰 저장량과 오래 쓰는 셀은 별개의 문제다.'
-            : '짧은 발광 mRNA를 잘 나른 운반체가 큰 유전자 편집기 mRNA에도 좋은지는 다시 시험해야 한다. RNA 길이와 입자 지름은 같은 값이 아니다.'
+          battery ? silicon.contact : '짧은 발광 mRNA를 잘 나른 운반체가 큰 유전자 편집기 mRNA에도 좋은지는 다시 시험해야 한다. RNA 길이와 입자 지름은 같은 값이 아니다.'
         }
       </p>
       <p>
         {
-          battery
-            ? '이번 연구는 실리콘·아연·탄소와 고분자 전해질의 접촉을 함께 설계한다.'
-            : 'LC-1은 큰 RNA를 선별 단계부터 써서 찾은 이온화 지질이다. 치료제 승인이나 사람 임상 결과가 아니다.'
+          battery ? silicon.design : 'LC-1은 큰 RNA를 선별 단계부터 써서 찾은 이온화 지질이다. 치료제 승인이나 사람 임상 결과가 아니다.'
         }
       </p>
     </section>
     <section class="candidate-primer__wide">
       <h3>
-        {battery ? '③ 성능 숫자의 분모부터 확인한다' : '③ 세포 신호·DNA 편집·치료 효과를 구분한다'}
+        {battery ? silicon.boundaryHeading : '③ 세포 신호·DNA 편집·치료 효과를 구분한다'}
       </h3>
       <p>
         {
-          battery
-            ? '용량 유지율은 같은 전지의 시작 용량과 비교한다. Wh/kg은 포함한 부품의 무게로 나눈 값이다. 두 지표 모두 안전성의 증거는 아니다.'
-            : '발광은 단백질 발현 신호, 형광 양성은 정한 문턱을 넘은 세포 비율, 서열 분석은 특정 DNA 변화다. 어느 것도 단독으로 사람의 완치율이 되지 않는다.'
+          battery ? silicon.boundary : '발광은 단백질 발현 신호, 형광 양성은 정한 문턱을 넘은 세포 비율, 서열 분석은 특정 DNA 변화다. 어느 것도 단독으로 사람의 완치율이 되지 않는다.'
         }
       </p>
     </section>
   </div>
   <figcaption>
-    <strong>JJo 자체 제작 입문 도식</strong> · 측정값·실제 구조가 아닌 개념 설명 · 외부 원본 이미지 미사용
+    <strong>{lang === 'en' ? 'JJo introductory diagram' : 'JJo 자체 제작 입문 도식'}</strong> · {lang === 'en' ? 'Original conceptual illustration. Dimensions and results are not measured.' : '측정값·실제 구조가 아닌 개념 설명 · 외부 원본 이미지 미사용'}
   </figcaption>
 </figure>
 <style>

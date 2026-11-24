@@ -1,0 +1,123 @@
+---
+title: Validating clinical LLMs across 920,000 notes
+description: Rules, grounding checks, independent judgments, expert samples and clinical outcomes helped validate
+  information extraction without a complete answer key. External validation remains open.
+pubDate: 2026-10-19 00:00:00+09:00
+updatedDate: 2026-10-19
+publicationTimeZone: Asia/Seoul
+slug: clinical-llm-validation-framework
+category: ai-machine-learning
+subcategory: clinical-ai
+type: paper-review
+tags:
+- frontier-one
+- clinical-ai
+- llm-evaluation
+- information-extraction
+researchFeatured: false
+draft: false
+lang: en
+translationKey: en-clinical-llm-validation-framework
+translatedPosts:
+  ko-KR: clinical-llm-validation-framework
+---
+
+import Math from '@/components/post/Math.astro';
+
+> **SELECTED · research draft.** As of October 19, 2026 KST. Score 91/100. PEER_REVIEWED_FRONTIER. This retrospective quality-improvement analysis comes from the US Department of Veterans Affairs (VA). The peer-reviewed early release has a permanent DOI and precedes the final Version of Record. The study did not test a treatment.
+
+## 1. In one sentence
+
+When it is impractical to label all 920,000 notes, how can anyone tell whether a clinical LLM extracts useful information? The researchers combined several sources of evidence, starting with inexpensive filters and progressing to expert review of a sample and subsequent patient care.
+
+## 2. Why this is difficult
+
+Clinical notes contain more information than ICD-10 codes, but they mix medical history, copied text, patient statements and provisional diagnoses. Finding the phrase “alcohol use disorder” does not establish that the clinician made a current diagnosis. Conversely, a missing code does not establish that the LLM made an error. Asking clinicians to reread every note would incur the same cost whenever the model, institution or extraction target changed.
+
+## 3. Basic concepts
+
+Information extraction is usually evaluated with precision, recall and F1. In a clinical setting where false positives matter, assessment must track missed information alongside precision.
+
+<span id="clinical-token-metrics"></span>
+
+<Math display tex={String.raw`\begin{aligned}P&=\frac{TP}{TP+FP}\\R&=\frac{TP}{TP+FN}\\F_1&=\frac{2PR}{P+R}\end{aligned}`} />
+
+Here P denotes precision and R recall. In the relaxed evaluation, TP counts overlapping tokens, FP counts tokens unique to the generated text, and FN counts tokens unique to the reference. These are token counts, rather than counts of correctly diagnosed patients. P, R and F1 are dimensionless. Reproducing the treatment of zero denominators requires the implementation. The reported macro-average also differs from pooling all tokens before computing a single ratio. The accepted manuscript does not fully specify tokenization, normalization and all aggregation details. These equations explain standard metrics.
+
+**Hypothetical calculation.** With eight overlapping tokens, two unique to the generated text and two unique to the reference, P and R both equal 8/10 and F1 is 0.8. This example illustrates token overlap. It measures neither a study case nor the proportion of patients correctly diagnosed.
+
+The study distinguished strict F1 for exact string matching from relaxed F1 allowing token overlap. For imbalanced binary labels, the authors used Gwet's AC1 in place of Cohen's kappa to assess agreement.
+
+## 4. Limits of earlier approaches
+
+Small expert-labeled datasets offer clear references but may poorly represent operational scale. Using ICD codes alone can mark diagnoses documented only in narrative text as errors. A single LLM judge can share an extractor's errors or interpret ambiguous clinical language too conservatively. Each source of validation therefore has limitations as a reference.
+
+## 5. Three steps in the method
+
+First, the researchers compared zero-, one- and two-shot prompts and direct versus chain-of-thought prompting on 923 expert-annotated notes. They fixed the configuration before scaling up, choosing Llama-3.1-8B-Instruct for extraction with zero-shot chain-of-thought prompting.
+
+Second, they applied inclusion and exclusion phrase rules and semantic grounding after extraction. Each extracted span was embedded and compared with windows of equal length in the source note to locate the closest supporting passage.
+
+<span id="clinical-grounding-max"></span>
+
+<Math display tex={"g(e,n)=\\max_i\\frac{z_e^\\top z_{w_i}}{\\lVert z_e\\rVert_2\\,\\lVert z_{w_i}\\rVert_2}"} />
+
+Here `e` is the extracted text, `n` the original note, `w_i` a window equal in length to the extraction's whitespace-delimited word count and shifted by one word at a time, and `z` the SentenceTransformer embedding. Scores below 0.65 were flagged for insufficient grounding. The maximum cosine similarity is a dimensionless text-similarity measure. It cannot be read as a probability that a diagnosis is correct. The threshold was an intermediate filter setting for this task. The expression restates the procedure in “Post-extraction semantic grounding assessment” in the accepted manuscript, where the procedure has no numbered equation.
+
+Third, only uncertain cases with a positive LLM extraction and no ICD code were sent to a gpt-oss-20b judge. A clinical psychology expert independently reviewed 100 randomly selected notes from this group. The researchers then used logistic regression and AUC to assess whether the extracted information predicted subsequent participation in specialist substance use disorder care.
+
+## 6. System boundaries and trade-offs
+
+Cohort selection used substance use disorder-related ICD-10 encounter codes recorded in January 2023. The selected material covered 178,467 patients, 919,783 notes and 11 extraction categories. Some notes could have been written outside January. Of 10,117,613 possible extraction attempts, 622,551 returned nonempty LLM-positive results. Extraction and judging ran in a secure environment with eight 81.92 GB A100 GPUs. Inexpensive stages screened broadly, limiting intensive judge and expert review. The approach requires maintaining rules and prompts suited to local documentation.
+
+For comparison with ICD codes, the team first combined LLM results across notes from the same encounter. The criteria for judge review selected 80,006 notes from 76,549 encounters. Patients, notes, extractions and encounters are distinct units. The number of notes cannot be treated as a count of independent patients.
+
+## 7. Experiments and results
+
+At prompt calibration, relaxed F1 was 0.8647 for zero-shot direct prompting and 0.9004 for zero-shot chain-of-thought prompting. Rules and grounding removed 14.59% of the 622,551 nonempty positive extractions. That denominator counts extractions. The relaxed F1 of 0.7962 compares positive extractions with judge-constructed references in the high-uncertainty LLM-positive, ICD-negative subset. For accepted extractions, the original output became the reference. For rejected ones, the judge supplied a correction. This reference was thus partly dependent on the output being evaluated, and the score cannot be generalized to all 920,000 notes. Substance-specific strict F1 in this subset ranged from 0.5761 to 0.8446.
+
+Across the expert-reviewed sample of 100 notes, agreement with the judge was 92% and AC1 was 0.91. For the harder LLM-positive, ICD-negative comparisons, agreement was 87.67% and AC1 was 0.80. In the full patient cohort, AUC for predicting engagement in specialist care was 0.76 with ICD alone, 0.80 with LLM extraction alone and 0.84 with both. AUC describes ranking discrimination. It does not quantify diagnostic accuracy or treatment benefit.
+
+## 8. Evidence that qualifies the results
+
+### What changed with a stricter filter?
+
+The internal filtering section of the Results compares similarity thresholds of 0.50, 0.55, 0.60, 0.65 and 0.70. Among positive extractions passing the rule filter, the grounding filter flagged about 1.41–2.08% across those settings. The extremes differ by 0.67 percentage points. Dividing that difference by the starting 1.41% yields a relative increase of about 47.5%. The relative figure alone can make a small change look large.
+
+This is the **fraction flagged by the filter**. An expert-confirmed reduction in errors would require its own measurement. Flagging more extractions does not establish that more errors were identified. The researchers describe how a few erroneous extractions from brief notes with little content strongly affected uncommon categories. Read category-specific results alongside the overall average.
+
+**Check.** Did a relative increase of 47.5% correct errors for nearly half the patients? The denominator is the earlier, small flagging rate. Choosing a threshold calls for examining both what was discarded and how often the discarded text was actually wrong.
+
+In the same high-uncertainty 100-note sample, relaxed F1 for the extractor was 0.7825 against the expert and 0.8192 against the judge. Both values apply to that sample. For stimulants and polysubstance use, the judge sometimes missed clues elsewhere in a note or confused categories. It could also overinterpret a pattern such as “heavy drinker” as a formal diagnosis. It served as a proxy to guide targeted review.
+
+## What does splitting by patient prevent?
+
+The Datasets section of the Methods describes a patient-level 70%/10%/20% split for developing and evaluating the predictive model. This keeps different notes from one patient from appearing in training and testing and artificially raising performance. The split describes the prediction model's data, rather than the training of the extraction LLM's weights.
+
+The predictors came from January 2023 records and engagement in specialist care was measured in February–April. Later outcomes in the same setting cannot establish transfer to another hospital or period. Bootstrap intervals on the test set address uncertainty within that set and do not automatically incorporate between-hospital differences.
+
+The expert sample also has its own unit. The paper describes 11 substance categories evaluated for each of 100 notes, yielding 1,100 category judgments. They do not represent an audit of 1,100 different patients.
+
+The resampling unit for a confidence interval is another choice. The Methods describe 5,000 bootstrap repetitions for prompt calibration, resampling notes with replacement and recomputing the mean of note-level metrics each time. An item selected once can be drawn again. This note-level bootstrap differs from resampling all notes for a patient as a cluster. Which analyses accounted for repeated notes from one patient needs separate verification. A patient-level development split and a note-level confidence interval answer different questions.
+
+**Check.** Does keeping each patient's notes in a single split establish external validation? The split reduces internal leakage. Generalization requires evaluation in another healthcare system.
+
+## 9. Limitations
+
+The follow-up analysis evaluated a later outcome in the same VA cohort. It provides neither external hospital validation nor trial evidence of improved health.
+
+The data came from 170 centers in one VA system, without replication in an outside hospital. Access and referral practices influence specialist-care engagement, preventing a causal interpretation as clinical benefit. Imperfect ICD codes contributed both to cohort selection and the comparison standard. Expert review covered only 100 high-uncertainty notes, leaving other errors possible. The source records contain protected health information and were not verified as public data. No runnable code repository was identified on the paper or publisher page.
+
+## 10. What changes in practice?
+
+Deployment decisions can draw on a validation pipeline whose depth varies with uncertainty. A hospital can apply automatic filters to straightforward cases and direct stronger models and clinician time toward conflicts with structured records. Safe deployment and patient benefit still require evidence beyond this study.
+
+## 11. What to watch next
+
+External multicenter validation, preregistered replication with other extraction tasks and models, expert audits on an unrestricted random sample, shareable synthetic data and code, and changes in the final Version of Record would warrant reassessment.
+
+## 12. Sources
+
+- Mahbub et al., *npj Digital Medicine*, 2026-10-16, DOI: [10.1038/s41746-026-03341-7](https://doi.org/10.1038/s41746-026-03341-7)
+- [Public manuscript, figures and tables, arXiv:2604.06028](https://arxiv.org/abs/2604.06028)
+- Pagination from the earlier arXiv version should not be carried over to the accepted manuscript. The additional checks here cover “Pre-extraction prompt calibration” and “Post-extraction semantic grounding assessment” in its Methods, “Post-extraction internal validation” in its Results, and Table 3. A full crosswalk of versions, equations and figures remains incomplete.

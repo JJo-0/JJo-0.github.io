@@ -1,0 +1,146 @@
+---
+title: 'Mapping cells in endometriosis lesions: what can the map tell us about pain?'
+description: Researchers mapped cell positions in human tissue and measured responses in cell co-cultures.
+  Direct patient pain measurements and treatment effects were outside the study’s scope.
+pubDate: 2026-10-10
+updatedDate: 2026-11-08
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-10-endometriosis-spatial-neuroimmune-news
+category: health-lifestyle
+subcategory: spatial-transcriptomics-endometriosis
+type: paper-review
+tags:
+- frontier-one
+- spatial-transcriptomics
+- endometriosis
+researchFeatured: false
+draft: false
+lang: en
+translationKey: en-2026-10-10-endometriosis-spatial-neuroimmune-news
+translatedPosts:
+  ko-KR: 2026-10-10-endometriosis-spatial-neuroimmune-news
+---
+
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+> **Stage of research.** The investigators examined cell locations and gene activity in human tissue, then studied responses in laboratory cultures containing several cell types. They did not test a treatment in patients.
+
+Endometriosis is a condition in which tissue resembling the lining of the uterus grows outside it. Such areas are called lesions. The study asks where different cells lie within them.
+
+Glandular epithelial cells, nearby fibroblasts and immune cells, and nerves can lie close together in endometriosis lesions. Proximity alone cannot establish that they exchanged signals or caused a patient’s pain. The researchers mapped cells in human lesions and examined selected responses in laboratory co-cultures. Pain itself was not measured.
+
+## Recording location in tissue
+
+Spatial transcriptomics measures gene expression while retaining information about where each signal came from in a tissue. The team used several platforms on thin sections of endometriosis tissue. Figure 1a traces the path from samples through spatial analysis and expression maps to a proposed working model.
+
+The authors’ introduction describes earlier immunohistochemistry (IHC), which stains for specific proteins. It identified broad classes of nerve fibers near lesions, such as sensory nerves and sympathetic nerves that help regulate organ responses. Their molecular characteristics, precise positions and interactions were harder to resolve. The present study combined location and expression using Visium V2, Visium HD and Xenium. This is the background and scope described in the introduction. It is not an independent head-to-head demonstration of superiority over prior work.
+
+<NewsFigure media="endo-vor-fig1a-spatial-workflow" lang="en" />
+
+The concentric zones at right depict a working model: an EPCAM-expressing epithelial region, nearby stroma with relatively high MME expression, and more distant stroma with relatively high OGN expression. The diagram summarizes spatial and expression analyses. It does not trace actual cell boundaries in a micrograph. Stroma is the surrounding tissue that supports cells and structures in an organ.
+
+A measurement bin and a cell are also different units. Visium HD grouped signals into 8 × 8 micrometer (µm) bins. A bin need not contain exactly one cell, and the number of bins gives no count of patients. First identify the unit counted on the map.
+
+### Spatial differences observed on the map
+
+The lower-resolution analysis in Figure 1 uses one peritoneal lesion, sample P5. In that section, the stroma nearer the glands had stronger immune markers, particularly those associated with natural killer (NK) cells. More distant stroma showed prominent WNT signaling, vascular genes and nervous-system pathway signals. The paper then examined nerve and immune cell locations at higher spatial resolution and with other imaging and molecular measurements. The findings describe how features are distributed. Patterns from one section and their positions across assays cannot establish direct communication or a cause of pain.
+
+
+### How were bins assigned to nerves and immune cells?
+
+Expression maps do not arrive with cell-type labels. The researchers scored known marker-gene sets using Seurat’s AddModuleScore and standardized the scores to classify major cell types. A marker gene provides evidence for assigning a type. The Methods use a z-score above 1 for major types and a score above 0.01 to distinguish neuronal subtypes within bins already classified as neuronal. The thresholds apply at different stages. Here 0.01 is neither a 1% disease probability nor a statistical P value. The cutoffs and marker sets can change which bins are counted. A neuronal label is an inference about a bin and cannot establish that a complete neuron was observed in each such bin. [Methods p. 14, Visium HD cell type assignment and distance analysis]
+
+The denominator matters. For each sample, the investigators divided bins assigned to a given cell type by all bins in that epithelial, proximal stromal or distal stromal compartment. They did not pool all bins across a lesion or use all patients as the denominator. Identical neuronal-bin counts can give different proportions when compartment sizes differ. This illustrates the calculation without introducing a new measurement.
+
+### Count samples and people separately
+
+The paper reports tissue samples and donors separately by platform.
+
+| Platform | Tissue samples | People reported | Interpretation |
+|---|---:|---:|---|
+| Visium V2 | 3 | 2 | Three specimens came from two people. |
+| Visium HD | 8 lesions (4 peritoneal, 4 ovarian) | 7 | Lesions and donors have different counts. |
+| Xenium | 4 lesions (3 peritoneal, 1 ovarian) | Unspecified | The donor count for this analysis could not be verified. |
+
+The table does not establish whether people or tissue overlap across platforms, so adding the three rows cannot give a total patient count. Tissue bins, nuclei estimated in images, intact cells and people all have different units.
+
+### Why distinguish bins, nuclei and whole cells?
+
+In the same pinned code revision, the public `run-stardist.py` uses a pretrained StarDist model to estimate <strong>nuclear regions</strong> in tissue images. It calculates bin–nucleus overlap, whether a nucleus center lies inside a bin and the area of overlap. Counting overlapping nuclei can therefore yield a different result from counting centers inside the bin.
+
+A single nucleus straddling two bins can overlap both. Counting both overlaps does not produce two nuclei. This is a geometric example of the code’s counting rules. An estimated nuclear boundary also differs from a whole-cell boundary. Keeping inferred neuronal bins, detected nuclei, intact cells and independent patients distinct prevents overinterpretation.
+
+These steps were checked by reading the [public nuclear detection and spatial aggregation script](https://github.com/TheJacksonLaboratory/endometriosis-visium-hd/blob/dedf871ee96177ec78fbf20eac6babff6206e8d5/python/run-stardist.py). The reviewer did not run the model or independently measure its detection accuracy. The file does not show how the tissue-mask F1 calculation handles a zero denominator, so that detail remains unresolved.
+
+**Check your understanding.** If one nucleus overlaps two bins, were two patients observed? No. Bins, nuclei and patients count different things. Two bins can include the same nucleus.
+
+## Selecting a tissue mask with the F1 score
+
+Before analysis, the team separated tissue bins from background and used F1 to set a sample-specific UMI signal threshold. A unique molecular identifier (UMI) is a molecular label used in counting expression. This F1 score checks which tissue area enters the analysis. It measures neither diagnostic accuracy nor pain prediction.
+
+<CandidateEquation lang="en" id="endo-tissue-mask-f1" title="A quality-control metric for the tissue mask" tex={String.raw`F_1=\frac{2\,\mathrm{precision}\,\mathrm{recall}}{\mathrm{precision}+\mathrm{recall}}`}>
+
+Precision is the fraction of bins labeled as tissue that agree with the reference tissue mask. Recall is the fraction of reference tissue bins the classification recovers. Both are proportions, and F1 is dimensionless. A high value for one and a low value for the other produce a lower F1 than when both are high.
+
+The official Methods give the equation. The explanations of precision and recall follow the usual classification definitions. The paper does not give every implementation detail, including the value used when the denominator is zero. Its stated use is analysis quality control.
+
+For example, precision 0.8 and recall 0.5 give F1 of about 0.615, compared with an arithmetic mean of 0.65. Raising only one quantity does not ensure both conditions are met. The numbers are hypothetical and use a positive denominator. They say nothing about zero-denominator handling in the implementation.
+
+</CandidateEquation>
+
+## What spatial relationships can establish
+
+High-resolution maps and marker analyses examine how epithelial glands, stroma, nerves and immune cells are distributed within a lesion. The researchers compared proportions of bins assigned to cell types and the distances and neighbor relationships among them. These patterns can suggest mechanisms in a lesion’s microenvironment. Spatial proximity alone does not demonstrate direct contact.
+
+The team used COMMOT for computational analysis of cell communication. It combines gene expression in selected compartments with ligand–receptor lists from CellChat and CellPhoneDB, restricting candidate connections to locations within 50 µm. That choice defines which links enter the calculation. It does not measure a signal traveling 50 µm. A ligand is a molecule that can bind a receptor on another cell. The inferred connections cannot directly measure real-time signaling, its magnitude or a patient’s pain. Bin assignments, expression preprocessing, molecular lists and the distance condition can all affect the result.
+
+A close spatial pairing with a predicted communication link therefore suggests a follow-up experiment. It cannot, by itself, establish that a cell caused the patient’s pain.
+
+## Examining responses in a laboratory co-culture
+
+The investigators combined epithelial organoids and fibroblasts from patient endometrium or lesions with peripheral sensory nerve organoids derived from induced pluripotent stem cells (iPSCs). Organoids are three-dimensional cell models that reproduce some aspects of a tissue. Here peripheral sensory organoids (PSBOs) model a sensory lineage and do not reproduce an entire human brain. Figure 6a shows the three components followed by RNA analysis after ten days of co-culture.
+
+<NewsFigure media="endo-vor-fig6a-coculture-model" lang="en" />
+
+The Methods describe six culture conditions. They list 20 samples for the three-component condition: four from endometrium, eight from ovarian lesions and eight from peritoneal lesions. These are culture counts by tissue source, not 20 patients or clinical outcomes. The Figure 6d legend separately lists PSBO alone (n = 3), PSBO plus fibroblasts (n = 2), PSBO plus organoids (n = 2) and three-component co-cultures (n = 5–8 by tissue type). The reviewed material did not establish how the two sets of counts correspond. They are reported as given without combining denominators or assigning a particular replicate to a patient or iPSC line.
+
+Comparing RNA expression and neural-marker ratios in co-cultures tests whether a model responds differently across conditions. It does not measure patients’ pain intensity or the effect of treatment on pain. A spatial map, an in vitro response and a patient symptom provide distinct levels of evidence.
+
+### Do the bars in Figure 6d count individual cells?
+
+The workflow in Figure 6a ends in bulk RNA sequencing after ten days of co-culture. Expression changes and changes in cell numbers need separate interpretation. Photographs of protein markers in 6b support maturation of neurons in culture. They cannot visualize patient pain.
+
+The bulk expression analysis in 6a and the PRPH-positive sensory to TH-positive sympathetic neuron ratio in 6d are different measurements. Panel 6d reports log₂ change in PRPH/TH normalized to PSBO-only culture. Zero means that the ratio equals the reference. A log₂ change of +1 means the ratio doubled relative to baseline. This mathematical example supplies no new observed value and does not mean the patient had twice as many sensory nerves or twice the pain.
+
+**Check your understanding.** Does a PRPH/TH log₂ change of +1 mean pain doubled? It means the defined ratio doubled relative to the reference culture. This measure did not assess patient pain.
+
+## Limits of interpretation
+
+This mechanistic study analyzed human lesion tissue and extended selected observations in a separate cellular model. The statistics and reproducibility section says the sample size was not determined statistically in advance. Experiments were not randomized and neither experimental work nor outcome assessment was blinded. These details matter when judging generalizability and planning validation.
+
+For cell-type proportions the team fitted mixed models with tissue compartment as a fixed effect and sample as a random effect. The fixed effect estimates the compartment difference of interest while the random effect addresses shared variation within samples. Models were fitted separately for each cell type and lesion type. Consequently, the reported analysis does not pool all cell types and both ovarian and peritoneal lesions into one homogeneous group. Accounting for bins clustered by sample cannot establish a causal link between a spatial relationship and pain. [Methods p. 14, Visium HD cell type assignment and distance analysis]
+
+Expression and location in lesion tissue, responses in co-culture and clinical pain or treatment effects are distinct claims. Causal or clinical conclusions require a study with separate patient-level outcomes.
+
+## What can readers verify in the public code and data?
+
+According to the Methods, raw FASTQ data on dbGaP and selected spatial data at EGA require access review. Public code does not grant unrestricted access or republication rights to all human-derived data. The review neither applied for access nor obtained individual-level records.
+
+The publisher lists Supplementary Data 1–14, source data, video, a reporting summary and peer-review files. The review checked relevant supplementary figures and Supplementary Data 2 against the eight Visium HD samples from seven people. The official Source Data tabs cover Figures 2j, 4h, 5g and 5h. They do not give Figure 6 replicate counts or Figure 7 raw data. The supplementary material was not exhaustively reanalyzed. The [Jackson Laboratory repository](https://github.com/TheJacksonLaboratory/endometriosis-visium-hd) links the paper DOI in its README and provides R and Python directories. The reviewer read all of `python/LR_process_01.py` at commit `dedf871`, dated October 22, 2026, without executing the code or reading every other analysis file. Its final loop iterates over `t` but passes `i` to a function, and the file contains no apparent definition of that `i`. This is a dependency to check before independent execution. No runtime failure was observed, and it does not demonstrate an error in the study’s results. The [reviewed revision](https://github.com/TheJacksonLaboratory/endometriosis-visium-hd/blob/dedf871ee96177ec78fbf20eac6babff6206e8d5/python/LR_process_01.py) is linked here. The publisher reports no competing interests. The Mayday Fund, Connecticut and Jackson Laboratory are listed as sources of research support, not evidence of a paper award.
+
+## What results would change the interpretation?
+
+Useful follow-up would ask whether independent tissue from several centers shows the same spatial relationships, whether they persist at the level of people rather than individual bins, and whether a candidate signal has a functional effect when changed. Patient-level measurements of pain or treatment response would then be needed to assess clinical meaning. These are questions that connect the evidence levels and remain to be tested.
+
+<details>
+<summary>Sources for the paper, code and figures, and scope of review</summary>
+
+## Sources and review scope
+
+Haney et al., [Nature Communications article](https://www.nature.com/articles/s41467-026-78453-5), DOI [10.1038/s41467-026-78453-5](https://doi.org/10.1038/s41467-026-78453-5). Sample counts and F1 appear in the Methods on p. 13, Figure 1a on p. 3, Figures 6a and 6d on p. 10, co-culture methods on p. 16, and statistics and reproducibility on p. 16. Figures 1a and 6a each carry a panel-specific CC BY 4.0 notice. Only the complete licensed panels were cropped for use. Their permissions do not extend to surrounding micrographs or other data panels.
+
+This explanation draws on the publisher’s version of record, the relevant figures and Methods, Supplementary Figure 10 and sample-count cross-checks against Supplementary Data 2. The review did not reanalyze all public or controlled-access data or execute the full code. Overlap of donors between platforms and the detailed mapping of Figure 6 replicates could not be determined.
+
+
+</details>
