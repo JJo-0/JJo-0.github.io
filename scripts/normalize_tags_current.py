@@ -24,6 +24,10 @@ POST_TAXONOMY.update(
             "ai-machine-learning", "ai-safety", "research-report",
             ("ai-safety", "alignment", "scientist-ai", "ai-lectures-interviews"),
         ),
+        "hinton-lectures-2026-paul-christiano.mdx": Taxonomy(
+            "ai-machine-learning", "ai-safety", "research-report",
+            ("ai-safety", "alignment", "ai-governance", "ai-lectures-interviews"),
+        ),
         "lecun-ntu-world-models.mdx": Taxonomy(
             "ai-machine-learning", "computer-vision", "research-report",
             ("world-models", "computer-vision", "robot-learning", "ai-lectures-interviews"),
