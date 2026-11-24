@@ -1,0 +1,80 @@
+---
+import slides from '@/data/lecun-ntu-slides.json';
+const video = 'https://www.youtube.com/watch?v=LYZCbAyssgw';
+---
+<lecun-lecture-player>
+  <p class="source"><a href={video} data-lecun-play="0">이 페이지에서 NTU 강연 재생</a> <span>2시간 12분 12초</span></p>
+  <details class="slide-index">
+    <summary>슬라이드 {slides.length}장 목차</summary>
+    <ol>{slides.map(slide => <li><a href={'#lecun-slide-' + slide.number}>{slide.title}</a></li>)}</ol>
+  </details>
+  <dialog aria-label="얀 르쿤 NTU 강연 영상">
+    <header><strong>얀 르쿤 · NTU 강연</strong><button type="button" autofocus>본문으로 돌아가기</button></header>
+    <iframe title="NTU 공식 강연 영상" allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    <footer><a class="external" href={video} target="_blank" rel="noopener">YouTube에서 이 장면 열기</a></footer>
+  </dialog>
+</lecun-lecture-player>
+
+<script>
+  class LecunLecturePlayer extends HTMLElement {
+    private active = new AbortController();
+
+    connectedCallback() {
+      this.active.abort();
+      this.active = new AbortController();
+      const { signal } = this.active;
+      const dialog = this.querySelector('dialog');
+      const frame = this.querySelector('iframe');
+      const fallback = this.querySelector<HTMLAnchorElement>('.external');
+      if (!dialog || !frame || !fallback || typeof dialog.showModal !== 'function') return;
+      const article = this.closest('article') || this.closest('main');
+      article?.querySelectorAll<HTMLAnchorElement>('a[href^="https://www.youtube.com/watch?v=LYZCbAyssgw"]').forEach((link) => {
+        if (link.closest('dialog') || link.hasAttribute('data-youtube-direct')) return;
+        const source = new URL(link.href);
+        const time = source.searchParams.get('t') || '0';
+        if (source.searchParams.get('v') === 'LYZCbAyssgw' && /^\d+s?$/.test(time)) {
+          link.dataset.lecunPlay = time.replace(/s$/, '');
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[data-lecun-play]') : null;
+        if (!link) return;
+        const seconds = Number(link.dataset.lecunPlay);
+        if (!Number.isInteger(seconds) || seconds < 0 || seconds > 7932) return;
+        event.preventDefault();
+        frame.src = 'https://www.youtube-nocookie.com/embed/LYZCbAyssgw?autoplay=1&start=' + seconds;
+        fallback.href = link.href;
+        dialog.showModal();
+      }, { signal });
+
+      dialog.querySelector('button')?.addEventListener('click', () => dialog.close(), { signal });
+      dialog.addEventListener('close', () => frame.removeAttribute('src'), { signal });
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+      }, { signal });
+    }
+
+    disconnectedCallback() { this.active.abort(); }
+  }
+
+  if (!customElements.get('lecun-lecture-player')) customElements.define('lecun-lecture-player', LecunLecturePlayer);
+</script>
+
+<style>
+  lecun-lecture-player {display:block}
+  .source {display:flex;flex-wrap:wrap;gap:.35em 1em;align-items:baseline}
+  .source span, footer {font-size:.85rem;color:var(--color-muted-foreground)}
+  .slide-index {margin:.7rem 0 1.5rem}
+  .slide-index summary {cursor:pointer;font-weight:650}
+  .slide-index ol {padding-inline-start:1.8rem}
+  .slide-index li {break-inside:avoid;margin:.24rem 0;line-height:1.5}
+  @media (min-width:55rem) {.slide-index ol {columns:2;column-gap:2.8rem}}
+  dialog {width:min(94vw,72rem);max-width:94vw;padding:0;margin:auto;border:1px solid var(--color-border);border-radius:.55rem;color:var(--color-foreground);background:var(--color-background)}
+  dialog::backdrop {background:rgb(0 0 0 / .75)}
+  header,footer {padding:.65rem 1rem}
+  header {display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+  button {padding:.4rem .55rem;border:1px solid var(--color-border);border-radius:.3rem;cursor:pointer}
+  iframe {display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:black}
+</style>

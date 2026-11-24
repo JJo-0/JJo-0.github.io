@@ -20,6 +20,10 @@ POST_TAXONOMY.update({
 
 POST_TAXONOMY.update(
     {
+        "lecun-ntu-world-models.mdx": Taxonomy(
+            "ai-machine-learning", "computer-vision", "research-report",
+            ("world-models", "computer-vision", "robot-learning"),
+        ),
         "segmentation-from-pixels-to-robot-observations.mdx": Taxonomy(
             "ai-machine-learning", "semantic-segmentation", "study-note",
             ("computer-vision", "semantic-segmentation", "robot-learning", "study"),
