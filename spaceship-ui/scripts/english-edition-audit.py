@@ -8,6 +8,8 @@ class Page(HTMLParser):
         super().__init__(); self.tags=[]; self.feed(text)
     def handle_starttag(self,tag,attrs): self.tags.append((tag,dict(attrs)))
     def select(self,tag,**attrs): return [a for t,a in self.tags if t==tag and all(a.get(k)==v for k,v in attrs.items())]
+def source_disclosures(rendered_page):
+    return [attrs for tag, attrs in rendered_page.tags if tag == 'details' and 'data-news-source-disclosure' in attrs]
 def check(value,message):
     if not value: raise AssertionError(message)
 def body(s): return s.split('---',2)[2]
@@ -56,6 +58,7 @@ for p in manifest['pairs']:
     check('pagead2.googlesyndication.com' not in html and 'google-adsense-account' not in html,p['key']+' no ads')
     check('katex-error' not in html,p['key']+' math rendering')
     koh=Page((root/'dist/posts'/p['koSlug']/'index.html').read_text())
+    check(len(source_disclosures(koh)) == len(source_disclosures(page)), p['key']+' matching collapsible sources')
     check(koh.select('link',rel='alternate',hreflang='en',href=f"https://jjo-0.github.io/en/posts/{p['enSlug']}/"),p['key']+' KO to EN hreflang')
     pages.append({'key':p['key'],'headings':len(re.findall(r'^## ',b,re.M)),'figures':len(bm),'references':len(refs),'citations':len(links),'equations':len(math(b))})
 for route in ['', 'research', 'about', 'news', 'posts', 'translations', 'bible', 'bible/reading-guide',
