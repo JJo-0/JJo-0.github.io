@@ -4,6 +4,8 @@ import SourceFrame from './LectureSourceFrame.astro';
 interface Screen { time: number; title: string; caption?: string }
 interface Props { video: string; day: number; screens: Screen[] }
 const { video, day, screens } = Astro.props;
+const en = Astro.url.pathname.startsWith('/en/');
+const dayLabel = en ? `Day ${day}` : `${day}일차`;
 function timecode(t: number) {
   const parts = [Math.floor(t / 60) % 60, t % 60].map(n => String(n).padStart(2, '0'));
   if (t >= 3600) parts.unshift(String(Math.floor(t / 3600)));
@@ -11,16 +13,16 @@ function timecode(t: number) {
 }
 ---
 <details open class="screens" data-lecture-day={day}>
-  <summary>{day}일차 발표 화면 {screens.length}개</summary>
+  <summary>{en ? `${dayLabel} · ${screens.length} presentation screens` : `${dayLabel} 발표 화면 ${screens.length}개`}</summary>
   <details class="screen-index">
-    <summary>제목으로 장면 찾기</summary>
+    <summary>{en ? 'Find a screen by title' : '제목으로 장면 찾기'}</summary>
     <ol>
       {screens.map((screen, i) => <li><a href={'#night-' + day + '-screen-' + (i + 1)}>{screen.title}</a></li>)}
     </ol>
   </details>
   {screens.map((screen, i) => (
     <figure id={'night-' + day + '-screen-' + (i + 1)} data-recording-screen={i + 1}>
-      <figcaption><span>{day}일차 · {i + 1}</span> {screen.title}</figcaption>
+      <figcaption><span>{dayLabel} · {i + 1}</span> {screen.title}</figcaption>
       <SourceFrame {video} time={screen.time} label={timecode(screen.time) + ' · ' + screen.title} />
       {screen.caption && <p>{screen.caption}</p>}
     </figure>
