@@ -112,7 +112,7 @@ async function optimize(file) {
     if (!a.height) values.height = info.height;
     if (info.candidates.length > 0) {
       values.srcset = srcset.join(', ');
-      values.sizes = '(max-width: ' + (limit + 32) + 'px) calc(100vw - 2rem), ' + limit + 'px';
+      if (!a.sizes) values.sizes = '(max-width: ' + (limit + 32) + 'px) calc(100vw - 2rem), ' + limit + 'px';
       values['data-lecture-preview'] = 'true';
       values['data-lecture-original'] = a.src;
     }
@@ -160,7 +160,7 @@ for (const row of report.images) {
 const originals = report.images.reduce((sum, image) => sum + image.originalBytes, 0);
 const optimized = report.images.filter(image => image.candidates.length > 0).length;
 const estimate = width => report.images.reduce((sum, image) => {
-  const selected = image.candidates.find(c => c.width >= width);
+  const selected = image.candidates.find(c => c.width >= Math.min(width, image.width));
   return sum + (selected?.bytes ?? image.originalBytes);
 }, 0);
 report.summary = { pages: report.pages.length, distinctSources: report.images.length, optimized, originalBytes: originals, estimated640WidthBytes: estimate(640), estimated960WidthBytes: estimate(960), estimated1280WidthBytes: estimate(1280) };
