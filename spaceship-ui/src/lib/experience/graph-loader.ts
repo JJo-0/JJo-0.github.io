@@ -40,6 +40,7 @@ function init() {
     if (pending || mounted) return;
     pending = true;
     next.dataset.graphState = 'loading';
+    next.setAttribute('aria-busy', 'true');
     trigger.textContent = trigger.dataset.loadingLabel ?? 'Loading map…';
     trigger.setAttribute('aria-disabled', 'true');
     if (message) message.textContent = '';
@@ -53,6 +54,7 @@ function init() {
       if (abort.signal.aborted || !next.isConnected) return;
       stop = runtime.mountWritingGraph(next, canvas, payload, () => {
         next.dataset.graphState = 'ready';
+        next.removeAttribute('aria-busy');
         if (document.activeElement === trigger) {
           next.querySelector<HTMLElement>('[data-post-graph-node]')?.focus({ preventScroll: true });
         }
@@ -62,6 +64,7 @@ function init() {
       if (abort.signal.aborted) return;
       stop?.();
       next.dataset.graphState = 'error';
+      next.removeAttribute('aria-busy');
       trigger.textContent = trigger.dataset.retryLabel ?? 'Retry map';
       if (message) message.textContent = message.dataset.errorLabel ?? 'Map unavailable.';
       console.warn('Writing graph activation failed', error);

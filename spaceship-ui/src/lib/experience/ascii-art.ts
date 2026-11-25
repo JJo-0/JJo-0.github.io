@@ -288,12 +288,13 @@ function installGraphCanvas(
 
 export function mountWritingGraph(host: HTMLElement, canvas: HTMLCanvasElement, payload: string, onPaint: () => void): () => void {
   const graph: PostGraph = parseGraphPayload(payload);
-  if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) throw new Error('Invalid graph payload');
+  if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges) || graph.nodes.length === 0) throw new Error('Invalid graph payload');
   const nav = host.querySelector<HTMLElement>('.post-graph-links');
   if (!nav) throw new Error('Missing graph navigation');
   const fragment = document.createDocumentFragment();
   for (const node of graph.nodes) {
-    if (!/^\/(?:en\/)?posts\//.test(node.href)) throw new Error('Invalid graph article URL');
+    const prefix = host.dataset.graphUrl?.includes('/en.json') ? '/en/posts/' : '/posts/';
+    if (!node.href.startsWith(prefix)) throw new Error('Invalid graph article URL');
     const anchor = document.createElement('a');
     anchor.href = node.href;
     anchor.dataset.postGraphNode = node.id;

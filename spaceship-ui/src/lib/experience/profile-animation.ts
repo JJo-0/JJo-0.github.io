@@ -52,7 +52,8 @@ function init() {
         return response.blob();
       }).catch(error => { animation = undefined; throw error; });
       const blob = await animation;
-      if (run !== generation || !allowed()) return;
+      if (run !== generation) return;
+      if (!allowed()) { stop(); return; }
       objectUrl = URL.createObjectURL(blob);
       const onLoad = () => {
         removeLoadListeners?.();

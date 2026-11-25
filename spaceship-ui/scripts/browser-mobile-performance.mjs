@@ -23,34 +23,82 @@ try {
     };` }, sessionId);
   for (const width of [390, 1440]) {
     const mobile = width === 390;
-    await viewport(cdp, sessionId, { width, height: 844, mobile, touch: mobile, reduced: false });
-    await navigate(cdp, sessionId, '/');
-    await evaluate(cdp, sessionId, `document.querySelector('[data-experience-canvas]').scrollIntoView({block:'center',behavior:'instant'})`);
-    await waitExpression(cdp, sessionId, 'window.__asciiDraws > 0', 'visible graph painted');
-    await sleep(1000);
-    const before = await evaluate(cdp, sessionId, 'window.__asciiDraws');
-    await sleep(800);
-    const after = await evaluate(cdp, sessionId, 'window.__asciiDraws');
-    if (mobile) assert.equal(after, before, 'Mobile graph must not run an idle redraw loop even without reduced-motion');
-    else assert(after > before, 'Desktop animation remains available');
-    if (mobile) {
+    for (const route of ['/', '/en/']) {
+      await viewport(cdp, sessionId, { width, height: 844, mobile, touch: mobile, reduced: false });
+      await cdp.send('Network.setCacheDisabled', { cacheDisabled: true }, sessionId);
+      await navigate(cdp, sessionId, route);
+      await evaluate(cdp, sessionId, `document.querySelector('[data-experience-canvas]').scrollIntoView({block:'center',behavior:'instant'})`);
+      await waitExpression(cdp, sessionId, `document.querySelector('[data-profile-animation] img')?.complete && document.querySelector('[data-profile-animation] img')?.naturalWidth>0`, 'static profile decoded');
+      const cold = await evaluate(cdp, sessionId, `({
+        draws: window.__asciiDraws,
+        state: document.querySelector('[data-experience-canvas]').dataset.graphState,
+        links: document.querySelectorAll('[data-post-graph-node]').length,
+        resources: performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize})),
+        navigation: performance.getEntriesByType('navigation').map(r=>({bytes:r.transferSize,domContentLoaded:r.domContentLoadedEventEnd,load:r.loadEventEnd}))
+      })`);
+      assert.equal(cold.state,'preview');
+      assert.equal(cold.draws,0);
+      assert.equal(cold.links,0);
+      assert(!cold.resources.some(r=>/writing-graph\\/|ascii-art[^/]*\\.js|mouse_surprised-once\\.webp|mouse_surprised\\.(gif|webp)/.test(r.url)), 'Cold entry must not fetch interactive map or animated profile');
+      // A rejected data request must preserve the preview and allow retry.
+      if (width === 390 && route === '/') {
+        await evaluate(cdp, sessionId, `(() => {
+          const original = window.fetch;
+          window.fetch = function(url,...args) {
+            if (String(url).includes('/writing-graph/')) { window.fetch=original; return Promise.reject(new Error('intentional graph fetch failure')); }
+            return original.call(this,url,...args);
+          };
+          document.querySelector('[data-graph-activate]').click();
+        })()`);
+        await waitExpression(cdp,sessionId,`document.querySelector('[data-experience-canvas]').dataset.graphState==='error'`,'retryable graph error');
+        assert.equal(await evaluate(cdp,sessionId,`getComputedStyle(document.querySelector('[data-graph-preview]')).display !== 'none'`),true);
+      }
+      await evaluate(cdp, sessionId, `document.querySelector('[data-graph-activate]').click()`);
+      await waitExpression(cdp, sessionId, `document.querySelector('[data-experience-canvas]').dataset.graphState==='ready' && window.__asciiDraws>0`, 'interactive graph painted');
+      await sleep(700);
+      const before = await evaluate(cdp, sessionId, 'window.__asciiDraws');
+      await sleep(800);
+      const after = await evaluate(cdp, sessionId, 'window.__asciiDraws');
+      assert.equal(after,before,'Graph must not redraw at rest on mobile or desktop');
       await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark')`);
       await waitExpression(cdp, sessionId, `window.__asciiDraws > ${after}`, 'static graph repaints on theme change');
-      await capture('graph-mobile-dark');
+      await capture('graph-' + width + (route === '/en/' ? '-en' : '-ko'));
       await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark')`);
+      const counts = await evaluate(cdp, sessionId, `({
+        actual:document.querySelectorAll('[data-post-graph-node]').length,
+        expected:Number(document.querySelector('[data-experience-canvas]').dataset.graphCount),
+        wrongLanguage:[...document.querySelectorAll('[data-post-graph-node]')].filter(a=>!a.getAttribute('href').startsWith(location.pathname.startsWith('/en/')?'/en/posts/':'/posts/')).length
+      })`);
+      assert(counts.actual > 0);
+      assert.equal(counts.actual,counts.expected,'All graph article links retained');
+      assert.equal(counts.wrongLanguage,0,'Graph links match the current language');
+      await evaluate(cdp, sessionId, `document.querySelector('[data-profile-animation]').scrollIntoView({block:'center',behavior:'instant'})`);
+      await sleep(300);
+      await evaluate(cdp, sessionId, `document.querySelector('[data-profile-animation]').click()`);
+      await waitExpression(cdp,sessionId,`document.querySelector('[data-profile-animation]').dataset.profileState==='playing'`,'explicit profile playback');
+      await waitExpression(cdp,sessionId,`document.querySelector('[data-profile-animation]').dataset.profileState==='static'`,'one-shot profile returns to static');
+      const activated = await evaluate(cdp,sessionId,`performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize,duration:r.duration}))`);
+      assert(activated.some(r=>r.url.includes('/writing-graph/')));
+      assert(activated.some(r=>r.url.includes('mouse_surprised-once.webp')));
+      assert(!activated.some(r=>r.url.includes('/image/mouse_surprised.gif')));
+      const target = await evaluate(cdp, sessionId, `(() => {const a=document.querySelector('[data-post-graph-node]');a.focus();return a.getAttribute('href')})()`);
+      await waitExpression(cdp, sessionId, `document.querySelector('[data-post-graph-tooltip]').hasAttribute('data-visible')`, 'keyboard graph tooltip');
+      await cdp.send('Input.dispatchKeyEvent', { type:'rawKeyDown', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);
+      await cdp.send('Input.dispatchKeyEvent', { type:'keyUp', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);
+      const path = new URL(target, BASE).pathname;
+      await waitExpression(cdp, sessionId, `${JSON.stringify([path, path.endsWith('/') ? path.slice(0,-1) : path+'/'])}.includes(location.pathname)`, 'native graph link destination');
+      results.push({width,route,cold,idleDraws:after-before,graphLinks:counts.actual,nativeLink:true,activated});
+      console.log('mobile-performance: graph/profile PASS '+JSON.stringify({width,route,idleDraws:after-before,links:counts.actual}));
     }
-    const count = await evaluate(cdp, sessionId, `document.querySelectorAll('[data-post-graph-node]').length`);
-    assert(count > 0, 'Graph article links retained');
-    const target = await evaluate(cdp, sessionId, `(() => {const a=document.querySelector('[data-post-graph-node]');a.focus();return a.getAttribute('href')})()`);
-    await waitExpression(cdp, sessionId, `document.querySelector('[data-post-graph-tooltip]').hasAttribute('data-visible')`, 'keyboard graph tooltip');
-    await capture(`graph-${width}`);
-    await cdp.send('Input.dispatchKeyEvent', { type:'rawKeyDown', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);
-    await cdp.send('Input.dispatchKeyEvent', { type:'keyUp', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);
-    const path = new URL(target, BASE).pathname;
-    await waitExpression(cdp, sessionId, `${JSON.stringify([path, path.endsWith('/') ? path.slice(0,-1) : path+'/'])}.includes(location.pathname)`, 'native graph link destination');
-    results.push({ width, mobileIdleDraws:after-before, graphLinks:count, nativeLink:true });
-    console.log('mobile-performance: graph PASS '+JSON.stringify(results.at(-1)));
   }
+  await viewport(cdp,sessionId,{width:390,height:844,mobile:true,touch:true,reduced:true});
+  await navigate(cdp,sessionId,'/');
+  await evaluate(cdp,sessionId,`document.querySelector('[data-profile-animation]').scrollIntoView({block:'center',behavior:'instant'})`);
+  await waitExpression(cdp,sessionId,`document.querySelector('[data-profile-animation]').disabled`,'reduced motion disables profile playback');
+  await evaluate(cdp,sessionId,`document.querySelector('[data-profile-animation]').click()`);
+  assert.equal(await evaluate(cdp,sessionId,`document.querySelector('[data-profile-animation]').dataset.profileState`),'static');
+  assert(!await evaluate(cdp,sessionId,`performance.getEntriesByType('resource').some(r=>r.name.includes('mouse_surprised-once.webp'))`));
+  await cdp.send('Network.setCacheDisabled', { cacheDisabled: false }, sessionId);
   await viewport(cdp, sessionId, { width:390, height:844, mobile:true, touch:true, reduced:false });
   await navigate(cdp, sessionId, '/news/');
   await waitExpression(cdp, sessionId, `(() => {const img=document.querySelector('[data-news-card] img');return img?.complete && img.naturalWidth>0})()`, 'first NEWS thumbnail');
