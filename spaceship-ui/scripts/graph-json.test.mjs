@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { graphVisual, graphDepth, projectAtlas } from '../src/lib/experience/graph-visuals.mjs';
+import { POST_CATEGORIES } from '../src/lib/taxonomy.mjs';
 import {serializeGraphPayload, parseGraphPayload} from '../src/lib/experience/graph-json.mjs';
 const input={nodes:[{id:'post-0',title:'한국어 <script> & "quoted" </script><img src=x>',href:'/posts/test/',x:1.1234,y:-2,z:0,tags:['a','b']}],edges:[{source:'post-0',target:'post-1',weight:1.2,reasons:['shared category']}]};
 const encoded=serializeGraphPayload(input);
@@ -33,4 +35,16 @@ assert(loader.includes('fetch(url,') && loader.includes("import('./ascii-art')")
 const runtime=fs.readFileSync(new URL('../src/lib/experience/ascii-art.ts',import.meta.url),'utf8');
 assert(runtime.includes("script[data-post-graph-source]") && runtime.includes("host.dataset.postGraph ?? 'null'"));
 assert(runtime.includes("document.createElement('a')") && runtime.includes('anchor.href = node.href') && runtime.includes('anchor.dataset.postGraphNode = node.id'));
-console.log('graph-json: PASS lossless transport, legacy decoding, static preview and on-demand native links');
+const styles=POST_CATEGORIES.map(graphVisual);
+assert.equal(new Set(styles.map(style=>style.glyph)).size, POST_CATEGORIES.length);
+assert(styles.every(style=>/^#[0-9a-f]{6}$/i.test(style.light)&&/^#[0-9a-f]{6}$/i.test(style.dark)));
+assert.equal(graphDepth(-10),0);assert.equal(graphDepth(10),1);
+const geometry=[{id:'a',x:2,y:1,z:1.8},{id:'b',x:-2,y:-1.5,z:-1.9},{id:'c',x:0.5,y:2,z:-1}];
+for(const [w,h] of [[320,460],[1440,700]]) for(const x of [-1.3,0,1.3]) for(const y of [-Math.PI,0,Math.PI/2,Math.PI]){
+  const p=projectAtlas(geometry,w,h,x,y);
+  assert.deepEqual(p.map(row=>row.id),geometry.map(row=>row.id));
+  assert(p.every(row=>Number.isFinite(row.z)&&row.x>=0&&row.x<=w&&row.y>=0&&row.y<=h),'Projection must fit the view');
+}
+assert.notDeepEqual(projectAtlas(geometry,390,460,0,0),projectAtlas(geometry,390,460,0,Math.PI/4));
+assert(loader.includes('IntersectionObserver')&&loader.includes('requestIdleCallback')&&loader.includes("next.dataset.graphState === 'preview'"));
+console.log('graph-json: PASS lossless transport, legacy decoding, bounded perspective projection, distinct topic glyphs and viewport-idle activation');

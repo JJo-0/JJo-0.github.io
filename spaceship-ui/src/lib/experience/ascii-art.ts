@@ -155,7 +155,7 @@ function installGraphCanvas(
     if (time - lastDrawAt < 1000 / 30) { frame = requestAnimationFrame(draw); return; }
     lastDrawAt = time;
     dirty = false;
-    const activeId = hoverId ?? focusId;
+    const activeId = focusId ?? hoverId;
     if (projectionDirty) {
       for (const row of projectAtlas(graph.nodes, width, height, rotationX, rotationY)) {
         const point = projected.get(row.id)!;
