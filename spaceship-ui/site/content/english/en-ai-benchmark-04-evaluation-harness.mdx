@@ -1,0 +1,133 @@
+---
+title: "AI Benchmark 04 — Evaluation harness, scaffold and verifier"
+description: "Design agent evaluation inputs, states, tools, sandbox, independent verifier and budgets for reproducible experiments."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-04-evaluation-harness
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - agent
+  - testing
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 4
+translationKey: en-ai-benchmark-04-evaluation-harness
+translatedPosts:
+  ko-KR: ai-benchmark-04-evaluation-harness
+---
+
+A single model API call differs from an agent that carries out real work. Examine what an evaluation harness fixes and what it allows to vary.
+
+## 1. Evaluation execution architecture
+
+The following explanatory design is inspired by the [Inspect AI Task abstraction](https://inspect.aisi.org.uk/tasks). Dataset, solver and scorer are core components; tools, sandbox and constraints can be added as required.
+
+
+```text
+task manifest + dataset snapshot
+              |
+              v
+       evaluation harness
+              |
+              v
+       agent / solver <---- tool results
+              |                   ^
+              v                   |
+       isolated environment ------+
+              |
+              v
+       independent scorer
+              |
+              v
+       trace + aggregate score
+```
+
+
+| Component | Responsibility |
+|---|---|
+| Harness | Initialize environment, enforce limits, manage trials, collect outcomes |
+| Scaffold | Prompting, memory, planning, tool use and iteration |
+| Sandbox | Isolate files, processes and network |
+| Verifier | Check success and constraint violations |
+| Reporter | Disclose denominators, errors, time, cost and versions |
+
+Harness and scaffold terminology overlaps across projects. Inspect which component performs each function rather than relying on the names.
+
+## 2. How to test a single task
+
+Hypothetical coding issue: fix a parser for empty input while preserving the existing API and normal-input behavior. The model receives a workspace and the problem description. The runner provides terminal and editing tools; grading occurs in a separate test environment.
+
+| Stage | Verification |
+|---|---|
+| Prepare | Pin baseline commit, environment image and task ID |
+| Execute | Read/edit code, run public tests, enforce time limit |
+| Collect | Save final patch, tool calls and termination reason |
+| Verify | Apply patch to fresh environment; run hidden tests |
+| Aggregate | Record success, failure, errors and cost |
+
+[SWE-bench](https://arxiv.org/abs/2310.06770) evaluates real repository issues using code changes and tests. Completion is determined by the grader, not the model's confidence or final message.
+
+## 3. Pin the evaluation specification
+
+The following YAML is a custom evaluation example, not an official benchmark configuration. Record not only the model ID but the actual responding model, system prompt version, tool permissions and budget.
+
+
+```yaml
+benchmark: toy-repository
+dataset_revision: v1
+model_snapshot: pinned-model-id
+scaffold_revision: scaffold-v1
+environment_image: example-image-digest
+grader_revision: grader-v1
+tools:
+  - read_workspace
+  - edit_workspace
+  - run_public_tests
+network: disabled
+timeout_seconds: 600
+max_tool_calls: 50
+attempts_per_task: 3
+seed_policy: recorded_if_supported
+infrastructure_retry: at_most_once
+score: hidden_tests_all_pass
+```
+
+
+For real environment images, record a digest rather than a mutable tag. If API model updates cannot be pinned, retain execution time and the model ID returned by the API. Even when seeds are supported, external services are not necessarily deterministic.
+
+## 4. Separate model and system effects
+
+Design a hypothetical 2×2 comparison with two models and two harnesses.
+
+| Hypothetical score | H1 common environment | H2 extended tools |
+|---|---:|---:|
+| Model A | 40% | 65% |
+| Model B | 50% | 60% |
+
+A is ten percentage points below B in H1 but five above in H2. The harness gain is 25 points for A and ten for B. The simple difference-in-differences is 15 points, summarizing the model-harness interaction in this design. Statistical conclusions require repeated trials and paired-task analysis.
+
+The real [Inkling 2 Mini model card](https://thinkingmachines.ai/model-card/inkling-2-mini/) likewise distinguishes the original Chartography condition and one with Python. Change non-model variables one at a time. Report equal-budget comparisons separately from comparisons of each model's best configuration.
+
+## 5. Why the runner and grader must be separated
+
+The evaluated agent performs only permitted work. Do not provide grader answers, hidden tests, result records or verifier execution privileges to the agent. Reset the initial state for each attempt and transfer only the artifacts needed for verification.
+
+Distinguish failure types. Incomplete tasks, timeouts, policy violations, initialization failures and grader errors are different. Preregister exclusion rules and disclose total counts and reasons. Do not relax the success criterion opportunistically when a problem occurs during evaluation.
+
+For practice, inspect [Inspect AI](https://inspect.aisi.org.uk/) or the [LM Evaluation Harness](https://github.com/EleutherAI/lm-evaluation-harness) and locate the dataset, solver and scorer of a task. The next chapter examines where this architecture can become contaminated or exploited.
+
+## References
+
+- [Inspect AI — Tasks](https://inspect.aisi.org.uk/tasks)
+- [SWE-bench (2023)](https://arxiv.org/abs/2310.06770)
+- [LM Evaluation Harness](https://github.com/EleutherAI/lm-evaluation-harness)
+- [Inkling model card (2026)](https://thinkingmachines.ai/model-card/inkling-2-mini/)

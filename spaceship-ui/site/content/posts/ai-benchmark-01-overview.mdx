@@ -1,0 +1,96 @@
+---
+title: "AI 벤치마크 01 — AI의 지능을 어떻게 측정하는가?"
+description: "GLUE에서 자율 연구 평가까지의 발전 과정과 모델 카드의 점수를 해석하는 기본 원리를 공부합니다."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-01-overview
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - llm
+  - agent
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 1
+---
+
+import Math from '@/components/post/Math.astro';
+
+AI 모델의 점수표는 성적표처럼 보인다. 그러나 시험지, 채점표, 시험장, 시험 시간까지 다르면 같은 80점이라도 의미가 달라진다. 이 연재의 목표는 순위 암기가 아니라 **어떤 능력을 어떤 조건에서 측정했는지 설명하고, 필요한 평가를 직접 설계할 수 있는 것**이다.
+
+## 1. 벤치마크, 데이터셋, 평가의 차이
+
+데이터셋(Dataset)은 문제와 관련 자료의 집합이다. 평가(Evaluation)는 모델에 문제를 주고 결과를 측정하는 실행이다. 벤치마크(Benchmark)는 문제 집합, 실행 조건, 채점 규칙, 집계 방식이 함께 정의된 비교 기준이다. 리더보드(Leaderboard)는 그 기준에서 얻은 결과의 목록이다.
+
+예를 들어 수학 시험에서 최종 숫자만 채점할지 풀이 과정까지 채점할지 정해야 한다. 코드 시험에서는 텍스트로 답하는 것보다 실제 테스트를 실행하는 것이 중요하다. 에이전트 시험에서는 파일, 브라우저, API 같은 환경과 실행 권한까지 포함한다.
+
+| 요소 | 질문 |
+|---|---|
+| Task / dataset | 무엇을 해결하는가? |
+| Harness / tools | 어떤 조건에서 행동하는가? |
+| Grader / verifier | 무엇이 성공인가? |
+| Aggregation | 과업별 결과를 어떻게 합치는가? |
+| Reporting | 비용, 시간, 실패, 버전을 공개하는가? |
+
+## 2. 평가의 발전: 언어 이해에서 실제 업무까지
+
+아래 연표는 최초 논문 또는 대표적인 공개 시점을 기준으로 한다. 후속 버전의 시험을 이전 시험과 동일하게 취급하지 않는다.
+
+| 시기 | 대표 평가 | 평가의 중심 |
+|---|---|---|
+| 2018–2019 | [GLUE](https://arxiv.org/abs/1804.07461), [SuperGLUE](https://arxiv.org/abs/1905.00537) | 여러 자연어 이해 과업 |
+| 2020–2021 | [MMLU](https://arxiv.org/abs/2009.03300), [HumanEval](https://arxiv.org/abs/2107.03374) | 학문 지식과 실행 가능한 함수 |
+| 2022 | [HELM](https://arxiv.org/abs/2211.09110) | 정확도 외 보정, 강건성, 효율 등 다면 평가 |
+| 2023–2024 | [SWE-bench](https://arxiv.org/abs/2310.06770), [OSWorld](https://os-world.github.io/) | 저장소 수정 및 GUI 환경의 목표 달성 |
+| 2025 | [HLE](https://lastexam.ai/), [GDPval](https://openai.com/index/gdpval/) | 전문가 지식 및 전문 업무 |
+| 2026 | [AA Intelligence Index v5](https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v5/) | 자율 코딩, 연구, 지식 업무를 포함한 종합 측정 |
+
+GLUE는 서로 다른 언어 이해 과업을 하나의 평가 체계로 묶었다. MMLU는 57개 분야의 학문 지식과 문제 해결을 다루었다. HumanEval은 함수의 동작을 시험했고 SWE-bench는 실제 이슈와 코드베이스를 사용했다. HELM은 한 개의 정확도보다 다양한 측정 관점을 강조했다. 이 흐름은 단순히 문제가 어려워진 것이 아니라 평가 대상이 답변에서 실행 결과로 넓어진 과정이다.
+
+## 3. 실제 모델 카드 읽기: Inkling 2 Mini
+
+2026년 11월 20일 공개된 [Thinking Machines Lab 모델 발표](https://thinkingmachines.ai/news/inkling-2-mini/)에서 다음 수치를 확인할 수 있다. 원본의 시험 조건을 생략하지 않고 읽어 보자.
+
+| 평가 | 보고 점수 | 실행 조건 / 단위 |
+|---|---:|---|
+| Terminal-Bench 2.1 | 71.6% | Pi v0.83.0 |
+| Terminal-Bench 4.0 | 5.6% | mini-swe-agent v2.4.6 |
+| Chartography | 22.1% / 72.5% | 원래 조건 / Python 사용 |
+| GDPval-AA v2.1 | 1319 | Elo 평점 |
+| AA Index v5.0 | 20.1 | 종합 지수 |
+| Vals Index v2.2 | 46.5% | 산업 가중 점수 |
+
+터미널 점수의 차이는 66.0%p이지만 버전과 하네스가 함께 바뀌었다. 이 표로 모델 능력의 하락을 추정할 수 없다. Chartography의 차이는 50.4%p이다. 도구를 사용할 때 더 높게 측정되었지만 어떤 연산이 원인인지는 실행 로그나 통제 실험 없이 단정하지 않는다. Elo 점수와 종합 지수 역시 정답률이 아니다.
+
+## 4. 점수의 측정 모형
+
+문제 i에 대해 모델 M, 데이터 D, 하네스 H, 도구 T, 예산 B, 채점기 G와 난수 R을 지정하자. 점수 S는 이 모든 요인의 함수로 볼 수 있다.
+
+<Math display tex={"S=f(M,D,H,T,B,G,R)"} />
+
+100개 과업에 대해 70개 성공이면 단순 성공률은 70%이다. 하지만 과업 중복, 표본 편향, 시간 초과 처리 방식에 따라 관측 결과가 달라진다. 모델 비교에서는 먼저 평가 조건을 고정한다. 반대로 시스템 비교에서는 모델별 최적 하네스를 허용하되 비용·시간까지 공개한다. 두 실험은 각각 모델과 배치된 시스템에 관한 다른 질문에 답한다.
+
+## 5. 직접 생각해 보기
+
+가상 문제: 모델 A는 100개 중 80개를 해결하고 10분이 걸렸다. B는 100개 중 85개를 해결하고 30분이 걸렸다. 더 좋은 모델은 무엇인가?
+
+정답은 목표에 따라 달라진다. 최고 정확도가 목표라면 B가 유리하다. 15분 마감이 강제된다면 B의 마감 시점 점수가 필요하다. 단가가 다르면 성공한 과업당 비용을 비교한다. 데이터 버전과 채점기까지 다르면 순위를 결정하기 전에 평가를 다시 설계해야 한다.
+
+다음 편에서는 같은 결과를 정확도, F1, Elo, AUC로 표현할 때 무엇이 달라지는지 계산한다.
+
+## 참고 자료
+
+- [GLUE (Wang et al., 2018)](https://arxiv.org/abs/1804.07461)
+- [MMLU (Hendrycks et al., 2020)](https://arxiv.org/abs/2009.03300)
+- [HumanEval (Chen et al., 2021)](https://arxiv.org/abs/2107.03374)
+- [HELM (Liang et al., 2022)](https://arxiv.org/abs/2211.09110)
+- [SWE-bench (Jimenez et al., 2023)](https://arxiv.org/abs/2310.06770)
+- [Inkling 2 Mini model card (2026-11-20)](https://thinkingmachines.ai/model-card/inkling-2-mini/)

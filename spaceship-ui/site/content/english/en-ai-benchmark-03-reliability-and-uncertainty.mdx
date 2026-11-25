@@ -1,0 +1,114 @@
+---
+title: "AI Benchmark 03 — Pass@k, Pass^k and repeated trials"
+description: "Calculate repeated-attempt success and reliability, the combinatorial estimator, Wilson intervals and paired comparisons."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-03-reliability-and-uncertainty
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - statistics
+  - reliability
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 3
+translationKey: en-ai-benchmark-03-reliability-and-uncertainty
+translatedPosts:
+  ko-KR: ai-benchmark-03-reliability-and-uncertainty
+---
+
+import Math from '@/components/post/Math.astro';
+
+Getting an answer right at least once and getting it right every time are different requirements. Distinguish evaluation of multiple code candidates from the reliability of financial or robotic operations.
+
+## 1. Three success rates
+
+Assume independent attempts on a task have success probability p. Pass@1 refers to one attempt; Pass@k denotes the event that at least one of k attempts succeeds; Pass^k denotes the event that every attempt succeeds.
+
+<Math display tex={"P_{\\ge1}(k)=1-(1-p)^k,\\qquad P_{\\mathrm{all}}(k)=p^k"} />
+
+For a hypothetical identical task with p=0.8, five attempts give a 99.968% chance of at least one success and a 32.768% chance of all successes.
+
+| k | At least one success | All successes |
+|---:|---:|---:|
+| 1 | 80% | 80% |
+| 2 | 96% | 64% |
+| 3 | 99.2% | 51.2% |
+| 5 | 99.968% | 32.768% |
+
+These numbers assume identical p, independence and fixed conditions. With a mixture of easy and difficult tasks, substituting the overall mean p into the formula does not generally recover the observed repeated success rate.
+
+## 2. The HumanEval combinatorial estimator
+
+The [HumanEval paper](https://arxiv.org/abs/2107.03374) uses a Pass@k estimator: given n sampled candidates with c correct, estimate the probability that a random selection of k includes at least one correct candidate.
+
+<Math display tex={"\\widehat{\\mathrm{pass@}k}=1-\\frac{\\binom{n-c}{k}}{\\binom{n}{k}},\\qquad n\\ge k"} />
+
+With n=10, c=3 and k=2, there are 45 possible pairs, and 21 contain only failures. The result is 24/45=53.33%. Compute each task's value before taking the mean.
+
+This is separate from whether a deployed system can identify the correct candidate. If hidden tests are unavailable during deployment, Pass@k does not measure selection ability. An all-pass sample estimator for the same candidate set is a ratio of combinations.
+
+<Math display tex={"\\widehat{P}_{\\mathrm{all}}(k)=\\frac{\\binom{c}{k}}{\\binom{n}{k}}"} />
+
+In the example, all-pass is 3/45=6.67%.
+
+## 3. Confidence intervals: uncertainty around 80
+
+Suppose 80 of 100 independent Bernoulli tasks succeed. The estimate is 0.8. The Wilson interval is more stable near boundaries than the simple normal approximation. For z=1.96 it gives an approximate 95% interval.
+
+<Math display tex={"\\frac{\\hat p+z^2/(2n)\\ \\pm\\ z\\sqrt{\\hat p(1-\\hat p)/n+z^2/(4n^2)}}{1+z^2/n}"} />
+
+For n=100 the interval is about 71.1–86.7%; for n=1000 with 800 successes it is about 77.4–82.4%. The score is unchanged but uncertainty differs. [Brown, Cai & DasGupta (2001)](https://doi.org/10.1214/ss/1009213286) compare confidence intervals for binomial proportions.
+
+If the entire finite test is scored, this interval is not measurement error on that fixed test; it concerns generalization to a larger target population under assumptions. Multiple problems from the same repository may not be independent. Consider a clustered bootstrap at the task or repository level.
+
+## 4. Compare models using paired tasks
+
+Give the same 100 tasks to two models. If both succeed on 65, only A on 15, only B on 10, and neither on 10, A scores 80%, B scores 75% and the gap is five percentage points. The key information is the 25 discordant tasks.
+
+McNemar's test uses discordant pairs for paired binary outcomes. In this example, an exact two-sided binomial test under the null of equal directions gives a p-value of about 0.424. A five-point gap alone cannot establish superiority. Report effect sizes and intervals too.
+
+Do not apply a paired test to unmatched tasks. For repeated trials, aggregate at the task level while preserving dependence within each task.
+
+## 5. Practice code and run records
+
+Reproduce the calculation for candidate success and repeated reliability. This pedagogical example does not call a model.
+
+
+```python
+from math import comb, sqrt
+
+def pass_at_k(n, c, k):
+    if not (0 <= c <= n and 1 <= k <= n):
+        raise ValueError("invalid counts")
+    return 1 - comb(n-c, k)/comb(n, k) if n-c >= k else 1.0
+
+def wilson(c, n, z=1.96):
+    if not (n > 0 and 0 <= c <= n):
+        raise ValueError("invalid counts")
+    p = c/n
+    d = 1 + z*z/n
+    mid = (p+z*z/(2*n))/d
+    half = z*sqrt(p*(1-p)/n+z*z/(4*n*n))/d
+    return mid-half, mid+half
+
+print(pass_at_k(10, 3, 2), wilson(80, 100))
+```
+
+
+For real evaluations, log attempt number, task ID, model version, harness, timeout, termination reason and cost. Dropping failed attempts may inflate the score. If infrastructure errors are retried, fix the rule in advance and report the original error count.
+
+## References
+
+- [HumanEval — pass@k (Chen et al., 2021)](https://arxiv.org/abs/2107.03374)
+- [τ-bench (Yao et al., 2024)](https://arxiv.org/abs/2406.12045)
+- [Brown, Cai & DasGupta — Interval estimation for a binomial proportion (2001)](https://doi.org/10.1214/ss/1009213286)
+- [McNemar test — statsmodels](https://www.statsmodels.org/stable/generated/statsmodels.stats.contingency_tables.mcnemar.html)

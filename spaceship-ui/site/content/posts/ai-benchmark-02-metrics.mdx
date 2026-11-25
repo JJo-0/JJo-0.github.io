@@ -1,0 +1,108 @@
+---
+title: "AI 벤치마크 02 — Accuracy, F1, Elo와 AUC의 수학"
+description: "혼동 행렬, 정확도와 정밀도·재현율, 상대 평점, 시간 곡선의 면적을 직접 계산하고 서로 다른 점수 단위를 구분합니다."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-02-metrics
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - statistics
+  - metrics
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 2
+---
+
+import Math from '@/components/post/Math.astro';
+
+정확도 90%, F1 0.8, Elo 1300, AUC 450은 서로 다른 양을 측정한다. 이 글은 점수의 분모, 단위, 방향을 직접 계산하며 비교할 수 있는 조건을 정리한다. 아래 숫자는 별도 출처가 표시된 경우를 제외하고 학습용 가상 예시다.
+
+## 1. 혼동 행렬에서 시작하기
+
+유해 요청 검출기를 예로 들자. 양성(Positive)은 실제 유해 요청이다. 다음 100개 과업에 대해 모델의 판단을 집계한다.
+
+| 실제 / 예측 | 유해 | 정상 |
+|---|---:|---:|
+| 유해 | TP = 30 | FN = 10 |
+| 정상 | FP = 5 | TN = 55 |
+
+<Math display tex={"\\mathrm{Accuracy}=\\frac{TP+TN}{TP+FP+TN+FN}=\\frac{85}{100}=0.85"} />
+
+<Math display tex={"\\mathrm{Precision}=\\frac{TP}{TP+FP}=\\frac{30}{35}\\approx0.8571"} />
+
+<Math display tex={"\\mathrm{Recall}=\\frac{TP}{TP+FN}=\\frac{30}{40}=0.75"} />
+
+정밀도는 유해하다고 판정한 것 중 실제 유해 비율이다. 재현율은 실제 유해 요청 중 찾아낸 비율이다. 안전에 민감한 과업에서는 FN과 FP의 비용이 대칭적이지 않다. 무조건 거절하는 시스템의 유해 요청 재현율은 100%일 수 있지만 정상 요청을 차단하는 문제가 발생한다.
+
+## 2. F1과 평균 방식
+
+F1은 정밀도와 재현율의 조화 평균(Harmonic Mean)이다.
+
+<Math display tex={"F_1=\\frac{2PR}{P+R}=\\frac{2TP}{2TP+FP+FN}=\\frac{60}{75}=0.8"} />
+
+분모가 0인 경우의 처리 정책을 명시해야 한다. 다중 분류나 여러 과업에서는 Macro F1(클래스별 F1 평균), Micro F1(전체 TP, FP, FN 합산 후 계산), Weighted F1(지원 표본 수로 가중 평균)이 다르다.
+
+예를 들어 A 분야 10문제에서 9개, B 분야 90문제에서 45개를 맞히면 전체 정확도는 54%이고 분야를 균등하게 평균하면 70%이다. 어느 집계가 타당한지는 실제 목표 분포에 달려 있다. [scikit-learn 지표 문서](https://scikit-learn.org/stable/modules/model_evaluation.html)에서 평균 옵션과 0분모 정책을 확인할 수 있다.
+
+## 3. Elo — 정답률 대신 상대 비교
+
+두 모델이 같은 과업의 결과물을 생성하고 판정자가 우열을 비교한다고 하자. 표준 Elo 모형에서 A의 기대 점수(무승부는 0.5점)는 다음과 같다.
+
+<Math display tex={"E_A=\\frac{1}{1+10^{(R_B-R_A)/400}}"} />
+
+A가 1400, B가 1200이면 E_A는 약 0.7597이다. K=32, A가 승리하면 갱신은 다음과 같다.
+
+<Math display tex={"R_A'=R_A+K(S_A-E_A)\\approx1407.69"} />
+
+<Math display tex={"R_B'=R_B-K(S_A-E_A)\\approx1192.31"} />
+
+같은 평가 풀에서의 상대적인 기대 점수이지 특정 시험의 정답률이 아니다. 대결 상대, 평가자, 평점 기준점, 순서 편향, 동점 처리에 따라 달라진다. GDPval-AA, AA-Briefcase의 구체적인 평점 추정법은 각 공식 방법론을 따로 확인한다. 위 갱신 식은 표준 Elo의 학습 예시다.
+
+## 4. AUC에는 여러 의미가 있다
+
+ROC-AUC는 분류 임계값을 움직여 얻은 TPR과 FPR 곡선 아래 면적이다. 동점 처리까지 포함하면 무작위 양성 표본이 음성 표본보다 높은 점수를 받을 확률과 연결된다. PR-AUC와 Average Precision은 관련 있지만 동일하지 않으며 클래스 비율에도 영향을 받는다.
+
+반면 시간에 따른 해결 성능을 측정하는 AUC는 전혀 다른 단위를 갖는다. 가상 실험에서 시각 0, 2, 4, 6, 8, 10시간의 성공 점수가 각각 0, 20, 35, 50, 60, 70이라고 하자. 선형 보간을 가정한 사다리꼴 적분은 다음과 같다.
+
+<Math display tex={"A\\approx\\sum_{j=1}^{5}(t_j-t_{j-1})\\frac{s_j+s_{j-1}}{2}=400"} />
+
+단위는 점수·시간이다. 400을 정확도 400%로 읽으면 안 된다. 실제 [Inkling 모델 카드](https://thinkingmachines.ai/model-card/inkling-2-mini/)의 PMPP-Hard AUC (0–10h)는 시간 예산과 함께 읽어야 한다. 해당 시험의 성능 곡선 및 적분 규칙을 확인하지 않고 위 가상 적분과 동일하다고 가정하지 않는다.
+
+## 5. Python으로 직접 계산하기
+
+아래 코드는 외부 라이브러리 없이 혼동 행렬과 예제 AUC를 계산한다. 실제 데이터에서는 샘플링, 가중치, 분모 0 처리와 시간 간격을 추가 검증한다.
+
+
+```python
+tp, fp, fn, tn = 30, 5, 10, 55
+accuracy = (tp + tn) / (tp + fp + fn + tn)
+precision = tp / (tp + fp)
+recall = tp / (tp + fn)
+f1 = 2 * tp / (2 * tp + fp + fn)
+
+t = [0, 2, 4, 6, 8, 10]
+s = [0, 20, 35, 50, 60, 70]
+auc = sum((b-a)*(x+y)/2
+          for a, b, x, y in zip(t, t[1:], s, s[1:]))
+print(accuracy, precision, recall, f1, auc)
+# 0.85 0.857142857... 0.75 0.8 400.0
+```
+
+
+연습: 양성 표본이 1개뿐인 100개 시험에서 모두 음성으로 분류하면 Accuracy는 99%이고 Recall은 0이다. 지표를 선택할 때 어떤 실패를 놓치면 안 되는지 먼저 정해야 한다.
+
+## 참고 자료
+
+- [scikit-learn — model evaluation](https://scikit-learn.org/stable/modules/model_evaluation.html)
+- [HELM — multiple metrics (2022)](https://arxiv.org/abs/2211.09110)
+- [FIDE rating regulations](https://handbook.fide.com/chapter/B022024)
+- [Inkling 2 Mini model card (2026)](https://thinkingmachines.ai/model-card/inkling-2-mini/)

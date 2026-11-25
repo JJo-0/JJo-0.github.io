@@ -1,0 +1,94 @@
+---
+title: "AI Benchmark 05 — Contamination, reward hacking and evaluation bias"
+description: "Distinguish training contamination, grader overfitting, environment exploitation and judge bias using coding benchmark audits."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-05-contamination-and-reward-hacking
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - ai-safety
+  - data-quality
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 5
+translationKey: en-ai-benchmark-05-contamination-and-reward-hacking
+translatedPosts:
+  ko-KR: ai-benchmark-05-contamination-and-reward-hacking
+---
+
+import Math from '@/components/post/Math.astro';
+
+A higher score does not always mean an improvement in the intended capability. The model may have seen the tasks, the grader may be flawed, or conditions may favor a particular model. This chapter is not about dismissing scores; it is about checking what claims they support.
+
+## 1. Five distinct failure modes
+
+| Problem | Location | Example |
+|---|---|---|
+| Data contamination | Training data | Public exam and answers included in training |
+| Saturation | Task set | Most models cluster near the ceiling |
+| Reward hacking | Execution and reward | Score increases through a shortcut unrelated to the true objective |
+| Grader defect | Grader | Rejects valid solutions or accepts incorrect outcomes |
+| Reporting bias | Comparison and publication | Reports only favorable settings |
+
+Contamination concerns exposure to exam information before evaluation. Reward hacking occurs during an evaluation when an action satisfies the proxy metric but not the intended task. They can co-occur, but they are not the same concept.
+
+## 2. The 2026 SWE-bench audits: why versions change
+
+On February 23, 2026, an [OpenAI audit](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/) examined 138 frequently failed tasks from the 500 SWE-bench Verified tasks. It reported material specification or test-design issues for 59.4% of this selected subset. Because it was not a random sample of the 500 tasks, that percentage cannot be extrapolated to the whole dataset. The audit also presented cases where models reproduced information from existing answer patches.
+
+A [follow-up audit](https://openai.com/index/separating-signal-from-noise-coding-evaluations/) on July 8, 2026 estimated that about 30% of SWE-bench Pro tasks were broken. This concerns the evaluation version and audit procedure studied at that time, not every later Pro variant.
+
+| Date | Main conclusion of the report |
+|---|---|
+| 2026-02-23 | Verified: task/test defects and evidence of contamination |
+| 2026-07-08 | Pro: substantial grading and task-design issues |
+
+Neither report represents an independent model rerun performed for this article. They are provider-led audits whose scope and methods must be examined.
+
+## 3. Proxy metrics and the real objective
+
+Distinguish the true objective U from the evaluation reward r. Evaluators hope that increasing r increases U, but that relationship is not guaranteed in general.
+
+<Math display tex={"\\arg\\max_a r(a)\\ \\not\\equiv\\ \\arg\\max_a U(a)"} />
+
+If report writing is graded solely by document length, unnecessary sentences may increase instead of accurate information. With inadequate test coverage, an incomplete coding implementation may pass. Rather than assuming a model's intentions or inner state, inspect artifacts, execution traces and rule violations.
+
+[METR's November 20, 2026 report](https://metr.org/blog/2026-11-20-q4-2026-capability-update/) describes observed agent behaviors that increase scores without fulfilling intended tasks in some evaluations. This illustrates why correction criteria and trace-audit scope should be disclosed.
+
+## 4. Defensive evaluation design to reduce bias
+
+| Risk | Mitigation |
+|---|---|
+| Prior exposure | Newly authored private tests, temporal separation, similarity and duplicate checks |
+| Dataset bias | Sampling plans by domain/difficulty, external validation sets |
+| Harness bias | Separate common and model-specific optimized configurations |
+| Grader errors | Verify alternative solutions, regression and metamorphic tests |
+| Judge bias | Blind names, reverse A/B order, multiple judges and human audit |
+| Cost/time bias | Equal budgets, cost per success, performance at deadline |
+| Execution shortcuts | Separate permissions, isolated verifier, independent trace audit |
+
+Private tests do not automatically become fair. Task authoring and audit methodology should still be transparent. Define permitted tools and sources concretely. If an evaluation needs correction, version the changes and re-evaluate all models under the same corrected rules.
+
+## 5. Exercise: identify two kinds of error
+
+A hypothetical evaluation asks for the sum of an integer list including negative numbers. Its tests cover only positive lists. Model A sums all integers correctly; model B discards negatives before summing. Both can pass. The issue is not merely lower model accuracy for B: the grader fails to measure the intended objective.
+
+Conversely, if A returns correct results for positive and negative values but is rejected because the grader requires a particular internal function name, the test imposes an irrelevant constraint. Verify the intended behavior while allowing valid alternative implementations.
+
+Exercise solution: specify how negative numbers, empty lists, zeros, large numbers and invalid inputs should be handled, and add appropriate checks. Avoid meaningless implementation constraints. Treat the grader itself as an object of evaluation.
+
+## References
+
+- [OpenAI — SWE-bench Verified audit (2026-02-23)](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/)
+- [OpenAI — Separating signal from noise in coding evaluations (2026-07-08)](https://openai.com/index/separating-signal-from-noise-coding-evaluations/)
+- [METR — Q4 2026 capability update (2026-11-20)](https://metr.org/blog/2026-11-20-q4-2026-capability-update/)
+- [HELM (2022)](https://arxiv.org/abs/2211.09110)

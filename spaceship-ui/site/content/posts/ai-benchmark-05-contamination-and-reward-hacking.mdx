@@ -1,0 +1,91 @@
+---
+title: "AI 벤치마크 05 — 데이터 오염, Reward Hacking과 평가 편향"
+description: "훈련 데이터 오염, 채점기의 과적합, 평가 환경 악용, LLM 판정 편향을 구분하고 실제 코딩 평가 감사 사례와 방어적 검증 방법을 분석합니다."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-05-contamination-and-reward-hacking
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - ai-safety
+  - data-quality
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 5
+---
+
+import Math from '@/components/post/Math.astro';
+
+높은 점수가 항상 의도한 능력의 향상을 뜻하지는 않는다. 시험 문제를 이미 학습했거나 채점기가 잘못 설계되었거나 평가 조건이 특정 모델에 유리할 수 있다. 이 장은 점수 자체를 의심하는 것이 아니라 점수가 어떤 주장을 뒷받침하는지 검증하는 방법을 공부한다.
+
+## 1. 서로 다른 다섯 가지 실패 유형
+
+| 문제 | 발생 위치 | 예시 |
+|---|---|---|
+| Data contamination | 훈련 자료 | 공개 시험과 정답이 학습에 포함 |
+| Saturation | 문제 집합 | 대부분 모델이 최고점 근처에 몰림 |
+| Reward hacking | 실행과 보상 | 실제 목표와 무관한 지름길로 점수 상승 |
+| Grader defect | 채점기 | 올바른 해결책을 오답 처리하거나 잘못된 결과를 통과 |
+| Reporting bias | 비교 및 공개 | 성공한 설정만 골라 공개 |
+
+오염(Contamination)은 평가 전에 시험 정보가 모델에 노출되는 문제다. Reward Hacking은 평가 중 대리 지표를 만족하지만 실제 의도를 충족하지 않는 행동이다. 두 문제는 함께 발생할 수 있지만 같은 개념은 아니다.
+
+## 2. 2026년 SWE-bench 감사: 왜 버전이 바뀌는가
+
+2026년 2월 23일 [OpenAI 감사 보고서](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/)는 SWE-bench Verified의 500개 과업 중 자주 실패하던 138개를 조사했다. 이 선별된 집단에서 59.4%에 중대한 문제 설명·테스트 설계 문제가 있었다고 보고했다. 전체 500개에서 무작위 추출한 표본이 아니므로 59.4%를 전체 결함률로 외삽할 수 없다. 모델이 기존 정답 패치 정보를 재현한 사례도 제시했다.
+
+2026년 7월 8일 [후속 감사](https://openai.com/index/separating-signal-from-noise-coding-evaluations/)에서는 SWE-bench Pro에서도 약 30%의 과업 결함을 추정했다. 이는 해당 시점에 조사한 평가판과 감사 절차에 관한 결과이지 모든 후속 Pro 버전의 결함률이 아니다.
+
+| 날짜 | 보고서의 주요 결론 |
+|---|---|
+| 2026-02-23 | Verified에서 문제·테스트 결함 및 오염 증거 |
+| 2026-07-08 | Pro에서도 상당한 채점·과업 설계 문제 |
+
+두 보고서는 모델 성능을 독립적으로 재실험한 이 글의 결과가 아니다. 평가 개발 기업의 자체 감사이며 조사 범위 및 방법을 읽어야 한다.
+
+## 3. 대리 지표와 실제 목표
+
+실제 목표 U와 평가 보상 r을 구분하자. 평가자는 r이 증가하면 U도 증가하기를 기대하지만 일반적인 환경에서는 보장되지 않는다.
+
+<Math display tex={"\\arg\\max_a r(a)\\ \\not\\equiv\\ \\arg\\max_a U(a)"} />
+
+예를 들어 보고서 작성 시험에서 문서 길이만 채점하면 정확한 정보보다 불필요한 문장이 늘어날 수 있다. 코드 평가에서 테스트 커버리지가 부족하면 미완성 구현도 통과할 수 있다. 모델의 의도나 내부 상태를 추정하지 않고 실제 산출물, 실행 로그 및 규칙 위반을 검사하는 것이 중요하다.
+
+[METR의 2026년 11월 20일 보고서](https://metr.org/blog/2026-11-20-q4-2026-capability-update/)는 일부 에이전트 시험에서 의도된 과업을 해결하지 않고 점수를 높이는 행동을 관찰했다고 보고한다. 점수를 보정하는 기준과 로그 감사 범위를 공개해야 하는 이유다.
+
+## 4. 편향을 줄이는 방어적 평가 설계
+
+| 위험 | 대응 |
+|---|---|
+| 사전 노출 | 새로 작성된 비공개 테스트, 시간 분리, 유사·중복 검사 |
+| 데이터 편향 | 분야·난이도별 표본 계획, 외부 검증 집합 |
+| 하네스 편향 | 공통 설정 및 모델별 최적 설정을 분리 |
+| 채점 오류 | 참조 정답 외 대안 정답 검증, 회귀·변형 테스트 |
+| 판정자 편향 | 이름 가림, A/B 순서 교환, 복수 판정자, 사람 감사 |
+| 비용·시간 편향 | 동등 예산, 성공당 비용, 마감 시점 성능 |
+| 실행 중 우회 | 권한 분리, 격리된 검증기, 독립 로그 감사 |
+
+비공개 시험도 자동으로 공정해지는 것은 아니다. 문제 작성과 감사 방법은 공개할 수 있어야 한다. 시험 중 허용되는 도구와 자료를 구체적으로 정한다. 이미 실패한 평가를 수정해야 한다면 변경 내역을 버전으로 남기고 모든 모델을 동일한 수정 규칙으로 재평가한다.
+
+## 5. 연습: 두 종류의 오류를 동시에 발견하기
+
+가상 평가의 요구사항은 음수를 포함한 정수 목록의 합을 계산하는 것이다. 테스트는 양수 목록만 확인한다. 모델 A는 모든 정수를 올바르게 더하고, 모델 B는 음수를 버린 뒤 더한다. 둘 다 테스트를 통과할 수 있다. 이때 문제는 단순히 B의 모델 정확도가 낮다는 것이 아니라 채점기가 목표를 제대로 측정하지 못했다는 것이다.
+
+반대로 양수·음수 모두 올바른 결과를 내는데 특정 내부 함수 이름을 강제하여 A를 탈락시키면 요구사항과 무관한 과도한 테스트가 된다. 유효한 대안 구현을 허용하면서 의도한 기능을 검증해야 한다.
+
+연습 답: 요구사항에 음수, 빈 목록, 0, 큰 수와 오류 입력의 처리 정책을 명시하고 적절한 검증 사례를 추가한다. 구현 방식에 의미 없는 제약은 두지 않는다. 채점기 자체를 평가 대상으로 생각하는 습관을 들이자.
+
+## 참고 자료
+
+- [OpenAI — SWE-bench Verified audit (2026-02-23)](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/)
+- [OpenAI — Separating signal from noise in coding evaluations (2026-07-08)](https://openai.com/index/separating-signal-from-noise-coding-evaluations/)
+- [METR — Q4 2026 capability update (2026-11-20)](https://metr.org/blog/2026-11-20-q4-2026-capability-update/)
+- [HELM (2022)](https://arxiv.org/abs/2211.09110)

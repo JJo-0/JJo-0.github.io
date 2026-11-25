@@ -1,0 +1,116 @@
+---
+title: "AI Benchmark 06 — Artificial Analysis Index and Vals Index"
+description: "Analyze AA v5 and Vals v2.2 components, weights, version changes, official results and sensitivity."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-06-composite-indices
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - llm
+  - metrics
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 6
+translationKey: en-ai-benchmark-06-composite-indices
+translatedPosts:
+  ko-KR: ai-benchmark-06-composite-indices
+---
+
+import Math from '@/components/post/Math.astro';
+
+A composite index condenses multiple benchmarks into one number. This is useful, but rankings can change when objectives and weights differ. Sources were checked on November 25, 2026; release-time and current versions are distinguished.
+
+## 1. Artificial Analysis Intelligence Index v5
+
+The [official AA v5 announcement](https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v5/) was published on October 27, 2026. It assigns 25% each to knowledge work, coding, science and general ability. According to the announcement, 60% of the index is based on evaluations with private test sets or held-out answers.
+
+| Domain | Evaluation | Weight |
+|---|---|---:|
+| Knowledge Work | AA-Briefcase | 15% |
+| Knowledge Work | AutomationBench-AA | 5% |
+| Knowledge Work | GDP.pdf | 5% |
+| Coding | FrontierCode 2.0 | 15% |
+| Coding | Terminal-Bench 4.0 | 10% |
+| Science | Terminal-Bench-Science | 15% |
+| Science | CritPt v2 Hard | 10% |
+| General | AA-Omniscience v1.1 Accuracy | 10% |
+| General | AA-Omniscience v1.1 Non-hallucination | 5% |
+| General | HLE-Diamond | 10% |
+
+Nine evaluations produce ten weighted entries because Omniscience contributes two metrics. The [current AA site](https://artificialanalysis.ai/) shows v5.0.2 and Terminal-Bench 4.1. Do not treat v5.0 and v5.0.2 as the same version.
+
+## 2. Weighted aggregation and normalization
+
+A conceptual composite index transforms component evaluations to a common scale and then takes a weighted sum.
+
+<Math display tex={"I=\\sum_{j=1}^{m}w_j s_j,\\qquad \\sum_{j=1}^{m}w_j=1"} />
+
+If the normalized scores of four equally weighted domains are 60, 80, 40 and 60, the index is 60. Raising coding by ten points raises the composite by 2.5. This demonstrates weighted aggregation; it is not a reproduction of AA's full implementation, including Elo transformations. Do not directly average raw AA-Briefcase Elo with percentages.
+
+AA is an index covering general capabilities. Dataset selection, versions, difficulty and normalization affect the resulting composite.
+
+## 3. Vals Index v2.2 — industry weights
+
+According to the [official Vals methodology](https://www.vals.ai/benchmarks/vals_index), v2.2 was released on October 19, 2026. It uses approximate US industry GDP shares as weights.
+
+| Sector | Component tests | Original weight | Normalized share |
+|---|---|---:|---:|
+| Finance | Finance Agent v2.1, Excel Modeling v1.1 | 8.0 | 52.29% |
+| Coding | Terminal-Bench 4, Vibe Code, Code Migration | 5.6 | 36.60% |
+| Legal | Legal Research, HLAB-Vals-1.1 | 1.2 | 7.84% |
+| Tax | Tax Agent Bench | 0.5 | 3.27% |
+
+Average the tests within each sector, then combine them as follows.
+
+<Math display tex={"I_{\\mathrm{Vals}}=\\frac{8F+5.6C+1.2L+0.5T}{15.3}"} />
+
+For a hypothetical model with F=60, C=70, L=40 and T=20, the numerator is 480+392+48+10=930 and the index is about 60.78%. Increasing finance by ten percentage points increases the index by about 5.23 points. Increasing tax by ten points raises it by about 0.33 points.
+
+Code Migration in v2.2 uses a fixed subset of the official run; do not equate it to the complete original benchmark. Tax also switched to all-pass accuracy.
+
+## 4. Real scores: read source and version together
+
+The [Thinking Machines Lab release](https://thinkingmachines.ai/news/inkling-2-mini/) of November 20, 2026 reports these values. This is the publisher's table, not an independent rerun.
+
+| Model | AA v5.0 | Vals v2.2 |
+|---|---:|---:|
+| Inkling 2 Mini | 20.1 | 46.5% |
+| Gemma 4 31B | 4.4 | — |
+| Muse Glimmer | 6.3 | — |
+| Qwen3.8-27B | 20.1 | — |
+| Nemotron 3.5 Super VL | 13.6 | 29.8% |
+
+A dash means unreported, not zero. Two models with the same AA index may differ substantially on individual components.
+
+The November 21, 2026 snapshot of Vals' own leaderboard lists Claude Fable 5.2 at 70.06%, Gemini 4 Neon at 69.23%, and GPT-6.2 Astra at 66.27%. These are from the [official Vals leaderboard](https://www.vals.ai/benchmarks/vals_index) on that date. Do not mix another publisher's table or later updates into one ranking.
+
+## 5. Why weights change rankings
+
+Hypothetical model A scores 70 in finance, 40 in coding, 50 in legal and 50 in tax. Model B scores 50 in finance, 70 in coding, 50 in legal and 50 in tax.
+
+| Model | Simple mean of four domains | Vals weighted mean |
+|---|---:|---:|
+| A | 52.50% | 56.80% |
+| B | 55.00% | 57.32% |
+
+B leads under both aggregations. Increase A's finance score to 72: its simple mean is 53%, still below B, but its Vals weighted mean is about 57.84%, above B. Rankings are therefore a combination of chosen weights and evaluation outcomes, not an absolute ordering of intelligence.
+
+GDP shares are not the share of labor AI can actually replace. Adoption, error costs, regulations, human review, latency and operational costs are also required to estimate economic impact.
+
+This concludes Part I. Part II examines the actual task structures and grading of knowledge, reasoning and mathematics benchmarks.
+
+## References
+
+- [Artificial Analysis — Intelligence Index v5 (2026-10-27)](https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v5/)
+- [Artificial Analysis — current index](https://artificialanalysis.ai/)
+- [Vals Index v2.2 — methodology and leaderboard](https://www.vals.ai/benchmarks/vals_index)
+- [Thinking Machines Lab — Inkling 2 Mini (2026-11-20)](https://thinkingmachines.ai/news/inkling-2-mini/)
