@@ -1,4 +1,5 @@
 import { parseGraphPayload } from './graph-json.mjs';
+import { graphVisual, graphDepth, projectAtlas } from './graph-visuals.mjs';
 
 type Point3 = { x: number; y: number; z: number; edge: boolean };
 type GraphNode = {
@@ -90,16 +91,24 @@ function installGraphCanvas(
   }
   const projected = new Map(graph.nodes.map(node => [node.id, { x: 0, y: 0, z: 0 }]));
   const order = [...graph.nodes];
+  const nodeStyles = new Map(graph.nodes.map(node => [node.id, graphVisual(node.category)]));
+  const categoryButtons = [...host.querySelectorAll<HTMLButtonElement>('[data-graph-category]')];
+  const english = host.dataset.graphUrl?.includes('/en.json') ?? false;
+  const activeEdges = new Map(graph.nodes.map(node => [node.id, new Set(adjacency.get(node.id) ?? [])]));
   let width = 1, height = 1, dpr = 1, frame = 0;
   let visible = false, dirty = true, projectionDirty = true, painted = false;
   let dragPointer: number | null = null, lastX = 0, lastY = 0;
   let rotationX = -0.34, rotationY = 0.18, lastDrawAt = -Infinity;
   let hoverId: string | null = null, focusId: string | null = null, shownId: string | null = null;
-  let ink = '#24483e', muted = '#667064';
+  let ink = '#24483e', muted = '#667064', paper = '#f3efe4', dark = false;
+  let activeCategory: string | null = null;
+  const nodeInk = (id: string) => { const style = nodeStyles.get(id)!; return dark ? style.dark : style.light; };
   const refreshPalette = () => {
     const style = getComputedStyle(document.documentElement);
     ink = style.getPropertyValue('--experience-accent-strong').trim() || '#24483e';
     muted = style.getPropertyValue('--color-muted-foreground').trim() || '#667064';
+    paper = style.getPropertyValue('--color-background').trim() || '#f3efe4';
+    dark = document.documentElement.classList.contains('dark');
   };
   refreshPalette();
 
@@ -120,13 +129,22 @@ function installGraphCanvas(
       category.textContent = node.category + ' / ' + node.subcategory;
       const tags = document.createElement('span');
       tags.textContent = node.tags.slice(0, 3).map(tag => '#' + tag).join(' · ');
+      const relations = [...(adjacency.get(id) ?? [])].sort((a,b) => b.weight-a.weight);
       const related = document.createElement('span');
-      related.textContent = '↔ ' + (adjacency.get(id) ?? []).flatMap(edge => edge.reasons).slice(0, 2).join(' · ');
-      tooltip.replaceChildren(title, category, tags, ...(related.textContent === '↔ ' ? [] : [related]));
+      related.className = 'post-graph-relation';
+      related.textContent = english ? relations.length + ' related articles' : '연결된 게시글 ' + relations.length + '개';
+      const relationRows = relations.slice(0, 3).map(edge => {
+        const row = document.createElement('span');
+        row.className = 'post-graph-relation';
+        const neighbor = nodeById.get(edge.source === id ? edge.target : edge.source);
+        row.textContent = '↳ ' + (neighbor?.title ?? '') + (edge.reasons[0] ? ' · ' + edge.reasons[0] : '');
+        return row;
+      });
+      tooltip.replaceChildren(title, category, tags, related, ...relationRows);
       shownId = id;
     }
     tooltip.style.setProperty('--tooltip-x', Math.min(Math.max(12, width - 285), Math.max(12, point.x + 14)) + 'px');
-    tooltip.style.setProperty('--tooltip-y', Math.min(Math.max(12, height - 122), Math.max(12, point.y - 18)) + 'px');
+    tooltip.style.setProperty('--tooltip-y', Math.min(Math.max(12, height - 190), Math.max(12, point.y - 18)) + 'px');
     tooltip.setAttribute('data-visible', '');
   };
 
@@ -139,60 +157,75 @@ function installGraphCanvas(
     dirty = false;
     const activeId = hoverId ?? focusId;
     if (projectionDirty) {
-      const cx = Math.cos(rotationX), sx = Math.sin(rotationX);
-      const cy = Math.cos(rotationY), sy = Math.sin(rotationY);
-      const size = Math.min(width, height) * 0.205;
-      for (const node of graph.nodes) {
-        const point = projected.get(node.id)!;
-        const x = node.x * cy - node.z * sy, z = node.x * sy + node.z * cy;
-        const y = node.y * cx - z * sx;
-        point.z = node.y * sx + z * cx;
-        const perspective = 4.8 / (5.8 - point.z);
-        point.x = width * 0.5 + x * size * perspective;
-        point.y = height * 0.51 + y * size * perspective;
-        const anchor = anchors.get(node.id);
+      for (const row of projectAtlas(graph.nodes, width, height, rotationX, rotationY)) {
+        const point = projected.get(row.id)!;
+        point.x = row.x; point.y = row.y; point.z = row.z;
+        const anchor = anchors.get(row.id);
         anchor?.style.setProperty('--node-x', point.x + 'px');
         anchor?.style.setProperty('--node-y', point.y + 'px');
+        anchor?.style.setProperty('--node-hit', Math.round(19 + graphDepth(point.z) * 8) + 'px');
       }
       order.sort((a, b) => projected.get(a.id)!.z - projected.get(b.id)!.z);
+      order.forEach((node, index) => anchors.get(node.id)?.style.setProperty('--node-depth', String(index + 1)));
       projectionDirty = false;
     }
     context.clearRect(0, 0, width, height);
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    for (const edge of graph.edges) {
-      const a = projected.get(edge.source), b = projected.get(edge.target);
-      if (!a || !b) continue;
-      const active = activeId === edge.source || activeId === edge.target;
-      const count = Math.max(2, Math.floor(Math.hypot(b.x - a.x, b.y - a.y) / 15));
-      context.font = (active ? '700 10px' : '500 8px') + ' ui-monospace,SFMono-Regular,Menlo,monospace';
-      context.fillStyle = active ? ink : muted;
-      context.globalAlpha = active ? 0.9 : 0.24 + ((a.z + b.z + 5) / 10) * 0.22;
-      for (let i = 1; i < count; i++) {
-        const t = i / count;
-        context.fillText(active && i % 7 === 0 ? '>' : i % 3 === 0 ? '+' : '·',
-          a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
-      }
+    const selectedEdges = activeId ? activeEdges.get(activeId) : undefined;
+    const neighbors = new Set<string>();
+    if (activeId && selectedEdges) {
+      for (const edge of selectedEdges) neighbors.add(edge.source === activeId ? edge.target : edge.source);
     }
+    const categoryMatch = (id: string) => !activeCategory || nodeById.get(id)?.category === activeCategory;
+    const drawEdge = (edge: GraphEdge, selected: boolean) => {
+      const a = projected.get(edge.source), b = projected.get(edge.target);
+      if (!a || !b) return;
+      const same = nodeById.get(edge.source)?.category === nodeById.get(edge.target)?.category;
+      const relevant = categoryMatch(edge.source) || categoryMatch(edge.target);
+      const depth = graphDepth((a.z + b.z) / 2);
+      const weight = Math.min(1, Math.max(0, edge.weight / 20));
+      context.strokeStyle = same ? nodeInk(edge.source) : (selected ? ink : muted);
+      context.globalAlpha = selected ? .96 : activeId || !relevant ? .10 : .27 + .22 * depth + .17 * weight;
+      context.lineWidth = selected ? 2.25 : .75 + weight * .8;
+      context.setLineDash(same ? [] : [4, 4]);
+      context.beginPath();
+      context.moveTo(a.x, a.y);
+      context.lineTo(b.x, b.y);
+      context.stroke();
+    };
+    // Draw background relations first. Highlight exactly the incident edges,
+    // never invent a relationship or turn a similarity edge into an arrow.
+    for (const edge of graph.edges) if (!selectedEdges?.has(edge)) drawEdge(edge, false);
+    if (selectedEdges) for (const edge of selectedEdges) drawEdge(edge, true);
+    context.setLineDash([]);
     for (const node of order) {
       const point = projected.get(node.id)!;
-      const active = activeId === node.id;
-      const depth = Math.max(0, Math.min(1, (point.z + 3.5) / 7));
-      const glyph = active ? '@' : (GLYPHS[Math.min(GLYPHS.length - 1, Math.floor(depth * GLYPHS.length))] ?? '+');
-      context.globalAlpha = active ? 1 : 0.42 + depth * 0.5;
-      context.fillStyle = active ? ink : muted;
-      context.font = (active ? '800 19' : '650 ' + Math.round(9 + depth * 7)) + 'px ui-monospace,SFMono-Regular,Menlo,monospace';
+      const selected = activeId === node.id;
+      const linked = neighbors.has(node.id);
+      const depth = graphDepth(point.z);
+      const glyph = nodeStyles.get(node.id)!.glyph;
+      const emphasis = selected || linked;
+      const size = emphasis ? (selected ? 19 : 16) : Math.round(10 + depth * 6);
+      const radius = emphasis ? size * .66 : size * .53;
+      const alpha = activeId ? (emphasis ? 1 : .23) : categoryMatch(node.id) ? .76 + depth * .24 : .22;
+      context.globalAlpha = alpha;
+      context.fillStyle = paper;
+      context.beginPath();
+      context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = nodeInk(node.id);
+      context.lineWidth = selected ? 2 : linked ? 1.5 : .8;
+      context.stroke();
+      context.fillStyle = nodeInk(node.id);
+      context.font = '750 ' + size + 'px ui-monospace,SFMono-Regular,Menlo,monospace';
       context.fillText(glyph, point.x, point.y);
-      if ((adjacency.get(node.id)?.length ?? 0) >= 3) {
-        context.font = '500 ' + Math.round(6 + depth * 2) + 'px ui-monospace,SFMono-Regular,Menlo,monospace';
-        context.globalAlpha = active ? 0.7 : 0.17 + depth * 0.12;
-        const halo = 9 + depth * 5;
-        for (let orbit = 0; orbit < 6; orbit++) {
-          const angle = (orbit / 6) * Math.PI * 2 + rotationY * 0.35;
-          context.fillText('·', point.x + Math.cos(angle) * halo, point.y + Math.sin(angle) * halo * 0.55);
-        }
-      }
     }
+    // Publish actual graph-focus state for accessibility and regression tests.
+    if (activeId) host.dataset.graphFocused = activeId;
+    else delete host.dataset.graphFocused;
+    host.dataset.graphNeighborCount = String(neighbors.size);
+    host.dataset.graphHighlightedEdges = String(selectedEdges?.size ?? 0);
     context.globalAlpha = 1;
     updateTooltip(activeId);
     if (!painted) { painted = true; onPaint(); }
@@ -227,7 +260,7 @@ function installGraphCanvas(
   const onPointerMove = (event: PointerEvent) => {
     if (dragPointer !== event.pointerId) return;
     rotationY += (event.clientX - lastX) * 0.005;
-    rotationX += (event.clientY - lastY) * 0.005;
+    rotationX = Math.max(-1.3, Math.min(1.3, rotationX + (event.clientY - lastY) * 0.005));
     lastX = event.clientX; lastY = event.clientY;
     invalidate(true);
   };
@@ -258,6 +291,23 @@ function installGraphCanvas(
     const id = nodeId(event.relatedTarget);
     if (focusId !== id) { focusId = id; invalidate(); }
   };
+  const onControlClick = (event: MouseEvent) => {
+    if (!(event.target instanceof Element)) return;
+    const button = event.target.closest<HTMLButtonElement>('button');
+    if (!button || !host.contains(button)) return;
+    if (button.hasAttribute('data-graph-reset')) {
+      rotationX = -0.34; rotationY = 0.18; activeCategory = null;
+      for (const item of categoryButtons) item.setAttribute('aria-pressed', 'false');
+      invalidate(true);
+    } else if (button.hasAttribute('data-graph-rotate')) {
+      rotationY += Number(button.dataset.graphRotate) * Math.PI / 8;
+      invalidate(true);
+    } else if (button.dataset.graphCategory) {
+      activeCategory = activeCategory === button.dataset.graphCategory ? null : button.dataset.graphCategory;
+      for (const item of categoryButtons) item.setAttribute('aria-pressed', String(item.dataset.graphCategory === activeCategory));
+      invalidate();
+    }
+  };
   const themeObserver = new MutationObserver(() => { refreshPalette(); invalidate(); });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   const ro = new ResizeObserver(resize);
@@ -266,6 +316,8 @@ function installGraphCanvas(
     if (visible) start(); else stop();
   }, { rootMargin: '0px' });
   ro.observe(host); io.observe(host);
+  host.addEventListener('click', onControlClick);
+  for (const button of categoryButtons) button.disabled = false;
   host.addEventListener('pointermove', onPointerMove, { passive: true });
   host.addEventListener('pointerdown', onPointerDown);
   host.addEventListener('pointerup', onPointerUp);
@@ -280,6 +332,8 @@ function installGraphCanvas(
   resize();
   return () => {
     stop(); ro.disconnect(); io.disconnect(); themeObserver.disconnect();
+    host.removeEventListener('click', onControlClick);
+    for (const button of categoryButtons) { button.disabled = true; button.setAttribute('aria-pressed', 'false'); }
     host.removeEventListener('pointermove', onPointerMove);
     host.removeEventListener('pointerdown', onPointerDown);
     host.removeEventListener('pointerup', onPointerUp);
