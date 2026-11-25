@@ -2,6 +2,8 @@
 import '@/styles/renderer.css';
 import type { PostGraph } from '@/lib/experience/post-graph';
 import { createHash } from 'node:crypto';
+import { graphVisual, projectAtlas } from '@/lib/experience/graph-visuals.mjs';
+import { getPostCategoryMeta } from '@/lib/taxonomy.mjs';
 
 interface Props {
   variant: 'home' | 'research';
@@ -12,25 +14,23 @@ const en = /^\/en(?:\/|$)/.test(Astro.url.pathname);
 const archive = en ? '/en/posts/' : '/posts';
 const graphVersion = graph ? createHash('sha256').update(JSON.stringify(graph)).digest('hex').slice(0, 16) : '';
 const graphUrl = '/writing-graph/' + (en ? 'en' : 'ko') + '.json?v=' + graphVersion;
-// Project once at build time. Six grouped SVG text runs retain the ASCII
-// visual language without hundreds of DOM elements or a startup canvas loop.
-const cx = Math.cos(-0.34), sx = Math.sin(-0.34);
-const cy = Math.cos(0.18), sy = Math.sin(0.18);
-const glyphs = ['·', ':', '+', '*', '#', '@'];
-const points = new Map(graph?.nodes.map((n) => {
-  const x = n.x * cy - n.z * sy, z = n.x * sy + n.z * cy;
-  const y = n.y * cx - z * sx, depth = n.y * sx + z * cx;
-  const k = 4.8 / (5.8 - depth);
-  return [n.id, { x: Math.round(500 + x * 205 * k), y: Math.round(510 + y * 205 * k), depth }] as const;
-}) ?? []);
-const edges = (graph?.edges ?? []).map((edge) => {
-  const a = points.get(edge.source), b = points.get(edge.target);
-  return a && b ? 'M' + a.x + ' ' + a.y + 'L' + b.x + ' ' + b.y : '';
-}).join('');
-const groups = glyphs.map((glyph, index) => {
-  const nodes = [...points.values()].filter(({ depth }) =>
-    Math.min(5, Math.floor(Math.max(0, Math.min(1, (depth + 3.5) / 7)) * 6)) === index);
-  return { glyph, x: nodes.map(p => p.x).join(' '), y: nodes.map(p => p.y).join(' '), count: nodes.length };
+// Compact SSR preview; no graph JSON, animation or GPU work before visibility.
+const categories = [...new Set(graph?.nodes.map(node => node.category) ?? [])].map(id => ({
+  id, label: getPostCategoryMeta(id, en).shortLabel, ...graphVisual(id),
+}));
+const points = new Map(projectAtlas(graph?.nodes ?? [], 1000, 1000, -0.34, 0.18).map(p => [p.id, p]));
+const byId = new Map(graph?.nodes.map(node => [node.id, node]) ?? []);
+const edgePaths = [false, true].map(cross => ({
+  cross,
+  d: (graph?.edges ?? []).filter(edge => (byId.get(edge.source)?.category !== byId.get(edge.target)?.category) === cross)
+    .map(edge => {
+      const a = points.get(edge.source), b = points.get(edge.target);
+      return a && b ? 'M' + Math.round(a.x) + ' ' + Math.round(a.y) + 'L' + Math.round(b.x) + ' ' + Math.round(b.y) : '';
+    }).join(''),
+}));
+const groups = categories.map(category => {
+  const nodes = (graph?.nodes ?? []).filter(node => node.category === category.id).map(node => points.get(node.id)!).sort((a,b) => a.z-b.z);
+  return { ...category, x: nodes.map(p => Math.round(p.x)).join(' '), y: nodes.map(p => Math.round(p.y)).join(' '), count: nodes.length };
 });
 ---
 
@@ -43,25 +43,42 @@ const groups = glyphs.map((glyph, index) => {
   data-graph-url={graph ? graphUrl : undefined}
   data-graph-state={graph ? 'preview' : undefined}
   data-graph-count={graph?.nodes.length}
+  data-graph-edges={graph?.edges.length}
+  data-graph-auto={graph ? 'visible-idle' : undefined}
   aria-label={graph ? (en ? 'Interactive writing graph' : '인터랙티브 연구 지도') : undefined}
   aria-hidden={graph ? undefined : 'true'}
 >
   {graph && (
     <>
       <svg class="post-graph-preview" data-graph-preview viewBox="0 0 1000 1000" aria-hidden="true">
-        <path d={edges} fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="2 15" opacity="0.36" />
-        {groups.map((group, i) => group.count > 0 && (
-          <text x={group.x} y={group.y} fill="currentColor" font-family="ui-monospace, monospace"
-            font-weight="650" font-size={16 + i * 2} opacity={0.44 + i * 0.1}
-            text-anchor="middle" dominant-baseline="middle">{group.glyph.repeat(group.count)}</text>
+        {edgePaths.map(path => <path d={path.d} fill="none" stroke="currentColor" stroke-width={path.cross ? 2.3 : 1.9} stroke-dasharray={path.cross ? '7 7' : undefined} opacity={path.cross ? 0.46 : 0.52} />)}
+        {groups.map(group => group.count > 0 && (
+          <text class="post-graph-category-ink" style={`--graph-light:${group.light};--graph-dark:${group.dark}`} x={group.x} y={group.y} fill="currentColor" font-family="ui-monospace, monospace"
+            font-weight="750" font-size="23" text-anchor="middle" dominant-baseline="middle">{group.glyph.repeat(group.count)}</text>
         ))}
       </svg>
+      <div class="post-graph-legend" aria-label={en ? 'Article categories' : '게시글 카테고리'}>
+        {categories.map(category => <button type="button" data-graph-category={category.id} aria-pressed="false" disabled
+          style={`--graph-light:${category.light};--graph-dark:${category.dark}`}>
+          <span class="post-graph-category-ink" aria-hidden="true">{category.glyph}</span>{category.label}
+        </button>)}
+      </div>
+      <div class="post-graph-loading" data-graph-loading aria-hidden="true">
+        <span class="post-graph-loader-glyph" aria-hidden="true">+</span>
+        <span>{en ? 'Building atlas…' : '지도 불러오는 중…'}</span>
+      </div>
       <div class="post-graph-controls">
+        <span class="post-graph-hint">{en ? 'Drag to rotate · Solid: topic · Dashed: cross-topic' : '드래그 회전 · 실선: 같은 분야 · 점선: 분야 간'}</span>
+        <div class="post-graph-view-controls" data-graph-view-controls hidden>
+          <button type="button" data-graph-rotate="-1" aria-label={en ? 'Rotate left' : '왼쪽 회전'}>←</button>
+          <button type="button" data-graph-rotate="1" aria-label={en ? 'Rotate right' : '오른쪽 회전'}>→</button>
+          <button type="button" data-graph-reset aria-label={en ? 'Reset map view' : '지도 초기화'}>↺</button>
+        </div>
         <button type="button" class="post-graph-activate" data-graph-activate hidden
           data-loading-label={en ? 'Loading map…' : '지도 불러오는 중…'}
-          data-retry-label={en ? 'Retry map' : '지도 다시 열기'}>{en ? 'Explore map' : '지도 탐색'}</button>
+          data-retry-label={en ? 'Retry map' : '지도 다시 열기'}>{en ? 'Retry map' : '지도 다시 열기'}</button>
         <a href={archive}>{en ? 'Writing archive ↗' : '전체 글 ↗'}</a>
-        <span data-graph-message role="status" class="sr-only"
+        <span data-graph-message role="status" class="sr-only" data-ready-label={en ? 'Map ready' : '지도 준비 완료'}
           data-error-label={en ? 'Map unavailable. Retry or open the archive.' : '지도를 불러오지 못했습니다. 다시 시도하거나 전체 글을 여세요.'}></span>
       </div>
     </>

@@ -37,14 +37,15 @@ IEMEK Journal of Embedded Systems and Applications, Vol. 21, No. 2, pp. 83–95,
 
 This research examines page-cache writeback bottlenecks arising when high-bandwidth sensor data are logged on embedded systems, together with mitigation approaches. The English title above is a descriptive translation of the linked Korean publication title.
 
-### ICCAS 2026 · Accepted; presentation planned
+### ICCAS 2026 · Poster presented
 
-**Markerless RGB-D speed and separation monitoring with directed dynamic safety zones**
+**[Markerless Multi RGB-D Speed and Separation Monitoring with Perception-Aware Dynamic Safety Zones](https://ras.papercept.net/conferences/scripts/rtf/ICCAS2026_ContentListWeb_3.html)**
 
-**Ji-Ho Park**, Sang-Jun Lee, Kwang-Hee Lee, and Tae-Yong Kuc<br />
-ICCAS 2026 · First author
+**Ji Ho Park**, Sangjun Lee, Tae-Yong Kuc, Kwang Hee Lee, Hyunsu Kim, and Hyeong Rae Cho<br />
+ICCAS 2026 · First author · Poster presentation (ThPo4P.4)<br />
+October 29, 2026 · Hotel Emisia, Sapporo, Japan
 
-This work estimates human joint positions using RGB-D cameras and constructs dynamic safety zones that account for approach velocity toward the robot and perception uncertainty.
+This work updates dynamic safety zones using fused human joint positions from multiple RGB-D cameras, approach velocity toward robot links, and workcell-specific sensor calibration residuals. It compares the method with a fixed-speed baseline in recorded UR5e workcell replay. The method provides online perception inputs rather than a safety-certified controller.
 
 ## 🔬 Research and projects
 
