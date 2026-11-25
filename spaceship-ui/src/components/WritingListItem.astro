@@ -29,16 +29,16 @@ const category = getPostCategoryMeta(post.data.category, en);
 // Root-scoped selectors avoid repeating an Astro scope attribute on every card node.
 ---
 
-<article class="writing-list-item group border-b border-border/70 py-5 first:pt-0 last:border-b-0 last:pb-0">
+<article class="writing-list-item">
   <a
     href={href}
     data-english-card={en ? linkSlug : undefined}
-    class="flex flex-col gap-2 rounded-xl -mx-3 px-3 py-2 no-underline hover:bg-accent/70"
+    class="writing-item-link"
     data-post-transition-slug={linkSlug}
   >
       <div class="writing-item-heading">
         <h3
-          class="writing-item-title text-lg sm:text-xl text-foreground group-hover:text-primary"
+          class="writing-item-title"
           data-post-transition-title
         >
           {post.data.title}
@@ -73,7 +73,7 @@ const category = getPostCategoryMeta(post.data.category, en);
         {post.data.tags.slice(0, 4).map((tag) => <span>#{tag}</span>)}
         {
           post.data.lang && post.data.lang !== 'en' && (
-            <span class="font-bold uppercase tracking-wider">{post.data.lang}</span>
+            <span class="writing-item-language">{post.data.lang}</span>
           )
         }
       </div>
@@ -81,6 +81,15 @@ const category = getPostCategoryMeta(post.data.category, en);
 </article>
 
 <style is:global>
+  /* Reuse styles instead of repeating utility strings on every SSR card. */
+  .writing-list-item { border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent); padding-block: 1.25rem; }
+  .writing-list-item:first-child { padding-top: 0; }
+  .writing-list-item:last-child { border-bottom: 0; padding-bottom: 0; }
+  .writing-list-item .writing-item-link { display: flex; flex-direction: column; gap: .5rem; border-radius: .75rem; margin-inline: -.75rem; padding: .5rem .75rem; text-decoration: none; }
+  .writing-list-item .writing-item-link:hover { background: color-mix(in srgb, var(--color-accent) 70%, transparent); }
+  .writing-list-item .writing-item-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .writing-list-item:hover .writing-item-title { color: var(--color-primary); }
+  .writing-list-item .writing-item-language { font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
   .writing-list-item .writing-item-heading { display: flex; flex-direction: column; gap: .25rem; }
   @media (min-width: 40rem) {
     .writing-list-item .writing-item-heading { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 1.25rem; }
@@ -120,8 +129,11 @@ const category = getPostCategoryMeta(post.data.category, en);
   .writing-list-item .writing-item-tags { column-gap: 0.75rem; font-weight: 500; }
   .writing-list-item .writing-item-title {
     font-family: var(--font-editorial);
+    font-size: 1.125rem;
+    color: var(--color-foreground);
     font-weight: 700;
     letter-spacing: -0.03em;
     line-height: 1.2;
   }
+  @media (min-width: 40rem) { .writing-list-item .writing-item-title { font-size: 1.25rem; } }
 </style>

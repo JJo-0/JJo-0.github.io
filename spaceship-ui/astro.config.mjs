@@ -62,6 +62,9 @@ export default defineConfig({
   // Keep small route-specific CSS inline, but let shared/large styles become
   // hashed assets so Astro ClientRouter transitions reuse the browser cache.
   build: { inlineStylesheets: 'auto' },
+  // ClientRouter opts every link into prefetch by default. Limit speculation
+  // to explicit navigation surfaces, not long article lists.
+  prefetch: { prefetchAll: false, defaultStrategy: 'hover' },
   markdown: {
     shikiConfig: {
       themes: { light: 'min-light', dark: 'catppuccin-frappe' },
