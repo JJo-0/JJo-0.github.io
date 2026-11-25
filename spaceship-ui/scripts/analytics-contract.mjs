@@ -63,6 +63,22 @@ const noFetch = () => { throw new Error('must not call Google'); };
 await assert.rejects(fetchPublicAggregate({ propertyId: 'G-INVALID', accessToken: 'fixture', fetchImpl: noFetch }), /Invalid numeric/);
 await assert.rejects(fetchPublicAggregate({ propertyId: '123', accessToken: '', fetchImpl: noFetch }), /Missing short-lived/);
 await assert.rejects(fetchPublicAggregate({ propertyId: '123', accessToken: 'fixture', fetchImpl: async () => ({ ok: false, status: 403, json: () => { throw new Error('private response must not be parsed'); } }) }), /HTTP 403/);
+let retryCalls = 0;
+const retried = await fetchPublicAggregate({
+  propertyId: '123', accessToken: 'fixture',
+  fetchImpl: async () => {
+    retryCalls++;
+    return retryCalls === 1 ? { ok: false, status: 503 } : { ok: true, json: async () => ({}) };
+  },
+});
+assert.equal(retryCalls, 2);
+assert.deepEqual(retried.posts, []);
+let forbiddenCalls = 0;
+await assert.rejects(fetchPublicAggregate({
+  propertyId: '123', accessToken: 'fixture',
+  fetchImpl: async () => { forbiddenCalls++; return { ok: false, status: 403 }; },
+}), /HTTP 403/);
+assert.equal(forbiddenCalls, 1, 'Permission errors must not retry');
 const empty = await fetchPublicAggregate({ propertyId: '123', accessToken: 'fixture', fetchImpl: async () => ({ ok: true, json: async () => ({}) }) });
 assert.deepEqual(empty.posts, []);
 assert.ok(empty.updatedAt, 'successful zero-row report still has a refresh timestamp');

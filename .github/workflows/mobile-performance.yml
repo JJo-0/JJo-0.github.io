@@ -45,6 +45,8 @@ jobs:
       - run: pnpm build
       - name: Mobile idle and thumbnail network regression
         run: node scripts/browser-mobile-performance.mjs
+      - name: Lazy search index and archive regression
+        run: node scripts/browser-search-performance.mjs
       - name: Preview Lighthouse (not public-site measurements)
         run: |
           npm install --prefix /tmp/jjo-lighthouse lighthouse@12.8.2
@@ -82,10 +84,18 @@ jobs:
           node-version: 22
       - name: Browser fonts
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Actual CDN response and conditional requests
+        env:
+          JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
+        run: node scripts/pages-response-audit.mjs
       - name: Actual public mobile interactions
         env:
           JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
         run: node scripts/browser-mobile-performance.mjs
+      - name: Actual public search index and archive
+        env:
+          JJO_SMOKE_BASE_URL: https://jjo-0.github.io/
+        run: node scripts/browser-search-performance.mjs
       - name: Actual public Lighthouse
         run: |
           npm install --prefix /tmp/jjo-lighthouse lighthouse@12.8.2
