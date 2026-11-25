@@ -44,7 +44,8 @@ async function checkHomeParity(cdp, sessionId) {
     };
   })()`;
   async function activateGraph() {
-    await waitExpression(cdp,sessionId,`document.querySelector('[data-graph-activate]') !== null`,'map activation available');
+    await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0},sessionId);
+    await waitExpression(cdp,sessionId,`document.querySelector('[data-graph-activate]:not([hidden])') !== null`,'map activation available');
     await evaluate(cdp,sessionId,`document.querySelector('[data-graph-activate]').scrollIntoView({block:'center',behavior:'instant'});document.querySelector('[data-graph-activate]').click()`);
     await waitExpression(cdp,sessionId,`document.querySelector('[data-experience-canvas]').dataset.graphState==='ready' && !!document.querySelector('[data-post-graph-node]')`,'complete interactive graph');
   }

@@ -26,7 +26,7 @@ function init() {
     dispose = () => { cancelled = true; stop?.(); };
     return;
   }
-  const trigger = next.querySelector<HTMLAnchorElement>('[data-graph-activate]');
+  const trigger = next.querySelector<HTMLButtonElement>('[data-graph-activate]');
   const message = next.querySelector<HTMLElement>('[data-graph-message]');
   const url = next.dataset.graphUrl;
   if (!trigger || !url) return;
@@ -74,6 +74,7 @@ function init() {
     }
   };
   trigger.addEventListener('click', activate);
+  trigger.hidden = false;
   dispose = () => {
     abort.abort();
     stop?.();

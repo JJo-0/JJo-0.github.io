@@ -29,9 +29,9 @@ try {
  // Use an actual published series member discovered from the rendered listing.
  await navigate(cdp,s,'/');
  await evaluate(cdp,s,`document.querySelector('.experience-mouse-frame').scrollIntoView({block:'center',behavior:'instant'})`);
- await waitExpression(cdp,s,`(()=>{const i=document.querySelector('.experience-mouse-frame img');return i.complete&&i.naturalWidth>0})()`,'Small animated profile loaded');
- assert(await evaluate(cdp,s,`(()=>{const i=document.querySelector('.experience-mouse-frame img');return i.currentSrc.endsWith('mouse_surprised.webp')&&i.naturalWidth===256&&!performance.getEntriesByType('resource').some(r=>r.name.endsWith('mouse_surprised.gif'))})()`));
- console.log('PASS animated WebP selected without downloading the source GIF');
+ await waitExpression(cdp,s,`(()=>{const i=document.querySelector('.experience-mouse-frame img');return i.complete&&i.naturalWidth>0})()`,'Static profile loaded');
+ assert(await evaluate(cdp,s,`(()=>{const i=document.querySelector('.experience-mouse-frame img');return i.currentSrc.endsWith('mouse_surprised-still.webp')&&i.naturalWidth===256&&!performance.getEntriesByType('resource').some(r=>/mouse_surprised(?:-once)?\\.(?:gif|webp)$/.test(r.name))})()`));
+ console.log('PASS static WebP selected without downloading animation');
  await navigate(cdp,s,'/posts/');
  const href=await evaluate(cdp,s,"document.querySelector('[data-series-group=\"data-structures-coding-tests\"] a[href^=\"/posts/\"]')?.getAttribute('href')");assert(href);
  await navigate(cdp,s,href);

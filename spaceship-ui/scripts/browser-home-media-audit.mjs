@@ -11,7 +11,7 @@ export async function auditHomeIdentityMedia(cdp, sessionId) {
     `(() => {
       const stage = document.querySelector('[data-world-stage]');
       const frame = document.querySelector('.experience-mouse-frame--world');
-      const image = frame?.querySelector('img[src="/image/mouse_surprised.gif"]');
+      const image = frame?.querySelector('img[src="/assets/profile/mouse_surprised-still.webp"]');
       if (!stage || !frame || !image) return null;
       if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) return null;
 
@@ -45,11 +45,11 @@ export async function auditHomeIdentityMedia(cdp, sessionId) {
         renderedHeight: Math.round(imageRect.height),
       };
     })()`,
-    'Home profile animation decoded and visible',
+    'Home static profile decoded and visible',
     20_000,
   );
 
-  assert.match(media.currentSrc, /\/assets\/profile\/mouse_surprised\.webp(?:[?#].*)?$/);
+  assert.match(media.currentSrc, /\/assets\/profile\/mouse_surprised-still\.webp(?:[?#].*)?$/);
   assert.equal(media.loading, 'lazy');
   assert.equal(media.fetchPriority, 'low');
   assert.equal(media.naturalWidth, 256);
@@ -57,6 +57,6 @@ export async function auditHomeIdentityMedia(cdp, sessionId) {
   assert.ok(media.renderedWidth > 20 && media.renderedHeight > 20);
 
   console.log(
-    `browser-smoke: PASS Home optimized profile animation visible (${media.naturalWidth}x${media.naturalHeight}, ${media.renderedWidth}x${media.renderedHeight} rendered)`,
+    `browser-smoke: PASS Home optimized static profile visible (${media.naturalWidth}x${media.naturalHeight}, ${media.renderedWidth}x${media.renderedHeight} rendered)`,
   );
 }
