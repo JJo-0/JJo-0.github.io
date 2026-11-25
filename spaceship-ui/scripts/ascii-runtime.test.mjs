@@ -38,19 +38,38 @@ function makeHost() {
   return {host,trigger};
 }
 function fixture(readyState='complete') {
-  const f={...makeHost(),fetches:[],pending:[],mounts:[],disposals:0};
-  const document={...events(),readyState,activeElement:null,querySelector:()=>f.host};
-  const context=vm.createContext({exports:{},document,AbortController,console:{warn(){}},
+  const f={...makeHost(),fetches:[],pending:[],mounts:[],disposals:0,observers:[],idle:new Map(),timers:new Map()};
+  const document={...events(),readyState,hidden:false,activeElement:null,querySelector:()=>f.host};
+  let sequence=0;
+  const window={...events(),
+    requestIdleCallback(fn){const id=++sequence;f.idle.set(id,fn);return id;},
+    cancelIdleCallback(id){f.idle.delete(id);},
+    setTimeout(fn){const id=++sequence;f.timers.set(id,fn);return id;},
+  };
+  class IntersectionObserver {
+    constructor(fn){this.fn=fn;this.disconnected=false;f.observers.push(this);}
+    observe(target){this.target=target;}
+    disconnect(){this.disconnected=true;}
+  }
+  const context=vm.createContext({exports:{},document,window,IntersectionObserver,AbortController,console:{warn(){}},
+    clearTimeout:id=>f.timers.delete(id),
     require(name){assert.equal(name,'./ascii-art');return {mountWritingGraph(host,canvas,payload,onPaint){f.mounts.push(host);onPaint();return ()=>{f.disposals++;};}};},
     fetch(url,options){f.fetches.push({url,signal:options.signal});return new Promise((resolve,reject)=>f.pending.push({resolve,reject}));},
   });
   vm.runInContext(compile('graph-loader.ts'),context);
-  return Object.assign(f,{document,install:context.exports.installGraphLoader});
+  return Object.assign(f,{document,window,install:context.exports.installGraphLoader,
+    visible(value){f.observers.at(-1).fn([{isIntersecting:value}]);},
+    runIdle(){for(const [id,fn] of [...f.idle]){f.idle.delete(id);fn();}},
+  });
 }
-const click=()=>({button:0,preventDefault(){}});
+const flush=()=>new Promise(resolve=>setImmediate(resolve));
 function succeed(f){f.pending.shift().resolve({ok:true,text:async()=> '{}'});}
+function activate(f){f.visible(true);f.runIdle();}
 test('fallback geometry is not allocated on module import',()=>{
-  const context=vm.createContext({exports:{},require(name){assert.equal(name,'./graph-json.mjs');return {parseGraphPayload:JSON.parse};}});
+  const context=vm.createContext({exports:{},require(name){
+    if(name==='./graph-json.mjs')return {parseGraphPayload:JSON.parse};
+    assert.equal(name,'./graph-visuals.mjs');return {};
+  }});
   vm.runInContext(compile('ascii-art.ts'),context);
   assert.equal(vm.runInContext('artifact === undefined',context),true);
   assert.equal(vm.runInContext('buildArtifact().length',context),1350);
@@ -61,32 +80,47 @@ for(const order of [['DOMContentLoaded','astro:page-load'],['astro:page-load','D
     f.install();f.install();order.forEach(type=>f.document.fire(type));
     f.document.fire('astro:page-load');
     assert.equal(f.trigger.count('click'),1);
+    assert.equal(f.observers.length,1);
+    f.visible(true);f.runIdle();
     assert.equal(f.fetches.length,0);
-    const [a]=f.trigger.fire('click',click()),[b]=f.trigger.fire('click',click());
+    f.document.readyState='complete';f.window.fire('load');
+    f.visible(true);f.document.fire('visibilitychange');
+    assert.equal(f.idle.size,1);
+    f.visible(false);f.runIdle();assert.equal(f.fetches.length,0);
+    f.document.hidden=true;f.visible(true);f.runIdle();assert.equal(f.fetches.length,0);
+    f.document.hidden=false;f.document.fire('visibilitychange');f.runIdle();
+    f.trigger.fire('click');f.visible(true);f.runIdle();
     assert.equal(f.fetches.length,1);
-    succeed(f);await Promise.all([a,b]);
-    f.document.fire('astro:page-load');
-    await Promise.all(f.trigger.fire('click',click()));
+    succeed(f);await flush();
+    f.document.fire('astro:page-load');f.trigger.fire('click');f.visible(true);f.runIdle();
     assert.equal(f.mounts.length,1);assert.equal(f.fetches.length,1);
     assert.equal(f.host.dataset.graphState,'ready');
   });
 }
-test('navigation aborts pending load, late response cannot mount old page',async()=>{
-  const f=fixture();f.install();
-  const old=f.trigger,[a]=old.fire('click',click());
+test('navigation cancels idle work and aborts pending fetch; late response cannot mount old page',async()=>{
+  const f=fixture();f.install();f.visible(true);
+  const first=f.trigger;
+  f.document.fire('astro:before-swap');f.runIdle();
+  assert.equal(f.fetches.length,0);assert.equal(first.count('click'),0);
+  assert.equal(f.observers[0].disconnected,true);
+  Object.assign(f,makeHost());f.document.fire('astro:page-load');activate(f);
+  const old=f.trigger;
   f.document.fire('astro:before-swap');
   assert.equal(f.fetches[0].signal.aborted,true);assert.equal(old.count('click'),0);
   Object.assign(f,makeHost());f.document.fire('astro:page-load');
-  succeed(f);await a;assert.equal(f.mounts.length,0);
-  const [b]=f.trigger.fire('click',click());succeed(f);await b;
+  succeed(f);await flush();assert.equal(f.mounts.length,0);
+  activate(f);succeed(f);await flush();
   assert.equal(f.mounts.length,1);assert.equal(f.mounts[0],f.host);
   f.document.fire('astro:before-swap');f.document.fire('astro:before-swap');
   assert.equal(f.disposals,1);
 });
-test('failed graph request can retry',async()=>{
-  const f=fixture();f.install();const [a]=f.trigger.fire('click',click());
-  f.pending.shift().reject(new Error('network failure'));await a;
-  assert.equal(f.host.dataset.graphState,'error');
-  const [b]=f.trigger.fire('click',click());succeed(f);await b;
+test('failed graph request does not loop and can retry explicitly',async()=>{
+  const f=fixture();f.install();activate(f);
+  f.pending.shift().reject(new Error('network failure'));await flush();
+  assert.equal(f.host.dataset.graphState,'error');assert.equal(f.trigger.hidden,false);
+  activate(f);f.document.fire('visibilitychange');f.runIdle();assert.equal(f.fetches.length,1);
+  f.trigger.fire('click');f.trigger.fire('click');assert.equal(f.fetches.length,2);
+  succeed(f);await flush();
   assert.equal(f.mounts.length,1);assert.equal(f.host.dataset.graphState,'ready');
+  assert.equal(f.trigger.hidden,true);
 });
