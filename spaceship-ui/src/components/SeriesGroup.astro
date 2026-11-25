@@ -7,22 +7,17 @@ const { title, count, description, groupId, en = false } = Astro.props;
   <div class="series-group__contents"><slot /></div>
 </details>
 <script>
-  function bindSeriesGroups() {
-    document.querySelectorAll<HTMLDetailsElement>('details[data-series-group]').forEach((group) => {
-      if (group.dataset.bound) return;
-      group.dataset.bound = 'true';
-      const summary = group.querySelector('summary');
-      if (!summary) return;
-      group.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape') return;
-        event.preventDefault();
-        group.open = false;
-        summary.focus();
-      });
-    });
-  }
-  bindSeriesGroups();
-  document.addEventListener('astro:page-load', bindSeriesGroups);
+  // One delegated listener covers initial and Astro-swapped lists.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !(event.target instanceof Element)) return;
+    const group = event.target.closest<HTMLDetailsElement>('details[data-series-group]');
+    if (!group) return;
+    const summary = group.querySelector('summary');
+    if (!summary) return;
+    event.preventDefault();
+    group.open = false;
+    summary.focus();
+  });
 </script>
 <style>
   .series-group { margin: 1rem 0; border-block: 1px solid var(--color-border); min-width: 0; }
