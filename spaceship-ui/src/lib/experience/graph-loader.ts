@@ -90,11 +90,11 @@ function init() {
       cancelIdle = undefined;
       if (eligible()) void activate();
     };
-    if ('requestIdleCallback' in window) {
+    if (typeof window.requestIdleCallback === 'function') {
       const id = window.requestIdleCallback(run, { timeout: 1200 });
       cancelIdle = () => window.cancelIdleCallback(id);
     } else {
-      const id = window.setTimeout(run, 0);
+      const id = window.setTimeout(run, 100);
       cancelIdle = () => clearTimeout(id);
     }
   };
