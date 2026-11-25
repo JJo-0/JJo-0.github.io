@@ -81,7 +81,7 @@ function installGraphCanvas(
     adjacency.get(edge.source)?.push(edge);
     adjacency.get(edge.target)?.push(edge);
   }
-  const projected = new Map(graph.nodes.map(node => [node.id, { x: 0, y: 0, z: 0 }]));
+  const projected = new Map(graph.nodes.map(node => [node.id, { x: 0, y: 0, z: 0, hit: 0, stack: 0 }]));
   const order = [...graph.nodes];
   const nodeStyles = new Map(graph.nodes.map(node => [node.id, graphVisual(node.category)]));
   const categoryButtons = [...host.querySelectorAll<HTMLButtonElement>('[data-graph-category]')];
@@ -168,10 +168,15 @@ function installGraphCanvas(
         const anchor = anchors.get(row.id);
         anchor?.style.setProperty('--node-x', point.x + 'px');
         anchor?.style.setProperty('--node-y', point.y + 'px');
-        anchor?.style.setProperty('--node-hit', Math.round(19 + graphDepth(point.z) * 8) + 'px');
+        const hit = Math.round(19 + graphDepth(point.z) * 8);
+        if (point.hit !== hit) { point.hit = hit; anchor?.style.setProperty('--node-hit', hit + 'px'); }
       }
       order.sort((a, b) => projected.get(a.id)!.z - projected.get(b.id)!.z);
-      order.forEach((node, index) => anchors.get(node.id)?.style.setProperty('--node-depth', String(index + 1)));
+      order.forEach((node, index) => {
+        const point = projected.get(node.id)!;
+        const stack = index + 1;
+        if (point.stack !== stack) { point.stack = stack; anchors.get(node.id)?.style.setProperty('--node-depth', String(stack)); }
+      });
       projectionDirty = false;
     }
     context.clearRect(0, 0, width, height);
@@ -224,6 +229,8 @@ function installGraphCanvas(
       context.lineWidth = selected ? 2 : linked ? 1.5 : .8;
       context.stroke();
       context.fillStyle = nodeInk(node.id);
+      // Depth is encoded by size; readable glyphs use full ink contrast.
+      if (!activeId && categoryMatch(node.id)) context.globalAlpha = 1;
       context.font = '750 ' + size + 'px ui-monospace,SFMono-Regular,Menlo,monospace';
       context.fillText(glyph, point.x, point.y);
     }
