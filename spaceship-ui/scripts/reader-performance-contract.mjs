@@ -20,13 +20,13 @@ for (const displayMode of [false, true]) {
   assert.equal(render(tex, displayMode), expected);
 }
 assert.equal(renders, 2);
-assert.throws(() => render('\\notacommand', true, true));
+assert.throws(() => render('\\frac{', true, true));
 render('x', true);
 render(String.raw`\frac{a_i^2}{\sqrt{x}}`, false);
 assert.equal(renders, 5, 'Bounded cache evicts least recently used entries');
-const invalid = render('\\notacommand', false);
+const invalid = render('\\frac{', false);
 assert(invalid.includes('katex-error'));
-render('\\notacommand', false);
+render('\\frac{', false);
 assert.equal(renders, 7, 'Error output is never memoized');
 
 // Real search semantics, request coalescing, locale isolation, expiry and retry.
