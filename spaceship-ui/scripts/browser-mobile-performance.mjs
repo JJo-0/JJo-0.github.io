@@ -16,6 +16,12 @@ try {
   ({ sessionId } = await attach(cdp, { normalizeHistoryPath: false }));
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `
     window.__asciiDraws = 0;
+    window.__gpuProbes = 0;
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type,...args) {
+      if (type === 'webgl2' || type === 'webgpu') window.__gpuProbes++;
+      return getContext.call(this,type,...args);
+    };
     const clear = CanvasRenderingContext2D.prototype.clearRect;
     CanvasRenderingContext2D.prototype.clearRect = function(...args) {
       if (this.canvas.matches('[data-ascii-art]')) window.__asciiDraws++;
@@ -31,6 +37,7 @@ try {
       await waitExpression(cdp, sessionId, `document.querySelector('[data-profile-animation] img')?.complete && document.querySelector('[data-profile-animation] img')?.naturalWidth>0`, 'static profile decoded');
       const cold = await evaluate(cdp, sessionId, `({
         draws: window.__asciiDraws,
+        gpuProbes: window.__gpuProbes,
         state: document.querySelector('[data-experience-canvas]').dataset.graphState,
         links: document.querySelectorAll('[data-post-graph-node]').length,
         resources: performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize})),
@@ -38,8 +45,9 @@ try {
       })`);
       assert.equal(cold.state,'preview');
       assert.equal(cold.draws,0);
+      assert.equal(cold.gpuProbes,0,'ASCII page must not probe a GPU context');
       assert.equal(cold.links,0);
-      assert(!cold.resources.some(r=>/writing-graph\\/|ascii-art[^/]*\\.js|mouse_surprised-once\\.webp|mouse_surprised\\.(gif|webp)/.test(r.url)), 'Cold entry must not fetch interactive map or animated profile');
+      assert(!cold.resources.some(r=>/writing-graph\/|ascii-art[^/]*\.js|mouse_surprised-once\.webp|mouse_surprised\.(gif|webp)/.test(r.url)), 'Cold entry must not fetch interactive map or animated profile');
       // A rejected data request must preserve the preview and allow retry.
       if (width === 390 && route === '/') {
         await evaluate(cdp, sessionId, `(() => {
@@ -60,6 +68,26 @@ try {
       await sleep(800);
       const after = await evaluate(cdp, sessionId, 'window.__asciiDraws');
       assert.equal(after,before,'Graph must not redraw at rest on mobile or desktop');
+      // Use a real mouse drag away from overlay controls and article links.
+      if (!mobile) {
+        const point = await evaluate(cdp,sessionId,`(() => {
+          const host=document.querySelector('[data-experience-canvas]');
+          const r=host.getBoundingClientRect();
+          for (const f of [0.12,0.2,0.3]) {
+            const x=Math.round(r.left+r.width*f),y=Math.round(r.top+r.height*0.4);
+            const e=document.elementFromPoint(x,y);
+            if (e && host.contains(e) && !e.closest('a,button')) return {x,y};
+          }
+          return null;
+        })()`);
+        assert(point,'Non-link map surface available for drag');
+        const previous = await evaluate(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')`);
+        await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x,y:point.y},sessionId);
+        await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',buttons:1,clickCount:1,x:point.x,y:point.y},sessionId);
+        await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',button:'left',buttons:1,x:point.x+45,y:point.y+16},sessionId);
+        await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',buttons:0,clickCount:1,x:point.x+45,y:point.y+16},sessionId);
+        await waitExpression(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')!==${JSON.stringify(previous)}`,'real drag updates graph projection');
+      }
       await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark')`);
       await waitExpression(cdp, sessionId, `window.__asciiDraws > ${after}`, 'static graph repaints on theme change');
       await capture('graph-' + width + (route === '/en/' ? '-en' : '-ko'));
@@ -81,6 +109,19 @@ try {
       assert(activated.some(r=>r.url.includes('/writing-graph/')));
       assert(activated.some(r=>r.url.includes('mouse_surprised-once.webp')));
       assert(!activated.some(r=>r.url.includes('/image/mouse_surprised.gif')));
+      // Offscreen changes are queued, not drawn; scrolling back flushes them.
+      await evaluate(cdp,sessionId,`(() => {
+        const spacer=document.createElement('div');spacer.dataset.perfSpacer='true';
+        spacer.style.height='200vh';document.body.append(spacer);window.scrollTo(0,document.documentElement.scrollHeight);
+      })()`);
+      await waitExpression(cdp,sessionId,`document.querySelector('[data-experience-canvas]').getBoundingClientRect().bottom<=0`,'graph exits viewport');
+      await sleep(300);
+      const offscreen = await evaluate(cdp,sessionId,'window.__asciiDraws');
+      await evaluate(cdp,sessionId,`document.documentElement.classList.toggle('dark')`);
+      await sleep(500);
+      assert.equal(await evaluate(cdp,sessionId,'window.__asciiDraws'),offscreen,'Offscreen graph must not draw');
+      await evaluate(cdp,sessionId,`document.querySelector('[data-perf-spacer]').remove();document.querySelector('[data-experience-canvas]').scrollIntoView({block:'center',behavior:'instant'})`);
+      await waitExpression(cdp,sessionId,`window.__asciiDraws > ${offscreen}`,'queued offscreen update is painted on return');
       const target = await evaluate(cdp, sessionId, `(() => {const a=document.querySelector('[data-post-graph-node]');a.focus();return a.getAttribute('href')})()`);
       await waitExpression(cdp, sessionId, `document.querySelector('[data-post-graph-tooltip]').hasAttribute('data-visible')`, 'keyboard graph tooltip');
       await cdp.send('Input.dispatchKeyEvent', { type:'rawKeyDown', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);

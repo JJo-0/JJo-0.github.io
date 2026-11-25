@@ -1,6 +1,7 @@
 ---
 import '@/styles/renderer.css';
 import type { PostGraph } from '@/lib/experience/post-graph';
+import { createHash } from 'node:crypto';
 
 interface Props {
   variant: 'home' | 'research';
@@ -9,7 +10,8 @@ interface Props {
 const { variant, graph } = Astro.props;
 const en = /^\/en(?:\/|$)/.test(Astro.url.pathname);
 const archive = en ? '/en/posts/' : '/posts/';
-const graphUrl = en ? '/writing-graph/en.json' : '/writing-graph/ko.json';
+const graphVersion = graph ? createHash('sha256').update(JSON.stringify(graph)).digest('hex').slice(0, 16) : '';
+const graphUrl = '/writing-graph/' + (en ? 'en' : 'ko') + '.json?v=' + graphVersion;
 // Project once at build time. Six grouped SVG text runs retain the ASCII
 // visual language without hundreds of DOM elements or a startup canvas loop.
 const cx = Math.cos(-0.34), sx = Math.sin(-0.34);

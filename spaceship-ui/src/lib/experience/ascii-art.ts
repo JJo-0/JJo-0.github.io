@@ -92,7 +92,8 @@ function installGraphCanvas(
   const order = [...graph.nodes];
   let width = 1, height = 1, dpr = 1, frame = 0;
   let visible = false, dirty = true, projectionDirty = true, painted = false;
-  let dragging = false, rotationX = -0.34, rotationY = 0.18;
+  let dragPointer: number | null = null, lastX = 0, lastY = 0;
+  let rotationX = -0.34, rotationY = 0.18, lastDrawAt = -Infinity;
   let hoverId: string | null = null, focusId: string | null = null, shownId: string | null = null;
   let ink = '#24483e', muted = '#667064';
   const refreshPalette = () => {
@@ -129,9 +130,12 @@ function installGraphCanvas(
     tooltip.setAttribute('data-visible', '');
   };
 
-  const draw = () => {
+  const draw = (time: number) => {
     frame = 0;
     if (!visible || document.hidden || !dirty) return;
+    // Match the previous 30 Hz ceiling during active drag, not at idle.
+    if (time - lastDrawAt < 1000 / 30) { frame = requestAnimationFrame(draw); return; }
+    lastDrawAt = time;
     dirty = false;
     const activeId = hoverId ?? focusId;
     if (projectionDirty) {
@@ -221,18 +225,21 @@ function installGraphCanvas(
   const nodeId = (target: EventTarget | null) => target instanceof Element
     ? target.closest<HTMLElement>('[data-post-graph-node]')?.dataset.postGraphNode ?? null : null;
   const onPointerMove = (event: PointerEvent) => {
-    if (!dragging) return;
-    rotationY += event.movementX * 0.005;
-    rotationX += event.movementY * 0.005;
+    if (dragPointer !== event.pointerId) return;
+    rotationY += (event.clientX - lastX) * 0.005;
+    rotationX += (event.clientY - lastY) * 0.005;
+    lastX = event.clientX; lastY = event.clientY;
     invalidate(true);
   };
   const onPointerDown = (event: PointerEvent) => {
-    if (event.button !== 0 || (event.target as Element).closest('a,button')) return;
-    dragging = true;
+    if (dragPointer !== null || event.button !== 0 || (event.target as Element).closest('a,button')) return;
+    dragPointer = event.pointerId;
+    lastX = event.clientX; lastY = event.clientY;
     host.setPointerCapture(event.pointerId);
   };
   const onPointerUp = (event: PointerEvent) => {
-    dragging = false;
+    if (dragPointer !== event.pointerId) return;
+    dragPointer = null;
     if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId);
   };
   const onPointerOver = (event: PointerEvent) => {
@@ -292,8 +299,10 @@ export function mountWritingGraph(host: HTMLElement, canvas: HTMLCanvasElement, 
   const nav = host.querySelector<HTMLElement>('.post-graph-links');
   if (!nav) throw new Error('Missing graph navigation');
   const fragment = document.createDocumentFragment();
+  const prefix = host.dataset.graphUrl?.includes('/en.json') ? '/en/posts/' : '/posts/';
+  const ids = new Set(graph.nodes.map(node => node.id));
+  if (ids.size !== graph.nodes.length || graph.edges.some(edge => !ids.has(edge.source) || !ids.has(edge.target))) throw new Error('Invalid graph identities');
   for (const node of graph.nodes) {
-    const prefix = host.dataset.graphUrl?.includes('/en.json') ? '/en/posts/' : '/posts/';
     if (!node.href.startsWith(prefix)) throw new Error('Invalid graph article URL');
     const anchor = document.createElement('a');
     anchor.href = node.href;

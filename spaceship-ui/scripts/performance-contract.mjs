@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { parseGraphPayload } from '../src/lib/experience/graph-json.mjs';
 
 const root = process.cwd();
@@ -158,7 +159,7 @@ for (const [language, prefix] of [['ko', ''], ['en', 'en/']]) {
   if (graph.edges.some(edge => !ids.has(edge.source) || !ids.has(edge.target))) issues.push('Dangling graph edge: ' + language);
   for (const route of ['', 'research/']) {
     const html = fs.readFileSync(path.join(dist, prefix, route, 'index.html'), 'utf8');
-    if (!html.includes('data-graph-count="' + graph.nodes.length + '"') || !html.includes('data-graph-url="/writing-graph/' + language + '.json"')) issues.push('Graph HTML/JSON mismatch: ' + prefix + route);
+    if (!html.includes('data-graph-count="' + graph.nodes.length + '"') || !html.includes('data-graph-url="/writing-graph/' + language + '.json?v=' + createHash('sha256').update(JSON.stringify(graph)).digest('hex').slice(0, 16) + '"')) issues.push('Graph HTML/JSON mismatch: ' + prefix + route);
     if (html.includes('data-post-graph-source') || html.includes('data-post-graph-node=')) issues.push('Cold page contains full graph data/links: ' + prefix + route);
     if (!html.includes('data-graph-preview') || !html.includes('data-graph-activate')) issues.push('Missing static map or activation: ' + prefix + route);
   }
