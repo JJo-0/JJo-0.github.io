@@ -1,5 +1,4 @@
-// Decorative media is static unless the visitor explicitly interacts with it.
-// Use a fresh object URL on each play so cached animated images restart.
+// The original still frame is the default. Replay uses a fresh object URL.
 let active: HTMLButtonElement | null = null;
 let dispose: (() => void) | undefined;
 let installed = false;
@@ -23,56 +22,63 @@ function init() {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const hover = matchMedia('(hover: hover) and (pointer: fine)');
   const abort = new AbortController();
-  let visible = false, playing = false, generation = 0, timer = 0;
+  let playing = false, generation = 0, timer = 0;
   let objectUrl: string | undefined;
   let animation: Promise<Blob> | undefined;
-  let removeLoadListeners: (() => void) | undefined;
 
+  // IntersectionObserver notifications can lag a trusted click or an instant
+  // scroll. Read the current rectangle at interaction/decode boundaries.
+  function inViewport() {
+    const r = button!.getBoundingClientRect();
+    return button!.isConnected && r.width > 0 && r.height > 0 &&
+      r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
+  }
   function stop() {
     generation++;
     playing = false;
     clearTimeout(timer);
-    removeLoadListeners?.();
-    removeLoadListeners = undefined;
     if (img!.getAttribute('src') !== still) img!.src = still;
+    img!.loading = 'lazy';
     if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = undefined; }
     button!.dataset.profileState = 'static';
   }
   function allowed() {
-    return visible && !document.hidden && !reduced.matches && !abort.signal.aborted;
+    return inViewport() && !document.hidden && !reduced.matches && !abort.signal.aborted;
   }
   async function play() {
     if (!allowed() || playing) return;
     const run = ++generation;
     playing = true;
+    delete button!.dataset.profileError;
     button!.dataset.profileState = 'loading';
+    let stage = 'fetch';
     try {
-      animation ??= fetch(url!, { signal: abort.signal, credentials: 'same-origin' }).then(response => {
+      animation ??= fetch(url!, { signal: abort.signal, credentials: 'same-origin' }).then(async response => {
         if (!response.ok) throw new Error('Profile animation request failed');
-        return response.blob();
+        const bytes = await response.arrayBuffer();
+        const header = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 12));
+        if (header.length !== 12 || String.fromCharCode(...header.slice(0, 4)) !== 'RIFF' ||
+            String.fromCharCode(...header.slice(8, 12)) !== 'WEBP') throw new Error('Invalid animation response');
+        return new Blob([bytes], { type: 'image/webp' });
       }).catch(error => { animation = undefined; throw error; });
       const blob = await animation;
       if (run !== generation) return;
       if (!allowed()) { stop(); return; }
+      stage = 'decode';
       objectUrl = URL.createObjectURL(blob);
-      const onLoad = () => {
-        removeLoadListeners?.();
-        removeLoadListeners = undefined;
-        if (run !== generation || !allowed()) { stop(); return; }
-        button!.dataset.profileState = 'playing';
-        // The checked-in animated asset contains exactly one 2.27s cycle.
-        timer = window.setTimeout(stop, 2370);
-      };
-      const onError = () => { if (run === generation) stop(); };
-      img!.addEventListener('load', onLoad);
-      img!.addEventListener('error', onError);
-      removeLoadListeners = () => {
-        img!.removeEventListener('load', onLoad);
-        img!.removeEventListener('error', onError);
-      };
+      // Lazy applies to the cold still, not a user-requested animated source.
+      img!.loading = 'eager';
       img!.src = objectUrl;
+      await img!.decode();
+      if (run !== generation) return;
+      if (!allowed() || img!.currentSrc !== objectUrl || !img!.naturalWidth) { stop(); return; }
+      button!.dataset.profileState = 'playing';
+      timer = window.setTimeout(stop, 2370);
     } catch {
-      if (run === generation) stop();
+      if (run === generation) {
+        button!.dataset.profileError = stage;
+        stop();
+      }
     }
   }
   const onEnter = () => { if (hover.matches) void play(); };
@@ -82,10 +88,9 @@ function init() {
     if (reduced.matches) stop();
   };
   const onVisibility = () => { if (document.hidden) stop(); };
-  const io = new IntersectionObserver(([entry]) => {
-    visible = entry?.isIntersecting ?? false;
-    if (!visible) stop();
-  }, { threshold: 0.01 });
+  const io = new IntersectionObserver(() => {
+    if (playing && !inViewport()) stop();
+  }, { threshold: 0 });
   io.observe(button);
   button.addEventListener('pointerenter', onEnter);
   button.addEventListener('click', onClick);

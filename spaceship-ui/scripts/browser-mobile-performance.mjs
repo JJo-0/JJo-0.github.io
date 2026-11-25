@@ -101,9 +101,14 @@ try {
       assert.equal(counts.actual,counts.expected,'All graph article links retained');
       assert.equal(counts.wrongLanguage,0,'Graph links match the current language');
       await evaluate(cdp, sessionId, `document.querySelector('[data-profile-animation]').scrollIntoView({block:'center',behavior:'instant'})`);
-      await sleep(300);
+      await waitExpression(cdp,sessionId,`(()=>{const b=document.querySelector('[data-profile-animation]');const r=b?.getBoundingClientRect();return b?.dataset.profileState==='static'&&r?.width>0&&r?.height>0&&r.top<innerHeight&&r.bottom>0})()`,'visible static profile before activation');
       await evaluate(cdp, sessionId, `document.querySelector('[data-profile-animation]').click()`);
-      await waitExpression(cdp,sessionId,`document.querySelector('[data-profile-animation]').dataset.profileState==='playing'`,'explicit profile playback');
+      try {
+        await waitExpression(cdp,sessionId,`document.querySelector('[data-profile-animation]').dataset.profileState==='playing'`,'explicit profile playback');
+      } catch (error) {
+        console.error('profile diagnostics',await evaluate(cdp,sessionId,`(()=>{const b=document.querySelector('[data-profile-animation]'),i=b.querySelector('img'),r=b.getBoundingClientRect();return {state:b.dataset.profileState,error:b.dataset.profileError,src:i.currentSrc,complete:i.complete,naturalWidth:i.naturalWidth,hidden:document.hidden,rect:{top:r.top,bottom:r.bottom},resources:performance.getEntriesByType('resource').filter(x=>x.name.includes('mouse_surprised')).map(x=>({url:x.name,bytes:x.transferSize,duration:x.duration}))}})()`));
+        throw error;
+      }
       await waitExpression(cdp,sessionId,`document.querySelector('[data-profile-animation]').dataset.profileState==='static'`,'one-shot profile returns to static');
       const activated = await evaluate(cdp,sessionId,`performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize,duration:r.duration}))`);
       assert(activated.some(r=>r.url.includes('/writing-graph/')));
