@@ -1,50 +1,85 @@
 ---
 import '@/styles/renderer.css';
-import { serializeGraphPayload } from '@/lib/experience/graph-json.mjs';
+import type { PostGraph } from '@/lib/experience/post-graph';
 
 interface Props {
   variant: 'home' | 'research';
-  graph?: import('@/lib/experience/post-graph').PostGraph;
+  graph?: PostGraph;
 }
-
 const { variant, graph } = Astro.props;
+const en = /^\/en(?:\/|$)/.test(Astro.url.pathname);
+const archive = en ? '/en/posts/' : '/posts/';
+const graphUrl = en ? '/writing-graph/en.json' : '/writing-graph/ko.json';
+// Project once at build time. Six grouped SVG text runs retain the ASCII
+// visual language without hundreds of DOM elements or a startup canvas loop.
+const cx = Math.cos(-0.34), sx = Math.sin(-0.34);
+const cy = Math.cos(0.18), sy = Math.sin(0.18);
+const glyphs = ['·', ':', '+', '*', '#', '@'];
+const points = new Map(graph?.nodes.map((n) => {
+  const x = n.x * cy - n.z * sy, z = n.x * sy + n.z * cy;
+  const y = n.y * cx - z * sx, depth = n.y * sx + z * cx;
+  const k = 4.8 / (5.8 - depth);
+  return [n.id, { x: Math.round(500 + x * 205 * k), y: Math.round(510 + y * 205 * k), depth }] as const;
+}) ?? []);
+const edges = (graph?.edges ?? []).map((edge) => {
+  const a = points.get(edge.source), b = points.get(edge.target);
+  return a && b ? 'M' + a.x + ' ' + a.y + 'L' + b.x + ' ' + b.y : '';
+}).join('');
+const groups = glyphs.map((glyph, index) => {
+  const nodes = [...points.values()].filter(({ depth }) =>
+    Math.min(5, Math.floor(Math.max(0, Math.min(1, (depth + 3.5) / 7)) * 6)) === index);
+  return { glyph, x: nodes.map(p => p.x).join(' '), y: nodes.map(p => p.y).join(' '), count: nodes.length };
+});
 ---
 
 <div
   class={`experience-renderer experience-renderer--${variant}`}
   data-experience-canvas={variant}
-  data-renderer-status="idle"
+  data-renderer-status={graph ? 'fallback' : 'idle'}
   data-renderer-tier="safe"
   data-ascii-graph={graph ? 'true' : undefined}
-  aria-label={graph ? `Interactive writing graph with ${graph.nodes.length} articles` : undefined}
+  data-graph-url={graph ? graphUrl : undefined}
+  data-graph-state={graph ? 'preview' : undefined}
+  data-graph-count={graph?.nodes.length}
+  aria-label={graph ? (en ? 'Interactive writing graph' : '인터랙티브 연구 지도') : undefined}
   aria-hidden={graph ? undefined : 'true'}
 >
-  {graph && <script is:inline type="application/json" data-post-graph-source set:html={serializeGraphPayload(graph)} />}
+  {graph && (
+    <>
+      <svg class="post-graph-preview" data-graph-preview viewBox="0 0 1000 1000" aria-hidden="true">
+        <path d={edges} fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="2 15" opacity="0.36" />
+        {groups.map((group, i) => group.count > 0 && (
+          <text x={group.x} y={group.y} fill="currentColor" font-family="ui-monospace, monospace"
+            font-weight="650" font-size={16 + i * 2} opacity={0.44 + i * 0.1}
+            text-anchor="middle" dominant-baseline="middle">{group.glyph.repeat(group.count)}</text>
+        ))}
+      </svg>
+      <div class="post-graph-controls">
+        <a class="post-graph-activate" href={archive} data-graph-activate
+          data-loading-label={en ? 'Loading map…' : '지도 불러오는 중…'}
+          data-retry-label={en ? 'Retry map' : '지도 다시 열기'}>{en ? 'Explore map' : '지도 탐색'}</a>
+        <a href={archive}>{en ? 'Writing archive ↗' : '전체 글 ↗'}</a>
+        <span data-graph-message role="status" class="sr-only"
+          data-error-label={en ? 'Map unavailable. Retry or open the archive.' : '지도를 불러오지 못했습니다. 다시 시도하거나 전체 글을 여세요.'}></span>
+      </div>
+    </>
+  )}
   <canvas class="experience-renderer__gpu" data-experience-canvas-element tabindex="-1"></canvas>
   <canvas class="experience-renderer__ascii" data-ascii-art tabindex="-1"></canvas>
-  {
-    graph && (
-      <nav class="post-graph-links" aria-label="Writing graph articles">
-        {graph.nodes.map((node) => (
-          <a
-            href={node.href}
-            data-post-graph-node={node.id}
-            aria-label={`${node.title}. ${node.category}`}
-          />
-        ))}
-      </nav>
-    )
-  }
-  {graph && <output class="post-graph-tooltip" data-post-graph-tooltip aria-live="polite" />}
+  {graph && (
+    <>
+      <nav class="post-graph-links" aria-label={en ? 'Writing graph articles' : '연구 지도 게시글'}></nav>
+      <output class="post-graph-tooltip" data-post-graph-tooltip aria-live="polite" />
+    </>
+  )}
   <span class="experience-renderer__status">
     GPU <span data-renderer-label>SVG</span>
   </span>
 </div>
 
 <script>
-  import { installAsciiArtRuntime } from '@/lib/experience/ascii-art';
+  import { installGraphLoader } from '@/lib/experience/graph-loader';
   import { installExperienceRendererRuntime } from '@/lib/experience/renderer-runtime';
-
-  installAsciiArtRuntime();
+  installGraphLoader();
   installExperienceRendererRuntime();
 </script>
