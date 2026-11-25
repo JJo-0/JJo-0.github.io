@@ -20,7 +20,7 @@ const cache = new Map();
 const report = { policy: POLICY, pages: [], images: [], omitted: [] };
 
 function eligible(src) {
-  return /^\/assets\/(?:slides\/[a-z0-9_-]+\/|posts\/(?:self-improving-ai-[a-z0-9-]+\/|segmentation-from-pixels-to-robot-observations\/slides\/|rl-robot-learning-[a-z0-9-]+\/|modern-ai-(?:continuation|vi-papers|additional-papers)\/))[a-z0-9_./-]+\.(?:png|jpe?g|webp)$/i.test(src) &&
+  return /^\/assets\/(?:slides\/[a-z0-9_-]+\/|posts\/(?:self-improving-ai-[a-z0-9-]+\/|segmentation-from-pixels-to-robot-observations\/slides\/|rl-robot-learning-[a-z0-9-]+\/))[a-z0-9_./-]+\.(?:png|jpe?g|webp)$/i.test(src) &&
     !src.split('/').includes('..');
 }
 
@@ -94,6 +94,14 @@ async function optimize(file) {
   const images = [];
   for (const { node, limit } of nodes) {
     const a = attrs(node);
+    // These provenance-reviewed original paper crops have existing pixel-exact
+    // and aspect-ratio contracts; retain their current display and source.
+    if (/^\/assets\/posts\/modern-ai-(?:continuation|vi-papers|additional-papers)\//i.test(a.src ?? '')) {
+      if (!report.omitted.some(row => row.src === a.src)) {
+        report.omitted.push({ src: a.src, reason: 'pixel-exact-paper-figure' });
+      }
+      continue;
+    }
     if (!eligible(a.src ?? '')) continue;
     if (a.srcset || node.parentNode?.tagName === 'picture') {
       report.omitted.push({ src: a.src, reason: 'existing-responsive-source' });
@@ -163,6 +171,7 @@ const estimate = width => report.images.reduce((sum, image) => {
   const selected = image.candidates.find(c => c.width >= Math.min(width, image.width));
   return sum + (selected?.bytes ?? image.originalBytes);
 }, 0);
-report.summary = { pages: report.pages.length, distinctSources: report.images.length, optimized, originalBytes: originals, estimated640WidthBytes: estimate(640), estimated960WidthBytes: estimate(960), estimated1280WidthBytes: estimate(1280) };
+const uniquePreviews = new Map(report.images.flatMap(image => image.candidates).map(c => [c.url, c.bytes]));
+report.summary = { previewBytes: [...uniquePreviews.values()].reduce((sum, bytes) => sum + bytes, 0), protectedPaperSources: report.omitted.filter(row => row.reason === 'pixel-exact-paper-figure').length, pages: report.pages.length, distinctSources: report.images.length, optimized, originalBytes: originals, estimated640WidthBytes: estimate(640), estimated960WidthBytes: estimate(960), estimated1280WidthBytes: estimate(1280) };
 await fs.writeFile(reportPath, JSON.stringify(report, null, 2) + '\n');
 console.log('lecture-images: PASS ' + JSON.stringify(report.summary));
