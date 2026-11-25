@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { parse } from 'parse5';
 import katex from 'katex';
@@ -93,4 +94,21 @@ for (const file of ['dist/index.html','dist/en/index.html','dist/posts/index.htm
   summary.push({ file, cards: cards.length, rawBytes: Buffer.byteLength(html), gzipBytes: gzipSync(html).byteLength, fontPreloads: fonts.length });
 }
 assert(read('astro.config.mjs').includes('prefetchAll: false'));
-console.log('reader-performance: PASS ' + JSON.stringify({ searchRows: ko.length, summary }));
+// Measure actual uncompressed output separately from the compressed Actions artifact.
+const distribution = { files: 0, bytes: 0, groups: {} };
+function measureDist(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) measureDist(full);
+    else if (entry.isFile()) {
+      const bytes = fs.statSync(full).size;
+      const group = path.relative('dist', full).split(path.sep)[0];
+      distribution.files++;
+      distribution.bytes += bytes;
+      distribution.groups[group] = (distribution.groups[group] || 0) + bytes;
+    }
+  }
+}
+measureDist('dist');
+if (distribution.bytes >= 850_000_000) console.warn('Pages size warning: uncompressed dist is ' + distribution.bytes + ' bytes; review the 1 GB published-site limit.');
+console.log('reader-performance: PASS ' + JSON.stringify({ searchRows: ko.length, summary, distribution }));

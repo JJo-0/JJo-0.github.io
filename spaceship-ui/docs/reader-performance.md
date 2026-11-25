@@ -11,3 +11,5 @@ Popular posts are already static and issue no separate reader-side GA4 report re
 
 ## Verification
 Existing content, route, math, series and locale contracts remain. Added exact KaTeX parity and bounded-cache tests, search request coalescing/expiry/retry, raw/gzip archive metrics, browser cold/open/type/reopen/request counts and all-match ordering, and CDN response evidence. New checks distinguish source/build optimization from measured public LCP/INP and actual HTTP cache behavior. The responsive lecture audit validates original hashes and physical derivative pixels instead of treating density-corrected naturalWidth as the original pixel width. Profile playback diagnostics and actual viewport/decode guards address the previous public-test failure; live verification is still required.
+
+The content-integrity check also counts the actual uncompressed dist files/bytes by top-level directory and warns at 850,000,000 bytes. This is a reporting threshold, not a claim that the compressed deployment artifact equals the published site size. No source assets are deleted to satisfy the warning.

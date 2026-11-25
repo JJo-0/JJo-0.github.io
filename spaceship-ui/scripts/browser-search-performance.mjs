@@ -62,7 +62,11 @@ try {
   }
   fs.mkdirSync('mobile-performance',{recursive:true});
   fs.writeFileSync('mobile-performance/search.json',JSON.stringify({base:BASE,rows},null,2));
+} catch (error) {
+  console.error('search-performance: FAIL',error);
+  process.exitCode = 1;
 } finally {
   clearTimeout(deadline);
   cdp?.close(); await stopChild(chrome?.child,'SIGKILL'); await stopChild(preview,'SIGTERM'); removeProfile(chrome?.profile);
+  process.exit(process.exitCode || 0);
 }
