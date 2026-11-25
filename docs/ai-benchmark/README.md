@@ -1,6 +1,8 @@
 # AI Benchmark Series
 
-40 chapters in six parts. Published status is derived from the actual post collection; planned chapters have no article URL. Part I is the initial manuscript batch; future chapters must be independently sourced and written in Korean and English.
+40 chapters in six parts. Published status is derived from the actual post collection; planned chapters have no article URL. Manuscripts for chapters 01–07 are available on this branch. Chapters 08–40 are planned. Every chapter is independently sourced and written in Korean and English.
+
+[40편별 Stanford 강의 활용 설계](./stanford-cs329z-editorial-map.md) · [공식 영상 타임스탬프와 PDF 페이지](./stanford-cs329z-sources.md)
 
 ## Part I — AI 평가 기초 / Evaluation foundations
 
@@ -13,7 +15,7 @@
 
 ## Part II — 지식·추론·수학 / Knowledge, reasoning and mathematics
 
-- [ ] 07. MMLU, MMLU-Pro, GPQA Diamond
+- [x] 07. [MMLU, MMLU-Pro, GPQA Diamond](https://jjo-0.github.io/posts/ai-benchmark-07-mmlu-mmlu-pro-gpqa/) · [EN](https://jjo-0.github.io/en/posts/ai-benchmark-07-mmlu-mmlu-pro-gpqa/)
 - [ ] 08. GSM8K, MATH, AIME, MathArena Apex
 - [ ] 09. Humanity's Last Exam과 HLE-Diamond
 - [ ] 10. ARC-AGI 1·2와 새로운 규칙 학습

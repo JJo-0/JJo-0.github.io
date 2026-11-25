@@ -13,7 +13,7 @@ import { RESEARCH_FOCUS as koreanFocus } from '@/lib/research';
 import { RESEARCH_FOCUS as englishFocus } from '@/lib/research-en';
 import { POST_CATEGORIES } from '@/lib/taxonomy.mjs';
 import { SITE } from '@/config';
-import { buildPostGraph } from '@/lib/experience/post-graph';
+import { getWritingGraph } from '@/lib/experience/writing-graph';
 
 interface Props { en?: boolean }
 const { en = false } = Astro.props;
@@ -27,7 +27,7 @@ const posts = (await getLocalizedPosts(en)).sort(
 const featuredPosts = posts.filter((post) => post.data.featured).slice(0, SITE.featuredPostsCount);
 const latestPosts = posts.filter((post) => !post.data.featured).slice(0, SITE.latestPostsCount);
 const postCategoryHashes = JSON.stringify(POST_CATEGORIES);
-const postGraph = await buildPostGraph(posts, en);
+const postGraph = await getWritingGraph(en);
 ---
 
 <Layout
@@ -176,18 +176,19 @@ const postGraph = await buildPostGraph(posts, en);
           </nav>
 
           <div class="experience-mouse-frame experience-mouse-frame--world">
-            <picture>
-              <source srcset="/assets/profile/mouse_surprised.webp" type="image/webp" />
+            <button type="button" class="experience-profile-button" data-profile-animation
+              data-profile-animation-src="/assets/profile/mouse_surprised-once.webp"
+              aria-label={en ? 'Play profile animation' : '프로필 애니메이션 재생'}>
               <img
-                src="/image/mouse_surprised.gif"
-                alt={`${SITE.author} profile animation`}
-                width="416"
-                height="416"
+                src="/assets/profile/mouse_surprised-still.webp"
+                alt={en ? 'Profile character' : '프로필 캐릭터'}
+                width="256"
+                height="256"
                 loading="lazy"
                 fetchpriority="low"
                 decoding="async"
               />
-            </picture>
+            </button>
           </div>
 
           <figcaption class="sr-only">
@@ -243,6 +244,9 @@ const postGraph = await buildPostGraph(posts, en);
   </div>
 
   <script>
+    import { installProfileAnimation } from '@/lib/experience/profile-animation';
+    installProfileAnimation();
+
     const decodeCategoryHash = () => {
       try {
         return decodeURIComponent(window.location.hash.slice(1));

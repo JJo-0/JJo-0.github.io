@@ -70,12 +70,16 @@ for (const file of postFiles) {
   }
 }
 
-const home = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-if (!home.includes('src="/image/mouse_surprised.gif"')) {
-  issues.push('index.html: homepage mouse GIF is not rendered from /image/mouse_surprised.gif');
+for (const prefix of ['', 'en']) {
+  const html = fs.readFileSync(path.join(dist, prefix, 'index.html'), 'utf8');
+  if (!html.includes('src="/assets/profile/mouse_surprised-still.webp"') ||
+      !html.includes('data-profile-animation-src="/assets/profile/mouse_surprised-once.webp"') ||
+      html.includes('src="/image/mouse_surprised.gif"')) {
+    issues.push(prefix + '/index.html: expected static identity image and deferred one-shot animation');
+  }
 }
-if (!fs.existsSync(path.join(dist, 'image', 'mouse_surprised.gif'))) {
-  issues.push('image/mouse_surprised.gif: homepage GIF missing from built artifact');
+for (const asset of ['image/mouse_surprised.gif', 'assets/profile/mouse_surprised-still.webp', 'assets/profile/mouse_surprised-once.webp']) {
+  if (!fs.existsSync(path.join(dist, asset))) issues.push(asset + ': missing from built artifact');
 }
 
 const visionPath = path.join(dist, 'posts', '2025-02-18-vision', 'index.html');

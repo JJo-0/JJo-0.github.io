@@ -60,10 +60,16 @@ assert abs((0.883-0.651)*100-23.2)<1e-8
 assert abs(31/4950*100-0.6262626)<0.0001
 assert abs((0.91-0.9)/(1-0.9)-0.1)<1e-8
 # Lossless source graph transport retains every new article and native anchor.
-home=(R/'dist/index.html').read_text();hp=Page(home);match=re.search(r'<script\b[^>]*data-post-graph-source[^>]*>([\s\S]*?)</script>',home);assert match
-payload=match.group(1);assert '<' not in payload;graph=json.loads(payload)
+home=(R/'dist/index.html').read_text();hp=Page(home)
+host=next(a for t,a in hp.tags if a.get('data-experience-canvas')=='home')
+assert not re.search(r'<script\b[^>]*data-post-graph-source',home)
+assert host.get('data-graph-url','').startswith('/writing-graph/ko.json?v=')
+payload=(R/'dist/writing-graph/ko.json').read_text();assert '<' not in payload;graph=json.loads(payload)
 assert len(home.encode())<=252*1024
-assert len(graph['nodes'])==sum(t=='a' and 'data-post-graph-node' in a for t,a in hp.tags)
+assert int(host['data-graph-count'])==len(graph['nodes'])
+assert not any('data-post-graph-node' in a for t,a in hp.tags)
+ids={n['id'] for n in graph['nodes']}
+assert len(ids)==len(graph['nodes']) and all(e[0] in ids and e[1] in ids for e in graph['edges'])
 for date in ['20261002','20261003']:
  for e in json.loads((R/f'site/news-edition-{date}.json').read_text())['entries']:assert any(n['href'].rstrip('/')=='/posts/'+e['slug'] for n in graph['nodes'])
 e=E['entries'][0];html=(R/'dist/posts'/e['slug']/'index.html').read_text()
