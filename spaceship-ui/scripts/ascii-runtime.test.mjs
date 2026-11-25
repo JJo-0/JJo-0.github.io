@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import test from 'node:test';
+import { graphVisual, atlasProjectionRadius, projectAtlas, stepAtlasRotation, wrapAtlasYaw } from '../src/lib/experience/graph-visuals.mjs';
+import { POST_CATEGORIES } from '../src/lib/taxonomy.mjs';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 function compile(file) {
@@ -123,4 +125,49 @@ test('failed graph request does not loop and can retry explicitly',async()=>{
   succeed(f);await flush();
   assert.equal(f.mounts.length,1);assert.equal(f.host.dataset.graphState,'ready');
   assert.equal(f.trigger.hidden,true);
+});
+
+test('atlas palette maintains distinct symbols and contrast on editorial card/paper', () => {
+  const styles = POST_CATEGORIES.map(graphVisual);
+  assert.equal(new Set(styles.map(s=>s.glyph)).size, styles.length);
+  const luminance = hex => {
+    const rgb = [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);
+    return rgb.map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[0.2126,0.7152,0.0722][i],0);
+  };
+  const contrast = (a,b) => (Math.max(luminance(a),luminance(b))+.05)/(Math.min(luminance(a),luminance(b))+.05);
+  for (const style of styles) for (const [ink,paper] of [[style.light,'#f3efe4'],[style.light,'#f8f4ea'],[style.dark,'#1c211d'],[style.dark,'#232923']]) {
+    assert(contrast(ink,paper)>=4.5, ink+' / '+paper);
+  }
+});
+test('rotation eases across frame rates, follows shortest yaw, settles exactly and honors reduced motion', () => {
+  const initial={x:-.34,y:.18}, target={x:.5,y:1.1};
+  const advance=(hz,ms)=>{
+    let state=initial;
+    for(let i=0;i<Math.round(ms*hz/1000);i++)state=stepAtlasRotation(state,target,1000/hz,false,false);
+    return state;
+  };
+  const first=advance(60,1000/60);
+  assert(first.moving && first.x>initial.x && first.x<target.x && first.y>initial.y && first.y<target.y);
+  for(const hz of [30,60,120]){
+    const mid=advance(hz,200), ref=advance(60,200);
+    assert(Math.abs(mid.x-ref.x)<1e-9 && Math.abs(mid.y-ref.y)<1e-9);
+    assert.deepEqual(advance(hz,1000),{...target,moving:false});
+  }
+  assert.deepEqual(stepAtlasRotation(initial,target,16,true,false),{...target,moving:false});
+  const seam=stepAtlasRotation({x:0,y:3.1},{x:0,y:-3.1},16,false,false);
+  assert(wrapAtlasYaw(seam.y-3.1)>0 && wrapAtlasYaw(seam.y-3.1)<.0832);
+  assert.deepEqual(stepAtlasRotation(target,target,16,false,false),{...target,moving:false});
+});
+test('projection uses a rotation-independent scale and contains every point', () => {
+  const nodes=[{id:'a',x:2,y:1,z:1.8},{id:'b',x:-2,y:-1.5,z:-1.9},{id:'c',x:.5,y:2,z:-1},{id:'d',x:5.5,y:0,z:1}];
+  for(const points of [nodes.slice(0,3),nodes]){
+    const radius=atlasProjectionRadius(points);
+    for(const [w,h] of [[320,460],[1000,1000],[1440,700]])for(const x of [-1.3,0,1.3])for(let y=-Math.PI;y<=Math.PI;y+=.12){
+      const projected=projectAtlas(points,w,h,x,y,radius);
+      assert(projected.every(p=>p.x>=0&&p.x<=w&&p.y>=0&&p.y<=h));
+    }
+  }
+  // A stationary point on the rotation axis must not change scale with yaw.
+  const axis=[{id:'axis',x:0,y:1,z:0},...nodes.slice(0,3)];
+  assert.equal(projectAtlas(axis,390,460,0,0)[0].y,projectAtlas(axis,390,460,0,Math.PI/2)[0].y);
 });

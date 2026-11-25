@@ -20,9 +20,13 @@ const categories = [...new Set(graph?.nodes.map(node => node.category) ?? [])].m
 }));
 const points = new Map(projectAtlas(graph?.nodes ?? [], 1000, 1000, -0.34, 0.18).map(p => [p.id, p]));
 const byId = new Map(graph?.nodes.map(node => [node.id, node]) ?? []);
-const edgePaths = [false, true].map(cross => ({
-  cross,
-  d: (graph?.edges ?? []).filter(edge => (byId.get(edge.source)?.category !== byId.get(edge.target)?.category) === cross)
+const edgePaths = [...categories, null].map(category => ({
+  category,
+  cross: category === null,
+  d: (graph?.edges ?? []).filter(edge => {
+    const a = byId.get(edge.source)?.category, b = byId.get(edge.target)?.category;
+    return category ? a === category.id && b === category.id : a !== b;
+  })
     .map(edge => {
       const a = points.get(edge.source), b = points.get(edge.target);
       return a && b ? 'M' + Math.round(a.x) + ' ' + Math.round(a.y) + 'L' + Math.round(b.x) + ' ' + Math.round(b.y) : '';
@@ -51,7 +55,10 @@ const groups = categories.map(category => {
   {graph && (
     <>
       <svg class="post-graph-preview" data-graph-preview viewBox="0 0 1000 1000" aria-hidden="true">
-        {edgePaths.map(path => <path d={path.d} fill="none" stroke="currentColor" stroke-width={path.cross ? 2.3 : 1.9} stroke-dasharray={path.cross ? '7 7' : undefined} opacity={path.cross ? 0.46 : 0.52} />)}
+        {edgePaths.map(path => <path d={path.d} fill="none" stroke="currentColor"
+          class={path.category ? 'post-graph-category-ink' : undefined}
+          style={path.category ? `--graph-light:${path.category.light};--graph-dark:${path.category.dark}` : undefined}
+          stroke-linecap="round" stroke-width={path.cross ? 1.8 : 2} stroke-dasharray={path.cross ? '6 8' : undefined} opacity={path.cross ? 0.27 : 0.42} />)}
         {groups.map(group => group.count > 0 && (
           <text class="post-graph-category-ink" style={`--graph-light:${group.light};--graph-dark:${group.dark}`} x={group.x} y={group.y} fill="currentColor" font-family="ui-monospace, monospace"
             font-weight="750" font-size="23" text-anchor="middle" dominant-baseline="middle">{group.glyph.repeat(group.count)}</text>

@@ -16,6 +16,12 @@ try {
   ({ sessionId } = await attach(cdp, { normalizeHistoryPath: false }));
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `
     window.__asciiDraws = 0;
+    window.__atlasGlyphInk = Object.create(null);
+    const fillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function(glyph,...args) {
+      if (this.canvas.matches('[data-ascii-art]')) window.__atlasGlyphInk[glyph] = String(this.fillStyle).toLowerCase();
+      return fillText.call(this,glyph,...args);
+    };
     window.__gpuProbes = 0;
     window.__graphRequests = 0;
     const originalFetch = window.fetch;
@@ -79,8 +85,21 @@ try {
       assert.equal(await evaluate(cdp,sessionId,'window.__graphRequests'), rejectFirst ? 2 : 1);
       const xExpression = "document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')";
       const initialX = await evaluate(cdp,sessionId,xExpression);
+      const beforeRotation = await evaluate(cdp,sessionId,'window.__asciiDraws');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
       await waitExpression(cdp,sessionId,xExpression+'!=='+JSON.stringify(initialX),'rotation control projects real nodes');
+      await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion==='still'",'rotation settles');
+      const rotationDraws = await evaluate(cdp,sessionId,'window.__asciiDraws') - beforeRotation;
+      assert(rotationDraws>=3,'Rotation must span multiple painted frames rather than jump');
+      const paletteMatches = `(() => {
+        const dark=document.documentElement.classList.contains('dark');
+        const key=dark?'--graph-dark':'--graph-light';
+        return [...document.querySelectorAll('[data-graph-category]')].every(button=>{
+          const glyph=button.querySelector('.post-graph-category-ink');
+          return window.__atlasGlyphInk[glyph.textContent]===button.style.getPropertyValue(key).trim().toLowerCase();
+        });
+      })()`;
+      assert(await evaluate(cdp,sessionId,paletteMatches),'Canvas and legend share the same palette');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-category]').click()");
       assert.equal(await evaluate(cdp,sessionId,"document.querySelector('[data-graph-category]').getAttribute('aria-pressed')"),'true');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-reset]').click()");
@@ -112,9 +131,15 @@ try {
         await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',buttons:0,clickCount:1,x:point.x+45,y:point.y+16},sessionId);
         await waitExpression(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')!==${JSON.stringify(previous)}`,'real drag updates graph projection');
       }
+      await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion==='still'",'drag settles');
+      const screenshotPrefix='graph-' + width + (route === '/en/' ? '-en' : '-ko');
+      const initialTheme=await evaluate(cdp,sessionId,"document.documentElement.classList.contains('dark')?'dark':'light'");
+      await capture(screenshotPrefix+'-'+initialTheme);
+      const beforeTheme = await evaluate(cdp,sessionId,'window.__asciiDraws');
       await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark')`);
-      await waitExpression(cdp, sessionId, `window.__asciiDraws > ${after}`, 'static graph repaints on theme change');
-      await capture('graph-' + width + (route === '/en/' ? '-en' : '-ko'));
+      await waitExpression(cdp, sessionId, `window.__asciiDraws > ${beforeTheme}`, 'static graph repaints on theme change');
+      assert(await evaluate(cdp,sessionId,paletteMatches),'Canvas palette updates with legend on theme change');
+      await capture(screenshotPrefix+'-'+(initialTheme==='dark'?'light':'dark'));
       await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark')`);
       const counts = await evaluate(cdp, sessionId, `({
         actual:document.querySelectorAll('[data-post-graph-node]').length,
@@ -166,7 +191,7 @@ try {
       await cdp.send('Input.dispatchKeyEvent', { type:'keyUp', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);
       const path = new URL(target, BASE).pathname;
       await waitExpression(cdp, sessionId, `${JSON.stringify([path, path.endsWith('/') ? path.slice(0,-1) : path+'/'])}.includes(location.pathname)`, 'native graph link destination');
-      results.push({width,route,cold,idleDraws:after-before,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,activated});
+      results.push({width,route,cold,idleDraws:after-before,rotationDraws,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,activated});
       console.log('mobile-performance: graph/profile PASS '+JSON.stringify({width,route,idleDraws:after-before,links:counts.actual}));
     }
   }
@@ -177,6 +202,17 @@ try {
   await evaluate(cdp,sessionId,`document.querySelector('[data-profile-animation]').click()`);
   assert.equal(await evaluate(cdp,sessionId,`document.querySelector('[data-profile-animation]').dataset.profileState`),'static');
   assert(!await evaluate(cdp,sessionId,`performance.getEntriesByType('resource').some(r=>r.name.includes('mouse_surprised-once.webp'))`));
+  await evaluate(cdp,sessionId,`document.querySelector('[data-experience-canvas]').scrollIntoView({block:'center',behavior:'instant'})`);
+  await waitExpression(cdp,sessionId,"typeof window.__releaseAtlas==='function'",'reduced motion still auto-loads graph');
+  await evaluate(cdp,sessionId,'window.__releaseAtlas(false)');
+  await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphState==='ready'",'reduced-motion graph ready');
+  const reducedX = await evaluate(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')");
+  await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
+  await waitExpression(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')!=="+JSON.stringify(reducedX),'reduced-motion rotation applies');
+  assert.equal(await evaluate(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion"),'still');
+  const reducedDraws=await evaluate(cdp,sessionId,'window.__asciiDraws');
+  await sleep(350);
+  assert.equal(await evaluate(cdp,sessionId,'window.__asciiDraws'),reducedDraws,'Reduced motion must not animate after rotation');
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: false }, sessionId);
   await viewport(cdp, sessionId, { width:390, height:844, mobile:true, touch:true, reduced:false });
   await navigate(cdp, sessionId, '/news/');

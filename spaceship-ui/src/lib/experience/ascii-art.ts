@@ -1,5 +1,5 @@
 import { parseGraphPayload } from './graph-json.mjs';
-import { graphVisual, graphDepth, projectAtlas } from './graph-visuals.mjs';
+import { graphVisual, graphDepth, projectAtlas, atlasProjectionRadius, stepAtlasRotation, wrapAtlasYaw } from './graph-visuals.mjs';
 
 type Point3 = { x: number; y: number; z: number; edge: boolean };
 type GraphNode = {
@@ -57,7 +57,7 @@ function readGraph(host: HTMLElement): PostGraph | null {
   }
 }
 
-// A static graph redraws only for a changed view, hover/focus, theme or size.
+// Draw only for active motion or a changed view, hover/focus, theme or size.
 // Projection records and ordering are reused; hover never changes link positions.
 function installGraphCanvas(
   host: HTMLElement,
@@ -91,15 +91,18 @@ function installGraphCanvas(
   let visible = false, dirty = true, projectionDirty = true, painted = false;
   let dragPointer: number | null = null, lastX = 0, lastY = 0;
   let rotationX = -0.34, rotationY = 0.18, lastDrawAt = -Infinity;
+  let targetX = rotationX, targetY = rotationY;
+  const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+  const fitRadius = atlasProjectionRadius(graph.nodes);
   let hoverId: string | null = null, focusId: string | null = null, shownId: string | null = null;
-  let ink = '#24483e', muted = '#667064', paper = '#f3efe4', dark = false;
+  let ink = '#24483e', muted = '#667064', paper = '#f8f4ea', dark = false;
   let activeCategory: string | null = null;
   const nodeInk = (id: string) => { const style = nodeStyles.get(id)!; return dark ? style.dark : style.light; };
   const refreshPalette = () => {
     const style = getComputedStyle(document.documentElement);
     ink = style.getPropertyValue('--experience-accent-strong').trim() || '#24483e';
     muted = style.getPropertyValue('--color-muted-foreground').trim() || '#667064';
-    paper = style.getPropertyValue('--color-background').trim() || '#f3efe4';
+    paper = style.getPropertyValue('--color-card').trim() || '#f8f4ea';
     dark = document.documentElement.classList.contains('dark');
   };
   refreshPalette();
@@ -115,6 +118,9 @@ function installGraphCanvas(
     const node = nodeById.get(id), point = projected.get(id);
     if (!node || !point) return;
     if (shownId !== id) {
+      const style = nodeStyles.get(id)!;
+      tooltip.style.setProperty('--graph-light', style.light);
+      tooltip.style.setProperty('--graph-dark', style.dark);
       const title = document.createElement('strong');
       title.textContent = node.title;
       const category = document.createElement('span');
@@ -143,13 +149,20 @@ function installGraphCanvas(
   const draw = (time: number) => {
     frame = 0;
     if (!visible || document.hidden || !dirty) return;
-    // Match the previous 30 Hz ceiling during active drag, not at idle.
-    if (time - lastDrawAt < 1000 / 30) { frame = requestAnimationFrame(draw); return; }
+    // Paint at display cadence up to approximately 60 Hz, only until settled.
+    // A small tolerance avoids skipping nominal 60 Hz frames due to jitter.
+    if (time - lastDrawAt < 1000 / 60 - 1) { frame = requestAnimationFrame(draw); return; }
+    const elapsed = Number.isFinite(lastDrawAt) ? Math.min(34, time - lastDrawAt) : 1000 / 60;
     lastDrawAt = time;
-    dirty = false;
+    const next = stepAtlasRotation({ x: rotationX, y: rotationY }, { x: targetX, y: targetY }, elapsed, motionPreference.matches, dragPointer !== null);
+    projectionDirty ||= next.x !== rotationX || next.y !== rotationY;
+    rotationX = next.x; rotationY = next.y;
+    dirty = next.moving;
+    const motionState = next.moving ? 'moving' : 'still';
+    if (host.dataset.graphMotion !== motionState) host.dataset.graphMotion = motionState;
     const activeId = focusId ?? hoverId;
     if (projectionDirty) {
-      for (const row of projectAtlas(graph.nodes, width, height, rotationX, rotationY)) {
+      for (const row of projectAtlas(graph.nodes, width, height, rotationX, rotationY, fitRadius)) {
         const point = projected.get(row.id)!;
         point.x = row.x; point.y = row.y; point.z = row.z;
         const anchor = anchors.get(row.id);
@@ -164,6 +177,7 @@ function installGraphCanvas(
     context.clearRect(0, 0, width, height);
     context.textAlign = 'center';
     context.textBaseline = 'middle';
+    context.lineCap = 'round';
     const selectedEdges = activeId ? activeEdges.get(activeId) : undefined;
     const neighbors = new Set<string>();
     if (activeId && selectedEdges) {
@@ -177,10 +191,10 @@ function installGraphCanvas(
       const relevant = categoryMatch(edge.source) || categoryMatch(edge.target);
       const depth = graphDepth((a.z + b.z) / 2);
       const weight = Math.min(1, Math.max(0, edge.weight / 20));
-      context.strokeStyle = same ? nodeInk(edge.source) : (selected ? ink : muted);
-      context.globalAlpha = selected ? .96 : activeId || !relevant ? .10 : .27 + .22 * depth + .17 * weight;
-      context.lineWidth = selected ? 2.25 : .75 + weight * .8;
-      context.setLineDash(same ? [] : [4, 4]);
+      context.strokeStyle = same ? nodeInk(edge.source) : (selected && activeId ? nodeInk(activeId) : selected ? ink : muted);
+      context.globalAlpha = selected ? .96 : activeId || !relevant ? .08 : same ? .22 + .16 * depth + .16 * weight : .15 + .15 * depth + .11 * weight;
+      context.lineWidth = selected ? 2.1 : .7 + weight * .8;
+      context.setLineDash(same ? [] : [3, 4]);
       context.beginPath();
       context.moveTo(a.x, a.y);
       context.lineTo(b.x, b.y);
@@ -200,7 +214,7 @@ function installGraphCanvas(
       const emphasis = selected || linked;
       const size = emphasis ? (selected ? 19 : 16) : Math.round(10 + depth * 6);
       const radius = emphasis ? size * .66 : size * .53;
-      const alpha = activeId ? (emphasis ? 1 : .23) : categoryMatch(node.id) ? .76 + depth * .24 : .22;
+      const alpha = activeId ? (emphasis ? 1 : .23) : categoryMatch(node.id) ? .88 + depth * .12 : .22;
       context.globalAlpha = alpha;
       context.fillStyle = paper;
       context.beginPath();
@@ -221,6 +235,7 @@ function installGraphCanvas(
     context.globalAlpha = 1;
     updateTooltip(activeId);
     if (!painted) { painted = true; onPaint(); }
+    start();
   };
   const start = () => {
     if (!frame && dirty && visible && !document.hidden) frame = requestAnimationFrame(draw);
@@ -228,6 +243,7 @@ function installGraphCanvas(
   const stop = () => {
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
+    lastDrawAt = -Infinity;
   };
   const invalidate = (projection = false) => {
     dirty = true;
@@ -251,10 +267,10 @@ function installGraphCanvas(
     ? target.closest<HTMLElement>('[data-post-graph-node]')?.dataset.postGraphNode ?? null : null;
   const onPointerMove = (event: PointerEvent) => {
     if (dragPointer !== event.pointerId) return;
-    rotationY += (event.clientX - lastX) * 0.005;
-    rotationX = Math.max(-1.3, Math.min(1.3, rotationX + (event.clientY - lastY) * 0.005));
+    targetY = wrapAtlasYaw(targetY + (event.clientX - lastX) * 0.005);
+    targetX = Math.max(-1.3, Math.min(1.3, targetX + (event.clientY - lastY) * 0.005));
     lastX = event.clientX; lastY = event.clientY;
-    invalidate(true);
+    invalidate();
   };
   const onPointerDown = (event: PointerEvent) => {
     if (dragPointer !== null || event.button !== 0 || (event.target as Element).closest('a,button')) return;
@@ -288,12 +304,12 @@ function installGraphCanvas(
     const button = event.target.closest<HTMLButtonElement>('button');
     if (!button || !host.contains(button)) return;
     if (button.hasAttribute('data-graph-reset')) {
-      rotationX = -0.34; rotationY = 0.18; activeCategory = null;
+      targetX = -0.34; targetY = 0.18; activeCategory = null;
       for (const item of categoryButtons) item.setAttribute('aria-pressed', 'false');
-      invalidate(true);
+      invalidate();
     } else if (button.hasAttribute('data-graph-rotate')) {
-      rotationY += Number(button.dataset.graphRotate) * Math.PI / 8;
-      invalidate(true);
+      targetY = wrapAtlasYaw(targetY + Number(button.dataset.graphRotate) * Math.PI / 8);
+      invalidate();
     } else if (button.dataset.graphCategory) {
       activeCategory = activeCategory === button.dataset.graphCategory ? null : button.dataset.graphCategory;
       for (const item of categoryButtons) item.setAttribute('aria-pressed', String(item.dataset.graphCategory === activeCategory));
@@ -320,6 +336,8 @@ function installGraphCanvas(
   host.addEventListener('focusin', onFocusIn);
   host.addEventListener('focusout', onFocusOut);
   const onVisibilityChange = () => { if (document.hidden) stop(); else start(); };
+  const onMotionPreference = () => invalidate();
+  motionPreference.addEventListener('change', onMotionPreference);
   document.addEventListener('visibilitychange', onVisibilityChange);
   resize();
   return () => {
@@ -335,6 +353,7 @@ function installGraphCanvas(
     host.removeEventListener('pointerout', onPointerOut);
     host.removeEventListener('focusin', onFocusIn);
     host.removeEventListener('focusout', onFocusOut);
+    motionPreference.removeEventListener('change', onMotionPreference);
     document.removeEventListener('visibilitychange', onVisibilityChange);
   };
 }
@@ -353,6 +372,9 @@ export function mountWritingGraph(host: HTMLElement, canvas: HTMLCanvasElement, 
     const anchor = document.createElement('a');
     anchor.href = node.href;
     anchor.dataset.postGraphNode = node.id;
+    const style = graphVisual(node.category);
+    anchor.style.setProperty('--graph-light', style.light);
+    anchor.style.setProperty('--graph-dark', style.dark);
     anchor.setAttribute('aria-label', node.title + '. ' + node.category);
     fragment.append(anchor);
   }
