@@ -17,16 +17,7 @@ type GraphNode = {
 type GraphEdge = { source: string; target: string; weight: number; reasons: string[] };
 type PostGraph = { nodes: GraphNode[]; edges: GraphEdge[] };
 
-type AsciiRuntime = { destroy: () => void };
-
-declare global {
-  interface Window {
-    __jjoAsciiRuntime?: AsciiRuntime;
-  }
-}
-
 const GLYPHS = ['·', ':', '+', '*', '#', '@'];
-const HOST_SELECTOR = '[data-experience-canvas]';
 
 function buildArtifact(): Point3[] {
   const points: Point3[] = [];
@@ -54,7 +45,8 @@ function buildArtifact(): Point3[] {
   return points;
 }
 
-const artifact = buildArtifact();
+// The writing graph never needs the decorative fallback geometry.
+let artifact: Point3[] | undefined;
 
 function readGraph(host: HTMLElement): PostGraph | null {
   try {
@@ -379,6 +371,7 @@ export function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () 
   if (graph) return installGraphCanvas(host, canvas, graph);
   const context = canvas.getContext('2d', { alpha: true });
   if (!context) return () => {};
+  const points = (artifact ??= buildArtifact());
 
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const finePointer = matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)');
@@ -442,7 +435,7 @@ export function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () 
     const centerY = height * 0.51;
     const projected: Array<{ x: number; y: number; z: number; edge: boolean }> = [];
 
-    for (const point of artifact) {
+    for (const point of points) {
       const x1 = point.x * cosineY - point.z * sineY;
       const z1 = point.x * sineY + point.z * cosineY;
       const y1 = point.y * cosineX - z1 * sineX;
@@ -553,34 +546,4 @@ export function installCanvas(host: HTMLElement, canvas: HTMLCanvasElement): () 
     document.removeEventListener('visibilitychange', onVisibilityChange);
     reducedMotion.removeEventListener('change', onMotionChange);
   };
-}
-
-export function installAsciiArtRuntime(): void {
-  if (typeof window === 'undefined' || window.__jjoAsciiRuntime) return;
-  let cleanups: Array<() => void> = [];
-
-  const cleanup = (): void => {
-    cleanups.forEach((dispose) => dispose());
-    cleanups = [];
-  };
-  const init = (): void => {
-    cleanup();
-    document.querySelectorAll<HTMLElement>(HOST_SELECTOR).forEach((host) => {
-      const canvas = host.querySelector<HTMLCanvasElement>('[data-ascii-art]');
-      if (canvas) cleanups.push(installCanvas(host, canvas));
-    });
-  };
-  const destroy = (): void => {
-    cleanup();
-    document.removeEventListener('astro:page-load', init);
-    document.removeEventListener('astro:before-swap', cleanup);
-    window.__jjoAsciiRuntime = undefined;
-  };
-
-  document.addEventListener('astro:page-load', init);
-  document.addEventListener('astro:before-swap', cleanup);
-  if (document.readyState === 'loading')
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  else init();
-  window.__jjoAsciiRuntime = { destroy };
 }
