@@ -1,0 +1,180 @@
+---
+title: How a robot dog ran a marathon on one battery
+description: RAIBO2 combined mechanical design, motor drivers and a gait learned through reinforcement learning
+  to finish a marathon. The race record also shows which aspects of a fully autonomous mission remain to be tested.
+pubDate: 2026-09-24 00:00:00+09:00
+updatedDate: 2026-11-05
+publicationTimeZone: Asia/Seoul
+slug: 2026-09-24-raibo2-marathon-news
+category: ai-machine-learning
+subcategory: energy-efficient-legged-robotics
+type: paper-review
+tags:
+- frontier-one
+- robotics
+- embodied-ai
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-24-raibo2-marathon-news
+translationKey: en-2026-09-24-raibo2-marathon-news
+---
+
+import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+**RAIBO2 completed a marathon on one charge.** The quadruped combines a lightweight mechanism, low-loss motor drive electronics, and a reinforcement-learned gait that reduces wasted energy. Its achievement does not establish that battery capacity was unchanged or that the marathon was fully autonomous.
+
+Figure 1a of the authors’ v1 preprint shows RAIBO2 running outdoors alongside people. The original describes an outdoor run with runners. It does not identify the photograph as the start or finish of a particular marathon.
+
+<NewsFigure media="raibo2-preprint-outdoor-figure1a" lang="en" />
+
+## Why does legged travel consume so much electricity?
+
+On level ground, wheels roll while supporting the body. A legged robot must bend and extend its joints under load, swing each foot forward, land it, and lift it again. Foot impact or slip, and repeated acceleration and deceleration of heavy legs, can turn battery energy into heat or impact losses instead of useful progress.
+
+A larger battery stores more energy but adds weight that must be supported and moved. Slowing down also has a cost: computers and sensors remain powered throughout the longer trip. For long-distance travel, the relevant quantity is energy consumed by the whole robot over a given distance.
+
+## Three connected design choices
+
+The first is the **mechanism**. The paper describes lightweight moving parts. The supplementary figure descriptions discuss stress analysis for reducing mass and the choice of bearings. The published version details low-inertia legs, material removal guided by stress analysis, and bearing design. The design balances mechanical and foot-impact losses. Individual component weight savings tell only part of that story.
+
+The second is the **motor driver**, the circuit that supplies the current a motor needs from the battery. Resistance along the current path and losses during switching generate heat. Supplementary figure descriptions distinguish assessments at different voltages, with different PCB copper thicknesses, and under different switching conditions. A smoothly moving mechanism loses some of its range advantage if its electronics dissipate too much power.
+
+One consideration in selecting a motor is its motor constant, the torque constant divided by the square root of the phase resistance. The published paper defines it as follows.
+
+<Math display label="Motor constant" tex={"k_M=\\frac{k_T}{\\sqrt{R}}"} />
+
+A larger constant favors torque production relative to copper losses. The team also considered rotor inertia. In the published comparison, the 115 × 50 motor had a larger motor constant but almost twice the rotor inertia, and a higher cost of transport (COT) at 4 m/s than the selected 115 × 25 motor. Reducing electrical loss can come at a cost in inertia and mechanical loss. [Methods, PDF p. 9, Eq. (6), PDF p. 10, and Extended Data Fig. 3c,d]
+
+The third choice is the **gait policy**. Reinforcement learning evaluates the outcomes of actions to learn a rule for choosing them. The code documentation describes the proposed policy and comparison policies that separately remove terms for motor Joule loss, foot-impact loss, and smoothness of ground reaction force. Removing one term at a time helps test its contribution. This review did not reproduce the policies’ reported performance by running the code.
+
+## Reading the running record and the efficiency metric separately
+
+The reported marathon time was **4 hours, 19 minutes, 52 seconds**. The authors report **0.25** for total cost of transport (TCOT), compared with **0.37** for human walking. In Data 1 the human walking row gives 70 kg, 1.75 m/s, and 452 W, yielding a COT of about 0.377. Human running appears separately at 3.5 m/s, 1,122 W, and a COT of about 0.467. Published Figure 1e compares RAIBO2 and other quadrupeds by battery capacity (Wh, horizontal axis) and range (km, vertical axis). Its RAIBO2 entry on the quadruped robot tab reports 1,447 Wh, a calculated range of approximately 52.2 km, 3 m/s, and COT 0.248. That range is an estimate. The row lists 150.4 W under Power, while its range formula divides by 299.4 W. The available material does not explain the difference, so the power and range entries cannot be taken as direct measurements under a common power condition. This comparison point is distinct from both the approximately 65 km estimate at the full 1,930 Wh capacity and the actual 42.195 km marathon. The paper reports over three times the distance per unit capacity relative to the regression trend for earlier quadrupeds. With different battery capacities, that is not a threefold comparison of absolute ranges. [Nature Fig. 1e, PDF p. 2, and Supplementary Data 1, quadruped robot tab, row 24]
+
+The published version reports **1,280 Wh consumed over the 42.195 km marathon**. It **estimates a 65 km range** from a total battery capacity of 1,930 Wh. **There was no separate reported 65 km run.** A measured finish and an extrapolation from the fraction of energy consumed are different results. [Nature main text, PDF p. 2, Fig. 1, and PDF p. 7, Fig. 4g and accompanying text]
+
+TCOT normalizes energy expenditure by weight and distance. It goes beyond the percentage of battery charge used and helps compare machines of different sizes. It does not establish that they performed the same functions under the same conditions, or rank whole missions involving human perception and judgment versus robotic perception and path planning. The following calculations distinguish the battery-terminal measurements and treadmill and marathon definitions in the published Methods. They do not reanalyze raw logs or independently reproduce the experiment.
+
+## Physical tests and simulation provide different evidence
+
+### Following the TCOT denominator
+
+<CandidateEquation lang="en" id="raibo2-tcot-and-power" title="How does battery power become TCOT?" tex={String.raw`\begin{aligned}
+\overline P&=\frac{1}{T}\int_0^T V_{bat}(t)I_{bat}(t)\,dt\\
+TCOT&=\frac{\overline P}{mgv}
+\end{aligned}`}>
+
+In “Loss measurement,” Equations (11)–(12) of the published Methods multiply battery voltage by output current to obtain power, then normalize by weight and travel speed.
+
+An integral accumulates energy over short intervals of recorded power. Because power changes with time, the calculation covers the entire measurement interval. Dividing the integral by T gives time-averaged power. The numerical calculation uses recorded time series. This review did not reanalyze the raw logs.
+
+After averaging the power over time, divide it by weight and speed. The two expressions below show the order of operations while retaining the original definition.
+
+Voltage V is in volts and current I in amperes. Their product is power in watts, or energy per second. T is measurement duration (s), m is robot mass (kg), g is gravitational acceleration (m/s²), and v is treadmill speed (m/s). The denominator mgv also has units of watts, so TCOT is dimensionless. This form applies to the constant-speed treadmill test. During the marathon, both speed and power varied, and total energy was divided by mg times total distance.
+
+Use the published 1,280 Wh, 45 kg, and 42.195 km. At 3,600 J per Wh, that is 4,608,000 J over 42,195 m. Dividing by 45 × 9.81 × 42,195 gives about 0.247, close to the reported 0.248. This recomputation from rounded values illustrates the denominator. It neither reproduces the logs nor shows that the robot outperforms a human in every respect.
+
+</CandidateEquation>
+
+### Measuring total power and estimating the losses
+
+The authors directly recorded total power from battery terminal voltage and output current. Individual losses were not all measured with separate sensors during running. To assess drive-circuit loss, the team applied a DC load to a motor stator with the rotor removed and subtracted copper loss to fit the coefficients.
+
+<Math display label="Motor driver loss components" tex={"P_{driver}(I)=a_0+a_1I+a_2I^2"} />
+
+Here a₀ is the driver system loss P_d,system within the drive model. The whole-robot system loss P_system also covers baseline power for items such as the control computer and sensors. The term a₁I corresponds to MOSFET switching loss and a₂I² to conduction loss along the current path. The coefficients were estimated on a separate test rig, where I is the DC load current (A) through the stator with the rotor removed. It is distinct from the battery output current I<sub>bat</sub> measured during running and the q-axis current I<sub>q,i</sub> for an individual joint. The respective coefficient units are W, W/A, and W/A². Motor copper loss was modeled as proportional to current squared using effective resistance derived from manufacturer data. Stator iron loss was tested and modeled separately. Rotor iron loss was omitted because of its expected small contribution and measurement limits.
+
+Mechanical loss is estimated by subtracting iron loss from total motor output. Joint friction and foot impacts are separated using further models. In Equation (16), k_T is the torque constant (N·m/A), I<sub>q,i</sub> is the ith joint motor’s q-axis current (A), and ω<sub>m,i</sub> its angular velocity (rad/s). Thus k_T I<sub>q,i</sub>ω<sub>m,i</sub>, iron loss P<sub>m,iron,i</sub>, P_mech, P_slip, P_collision, and P_joint all have units of power (W). The index i counts twelve motors. The estimate assumes the constant speed and zero body acceleration specified in the paper.
+
+<Math display label="Mechanical loss and slip residual" tex={"P_{mech}=\\sum_{i=1}^{12}(k_T I_{q,i}\\omega_{m,i}-P_{m,iron,i}),\\quad P_{slip}=P_{mech}-P_{collision}-P_{joint}"} />
+
+Joint friction was computed with a Coulomb friction model. Test-rig limitations prevented inclusion of viscous friction. Slip loss in Equation (19) is a residual after subtracting estimated friction and impact losses from mechanical loss. It includes other unmodeled mechanical losses alongside actual slip. Total battery power is a direct measurement, while its decomposition combines rig measurements, models, and a residual. [Nature Methods, PDF p. 12, Eqs. (13)–(19)]
+
+### Why does landing hard waste energy?
+
+The faster the foot moves just before contact, the more energy can be lost in stopping or redirecting its motion. This connects lightweight legs with controlling foot speed at touchdown. The effective mass at the foot depends on joint configuration and robot inertia. It is not simply the whole robot’s 45 kg.
+
+Published Methods Equation (18) estimates the relationship as follows. This is the authors’ collision-loss estimate.
+
+<CandidateEquation lang="en" id="raibo2-foot-impact-loss" title="How do pre-impact velocity and effective foot inertia determine collision loss?" tex={String.raw`P_{collision}=\frac{1}{T_{gait}}\sum_{j=1}^{n}\frac{1}{2}v_j^T(JM^{-1}J^T)^{-1}v_j`}>
+
+Consider one touchdown. The vector v_j gives the linear velocity of the foot just before the jth touchdown (m/s). The middle matrix represents effective inertia at that contact in different directions of foot motion. A vector collects components, such as forward, lateral, and vertical speeds. Superscript T transposes the vector. Multiplying the transposed velocity, matrix, and velocity combines their directional contributions into a scalar. Half that value is the kinetic energy modeled as lost on that touchdown (J). Sum these energies over n impacts and divide by the gait period T_gait (s) to obtain average power loss (W).
+
+<details>
+<summary>What are J and M, and what assumptions do they require?</summary>
+
+J is the Jacobian mapping generalized robot velocities to the linear velocity of the foot. M is the robot’s mass and inertia matrix. The paper does not spell out the full coordinate convention beside this equation. M therefore cannot be replaced by a scalar body mass. Because generalized coordinates can include both translations and joint angles, its entries need not all have the same units. The effective mass matrix expressed in foot-velocity coordinates must yield energy when combined with the velocity vector.
+
+The velocity vector and Jacobian must share a contact frame. The contact coordinates must be nonredundant so that the relevant matrix is invertible. Setting post-impact kinetic energy to zero is an assumption about the modeled contact loss. The full robot does not come to rest at each touchdown.
+
+The effective-inertia term has precedents. [A study of robotic actuators by Wensing et al.](https://fab.cba.mit.edu/classes/865.18/motion/papers/mit-cheetah-actuator.pdf), cited in the preprint, uses contact-space inertia of the same form to analyze impulse and impact mitigation. RAIBO2 combines this term with pre-impact velocity to estimate energy, then divides by gait duration to estimate power loss. Using the same inertia expression does not make the papers’ performance measures equivalent.
+
+For a broader comparison, a [public author-submitted draft](https://core.ac.uk/download/pdf/83225552.pdf) associated with Seok et al.’s ICRA 2013 work uses mass and velocities before and after impact in a simple linear-motion model to express momentum change and inelastic collision loss (draft p. 4, Eq. (1)). This comparison is limited to that draft. Its scalar model has a different mathematical scope from RAIBO2’s posture-dependent contact-space inertia matrix and gait-averaged power estimate. The studies did not compare performance under matched conditions. The draft was not verified as identical to the published ICRA proceedings version.
+
+The equation assumes a perfectly inelastic collision and sets post-impact kinetic energy to zero in that contact model. Elastic floors and feet may return energy, and simultaneous contacts can interact. The matrix must also be invertible. The perfectly inelastic assumption and averaging over a gait period were checked against Equation (18), Nature Methods, PDF p. 12.
+
+</details>
+</CandidateEquation>
+
+**Try changing one condition.** Keep posture, effective mass, number of impacts, and gait period fixed, and halve only the pre-impact velocity vector. Velocity appears twice, so the modeled collision power drops to one quarter. This is a thought experiment about the expression, not a new reported measurement. In real gaits posture, speed, and other losses can change, so total power need not fall to one quarter.
+
+In particular, slip in Equation (19) is the residual after subtracting collision loss and joint friction from total mechanical loss. The published Methods explicitly state that it includes actual slip and other unmodeled mechanical losses. A bar in the loss plot cannot be read as a high-precision direct measurement of slip alone.
+
+The published captions describe drive-circuit tests, treadmill trials, marathon observations, and simulations with varied hardware conditions. Extended Data Fig. 3 draws on experimentally characterized losses, but changes to hardware in that analysis were not all separate physical robot trials. Simulation helps isolate effects that complement the observed run.
+
+The review opened the Supplementary Data 1 workbook linked by Nature and checked the RAIBO2 and human comparison rows. Zenodo records v1 and v2 were also inspected, although their large raw logging ZIP files were not analyzed or reproduced. The publisher lists Data 1 XLSX and Videos 1–4 without a separate SI PDF. The four videos were not viewed.
+
+### What changes when a reward term is removed?
+
+Matching forward speed alone can leave a policy that lands hard or repeatedly demands high torques. The researchers penalized such behavior in training and compared policies learned with individual terms removed. This is an ablation experiment.
+
+Published Extended Data Table 3b gives the loss power before and after removing each reward term during a physical robot treadmill run at 4 m/s. This is a separate condition from the marathon average and simulated results.
+
+| Policy (mean ± standard deviation, W) | Electrical drive losses | Mechanical losses | System losses | Total losses |
+|---|---:|---:|---:|---:|
+| Proposed policy | 284.6 ± 4.85 | 120.9 ± 17.21 | 41.7 ± 2.78 | 447.2 ± 18.98 |
+| Without GRF smoothness reward | 279.8 ± 6.38 | 151.3 ± 11.01 | 40.0 ± 2.06 | 471.0 ± 15.94 |
+| Without drive Joule-loss reward | 299.4 ± 8.37 | 149.2 ± 10.92 | 44.9 ± 1.37 | 493.4 ± 18.02 |
+| Without foot-impact loss reward | 324.6 ± 15.46 | 272.1 ± 15.68 | 26.4 ± 0.95 | 623.1 ± 29.47 |
+
+On a small screen, scroll the table horizontally to reach the total. At the same treadmill speed of 4 m/s, the proposed policy gave 447.2 W of total loss, compared with 623.1 W without the foot-impact reward.
+
+The difference in average total loss was 175.9 W. Average mechanical loss increased by 151.2 W when the impact reward was removed. These are results of a reward ablation at 4 m/s on the treadmill. The difference need not persist on other terrain or throughout the marathon.
+
+Extended Data Table 3b reports means ± standard deviations over five random seeds. For the two middle rows, summing the displayed mean components differs from the reported total by 0.1 W. This is consistent with rounding to one decimal place, so the totals above retain the published values. The caption reports neither trial duration per condition nor inferential statistical tests.
+
+The third comparison row removes the **drive Joule-loss reward**. It does not remove only the treatment of magnetic saturation. Table 3a includes a current relationship accounting for the saturated region within that reward. Removing a training term and measuring physical drive losses are different procedures. The code excerpts examined here do not establish an exact mapping to the published reward coefficients and ablation policies.
+
+The distinction can also be seen in the pinned code. Lines 444–450 of `RaiboController.hpp` store the **magnitude** of foot speed before contact and multiply it by a reward coefficient during contact. They do not directly use the effective mass matrix in Equation (18) to compute the reward. A learning signal intended to reduce impacts and a physical estimate of loss power from a gait serve different purposes and use different calculations.
+
+Lines 479–489 of the same file convert joint torque to motor torque, estimate current piecewise, and accumulate a term that includes resistive losses. A single generic squared-torque penalty therefore does not capture the entire drive-loss reward. This check covers selected code ranges only. It does not verify an exact correspondence between released training weights and each published ablation.
+
+**Check your understanding.** Would the larger total loss without the impact reward shorten battery life by the same proportion on every terrain? The comparison fixes treadmill speed. Stairs, slopes, and long-distance routes change contact dynamics, posture, energy recovery, and elapsed time. They require separate evaluation.
+
+## What the marathon did not demonstrate
+
+Long-distance locomotion and long-distance autonomous missions have different requirements. Energy use and safety also need testing with route perception, pedestrian and obstacle avoidance, and planning enabled. The published Discussion assumes a human operator and says autonomous travel would need energy-optimal path planning informed by a global map. The joystick support in the README alone cannot establish the detailed control arrangements at the race.
+
+Finishing a road marathon does not guarantee the same range over rubble, stairs, or snow. Range with payload, temperature and waterproofing requirements, and repeatability across robots remain important deployment questions.
+
+Future records should specify **which functions were running, what load was carried, and how consistently the robot traversed a given route**. The design links mechanisms, power electronics, and gait control within a common energy budget.
+
+<details>
+<summary>Primary paper, public code, and materials reviewed</summary>
+
+1. [Lee et al., original Nature paper](https://www.nature.com/articles/s41586-026-11102-5), September 23, 2026. The original review used institutional access to the 22-page published PDF, reading main text pp. 1–8, Methods pp. 9–12 (Eqs. 1–19), relevant Figs. 1, 3, and 4, and Extended Data Table 3. Supplementary Data 1 XLSX was read. The Zenodo raw logging ZIP was not read or reanalyzed. The publisher lists no separate SI PDF. Videos 1–4 were not viewed. Policy training and evaluation were not reproduced.
+2. [Nature Supplementary Data 1](https://www.nature.com/articles/s41586-026-11102-5#Sec25). The review examined row 24 on the quadruped robot tab and rows 3–4 on the Animal tab in the official workbook. The version and file lists were checked for the [v1 data record linked to the paper](https://zenodo.org/records/14825866) and [public v2 record](https://zenodo.org/records/14862088), without reading or reanalyzing the logging ZIP. No separate SI PDF was identified in the list. Supplementary Videos 1–4 were not viewed.
+3. [RaiLab training and evaluation code](https://github.com/railabatkaist/raisimGym_nature). The original review examined the README and selected implementation ranges at a pinned commit. It did not inspect the entire implementation, establish an exact correspondence to the published reward table, or execute a reproduction.
+4. [Authors’ public preprint v1](https://www.researchsquare.com/article/rs-6040970/v1), DOI 10.21203/rs.3.rs-6040970/v1. The 51-page PDF was used only for the photo in Figure 1a and the associated CC BY 4.0 rights statement. The license for imagery in this version does not extend to figures in the published edition.
+
+The photo was selected under CC BY 4.0 from the v1 preprint. No proprietary figure from the published edition was reused. The source draft recorded public-site figure registration, inclusion in the media catalog, and screen review as outstanding at that stage. The text and Methods equations 1–19 were checked against the published version. Raw-log reproduction, exact mappings between code and tables, and rights review of other figures remained open. The private proposal at that stage was still a working draft.
+
+The additional code checks were pinned to commit `14844f483fe06125eddc76b3119274aca0f7924e`. In that revision, `Environment.hpp` delegates reward computation to the controller. The `cfg.yaml` file includes coefficients for pre-touchdown foot speed, ground reaction force smoothness, torque, and other terms. Configuration entries alone do not verify exact agreement with the published rewards and ablations. The controller ranges examined above leave the mapping from training weights to ablated policies, and reproduction by execution, unresolved.
+
+The final paper reports 42.195 km in 4 hours, 19 minutes, 52 seconds, using 1,280 Wh out of 1,930 Wh total. Its 65 km figure is an estimate based on full capacity. The earlier preprint v1 figures of 2,016 Wh and 67 km were superseded for the main account. The 1,447 Wh / approximately 52.2 km row in Supplementary Data 1 is a separate comparison estimate. Its listed 150.4 W does not serve as the denominator in the range formula. The row represents neither the energy consumed in the marathon nor a separate run on 1,447 Wh.
+
+</details>

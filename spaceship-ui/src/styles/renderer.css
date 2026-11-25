@@ -90,7 +90,7 @@
   z-index: 4;
   pointer-events: none;
 }
-.post-graph-node {
+[data-post-graph-node] {
   position: absolute;
   top: 0;
   left: 0;
@@ -100,7 +100,8 @@
   pointer-events: auto;
   transform: translate3d(var(--node-x, -4rem), var(--node-y, -4rem), 0) translate(-50%, -50%);
 }
-.post-graph-node__dot {
+[data-post-graph-node]::before {
+  content: "";
   position: absolute;
   inset: 0.48rem;
   border: 1px solid transparent;
@@ -110,13 +111,13 @@
     transform 180ms var(--experience-ease),
     background 180ms var(--experience-ease);
 }
-.post-graph-node:hover .post-graph-node__dot,
-.post-graph-node:focus-visible .post-graph-node__dot {
+[data-post-graph-node]:hover::before,
+[data-post-graph-node]:focus-visible::before {
   border-color: var(--experience-accent-strong);
   background: var(--experience-accent-strong);
   transform: scale(1.65);
 }
-.post-graph-node:focus-visible {
+[data-post-graph-node]:focus-visible {
   outline: 1px dashed var(--experience-accent-strong);
   outline-offset: 2px;
 }
@@ -221,3 +222,47 @@ html[data-experience-tier='ultra'] .experience-renderer__status {
     display: none !important;
   }
 }
+
+/* The SSR preview remains visible until the first interactive canvas paint. */
+.post-graph-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--experience-accent-strong);
+  pointer-events: none;
+}
+[data-graph-state]:not([data-graph-state='ready']) [data-ascii-art],
+[data-graph-state]:not([data-graph-state='ready']) .post-graph-links {
+  visibility: hidden;
+}
+[data-graph-state='ready'] .post-graph-preview,
+[data-graph-state='ready'] [data-graph-activate] {
+  display: none;
+}
+.post-graph-controls {
+  position: absolute;
+  z-index: 7;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  max-width: calc(100% - 7rem);
+}
+.post-graph-controls a,
+.post-graph-controls button {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--experience-accent);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.post-graph-controls a:focus-visible,
+.post-graph-controls button:focus-visible {
+  outline: 2px solid var(--experience-accent-strong);
+  outline-offset: 2px;
+}
+.post-graph-controls button[aria-disabled='true'] { opacity: 0.65; cursor: wait; }

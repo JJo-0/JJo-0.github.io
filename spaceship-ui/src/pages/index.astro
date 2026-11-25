@@ -1,27 +1,41 @@
 ---
 import Layout from '@/layouts/Layout.astro';
 import PostCard from '@/components/PostCard.svelte';
+import PopularPosts from '@/components/PopularPosts.astro';
 import MotionRuntime from '@/components/experience/MotionRuntime.astro';
 import ExperienceCanvas from '@/components/experience/ExperienceCanvas.astro';
 import '@/styles/world.css';
 import { getReadTime } from '@/lib/utils/readTime';
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
-import { RESEARCH_FOCUS } from '@/lib/research';
+import { getPostSlug } from '@/lib/utils/posts';
+import { getLocalizedPosts } from '@/lib/localized-posts';
+import { englishPostPathForSlug } from '@/lib/locales';
+import { RESEARCH_FOCUS as koreanFocus } from '@/lib/research';
+import { RESEARCH_FOCUS as englishFocus } from '@/lib/research-en';
 import { POST_CATEGORIES } from '@/lib/taxonomy.mjs';
 import { SITE } from '@/config';
-import { buildPostGraph } from '@/lib/experience/post-graph';
+import { getWritingGraph } from '@/lib/experience/writing-graph';
 
-const posts = (await getPublishedPosts()).sort(
+interface Props { en?: boolean }
+const { en = false } = Astro.props;
+const researchPath = en ? '/en/research/' : '/research';
+const archivePath = en ? '/en/posts/' : '/posts';
+const focusAreas = en ? englishFocus : koreanFocus;
+const posts = (await getLocalizedPosts(en)).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
 
 const featuredPosts = posts.filter((post) => post.data.featured).slice(0, SITE.featuredPostsCount);
 const latestPosts = posts.filter((post) => !post.data.featured).slice(0, SITE.latestPostsCount);
 const postCategoryHashes = JSON.stringify(POST_CATEGORIES);
-const postGraph = buildPostGraph(posts);
+const postGraph = await getWritingGraph(en);
 ---
 
-<Layout markdownAlternate="/index.md">
+<Layout
+  lang={en ? 'en' : undefined}
+  description={en ? 'Robotics, AI, vision, and research engineering by Jiho Park.' : undefined}
+  markdownAlternate={en ? undefined : '/index.md'}
+  adsEnabled={!en}
+>
   <div
     class="experience-page"
     data-experience-page="home"
@@ -48,16 +62,17 @@ const postGraph = buildPostGraph(posts);
             I build intelligent robotic systems that perceive, reason, and act around people.
           </p>
           <p class="experience-subcopy" data-motion="hero-copy">
-            사람과 함께 일하는 로봇을 위해 perception, system integration, learning을 연결하고
-            구현과 실험으로 검증합니다. {SITE.homeHeroDescription}
+            {en
+              ? 'I connect perception, system integration, and learning for robots that work with people. This blog records the systems I build, the experiments I run, and what I learn.'
+              : `사람과 함께 일하는 로봇을 위해 perception, system integration, learning을 연결하고 구현과 실험으로 검증합니다. ${SITE.homeHeroDescription}`}
           </p>
 
           <div class="experience-actions" data-motion="hero-copy">
-            <a href="/research" class="experience-button experience-button--primary">
+            <a href={researchPath} class="experience-button experience-button--primary">
               Explore Research
               <span aria-hidden="true">↗</span>
             </a>
-            <a href="/posts" class="experience-button experience-button--secondary">
+            <a href={archivePath} class="experience-button experience-button--secondary">
               Writing Archive
             </a>
           </div>
@@ -86,11 +101,11 @@ const postGraph = buildPostGraph(posts);
           <h2 id="current-affiliations-heading" class="sr-only">Current research affiliations</h2>
           <div class="experience-card experience-current-card" data-stagger-item>
             <span>M.S. Student</span>
-            <strong>성균관대학교 · Control and Robotics Lab</strong>
+            <strong>{en ? 'Sungkyunkwan University' : '성균관대학교'} · Control and Robotics Lab</strong>
           </div>
           <div class="experience-card experience-current-card" data-stagger-item>
             <span>Researcher</span>
-            <strong>한국생산기술연구원</strong>
+            <strong>{en ? 'Korea Institute of Industrial Technology' : '한국생산기술연구원'}</strong>
           </div>
         </section>
 
@@ -99,13 +114,14 @@ const postGraph = buildPostGraph(posts);
             <p class="experience-section-label">Research Index</p>
             <h2 id="journey-heading">One practice.<br />Four lines of inquiry.</h2>
             <p class="experience-subcopy">
-              아래로 이동하면 연구 지도가 각 연구축에 맞춰 갱신됩니다. 장식이 아니라 공개 연구
-              분류와 실제 Writing을 연결하는 탐색 도구입니다.
+              {en
+                ? 'Scroll through the four research areas to explore the map and the articles connected to each one.'
+                : '아래로 이동하면 연구 지도가 각 연구축에 맞춰 갱신됩니다. 장식이 아니라 공개 연구 분류와 실제 Writing을 연결하는 탐색 도구입니다.'}
             </p>
           </header>
 
           {
-            RESEARCH_FOCUS.map((focus, index) => (
+            focusAreas.map((focus, index) => (
               <article
                 id={`journey-${focus.id}`}
                 class="experience-chapter scroll-mt-28"
@@ -118,7 +134,7 @@ const postGraph = buildPostGraph(posts);
                 </span>
                 <h3 id={`home-${focus.id}-heading`}>{focus.title}</h3>
                 <p>{focus.description}</p>
-                <a class="experience-chapter__link" href={`/research#${focus.id}`}>
+                <a class="experience-chapter__link" href={`${researchPath}#${focus.id}`}>
                   Open research line <span aria-hidden="true">↗</span>
                 </a>
               </article>
@@ -145,7 +161,7 @@ const postGraph = buildPostGraph(posts);
 
           <nav class="sr-only" aria-label="Research map sections">
             {
-              RESEARCH_FOCUS.map((focus, index) => (
+              focusAreas.map((focus, index) => (
                 <button
                   type="button"
                   class="world-hud__node"
@@ -160,15 +176,19 @@ const postGraph = buildPostGraph(posts);
           </nav>
 
           <div class="experience-mouse-frame experience-mouse-frame--world">
-            <img
-              src="/image/mouse_surprised.gif"
-              alt={`${SITE.author} profile animation`}
-              width="416"
-              height="416"
-              loading="lazy"
-              fetchpriority="low"
-              decoding="async"
-            />
+            <button type="button" class="experience-profile-button" data-profile-animation
+              data-profile-animation-src="/assets/profile/mouse_surprised-once.webp"
+              aria-label={en ? 'Play profile animation' : '프로필 애니메이션 재생'}>
+              <img
+                src="/assets/profile/mouse_surprised-still.webp"
+                alt={en ? 'Profile character' : '프로필 캐릭터'}
+                width="256"
+                height="256"
+                loading="lazy"
+                fetchpriority="low"
+                decoding="async"
+              />
+            </button>
           </div>
 
           <figcaption class="sr-only">
@@ -186,7 +206,7 @@ const postGraph = buildPostGraph(posts);
               Selected Writing
             </h2>
             <span aria-hidden="true" />
-            <a href="/posts" class="experience-section-link">
+            <a href={archivePath} class="experience-section-link">
               All Writing ↗
             </a>
           </div>
@@ -194,7 +214,7 @@ const postGraph = buildPostGraph(posts);
           <div class="experience-writing-list" data-stagger>
             {featuredPosts.map((post) => (
               <div class="experience-writing-item" data-stagger-item>
-                <PostCard {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />
+                <PostCard {post} slug={getPostSlug(post)} href={en ? englishPostPathForSlug(getPostSlug(post)) : undefined} readTime={getReadTime(post.body || '')} />
               </div>
             ))}
           </div>
@@ -202,18 +222,20 @@ const postGraph = buildPostGraph(posts);
       )
     }
 
+    <PopularPosts {en} {posts} />
+
     <section class="experience-section" aria-labelledby="latest-heading" data-reveal>
       <div class="experience-section-header">
         <h2 id="latest-heading" class="experience-section-label">Latest Writing</h2>
         <span aria-hidden="true"></span>
-        <a href="/posts" class="experience-section-link">Archive ↗</a>
+        <a href={archivePath} class="experience-section-link">Archive ↗</a>
       </div>
 
       <div class="experience-writing-list" data-stagger>
         {
           latestPosts.map((post) => (
             <div class="experience-writing-item" data-stagger-item>
-              <PostCard {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />
+              <PostCard {post} slug={getPostSlug(post)} href={en ? englishPostPathForSlug(getPostSlug(post)) : undefined} readTime={getReadTime(post.body || '')} />
             </div>
           ))
         }
@@ -222,6 +244,9 @@ const postGraph = buildPostGraph(posts);
   </div>
 
   <script>
+    import { installProfileAnimation } from '@/lib/experience/profile-animation';
+    installProfileAnimation();
+
     const decodeCategoryHash = () => {
       try {
         return decodeURIComponent(window.location.hash.slice(1));
@@ -242,7 +267,8 @@ const postGraph = buildPostGraph(posts);
     };
 
     const redirectLegacyCategoryHash = () => {
-      if (window.location.pathname !== '/' || !window.location.hash) return;
+      const englishHome = /^\/en\/?$/.test(window.location.pathname);
+      if ((window.location.pathname !== '/' && !englishHome) || !window.location.hash) return;
 
       const root = document.querySelector('[data-post-category-hashes]');
       if (!(root instanceof HTMLElement)) return;
@@ -253,7 +279,8 @@ const postGraph = buildPostGraph(posts);
       const categories = readPostCategories(root);
       if (!categories.includes(category)) return;
 
-      window.location.replace(`/posts#${category}`);
+      if (englishHome) window.location.replace(`/en/posts/#${category}`);
+      else window.location.replace(`/posts#${category}`);
     };
 
     redirectLegacyCategoryHash();

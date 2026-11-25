@@ -1,0 +1,308 @@
+---
+title: Self-Improving AI 17 — From DGM lineages to DSPy and learning from experience
+description: Pages 16–20 of the NTU lecture explore DGM’s search archive, declarative DSPy programs, harness and
+  model parameters, experience retrieval and fine-tuning.
+pubDate: 2026-11-19 12:58:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-17-archive-dspy-experience
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- ai-agents
+- dspy
+- retrieval-augmented-generation
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 17
+translationKey: en-self-improving-ai-17-archive-dspy-experience
+translatedPosts:
+  ko-KR: self-improving-ai-17-archive-dspy-experience
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>Self-improvement involves more than replacing the best candidate at every step. Finding a good revision requires deciding which alternatives to keep, how to structure the program, and how to store and use experience.</strong>
+
+[Part 16](/posts/self-improving-ai-16-prompt-memory-code-evolution/) compared ways to change prompts (OPRO and GEPA), memory design (ALMA), and agent code (DGM). Here we read an actual DGM family tree, then turn to declarative agent programs in DSPy and learning from retrieved experience. We move from <strong>search lineages to program optimization, then to harnesses and parameters, and finally to retrieval and learning</strong>.
+
+<strong>Worked examples</strong>　[Parent selection](#calculating-which-archived-agent-gets-to-be-a-parent) · [Answer and evidence](#why-might-the-more-accurate-module-return-weaker-evidence) · [Reretrieval](#a-second-lookup-against-the-same-experience-bank)
+
+<details>
+<summary>Video locations by slide</summary>
+
+| Source | Video or original material | What to look for |
+|---|---|---|
+| Second half, slide 16 | [From 17:12](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1032s) | The discussion leading into DGM lineages and staged evaluation |
+| Second half, slide 17 | [17:35](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1055s) | The archive tree, performance colors, and evaluation sizes |
+| Second half, slide 18 | [19:24](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1164s) | Declarative language model programs in DSPy |
+| Second half, slide 19 | [20:04](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1204s) | How the harness differs from model parameters |
+| Second half, slide 20 | [20:30](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1230s) | How experience retrieval connects to fine-tuning |
+
+The times point to spoken topics in the supplied Traditional Chinese captions. Lee explains the node colors at 17:35, introduces DSPy at 19:24, compares harness and weight updates at 20:04, and turns to the experience-retrieval study at 20:30.
+
+</details>
+
+## Second half, slide 16 — Why a candidate archive matters beyond a single win
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/ntu-16-original.png"
+  alt="A comparison of a single chain of revisions and an archive that retains diverse candidates as new ones are generated"
+  caption="Second half, slide 16 — Following a single chain of revisions versus keeping multiple candidates"
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=16"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The top of the slide shows candidates in a single chain. Each candidate inherits the result of editing its predecessor. If one edit performs poorly or temporarily loses a capability that will matter later, subsequent search can get stuck with that choice. The bottom shows an <strong>archive</strong> of diverse candidates. Each new experiment starts from a particular candidate, while other earlier candidates remain available.
+
+The Darwin Gödel Machine (DGM) repeats an outer search loop: <strong>select a parent from the archive → use a language model to edit its code → evaluate it on specified coding tasks → store the candidate and its lineage</strong>. The coding agent's code can change independently of the search procedure that manages candidates. DGM keeps that outer loop, including archive management and parent selection, fixed. [DGM, section 3](https://arxiv.org/pdf/2505.22954v3#page=5)
+
+### Why keep a candidate whose score drops?
+
+The numbers below are <strong>hypothetical and illustrate the search principle</strong>.
+
+| Candidate | Parent | Assumed validation accuracy | Change introduced |
+|---|---|---:|---|
+| A0 | — | 30% | Basic code editing |
+| A1 | A0 | 42% | Read a small section of code |
+| A2 | A1 | 34% | First implementation of a new editing strategy |
+| A3 | A2 | 52% | Improved editing strategy with retries on errors |
+
+A rule that keeps only the best performer at each step would discard A2 at 34%. Keeping A2 makes it possible to build A3 on its implementation. <strong>The path from 34% to 52% illustrates a possibility. A lower score gives no assurance of a later gain.</strong>
+
+Candidates need not have equal selection probabilities. The point is to keep a single high score from locking the search permanently into one lineage. Maintaining diversity carries storage and evaluation costs, and running weak candidates still requires limits.
+
+### Calculating which archived agent gets to be a parent
+
+Appendix C.2 of DGM makes the preference for less-explored branches explicit. For an eligible agent i with an imperfect score, let αᵢ be its success rate and nᵢ its number of children with functioning codebase editing. The authors set the sigmoid slope to 10 and its midpoint to 0.5. Adjust the resulting score weight for the child count, then normalize over all eligible parents. [DGM, Appendix C.2, equations 1–7](https://arxiv.org/pdf/2505.22954v3#page=28)
+
+<Math tex={String.raw`s_i=\frac{1}{1+e^{-10(\alpha_i-0.5)}},\qquad w_i=\frac{s_i}{1+n_i},\qquad p_i=\frac{w_i}{\sum_{j\in E}w_j}.`} display />
+
+Suppose the archive contains only A and B. In this invented example, A scores 0.60 and has three functioning children, while B scores 0.40 and has none.
+
+<Math tex={String.raw`w_A=\frac{1}{4(1+e^{-1})}\approx0.18276,\qquad w_B=\frac{1}{1+e^{1}}\approx0.26894.`} display />
+
+<Math tex={String.raw`p_B\approx\frac{0.26894}{0.18276+0.26894}=0.5954,\qquad p_A\approx0.4046.`} display />
+
+B has about a 59.5% chance on one draw. A scores higher, but its branch has already yielded three children capable of editing code. The parent-selection probability quantifies exploration of a branch. Predicting whether B's proposed child will succeed requires different evidence. Adding another eligible parent changes the normalization denominator.
+
+## Second half, slide 17 — Reading the colors, borders, and star in the DGM lineage
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/ntu-17-original.png"
+  alt="A family tree of DGM coding agents. Node fills show SWE-bench performance, borders indicate the number of evaluation tasks, and a star marks the final best agent."
+  caption="Second half, slide 17 — DGM preserves a search lineage that includes weaker intermediate candidates"
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=17"
+  credit="Hung-yi Lee / NTU ML 2026 · Zhang et al. (DGM)"
+  width={1800} height={1013}
+/>
+
+The slide shows an actual SWE-bench search run from DGM. Each circle is one version of the coding agent, with edges connecting <strong>parents to modified children</strong>. The color bar on the right gives success rates. <strong>Fill color encodes performance</strong>, and <strong>border color indicates how many tasks were used to evaluate the candidate</strong>. Red denotes 10 tasks that test basic editing, yellow denotes 60, and green denotes a larger evaluation of 200. The star marks the final best agent. Node numbers give the order in which candidates were generated. [DGM, Figure 3](https://arxiv.org/pdf/2505.22954v3#page=7)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/dgm-v3-figure3.png"
+  alt="The archive tree and progress plot in DGM Figure 3. The lineage of the final best agent includes temporary declines, and individual scores can differ from the best-so-far score."
+  caption="DGM Figure 3 — An intermediate decline can precede a stronger descendant"
+  source="https://arxiv.org/pdf/2505.22954v3#page=7"
+  credit="Zhang et al., ICLR 2026"
+  width={1801} height={655}
+/>
+
+Figure 3 in the original paper plots three curves alongside the lineage.
+
+- <strong>Best Agent</strong>: the highest score among candidates in the archive up to that point.
+- <strong>Average of Archive</strong>: the mean performance of archived candidates that have basic code-editing functionality.
+- <strong>Lineage to Final Best Agent</strong>: scores of the particular ancestors that led to the final best agent.
+
+The last curve temporarily dips. The best-so-far curve never falls *because it tracks the running maximum*. An individual child can score lower than its parent.
+
+<Math tex={String.raw`B_t=\max_{a\in\mathcal A_t}S(a)`} display />
+
+The expression gives the highest score among archived candidates <strong>for a fixed benchmark and scoring rule</strong>. If all earlier candidates remain in the archive, B cannot decrease. Combining scores from different evaluation sizes or different conditions without adjustment can produce a misleading ranking.
+
+The DGM paper reports a setting in which coding-agent performance rose <strong>from 20.0% to 50.0%</strong> on SWE-bench and <strong>from 14.2% to 30.7%</strong> on Polyglot. These numbers describe agents evaluated in those experiments. A 2.5-fold change in the SWE-bench score does not measure a corresponding change in the intelligence of the model weights. Different evaluation sets and base models can yield different results. [DGM, abstract and section 4](https://arxiv.org/abs/2505.22954)
+
+### What to log when reproducing the experiment
+
+Along with the candidate ID, record the parent SHA, code and tool changes, model and execution budget, evaluation task IDs, per-task outcomes, failure logs, and security check results. For robot control code, also check for unauthorized actions, latency regressions, and emergency-stop failures. A coding benchmark score cannot establish the safety of a physical system.
+
+## Second half, slide 18 — DSPy treats instructions as part of a program
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/ntu-18-original.png"
+  alt="The title “Declarative Self-improving Language Programs in Python,” the DSPy logo, and links to the original material"
+  caption="Second half, slide 18 — DSPy optimizes modular language model programs, including their prompts"
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=18"
+  credit="Hung-yi Lee / NTU ML 2026 · DSPy"
+  width={1800} height={1013}
+/>
+
+[DSPy](https://github.com/stanfordnlp/dspy) lets developers specify <strong>input and output contracts (signatures), modules, metrics, and optimizers</strong> in place of hard-coding one long prompt for the model. The 2023 paper proposes composing language model calls as declarative modules and compiling prompts or related settings to maximize a given metric. [Original DSPy paper](https://arxiv.org/abs/2310.03714)
+
+This <strong>abbreviated example</strong> illustrates how the pieces fit together. A working experiment also needs a configured model, a dataset, a scoring function, and a specified software version.
+
+```python
+import dspy
+
+# Declare which inputs to accept and which outputs to produce.
+answer = dspy.Predict("question -> answer")
+
+# Once the program, evaluation function, and training examples are ready,
+# optimizer.compile(...) searches for instructions and demonstrations for each module.
+```
+
+### Supplementary lecture 1 — How a module becomes a prompt
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/llmagents-dspy-adapters-p26.png"
+  alt="Omar Khattab's slide showing an adapter and predictor translating a DSPy module into a default prompt"
+  caption="Supplementary lecture, slide 26 — Turning a declarative signature into actual model input"
+  source="https://llmagents-learning.org/slides/dspy_lec.pdf#page=26"
+  credit="Omar Khattab / Compound AI Systems & DSPy (2024)"
+  width={1800} height={1013}
+/>
+
+Omar Khattab's lecture shows how <strong>an adapter turns declarative fields into text the model receives</strong>. For a signature such as `context, question -> query`, the runtime produces messages containing the context, question, and expected output format. Calling this “prompt-free” would be misleading. <strong>The prompts still exist. What changes is where people specify them and how much they hard-code.</strong> [Omar Khattab's lecture, slide 26](https://llmagents-learning.org/slides/dspy_lec.pdf#page=26)
+
+### Supplementary lecture 2 — What does an optimizer change?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/llmagents-dspy-optimizers-p31.png"
+  alt="Omar Khattab's slide showing how DSPy optimizers generate demonstrations and optimize modules with BootstrapFewShot, MIPROv2, or BootstrapFinetune"
+  caption="Supplementary lecture, slide 31 — Different optimizers change demonstrations, instructions, or weights"
+  source="https://llmagents-learning.org/slides/dspy_lec.pdf#page=31"
+  credit="Omar Khattab / Compound AI Systems & DSPy (2024)"
+  width={1800} height={1013}
+/>
+
+Slide 31 explains the different roles optimizers can play. The BootstrapFewShot family selects or synthesizes useful demonstrations. MIPROv2 searches combinations of instructions and examples. BootstrapFinetune uses training data to update model weights. <strong>Choosing what the optimizer may change and choosing the metric for measuring its effect are separate decisions.</strong> [Supplementary lecture, slide 31](https://llmagents-learning.org/slides/dspy_lec.pdf#page=31) · [Official DSPy optimizer guide](https://dspy.ai/learn/optimization/optimizers/)
+
+In DSPy, compilation means tuning a language model program's <strong>instructions, examples, and sometimes weights</strong> for a particular input distribution and metric. It differs from compiling C++ into machine code. After optimization, evaluate the result on separate held-out data.
+
+### Why might the more accurate module return weaker evidence?
+
+Khattab's program on slide 20 generates two queries, retrieves three passages at each hop, then answers from the accumulated context. In the author’s birth-year example on slide 35, the first hop links a work to its author and the next links that author to a year. A correct final guess can still leave either link unsupported. [Slide 20](https://llmagents-learning.org/slides/dspy_lec.pdf#page=20) · [Slide 35](https://llmagents-learning.org/slides/dspy_lec.pdf#page=35)
+
+On ten questions, set aᵢ to one for a correct answer and eᵢ to one when the retrieved passages support both links. Consider two hypothetical systems. P earns nine answer passes and eight evidence passes, with seven on the same questions. Q earns eight answer passes and nine evidence passes, with eight joint passes. A metric requiring both conditions multiplies the indicators within each item before averaging.
+
+<Math tex={String.raw`G=\frac{1}{10}\sum_{i=1}^{10}a_i e_i,\qquad G_P=\frac{7}{10}=0.70,\quad G_Q=\frac{8}{10}=0.80.`} display />
+
+For P, seven items satisfy both conditions, two have only a correct answer and one has only sufficient evidence. P wins on answers alone, while Q leads by ten percentage points on grounded answers. Multiplying P's marginal rates gives 0.72, different from the actual joint rate of 0.70. To verify the difference, keep the evidence rule and the paired decisions for each item.
+
+## Second half, slide 19 — AI agent = harness + LLM
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/ntu-19-english.png"
+  alt="An AI agent consists of a harness and an LLM. The two-way interaction between h and theta connects two components that can both change. At the left, a person supplies input through a phone."
+  caption="Second half, slide 19 — The harness h and model parameters θ can be changed independently"
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=19"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+As defined in [Part 15](/posts/self-improving-ai-15-harness-optimization-and-evaluation/), the harness h includes instructions, tool calls, retrieval, memory, and program control. The model parameters θ are its weights. The figure's <strong>Language Model</strong> label translates the original Chinese 「語言模型」. The equations, arrows, and shapes are reproduced from the source. Flames above both boxes indicate that either component can be improved. A deployed product may still restrict which parts can learn.
+
+<Math tex={String.raw`A_{\theta,h}(x),\qquad (\theta,h)\longrightarrow (\theta',h')`} display />
+
+| Experiment | θ (model weights) | h (harness) | What it measures |
+|---|---|---|---|
+| Baseline | Fixed | Fixed | Performance before changes |
+| Change the harness only | Fixed | Changed | Effect of prompts, tools, and memory |
+| Change the model only | Changed | Fixed | Effect of fine-tuning |
+| Change both | Changed | Changed | Combined effect and interactions |
+
+Running all four configurations on the same evaluation tasks helps reveal how the two factors interact. If the experiments use different data, model versions, token budgets, or retrieval results, it becomes difficult to attribute the differences.
+
+### Declarative and procedural knowledge can overlap
+
+Retrieving and reading an external document to understand a concept illustrates declarative knowledge. A model whose weights encode how to carry out a repeated task illustrates procedural knowledge. In practice, agents can also store procedures in external executable code, and fine-tuning can change factual knowledge. <strong>The slide distinguishes two routes for using knowledge. A type of knowledge need not correspond to a single storage location.</strong>
+
+## Second half, slide 20 — Retrieving experience and learning how to use it
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/ntu-20-original.png"
+  alt="The upper diagram shows memory and RAG adding retrieved information to the input. The lower diagram shows a fine-tuned model."
+  caption="Second half, slide 20 — Supplying experience through retrieval and updating model weights"
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=20"
+  credit="Hung-yi Lee / NTU ML 2026 · Ferraz et al."
+  width={1800} height={1013}
+/>
+
+The upper <strong>memory/RAG</strong> path combines retrieved information with the question and passes it to the model. The lower <strong>fine-tuning</strong> path changes θ through training. Given the same question, one approach displays earlier experience to the model, while the other uses earlier examples to change how the model behaves.
+
+The 2026 paper [Retrieval-Augmented LLM Agents: Learning to Learn from Experience](https://arxiv.org/abs/2603.18272) studies how to <strong>include experience retrieval in training</strong>. Its question is whether an agent shown retrieved trajectories can use them effectively on new problems.
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-17-archive-dspy-experience/exprag-v2-figure1.png"
+  alt="ExpRAG Figure 1. Past trajectories are indexed in an experience bank. The agent retrieves the top K experiences using its current input and state and passes them to the LLM policy."
+  caption="ExpRAG Figure 1 — An agent retrieves stored experience and adds it to the inference input"
+  source="https://arxiv.org/pdf/2603.18272v2#page=1"
+  credit="Ferraz et al., EMNLP 2026"
+  width={1801} height={614}
+/>
+
+Figure 1 shows an experience bank that stores and indexes earlier agent trajectories. The current task and execution history form a query, and the top K relevant experiences are inserted into a memory block. Static retrieval runs once at the start. Dynamic retrieval updates the result at each step in light of new observations. [Paper, Figure 1](https://arxiv.org/pdf/2603.18272v2#page=1)
+
+<Math tex={String.raw`m_t=\operatorname{TopK}_{\tau_i\in\mathcal M}\operatorname{sim}(\phi(h_t),\phi(\tau_i))`} display />
+<Math tex={String.raw`a_t\sim\pi_\theta(\cdot\mid x,h_t,m_t)`} display />
+
+This <strong>simplified notation</strong> explains the paper's architecture. \(\\mathcal M\) denotes the stored trajectories, h<sub>t</sub> the current execution history, m<sub>t</sub> the selected experience, and π the policy proposing an action. The expression omits details of the paper's implementation.
+
+### A second lookup against the same experience bank
+
+In the ExpRAG experiment, static retrieval uses task descriptions as queries and keys. Dynamic retrieval uses the partial interaction trajectory as the query and stored full trajectories as keys. New observations can make a different experience relevant. The paper also accounts for re-encoding the prompt when the retrieved context changes. [EMNLP final paper, §4.3, page 6](https://aclanthology.org/2026.emnlp-main.57.pdf#page=6)
+
+Consider an invented two-record bank. In a two-dimensional teaching space, k₁=(1,0) encodes a setup record and k₂=(0,1) a diagnostic record. Retrieve one item using cosine similarity. The initial query is q₀=(1,0). Suppose an error observation changes it to q₁=(1,2).
+
+<Math tex={String.raw`c(q,k)=\frac{q^\top k}{\lVert q\rVert_2\lVert k\rVert_2},\qquad (c(q_0,k_1),c(q_0,k_2))=(1,0).`} display />
+
+<Math tex={String.raw`\lVert q_1\rVert_2=\sqrt{1^2+2^2}=\sqrt{5},\qquad (c(q_1,k_1),c(q_1,k_2))=\left(\frac1{\sqrt5},\frac2{\sqrt5}\right)\approx(0.447,0.894).`} display />
+
+Keeping the initial retrieval leaves the setup record k₁ in context. Re-querying selects the diagnostic record k₂. This calculation identifies the selected record. To establish whether the new record improves the action, run both retrieval policies from matching initial states and measure final success and cost. The coordinates and cosine scores belong to the worked example.
+
+### Having experience available and learning from it are different capabilities
+
+- <strong>RAG alone</strong>: the model weights θ stay fixed. The choice of retrieved experiences, their length, and their format matter.
+- <strong>Fine-tuning alone</strong>: θ changes. The model may receive no explicit practice using similar past trajectories on a new task.
+- <strong>Fine-tuning with retrieval</strong>: relevant experiences appear during training. The model practices interpreting them and using them to select actions.
+
+The authors report improved generalization to unseen tasks when training incorporates retrieved experiences. They also examine conditions under which imperfect experience or an earlier failed attempt can help. Some failure logs may be unhelpful, and retrieval alone cannot ensure improvement on every task. [Ferraz et al., EMNLP 2026](https://aclanthology.org/2026.emnlp-main.57/)
+
+### Example — What should change first in a robot agent?
+
+Suppose a robot agent retrieves records of earlier failures before starting a new task. A harness experiment changes <strong>which logs to keep, what to retrieve, and when to refresh the retrieved documents</strong>. A fine-tuning experiment trains θ to use that same experience. Before combining the two, isolate the evaluation data and measure data leakage, execution cost, misleading effects of stale experiences, and incorrect tool calls. Keep robot safety functions independent of the agent under test.
+
+## Combining DGM, DSPy, and ExpRAG in one design
+
+| Method | Main target of change | Improvement signal | Comparison to retain |
+|---|---|---|---|
+| DGM | Tools and coding-agent code | Task evaluations and revision lineage | Best-only search vs. archive search |
+| DSPy | Module prompts, demonstrations, and sometimes weights | Specified metric | Same program before and after optimization on held-out data |
+| RAG/memory | Retrieval, storage, and input assembly | Usefulness of retrieved experience | No retrieval vs. static or dynamic retrieval |
+| Retrieval-aware fine-tuning | Weights of the model using experience | Training loss with retrieved experience and held-out task performance | RAG alone vs. fine-tuning alone vs. both |
+
+Combining these methods does not automatically improve the agent. Store the code produced by search, the compiled DSPy modules, the retrieval configuration, and the model version as <strong>separately identifiable artifacts</strong>. When something fails, that record lets you trace the outcome to the change that produced it.
+
+[Part 18](/en/posts/self-improving-ai-18-better-together-and-evolving-goals/) starts with slide 21 of the second half. It examines the benefits of combining <strong>prompt optimization</strong> and <strong>fine-tuning</strong> and the evaluation conditions needed to assess them.
+
+## Further reading
+
+| Resource | Topic |
+|---|---|
+| [NTU, second half, slides 16–20](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=16) · [Lecture video](https://www.youtube.com/watch?v=cQLKVzbwN7I) | Main slides and lecture |
+| [DGM, ICLR 2026 · v3](https://arxiv.org/pdf/2505.22954v3) | Candidate lineages, diverse search paths, and execution isolation |
+| [DSPy, arXiv 2023](https://arxiv.org/abs/2310.03714) · [Official code](https://github.com/stanfordnlp/dspy) | Declarative language model calls and optimization |
+| [Omar Khattab's lecture, slides 26 and 31](https://llmagents-learning.org/slides/dspy_lec.pdf#page=26) | How adapters, predictors, and optimizers fit together |
+| [Official DSPy optimizer documentation](https://dspy.ai/learn/optimization/optimizers/) | Current implementation and practical examples |
+| [ExpRAG, EMNLP 2026 · v2](https://arxiv.org/pdf/2603.18272v2) · [ACL Anthology](https://aclanthology.org/2026.emnlp-main.57/) | Experience banks, static and dynamic retrieval, and retrieval-aware fine-tuning |
+
+The repository's [Part 17 source manifest](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/source-assets/17/manifest.json) records the sources, page numbers, and edits for lecture slides and paper figures. The examples in this article are hypothetical and distinct from the published experiments. Code snippets illustrate concepts and omit installation and API setup.

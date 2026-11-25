@@ -1,0 +1,269 @@
+---
+title: "Self-Improving AI 20 — Can an agent change its harness and keep its old skills?"
+description: "Pages 31–35 of NTU’s second lecture separate task success from skill retention. Six worked examples trace harness edits, capability-preserving evolution, and the editor in the Darwin Gödel Machine."
+pubDate: 2026-11-21T09:45:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-20-retaining-skills-and-improving-the-improver
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - ai-agents
+  - prompt-optimization
+  - ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 20
+translationKey: en-self-improving-ai-20-retaining-skills-and-improving-the-improver
+translatedPosts:
+  ko-KR: self-improving-ai-20-retaining-skills-and-improving-the-improver
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+A factory adds a second exposure to its camera inspection routine. It catches defects that used to disappear in blurry images. But now even a sharp image can time out while the system waits for another exposure. The camera and the vision model are unchanged. <strong>Can changing the order of operations cost the system a skill it had yesterday?</strong>
+
+[Chapter 19](/en/posts/self-improving-ai-19-test-time-training-and-forgetting/) showed how to check an earlier capability after adapting a model to a new input. Here the change happens in the <strong>harness</strong>, the code, prompts and tool calls around the model. Pages 31–32 of the second lecture measure how much of an earlier capability survives. Pages 33–35 ask whether the <strong>improver</strong> that edits the harness has also changed. The camera is a worked example. The papers evaluate customer-service workflows and coding agents.
+
+<strong>Worked examples</strong>　[Lost cases](#worked-example-1-how-many-cases-were-lost-if-the-net-drop-was-five) · [Success rate](#worked-example-2-where-does-the-528-simple-task-success-rate-come-from) · [Retention ratio](#worked-example-3-why-does-the-same-cpe-workflow-reach-about-82-in-the-right-panel) · [Proposal and acceptance](#worked-example-4-how-many-edits-survive-when-the-improvement-rule-stays-fixed) · [Inspection mix](#worked-example-5-when-does-an-extra-inspection-pay-off) · [Fixed editor](#worked-example-6-what-changes-when-the-editor-stays-fixed)
+
+<details>
+<summary>Video guide by slide</summary>
+
+| Part II page | Lecture video | What to listen for |
+|---|---|---|
+| 31 | [30:18](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1818s) | Can changing only the harness erode an old capability? |
+| 32 | [31:01](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1861s) | What else should we measure as workflow code gets longer? |
+| 33 | [33:12](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1992s) | How do we distinguish the changing agent from its update rule? |
+| 34 | [33:51](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2031s) | How do the existing code and execution results inform a proposed edit? |
+| 35 | [34:35](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2075s) | What changes when the editor is held fixed? |
+
+The links for pages 34 and 35 lead to related remarks. At 33:48.3 the recording switches from page 33 to the diagram corresponding to page 36, then shows page 37 from 34:32.0. PDF pages 34 and 35 do not appear as separate screens in between. [NTU course materials for May 22, 2026](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+</details>
+
+## Part II, page 31 — A harness can forget while model weights stay fixed
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/ntu-31-english.png"
+  alt="Two update expressions sit between robots. A red question mark follows the harness update."
+  caption="Part II, page 31. The same question about old skills applies to weight updates and harness edits."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=31"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+An inspection camera sees the same image and assigns it the same defect probability, yet a scratch it detected yesterday goes unreported today. What changed? Imagine adding a rule to reduce false alarms from reflections: issue an alert only after two consecutive frames show a defect. A fine scratch visible for just one frame can still clear the classifier threshold and then disappear at the alert stage. In this example the change lives in the harness that converts predictions into alerts.
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/mit-lecture4-06-model-and-harness.png"
+  alt="MIT lecture slide grouping the harness into context, control, action, evaluation and evolution."
+  caption="MIT MAS.S62, Lecture 4, page 6. Locate tool calls and verification in the code surrounding the model."
+  source="https://mit-mi.github.io/how2ai-course/fall2026/schedule/lec4%20-%20harness.pdf#page=6"
+  credit="Paul Liang / MIT MAS.S62"
+  label="Supplementary material"
+  width={1800} height={1013}
+/>
+
+Page 6 of MIT’s harness lecture breaks down the jobs of the code around a model into context, control, action, evaluation, and evolution. For the inspection camera, the previous frame’s score supplies <strong>context</strong>, the two-frame branch supplies <strong>control</strong>, and sending an alert is an <strong>action</strong>. Matching alerts to labeled clips to find missed scratches is <strong>evaluation</strong>. Revising the rule in light of those results is <strong>evolution</strong>. A change in control flow can alter both alerts and measured performance even when the defect scores stay the same. [MIT, Harness Evolution, p. 6](https://mit-mi.github.io/how2ai-course/fall2026/schedule/lec4%20-%20harness.pdf#page=6)
+
+The upper equation on the slide moves model weights θ in the negative gradient direction, with learning rate η setting the step size. The lower equation puts the harness h in the same position and adds a red question mark. Source-code edits such as adding a validation step or reordering tool calls have no ordinary derivative with respect to the code itself. We can still run a candidate harness and measure what changed on old and new tasks. Yu and colleagues call the part of the system being updated its capability state R. In their experiments R may be a workflow, a skill and tool collection, model weights, or memory. [NTU slide 31](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=31) · [Yu et al., §§2 and 3.3](https://arxiv.org/pdf/2605.09315v1#page=3)
+
+### Worked example 1. How many cases were lost if the net drop was five?
+
+Run both versions on the same 100 labeled inspection clips. Suppose both versions classify 72 correctly, only the original gets 8 right, only the revised version gets 3 right, and both miss the remaining 17. These are illustrative counts for a camera that encounters both reflections and fleeting scratches.
+
+<Math tex={String.raw`\begin{aligned}S_{\mathrm{before}}&=\frac{72+8}{100}=80\%,\\S_{\mathrm{after}}&=\frac{72+3}{100}=75\%.\end{aligned}`} display />
+
+<Math tex={String.raw`\begin{aligned}\Delta S&=\frac{3-8}{100}=-0.05,\\r_{\mathrm{lost}}&=\frac{8}{72+8}=10\%.\end{aligned}`} display />
+
+The success rate fell five percentage points, but the revision lost <strong>eight previously correct cases</strong>. Its three newly correct results offset part of that loss in the aggregate. Of the 80 cases originally classified correctly, 72/80 = 90% remained correct. Dividing the final score by the initial score gives 75/80 = 93.75%, which includes the three gains as well. Pairing the same clips across versions lets us distinguish the two quantities.
+
+## Part II, page 32 — Read the denominators behind code growth, success, and retention
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/ntu-32-english.png"
+  alt="Left, lines of code in the airline workflow. Right, complex-task performance against the simple-task retention ratio."
+  caption="Part II, page 32. Read the code growth and the two performance axes separately."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=32"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Yu and colleagues started with the same simple-task workflow for each of three τ²-Bench domains: airline, retail, and telecom. Two branches received failed complex-task trajectories and the same budget to revise the workflow. Vanilla evolution lets the optimizer rewrite the workflow from those failures. Capability-Preserving Evolution (CPE) also gives the editor anchors from the seed workflow, including task objectives, output constraints, and behaviors that prevent failures. The authors used the first 20% of complex tasks for evolution and reserved the remaining 80% for evaluation. They retested the entire simple-task set to measure retained performance. [Yu et al., Fig. 2 and Table 1](https://arxiv.org/pdf/2605.09315v1#page=6) · [Appendix C.2 and Table 9](https://arxiv.org/pdf/2605.09315v1#page=19)
+
+The left panel counts lines of workflow code during evolution on <strong>complex airline tasks</strong>. From the starting point to the first revision, code length grew by about 35% under vanilla evolution and 9% under CPE. Both annotations refer to that first round. Figure 2(a) in the paper shows how extra validation can change behavior. A check that catches malformed intermediate outputs on a complex request can reject an unusual but valid action on a simple one, cutting short an episode the agent could have recovered. Code length alone cannot reveal which behavior was lost. The right panel measures the consequences. [NTU slide 32](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=32) · [Yu et al., Fig. 2(a–c)](https://arxiv.org/pdf/2605.09315v1#page=6)
+
+### Worked example 2. Where does the 52.8% simple-task success rate come from?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/yu-table1-workflow-retention.png"
+  alt="Under GPT-5.1, vanilla and CPE score 41.8% and 52.8% on simple tasks, and 23.9% and 33.4% on complex tasks."
+  caption="GPT-5.1 results replotted from Table 1 of Yu et al. Both conditions start from the same seed workflow."
+  source="https://arxiv.org/pdf/2605.09315#page=6"
+  credit="Ye Yu et al. / CC BY 4.0"
+  label="Supplementary material"
+  width={1800} height={1100}
+/>
+
+Read the GPT-5.1 simple-task scores in Table 1 in airline, retail, and telecom order. A macro average gives each domain one vote. The calculation below uses the percentages printed for each domain.
+
+<Math tex={String.raw`\begin{aligned}S_{\mathrm{simple,V}}&=\frac{57.1+43.3+25.0}{3}=41.8\%,\\S_{\mathrm{simple,C}}&=\frac{64.3+56.7+37.5}{3}\simeq52.8\%.\end{aligned}`} display />
+
+<Math tex={String.raw`\begin{aligned}S_{\mathrm{complex,V}}&=\frac{37.5+20.3+14.0}{3}\simeq23.9\%,\\S_{\mathrm{complex,C}}&=\frac{37.5+45.3+17.5}{3}\simeq33.4\%.\end{aligned}`} display />
+
+Compare the two final versions that started from the same seed. CPE scores 52.8 − 41.8 = <strong>11.0 percentage points</strong> higher on simple tasks and 33.4 − 23.9 = <strong>9.5 points</strong> higher on complex tasks. Retail accounts for most of the complex-task difference (20.3% to 45.3%). The two airline scores are both 37.5%. The domains have different numbers of tasks, so pooling all solved cases over all tasks would give a different average. [Yu et al., Table 1](https://arxiv.org/pdf/2605.09315v1#page=6) · [Task counts by domain, Table 5](https://arxiv.org/pdf/2605.09315v1#page=19)
+
+### Worked example 3. Why does the same CPE workflow reach about 82% in the right panel?
+
+The horizontal axis is final complex-task success. The vertical axis measures <strong>how much of each domain’s initial simple-task performance remains</strong>. The initial GPT-5.1 values in Appendix Fig. 7(a) are 71.4% for airline, 76.7% for retail, and 45.8% for telecom. Divide each final score by its own domain’s initial score, then average the ratios to reproduce the heights in Fig. 2(c). The calculations use the rounded values printed in the paper.
+
+<Math tex={String.raw`R_{\mathrm{V}}=\frac{1}{3}\left(\frac{57.1}{71.4}+\frac{43.3}{76.7}+\frac{25.0}{45.8}\right)\simeq0.637.`} display />
+
+<Math tex={String.raw`R_{\mathrm{C}}=\frac{1}{3}\left(\frac{64.3}{71.4}+\frac{56.7}{76.7}+\frac{37.5}{45.8}\right)\simeq0.820.`} display />
+
+The GPT-5.1 point therefore moves from about (23.9%, 64%) to (33.4%, 82%). CPE still loses some of the seed workflow’s simple-task performance, but retains more of it after adapting to the same complex-task distribution. These ratios use aggregate scores. Recovering the exact number of previously correct cases that stayed correct would require paired task outcomes. The other optimizer is labeled “mini” in Fig. 2(c) and “nano” in Table 1 and Appendix Fig. 7, so this reconstruction uses the consistently labeled GPT-5.1 series. [Yu et al., Fig. 2(c)](https://arxiv.org/pdf/2605.09315v1#page=6) · [Initial and final scores, Appendix Fig. 7(a)](https://arxiv.org/pdf/2605.09315v1#page=20)
+
+## Part II, page 33 — Why is there one wrench beneath several generations of robots?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/ntu-33-original.png"
+  alt="A brace spans three generations of blue robots. A single robot with a wrench sits beneath the brace."
+  caption="Part II, page 33. One improvement module can produce a sequence of different agents."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=33"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The robots’ heads and equipment change from left to right. Under the entire sequence, a single robot with a wrench sits beneath a brace. The top row shows <strong>versions of the agent that performs the task</strong>. The bottom shows <strong>the procedure that makes the next version</strong>. The same distinction applies to a camera inspection system. One procedure specifies how to inspect a part. Another uses the record of a failed inspection to revise that procedure. [NTU lecture, 33:12](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=1992s)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/ntu-video-33-en.png"
+  alt="Two update equations, for model weights θ and harness h, appear next to the wrench beneath three agent generations."
+  caption="Lecture recording at 33:24. The two update equations have been re-typeset in their original position."
+  source="https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2004s"
+  credit="Hung-yi Lee / NTU ML 2026"
+  label="Lecture recording"
+  width={1280} height={720}
+/>
+
+<Math tex={String.raw`\theta'=\theta-\eta\nabla_{\theta}L,\qquad h'=h-\gamma\nabla_hL.`} display />
+
+In the first line, θ is the current set of model weights and η is the learning rate. The gradient points toward increasing loss L, so subtracting a multiple of it gives the next weights θ′. In the second line, the object being edited is the harness h and the step size is γ. For a discrete harness, such as a prompt or a sequence of tool calls, the expression poses a question: **how can the editor find an h′ with lower loss?** One option is to propose edits and run them on the same tasks. U in the example below is a rule for proposing such a candidate.
+
+### Worked example 4. How many edits survive when the improvement rule stays fixed?
+
+Let hₜ be the current harness, rₜ the trace from running the inspection, and U the rule that proposes an edit. In this <strong>hypothetical experiment</strong>, U receives the same instruction every time: read the trace and change one part of the procedure. Let S count how many of 20 validation images the candidate classifies correctly. Adopt a candidate only if its score exceeds that of the current version.
+
+<Math tex={String.raw`\tilde h_{t+1}=U(h_t,r_t),\qquad S(h)=\sum_{i=1}^{20}\mathbf 1[\hat y_i(h)=y_i]`} display />
+
+The indicator adds 1 for a correct prediction and 0 otherwise. The initial version gets 13 images right. The first proposal checks a second exposure only on dark frames. It gets 15 right and is adopted. The second proposal requires another exposure on every frame. It gets 14 right. Its comparison point is <strong>the 15 correct predictions from the current version</strong>.
+
+| Stage | Current version correct | Candidate correct | Score carried into the next stage |
+|---|---:|---:|---:|
+| First edit | 13 | 15 | 15 |
+| Second edit | 15 | 14 | 15 |
+
+<Math tex={String.raw`(15-13)/20=0.10,\qquad (14-15)/20=-0.05`} display />
+
+The first edit raised validation accuracy by 10 percentage points. The second candidate scored 5 points below the current version, so it stays in the records. We have <strong>two edits proposed, one adopted, and zero changes to the improvement rule</strong>. Because the same 20 images informed both choices, we need images held out of selection to check whether the final harness also improves on a new camera. This adoption rule belongs to the example. The DGM discussed below keeps an archive with multiple branches.
+
+### Supplementary paper · How a design record grows while the designer stays fixed
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/hu-fig1-meta-agent-search.png"
+  alt="The meta-agent reads an archive, writes a candidate design and adds the evaluated design back to the archive."
+  caption="Upper panel of Figure 1 in Hu et al. Each evaluated candidate becomes part of the design history for the next round."
+  source="https://arxiv.org/pdf/2408.08435#page=2"
+  credit="Shengran Hu et al. / CC BY 4.0"
+  label="Supplementary material"
+  width={1801} height={543}
+/>
+
+Read the Meta Agent Search diagram from Hu and colleagues from left to right. A designer, the meta-agent, reads an archive of previous designs and their validation scores, then proposes code for a new agent. Evaluation sends the new design and its score back to the archive. The next proposal thus draws on more evidence. The outer design procedure can stay the same while it produces different candidates. In the camera example, even the score and failure trace from the attempt to retake every frame could inform the next proposal. [Hu et al., ADAS, Figure 1](https://arxiv.org/pdf/2408.08435#page=2)
+
+## Part II, page 34 — Can two harnesses have the same loss and need different fixes?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/ntu-34-original.png"
+  alt="Above, a harness update connects two agents. Below, the current harness and its loss enter a module that proposes an edit."
+  caption="Part II, page 34. The lower row shows what goes into a single harness update and what comes out."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=34"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+In the top row, changing the harness h gives the robot additional tools. The bottom row expands that single edit. The current harness h and the loss L(Aₕ) of the agent using it enter from the left. A proposed revision h′ emerges on the right. Lee explains that the editor can also inspect what happened when the code ran on a benchmark. A loss can summarize <strong>how often</strong> an inspection failed. A trace shows <strong>at which step</strong> it failed. [NTU lecture, 34:08](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2048s)
+
+Suppose each of two harnesses fails on 3 of 20 photos, a failure rate of 15%. One trace records three timeouts while waiting for another exposure. The other records three outputs missing a part number. In the first case, inspect the condition that triggers a retake. In the second, inspect the required output fields. Nothing in the number 0.15 identifies which edit to try.
+
+### Worked example 5. When does an extra inspection pay off?
+
+Test simple and complex frames separately on a hypothetical inspection line. On 100 simple frames, the original procedure A gets 90 right and procedure B, which adds a second inspection, gets 84 right. On 100 complex frames, A gets 40 right and B gets 58 right. Let w be the fraction of incoming frames that will be complex. Assume an error in either group has the same cost. Weight each group’s success rate by how often it occurs to obtain the expected success rate.
+
+<Math tex={String.raw`S_A(w)=(1-w)0.90+w(0.40)=0.90-0.50w`} display />
+
+<Math tex={String.raw`S_B(w)=(1-w)0.84+w(0.58)=0.84-0.26w`} display />
+
+Subtract A’s score from B’s. B loses 6 percentage points on simple frames and gains 18 on complex ones. The two procedures therefore have a break-even point.
+
+<Math tex={String.raw`S_B-S_A=-0.06+0.24w,\qquad w_* = 0.06/0.24=0.25`} display />
+
+If 10% of the frames are complex, A scores 85% and B scores 81.4%. At 50%, A scores 65% and B scores 71%. B wins on a validation set with equal numbers of simple and complex frames. Deploying it unchanged on a line where complex frames are rare could reduce accuracy. To interpret a harness’s loss, we need to know the mix of tasks on which it was measured.
+
+### Supplementary lecture · Using execution time to score a candidate
+
+In his MIT lecture on AlphaEvolve, Paul Liang describes a human specifying the task and its criterion. One example is an evaluator that runs a candidate program and measures its execution time. Keeping the prompt, proposed code, and score lets the next proposal draw on prior trials. In the camera example, keeping the frames that timed out alongside the 15% failure rate gives the editor a reason to revisit the retake step. In both cases, <strong>evidence from running a candidate informs the next proposal</strong>. [MIT lecture, slide 55](https://mit-mi.github.io/mmai-course/spring2026/schedule/lec14.1%20-%20advanced%20topics.pdf#page=55) · [Runtime and the trial record, 1:08:16](https://www.youtube.com/watch?v=FhcHTSjvuKk&t=4096s)
+
+## Part II, page 35 — Which agent performs the inspection, and which one edits it?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/ntu-35-original.png"
+  alt="Identical wrench icons sit under the agents before and after the update. The lower row separates the editor from the agent being edited."
+  caption="Part II, page 35. Follow the agent that runs the task and the agent that edits the code separately."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=35"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+In the lower row, a robot with an orange wrench now takes the place of the agent that produced the revision on page 34. The blue robot on the left is the target of the edit. The robot with the wrench is the editor. In the top row, the same wrench icon appears beneath both the original blue robot and its successor. <strong>If the blue robot performs the task better, what would tell us whether the editor also learned to make better changes?</strong> One way to investigate is to run a comparison that keeps the editor at its initial version. [NTU lecture, 34:35](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2075s)
+
+In the Darwin Gödel Machine (DGM) of Zhang and colleagues, the foundation model’s weights stay fixed while the agent’s code changes. A selected agent edits its own codebase. A code-editing tool improved in this round can therefore help with subsequent revisions. The researchers specified the parent-selection procedure and evaluation system. In the paper’s fixed-editor comparison, the system keeps producing candidates while <strong>the agent used to edit them</strong> remains the initial version. [DGM, §§3–4.3](https://arxiv.org/pdf/2505.22954v3#page=5)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/zhang-fig3-agent-lineage.png"
+  alt="SWE-bench plot with separate curves for the archive best, mean among agents with basic editing functionality, and the lineage of the final best agent."
+  caption="Right panel of Figure 3 in Zhang et al. A record, a group mean and the score of one ancestor answer different questions."
+  source="https://arxiv.org/pdf/2505.22954#page=7"
+  credit="Jenny Zhang et al. / CC BY 4.0"
+  label="Supplementary material"
+  width={1800} height={1470}
+/>
+
+There are three lines in the right panel of Figure 3. The blue line is the highest score found anywhere in the archive up to each iteration. The light blue line averages the scores of agents with basic code-editing functionality. The dark line follows <strong>one lineage</strong>, traced backward from the best final agent through its ancestors, with two dips along the way. The average can fall while the archive record holds steady. A lower-scoring ancestor on the final lineage shows that a temporary setback can precede a useful change. It does not establish the value of every low-scoring candidate. [DGM, Figure 3](https://arxiv.org/pdf/2505.22954v3#page=7)
+
+### Worked example 6. What changes when the editor stays fixed?
+
+The two rows below come from the paper’s SWE-bench experiment. The first counts <strong>problems</strong> in the evaluated SWE-bench subset. The second counts <strong>agents generated</strong> during the experiment. Identify the denominator before subtracting the two conditions within a row. [DGM, appendix Table 1](https://arxiv.org/pdf/2505.22954v3#page=25) · [Appendix Table 2](https://arxiv.org/pdf/2505.22954v3#page=26)
+
+| What was counted? | Editor fixed at its initial version | Full DGM |
+|---|---:|---:|
+| Problems solved in the evaluated SWE-bench subset | 39.0% | 50.0% |
+| Generated agents retaining basic code-editing functionality | 32.5% | 51.3% |
+
+<Math tex={String.raw`\Delta_{\mathrm{solve}}=50.0\%-39.0\%=11.0\,\mathrm{pp}`} display />
+
+<Math tex={String.raw`\Delta_{\mathrm{edit}}=51.3\%-32.5\%=18.8\,\mathrm{pp}`} display />
+
+The full DGM scored higher on both measures. The first difference concerns solving assigned problems. The second concerns the share of candidates with the basic editing capability needed for further changes. The denominators differ, so adding 18.8 points to 11.0 points would have no useful interpretation. A test of basic code editing also tells us little on its own about the chance of producing a beneficial edit. The measurements apply to this benchmark and experimental budget.
+
+Return to the inspection line. To learn whether the new harness retained its behavior on simple frames, run it on <strong>the same old frames</strong>. To investigate whether the editing procedure improved, compare the candidates the different editors produce with <strong>the same starting version and budget</strong>. Page 36 takes that question a step further. Who can change the wrench itself, and how? [Next original slide, p. 36](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=36)
+
+Figures adapted from Yu, Hu and Zhang are credited in their captions. [Figure license](https://creativecommons.org/licenses/by/4.0/)

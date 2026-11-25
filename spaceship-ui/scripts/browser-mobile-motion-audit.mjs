@@ -91,14 +91,14 @@ export async function auditMobileMotion(cdp, sessionId) {
       if (pathname === '/') {
         // The low-priority lazy image may still be loading after native scroll
         // synchronization. Wait for the real decode within the normal bound.
-        const gif = await waitExpression(cdp, sessionId, `(() => {
-          const image = document.querySelector('img[src="/image/mouse_surprised.gif"]');
+        const profile = await waitExpression(cdp, sessionId, `(() => {
+          const image = document.querySelector('img[src="/assets/profile/mouse_surprised-still.webp"]');
           return Boolean(image?.complete && image.naturalWidth > 0 && image.getBoundingClientRect().width > 0);
-        })()`, 'mobile Home identity GIF decoded and visible');
-        assert.ok(gif, 'mobile Home identity GIF must still decode and remain visible');
+        })()`, 'mobile Home static profile decoded and visible');
+        assert.ok(profile, 'mobile Home static profile must still decode and remain visible');
       }
     }
-    console.log('browser-mobile-motion: PASS cold Home/Research: no GSAP download; visible content; native scroll sync; identity GIF');
+    console.log('browser-mobile-motion: PASS cold Home/Research: no GSAP download; visible content; native scroll sync; static profile');
 
     // Touch-emulated targets do not reliably regain a fine primary pointer
     // after disabling touch. A wider touch viewport is not a desktop.

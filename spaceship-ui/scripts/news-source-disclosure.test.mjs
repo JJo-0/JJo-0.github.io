@@ -18,6 +18,10 @@ for (const title of ['출처·도판 권리와 열람 범위','출처와 열람 
   const once = JSON.stringify(tree); disclosure()(tree); assert.equal(JSON.stringify(tree),once);
 }
 const subheading = heading('h3','원문·그림·수식의 출처');
+const englishTree = {children: [heading('h2', 'Sources and scope of review'), reference(1)]};
+disclosure()(englishTree, {path: '/site/content/english/example.mdx'});
+assert.equal(englishTree.children[0].tagName, 'details');
+assert.equal(englishTree.children[0].children[0].children[0].value, 'Sources, figure rights and review scope (1)');
 const codeBoundary = heading('h3','코드와 수식의 경계 확인');
 const agent = {children:[subheading,reference(1),codeBoundary,text('Unchanged audit boundary')]};
 disclosure()(agent);

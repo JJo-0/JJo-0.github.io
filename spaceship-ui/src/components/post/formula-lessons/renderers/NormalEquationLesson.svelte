@@ -1,4 +1,7 @@
 <script>
+ import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+ const formulaEnglish = document.documentElement.lang === 'en';
+ const formulaText = value => formulaEnglish ? englishFormulaText(value) : value;
   import {
     approximatelyEqual,
     computeLeastSquares,
@@ -56,29 +59,29 @@
   }
 
   const derivationSteps = [
-    ['mse', '예측과 잔차', 'Xw를 계산한 뒤 y를 빼고, 각 잔차를 제곱해 평균낸다.'],
-    ['stationarity', '최솟값의 필요조건', '매끄러운 볼록 이차함수의 최솟값에서는 기울기가 0이다.'],
-    ['gradient-of-mse', 'MSE 미분', '잔차가 w에 따라 어떻게 변하는지 체인룰로 추적한다.'],
-    ['norm-to-quadratic', '제곱노름 변환', '‖r‖²를 rᵀr로 바꾸면 행렬 미분을 적용할 수 있다.'],
-    ['expand-quadratic', '이차식 전개', '(Xw−y)ᵀ(Xw−y)를 w에 대한 세 항으로 전개한다.'],
-    ['differentiate', '각 항 미분', 'w와 무관한 yᵀy는 사라지고 두 항만 남는다.'],
-    ['normal-equation', '정규방정식', '기울기 0을 정리하면 XᵀXw=Xᵀy가 된다.'],
-    ['solve-normal-equation', '선형시스템 풀이', '역행렬을 직접 만들기보다 정규방정식을 수치적으로 푼다.'],
+    ['mse', formulaText('예측과 잔차'), formulaText('Xw를 계산한 뒤 y를 빼고, 각 잔차를 제곱해 평균낸다.')],
+    ['stationarity', formulaText('최솟값의 필요조건'), formulaText('매끄러운 볼록 이차함수의 최솟값에서는 기울기가 0이다.')],
+    ['gradient-of-mse', formulaText('MSE 미분'), formulaText('잔차가 w에 따라 어떻게 변하는지 체인룰로 추적한다.')],
+    ['norm-to-quadratic', formulaText('제곱노름 변환'), formulaText('‖r‖²를 rᵀr로 바꾸면 행렬 미분을 적용할 수 있다.')],
+    ['expand-quadratic', formulaText('이차식 전개'), formulaText('(Xw−y)ᵀ(Xw−y)를 w에 대한 세 항으로 전개한다.')],
+    ['differentiate', formulaText('각 항 미분'), formulaText('w와 무관한 yᵀy는 사라지고 두 항만 남는다.')],
+    ['normal-equation', formulaText('정규방정식'), formulaText('기울기 0을 정리하면 XᵀXw=Xᵀy가 된다.')],
+    ['solve-normal-equation', formulaText('선형시스템 풀이'), formulaText('역행렬을 직접 만들기보다 정규방정식을 수치적으로 푼다.')],
   ];
 </script>
 
 <div class="lesson-layout">
-  <section class="plot-panel" aria-label="회귀선과 잔차 시각화">
+  <section class="plot-panel" aria-label="{formulaText("회귀선과 잔차 시각화")}">
     <div class="panel-heading">
       <div>
-        <p>같은 계산 상태</p>
-        <h6>회귀선·잔차·MSE</h6>
+        <p>{formulaText("같은 계산 상태")}</p>
+        <h6>{formulaText("회귀선·잔차·MSE")}</h6>
       </div>
       <span class:success={isAtOptimum}>{isAtOptimum ? 'gradient ≈ 0' : `‖∇MSE‖=${format(gradientNorm)}`}</span>
     </div>
 
     <div class="scroll-canvas">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="가중치에 따라 움직이는 회귀선과 잔차">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="{formulaText("가중치에 따라 움직이는 회귀선과 잔차")}">
         <rect x="0" y="0" width={width} height={height} rx="18" class="plot-bg" />
         {#each [0, 1, 2, 3, 4, 5] as tick (tick)}
           <line x1={plot.left} y1={sy(tick)} x2={plot.right} y2={sy(tick)} class="grid-line" />
@@ -115,18 +118,18 @@
 
     <div class="controls">
       <label>
-        <span>절편 w₀</span>
+        <span>{formulaText("절편 w₀")}</span>
         <output>{format(intercept, 2)}</output>
         <input bind:value={intercept} type="range" min="-1" max="2" step="0.02" />
       </label>
       <label>
-        <span>기울기 w₁</span>
+        <span>{formulaText("기울기 w₁")}</span>
         <output>{format(slope, 2)}</output>
         <input bind:value={slope} type="range" min="-0.5" max="2" step="0.02" />
       </label>
       <div class="button-row">
-        <button type="button" on:click={useClosedFormSolution}>정규방정식 해 적용</button>
-        <button type="button" class="secondary" on:click={resetWeights}>초기값</button>
+        <button type="button" on:click={useClosedFormSolution}>{formulaText("정규방정식 해 적용")}</button>
+        <button type="button" class="secondary" on:click={resetWeights}>{formulaText("초기값")}</button>
       </div>
     </div>
   </section>
@@ -134,7 +137,7 @@
   <section class="calculation-panel">
     <div class="panel-heading">
       <div>
-        <p>현재 식의 초점</p>
+        <p>{formulaText("현재 식의 초점")}</p>
         <h6>{spec.focusLabels[lesson.focus]}</h6>
       </div>
       <span>{focusIndex + 1} / {spec.focusOrder.length}</span>
@@ -178,7 +181,7 @@
         </table>
       </article>
       <article>
-        <p>현재 ∇MSE</p>
+        <p>{formulaText("현재 ∇MSE")}</p>
         <table aria-label="current MSE gradient">
           <tbody>
             {#each result.gradient as value, index (index)}
@@ -196,7 +199,7 @@
     <span><b>SSE</b> {format(result.sse)}</span>
     <span><b>MSE</b> {format(result.mse)}</span>
     <span><b>w★</b> [{format(optimum.solution[0], 3)}, {format(optimum.solution[1], 3)}]</span>
-    <span class:pass={approximatelyEqual(result.mse, 0, 1e-9) || result.mse >= 0}><b>검산</b> MSE ≥ 0</span>
+    <span class:pass={approximatelyEqual(result.mse, 0, 1e-9) || result.mse >= 0}><b>{formulaText("검산")}</b> MSE ≥ 0</span>
   </div>
   <div class="table-scroll">
     <table class="sample-table">
@@ -222,7 +225,7 @@
 </section>
 
 <aside class="assumptions">
-  <strong>계산 가정과 구현 주의</strong>
+  <strong>{formulaText("계산 가정과 구현 주의")}</strong>
   <ul>
     {#each spec.assumptions as assumption, index (index)}
       <li>{assumption}</li>

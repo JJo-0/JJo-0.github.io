@@ -1,0 +1,423 @@
+---
+title: "자가개선 AI 09 — 경로를 고르는 경사와 스스로 만드는 학습 문제"
+description: "엔트로피가 낮은 경로를 선택하는 정책 경사, 음성인식 WER 비교, AI 평가와 학습 문제 생성의 역할을 살펴봅니다."
+pubDate: 2026-11-18T09:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-09-entropy-paths-and-self-generated-inputs
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - entropy-minimization
+  - policy-gradient
+  - synthetic-data
+  - ntu
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 9
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>학습은 답을 바꾸는 일에서 시작하지만, 어떤 답을 더 자주 시도하고 어떤 문제를 풀 것인지까지 바꾸는 과정으로 넓어진다.</strong>
+
+[8편 — 엔트로피를 제대로 줄이려면, 빠진 경사를 찾아라](/posts/self-improving-ai-08-entropy-estimation-and-gradients/)에서는 샘플을 고정한 채 손실을 미분하면 샘플링 분포의 변화가 빠진다는 점을 확인했다. 이번에는 <strong>그 빠진 항이 어떤 경로를 선택하게 만드는지</strong> 살펴본다. 음성인식 실험을 읽은 뒤에는 질문의 범위를 넓힌다. 출력의 점수뿐 아니라 <strong>학습에 사용할 입력도 AI가 만들면 무엇이 달라질까?</strong>
+
+<details>
+<summary>슬라이드별 영상 위치</summary>
+
+| 슬라이드 | 영상 위치와 주제 | 연결 개념 |
+|---|---|---|
+| 41쪽 | [43:24–44:07](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2603s) — 엔트로피가 낮은 경로를 더 자주 선택하는 항 | log 표기 정정, 확률나무 계산, baseline의 조건 |
+| 42쪽 | [44:07–44:51](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2647s) — 세 말뭉치의 음성인식 오류율 | EM-tok와 EM-tok-b의 차이, 비교 조건과 개선율 |
+| 43쪽 | [44:51–44:55](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2690s) — 수학 구간 마무리 | 수학적으로 맞는 경사와 실제 정확도의 구분 |
+| 44쪽 | [44:55–45:19](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2695s) — AI 평가가 있어도 사람이 입력을 고른다 | 평가 모델, 보상 모델, 정책 모델의 역할 |
+| 45쪽 | [45:19–45:39](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2719s) — 입력 생성도 AI에게 맡긴다 | 학습 입력의 분포, Self-Instruct의 생성·필터링 과정 |
+
+</details>
+
+## 41쪽 — 경로 안을 바꾸는 것과 경로를 고르는 것은 다르다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/ntu-self-improving-41-en.png"
+  alt="낮은 엔트로피를 가진 경로의 확률을 높이는 두 번째 경사 항을 설명하는 원본 41쪽."
+  caption="P041 — 낮은 엔트로피를 가진 경로의 선택 확률을 높이는 항."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=41"
+  credit="Hung-yi Lee / NTU ML 2026."
+  width={1800} height={1013}
+/>
+
+<strong>영상 설명 · [43:24–44:07](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2603s).</strong> 강사는 두 가지 방향을 구분한다. 첫 번째는 이미 뽑은 경로에서 엔트로피를 낮추는 방향이다. 두 번째는 엔트로피가 낮은 경로가 더 자주 뽑히도록 그 확률을 높이는 방향이다. 두 방향은 함께 작동한다.
+
+여기서 경로(Path)는 <strong>첫 토큰부터 마지막 토큰까지 이어지는 하나의 생성 결과</strong>다. 그림의 “minimum entropy”는 직관을 보여주는 표기다. 실제 학습에서 모든 가능한 문장을 열거한 뒤 전역 최솟값 문장 하나를 반드시 찾는다는 뜻은 아니다.
+
+### 두 항을 다시 읽기
+
+입력 x를 고정하자. 모델이 생성한 문장을 Y, 확률분포를 pθ라고 쓰고, 방문한 접두사에서 계산한 다음 토큰 엔트로피의 합을 gθ라고 정의한다.
+
+<Math tex={String.raw`g_\theta(y;x)=\sum_{t=1}^{|y|}H\!\left(p_\theta(\cdot\mid x,y_{<t})\right).`} display />
+
+적절한 샘플링·종료 조건에서 이 값의 기대값은 문장 엔트로피가 된다. 아래 설명용 예시는 항상 두 토큰을 생성하는 유한 모형이므로 합과 미분을 교환하는 문제가 없다.
+
+<Math tex={String.raw`H_\theta(Y\mid x)=\mathbb E_{Y\sim p_\theta(\cdot\mid x)}[g_\theta(Y;x)].`} display />
+
+이 기대값을 미분하면 다음 두 항이 나온다. 논문 식 (8f)의 순서를 읽기 편하게 바꿔 적었다.
+
+<Math tex={String.raw`\begin{aligned}
+\nabla_\theta H_\theta
+&=\underbrace{\mathbb E[\nabla_\theta g_\theta(Y;x)]}_{A_\theta:\ \text{change entropy on a path}}\\
+&\quad+\underbrace{\mathbb E[g_\theta(Y;x)\nabla_\theta\log p_\theta(Y\mid x)]}_{B_\theta:\ \text{change path probabilities}}.
+\end{aligned}`} display />
+
+A는 샘플로 방문한 접두사를 고정한 상태에서 다음 토큰 분포의 엔트로피를 바꾼다. B는 그 경로가 생성될 확률까지 조정한다. 다만 신경망에서는 파라미터를 공유하므로, A와 B가 서로 다른 파라미터에만 작용한다는 뜻은 아니다. <strong>계산에 들어오는 의존 경로를 나눈 것</strong>이다. [논문 PDF 3쪽, 식 (8)–(9)](https://arxiv.org/pdf/2605.08186v1#page=3)
+
+<strong>수식에서 주의할 점.</strong> 위 이미지의 두 번째 항에는 `log`가 빠져 있다. 기대값 안에서는 <strong>로그 확률의 경사</strong>를 써야 한다. 다음 두 식이 같은 이유가 로그 미분 항등식이다.
+
+<Math tex={String.raw`\sum_y g_\theta(y;x)\nabla_\theta p_\theta(y\mid x)
+=\mathbb E_{Y\sim p_\theta}\!\left[g_\theta(Y;x)\nabla_\theta\log p_\theta(Y\mid x)\right].`} display />
+
+왼쪽 합에는 확률 가중치가 따로 없고, 오른쪽 기대값에는 확률 가중치가 들어 있다. 기대값으로 바꾸면서 `log`를 빼면 확률을 한 번 더 곱한 다른 식이 된다. [논문 식 (8f)](https://arxiv.org/pdf/2605.08186v1#page=3)도 로그 확률의 경사를 사용한다.
+
+### 작은 확률나무로 방향 확인하기
+
+두 토큰으로 이루어진 확률나무를 생각해 보자. 첫 토큰은 A 또는 B다. A 다음의 두 토큰 확률은 0.9·0.1, B 다음은 0.6·0.4로 고정한다. 첫 분기 확률 p만 logit θ로 조정한다.
+
+<Math tex={String.raw`p=P(Y_1=A)=\sigma(\theta),\qquad P(Y_1=B)=1-p.`} display />
+
+이항 엔트로피를 자연로그로 계산하므로 단위는 nat이다.
+
+<Math tex={String.raw`h(z)=-z\log z-(1-z)\log(1-z).`} display />
+
+| 첫 분기 | 다음 토큰 분포 | 다음 단계의 엔트로피 |
+|---|---|---:|
+| A | 0.9, 0.1 | h(0.9) ≈ 0.325083 |
+| B | 0.6, 0.4 | h(0.6) ≈ 0.673012 |
+
+A로 들어가면 다음 토큰의 불확실성이 더 작다. 전체 두 토큰 엔트로피는 첫 분기 자체의 불확실성과 각 하위 분기의 조건부 엔트로피를 합친 값이다.
+
+<Math tex={String.raw`H(\theta)=h(p)+p\,h(0.9)+(1-p)\,h(0.6).`} display />
+
+처음에 θ=0, p=0.5라고 하자. 첫 분기 엔트로피 h(p)는 이 지점에서 경사가 0이다. 하위 분포는 고정했으므로 <strong>샘플을 고정한 A항만으로는 첫 분기 확률을 움직이지 못한다.</strong> 반면 B항은 두 하위 분기의 엔트로피 차이를 본다.
+
+<Math tex={String.raw`B_\theta=p(1-p)\,[h(0.9)-h(0.6)]
+\approx-0.086982\qquad (p=0.5).`} display />
+
+경사 하강(Gradient descent)은 경사를 빼므로, 음의 경사는 θ를 늘린다. 학습률을 0.1로 한 번 갱신하면 다음과 같다.
+
+<Math tex={String.raw`\theta_{\mathrm{new}}=0-0.1(-0.086982)\approx0.008698,\qquad
+p_{\mathrm{new}}\approx0.502175.`} display />
+
+즉 <strong>불확실성이 작은 A 분기를 선택할 확률이 0.5에서 약 0.5022로 증가</strong>한다. 직접 열거한 네 문장의 확률은 갱신 전 0.45·0.05·0.30·0.20이며, 전체 엔트로피는 약 1.192195에서 1.191428 nat으로 내려간다.
+
+여기서 확인한 것은 경사와 확률의 방향이다. A가 실제 문제의 정답이라는 정보는 예제에 없다. <strong>낮은 엔트로피와 정답 여부는 별개</strong>이므로, 이 계산을 정확도 향상의 증명으로 읽으면 안 된다.
+
+### 함께 읽기 A — 기준값을 빼면 상대적인 경로 비용이 보인다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/berkeley-policy-gradients-p17-baselines.png"
+  alt="정책 경사에서 baseline을 빼는 항등식을 설명하는 Berkeley 원본 슬라이드. 고정 baseline과 동일 배치 평균의 차이는 본문에서 구분한다."
+  caption="UC Berkeley CS 185/285 — 정책 경사에서 기준값을 빼는 항등식(PDF 17쪽)."
+  source="https://rail.eecs.berkeley.edu/deeprlcourse/static/slides/lec-5.pdf#page=17"
+  credit="Sergey Levine / UC Berkeley CS 185/285, Policy Gradients."
+  width={1800} height={1013}
+/>
+
+Berkeley 슬라이드는 정책 경사에서 기준값(Baseline)을 빼는 이유를 설명한다. 여기서는 보상 최대화 대신 <strong>엔트로피 비용 최소화</strong>로 읽는다. 비용이 평균보다 작은 경로에 유리한 방향으로 업데이트한다. [Berkeley Policy Gradients, PDF 17쪽](https://rail.eecs.berkeley.edu/deeprlcourse/static/slides/lec-5.pdf#page=17)
+
+현재 샘플 Y에 의존하지 않는 고정 기준값 b(x)를 사용하면 다음과 같이 쓸 수 있다.
+
+<Math tex={String.raw`B_\theta=\mathbb E\!\left[(g_\theta(Y;x)-b(x))\nabla_\theta\log p_\theta(Y\mid x)\right].`} display />
+
+이는 점수를 마음대로 바꾸는 것이 아니다. 확률의 합이 1이므로 기준값이 더하는 기대 경사는 0이다.
+
+<Math tex={String.raw`\mathbb E[\nabla_\theta\log p_\theta(Y\mid x)]
+=\sum_y\nabla_\theta p_\theta(y\mid x)=0.`} display />
+
+앞의 p=0.5 예제에서 이번 업데이트 동안 고정할 기준값을 현재 기대 비용 1.192195로 잡아보자.
+
+| 경로 | 경로의 토큰 엔트로피 합 g | g−b | 해석 |
+|---|---:|---:|---|
+| A로 시작 | 1.018230 | −0.173964 | 평균보다 비용이 작다 |
+| B로 시작 | 1.366159 | +0.173964 | 평균보다 비용이 크다 |
+
+정책 경사 문헌의 보상 Advantage와 부호가 헷갈릴 수 있다. 이 표의 g−b는 <strong>비용의 차이</strong>다. 보상을 r=−g로 정의하면 대응하는 보상 Advantage의 부호는 반대가 된다.
+
+<strong>Baseline의 독립성 조건.</strong> 슬라이드에는 배치 평균을 기준값으로 쓰는 예도 있다. 하지만 자기 샘플까지 포함한 평균은 그 샘플과 독립이 아니다. 독립·동일 분포로 뽑은 G개 샘플에서, 다른 정규화 없이 자기 포함 평균을 빼면 정책 경사 항의 기대값에 (G−1)/G 배율이 생긴다. 따라서 G=2이면 이 항의 기대값은 절반이 된다.
+
+논문은 정책 경사의 분산을 줄이기 위해 자기 자신을 뺀 <strong>Leave-one-out 기준값</strong>을 사용한다. 독립 샘플링에서는 앞의 자기 포함 평균으로 생기는 문제도 피할 수 있다.
+
+<Math tex={String.raw`b_i=\frac{1}{G-1}\sum_{j\ne i}g_\theta(y_j;x),\qquad G>1.`} display />
+
+독립 샘플링 조건에서는 다른 샘플로 만든 bᵢ가 현재 yᵢ와 독립이므로 정책 경사 항의 기대값을 유지할 수 있다. G=1에서는 이 식을 정의할 수 없다. 논문도 이 경우 baseline을 사용하지 않는다. [논문 PDF 4쪽, 식 (13)–(16)](https://arxiv.org/pdf/2605.08186v1#page=4)
+
+자동미분용으로는 비용 차이를 미분하지 않게 하는 Stop-gradient가 필요하다. <strong>시퀀스 합을 기준으로 하고 길이 정규화를 적용하지 않으면</strong> 대리 손실은 다음과 같다.
+
+<Math tex={String.raw`\ell_{\mathrm{sur}}(\theta;y)
+=g_\theta(y;x)+\operatorname{sg}(g_\theta(y;x)-b)\log p_\theta(y\mid x).`} display />
+
+이 식의 두 항은 한 기대값을 미분해서 얻은 것이다. 안정화를 위해 한 항에 별도 계수를 곱할 수는 있지만, 그때의 방향을 원래 엔트로피의 정확한 경사와 동일하다고 부를 수는 없다. 논문은 추가로 토큰 수 정규화와 beam-search 확장을 사용하므로 <strong>기본 수학 등식과 실제 학습 절차의 조건을 구분</strong>해야 한다. [논문 §3.5](https://arxiv.org/pdf/2605.08186v1#page=4)
+
+## 42쪽 — 결과표는 무엇을 비교했는지부터 읽는다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/ntu-self-improving-42-en.png"
+  alt="세 음성인식 데이터셋의 WER를 비교한 원본 42쪽. EM-tok와 EM-tok-b 행이 강조되어 있으며 오류율은 낮을수록 좋다."
+  caption="P042 — 세 음성인식 데이터셋의 WER와 후보 생성 방식 비교."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=42"
+  credit="Hung-yi Lee / NTU ML 2026."
+  width={1800} height={1013}
+/>
+
+<strong>영상 설명 · [44:07–44:51](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2647s).</strong> 강사는 세 말뭉치의 음성인식 오류율을 보여주며 낮을수록 좋은 값이라고 설명한다. 특히 [44:13 무렵](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2653s)에 <strong>이 실험은 대형 언어 모델의 일반 과제가 아니라 음성인식 실험</strong>임을 명시한다.
+
+### 두 방법의 차이 — 추가 항이 아니라 후보 생성 방식
+
+빨간 상자의 두 행은 EM-tok와 EM-tok-b다. 이 비교에서 먼저 구별할 것은 경사 항의 유무가 아니라 <strong>학습에 사용할 후보를 만드는 방식</strong>이다.
+
+<strong>EM-tok와 EM-tok-b는 둘 다 토큰 엔트로피의 두 경사 항을 포함한다. EM-tok-b의 b는 beam search를 가리키며, 빠진 경사 항을 새로 더했다는 표시가 아니다.</strong> 따라서 두 행의 차이를 “보정항 하나를 추가한 효과”로 해석하면 안 된다. [논문 PDF 5쪽, §4.2](https://arxiv.org/pdf/2605.08186v1#page=5)
+
+| 방법 | 적응에 쓰는 후보 전사문 | 최적화의 특징 |
+|---|---|---|
+| Source | 별도 적응 없음 | 원래 모델의 오류율 |
+| Greedy-EM | 탐욕 디코딩(Greedy decoding) 1개 | 고정 전사문에서 토큰 엔트로피 항만 최적화 |
+| EM-seq | 무작위 샘플 G개 | 문장 수준 추정량의 정책 경사 |
+| EM-tok | 무작위 샘플 G개 | 토큰 엔트로피 직접항과 정책 경사 항을 함께 사용 |
+| EM-tok-b | 상위 G개 beam 후보 | EM-tok를 beam-search 후보에 적용하는 실용적 확장 |
+
+EM-seq에 정책 경사 항만 있다고 해서 곧바로 “불완전한 방법”이라고 판단해서도 안 된다. 문장 수준 추정량이 −log pθ(Y)이면 직접항의 기대값이 0이 되는 별도 유도가 있다. <strong>추정량의 정의가 다르면 필요한 항의 형태도 달라진다.</strong> [논문 PDF 4쪽, 식 (10)–(12)](https://arxiv.org/pdf/2605.08186v1#page=4)
+
+또한 beam search는 모델 분포에서의 무작위 표본 추출과 다르다. 논문 §3.5.2도 이 확장에 편향(Bias)이 생긴다고 명시한다. 실용적인 성능이 좋아졌다는 결과와, 원래 분포 아래의 불편 경사 추정이라는 성질을 동시에 같은 주장으로 취급하면 안 된다.
+
+### WER는 단어 오류율이다
+
+음성인식의 단어 오류율(Word Error Rate, WER)은 정답 전사문에 맞추기 위한 치환·삭제·삽입 횟수로 계산한다.
+
+<Math tex={String.raw`\mathrm{WER}=\frac{S+D+I}{N}\times100\%.`} display />
+
+S는 치환(Substitution), D는 삭제(Deletion), I는 삽입(Insertion), N은 정답 전사문의 단어 수다. 예를 들어 정답 100단어에서 치환 10개·삭제 5개·삽입 3개면 WER는 18%다. 삽입이 많으면 100%를 넘을 수도 있으므로 정확도와 단순히 합해서 항상 100이 되는 수치는 아니다.
+
+다음은 원본 표의 <strong>Avg. 열을 그대로 옮긴 값</strong>이다. 서로 다른 말뭉치의 모든 단어 수를 합쳐 새로 계산한 pooled WER는 아니다. [논문 PDF 6쪽, Tables 2–4](https://arxiv.org/pdf/2605.08186v1#page=6)
+
+| 방법 | 잡음 LS-C | 비원어민 영어 L2-Arctic | 다국어 MLS |
+|---|---:|---:|---:|
+| Source | 22.53% | 19.35% | 24.58% |
+| Greedy-EM | 21.91% | 18.77% | 24.08% |
+| EM-seq | 21.34% | 17.68% | 24.17% |
+| EM-tok | 20.77% | 17.05% | 24.07% |
+| EM-tok-b | 19.15% | 16.21% | 22.63% |
+
+LS-C는 잡음을 더한 영어 음성, L2-Arctic은 여러 모국어 배경을 가진 화자의 영어 발화, MLS는 여러 언어의 음성이다. 특히 표의 <strong>L2-Korean은 한국어 전사 과제가 아니라 한국어를 모국어로 하는 화자의 영어 발화</strong>다. [논문 §4.1](https://arxiv.org/pdf/2605.08186v1#page=5)
+
+EM-tok에서 EM-tok-b로 바뀔 때의 차이를 계산하면 다음과 같다. 이는 위에서 구분한 <strong>후보 생성 방식의 비교</strong>다.
+
+| 말뭉치 | WER 절대 감소 | 상대 오류 감소 |
+|---|---:|---:|
+| LS-C | 1.62%p | 약 7.80% |
+| L2-Arctic | 0.84%p | 약 4.93% |
+| MLS | 1.44%p | 약 5.98% |
+
+LS-C를 예로 들면 두 계산은 다음처럼 다르다.
+
+<Math tex={String.raw`\Delta_{\mathrm{abs}}=20.77-19.15=1.62\ \text{percentage points}.`} display />
+
+<Math tex={String.raw`\Delta_{\mathrm{rel}}=\frac{20.77-19.15}{20.77}\times100\%\approx7.80\%.`} display />
+
+“7.80%p 좋아졌다”라고 쓰면 단위를 잘못 옮긴 것이다. 논문 표에 반올림된 WER를 기준으로 계산한 변화량이다.
+
+### 어떤 조건에서 나온 실험인가
+
+기본 모델은 <strong>Whisper-base</strong>다. EM-seq·EM-tok·EM-tok-b는 각 음성 입력에서 단계마다 후보 G=16개를 만들며 10번 적응한다. AdamW 학습률은 0.001이며, 인코더와 디코더의 <strong>LayerNorm 파라미터만</strong> 갱신한다. 매 단계 갱신된 모델로 후보를 다시 만들고, 마지막 예측은 적응된 모델의 greedy decoding으로 얻는다. 한 입력의 처리가 끝나면 모델 파라미터를 되돌린다. [논문 §4.2–4.3](https://arxiv.org/pdf/2605.08186v1#page=5)
+
+따라서 이 결과를 “모든 입력을 순차적으로 계속 학습한 영구적인 자기개선”으로 설명할 수 없다. <strong>입력별로 초기화하는 테스트 시점 적응(Test-Time Adaptation)</strong>이다. 하이퍼파라미터는 별도 CommonVoice 부분집합에서 정하고 대상 말뭉치에 공통 적용했다고 논문이 설명한다.
+
+### 경사 항 자체의 효과는 별도 제거 실험에서 본다
+
+항을 하나씩 제거한 비교(Ablation)는 Tables 2–4의 두 빨간 행이 아니라 <strong>§5.1의 Figure 2</strong>에 있다. 여기서는 세 방법을 비교한다.
+
+- <strong>ENT-tok:</strong> 토큰 엔트로피 직접항만 사용한다.
+- <strong>PG-tok:</strong> 토큰 비용에 대한 정책 경사 항만 사용한다.
+- <strong>EM-tok:</strong> 두 항을 모두 사용한다.
+
+잡음·스페인어 모국어 화자의 영어 발음·폴란드어 조건에서 G를 1·4·16·64로 바꾼다. 논문은 여러 샘플을 사용할 때 두 항을 함께 쓰는 방법이 대체로 좋은 결과를 보이지만, <strong>G=1에서는 이 Leave-one-out baseline을 쓸 수 없고 정책 경사 항이 불안정해질 수 있다</strong>고 보고한다. [논문 PDF 6–7쪽, §5.1·Figure 2](https://arxiv.org/pdf/2605.08186v1#page=6)
+
+수학적으로 필요한 항이 있다는 사실은 “어떤 표본 수와 학습률에서도 더 좋은 결과를 보장한다”는 명제와 다르다. 추정량의 분산, 샘플 생성, 정규화와 최적화가 실제 업데이트에 함께 영향을 준다.
+
+### 함께 읽기 B — 더 잘 탐색하는 것과 모델을 바꾸는 것
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/rethinking-v1-table5.png"
+  alt="Greedy, Beam Search, EM-tok-b의 WER를 비교한 논문 Table 5. MLS-Polish에서는 Beam Search가 더 낮은 오류율을 보인다."
+  caption="Huang et al. Table 5 — 파라미터 적응 없이 beam search만 한 경우와 EM-tok-b의 WER(PDF 7쪽)."
+  source="https://arxiv.org/pdf/2605.08186v1#page=7"
+  credit="Wei-Ping Huang et al., arXiv:2605.08186v1 (2026)."
+  width={1801} height={1012}
+/>
+
+Table 5는 <strong>파라미터를 바꾸지 않고 beam search만 하는 경우</strong>와 <strong>EM-tok-b로 적응한 경우</strong>를 비교한다. beam size는 16이며, 각 말뭉치에서 두 조건을 뽑아 보고한 부분 결과다. 모든 조건을 망라한 표는 아니다. [논문 PDF 7쪽, §5.2·Table 5](https://arxiv.org/pdf/2605.08186v1#page=7)
+
+| 예시 조건 | Greedy | Beam search만 | EM-tok-b 적응 |
+|---|---:|---:|---:|
+| L2-Korean | 14.56% | 13.50% | 11.86% |
+| MLS-Polish | 25.31% | 22.08% | 23.20% |
+
+한국어 모국어 화자의 영어 발화에서는 적응한 쪽이 더 낮다. 반면 폴란드어 조건에서는 <strong>beam search만 사용한 22.08%가 EM-tok-b의 23.20%보다 낮다.</strong> 적응하지 않은 탐색 전략이 더 좋은 경우도 실제 표에 존재한다.
+
+여기서 구분할 축은 두 개다. <strong>디코딩은 주어진 모델에서 어떤 출력을 찾아낼지</strong>를 바꾸고, <strong>적응은 모델의 확률분포 자체</strong>를 바꾼다. 둘을 함께 쓴 방법을 평가할 때는 어느 변화의 효과인지 분리해서 비교해야 한다.
+
+## 43쪽 — 수학의 끝에서 남는 세 가지 질문
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/ntu-self-improving-43-en.png"
+  alt="엔트로피 경사 수학 구간의 끝을 알리는 End of Math Warning 원본 43쪽."
+  caption="P043 — 엔트로피 경사 유도의 마무리."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=43"
+  credit="Hung-yi Lee / NTU ML 2026."
+  width={1800} height={1013}
+/>
+
+<strong>영상 설명 · [44:51–44:55](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2690s).</strong> 이 장은 수학 유도 부분의 끝을 알린다. 새로운 알고리즘이나 실험 결과를 담은 페이지는 아니다.
+
+앞의 계산을 다음 세 질문으로 정리할 수 있다.
+
+| 질문 | 확인할 것 |
+|---|---|
+| 내가 계산한 경사가 목표 함수의 경사인가? | 샘플링 분포, 직접항과 정책 경사 항, baseline의 독립성 |
+| 실제 적응 절차가 그 조건을 지키는가? | beam search의 편향, 길이 정규화, 표본 수와 갱신 방식 |
+| 목표를 낮추는 것이 원하는 능력을 높이는가? | 정답·오류율 같은 별도 지표, 비교 조건, 입력별 초기화 여부 |
+
+이 구분은 뒤의 AI 평가에도 이어진다. 엔트로피처럼 사람이 정한 수학적 비용 대신 AI가 점수를 주더라도, <strong>어떤 점수를 최적화하며 무엇으로 결과를 평가할지</strong>는 계속 남는 질문이다. 그리고 44쪽은 한 단계 앞의 선택을 가리킨다. 학습에 넣을 문제는 누가 고르는가?
+
+## 44쪽 — AI가 학습 신호를 정해도 입력은 누가 고르는가
+
+41–42쪽에서는 엔트로피를 줄이는 경사를 어떻게 계산하는지 살펴봤다. 이제 강의는 한 단계 바깥의 질문으로 돌아온다. <strong>모델이 자기 출력을 평가하고 학습할 수 있더라도, 무엇을 풀게 할지는 누가 정하는가?</strong>
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/ntu-self-improving-44-en.png"
+  alt="왼쪽 사람이 입력을 제공하고 아래쪽 AI가 입력과 출력을 평가해 손실을 만든다."
+  caption="P044 — 입력의 출처는 사람이고, 출력의 평가는 AI가 맡는다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=44"
+  credit="Hung-yi Lee / NTU ML 2026."
+  width={1800} height={1013}
+/>
+
+[강의 화면 45:20](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2720s)
+
+[영상 44:55](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2695s)에서 교수는 AI가 자신의 loss를 정하고 스스로 훈련하는 흐름을 되짚는다. 이어 아직 사람이 맡는 중요한 일이 있다고 짚는다. 바로 <strong>입력을 찾아 모델에 넣어주는 일</strong>이다. 44쪽 그림에서도 평가 AI는 이미 있지만, 위쪽의 입력 목록은 외부에서 주어진다.
+
+그림 아래쪽 AI는 입력과 출력을 보고 개별 손실을 내놓는다. 여기서 먼저 이해할 것은 <strong>학습에 사용할 평가 신호를 AI로 만든다</strong>는 구조다. 이 그림만으로 AI가 미분 가능한 손실식이나 최적화 알고리즘까지 새로 발명했다고 해석할 필요는 없다. 좋고 나쁨을 점수로 매기는 절차와, 그 점수를 이용해 파라미터를 바꾸는 절차는 구체적으로 연결해야 한다.
+
+### 함께 읽기 C — 평가 AI의 점수는 어떻게 학습으로 이어질까
+
+Lee 등의 ICML 2024 논문은 RLAIF(Reinforcement Learning from AI Feedback)를 사람의 선호 평가를 쓰는 RLHF와 나란히 보여준다. RLAIF 쪽에서는 AI가 응답의 선호를 판단하고, 그 데이터로 보상 모델(Reward Model)을 학습한 뒤, 보상 모델의 점수로 정책을 개선한다. 평가 AI가 보상 모델을 거치지 않고 점수를 제공하는 direct-RLAIF도 별도로 제시한다. [논문 §2 및 Figure 2](https://proceedings.mlr.press/v235/lee24t.html)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/rlaif-icml2024-figure2.png"
+  alt="AI 또는 사람이 응답을 평가하고 보상 모델을 학습한 뒤 강화학습에 사용하는 RLAIF와 RLHF의 원본 비교 도해."
+  caption="RLAIF vs. RLHF Figure 2 — 선호 평가에서 보상 모델과 정책 학습으로 이어지는 과정(PDF 2쪽)."
+  source="https://raw.githubusercontent.com/mlresearch/v235/main/assets/lee24t/lee24t.pdf#page=2"
+  credit="Harrison Lee et al. / ICML 2024, PMLR 235."
+  width={1801} height={869}
+/>
+
+이 구조를 읽기 쉽게 세 가지 기호로 나누자. 입력은 <Math tex={String.raw`x`} />, 답변을 만드는 정책은 <Math tex={String.raw`p_\theta(y\mid x)`} />, 답변에 점수를 주는 평가 함수는 <Math tex={String.raw`r_\psi(x,y)`} />다. 이 세 역할을 구분한 간단한 학습 구조를 생각해 보자.
+
+보상은 클수록 좋고 손실은 작을수록 좋도록 정의한다. 같은 점수를 이 두 관점으로 표현하는 가장 간단한 관계는 다음과 같다.
+
+<Math tex={String.raw`\ell_\psi(x,y)=-r_\psi(x,y)`} display />
+
+그렇다고 생성된 문장을 평가 AI에 넣고 나온 숫자에 곧바로 `backward()`를 호출하면 답변 정책이 학습되는 것은 아니다. 문장은 이산 토큰을 샘플링해 만들어졌기 때문이다. 정책 경사(Policy Gradient)는 <strong>어떤 답을 만들 확률을 높일 것인지</strong>를 통해 이 평가를 전달한다.
+
+예를 들어 한 번의 정책 업데이트 동안 평가 함수를 고정하고, 샘플링한 입력과 답변도 고정해 다음 대리 손실을 미분할 수 있다.
+
+<Math tex={String.raw`\widetilde{\ell}_{\mathrm{PG}}(\theta;x,y)=-\operatorname{sg}\!\left(r_\psi(x,y)-b(x)\right)\log p_\theta(y\mid x)`} display />
+
+여기서 <Math tex={String.raw`\operatorname{sg}`} />는 역전파를 멈추는 연산이고, <Math tex={String.raw`b(x)`} />는 같은 입력에 대한 기준 점수다. 현재 답변의 점수가 기준보다 높으면, 경사 하강은 그 답변의 로그 확률을 높이는 방향으로 작용한다. 기준보다 낮으면 반대 방향이다. 앞에서 다룬 엔트로피 비용과는 부호가 반대다. 여기서는 <strong>큰 보상을 선호하도록</strong> 식을 썼다.
+
+이때 평가자의 파라미터 <Math tex={String.raw`\psi`} />와 답변 정책의 파라미터 <Math tex={String.raw`\theta`} />를 나눈 이유도 분명하다. 답변 정책이 배울 때에는 현재 평가 기준을 고정해 두겠다는 뜻이다. 같은 초기 체크포인트를 두 역할에 사용하더라도, 평가 함수까지 같은 연산 그래프에서 함께 업데이트되는 것은 아니다. 평가자도 학습시킬 계획이라면 무엇으로 평가자를 훈련할지 별도로 정해야 한다.
+
+이 설명을 44쪽으로 되돌리면 남은 문제가 보인다. 좋은 평가기가 있어도 입력이 모두 한 자리 덧셈이면, 모델이 실제로 연습하는 것은 한 자리 덧셈이다. <strong>평가 기준은 어느 답을 선호할지 정하고, 입력 선택은 무엇을 배울 기회가 생길지 정한다.</strong>
+
+## 45쪽 — 모델이 문제도 만들면 학습 분포가 달라진다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/ntu-self-improving-45-en.png"
+  alt="입력 생성 역할까지 AI가 맡아 학습 고리를 구성하는 No Human in the Loop 원본 45쪽."
+  caption="P045 — 입력 생성까지 AI가 맡는 학습 순환."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=45"
+  credit="Hung-yi Lee / NTU ML 2026."
+  width={1800} height={1013}
+/>
+
+[영상 45:19](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2719s)에서는 입력도 모델이 찾게 할 수 있는지 묻는다. 입력을 찾고, 출력을 만들고, 그 출력을 평가해 학습하는 순환이다. 45쪽에는 입력 목록 옆에도 AI가 추가된다. 제목의 “No Human in the Loop?!”는 이 자동화가 어디까지 가능한지 묻는 질문으로 읽으면 된다.
+
+이를 수식으로 쓰면 입력 분포가 명시적으로 등장한다. <Math tex={String.raw`q_\phi(x)`} />를 입력 생성기의 분포라고 하자. 정책을 개선하는 한 단계에서 입력 생성기와 평가자를 고정하면, 생각할 수 있는 목적함수는 다음과 같다.
+
+<Math tex={String.raw`J(\theta;\phi,\psi)=\mathbb E_{x\sim q_\phi}\!\left[\mathbb E_{y\sim p_\theta(\cdot\mid x)}[r_\psi(x,y)]\right],\qquad \phi,\psi\text{ fixed during the policy update}` } display />
+
+이 목적식은 입력 생성, 답변 생성, 평가라는 세 역할을 분리해 보여준다. 어느 한 모델이 세 역할을 모두 맡는 구현도 가능하지만, 모든 파라미터를 하나의 손실로 동시에 미분해야 한다는 뜻은 아니다. 어느 단계에서 어떤 역할을 고정하고 무엇을 업데이트하는지 지정해야 한다.
+
+더 눈여겨볼 변화는 <Math tex={String.raw`q_\phi`} />다. 입력 생성기가 쉬운 문제를 자주 만들면 쉬운 문제의 비중이 커진다. 특정 표현이나 주제만 반복하면 그쪽으로 연습이 쏠린다. 같은 평가 함수와 같은 답변 정책을 사용해도 <strong>입력 분포가 바뀌면 최적화하는 평균 점수의 의미가 달라진다.</strong>
+
+가상의 예로, 덧셈과 여러 단계 계산을 각각 절반씩 평가하던 모델이 있다고 하자. 생성기가 덧셈을 90% 만들기 시작하면 학습 중 평균 보상이 오를 수 있다. 그러나 그 상승만으로 여러 단계 계산 능력이 나아졌다고 판단할 수는 없다. 어떤 문제를 더 잘 풀게 되었는지 보려면 평가할 문제의 구성도 함께 확인해야 한다.
+
+### 함께 읽기 D — Self-Instruct는 입력 생성 뒤에 필터를 둔다
+
+입력 생성의 실제 예로 <strong>Self-Instruct</strong>를 연결해 보자. ACL 2023 논문의 Figure 2는 사람이 작성한 175개 seed task에서 시작해 지시문(Instruction), 입력, 출력을 생성하고, 품질이 낮거나 유사한 결과를 걸러 작업 풀에 더하는 과정을 보여준다. [Self-Instruct §2, Figure 2](https://aclanthology.org/2023.acl-long.754/)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/self-instruct-acl2023-figure2.png"
+  alt="175개 seed task에서 시작해 지시문 생성, 과제 식별, 입력·출력 생성, 필터링을 반복하는 Self-Instruct 원본 도해."
+  caption="Self-Instruct Figure 2 — 지시문·입력·출력을 생성하고 걸러 학습 자료를 늘리는 과정(PDF 2쪽)."
+  source="https://aclanthology.org/2023.acl-long.754.pdf#page=2"
+  credit="Yizhong Wang et al. / ACL 2023."
+  width={1801} height={796}
+/>
+
+이 그림에서 놓치기 쉬운 것은 오른쪽의 생성 단계만큼 왼쪽의 <strong>Filtering</strong>이 중요하다는 점이다. 모델이 생성했다는 사실만으로 모든 항목을 학습 데이터로 받아들이지 않는다. 논문은 중복과 형식 문제 등을 걸러낸 뒤 남은 데이터로 원래 모델을 지도 미세조정(Supervised Fine-Tuning, SFT)한다. [원 논문 §2.2–2.3, PDF 3–4쪽](https://aclanthology.org/2023.acl-long.754.pdf#page=3)
+
+그 학습 방식을 일반적인 기호로 적어 보자. 지시문과 입력을 합친 것을 <Math tex={String.raw`x`} />, 생성·필터링 후 고정한 학습 집합을 <Math tex={String.raw`\mathcal D`} />라고 하면, 출력 토큰을 맞히는 음의 로그 우도(Negative Log-Likelihood)는 다음과 같다.
+
+<Math tex={String.raw`\mathcal L_{\mathrm{SFT}}(\theta)=-\frac{1}{|\mathcal D|}\sum_{(x,y)\in\mathcal D}\sum_{t=1}^{|y|}\log p_\theta(y_t\mid x,y_{<t})`} display />
+
+이 식에서 생성된 출력은 고정된 학습 목표다. 앞의 정책 경사는 샘플링한 답변의 평가 점수로 확률을 조정했고, 여기서는 수집해 둔 목표 출력의 확률을 높인다. <strong>자기 생성 데이터를 사용한다는 공통점만으로 두 학습 방식을 모두 강화학습이라고 부르면 안 된다.</strong>
+
+또한 175개 seed task와 필터가 있다는 사실은 이 사례를 “인간 기여가 전혀 없는 학습”으로 읽을 수 없게 한다. 자동화된 반복 안에서 사람이 매번 답을 붙이지 않는 것과, 시작점·선택 기준·성능 판단까지 모두 사라지는 것은 서로 다른 주장이다.
+
+### 직접 실험한다면 무엇을 비교할까
+
+45쪽의 질문을 작은 연구 실험으로 옮길 때에는 생성된 데이터의 양과 함께 다음 세 항목을 기록하면 좋다.
+
+- <strong>고정 평가셋(Held-out Set).</strong> 입력 생성과 학습에 쓰지 않은 동일한 문제 집합에서 전후 성능을 잰다. 학습 중 평균 보상과 고정 평가셋의 실제 정답률을 따로 기록한다.
+- <strong>입력의 구성.</strong> 주제·난이도별 개수와 중복 비율을 함께 본다. 데이터가 늘면서 특정 유형만 과도하게 늘었는지도 확인한다.
+- <strong>평가 신호와 실제 성공의 일치.</strong> 코드라면 실행 결과, 계산이라면 검산처럼 답변 평가 AI 외의 기준으로 확인 가능한 표본을 검사한다. 점수가 올랐는데 실제 성공률이 그대로인 경우를 찾는 데 도움이 된다.
+
+이렇게 비교하면 “생성기가 더 많은 문제를 만들었다”, “모델이 평가자에게 더 높은 점수를 받았다”, “새로운 문제를 실제로 더 잘 푼다”를 각각 관찰할 수 있다. 45쪽이 열어 놓은 연구 질문은 이 세 변화가 언제 함께 일어나는가에 있다.
+
+다음 [10편 — 스스로 만든 문제만으로 계속 똑똑해질 수 있을까](/posts/self-improving-ai-10-self-play-and-external-feedback/)에서는 문제 생성자·풀이자·검증자의 학습 구조와, 자기대결에 외부 정보가 필요한 이유를 살펴본다.
+
+## 원문과 함께 읽을 자료
+
+| 자료 | 관련 위치 | 연결 내용 |
+|---|---|---|
+| [NTU Self-Improving 상편 영상](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2603s) | 43:24–45:39 | 경로 선택, 음성인식 평가와 입력 생성 |
+| [NTU 원본 PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=41) | 41–45쪽 | 엔트로피 경사와 학습 입력 생성 |
+| [Huang et al., arXiv:2605.08186v1](https://arxiv.org/pdf/2605.08186v1) | 식 (8)–(16), §4–5, Tables 2–5, Figure 2 | 정확한 경사, 실험 방법 정의, WER와 제거 실험 |
+| [Berkeley CS 185/285 Policy Gradients](https://rail.eecs.berkeley.edu/deeprlcourse/static/slides/lec-5.pdf#page=17) | PDF 17쪽 | baseline의 독립성 조건 |
+| [Lee et al., RLAIF vs. RLHF, ICML 2024](https://proceedings.mlr.press/v235/lee24t.html) | PDF 2쪽 Figure 2, §2 | AI 평가 → 보상 모델 → 정책 학습 |
+| [Wang et al., Self-Instruct, ACL 2023](https://aclanthology.org/2023.acl-long.754/) | PDF 2쪽 Figure 2, §2 | 지시문·입력·출력 생성, seed와 품질 필터, SFT |
+
+[공식 강의 자료](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+<details>
+<summary>계산 코드와 검산</summary>
+
+확률나무의 네 경로, 유한차분 경사, baseline 조건과 WER의 절대·상대 감소를 [검산 코드](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/verify_examples_09.py)에서 확인할 수 있다. [계산 결과](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/numeric-checks-09.json)에는 21개 수치 검사의 결과를 담았다.
+
+</details>

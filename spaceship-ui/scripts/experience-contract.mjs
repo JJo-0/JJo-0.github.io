@@ -197,8 +197,8 @@ const researchHtml = fs.existsSync(researchFile) ? fs.readFileSync(researchFile,
 if (!homeHtml.includes('data-experience-runtime="home"')) {
   issues.push('dist/index.html: homepage motion runtime marker is missing');
 }
-if (!homeHtml.includes('/image/mouse_surprised.gif')) {
-  issues.push('dist/index.html: homepage mouse GIF identity visual is missing');
+if (!homeHtml.includes('/assets/profile/mouse_surprised-still.webp')) {
+  issues.push('dist/index.html: homepage static profile identity visual is missing');
 }
 if (!homeHtml.includes('data-experience-canvas="home"')) {
   issues.push('dist/index.html: progressive Home renderer shell is missing');

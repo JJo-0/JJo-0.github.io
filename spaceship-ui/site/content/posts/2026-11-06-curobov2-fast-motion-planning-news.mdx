@@ -1,0 +1,62 @@
+---
+title: "4.4ms 토크 제한 로봇 모션 플래너"
+description: "B-spline과 GPU 역동역학으로 충돌·payload·토크 제한을 함께 다루고 실제 pick-and-drop 주기를 단축한 cuRoboV2-Fast의 초기 결과를 기록한다."
+pubDate: 2026-11-06T06:40:00+09:00
+updatedDate: 2026-11-06T06:40:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: 2026-11-06-curobov2-fast-motion-planning-news
+category: robotics-embedded
+subcategory: gpu-motion-planning
+type: research-report
+tags:
+  - frontier-candidate
+  - motion-planning
+  - gpu-robotics
+  - robot-control
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+> **BACKLOG_CANDIDATE · 기준일 2026-11-06 KST · 순위 2 · 94/100 · EARLY_SIGNAL**  
+> 검토 범위는 arXiv metadata·abstract와 공식 NVIDIA/GitHub 링크다. 전문·보충자료는 정독하지 않았으며 저자 보고 수치를 독립 검증하지 않았다.
+
+## 한 문장 결론
+
+cuRoboV2-Fast는 B-spline 궤적 최적화와 미분 가능한 역동역학, 고정 경로의 속도를 토크·속도·가속도·jerk 제한 아래 다시 최적화하는 TimeOpt를 결합해 planning latency뿐 아니라 실제 실행시간까지 줄이려는 GPU 플래너다.
+
+## 왜 중요한가
+
+로봇 플래너가 빠르게 경로를 찾더라도 payload가 바뀌거나 토크 제한을 넘으면 실제 실행은 느려지거나 실패한다. 이 연구는 collision-free path와 시간 매개화를 분리하되 둘 다 GPU에서 가속해, perception 이후 motion generation을 밀리초 수준으로 내리는 시스템 병목을 직접 다룬다.
+
+## 차이와 가장 강한 증거
+
+저자 보고로 3 kg payload에서 RTX 5090 평균 planning time 4.4 ms, cuRoboV2 대비 14.7배 빠르다. Jetson AGX Orin에서도 RTX 5090의 cuRoboV1+TOPPRA보다 빠르게 계획했다고 보고했다. Stereo camera를 쓰는 YAM pick-and-drop 배치에서는 평균 cycle time 5.93초로 cuRoboV2보다 34.6% 짧았다.
+
+## 수치·비교조건
+
+- planner: cuRoboV2-Fast 대 cuRoboV2
+- payload 조건: 3 kg
+- planning hardware: RTX 5090 및 Jetson AGX Orin
+- 실물 task: YAM pick-and-drop, stereo camera 기반
+- 공개 코드: NVlabs/curobo, Apache-2.0
+
+## 한계·반대 증거
+
+4.4 ms와 14.7배는 특정 GPU·robot·payload·benchmark 조건의 평균이다. 실제 산업 현장의 perception 지연, map update, safety PLC, 네트워크와 gripper cycle 전체를 포함한 보편 지연으로 확대할 수 없다. 충돌률, worst-case latency, 계획 실패율, 다양한 payload와 로봇에서의 통계는 초록만으로 확인되지 않았다. arXiv v1이므로 동료평가 결과도 없다.
+
+## Code/Data·이해관계
+
+코드는 공개되어 있다. 독립 dataset은 확인되지 않았다. 저자 소속과 NVIDIA 프로젝트 페이지가 연결되므로 자체 연구 발표이며, 별도 competing-interests 문구는 확인하지 못했다.
+
+## 식별자와 재검토 트리거
+
+- contentId: frontier-2026-11-06-r2-curobov2-fast
+- normalizedTitle: curobov2 fast fast torque limited collision free motion planning
+- venue: arXiv
+- arxivId: 2611.06913
+- DOI: 확인되지 않음(등록 대기 arXiv DOI 제외)
+- officialUrl: https://arxiv.org/abs/2611.06913
+- code: https://github.com/NVlabs/curobo
+- revisitTriggers: 동료평가, worst-case latency·실패율, 다른 로봇·GPU 독립 재현, 전체 safety stack 통합 시험
+

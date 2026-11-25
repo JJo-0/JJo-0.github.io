@@ -1,0 +1,120 @@
+---
+title: Labeling 200,000 hours of robot video
+description: How does NVIDIA Flora record actions in robot video? The article compares model performance, throughput
+  and cost under the reported conditions and examines failure detection.
+pubDate: 2026-10-24 00:00:00+09:00
+updatedDate: 2026-10-24
+publicationTimeZone: Asia/Seoul
+slug: flora-robotics-data-engine
+category: robotics-embedded
+subcategory: robotics-data-engine
+type: research-report
+tags:
+- frontier-candidate
+- robotics
+- dataset-annotation
+- vision-language-model
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: flora-robotics-data-engine
+translationKey: en-flora-robotics-data-engine
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+## What Flora produces
+
+Video annotation records when an action happens and how it ends. A GPU performs many video-processing calculations in parallel. An API lets one system ask an external model to analyze a video and return its results.
+
+Flora combines three openly released models that turn robot videos into descriptions of timed events and rewards for success or failure. The peak throughput comes from the authors’ infrastructure. The comparison with external APIs uses modeled throughput.
+
+The evidence comes from the authors’ arXiv v1 manuscript. The authors report the table values. This review did not establish whether the work had undergone peer review.
+
+## Why separate timing, description, and reward?
+
+Labeling exactly when an action happened and how well it was executed is a costly bottleneck in robot learning, even when footage is plentiful. Flora-TempSeg 9B finds event boundaries, Captioner 27B describes each segment, and Rewarder 27B evaluates overall outcomes, progress, or criteria supplied by a user. Different models handle segmentation and description. The overall cost comparison does not isolate the savings attributable to that choice. [Paper, Section 1](https://arxiv.org/html/2610.31779v1#S1)
+
+<NewsFigure media="flora-original-figure-1" lang="en" />
+
+Follow the outputs from a single video in the figure. In a clip of a robot picking up a cup, segmentation marks where the grasp begins and ends. A caption describes what happened between those times. A reward assesses the result or process against a criterion such as whether the robot kept a steady grip. The cup is an illustrative example. Equation (9) divides processing cost by the duration of the source footage. Estimating each model’s contribution would require separate GPU-hour measurements.
+
+## Throughput and benchmark results
+
+NVIDIA reports annotating up to 200,000 hours of video per day in a job using 512 GB300 GPUs. That throughput counts the playback duration of the source footage. Actual robot operating hours and the latency for a single video are different quantities.
+
+In NVIDIA’s table, joint point F1@0.5 (%) evaluates both event boundaries and captions. Flora scored 37.4 on Human100, compared with 29.7 for GPT-6 Astra. On Robot200 the order reversed, at 51.0 for Flora and 57.9 for GPT-6 Astra. These are two datasets evaluated with the same metric. The robot track lacked newly generated captions for five videos and had 98 unfinished judge jobs across the oracle and joint evaluations. The authors kept the denominator fixed and gave no credit for unverified contributions. The Robot200 ranking therefore includes missing observations. [Appendix B.4](https://arxiv.org/html/2610.31779v1#A2.SS4)
+
+## How the score combines timing and description
+
+A correctly timed segment can still carry an inaccurate description. Appendix B.3, Equation (8), matches predicted and reference segments one to one. Caption quality q contributes only for pairs with temporal intersection over union (tIoU) of at least 0.5.
+
+<div data-candidate-equation="flora-joint-eq8">
+
+<p>F_joint = 2 × (maximum sum of q over one-to-one matches)<br />
+/ (number of predicted segments + number of reference segments)</p>
+
+</div>
+
+<div data-candidate-equation="flora-caption-quality-eq7">
+
+The dimensionless caption-quality score is q = 2M/(R+M+F) in Equation (7). R sums the weights of verifiable reference requirements, M sums the weights of requirements the caption meets, and F is a weighted penalty for substantiated factual errors. A pair with no assessable requirements has unverified quality. The weights and segment counts carry no physical units. An empty caption still leaves its segment in the denominator, limiting the benefit of simply predicting more segments. Interpretation depends on the requirements and on the judge. A fixed GPT-6 Astra judge checked the requirements against evidence sampled from the video. As Astra was also a comparison model, potential self-preference remains a limitation. [Appendix B.3, Equations (6)–(8)](https://arxiv.org/html/2610.31779v1#A2.E8)
+
+</div>
+
+## Assumptions behind the cost comparison
+
+The cost-and-quality sample comprised 20 human videos, 15 parallel-gripper videos, and 15 videos of an articulated robot hand. Flora and the API models were scored against somewhat different versions of the reference annotations. The cost gap alone does not establish comparable quality.
+
+One GPU running for one hour consumes one GPU-hour. An episode in this comparison is a recording of one attempt at a robot task.
+
+Appendix D.2 of the manuscript gives the following cost estimate in Equation (9).
+
+<div data-candidate-equation="flora-cost-eq9">
+
+<p>C_Flora = p × g × N / (3600 × H × S)</p>
+
+</div>
+
+Here p is the assumed price in dollars per GPU-hour, g the GPU count, N the episode count, H the total playback time in hours, and S the episodes processed per second by the entire eight-GPU configuration. Dividing N/S by 3,600 converts runtime from seconds to hours. Multiplying by GPU count and unit price gives dollars. Dividing by H gives dollars per hour of source footage.
+
+At approximately 1.235 episodes per second, 50 episodes take about 40.5 seconds to process. Eight GPUs working that long consume about 0.090 GPU-hours, costing roughly $0.90 at the assumed price. The 50 recordings last about 1.245 hours altogether. With eight GB300s at $10 per GPU-hour, the authors estimate approximately $0.72 per hour of footage for Flora. Their estimate for GPT-6 Astra at its maximum reasoning setting was $88.49. These estimates underpin the paper’s roughly 125-fold gap. They exclude storage and deployment operations. Actual GPU usage in Flora’s operational deployment was unverified. The throughput calculation drew on an earlier deployment study with 660 segments and 890 captions. The current comparison supplied neither directly measured model call counts nor observed throughput for that workload. The appendix’s $0.5102–$1.2600 range per video hour consists of scenarios with different operational assumptions. [Appendix D.2](https://arxiv.org/html/2610.31779v1#A4.SS2)
+
+## Limitations and counterevidence
+
+The external API points on the throughput plot are conditional ceilings estimated from quotas and token counts. Appendix D.3 did not match budgets at each point or measure wall-clock API runtime. On DenseRewardBench, Flora-Rewarder labeled about 11% of normal steps as failures. GPT-6 Astra was at least as accurate on complete failures and complete successes. Flora’s advantage concentrated on partially completed tasks. The dataset and judge design may also favor the authors’ own models.
+
+## Code, data, and interests
+
+The official Hugging Face collection lists Captioner, TempSeg, and Rewarder. The model cards specify the NVIDIA OneWay Noncommercial License dated March 22, 2022. This review could not establish full reproducibility of the training data or the 512-GPU operating stack. The authors evaluated their own models. Independent replication remains to be established.
+
+## How the comparisons were constructed
+
+The 50-video sample contained 20 human-hand videos, 15 parallel-gripper videos, and 15 articulated-hand videos. Within each group, the authors gave equal weight to segment detection, captioning reference segments, and joint segmentation and captioning. They then weighted the three groups equally. Flora and the API models used different versions of the reference annotations. API cost counted only requests with reported usage for segment detection and captioning predicted segments. Of 7,062 requests, 106 lacked usage reports. The reported API cost is therefore a subtotal, and the cost and quality comparisons depend on these sampling and accounting choices. [Appendix D.1](https://arxiv.org/html/2610.31779v1#A4.SS1)
+
+All models in the failure-detection comparison evaluated the same 508 video segments. Predictions were compared with labels at 4,861 time points in 40 videos held out of training. This is the source of the roughly 11% false-positive rate on normal time points. [DenseRewardBench in Appendix C and Appendix E](https://arxiv.org/html/2610.31779v1#A5)
+
+<NewsFigure media="flora-original-figure-5" lang="en" />
+
+The panels answer different questions. At the top, F1@0.5 scores segment detection on one selected human video, with Flora at 82.9 and GPT-6 Astra at 18.2. Joint F1 in Equation (8) also counts caption quality q for pairs that pass the overlap threshold. The middle compares descriptions of wire insertion and tea-leaf transfer. The lower left shows a failure judgment after an assembly part falls. At the lower right, 3/5 and 1/5 are ordinal scores for the progress remaining after a bottle was knocked over. They are not percentages, and none of these examples is a benchmark average. [Paper, Figure 5](https://arxiv.org/html/2610.31779v1#S3.F5) · [Joint F1, Equation (8)](https://arxiv.org/html/2610.31779v1#A2.E8)
+
+## Check your understanding
+
+Which model would find the moment a robot starts grasping a cup, and which would judge the stability of the grip? TempSeg locates the segment. Rewarder evaluates performance against the criterion.
+
+What happens to cost per video hour if throughput doubles for the same footage, GPU count, and price? Only S doubles in Equation (9), so the estimate halves. A different deployment must also account for any change in GPU count or unit price.
+
+Does a segment with an empty caption drop out of the joint point F1 denominator? It still counts. Equation (8) adds all predicted segments to all reference segments.
+
+<details>
+<summary>Source coverage and items left unverified</summary>
+
+The main evidence reviewed was the abstract, main text, methods, Appendices A–H, and references of the arXiv v1 HTML manuscript. Figures and tables were inventoried from captions and legends. The pixels of figures in the Figure 2–14 range that are not reproduced here were not reviewed. The evaluations are author-reported. Other cited papers, the code, the complete training set, and the 512-GPU deployment stack were outside the review.
+
+</details>
+
+## Sources
+
+- [NVIDIA research page](https://research.nvidia.com/labs/gear/flora/)
+- [Public author manuscript](https://arxiv.org/abs/2610.31779)

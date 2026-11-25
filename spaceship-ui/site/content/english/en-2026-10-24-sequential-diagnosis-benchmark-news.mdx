@@ -1,0 +1,116 @@
+---
+title: What should a diagnostic AI ask next?
+description: A Science study asks models to choose questions and tests in sequence. Its reported 83.2% accuracy
+  raises specific questions for clinical validation.
+pubDate: 2026-10-24 00:00:00+09:00
+updatedDate: 2026-10-24
+publicationTimeZone: Asia/Seoul
+slug: sequential-diagnosis-benchmark
+category: ai-machine-learning
+subcategory: clinical-ai
+type: paper-review
+tags:
+- frontier-one
+- clinical-ai
+- diagnostic-reasoning
+- ai-agents
+researchFeatured: false
+draft: false
+lang: en
+translationKey: en-sequential-diagnosis-benchmark
+translatedPosts:
+  ko-KR: sequential-diagnosis-benchmark
+---
+
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+> This benchmark reconstructs historical records as text-based interactions. The final Science abstract and bibliographic record were checked against the public author manuscript. The study provides no clinical trial results, device authorization or evidence of improved patient outcomes.
+
+## 1. In one sentence
+
+Starting with limited information, the diagnostic AI chooses **what to ask and which tests to order**. The benchmark measures both diagnostic accuracy and the estimated cost of reaching a diagnosis, a distinction that disappears when a model receives the entire case history at once.
+
+## 2. Why this is difficult
+
+Diagnosis unfolds over time. A clinician chooses the next question or test according to a working hypothesis, then narrows or abandons it as evidence arrives. A static vignette that supplies everything up front can conceal poor information gathering, premature closure and unnecessary orders. Studying that process with real patients raises questions of safety, consent, time and cost. The researchers used an interactive simulation to explore the gap.
+
+## 3. Basic concepts
+
+The Sequential Diagnosis Benchmark (SDBench) starts with a brief presenting complaint. When an agent requests a history detail, examination finding or test, a Gatekeeper retrieves the relevant information from the case. A Judge scores the final diagnosis, and requests incur estimated US costs. Performance is measured on a Pareto frontier of accuracy and cost. A setting that improves one without worsening the other is more efficient.
+
+<NewsFigure media="sdbench-diagnosis-evaluation-flow" lang="en" />
+
+## 4. Limits of earlier approaches
+
+Medical LLM evaluations have emphasized complete case summaries and multiple-choice questions. Those formats make it hard to separate recalled knowledge from a strategy for gathering information. Even approaches in the AMIE family that summarize a long case and return a top-k differential do not directly measure which tests a model selected or why. SDBench restores the sequence of decisions but introduces an artificial feature of its own: a text oracle stands in for the patient.
+
+## 5. Three steps in the new method
+
+First, the team turned 304 NEJM clinicopathological conference (CPC) cases and 325 MIMIC-IV-ED admissions into interactive encounters with minimal opening information. Second, the MAI Diagnostic Orchestrator (MAI-DxO) assigned a single language model five panel roles: Hypothesis, Test-Chooser, Challenger, Stewardship and Checklist. These roles propose and challenge explanations, then select a question, a test or a final diagnosis. All five roles use the same model. Third, the researchers varied the budget and use of ensembling to produce accuracy–cost curves, then compared the systems with general practitioners and individual models.
+
+## 6. Equations and system boundaries
+
+The paper introduces no new diagnostic equation. The expressions below restate the operational definitions in its Methods.
+
+<CandidateEquation lang="en" id="sdbench-accuracy-reexpression" title="What does the accuracy calculation count?" tex="\mathrm{Accuracy}=\frac{N_{\mathrm{correct}}}{N_{\mathrm{cases}}}">
+`N_correct` is the number of cases receiving a Judge score of at least 4, and `N_cases` is the number assessed. Both are dimensionless counts.
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="sdbench-cost-reexpression" title="How are visits and test charges added?" tex="C_{\mathrm{case}}=300V+\sum_{j=1}^{m} c_j">
+In the cost expression, `V` counts visits under the evaluation rules. Consecutive questions belong to one visit, which ends when a test is ordered. The manuscript charges **$300 per visit**, so a case can incur several such charges.
+
+`c_j` is the charge in dollars for the jth billed test or procedure, and `m` is the number of billed items. One complex request can map to several Current Procedural Terminology (CPT) codes, so counting sentences would give the wrong `m`. Both `300V` and the sum of test charges are in dollars. `C_case` is the total estimated case cost. This unnumbered explanatory expression restates the rules on printed pages 8–9 of the author manuscript. Page 9 defines visit boundaries and charges, while pages 7–8 provide the costing background.
+
+For example, assume two visits and $100 in total test charges. The estimate is 300 × 2 + 100 = $700. This hypothetical calculation illustrates the rule. Accuracy and cost leave out much of what matters after a diagnosis, including treatment safety, invasiveness, waiting time, insurance approval and patient burden. A lower `C_case` alone does not establish better care.
+</CandidateEquation>
+
+## 7. Experiments and results
+
+The final Science abstract and author manuscript report that unbudgeted, GPT-5-based MAI-DxO achieved 83.2% accuracy on 304 NEJM-CPC cases and 80.3% on 325 MIMIC-IV-ED cases. General practitioners scored 36.1% and 46.8%, respectively. For NEJM-CPC, the unbudgeted system's estimated diagnostic cost was about $5,430 per case, above the $4,725 for physicians allowed to consult references. In Figure 7 of the public manuscript, the “$4k” setting reached 80.9% at a mean of $2,241 per case. The “$1k budget” setting reached 79.6% at $1,302. A budget label and the observed mean cost measure different things. Charges include a fee for each visit plus ordered tests and procedures. Read each accuracy with its corresponding cost. The NEJM AI score of 83.2% covers all 304 cases, whereas the physician score of 36.1% comes from a separate 56-case assessment. They do not constitute a matched case-by-case comparison. The highest-accuracy configurations reached 84.5% on NEJM and 80.9% on MIMIC.
+
+The 80% and 85.5% figures in the 2025 arXiv v2 preprint belong to an earlier model generation and revision before the added MIMIC validation. Figure 7 of the public manuscript shows the NEJM accuracy–cost curve. Figure 9 shows how much orchestration improved each model. Gains varied, with smaller accuracy increases for stronger models.
+
+The interaction formats also differed. In the main AI and base-model results, agents could batch several questions or tests in one turn. MAI-DxO was instructed to ask at most five questions or request three tests per turn. For ease of use, clinicians made individual requests. The case sets and the conditions for requesting information both matter to the comparison.
+
+Appendix A compares the formats on the MAI-DxO (o3) test split. Both reached 83.9% accuracy, but mean cost was $3,991 for individual turns and $5,084 for batching. Batching cannot be assumed to be cheaper or more accurate. This analysis used a different model and split from the 304-case GPT-5 result, so it cannot directly adjust that headline comparison. [Author manuscript, Appendix A, printed page 27](https://erichorvitz.com/sequential_diagnosis_LM.pdf#page=27)
+
+## 8. Evidence that qualifies the headline
+
+The 83.2% figure comes from selected benchmark cases. NEJM-CPC features difficult teaching cases and excludes normal and benign presentations. The MIMIC sample includes only emergency patients who were admitted. A Gatekeeper can synthesize case-consistent findings for tests missing from the original record. A plausible answer can therefore lack a real patient measurement. The Judge is also a model. It assesses diagnosis without measuring treatment appropriateness, safety or long-term outcomes.
+
+The comparison involved individual general practitioners. The text environment removed specialist consultation, images, waveforms, pathology slides, body language, elapsed time and changes in the patient's account. Errors can remain correlated across roles played by one underlying model. The most direct interpretation is higher accuracy on this controlled information-gathering task.
+
+## 9. Limitations
+
+This is a retrospective simulation. Costs are first-order approximations based on standardized US prices. NEJM copyright prevents release of the complete cases, and the extended MIMIC data are restricted to credentialed users. Specific author equity and patent disclosures could not be verified from the accessible text. Restricted access to the final Science article meant that detailed methods and figures were reviewed in the public author manuscript.
+
+## 10. What changes in practice?
+
+Evaluations are moving beyond static medical question answering to assess question selection, test choice, stopping decisions and costs in one loop. The SDBench code and new MIMIC-IV-Ext-SDBench provide a starting point for replication. Their immediate use is to expose failures in information gathering. Clinical deployment requires additional evidence.
+
+## 11. What to watch next
+
+Further evidence would include prospective multicenter assessment covering the everyday disease mix, comparisons with actual specialist teams, multimodal validation with images, waveforms and time courses, an independent audit of the proportion of synthesized Gatekeeper responses, measurement of patient safety and treatment outcomes, and external replication.
+
+## Check your understanding
+
+Do 83.2% for AI and 36.1% for physicians compare predictions for the same patients one by one? No. The AI assessment covered 304 cases and the physician assessment 56, with different question and test batching. The figures cannot be extrapolated to outcomes in hospitals.
+
+Do three additional questions before a test add three visit fees? Consecutive questions counted as one visit, with a test request marking the boundary. The cost calculation uses that visit count.
+
+If the Gatekeeper supplies a finding absent from the original record, was it measured in the patient? It may have been generated to fit the case. An answer that helps the simulation proceed has a different evidentiary status from a real test result.
+
+## 12. Sources
+
+- Nori et al., *Science*, 2026-10-22, DOI: [10.1126/science.aeh7930](https://doi.org/10.1126/science.aeh7930)
+- [Official SDBench project and code](https://microsoft.github.io/sdbench/)
+- [MIMIC-IV-Ext-SDBench v1.0.0](https://physionet.org/content/mimic-iv-ext-sdbench/1.0.0/), 2026-10-22
+- [Public author manuscript, November 8, 2025 version](https://erichorvitz.com/sequential_diagnosis_LM.pdf). This version is distinct from the published Science article above.
+
+<details>
+<summary>Source locations and scope of review</summary>
+
+In the author manuscript, the abstract is on printed page 1, the definitions of cost and visits on pages 8–9, the MAI-DxO diagram on page 11, the NEJM cost–accuracy graph on page 15, model-level results on page 18, and the batch versus single-turn comparison in Appendix A on page 27. The final Science abstract and bibliographic record were checked separately. Equivalence of the entire published text and supplement with the author manuscript could not be confirmed. Where the manuscript text and Figure 9 gave different effect sizes, this article did not adopt either as a definitive figure.
+
+</details>

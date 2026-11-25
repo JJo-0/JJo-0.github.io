@@ -3,10 +3,10 @@ import satori from 'satori';
 import { html } from 'satori-html';
 import { Resvg } from '@resvg/resvg-js';
 import { SITE } from '@/config';
-import { getOgBoldFont } from '@/lib/og-font';
+import { getOgFonts } from '@/lib/og-font';
 
 export const GET: APIRoute = async () => {
-  const fontData = await getOgBoldFont();
+  const fonts = await getOgFonts();
 
   const markup = html`
     <div
@@ -18,7 +18,7 @@ export const GET: APIRoute = async () => {
         justify-content: space-between;
         background: #09090b;
         color: #fafafa;
-        font-family: Outfit;
+        font-family: Outfit, NanumGothic, NotoSans, NotoSansSymbols;
         padding: 72px 80px;
       "
     >
@@ -52,14 +52,7 @@ export const GET: APIRoute = async () => {
   const svg = await satori(markup, {
     width: 1200,
     height: 630,
-    fonts: [
-      {
-        name: 'Outfit',
-        data: fontData,
-        weight: 700,
-        style: 'normal',
-      },
-    ],
+    fonts,
   });
 
   const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render();

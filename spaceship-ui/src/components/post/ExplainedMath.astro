@@ -1,4 +1,5 @@
 ---
+import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
 import BaseMath from './Math.astro';
 import FormulaGuide from './FormulaGuide.astro';
 import { formulaCardTitle } from '@/lib/modern-ai-formula-guide.mjs';
@@ -11,7 +12,9 @@ interface Props {
 }
 
 const { formulaId, tex, label } = Astro.props;
-const title = formulaCardTitle({ formulaId, tex });
+const isEnglish = Astro.url.pathname.startsWith('/en/');
+const t = (value: string) => isEnglish ? englishFormulaText(value) : value;
+const title = t(formulaCardTitle({ formulaId, tex }));
 const aria = label || `${title}, ${formulaId}`;
 ---
 
@@ -23,15 +26,15 @@ const aria = label || `${title}, ${formulaId}`;
 >
   <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/25 px-4 py-3 sm:px-5">
     <div class="min-w-0">
-      <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">Part I · 학습 수식</p>
+      <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">Part I · {t('학습 수식')}</p>
       <figcaption class="mt-1 text-base font-black leading-6 text-foreground">{title}</figcaption>
     </div>
     <button
       type="button"
       class="formula-copy rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:border-primary/40 hover:text-primary"
       data-copy-tex={tex}
-      aria-label={`${formulaId} LaTeX 복사`}
-    >수식 복사</button>
+      aria-label={`${formulaId} ${t('LaTeX 복사')}`}
+    >{t('수식 복사')}</button>
   </div>
 
   <div class="overflow-x-auto overflow-y-hidden px-3 py-2 sm:px-5">
@@ -42,6 +45,6 @@ const aria = label || `${title}, ${formulaId}`;
     formulaId={formulaId}
     tex={tex}
     part={1}
-    sourceLabel={`현대 인공지능 I · ${formulaId}`}
+    sourceLabel={`${t('현대 인공지능 I')} · ${formulaId}`}
   />
 </figure>

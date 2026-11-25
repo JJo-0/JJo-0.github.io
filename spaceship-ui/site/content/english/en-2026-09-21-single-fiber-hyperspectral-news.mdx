@@ -1,0 +1,172 @@
+---
+title: Reading color and position through a single optical fiber
+description: A nanophotonic encoder and computational reconstruction recover hyperspectral images through a single fiber. The equations,
+  FISTA algorithm, and tissue experiment show what one spectrum can reveal and when the researchers needed 36 rotated measurements.
+pubDate: 2026-09-21 00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+category: research-methods-tools
+subcategory: hyperspectral-imaging
+type: paper-review
+tags:
+- frontier-candidate
+- hyperspectral-imaging
+slug: 2026-09-21-single-fiber-hyperspectral-news
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-21-single-fiber-hyperspectral-news
+translationKey: en-2026-09-21-single-fiber-hyperspectral-news
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import Math from '@/components/post/Math.astro';
+
+<NewsFigure media="fiber-fig-1" lang="en" priority />
+
+A pixel in a grayscale image records one brightness value, and an RGB pixel records three color channels. A hyperspectral image records brightness at many wavelengths for each location. Capturing shape and spectrum together can require bulky optics and sensors. This study <strong>encodes spatial and spectral information before light enters a fiber, then estimates the scene computationally from the spectrum measured at the other end</strong>.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<small>The review covers the full PDF, Methods, and supplementary information of the peer-reviewed accepted manuscript released September 19, 2026. The paper's equation numbers are distinguished from this article's worked explanations. The authors' public code was checked separately as a reproduction example.<a href="#news-ref-4" data-news-citation="4" aria-label="Go to reference 4" data-astro-reload>[4]</a></small>
+
+## 1. What must change to send an image through a single fiber?
+
+A fiber bundle carries location information through many parallel channels. A single multimode fiber supports many propagation modes within a smaller cross-section, but the spatial pattern at its output changes under bending and twisting. A fixed point-to-point mapping from input to output is sensitive to those changes. The authors instead <strong>give light from different incident directions different wavelength-dependent transmission responses</strong>.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+In Figure 1a at the top, the scene brightness varies with direction <Math tex={String.raw`\theta_x,\theta_y`} /> and wavelength <Math tex={String.raw`\lambda`} />. Light passes through a small encoder and travels down the fiber to the spectrometer on the right. The spectrometer measures arriving light by wavelength. The reconstruction step estimates a data cube consisting of images at multiple wavelengths. The stomach-shaped organ in the illustration indicates a target application. Section 6 describes the actual tissue specimen and acquisition procedure.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Figure 1b shows the disordered-dispersion encoder (DDE). Even at the same wavelength, light from different directions passes through it in different proportions. Figure 1c gives the mathematical effect: multiply scene brightness by the encoder response, then sum over angle to obtain a single measured spectrum. The uneven curves below show how the response varies with wavelength and angle.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<strong>The encoder changes how much light of a given color is transmitted depending on the direction from which it arrives.</strong> It does not have to convert one color into another. Knowing the code provides clues about the input that produced a mixture. Mixing alone cannot create information. Recovery depends on what is known about the system and what is assumed about the scene.
+
+## 2. A numerical example of multiplication and integration
+
+When nonlinear optical effects can be neglected, the paper relates an object <Math tex={String.raw`o(\lambda,\theta)`} /> specified over angle and wavelength to a spectrally resolved measurement <Math tex={String.raw`m(\lambda)`} />. The transfer function <Math tex={String.raw`T(\lambda,\theta)`} /> determines how strongly each input contributes. The physical device needs calibration to determine it.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<CandidateEquation lang="en" id="fiber-forward" title="How does light from different directions add up to one spectrum?" tex={String.raw`m(\lambda)=\int T(\lambda,\theta)o(\lambda,\theta)\,d\theta\tag{1}`}>
+
+This is Equation (1) of the paper. <Math tex={String.raw`o`} /> is input brightness, <Math tex={String.raw`T`} /> is transmission as a function of direction and wavelength, and <Math tex={String.raw`m`} /> is the brightness at the spectrometer. Multiplication applies the fraction transmitted and detected. Integration adds the contributions from incident directions. The integration variable is <Math tex={String.raw`\theta`} />. The expression combines angles at the same <Math tex={String.raw`\lambda`} />, with no arbitrary conversion or mixing across wavelengths.
+
+At a single wavelength, suppose two directions have input brightnesses 2 and 1 and transmission coefficients 0.8 and 0.3. Absorb the angular bin weights into the coefficients. The discrete measurement is <Math tex={String.raw`0.8\times2+0.3\times1=1.9`} />. Multiplication followed by summation is the encoding operation.
+
+The measurement 1.9 alone cannot uniquely identify inputs 2 and 1: 2.375 and 0 give the same value. Responses at other wavelengths, assumptions about spatial and spectral structure, or additional measurements can help distinguish inputs. These invented values illustrate the inverse problem. They are not measured transmission data.
+
+</CandidateEquation>
+
+A computer discretizes angle and wavelength into finite bins and evaluates <Math tex={String.raw`\boldsymbol m=\boldsymbol S\boldsymbol o`} />. Here <Math tex={String.raw`\boldsymbol o`} /> flattens the input grid into a vector, <Math tex={String.raw`\boldsymbol m`} /> is the measured spectrum, and <Math tex={String.raw`\boldsymbol S`} /> collects the contributions from each input to each output. The paper's one-angular-axis model has <Math tex={String.raw`N_\theta N_\lambda`} /> input elements and <Math tex={String.raw`N_\lambda`} /> measured elements. The discrete system retains the same-wavelength structure of the forward model.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Figure 1d places the study on a conceptual map of image dimensionality and detector miniaturization. A marker on that plot does not independently measure or rank every performance attribute. The experiments establish how much information was recovered and how many observations were required.
+
+## 3. Figure 2: the physical structure behind the complex response
+
+<NewsFigure media="fiber-fig-2" lang="en" />
+
+Figure 2a shows a multilayer thin film underneath a long-period metagrating. The materials are silicon nitride and silicon dioxide. Each repeating unit contains structures of different widths and arrangements. The term “disordered” refers here to <strong>a design that produces rich angular and spectral responses through complex mode coupling within a repeating structure</strong>. Electron micrographs provide top and side views.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+In the figure, <Math tex={String.raw`k_0=2\pi/\lambda`} /> is the free-space wavenumber and <Math tex={String.raw`k_x=k_0\sin\theta_x`} /> is the transverse wavevector component of the incident light. Shorter wavelengths fit more oscillations into a fixed distance and therefore have a larger wavenumber. Changing the angle of incidence changes the transverse component. The encoder couples different modes as these quantities vary.
+
+Figure 2b plots the density of states (DOS) against wavenumber and frequency. The horizontal axis is <Math tex={String.raw`k_x`} />, the vertical axis is frequency <Math tex={String.raw`f`} />, and color denotes the DOS. Even though four marked points lie close together, their electric-field <Math tex={String.raw`E_y`} /> patterns in 2c differ. Similar input conditions can couple to different internal field distributions. The DOS map is distinct from the measured transmission map in the next panel.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<strong>Figure 2d shows the measured angle–wavelength transmission map.</strong> Angle runs horizontally from roughly −60° to +60°, wavelength vertically from 400 to 700 nm, and color encodes transmission. A vertical slice gives a spectral fingerprint at one angle. A horizontal slice gives directional sensitivity at one wavelength. The two slices compare different physical quantities.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Figure 2e uses correlation to quantify how similar the responses are at different angles or wavelengths. Figure 2f compares mutual coherence between the encoding matrix and reconstruction basis as the compression ratio changes. The authors compare the DDE, a simple periodic grating (PG), and a multilayer thin film (TF). Repeated, similar responses make inputs harder to distinguish, whereas varied responses can favor recovery. Low correlation alone does not guarantee accurate reconstruction for every scene.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+In Methods, the authors express encoder transmission as a sum over diffraction orders. They multiply the diffraction efficiency of each order by the extent to which it couples into the fiber. Light leaving the device need not enter the fiber. The transfer function must account for <strong>the directions into which light emerges and how well the fiber accepts those directions</strong>. Encoder design and calibration of the fiber and detector thus belong together.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 4. Reconstruction uses both measurement agreement and scene structure
+
+When the input grid has more unknowns than the measured spectrum has elements, several scenes can fit the same data. The authors favor solutions that fit the spectrum without unnecessary spatial or spectral oscillation. Equation (4) in Methods combines data fidelity with prior structure.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+<CandidateEquation lang="en" id="fiber-prior" title="Why add two regularizers to a measurement-error objective?" tex={String.raw`\begin{aligned}\widehat o=\arg\min_o\;&\frac12\lVert m-So\rVert_2^2\\&+\alpha\lVert\Psi_{xy}^{-1}o\rVert_1\\&+\beta\lVert\Psi_{\lambda}^{-1}o\rVert_2\end{aligned}\tag{2}`}>
+
+The expression separates the original combined regularization term. <Math tex={String.raw`So`} /> is the spectrum predicted from the current scene estimate. <Math tex={String.raw`m-So`} /> is its difference from the actual measurement. Squaring and summing prevents positive and negative errors from canceling and penalizes large errors more heavily. The leading <Math tex={String.raw`1/2`} /> cancels the factor of two that appears on differentiation.
+
+Here <Math tex={String.raw`\Psi^{-1}`} /> denotes a transform into a sparse representation of the scene. It does not denote inversion of the calibration matrix <Math tex={String.raw`S`} />. Subscript <Math tex={String.raw`xy`} /> refers to spatial structure and <Math tex={String.raw`\lambda`} /> to spectral structure. The first regularizer's 1-norm sums absolute transformed components. The second's 2-norm takes the square root of a sum of squares. <Math tex={String.raw`\alpha,\beta`} /> sets the weights relative to measurement fidelity.
+
+For example, suppose the spatial transform components are <Math tex={String.raw`(2,0,-1)`} />, the spectral components are <Math tex={String.raw`(3,4)`} />, and their weights are 0.1 and 0.2. The regularization cost is <Math tex={String.raw`0.1\times3+0.2\times5=1.3`} />. Minimizing measurement error alone can give a different result from minimizing total cost. Excessive weighting can erase real edges or spectral changes. Regularization specifies a preference among solutions.
+
+</CandidateEquation>
+
+<small>The expression follows the accepted manuscript's Methods. In particular, the spectral regularizer is written as an unsquared 2-norm. The implementation's spectral-smoothing gradient and coefficients require separate inspection. An interpretation of the code as squared smoothing should not silently replace the expression in the manuscript.</small>
+
+The researchers use FISTA, an iterative optimization algorithm. From a current scene estimate, it predicts a spectrum, maps residual error back toward the input positions that contributed to it, applies the desired regularization, and updates the estimate. The public implementation uses spatial total variation (TV), spectral smoothing, and nonnegative projection. The last prevents estimated light intensity from becoming negative.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+<CandidateEquation lang="en" id="fiber-gradient" title="Why map the measurement residual back with a transpose?" tex={String.raw`\nabla F(o)=S^{\mathsf T}(So-m)\tag{3}`}>
+
+This differentiates only the data-fidelity term <Math tex={String.raw`F(o)=\tfrac12\lVert So-m\rVert_2^2`} />. The residual on the detector side is <Math tex={String.raw`So-m`} />. The transpose <Math tex={String.raw`S^{\mathsf T}`} /> aggregates how each input contributed and maps the result to input space. This transpose appears in a derivative that gives a direction in which to reduce error. It does not invert the measurement process.
+
+For example, with <Math tex={String.raw`S=(0.8,0.3)`} />, estimated input <Math tex={String.raw`o=(1,1)^{\mathsf T}`} />, and measurement <Math tex={String.raw`m=1.9`} />, the prediction is 1.1 and the residual is −0.8. The gradient is <Math tex={String.raw`(-0.64,-0.24)^{\mathsf T}`} />. Subtracting a gradient step of size 0.5 gives candidate <Math tex={String.raw`(1.32,1.12)^{\mathsf T}`} /> and prediction 1.392, moving closer to the measurement. This single step omits regularization and acceleration.
+
+FISTA combines this error-reduction step with a proximal operation and acceleration that uses previous updates. Step size matters as well. The residual <Math tex={String.raw`\lVert So-m\rVert_2`} /> displayed in the public code checks measurement consistency alone. A small value does not establish that the true scene was recovered.
+
+</CandidateEquation>
+
+## 5. What do one spectrum and multiple rotations reveal?
+
+The first imaging experiment used slits and color filters to produce angle–wavelength inputs. Here “2D” means one spatial angle and one wavelength axis. The system recovered brightness and color by angle from one spectrum. It did not acquire both spatial axes of an ordinary photograph in a single exposure.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Object O1 was a single slit with a 550 nm long-pass filter, O2 a single slit with a blue filter, and O3 a double slit without a filter. These conditions test recovery across different spatial and color structures. Across the reported range, the authors give mean angular-profile error of 6.44% and spectral error of 6.27%. These are normalized profile discrepancies. The 6.44% value is not an angular position error in degrees.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+For two spatial axes, the device needs more information about the poorly distinguished direction. The authors rotated the object around the fiber axis in 10° increments and collected <strong>36 spectra</strong>. Different projections provide clues for separating components that previously overlapped. The object was rotated to emulate a future probe with a rotating tip.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<CandidateTable id="fiber-evidence" label="Input dimensions and acquisition conditions in the single-fiber experiments">
+
+| Experiment | Information reconstructed | Acquisition or interpretation |
+|---|---|---|
+| Slits and color filters | One angular axis + wavelength | From one spectrum |
+| Artificial multicolored object | Two angular axes + wavelength | 36 rotations in 10° steps, 30 ms integration each |
+| Stained tissue section | Two angular axes + wavelength | 36 rotations, 10 ms integration each |
+| Reported optical range | ±60° / 400–700 nm | Calibration and angle–wavelength measurement range |
+| Fiber used | 400 μm core diameter | Physical setup chosen to gather sufficient light |
+| Current computation time | Minutes | Reconstruction step, separate from integration time |
+
+</CandidateTable>
+
+For the tissue experiment, 36 integrations of 10 ms add up to 0.36 seconds of exposure. That excludes rotation, settling, transfer, and reconstruction. Converting exposure alone into roughly three complete images per second would misstate the end-to-end acquisition boundary. The paper reports reconstruction on the order of minutes and discusses improvements in computation and miniaturization.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 6. Figure 4: inspecting both tissue shape and spectra
+
+<NewsFigure media="fiber-fig-4" lang="en" />
+
+Figure 4a shows the illumination and rotation arrangement used to acquire spectra of a stained tissue sample. The specimen was <strong>a 4 μm thick section of mouse gastric tumor tissue</strong> stained with hematoxylin and eosin (H&E). The experiment recovered spatial and spectral structure from a prepared section. It did not image a probe moving through a living body.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The curves in 4b show how the mixture changes with rotation angle. Different views contribute complementary information about the same scene. Panel 4c combines reconstructed wavelength images into an RGB rendering. The authors made three independent measurements and reconstructions of the same specimen, then averaged them for the displayed image. These repeats do not represent three distinct tumors or animal cohorts.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Panel 4d clusters the reconstructed spectra into three regions using k-means. It demonstrates how spectral differences between regions with different appearances can contribute to image analysis. The direct question is which regions share which spectra. The experiment does not validate a clinical classifier against diagnoses.
+
+In 4e, solid lines are reconstructed regional means, shading shows standard deviations across repeats, and dotted lines give reference spectra from a conventional hyperspectral instrument. To compare necrotic and tumor regions, check wavelength and intensity normalization, then assess mean agreement and repeat variability separately. This evaluates the wavelength-resolved signals in addition to the visible appearance.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 7. What does running the public code reproduce?
+
+The authors released MATLAB code. Its README says it loads an experimentally calibrated response but <strong>simulates the objects and measurements used in the demo</strong>. In other words, a physically measured code mixes a virtual scene for reconstruction. Running the demo illustrates how the forward model and inverse algorithm work together. It does not reanalyze the paper's original tissue measurements.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+<CandidateEquation lang="en" id="fiber-grid" title="Do 121 × 601 reconstruction bins correspond to 72,721 detectors?" tex={String.raw`\begin{aligned}N&=N_\theta N_\lambda\\&=121\times601\\&=72{,}721\end{aligned}\tag{4}`}>
+
+The public 2D demo uses angles from −60° to +60° in 1° steps. Including both endpoints gives <Math tex={String.raw`120/1+1=121`} /> angles. Wavelengths from 400 to 700 nm in 0.5 nm steps give <Math tex={String.raw`300/0.5+1=601`} /> bins. The number of angle–wavelength combinations is the product.
+
+The 72,721 entries specify the unknown reconstruction grid. They do not count detectors or guarantee that many independent measurements in one exposure. A finer grid can represent detail, but actual resolution depends on the distinguishability of transfer responses and on noise.
+
+The 3D demo uses 50 positions on each angular axis, 601 wavelengths, and 36 rotated measurements. Its number of unknowns is <Math tex={String.raw`50\times50\times601=1{,}502{,}500`} />. This is a demo array size, distinct from the settings of every physical experiment. Array dimensions and optical resolution answer different questions.
+
+</CandidateEquation>
+
+## 8. From an encoding principle to a working probe
+
+Instead of carrying an unchanged spatial pattern to the outlet, the method encodes at the inlet and carries the resulting spectrum. The paper reports retained reconstruction under the tested fiber deformations. That addresses one vulnerability of methods based on output spatial modes. It does not establish that the same calibration holds under arbitrary sample motion or changes in temperature, polarization, and coupling.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+A usable probe would need a compact, robust encoder, enough light, stable calibration, and fast computation together. Fewer rotations would help with moving scenes while requiring a single acquisition to distinguish more unknowns. A thinner fiber could improve access while changing both light collection and coupling. The results concern this system of trade-offs.
+
+Agreement with reference measurements matters more than a plausible appearance alone. Strong regularization can make an image look smooth while eliminating small structures. A new tissue feature should be checked against its raw measurements, reference spectra, and repeat variability. The study provides <strong>an experimental route to carrying spatial and spectral information through a single fiber by combining a small optical encoder with computation</strong>. A real-time endoscope would also have to reduce the rotation and computation needed at the intended imaging dimensionality.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+<small>The authors disclosed an NTU patent application related to the DDE. The publisher's original CC BY-NC-ND 4.0 figures are reproduced unchanged. Explanations appear outside the images.</small>
+
+## 9. Sources
+
+<p><a id="news-ref-1" data-news-reference="1" href="https://www.nature.com/articles/s41467-026-77550-9_reference.pdf" target="_blank" rel="noopener noreferrer">[1] Single-fiber hyperspectral imaging via nanophotonic disordered dispersion. Nature Communications accepted manuscript, September 19, 2026. Full PDF, Methods, and figures.</a></p>
+
+<p><a id="news-ref-2" data-news-reference="2" href="https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-026-77550-9/MediaObjects/41467_2026_77550_MOESM1_ESM.pdf" target="_blank" rel="noopener noreferrer">[2] Supplementary Information for the same paper. Calibration, reconstruction, and acquisition conditions.</a></p>
+
+<p><a id="news-ref-3" data-news-reference="3" href="https://github.com/THUHoloLab/Disordered-dispersion/tree/c3630c720021a5693ee9ac8eed7986ca0e834ee4" target="_blank" rel="noopener noreferrer">[3] Authors' public code, Disordered-dispersion. Simulation demo using experimentally calibrated responses.</a></p>
+
+<p><a id="news-ref-4" data-news-reference="4" href="https://www.nature.com/articles/s41467-026-77550-9" target="_blank" rel="noopener noreferrer">[4] Publisher's article page, accepted manuscript, public code, and version information.</a></p>

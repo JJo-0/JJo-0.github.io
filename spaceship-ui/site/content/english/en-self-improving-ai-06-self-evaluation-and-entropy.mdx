@@ -1,0 +1,403 @@
+---
+title: Self-Improving AI 06 — Does confidence make a model more accurate?
+description: Self-evaluation, majority votes and entropy provide different signals. Tent, SUTA and LLM entropy minimization
+  illustrate when each signal is useful.
+pubDate: 2026-11-17
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-06-self-evaluation-and-entropy
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- self-evaluation
+- entropy-minimization
+- test-time-adaptation
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 6
+translationKey: en-self-improving-ai-06-self-evaluation-and-entropy
+translatedPosts:
+  ko-KR: self-improving-ai-06-self-evaluation-and-entropy
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>AI self-evaluation, agreement across answers, and high confidence can all supply learning signals. Improving a signal alone does not establish that answers became more accurate.</strong>
+
+[Part 5 — AI That Designs Rewards and AI That Evaluates Answers](/posts/self-improving-ai-05-reward-design-to-ai-feedback/) distinguished reward-code design from answer-quality evaluation. We now ask what signals a model can construct from its outputs without ground-truth answers for evaluation. The phrase “AI grades itself” covers three different methods.
+
+One is <strong>verbal self-evaluation with scores</strong>. Another is <strong>aggregation across repeated answers to find agreement</strong>. The third is <strong>entropy, which measures how concentrated an output distribution is</strong>. They use different information and calculations. Also check whether a method changes only the chosen answer or updates network parameters as well.
+
+<details>
+<summary>Questions by slide</summary>
+
+| Slide | Question |
+|---|---|
+| 26 | What roles do the answer generator and the evaluator supplying a loss perform? |
+| 27 | How does a score of 5 differ from the probability of the “Yes” token? |
+| 28 | When does a majority answer become a pseudo-label, and when is it actually used in training? |
+| 29 | What does lower entropy mean, and what does it leave uncertain? |
+| 30 | What does entropy minimization change in images, speech, and language? |
+
+</details>
+
+## Slide 26 — Producing an answer and producing an evaluation signal
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-26-en.png"
+  alt="RLAIF diagram in which an AI evaluates inputs and generated answers, producing per-example losses that are summed."
+  caption="P026 — Separate roles for generating responses and evaluation signals."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=26"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+At the top, the slide shows inputs, model outputs, individual losses, and their sum. The lower RLAIF diagram passes the input and answer to an evaluator and turns its judgment into a loss. These five slides develop the question of <strong>what can supply an evaluation signal when ground-truth labels are not always available</strong>.
+
+### Matching AI icons need not mean matching parameters
+
+Denote the question by <Math tex={String.raw`x`} />, the answer by <Math tex={String.raw`y`} />, and the generation policy by <Math tex={String.raw`\pi_\theta`} />. The policy generates an answer, while the evaluator receives the question and answer and computes a score or loss. The following notation distinguishes their roles.
+
+<Math tex={String.raw`y\sim\pi_\theta(\cdot\mid x),\qquad
+s_\phi(x,y;c),\qquad
+\ell(x,y)=g\!\left(s_\phi(x,y;c)\right).`} display />
+
+<Math tex={String.raw`\phi`} /> denotes evaluator parameters and <Math tex={String.raw`c`} /> its criteria or instructions. The last function maps a score to a loss for the training objective. For example, if a higher score is better, minimizing a loss requires changing the sign or reference point.
+
+The generator and evaluator can use the same type of model, different models, or identical weights under different prompts. <strong>Identical robot icons on the slide do not establish shared parameters.</strong> Conversely, different model names do not establish independent errors. In a real system, inspect models, prompts, training data, and evidence available to the evaluator.
+
+The distinction from Part 5 still applies. Scoring an answer highly, using the assessment to create training data, and updating a generative policy are separate stages. Calculating a score alone does not train the generator.
+
+### A missing answer label does not imply missing criteria
+
+AI evaluation can supply a useful signal for tasks with explicit criteria, such as obeying a format or including required items. For calculation or knowledge problems the model finds difficult, repeated self-evaluation can repeat the original error. Reliability depends on both the task and the evidence supporting the judgment.
+
+Alongside “Did it use external labels?” ask <strong>what prior knowledge and evaluation criteria were already present, what was learned from new inputs, and how improvement was tested</strong>. A pretrained model and human-written criteria already supply information to the process.
+
+## Slide 27 — Distinguish verbal scores from token probabilities
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-27-en.png"
+  alt="Diagram showing a 1–5 answer rating and a loss derived from the probability of a “Yes” token with a negative sign."
+  caption="P027 — A verbal rating and the probability of an affirmative response."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=27"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+The slide presents a verbalized evaluation approach. Above, the evaluator rates an answer to a given input on a 1–5 scale. Below, it is asked whether the answer is correct, and the probability of a “Yes” response enters the loss. The <strong>−1</strong> draws attention to the sign that converts high affirmative probability into low loss.
+
+### A 1–5 rating is a number, but it need not be a probability
+
+Suppose the evaluator gives score <Math tex={String.raw`s_\phi(x,y)\in[1,5]`} /> according to its criteria. If a higher score indicates a better answer, one possible loss is the following. This illustrates the principle and is not a universal RLAIF loss.
+
+<Math tex={String.raw`\ell_{\mathrm{score}}(x,y)=5-s_\phi(x,y).`} display />
+
+If answers A and B score 4.5 and 2 in a hypothetical example, their losses are 0.5 and 3. Minimizing prefers A. Calling the score itself a loss and minimizing it would push good answers toward lower scores. <strong>Evaluation scores, rewards, and losses cannot simply be renamed and optimized in the same direction.</strong>
+
+A rating of 4 also does not mean an 80% chance of correctness. A 1–5 scale depends on how it combines factuality, fidelity, brevity, and other criteria. Treating a move from 1 to 2 as equal in size to one from 4 to 5 is a further design choice. Numeric output alone determines neither scale meaning nor calibration.
+
+### An affirmative statement and the probability of generating it
+
+The lower figure uses the affirmative response probability under an evaluation prompt. Take the simple case in which “Yes” is one token.
+
+<Math tex={String.raw`q_\phi=\Pr_\phi(\text{Yes}\mid x,y,c),\qquad
+\ell_{\mathrm{yes}}=-q_\phi.`} display />
+
+This notation explains the minus sign. A higher probability of “Yes” gives lower loss. But <strong>this is the probability of generating a particular response under a given prompt</strong>. Interpreting it as a probability of correctness needs separate validation.
+
+Actual affirmative responses may use “Yes”, “ yes”, or “Correct”. A tokenizer may split a word into several tokens. Renormalizing only Yes and No gives a value different from the Yes probability over the full vocabulary. If the model outputs the string “90% confident,” distinguish the number in the string from the probability of generating the string.
+
+A math evaluator might assign a high affirmative probability to a polished explanation. Recomputing the answer supplies different evidence. Check how the evaluation signal relates to accuracy on separate data with ground truth.
+
+### Using evaluation for selection or for training
+
+Generating several candidates and returning the highest scoring one is reranking. This alone leaves weights fixed. A training stage can store high-scoring answers as targets for subsequent learning or update the policy using scores as rewards.
+
+Verify “the evaluator selected a better answer” separately from “the generator changed so it produces better answers to future questions.” Additional compute for selection should also be accounted for when attributing gains to the model.
+
+## Slide 28 — Agreement is useful evidence but does not certify correctness
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-28-en.png"
+  alt="From answers 3, 5, and 3 to the same question, the diagram selects majority answer 3 as a pseudo-label for comparison with other outputs."
+  caption="P028 — Selecting a pseudo-label by agreement across responses."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=28"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+The slide collects <strong>3, 5, and 3</strong> for the same question and selects 3 as the representative answer. This ensemble-based approach uses agreement among outputs in place of an external answer. The ensemble need not comprise three distinct models. Repeated sampling from one model can produce multiple answers.
+
+Suppose an extraction function obtains the final answer from each response. Across <Math tex={String.raw`K`} /> samples, the frequency of answer <Math tex={String.raw`a`} /> and the majority answer can be written as follows.
+
+<Math tex={String.raw`\widehat p_K(a\mid x)=\frac{1}{K}\sum_{i=1}^{K}
+\mathbf 1\!\left[\operatorname{extract}(y^{(i)})=a\right],\qquad
+\widehat y=\arg\max_a\widehat p_K(a\mid x).`} display />
+
+With 3, 5, and 3, the sample proportion for answer 3 is 2/3. We know <strong>that two of these three samples ended in 3</strong>. Interpreting 2/3 as the probability that 3 is correct requires an additional probability model and validation.
+
+### Further reading A — What does self-consistency change?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/self-consistency-v4-figure1.png"
+  alt="Original Figure 1 compares one greedy answer with sampling multiple reasoning paths and aggregating final answers."
+  caption="Self-Consistency, Figure 1 — Generating multiple reasoning paths and aggregating final answers (PDF page 2)."
+  source="https://arxiv.org/pdf/2203.11171v4#page=2"
+  credit="Xuezhi Wang et al. / Google Research, ICLR 2023."
+  width={1801}
+  height={861}
+/>
+
+Wang and colleagues' <em>Self-Consistency Improves Chain of Thought Reasoning in Language Models</em> samples multiple reasoning paths and aggregates their final answers. Figure 1 compares taking a single greedy path with collecting answers reached across paths. [Original paper, Figure 1, PDF page 2, and section 2](https://arxiv.org/pdf/2203.11171v4#page=2)
+
+The figure calls for sampling distinct reasoning paths, extracting final answers in a comparable form, and using their agreement. Simply writing three lengthy explanations does not guarantee improvement. In the original paper, self-consistency is <strong>an inference-time decoding and aggregation strategy</strong>. Aggregation alone does not train network weights. [Sections 2–3](https://arxiv.org/pdf/2203.11171v4#page=2)
+
+The lecture relates the idea to learning signals more broadly. The aggregate answer can become a pseudo-label for training. <strong>Adding a pseudo-label training stage</strong> lets the selected answer serve as a target as follows.
+
+<Math tex={String.raw`\ell_{\mathrm{pseudo}}(\theta)=-\log\pi_\theta(\widehat y\mid x).`} display />
+
+Returning 3 during inference differs from increasing the probability of generating 3 through subsequent training. Training may reinforce the error if the pseudo-label is wrong. Measure the quality of aggregation and generalization after training separately.
+
+### What counts as the same answer?
+
+Counting “3”, “3.0”, and “the answer is 3” as distinct strings splits equivalent answers. Ignoring units and merging “3 m” with “3 cm” combines different answers. Fractions, rounding, option formats, and code execution results make extraction and normalization substantive parts of the procedure.
+
+Ties need a rule too. Will we pick an arbitrary label, draw more samples, or exclude the example? The choice changes both the additional compute and the distribution of training data.
+
+### More samples can still share the same misunderstanding
+
+Suppose the model misreads a condition and produces the same wrong answer nine times out of ten. More samples may establish more reliably that the wrong answer is the majority. <strong>Aggregation can reduce sampling variation, but it does not automatically correct a shared false assumption.</strong>
+
+Even with independent random numbers, all calls share the same model's knowledge and biases. Independent draws from one distribution differ from independent evidence of correctness. Diverse paths, computation tools, and new evidence can change what agreement means.
+
+## Slide 29 — Entropy measures uncertainty, without access to the correct answer
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-29-en.png"
+  alt="Diagram of probability concentration and entropy as a sum or expectation. Confidence and accuracy are distinct."
+  caption="P029 — Concentration and entropy of the output distribution."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=29"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+We now inspect output probabilities directly, instead of asking for a score or counting answer strings. The slide interprets greater concentration as greater confidence and connects concentration to a loss. Entropy measures this property.
+
+### It matters which answer receives the probability mass
+
+Start with a finite classification problem. This is Shannon entropy with natural logarithms. The unit is the nat, and a zero-probability term takes its limiting value of zero.
+
+<Math tex={String.raw`H(p)=-\sum_{a=1}^{C}p_a\log p_a,\qquad
+0\le H(p)\le\log C.`} display />
+
+With equal probabilities on three answers, the model favors none. Placing most probability on one answer makes the distribution sharper and lowers entropy.
+
+<Math tex={String.raw`H(1/3,1/3,1/3)=\log 3\approx1.0986,\qquad
+H(0.8,0.1,0.1)\approx0.6390.`} display />
+
+Whether the answer receiving 0.8 in the second distribution is correct does not appear in the entropy expression. <strong>Permuting the answers while keeping the same probability values leaves entropy unchanged.</strong>
+
+<Math tex={String.raw`H(0.8,0.1,0.1)=H(0.1,0.8,0.1).`} display />
+
+If the first distribution gives A its highest probability and the second favors B, their most likely answers differ. When B is correct, the second gets it right and the first gets it wrong. Entropy alone cannot reveal that difference.
+
+### A direct calculation — Greater confidence in a worse prediction
+
+Here is an <strong>illustrative example with B as the correct answer</strong>. Probabilities are ordered A, B, C. The last column gives the negative logarithm of the probability of B, the cross-entropy loss computed when the ground truth is known.
+
+| Distribution | Most likely answer | Entropy | Probability of correct answer B | Ground-truth loss |
+|---|---|---:|---:|---:|
+| (0.8, 0.1, 0.1) | A: incorrect | 0.6390 | 0.10 | 2.3026 |
+| (0.98, 0.01, 0.01) | A: incorrect | 0.1119 | 0.01 | 4.6052 |
+| (0.1, 0.8, 0.1) | B: correct | 0.6390 | 0.80 | 0.2231 |
+
+Moving from the first row to the second lowers entropy. But the probability of B falls from 0.1 to 0.01, increasing the ground-truth loss. Both predictions are wrong. Only confidence in the incorrect answer increased.
+
+<Math tex={String.raw`\ell_{\mathrm{true}}=-\log p(B),\qquad
+-\log0.1\approx2.3026\;<\;-\log0.01\approx4.6052.`} display />
+
+This is <strong>a counterexample to the claim that lower entropy guarantees higher accuracy</strong>. It does not imply entropy minimization always fails. Assess gains using experimental evidence and conditions including base-model ability, data distribution, adapted parameters, and training procedure. This distinction is essential for the studies on slide 30. [Tent, section 3](https://arxiv.org/pdf/2006.10726v3#page=3) · [LLM entropy minimization, section 5](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=9)
+
+### “Can we calculate it?” — Which output space is involved?
+
+The bottom of the slide writes output entropy as a sum and an expectation and asks whether it is computable. In finite classification, access to every class probability allows direct summation. When the output of a language model denotes <strong>an entire completed answer</strong>, enumerating all sentences becomes a different computational problem.
+
+<Math tex={String.raw`H_\theta(Y\mid x)
+=-\sum_y\pi_\theta(y\mid x)\log\pi_\theta(y\mid x)
+=\mathbb E_{Y\sim\pi_\theta(\cdot\mid x)}[-\log\pi_\theta(Y\mid x)].`} display />
+
+Even short sentences combine multiple tokens. The possible sequence count grows rapidly with length. At a fixed prefix, in contrast, model logits determine <strong>the next-token vocabulary distribution</strong>. Entropy of the whole sentence and entropy of one next-token distribution are distinct.
+
+For a fixed length, the entropy chain rule gives the following expression. Real implementations handling stop tokens and variable lengths require corresponding definitions.
+
+<Math tex={String.raw`H(Y_{1:T}\mid x)=\sum_{t=1}^{T}
+\mathbb E_{Y_{<t}\sim\pi_\theta}
+\left[H\!\left(\pi_\theta(\cdot\mid x,Y_{<t})\right)\right].`} display />
+
+Sum next-token entropies across positions while also averaging over the prefixes that can reach each position. Token entropies along a sampled path can help estimate this expectation, but <strong>one path's value is not an exact sum over every possible path</strong>. Summing or averaging by length also changes the learning signal. The LLM entropy minimization paper distinguishes token-level and trajectory-level estimation and objectives. [Published paper, sections 2–3](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=3)
+
+Distinguish a third quantity. For answers 3, 5, and 3 on slide 28, the <strong>entropy of the empirical answer frequencies</strong> is
+
+<Math tex={String.raw`H(2/3,1/3)=-\frac23\log\frac23-\frac13\log\frac13\approx0.6365.`} display />
+
+This quantity depends on extraction, normalization, and sample count. It does not directly calculate the full vocabulary distribution or the distribution over all possible sentences. Calling all three “model entropy” can conceal comparisons of different quantities.
+
+| Quantity measured | Information used | Qualification |
+|---|---|---|
+| Distribution over complete answers | Probabilities of possible answers | Summing over the entire output space is difficult |
+| Next-token distribution at a given context | Vocabulary logits and probabilities | Specify the context, length, and aggregation method |
+| Answer frequencies extracted from samples | Multiple responses and answer normalization rules | Values depend on sample size and extraction |
+
+## Slide 30 — What actually changes in images, speech, and language?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/ntu-self-improving-30-en.png"
+  alt="A diagram connects Tent for images, SUTA for speech, and entropy minimization for language models."
+  caption="P030 — Entropy minimization in image, speech, and language models."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=30"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+The slide connects Tent for images, SUTA for speech, and entropy minimization in language models. Although all reduce entropy, their models, update targets, and input conditions differ. To interpret separate experiments, ask <strong>which distribution's entropy is reduced with respect to which parameters</strong> before attempting any comparison of scores.
+
+SUTA's methods and settings appear in the [arXiv paper](https://arxiv.org/abs/2203.14222) and the [Interspeech 2022 paper](https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.html).
+
+### Further reading B — Tent adapts at test time using prediction entropy
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/tent-v3-figure3.png"
+  alt="Tent Figure 3 compares labeled training with test-time adaptation that adjusts selected parameters using prediction entropy."
+  caption="Tent, Figure 3 — Training with ground-truth labels and test-time adaptation with prediction entropy (PDF page 3)."
+  source="https://arxiv.org/pdf/2006.10726v3#page=3"
+  credit="Dequan Wang et al. / ICLR 2021."
+  width={1801}
+  height={389}
+/>
+
+Tent adapts at test time without target labels to inputs whose distribution differs from training. Figure 3 places supervised training with ground-truth labels alongside adaptation using prediction entropy. [Original paper, Figure 3, PDF page 3](https://arxiv.org/pdf/2006.10726v3#page=3)
+
+Tent adjusts limited degrees of freedom for the current inputs. It re-estimates normalization statistics and updates <strong>channel-wise affine parameters</strong> in normalization layers for the entropy objective. This differs from unrestricted training of all network weights. [Section 3, Algorithm 1](https://arxiv.org/pdf/2006.10726v3#page=3)
+
+For example, test images may be blurrier or noisier than training images. The aim is to adapt to the change while retaining the base classifier's structure. In this illustration, <strong>new test inputs and their distribution</strong> contribute information. Absence of ground-truth labels does not mean the system receives no external information.
+
+The Tent graph on slide 30 shows how entropy and error relate in the reported setting. It does not establish a mathematical guarantee that low entropy means correctness for all inputs and models. The slide 29 counterexample rules out a universal guarantee, while Tent tests gains for a specific procedure under specified conditions.
+
+### Further reading C — SUTA: Does the same equation suffice for recognizing a single utterance?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/suta-interspeech2022-figure1.png"
+  alt="SUTA's original figure uses temperature smoothing, entropy minimization, and reduced class confusion to adapt selected speech-recognition parameters for one utterance."
+  caption="SUTA, Figure 1 — Adapting speech recognition with entropy and class confusion on a single utterance (PDF page 1)."
+  source="https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.pdf#page=1"
+  credit="Guan-Ting Lin, Shang-Wen Li, Hung-yi Lee / ISCA Interspeech 2022."
+  width={1801}
+  height={1347}
+  maxWidth={650}
+/>
+
+SUTA studies test-time adaptation of speech recognition using a single utterance. At left, the diagram separates the largely frozen model from parameters to adapt. At right, it combines temperature smoothing, entropy minimization, and minimum class confusion. [Lin, Li, and Lee, Interspeech 2022, Figure 1, PDF page 1](https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.pdf#page=1)
+
+In speech-recognition CTC outputs, many frames assign high probability to the blank token, which emits no character. Sharpening every distribution unconditionally could strengthen blank predictions instead of meaningful character distinctions. The paper excludes frames whose most likely token is blank from the entropy calculation and adds a class-confusion objective. [Sections 2.2.1–2.2.4](https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.pdf#page=2)
+
+Temperature smoothing first makes probabilities less extreme to manage the optimization signal. Training to increase confidence and smoothing the distribution used for the calculation operate at different levels. The name “entropy minimization” does not imply every step sharpens a distribution.
+
+In the paper's basic experimental setup, layer normalization and the feature extractor are adapted. Each utterance starts from the original model weights. A fixed number of adaptation steps yields the final recognition for that utterance. This differs from accumulating updates indefinitely across utterances. [Algorithm 1, section 3.4](https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.pdf#page=3)
+
+Simply applying Tent's entropy equation to a speech model does not reproduce SUTA. The output structure, blank tokens, adapted components, combination of objectives, and reset rule all matter.
+
+### Language models — EM-FT, EM-RL, and EM-INF are different operations
+
+Agarwal and colleagues' <em>The Unreasonable Effectiveness of Entropy Minimization in LLM Reasoning</em> applies entropy minimization to both post-training and inference. It distinguishes three methods. [Published paper, sections 2–4](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=3)
+
+| Method | What changes directly | How entropy is used | Updates model weights? |
+|---|---|---|---|
+| EM-FT | Model parameters | Differentiate and minimize token-level entropy on self-generated outputs | Yes |
+| EM-RL | Generative-policy parameters | Use negative entropy as a reward for reinforcement learning | Yes |
+| EM-INF | Inference-time logits | Optimize logits during decoding to reduce entropy | No |
+
+EM-FT can resemble supervised fine-tuning on correct sentences, but its objective differs. Instead of minimizing negative log probability of ground-truth tokens, it directly uses output entropy in model-generated contexts. The experiment asks whether existing abilities can be used more consistently without learning from external correct answers. [Section 3.1](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=3)
+
+EM-RL uses negative entropy as a reward. The paper distinguishes forms based on the log probability of an entire trajectory from those using token-level distributions. These calculations yield different updates. The reward is not a ground-truth correctness check. <strong>Distinguish higher reward from improvement on a separate evaluation with correct answers.</strong> [Section 3.2, Table 1](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=4)
+
+EM-INF draws an especially clear boundary. It optimizes logits during inference and leaves model weights fixed. Even if an answer improves, that alone does not show new knowledge was stored in weights. The distinction from Part 1 between improving output production and training parameters applies here. [Section 4](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=6)
+
+### Further reading D — Conditions hidden by looking only at favorable results
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-06-self-evaluation-and-entropy/entropy-llm-neurips2025-table5.png"
+  alt="Original Table 5 shows that benefits from entropy minimization can be limited or negative depending on the base model and task."
+  caption="Entropy Minimization in LLM Reasoning, Table 5 — Effects by base model and task (PDF page 9)."
+  source="https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=9"
+  credit="Shivam Agarwal et al. / NeurIPS 2025."
+  width={1801}
+  height={491}
+/>
+
+Table 5 of the same paper explores limitations. At left are math tasks using Llama-3.1-8B-Instruct. At right is a personalized value-judgment task using Qwen-2.5-7B-Instruct. <strong>The table does not support consistent improvement across all models.</strong> [Table 5, PDF page 9, and section 5](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=9)
+
+In the Minerva column, base Llama-3.1-8B-Instruct scores <strong>22.4</strong> and EM-FT scores <strong>18.8</strong>, though some other columns improve. On IndVal, the three entropy methods score 66.0, 66.0, and 66.3 against a baseline of 65.9. These small differences alone cannot establish reliable gains. The table provides no confidence intervals from which to judge their statistical significance.
+
+The authors emphasize the base model's initial reasoning ability and whether its confidence suits the task. Concentration can help an existing skill express itself more consistently, but can also strengthen incorrect knowledge or prior biases mismatched to the task. This is <strong>the authors' interpretation of their experiments</strong>, and a model name alone cannot predict success or failure on every new task. [Sections 5–6](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=9)
+
+### Reinforcement learning sometimes increases entropy. Is that a contradiction?
+
+RL intended to preserve exploration can add an entropy bonus to prevent actions from collapsing too early onto one choice. Its direction is opposite to entropy minimization, but different objectives and training stages can require different signals.
+
+Exploration matters when useful actions in a new environment have yet to be found. In a pretrained model with useful capabilities already present, concentrating probabilities can help elicit them more consistently under some conditions. Neither direction is universally correct. Ask first <strong>which distribution is being adjusted, for what objective, and with which base model</strong>. The LLM paper also distinguishes prior entropy regularization from its standalone minimization objective. [Sections 2–3](https://papers.nips.cc/paper_files/paper/2025/file/9a14cf2ee36cf2524f54d8f196a6734c-Paper-Conference.pdf#page=3)
+
+## What to record when comparing the three signals
+
+| Signal | What it directly measures | Common misinterpretation | What to check separately |
+|---|---|---|---|
+| Verbal self-evaluation | Rating or affirmative response under an evaluation prompt | A high score or Yes probability equals probability of correctness | Relationship with ground truth and sensitivity to criteria and wording |
+| Agreement across responses | Sample frequency of extracted answers | A repeated wrong answer becomes correct by majority vote | Normalization, shared errors, sample count, compute budget |
+| Entropy | Uncertainty or concentration of a distribution | A sharper distribution is more accurate | Independent accuracy, base-model capability, adapted parameters and conditions |
+
+Use the table to validate an implementation. Record at least <strong>actual task performance and the change in the proxy signal</strong> separately. A rise in self-evaluation scores without greater accuracy differs from selecting a better answer using a larger token budget.
+
+Specify the test-time adaptation protocol. Does each input reset to the base model, or are prior updates retained? Did labels guide adaptation or configuration selection? Adapting to unlabeled test inputs differs from leakage through choosing a method after seeing test answers. Repeatedly using final comparison labels to choose settings weakens an evaluation's independence.
+
+Record costs, inputs, and starting-model conditions for each method. Where possible, report variation across seeds and failure cases as well.
+
+## Three questions to check understanding
+
+<strong>1. If a model gives the same answer nine out of ten times, does it have a 90% chance of being correct?</strong>
+
+That is the observed sample frequency of an answer. A systematic misunderstanding could recur. Using the frequency as a probability of correctness requires a separate definition and validation.
+
+<strong>2. If entropy falls, must the ground-truth loss fall?</strong>
+
+No. When B is correct, concentrating more probability on A can lower entropy while increasing B's negative log probability. The three-class example provides a counterexample.
+
+<strong>3. Do Self-Consistency and EM-INF train model weights?</strong>
+
+Self-Consistency as examined here samples multiple paths and aggregates their answers at inference. EM-INF adjusts inference logits without updating weights. An additional training procedure can use the results, but distinguish it from each method's original operation.
+
+Across these five slides, <strong>signals can be constructed without ground truth, but their meaning and actual improvement require separate validation</strong>. The next section covers <strong>slides 31–35</strong>, on learning from self-evaluation signals and changes at test time. Next: [Self-Improving AI 07 — When Should Self-Training Stop, and When Should a Model Adapt?](/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/).
+
+## Original sources for further reading
+
+| Source | Version and location | Topic |
+|---|---|---|
+| [NTU Self-Improving](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) | May 8, 2026 lecture, PDF pages 26–30 | Main lecture and three evaluation signals |
+| [Self-Consistency](https://arxiv.org/abs/2203.11171) | arXiv v4 / ICLR 2023, Figure 1 on PDF page 2 | Multiple reasoning paths and aggregation of final answers |
+| [Tent](https://arxiv.org/abs/2006.10726) | arXiv v3, March 18, 2021 / ICLR 2021, Figure 3 on PDF page 3 | Prediction entropy and normalization parameter adaptation |
+| [SUTA](https://www.isca-archive.org/interspeech_2022/lin22b_interspeech.html) | Interspeech 2022, printed pages 2198–2202, Figure 1 on PDF page 1 | Single-utterance adaptation of CTC speech recognition |
+| [Entropy Minimization in LLM Reasoning](https://papers.nips.cc/paper_files/paper/2025/hash/9a14cf2ee36cf2524f54d8f196a6734c-Abstract-Conference.html) | Published NeurIPS 2025 paper, sections 2–5, Table 5 on PDF page 9 | EM-FT, EM-RL, EM-INF, and dependence on the base model |
+
+[Lecture PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx)

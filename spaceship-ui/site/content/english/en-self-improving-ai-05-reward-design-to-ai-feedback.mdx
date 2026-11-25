@@ -1,0 +1,332 @@
+---
+title: Self-Improving AI 05 — Designing rewards and evaluating answers
+description: Eureka, REvolve and RF-Agent introduce reward search. The lesson connects dopamine prediction errors,
+  preference-based reward models, RLHF and RLAIF.
+pubDate: 2026-11-16
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-05-reward-design-to-ai-feedback
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- reinforcement-learning
+- reward-shaping
+- robotics
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 5
+translationKey: en-self-improving-ai-05-reward-design-to-ai-feedback
+translatedPosts:
+  ko-KR: self-improving-ai-05-reward-design-to-ai-feedback
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>An AI that writes reward code and an AI that judges answer quality serve different roles. Both require a separately defined and validated standard for a good outcome.</strong>
+
+[Part 4 — When Correct Answers Are Rare, What Should We Reward?](/posts/self-improving-ai-04-sparse-rewards-and-shaping/) distinguished a training proxy reward from the actual task evaluation. We now compare reward-design search strategies and turn to how a model can learn criteria that are difficult to express in code.
+
+<details>
+<summary>Topics by slide</summary>
+
+| Slide | Distinctions to watch for |
+|---|---|
+| 21 | Refining one reward candidate versus maintaining a population or tree of candidates |
+| 22 | The outer loop designing reward code and the inner loop training a policy |
+| 23 | Reward shaping as an analogy and research on dopamine reward prediction errors |
+| 24 | Direct human scores and a reward model trained on human preferences |
+| 25 | An AI emitting a score and a system training on AI feedback |
+
+</details>
+
+## Slide 21 — Finding a good reward is itself a search problem
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-21-en.png"
+  alt="A comparison from the RF-Agent paper diagrams how Eureka, REvolve, and RF-Agent search reward candidates."
+  caption="P021 — Reward candidate search in Eureka, REvolve, and RF-Agent."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=21"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+The slide presents Eureka, REvolve, and RF-Agent side by side. Its figure comes from the RF-Agent paper. Read it as <strong>the RF-Agent authors' abstraction for comparing their method with earlier work</strong>, rather than a new measurement under common experimental conditions. [RF-Agent, Figure 1 and section 1](https://arxiv.org/html/2602.23876v1#S1)
+
+### Reward-generation methods retain different things
+
+Eureka generates reward code from environment code and a task description, then uses policy-training outcomes as feedback. It carries promising candidates and failure records into the next iteration. The original paper calls this evolutionary optimization. Comparisons in REvolve and RF-Agent emphasize iteration from top candidates and simplify it as greedy search. The descriptions use different levels of abstraction. [Eureka, section 3](https://eureka-research.github.io/assets/eureka_paper.pdf#page=4) · [REvolve, section 1](https://arxiv.org/html/2406.01309v4#S1)
+
+REvolve maintains a population of reward functions and applies genetic programming operations such as mutation, crossover, and migration. People compare the resulting policy behavior and provide natural-language feedback. The LLM writes Python reward code, but people continue to judge the goal. [REvolve, sections 2–3](https://arxiv.org/html/2406.01309v4#S3)
+
+RF-Agent organizes histories of reward modifications in a tree and chooses which path to expand with Monte Carlo tree search (MCTS). Its branches represent <strong>reward-design decisions and their histories</strong>, distinct from individual joint actions by a robot. [RF-Agent, section 4](https://arxiv.org/html/2602.23876v1#S4)
+
+| Comparison | Typical Eureka iteration | REvolve | RF-Agent |
+|---|---|---|---|
+| Starting point for improvement | Selected promising candidates and training feedback | Population of reward candidates and genetic operations | Selected tree path and accumulated history |
+| Reward form | Executable code | Executable code | Executable code |
+| Important evaluation evidence | Outcomes of the policy trained with the reward | Human policy comparisons and natural-language feedback | Policy-training results and evaluation metrics |
+| Distinction to keep in mind | Improving LLM context versus training LLM weights | Automation still incorporates human feedback | Robot action search versus reward-design search |
+
+The table compares structures. It does not rank performance for all tasks and implementations. The best scores from unrelated experiments cannot establish a ranking under common conditions.
+
+### Further reading A — Figure 1 from REvolve
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/revolve-v4-figure1.png"
+  alt="REvolve Figure 1 shows an LLM generating a population of rewards, policies trained with each, human comparison of their behavior, and population updates using preferences and natural-language feedback."
+  caption="REvolve, Figure 1 — Reward search incorporating human policy preferences and natural-language feedback (PDF page 3)."
+  source="https://arxiv.org/pdf/2406.01309v4#page=3"
+  credit="Rishi Hazra, Alkis Sygkounas, Andreas Persson, Amy Loutfi, Pedro Zuidberg Dos Martires."
+  width={1801}
+  height={1261}
+/>
+
+Start at the left. The reward designer receives the task and environment variables. Each resulting reward trains a policy. People then compare <strong>rollouts of the trained policies, rather than the wording of reward code</strong>. Their preferences and natural-language feedback help form the next reward population. [REvolve v4, Figure 1, PDF page 3](https://arxiv.org/pdf/2406.01309v4#page=3)
+
+Imagine two driving policies that both reach the destination. One changes lanes abruptly while the other moves smoothly. A human preference for the latter communicates more than a binary arrival outcome.
+
+How should preferences be aggregated when evaluators disagree? If one evaluator changes their judgment after repeated comparisons, how is that recorded? Human involvement does not ensure complete and consistent evaluation. For reproduction, check the guidelines, presentation order, evaluator count, and treatment of disagreements.
+
+## Slide 22 — Separate the reward-design tree from the policy-training loop
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-22-en.png"
+  alt="RF-Agent uses candidate reward histories and tree search in reward design."
+  caption="P022 — RF-Agent tree search using reward-design history."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=22"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+This slide illustrates the components and search paths of RF-Agent in more detail. Each reward-design decision entails training and evaluating a policy under that reward. Counting LLM calls alone can miss much of the total cost. [RF-Agent, Figure 2 and sections 3–4](https://arxiv.org/html/2602.23876v1#S4)
+
+### Two kinds of action and two kinds of feedback
+
+An outer-loop action creates or edits reward code. An inner-loop action is a control taken by the robot policy in the environment. The outer loop observes trained-policy performance and failures. The inner loop uses rewards to update policy parameters.
+
+We can write the two loops in terms of policy training and evaluation.
+
+<Math tex={String.raw`\theta_k=\operatorname{Train}(\theta_0,r_{\phi_k},B),\qquad
+q_k=\operatorname{Eval}(\pi_{\theta_k};\mathcal D_{\mathrm{select}}).`} display />
+
+Here <Math tex={String.raw`\phi_k`} /> is the reward candidate's code or settings, <Math tex={String.raw`\theta_k`} /> the policy trained with it, <Math tex={String.raw`B`} /> the training budget, and <Math tex={String.raw`q_k`} /> the evaluation value under a common criterion. A record for the LLM can include candidate code, intended edits, execution errors, changes in individual reward terms, and policy evaluation.
+
+RF-Agent combines history-conditioned reasoning with MCTS. It describes procedures for aligning design reasoning with code and for self-verification. <strong>Self-verification is not an infallible substitute for evaluating policy behavior.</strong> The paper still uses inner-loop training and environmental feedback. [RF-Agent, sections 4.2–4.3 and Appendix B](https://arxiv.org/html/2602.23876v1#S4.SS2)
+
+### Why maintain a search tree, and what does it cost?
+
+Imagine that candidate A emphasizes approaching a handle, B the cost of maintaining contact, and C the door angle. Even if A is best now, editing only A may miss an improvement accessible from B. A tree records which changes produced which outcomes and lets the procedure choose between exploiting promising paths and exploring underexamined ones.
+
+Keeping candidates does not eliminate computational costs. Training eight candidates from scratch with three independent seeds each requires 24 policy-training runs. With <Math tex={String.raw`B`} /> per run, the total inner-loop budget is <Math tex={String.raw`24B`} />, plus LLM generation and evaluation costs.
+
+Did experiments compare success rates at the same number of complete training runs? Did they report LLM tokens and time alongside policy-training time? Were candidate-selection conditions held apart from the final test? Unequal search budgets make it difficult to attribute a difference solely to the algorithm.
+
+Experiments in <strong>RF-Agent arXiv v1 (February 27, 2026)</strong> evaluated 17 simulated low-level control tasks. They do not establish performance guarantees across all physical robots, sensor errors, or human–robot collaboration settings. [Version information](https://arxiv.org/abs/2602.23876) · [Experiments, section 5.1](https://arxiv.org/html/2602.23876v1#S5.SS1)
+
+## Slide 23 — How far does the dopamine analogy go?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-23-en.png"
+  alt="Three panels show a terminal reward for offspring, a delayed reward across hunting and survival, and dopamine portrayed as an intermediate signal."
+  caption="P023 — The three panels appear in sequence during the lecture. The artwork retains its original Chinese labels. Each panel is translated below."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=23"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+The [original PowerPoint](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx) contains the artwork revealed in the lecture. Follow the reward from left to right and note the step at which it arrives.
+
+| Panel | What the original labels mean | Lecture |
+| --- | --- | --- |
+| ① Terminal reward | From a gene’s perspective in this analogy, leaving offspring earns +1 and leaving none earns 0. Reproduction is the event that triggers the score. | [19:30](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1170s) |
+| ② Sparse reward | The sequence is hunt → obtain food → survive → reproduce. Only the last step earns +1. Even a successful hunt gives zero immediate reward, making it hard to assign credit to earlier actions. | [20:00](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1200s) |
+| ③ Intermediate signals | The right panel places “dopamine” under hunting, food, and survival while retaining the final +1. The lecturer compares these earlier signals to reward shaping, which supplies feedback before an episode ends. | [20:30](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1230s) |
+
+The analogy illustrates how cues that predict an outcome can guide behavior before that outcome arrives. It would be a substantial overreach to conclude that <strong>dopamine is a pleasure score and the brain operates exactly like a reward function we wrote</strong>.
+
+### Further reading B — Reward and reward prediction error
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/schultz-1997-figure1.png"
+  alt="Original plots compare dopamine neuron responses to an unexpected reward, a cue-predicted reward, and an expected reward that was omitted."
+  caption="Schultz, Dayan, and Montague, Figure 1 — Dopamine responses with reward prediction and omission (PDF page 2)."
+  source="https://www.gatsby.ucl.ac.uk/~dayan/papers/sdm97.pdf#page=2"
+  credit="Wolfram Schultz, Peter Dayan, P. Read Montague / Science 275 (1997)."
+  width={1801}
+  height={2155}
+  maxWidth={650}
+/>
+
+Figure 1 of the 1997 paper by Schultz, Dayan, and Montague compares dopamine neuron responses recorded under specific experimental conditions. The top panel shows an unexpected reward, the middle a cue-predicted reward, and the bottom an expected reward that did not arrive. CS marks the conditioned stimulus and R the reward time. [Original paper, PDF page 2, printed page 1594](https://www.gatsby.ucl.ac.uk/~dayan/papers/sdm97.pdf#page=2)
+
+The paper connects responses to reward with <strong>the difference between prediction and actual outcome</strong>. As the prediction is learned, the response can shift from the reward to an earlier cue. When an expected reward is omitted, activity decreases around the anticipated time. This links a particular experiment and computational model, rather than completely defining all dopamine activity.
+
+In a simple state-value model, the temporal-difference error in reinforcement learning is
+
+<Math tex={String.raw`\delta_t=r_t+\gamma V(s_{t+1})-V(s_t).`} display />
+
+<Math tex={String.raw`r_t`} /> is the observed reward, and <Math tex={String.raw`V(s_t)`} /> represents expected future reward from the current state. <Math tex={String.raw`\delta_t`} /> is an update signal from the comparison. Reward and prediction error are different variables.
+
+Suppose a hypothetical episode ends after one last step and <Math tex={String.raw`V(s_{t+1})=0`} />. If a reward of 1 was unexpected and <Math tex={String.raw`V(s_t)=0`} />, the error is 1. If a reward of 1 was expected and received, the error is zero. Expecting 1 and receiving nothing gives −1. These are illustrative numbers, not measured firing rates.
+
+The resemblance to the potential-based shaping term <Math tex={String.raw`\gamma\Phi(s_{t+1})-\Phi(s_t)`} /> in Part 4 is interesting. PBRS changes reward, while a TD error updates a value prediction. Similar mathematical terms do not establish biological identity or guarantee learning.
+
+Read the speaker notes' analogies involving evolution, food, and intermediate goals within these limits. They do not by themselves explain modern eating habits or addiction or support clinical judgments. The point here is <strong>to distinguish learning signals from ultimate objectives</strong>.
+
+## Slide 24 — Learning evaluation criteria that are hard to write down
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-24-en.png"
+  alt="A person on the right supplies preference labels to train a reward model, which then scores the generative policy’s output."
+  caption="P024 — Human judgments provide training targets for the reward model."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=24"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+[Lecture at 23:50](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1430s)
+
+Door-opening success can be defined by an angle or a state. A few simple conditionals struggle to express whether a long summary is helpful, whether an answer addresses the question faithfully, or whether it includes unnecessarily risky content. The RLHF diagram introduces a reward model that learns such judgments.
+
+In a typical preference-based RLHF workflow, people compare candidate answers. Their comparisons train a reward model, which then scores answers produced by the policy. <strong>People need not grade every token or training step in real time.</strong> [Stanford CS224N Lecture 10, PDF pages 58–62](https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=58)
+
+### Further reading C — From preference comparisons to reward-model loss
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/stanford-cs224n-preference-model-p60.png"
+  alt="A slide trains a reward model using preferences over three summaries and a logistic loss on the score difference between winners and losers."
+  caption="Stanford CS224N — Training a reward model on pairwise answer preferences (PDF page 60)."
+  source="https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=60"
+  credit="Archit Sharma / Stanford CS224N; based on Jesse Mu slides."
+  width={1800}
+  height={1013}
+/>
+
+The Stanford slide compares answers to the same question and gives an expression for training the reward model to score the chosen answer higher. Its printed slide number is 63 and its PDF page number is 60.
+
+Let <Math tex={String.raw`x`} /> be the question, <Math tex={String.raw`y_w`} /> the preferred answer, <Math tex={String.raw`y_l`} /> the less preferred answer, and <Math tex={String.raw`r_\psi(x,y)`} /> the reward-model score. A Bradley–Terry pairwise model gives the following preference probability.
+
+<Math tex={String.raw`P_\psi(y_w\succ y_l\mid x)
+=\sigma\!\left(r_\psi(x,y_w)-r_\psi(x,y_l)\right),
+\qquad \sigma(z)=\frac{1}{1+e^{-z}}.`} display />
+
+A common loss for fitting the reward model to observed preferences is
+
+<Math tex={String.raw`\mathcal L_{\mathrm{RM}}(\psi)
+=-\mathbb E_{(x,y_w,y_l)\sim\mathcal D}
+\log\sigma\!\left(r_\psi(x,y_w)-r_\psi(x,y_l)\right).`} display />
+
+This loss trains reward-model parameters <Math tex={String.raw`\psi`} />. Distinguish them from generative-policy parameters <Math tex={String.raw`\theta`} />. The learned preferences depend on the criteria used to create the comparisons.
+
+### A numerical example with a score difference of 1.5
+
+Suppose the preferred answer scores 1.2 and the other −0.3. The difference is 1.5, yielding the following model preference probability.
+
+<Math tex={String.raw`\sigma(1.5)\approx0.8176,\qquad
+-\log\sigma(1.5)\approx0.2014.`} display />
+
+<strong>This does not say there is an 81.76% chance that the answer is factually true.</strong> It is the probability the specified comparison model assigns to the observed preference. Adding 100 to both scores leaves their difference at 1.5 and the preference probability unchanged. Pairwise preferences do not identify an absolute zero for scores.
+
+A model trained on human judgments can reflect disagreement and noise in those judgments. Preference learning is a different task from determining truth. Examine how factuality, helpfulness, and safety were combined.
+
+### Fitting a reward model and training a generative policy
+
+Once trained, the reward model can guide a generative policy toward producing high-scoring answers more often. The following representative objective simplifies a completed answer to one choice.
+
+<Math tex={String.raw`J(\theta)=\mathbb E_{x,\,y\sim\pi_\theta(\cdot\mid x)}
+\left[r_\psi(x,y)-\beta
+\log\frac{\pi_\theta(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)}\right].`} display />
+
+<Math tex={String.raw`\pi_{\mathrm{ref}}`} /> is the reference policy, and <Math tex={String.raw`\beta`} /> controls the strength of the term discouraging departure from it. The expected log ratio connects to KL divergence. This expression omits token-level rewards, value estimation, and optimization details and is not the full PPO implementation. [Stanford PDF page 62, printed slide 66](https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=62)
+
+A KL constraint does not remove reward-model errors. A policy may find weaknesses in the scorer, so evaluate final answers against independent criteria. The proxy-reward problem from Part 4 remains.
+
+## Slide 25 — RLHF already uses AI. What changes in RLAIF?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/ntu-self-improving-25-en.png"
+  alt="An RLAIF diagram changes the source of training judgments to AI feedback."
+  caption="P025 — RLAIF uses AI feedback as a training signal."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=25"
+  credit="Hung-yi Lee / NTU."
+  width={1800}
+  height={1013}
+/>
+
+The lecture moves from RLHF to RLAIF. Saying that AI scores outputs instead of people can be misleading. In RLHF, an AI reward model can already provide the scores during policy training. <strong>Who emits the final score alone therefore does little to distinguish RLHF and RLAIF.</strong>
+
+In a preference-based setup, ask where the comparisons and judgments that train the reward model came from. RLHF uses human feedback and RLAIF uses AI-generated feedback as its main supervision. Some methods train a preference model while others use AI evaluation directly, so RLAIF does not imply a single architecture.
+
+### Further reading D — The two training stages of Constitutional AI
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-05-reward-design-to-ai-feedback/constitutional-ai-v1-figure1.png"
+  alt="The original two-stage diagram places supervised learning on critiques and revisions above AI preference data, a preference model, and reinforcement learning."
+  caption="Constitutional AI, Figure 1 — Supervised learning from critiques and revisions, then reinforcement learning with AI preferences (PDF page 2)."
+  source="https://arxiv.org/pdf/2212.08073v1#page=2"
+  credit="Yuntao Bai et al. / Anthropic."
+  width={1801}
+  height={698}
+/>
+
+The upper part of Constitutional AI Figure 1 shows supervised learning on critiques and revisions. Below, AI comparisons of answer pairs train a preference model that supports reinforcement learning. [Bai et al., arXiv v1, Figure 1, PDF page 2](https://arxiv.org/pdf/2212.08073v1#page=2)
+
+The upper stage connects to training on revised answers in Part 3. In the lower stage, AI preference judgments produce data for a preference model, whose scores then train a generative policy. <strong>Generating critiques, generating preference data, training a reward model, and training a generative policy are different stages.</strong>
+
+Humans still contribute. People set the principles in the constitution, and a base model and initial training data already exist. The paper describes combining automated harmlessness feedback with human helpfulness feedback. Saying the AI invented its goals from scratch without any human supervision would misrepresent the work. [Constitutional AI, section 4 and discussion of combining human and AI feedback](https://arxiv.org/pdf/2212.08073v1)
+
+### Three questions remain when AI evaluates
+
+<strong>Which criteria apply?</strong> A preference can change depending on the weight given to truthfulness, politeness, brevity, or risk avoidance. Make criteria explicit in the prompt, principles, or labeling instructions.
+
+<strong>What evidence informs the decision?</strong> Distinguish a judgment based on fluent phrasing from one using executed calculations, source checks, or inspection tools. If the same model generates and grades answers, check for repeated errors. Changing evaluator models may help, but distinct model names do not guarantee independent errors.
+
+<strong>Who performs final verification and with what evidence?</strong> A higher AI evaluation score alone does not establish better user outcomes or actual accuracy. Use task-appropriate independent evidence such as separately human-rated data, executable tests, unseen questions, or real-world success criteria.
+
+Suppose a hypothetical summary evaluator tends to prefer longer answers. A generative policy could increase its score by becoming verbose without improving accuracy. Alongside refining the evaluator prompt, compare answers at controlled lengths, check facts, and use new evaluation questions to establish what improved.
+
+## Two types of self-improvement compared
+
+| Question | Automated reward-code design | Automated preference or evaluation feedback |
+|---|---|---|
+| What AI primarily produces | Code calculating scores from environment states | Preferences, critiques, and evaluation data for answers |
+| Examples | Eureka, REvolve, RF-Agent | RLAIF stage of Constitutional AI |
+| What subsequently learns | A policy acting in the environment | A preference model and the policy generating answers |
+| Easily overlooked human roles | Task, environment, success criteria, feedback design | Principles, rating instructions, data, final evaluation |
+| Shared risk | A policy can increase proxy reward while missing the goal | A policy can satisfy the evaluator's preferences while missing the goal |
+
+Look past the name of the automation to ask <strong>which artifact changed, which parameters were trained, and what additional information informed the judgment of quality</strong>. Editing code does not in itself train LLM parameters. A higher AI score does not in itself establish a more capable policy.
+
+## Three questions to check understanding
+
+<strong>1. Does REvolve find good rewards without people?</strong> No. It uses human policy preferences and natural-language feedback to evolve rewards.
+
+<strong>2. Does applying a sigmoid to a difference in reward-model scores give the probability an answer is true?</strong> No. It gives a preference probability under the specified pairwise model. A probability of factual correctness requires its own definition and validation.
+
+<strong>3. Does RLHF become RLAIF whenever a neural network assigns the score?</strong> No. A typical RLHF setup uses a reward model trained on human comparisons. Identify the feedback source and training stage.
+
+Next are <strong>slides 26–30</strong>. They examine how AI self-evaluation can become a signal through verbal scores, agreement across answers, confidence, and entropy. Continue to [Self-Improving AI 06 — Does a More Confident AI Become More Accurate?](/posts/self-improving-ai-06-self-evaluation-and-entropy/).
+
+## Original sources for further reading
+
+| Source | Version and location | Topic |
+|---|---|---|
+| [NTU Self-Improving](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) | PDF pages 21–25 | Main lecture |
+| [Eureka](https://eureka-research.github.io/assets/eureka_paper.pdf) | Authors' project PDF, section 3 | Reward code generation and training feedback |
+| [REvolve](https://arxiv.org/abs/2406.01309) | v4, May 23, 2025, Figure 1 on PDF page 3 | Population search and human feedback |
+| [RF-Agent](https://arxiv.org/abs/2602.23876) | v1, February 27, 2026, Figures 1–2 and sections 4–5 | Reward design with history and MCTS |
+| [Schultz, Dayan, and Montague](https://www.gatsby.ucl.ac.uk/~dayan/papers/sdm97.html) | Science, March 14, 1997, Figure 1 on PDF page 2 | Connecting reward prediction error and dopamine research |
+| [Stanford CS224N Lecture 10](https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf) | 2024 lecture, PDF page 60 (printed 63) and PDF page 62 (printed 66) | Preference model and KL-constrained objective |
+| [Constitutional AI](https://arxiv.org/abs/2212.08073) | v1, December 15, 2022, Figure 1 and section 4 | Principle-guided AI feedback and RLAIF |

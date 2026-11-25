@@ -1,4 +1,7 @@
 <script>
+ import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+ const formulaEnglish = document.documentElement.lang === 'en';
+ const formulaText = value => formulaEnglish ? englishFormulaText(value) : value;
   import { computePerceptronGeometry } from '@/lib/formula-lessons/perceptron-geometry.mjs';
 
   export let lesson;
@@ -43,7 +46,7 @@
 <div class="lesson-grid" data-perceptron-geometry-lesson data-focus={lesson.focus}>
   <section class="panel visual-panel">
     <p class="eyebrow">wᵀx+b=0 · exact-ID geometry</p>
-    <svg viewBox="0 0 320 300" role="img" aria-label="퍼셉트론 결정경계와 분류 표본">
+    <svg viewBox="0 0 320 300" role="img" aria-label="{formulaText("퍼셉트론 결정경계와 분류 표본")}">
       <line class="axis" x1="18" y1="150" x2="302" y2="150" />
       <line class="axis" x1="160" y1="18" x2="160" y2="282" />
       <line class="boundary" x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />
@@ -66,7 +69,7 @@
   </section>
 
   <section class="panel">
-    <p class="eyebrow">같은 숫자로 score · sign · distance</p>
+    <p class="eyebrow">{formulaText("같은 숫자로 score · sign · distance")}</p>
     <div class="metrics">
       <div><span>g(x)</span><strong>{f(result.score)}</strong></div>
       <div><span>sign(g)</span><strong>{result.decision}</strong></div>
@@ -102,9 +105,7 @@
 
 <aside class="note">
   <strong>Source / correction boundary.</strong>
-  MAI-P3-006의 2D 경계와 MAI-P3-141의 <code>y=ax+c</code> 계수 완성은 별도 기록이다.
-  원자료 MAI-P3-012/013은 부호가 남는 표현이므로 이 장면의 비음수 거리값은 교정형 MAI-P3-142/143을 따른다.
-  선 위 probe에서 editorial mapping residual은 {f(result.lineMapping?.residual ?? 0, 8)}이다.
+  {formulaText("MAI-P3-006의 2D 경계와 MAI-P3-141의")} <code>y=ax+c</code> {formulaText("계수 완성은 별도 기록이다.\n  원자료 MAI-P3-012/013은 부호가 남는 표현이므로 이 장면의 비음수 거리값은 교정형 MAI-P3-142/143을 따른다.\n  선 위 probe에서 editorial mapping residual은")} {f(result.lineMapping?.residual ?? 0, 8)}{formulaText("이다.")}
 </aside>
 
 <style>

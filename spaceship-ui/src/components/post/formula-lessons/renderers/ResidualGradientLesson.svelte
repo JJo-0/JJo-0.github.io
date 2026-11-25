@@ -1,4 +1,7 @@
 <script>
+ import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+ const formulaEnglish = document.documentElement.lang === 'en';
+ const formulaText = value => formulaEnglish ? englishFormulaText(value) : value;
   import {
     computeScalarSquaredResidual,
     computeWeightedResidualGradient,
@@ -69,11 +72,11 @@
   <div class="scalar-layout" data-residual-gradient-focus={lesson.focus}>
     <section class="visual-panel">
       <header>
-        <div><p>1차원 chain rule</p><h6>(ax−b)²의 미분</h6></div>
+        <div><p>{formulaText("1차원 chain rule")}</p><h6>{formulaText("(ax−b)²의 미분")}</h6></div>
         <span>{format(scalarResult.derivative)}</span>
       </header>
       <div class="canvas-scroll">
-        <svg viewBox="0 0 560 310" role="img" aria-label="제곱잔차 함수와 현재 미분값">
+        <svg viewBox="0 0 560 310" role="img" aria-label="{formulaText("제곱잔차 함수와 현재 미분값")}">
           <rect width="560" height="310" rx="18" class="plot-bg" />
           <line x1={plot.left} y1={plot.bottom} x2={plot.right} y2={plot.bottom} class="axis" />
           <line x1={sx(0)} y1={plot.top} x2={sx(0)} y2={plot.bottom} class="axis" />
@@ -92,17 +95,17 @@
     </section>
 
     <section class="control-panel">
-      <header><p>수식의 실제 기호</p><h6>a, x, b</h6></header>
+      <header><p>{formulaText("수식의 실제 기호")}</p><h6>a, x, b</h6></header>
       <div class="controls">
         <label><span>a</span><output>{format(scalarA, 2)}</output><input bind:value={scalarA} type="range" min="-2" max="2" step="0.05" /></label>
         <label><span>x</span><output>{format(scalarX, 2)}</output><input bind:value={scalarX} type="range" min="-2" max="2" step="0.05" /></label>
         <label><span>b</span><output>{format(scalarB, 2)}</output><input bind:value={scalarB} type="range" min="-2" max="2" step="0.05" /></label>
-        <button type="button" on:click={resetScalar}>예제값 복원</button>
+        <button type="button" on:click={resetScalar}>{formulaText("예제값 복원")}</button>
       </div>
       <ol class="pipeline">
-        <li><b>1</b><span>예측</span><strong>ax = {format(scalarResult.prediction)}</strong></li>
-        <li><b>2</b><span>잔차</span><strong>ax−b = {format(scalarResult.residual)}</strong></li>
-        <li><b>3</b><span>제곱</span><strong>(ax−b)² = {format(scalarResult.loss)}</strong></li>
+        <li><b>1</b><span>{formulaText("예측")}</span><strong>ax = {format(scalarResult.prediction)}</strong></li>
+        <li><b>2</b><span>{formulaText("잔차")}</span><strong>ax−b = {format(scalarResult.residual)}</strong></li>
+        <li><b>3</b><span>{formulaText("제곱")}</span><strong>(ax−b)² = {format(scalarResult.loss)}</strong></li>
         <li class="active"><b>4</b><span>chain rule</span><strong>2a(ax−b) = {format(scalarResult.derivative)}</strong></li>
       </ol>
     </section>
@@ -111,20 +114,20 @@
   <div class="matrix-layout" data-residual-gradient-focus={lesson.focus}>
     <section class="pipeline-panel">
       <header>
-        <div><p>같은 계산 그래프</p><h6>{spec.focusLabels[lesson.focus]}</h6></div>
+        <div><p>{formulaText("같은 계산 그래프")}</p><h6>{spec.focusLabels[lesson.focus]}</h6></div>
         <span>loss {format(matrixResult.loss)}</span>
       </header>
 
       <div class="vector-flow">
-        <article><small>입력</small><strong>x</strong><code>[{format(x1)}, {format(x2)}]</code></article>
+        <article><small>{formulaText("입력")}</small><strong>x</strong><code>[{format(x1)}, {format(x2)}]</code></article>
         <b>→ A</b>
-        <article><small>예측</small><strong>Ax</strong><code>[{matrixResult.prediction.map((v) => format(v)).join(', ')}]</code></article>
+        <article><small>{formulaText("예측")}</small><strong>Ax</strong><code>[{matrixResult.prediction.map((v) => format(v)).join(', ')}]</code></article>
         <b>− y</b>
-        <article><small>잔차</small><strong>r</strong><code>[{matrixResult.residual.map((v) => format(v)).join(', ')}]</code></article>
+        <article><small>{formulaText("잔차")}</small><strong>r</strong><code>[{matrixResult.residual.map((v) => format(v)).join(', ')}]</code></article>
         <b>→ W</b>
-        <article><small>가중 잔차</small><strong>Wr</strong><code>[{matrixResult.weightedResidual.map((v) => format(v)).join(', ')}]</code></article>
+        <article><small>{formulaText("가중 잔차")}</small><strong>Wr</strong><code>[{matrixResult.weightedResidual.map((v) => format(v)).join(', ')}]</code></article>
         <b>→ 2Aᵀ</b>
-        <article class="gradient"><small>출력</small><strong>∇</strong><code>[{matrixResult.gradient.map((v) => format(v)).join(', ')}]</code></article>
+        <article class="gradient"><small>{formulaText("출력")}</small><strong>∇</strong><code>[{matrixResult.gradient.map((v) => format(v)).join(', ')}]</code></article>
       </div>
 
       <div class="gradient-bars">
@@ -139,25 +142,25 @@
     </section>
 
     <section class="control-panel">
-      <header><p>미분할 변수</p><h6>x</h6></header>
+      <header><p>{formulaText("미분할 변수")}</p><h6>x</h6></header>
       <div class="controls">
         <label><span>x₁</span><output>{format(x1, 2)}</output><input bind:value={x1} type="range" min="-2" max="2" step="0.05" /></label>
         <label><span>x₂</span><output>{format(x2, 2)}</output><input bind:value={x2} type="range" min="-2" max="2" step="0.05" /></label>
-        <button type="button" on:click={resetMatrix}>예제값 복원</button>
+        <button type="button" on:click={resetMatrix}>{formulaText("예제값 복원")}</button>
       </div>
       <dl class="matrix-readout">
         <div><dt>A</dt><dd>[[1, 2], [−1, 1]]</dd></div>
         <div><dt>y</dt><dd>[1.2, −0.5]</dd></div>
-        <div><dt>W 대각</dt><dd>[{activeWeights.join(', ')}]</dd></div>
-        <div><dt>유한차분 ∇</dt><dd>[{finiteDifference.map((v) => format(v)).join(', ')}]</dd></div>
-        <div><dt>검산 오차</dt><dd>{gradientError.toExponential(2)}</dd></div>
+        <div><dt>{formulaText("W 대각")}</dt><dd>[{activeWeights.join(', ')}]</dd></div>
+        <div><dt>{formulaText("유한차분 ∇")}</dt><dd>[{finiteDifference.map((v) => format(v)).join(', ')}]</dd></div>
+        <div><dt>{formulaText("검산 오차")}</dt><dd>{gradientError.toExponential(2)}</dd></div>
       </dl>
     </section>
   </div>
 {/if}
 
 <aside class="assumptions">
-  <strong>수식과 화면의 연결</strong>
+  <strong>{formulaText("수식과 화면의 연결")}</strong>
   <ul>
     {#each spec.assumptions as assumption, index (index)}
       <li>{assumption}</li>

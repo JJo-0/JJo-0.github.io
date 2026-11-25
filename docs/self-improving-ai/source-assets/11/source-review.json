@@ -1,0 +1,124 @@
+{
+  "chapter": 11,
+  "slug": "self-improving-ai-11-automated-post-training",
+  "reviewed_date_kst": "2026-11-18",
+  "scope": "Primary-source reading for NTU Self-Improving PDF pages 51–55 and supplementary explanations. No model-training experiment was rerun.",
+  "sources": [
+    {
+      "id": "ntu-self-improving",
+      "url": "https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf",
+      "page_count": 62,
+      "pages_reviewed": [51, 52, 53, 54, 55],
+      "method": "Read extracted text and inspect rendered source pages. Root separately prepares English text localization and final asset manifest."
+    },
+    {
+      "id": "posttrainbench-v2",
+      "url": "https://arxiv.org/pdf/2603.08640v2",
+      "title": "PostTrainBench: Can LLM Agents Automate LLM Post-Training?",
+      "authors": "Ben Rank, Hardik Bhatnagar, Ameya Prabhu, Shira Eisenberg, Karina Nguyen, Matthias Bethge, Maksym Andriushchenko",
+      "version_date": "2026-03-10",
+      "page_count": 16,
+      "sha256": "823f11de21206c9ba5be0531bee62f1d29d97cfeb5c8e9a6c90a2256f1f948bc",
+      "method": "Read the pinned arXiv PDF, including setup, scoring, result table, agent traces, contamination analysis and appendix weights. Rendered Figures 2, 3 and 7 for visual inspection."
+    },
+    {
+      "id": "ft-dojo-v1",
+      "url": "https://arxiv.org/pdf/2603.01712v1",
+      "title": "FT-Dojo: Towards Autonomous LLM Fine-Tuning with Language Agents",
+      "authors": "Qizheng Li, Yifei Zhang, Xiao Yang, Xu Yang, Zhuo Wang, Weiqing Liu, Jiang Bian",
+      "version_date": "2026-03-02",
+      "page_count": 24,
+      "sha256": "2b38e2656005726668306f284102ed82d2857a6ba9217b62506b708983fa54e4",
+      "version_choice": "Use the lecture-era v1. A revised v2 dated 2026-05-20 exists; the article does not silently mix its later experiments into the v1 explanation.",
+      "method": "Read task definition, environment, two-phase validation/test protocol and FT-Agent stages. Visually inspect Figure 2 on PDF page 5."
+    },
+    {
+      "id": "lora-v2",
+      "url": "https://arxiv.org/pdf/2106.09685v2",
+      "title": "LoRA: Low-Rank Adaptation of Large Language Models",
+      "authors": "Edward Hu et al.",
+      "version_date": "2021-10-16",
+      "pages_reviewed": [2, 3, 4],
+      "method": "Read the official arXiv PDF through web retrieval. Use the conditional-language-model objective and low-rank parameterization; the numerical 4096-by-4096 example is original pedagogy."
+    }
+  ],
+  "verified_points": [
+    {
+      "topic": "Controller and target model",
+      "evidence": "PostTrainBench §2–2.1, PDF pages 2–3",
+      "interpretation": "The agent chooses data, training implementation and experiments. The submitted target model is evaluated. This does not demonstrate gradient updates to the controller agent's own model."
+    },
+    {
+      "topic": "Resource unit",
+      "evidence": "PostTrainBench §2 and Figure 2, PDF pages 2–3",
+      "interpretation": "One H100 and up to 10 hours apply to one model–benchmark configuration. Four base models times seven benchmarks gives 28 configurations. Three repeats produce 84 runs only where repeats were actually used."
+    },
+    {
+      "topic": "FT-Dojo versus FT-Agent",
+      "evidence": "FT-Dojo §2–3, PDF pages 2–5",
+      "interpretation": "The environment has 13 tasks across 5 domains. The FT-Agent loop combines strategy proposal, implementation and progressive validation, and structured feedback analysis. This study's environment permits authorized APIs for synthesis."
+    },
+    {
+      "topic": "Validation/test distinction",
+      "evidence": "FT-Dojo §2.4, PDF page 3",
+      "interpretation": "Intermediate feedback uses validation; the selected final model is evaluated on separate held-out test data. The article's 0.68/0.74/0.71 and 0.66 values are explicitly illustrative."
+    },
+    {
+      "topic": "HumanEval execution trace",
+      "evidence": "PostTrainBench Figure 3, PDF page 4",
+      "interpretation": "Initial evaluation is labelled 20 samples, while the later 0.287 and 0.373 evaluations are labelled 150 samples. Do not claim an identical-set improvement from 0% to 37.3%. The initial two-epoch run timed out; its planned 406356 example visits were not all completed."
+    },
+    {
+      "topic": "LoRA interpretation",
+      "evidence": "LoRA §2 and §4.1, PDF pages 2–4",
+      "interpretation": "Freeze W0 and train low-rank A/B. The article omits the scaling coefficient explicitly. The illustrative single-matrix parameter reduction is not a runtime or total GPU-memory reduction and is not Gemma's actual configuration."
+    },
+    {
+      "topic": "Score aggregation",
+      "evidence": "PostTrainBench §2.2 Eq.1, Table 1, Table 5, PDF pages 4, 5, 14",
+      "interpretation": "Average across four target base models within each benchmark, then use normalized inverse instruct-minus-base gap weights across seven benchmarks. The score is not the controller's direct benchmark performance."
+    },
+    {
+      "topic": "Rounded values do not exactly reconstruct Avg",
+      "evidence": "PostTrainBench Table 1 Opus 4.6 row and Table 5",
+      "interpretation": "Published displayed weights sum to0.9999. Their dot product with displayed scores is23.14641; the separate Avg column reports23.2. Article preserves both and does not assert an exact raw-score reproduction or a confirmed source-error mechanism. Normalizing the displayed weights again gives23.14872487248725, also distinct from the reported23.2."
+    },
+    {
+      "topic": "Result and spread",
+      "evidence": "PostTrainBench Table 1 and §3.1, PDF pages 4–5",
+      "interpretation": "Reported aggregate values are base7.5, few-shot base18.1, Opus4.6/Claude Code23.2±1.8, official instruction51.1. Spread is one run standard deviation for repeated configurations, not a confidence interval. Model and scaffold define the evaluated agent setting together."
+    },
+    {
+      "topic": "Source text inconsistency about row count",
+      "evidence": "PostTrainBench §3.1 and actual Table 1, PDF pages 4–5",
+      "interpretation": "§3.1 retains the phrase13 evaluated configurations, while the actual v2 table has22 ranked agent/scaffold rows. The article does not repeat that stale count. NTU page54 reproduces the expanded table."
+    },
+    {
+      "topic": "Baseline comparison conditions",
+      "evidence": "PostTrainBench §2.2, PDF pages 3–4",
+      "interpretation": "The general zero-shot evaluation has a GSM8K10-shot exception. The additional few-shot base baseline omits the chat template. The article does not attribute the entire baseline difference solely to example count."
+    },
+    {
+      "topic": "Narrow BFCL result",
+      "evidence": "PostTrainBench §3.2, PDF pages 5–6",
+      "interpretation": "Gemma-3-4B post-trained by GPT-5.1 Codex Max reaches89 versus official67 on the reported BFCL comparison. This is a specific-task result with different training objectives/resources, not general superiority to human ML research."
+    },
+    {
+      "topic": "Violation handling",
+      "evidence": "PostTrainBench §2 and Figure 2, PDF pages 2–3; Appendix E",
+      "interpretation": "Detected disallowed model substitution or contamination receives the base-model score. The aggregate must not be called an uncorrected cheating-inclusive score. LLM-judge clearance is not proof that every contamination mode is absent."
+    },
+    {
+      "topic": "API use and causal claims",
+      "evidence": "PostTrainBench §5.4, Figure 7, PDF pages 8–9",
+      "interpretation": "The documented API case violated an evaluation-only use restriction. The authors suggest context limitations as an explanation; this is not an experimentally established cause or proof of deliberate deception. The article proposes environment-level controls as its own engineering interpretation."
+    }
+  ],
+  "not_performed": [
+    "No LLM fine-tuning or GPU benchmark rerun",
+    "No reaggregation of raw PostTrainBench per-run results",
+    "No statistical significance claim from the displayed standard deviations",
+    "No claim that a single target checkpoint acquired all seven benchmark gains",
+    "No independent verification of source-image reuse rights; final manifest retains unverified status"
+  ]
+}

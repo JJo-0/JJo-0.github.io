@@ -14,6 +14,7 @@ const postSchema = z
     publicationTimeZone: z.enum(['UTC', 'Asia/Seoul']).default('UTC'),
     slug: z.string().optional(),
     updatedDate: z.date().optional(),
+    lectureDate: z.date().optional(),
     category: z.enum(POST_CATEGORIES),
     subcategory: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     type: z.enum(POST_TYPES),
@@ -129,9 +130,11 @@ const englishPosts = defineCollection({
     publicationTimeZone: z.enum(['UTC', 'Asia/Seoul']).default('Asia/Seoul'),
     lang: z.literal('en'), category: z.enum(POST_CATEGORIES), subcategory: z.string(),
     type: z.enum(POST_TYPES), tags: z.array(z.string()), translationKey: z.string(),
+    series: z.object({ id: z.string(), order: z.number() }).optional(),
     translatedPosts: z.record(z.string(), z.string()), featured: z.boolean().default(false),
     researchArea: z.enum(RESEARCH_AREAS).optional(), researchFeatured: z.boolean().default(false),
     researchOrder: z.number().optional(), showComments: z.boolean().default(true),
+    usesChart: z.boolean().default(false),
   }),
 });
 export const collections = { posts, projects, appearances, about, englishPosts };

@@ -3,18 +3,28 @@ export default function englishCitations() {
   return (tree, file) => {
     if (!String(file.path || file.history?.[0] || '').replaceAll('\\','/').includes('/content/english/')) return;
     const references = new Map();
-    for (const node of tree.children || []) {
-      const first=node.type==='paragraph' && node.children?.[0];
-      const match=first?.type==='text' && first.value.match(/^\[(\d+)\]\s/);
-      if (!match) continue;
-      const n=match[1];
-      if(references.has(n)) throw new Error(`Duplicate English reference ${n}`);
-      references.set(n,node);
-      node.data={...node.data,hProperties:{...node.data?.hProperties,id:`news-ref-${n}`,'data-news-reference':n}};
+    function collectReferences(parent) {
+      for (const node of parent.children || []) {
+        const id = node.attributes?.find(attribute => attribute.name === 'id')?.value;
+        const authored = typeof id === 'string' && /^news-ref-(\d+)$/.exec(id);
+        const first = node.type === 'paragraph' && node.children?.[0];
+        const numbered = first?.type === 'text' && first.value.match(/^\[(\d+)\]\s/);
+        const n = (authored || numbered)?.[1];
+        if (!n) {
+          collectReferences(node);
+          continue;
+        }
+        if (references.has(n)) throw new Error(`Duplicate English reference ${n}`);
+        references.set(n, node);
+        if (numbered && !authored) {
+          node.data = {...node.data, hProperties: {...node.data?.hProperties, id: `news-ref-${n}`, 'data-news-reference': n}};
+        }
+      }
     }
+    collectReferences(tree);
     const skip=new Set([...references.values()]);
     function walk(parent) {
-      if(!parent.children || skip.has(parent) || ['link','linkReference','code','inlineCode'].includes(parent.type)) return;
+      if(!parent.children || skip.has(parent) || parent.name === 'a' || ['link','linkReference','code','inlineCode'].includes(parent.type)) return;
       parent.children=parent.children.flatMap(node=>{
         if(node.type!=='text'){walk(node);return [node];}
         const out=[];let last=0;

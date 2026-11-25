@@ -1,0 +1,142 @@
+---
+title: Computing a 65,536-point FFT in memory
+description: Researchers computed fast Fourier transforms in charge-trapping SONOS memory. Audio and image transforms measured on the
+  chip and model-based application results show how ADC costs and accuracy limits enter the design.
+pubDate: 2026-10-21
+updatedDate: 2026-10-28
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-21-analog-fft-sonos-news
+category: software-engineering-cs
+subcategory: analog-in-memory-computing
+type: paper-review
+tags:
+- frontier-one
+- in-memory-computing
+- signal-processing
+- semiconductor
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-10-21-analog-fft-sonos-news
+translationKey: en-2026-10-21-analog-fft-sonos-news
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+
+## In one sentence
+
+The discrete Fourier transform (DFT) converts samples into frequency components. The fast Fourier transform (FFT) computes the same DFT in smaller stages. SONOS flash stores charge in a nonvolatile silicon–oxide–nitride–oxide–silicon stack. Mapping FFT stages onto SONOS arrays let researchers process transforms too large to fit in one array. They demonstrated up to 65,536 points on fabricated arrays, including measurements of 1D audio and 2D image transforms. Larger applications’ accuracy, energy and area results come from simulations using a validated error model and modeled core.
+
+This commentary uses the public arXiv v3 and the publisher’s supplement. The speech experiment conditions and key equations were also checked against the final publication.
+
+## From a waveform to its frequencies
+
+Microphones and sensors record changing signals. Sound pressure varies with time and image brightness with position. Transforming samples into frequency components shows which oscillations are present and how strongly. The DFT often appears early in speech recognition, radar, and communications pipelines.
+
+Figure 1 shows a synthetic real signal of length N=64, x[n]=0.7 sin(2π·4n/64)+0.4 sin(2π·11n/64). The upper panel shows the samples. The lower one shows the one-sided DFT magnitude (|Xₖ|, k=0…32), scaled to its maximum. Peaks at k=4 and 11 correspond to four and eleven cycles in the observation window. These are illustrative data.
+
+<NewsFigure media="oct21-analog-fftsonos-dft-intuition" lang="en" />
+
+The DFT multiplies input samples by complex weights and sums them. A complex number’s real and imaginary parts jointly describe magnitude and phase. Each frequency uses different complex rotations. Output entry k represents k cycles across the window. N counts samples, n indexes samples, and k indexes frequencies. The source uses an unnormalized transform, so voltage input produces voltage units at the output. Computing an average amplitude requires dividing by N.
+
+<CandidateEquation lang="en" id="analog-fft-eq1-dft" title="Source equation 1 · summing samples into frequency components" tex={"X_k=\\sum_{n=0}^{N-1}x_n e^{-i2\\pi nk/N}"}>
+<p>Each x<sub>n</sub> is multiplied by the rotation for frequency k before summation. The imaginary unit i satisfies i²=−1. The angle −2πnk/N is dimensionless in radians, so e<sup>−i2πnk/N</sup> is a rotation of unit magnitude. Both x<sub>n</sub> and X<sub>k</sub> have the sample amplitude’s units. The paper uses this DFT definition without 1/N normalization. Its algorithm splits the transform to run on the arrays, as described below.</p>
+</CandidateEquation>
+
+**Calculate a frequency bin.** Sample a 2,000 Hz cosine eight times at 8,000 samples per second. The sample interval is 1/8,000 second. The 1 ms record contains two cycles, with `x[n]=cos(2π·2000n/8000)=[1, 0, −1, 0, 1, 0, −1, 0]`. The eight-point DFT spacing is `fₛ/N=8,000/8=1,000 Hz`, so k=2 denotes 2,000 Hz. At that bin the rotation gives a product of `+1` for every nonzero sample (n=0,2,4,6). The other four vanish, so `X₂=1+1+1+1=4`. For real input its conjugate at k=6 is also 4. The cosine amplitude is `2|X₂|/N=2·4/8=1`. In general `fₖ=k fₛ/N`. The example’s Nyquist frequency is `fₛ/2=4,000 Hz`. These are synthetic data.
+
+The FFT takes advantage of repeated operations to compute the same DFT more efficiently. Cooley and Tukey’s classic paper systematized the decomposition. Linford and Gerashchenko’s 2026 tutorial explains the sample and frequency scales in the context of spectral denoising.
+
+The study separately tested a 512-point short-time Fourier transform (STFT) and a 65,536-point transform of an entire waveform.
+
+## Mapping a digital FFT onto an analog array
+
+A direct transform of N samples needs an N×N complex DFT matrix. If this matrix fits one memory array, one matrix–vector multiplication (MVM) suffices. When it exceeds the row or column limits, multiple arrays handle pieces, and partial results must be read and added digitally. The authors identify analog-to-digital converter (ADC) conversions and intermediate data movement as costs. An ADC converts array output current to a number.
+
+An FFT exploits repeated structures in the DFT matrix to decompose a large transform into smaller DFT stages. With N=N₁N₂ and reordered samples, Cooley–Tukey expresses an N-point DFT as N₁- and N₂-point transforms connected by complex rotations called twiddle factors. Equations 2 and 3 give indexed and matrix forms of the same calculation.
+
+<CandidateEquation lang="en" id="analog-fft-eq2-indexed" title="Source equation 2 · Cooley–Tukey decomposition with reordered samples" tex={"\\tilde X_{k_2,k_1}=\\sum_{n_2=0}^{N_2-1}\\omega_{N_2}^{n_2k_1}\\omega_N^{n_2k_2}\\sum_{n_1=0}^{N_1-1}\\omega_{N_1}^{n_1k_2}\\tilde x_{n_1,n_2}"}>
+<p>N=N₁N₂, with n₁=0,…,N₁−1 and n₂=0,…,N₂−1. The reordered arrays satisfy x̃<sub>n₁,n₂</sub>=x<sub>N₂n₁+n₂</sub> and X̃<sub>k₂,k₁</sub>=X<sub>k₂+N₁k₁</sub>, with k₂=0,…,N₁−1 and k₁=0,…,N₂−1. The dimensionless Mth root of unity is ω<sub>M</sub>=e<sup>−i2π/M</sup>. Each sum gives a small DFT along one axis. The intermediate ω<sub>N</sub> term connects the stages. The complex output retains the input amplitude units.</p>
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="analog-fft-eq3-matrix" title="Source equation 3 · matrix form including the twiddle matrix" tex={"\\tilde{\\mathbf X}=\\left(\\mathbf W_{N_2}\\left[\\mathbf T\\odot(\\mathbf W_{N_1}\\tilde{\\mathbf x})\\right]^T\\right)^T"}>
+<p>x̃ and X̃ are N₁×N₂. W<sub>N₁</sub> and W<sub>N₂</sub> are square DFT matrices of sizes N₁ and N₂. T is N₁×N₂ with T<sub>m,n</sub>=ω<sub>N</sub><sup>mn</sup> for m=0,…,N₁−1 and n=0,…,N₂−1. Multiplying W<sub>N₁</sub>x̃ elementwise by T gives an N₁×N₂ result. Transposition gives N₂×N₁, so W<sub>N₂</sub> multiplies it on the left before the final transpose. These dimensions explain the parentheses and transpose order. W and T are dimensionless. The output retains the input units. The main experiment used digital FP32 for interstage twiddle products. The supplement’s folded-twiddle test is a separate variant.</p>
+</CandidateEquation>
+
+Choosing the decomposition requires deciding how large a DFT to fit on one array and where to divide it. The paper uses K for the largest DFT one array can handle. Radix choice depends on this limit and the overall transform size. The authors give an approximate crossover of N≈2K. It is not a universal measured optimum. Energy and area have separate cost formulas.
+
+## Transforming a two-dimensional image along its two axes
+
+An image has rows and columns. A 2D DFT transforms one axis and then the other. Equation 4 describes this separable form. The image experiment’s vector-radix FFT partitions both axes into subarrays, reorders the data, and passes them to the next stage.
+
+<CandidateEquation lang="en" id="analog-fft-eq4-2d" title="Source equation 4 · a two-dimensional DFT along rows and columns" tex={"\\mathbf X=\\left[\\mathbf W_N(\\mathbf W_M\\mathbf x)^T\\right]^T"}>
+<p>x and X are the M×N input image and its transform. W<sub>M</sub> and W<sub>N</sub> apply the DFT along each axis. The transpose changes axis orientation between the operations. The equation gives a separable 2D DFT. Methods equations 5–6 give the detailed vector-radix layout.</p>
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="analog-fft-eq5-vrfft-stage1" title="Methods equation 5 · first vector-radix stage on 2D subblocks" tex={"\\mathbf y_{r,s}=\\mathbf T_{r,s}\\odot\\left[\\mathbf W_Q\\left(\\mathbf W_P\\tilde{\\mathbf x}_{r,s}\\right)^T\\right]^T"}>
+<p>For M=PR and N=QS, x is rearranged into an R×S×P×Q array x̃ with x̃<sub>r,s</sub>(p,q)=x<sub>r+Rp,s+Sq</sub>. Here r=0,…,R−1, s=0,…,S−1, p=0,…,P−1, and q=0,…,Q−1. The pair (r,s) locates a submatrix, and (p,q) locates a point within it. At fixed (r,s), the block is P×Q. Two small DFTs within each block and multiplication by its twiddle matrix T<sub>r,s</sub> yield an R×S×P×Q intermediate array y. This defines a computational stage rather than a performance metric.</p>
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="analog-fft-eq6-vrfft-stage2" title="Methods equation 6 · second stage after exchanging axes" tex={"\\tilde{\\mathbf X}_{p,q}=\\left[\\mathbf W_S\\left(\\mathbf W_R\\tilde{\\mathbf y}_{p,q}\\right)^T\\right]^T"}>
+<p>Next, exchanging the (p,q) and (r,s) axis pairs gives ỹ dimensions P×Q×R×S. At fixed (p,q), ỹ<sub>p,q</sub> is an R×S block with the same index ranges. Equation 6 applies W<sub>R</sub> and W<sub>S</sub> to it. Finally X<sub>q+Qs,p+Pr</sub>=X̃<sub>p,q</sub>(r,s) rearranges the four-dimensional output into a two-dimensional frequency array. The article calls this the vector-radix FFT. The Methods mathematically define both stages.</p>
+</CandidateEquation>
+
+## Which results were measured?
+
+The researchers used a 40 nm SONOS in-memory chip. Cell conductances differentially store real and imaginary components of complex weights. Inputs arrive as bit-serial voltages, and on-chip 12-bit ADCs read the summed currents. DFT-16 used 2,048 devices and DFT-256 used up to 524,288. A large transform reused smaller DFT stages instead of storing the entire matrix.
+
+<NewsFigure media="oct21-analog-fftsonos-array-boundary" lang="en" />
+
+FP32 is 32-bit floating point. Peak signal-to-noise ratio (PSNR) summarizes elementwise errors against a reference in dB. At a given peak level, higher PSNR means smaller error by that measure. This does not guarantee low error in every frequency bin or an inaudible difference. Higher structural similarity (SSIM) means closer image structure, and lower word error rate (WER) is better.
+
+The speech experiment used a roughly four-second Flickr8k Audio Caption utterance recorded at 16 kHz and padded to 65,536 samples. A 512-sample Hamming window and 128-sample hop gave an analog STFT spectrogram with elementwise PSNR of 55.97 dB against CPU FP32. That figure applies to this input, window, precision, and comparison. It does not establish per-bin accuracy, listening quality, latency, power, or playback quality. The full waveform transform used 256-point analog DFTs (N₁=N₂=256), giving 0.244 Hz spacing and 41.01 dB spectrum PSNR. [arXiv v2, section 4](https://arxiv.org/pdf/2409.19071v2) reported 56.99 and 41.10 dB, respectively. The final publication’s Figure 3 discussion reports 55.97 and 41.01 dB. The table follows v3. Supplementary section 7.5 specifies magnitudes after averaging conjugate pairs for real input, `|(X_k + X*_{-k})/2|`, for both PSNRs. It did not average the separate magnitudes `|X_k|` and `|X_{-k}|`. The arXiv v3 abstract and text call the transform more than 500 times larger than previous analog DFT demonstrations. This is the authors’ comparison and does not appear in the Nature abstract.
+
+Supplementary section 14 gives asymptotic energy costs of <Math tex={"O(N^2/K)"} /> for direct MVM and <Math tex={"O(N\\log_K N)"} /> for the analog FFT. Fixing array limit K reduces the direct MVM expression to <Math tex={"O(N^2)"} />. These expressions assume output conversion and buffering costs. They are not measured chip power curves. Area estimates depend on whether storage devices or peripheral circuits dominate.
+
+The team also transformed a 256×256 RGB satellite image and reconstructed it with an inverse transform following the analog vector-radix FFT. They attribute relative edge sharpening to wiring IR drop attenuating low-frequency components with large summed currents. Conductance errors and circuit noise added grain. The authors used Parseval’s theorem to choose a single brightness correction factor. It can improve PSNR without changing spatial structure and need not improve SSIM.
+
+Synthetic aperture radar (SAR) and speech recognition results come from simulations. The researchers used a CrossSim model incorporating chip errors with a modeled, more efficient 40 nm core and an 8-bit ADC for larger inputs. A 2048×2048 SAR image formation task averaged SSIM 0.8558±0.006 over ten simulations. In a LibriSpeech RNNT pipeline, WER was 7.44% for FP32 and 9.53% for the 8-bit analog STFT model. They did not run either complete application in real time on the fabricated chip.
+
+<table>
+<thead><tr><th>Evidence</th><th>Inputs and conditions</th><th>Reported result</th><th>Scope</th></tr></thead>
+<tbody>
+<tr><td>Fabricated chip</td><td>40 nm SONOS array, 512-point STFT, 65,536-point 1D FFT, and 256×256 RGB 2D FFT/IFFT</td><td>STFT PSNR 55.97 dB, full FFT 0.244 Hz spacing and 41.01 dB, image reconstruction demonstrated<br/><small>Both spectrum PSNRs use magnitudes after averaging complex conjugate pairs</small></td><td>Array-stage DFTs and transform outputs measured</td></tr>
+<tr><td>Application simulation</td><td>Modeled efficient 40 nm core with device errors and 8-bit ADC, 2048×2048 SAR and LibriSpeech/RNNT</td><td>SAR SSIM 0.8558±0.006 over ten runs, WER 7.44% for FP32 and 9.53% for the analog model</td><td>No end-to-end chip application test or product power measurement</td></tr>
+</tbody>
+</table>
+
+### Further reading
+
+- DFT fundamentals and spectral denoising are covered in [Linford & Gerashchenko, *A tutorial on the Fourier transform and discrete Fourier transform, with comments on the Hilbert transform, in the context of denoising spectra* (2026)](https://doi.org/10.1116/6.0005675).
+- The classic paper introducing the FFT decomposition is [Cooley & Tukey, *An Algorithm for the Machine Calculation of Complex Fourier Series* (1965)](https://doi.org/10.1090/S0025-5718-1965-0178586-1).
+
+## Where does accuracy deteriorate?
+
+Differences between programmed and target conductance can cause large relative errors for small weights. Cell variability and read noise can be significant relative to a small input current. Raising conductance to strengthen the signal increases IR drop across parasitic wiring resistance. Summed current outside the ADC range clips. When selecting the weight ceiling Gmax, the researchers simulated clipping and conductance quantization error together. DFT size changes these conditions.
+
+The supplement examines cell-state drift over time. The model uses one or three days of drift after programming in experiment-reproduction mode and assumes one day for the application core. This does not measure years of retention, periodic refresh energy and latency, or variation with product temperature and process. The performance comparison also relies on a digital baseline converted to 8-bit precision and a design model. It does not compare two complete chips built in the same process.
+
+## What the study establishes
+
+The strongest evidence is the execution of each DFT stage of a large transform on a physical SONOS array with measured audio and image transform outputs. The algorithm factors the complex DFT to fit the array. ADCs, partial sums, and buffers can drive system cost alongside multiplication. The modeled applications and measured array transforms have different scopes. A general claim of better speed and efficiency than digital FFTs would exceed the data.
+
+Further evidence would include comparison with a digital FFT chip matched for precision and process, long-term measurements covering temperature, drift and refresh, power including arrays, ADCs, buffers and controller, and independent chip replication. The paper says data are available upon reasonable request. CrossSim is public. The complete study-specific code requires a request and Sandia management approval. This review did not run CrossSim or independently replicate the study.
+
+## Sources and scope of review
+
+- Xiao et al., “Analogue fast Fourier transforms for scalable and efficient signal processing,” *Nature Electronics*, October 19, 2026. [Publisher](https://www.nature.com/articles/s41928-026-01725-x) · [DOI](https://doi.org/10.1038/s41928-026-01725-x)
+- Public preprint [arXiv:2409.19071 v3](https://arxiv.org/abs/2409.19071), revised June 24, 2026. Locations below use physical arXiv PDF page numbers. Complete agreement of equations and Methods wording with the publisher’s text has not been established.
+
+<details>
+<summary>Source locations and material reviewed</summary>
+
+- In arXiv v3, the main text on PDF pages 1–12 and Methods on pages 18–21 were read. Equation 1 is on page 3, equations 2–3 on page 4, equation 4 on page 8, and Methods equations 5–6 on page 19. Figures 1–5 appear on pages 3, 6, 8, 9–10, and 11, respectively. The references on pages 13–17 were not read. The bundled arXiv v3 Supplementary Information on physical pages 22–61 was reviewed. Its topics and structure correspond to the Nature supplement but its pagination, figure numbers, and file hash differ. This commentary uses facts checked within the reviewed material.
+- The Nature supplement was obtained separately. The review covered supplementary sections 1–14 on physical pages 3–42, excluding references on pages 43–44. Parseval equations I11–I12 and Fig. 18 appear on PDF page 23 (printed page 22), and section 14, Table 9 on PDF page 41 (printed page 40). These locations belong to the publisher’s supplement.
+- Institutional access allowed additional checks of the final article’s speech PSNR, input and window conditions (PDF pages 4–6), and equations 1–6 and related Methods (PDF pages 2, 4, 10–11). The checks cover those claims and equations. The data statement specifies reasonable request to the corresponding author, and the complete study-specific code requires a request and Sandia management approval.
+- The two independently prepared illustrations explain a synthetic signal’s spectrum and the roles of arrays and ADCs. Neither copies or traces a source figure or measured graph. Detailed original figures are linked pending rights verification.
+
+</details>

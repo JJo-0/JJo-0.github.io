@@ -1,0 +1,441 @@
+---
+title: Self-Improving AI 15 — How can an agent improve its own harness?
+description: Pages 6–10 connect prompt, tool and workflow changes to SWE-agent, DSPy, AFlow and τ-bench. The discussion
+  covers candidate selection, memory, cost and repeatability.
+pubDate: 2026-11-18 20:50:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-15-harness-optimization-and-evaluation
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- ai-agents
+- harness
+- evaluation
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 15
+translationKey: en-self-improving-ai-15-harness-optimization-and-evaluation
+translatedPosts:
+  ko-KR: self-improving-ai-15-harness-optimization-and-evaluation
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>The same language model can become a different agent depending on the information it receives, the tools it uses, and what it does after failure.</strong>
+
+[Part 14](/en/posts/self-improving-ai-14-proposer-solver-verifier/) examined how a proposer, solver, and verifier generate learning problems and rewards. That loop still contains human-designed problem instructions, execution environments, and answer checks. Here the question shifts from training the model's weights to <strong>improving the way the model is used</strong>.
+
+A harness is the system surrounding a model that assembles its inputs, connects tools, and controls execution order. An AI can change agent behavior by editing that code or rewriting instructions. Producing a revision, however, does not establish that the revised system works better. Following slides 6–10 of the second lecture, this article examines both what can change in the harness and what evidence should guide selection.
+
+<strong>Worked examples</strong>　[Context budget](#can-a-sixth-tool-record-fit-in-the-same-context-window) · [Prompt–weight interaction](#if-the-weights-and-the-instructions-both-changed-which-contributed) · [Selection bias](#how-often-will-a-search-over-ten-candidates-turn-up-a-perfect-development-score)
+
+<details>
+<summary>Video locations by slide</summary>
+
+The links identify remarks on each topic. The timestamp for the prompt examples on slide 6 refers to the proposer's and solver's roles discussed in the previous part. It does not locate a verbatim reading of the prompts or the exact slide transition.
+
+| Slide | Video | Topic |
+|---|---|---|
+| Second half, 6 | [From 4:45](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=285s) | Review of the proposer and solver, overlapping the previous part |
+| Second half, 7 | [From 5:15](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=315s) | The harness and language model that make up an agent |
+| Second half, 8 | [From 5:36](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=336s) | Changing the target of improvement from model to harness |
+| Second half, 9 | [From 5:48](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=348s) | Harness updates, evaluation, and the question mark on gradient descent |
+| Second half, 10 | [From 7:07](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=427s) | How an AI proposes harness revisions |
+
+</details>
+
+## Second half, slide 6 — Self-learning has a designed starting point
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/ntu-self-evolving-06-en.png"
+  alt="Two prompts appear side by side: R-Zero's instructions for writing math problems and Absolute Zero's instructions for generating code and inputs."
+  caption="Second half, slide 6 — Even a model generating its own questions receives instructions defining its role, difficulty target, and output format."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=6"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The slide's two examples show where the earlier self-learning systems begin. R-Zero's prompt specifies the role and type of math problem to generate. Absolute Zero's prompt specifies how code and inputs relate. Even when a model generates new problems, <strong>what it should generate, the required format, and the verification environment are already structured.</strong>
+
+Distinguish an objective written in an instruction from a measured result. Asking for a difficult problem or targeting an accuracy rate gives the proposer a direction. It does not establish the problem's difficulty for real people. Likewise, requesting an output format does not guarantee compliance on every run.
+
+This distinction leads to harness improvement. Changing a proposer prompt can change the kinds of problems generated. Adding code that filters invalid formats can change the data passed downstream. Both affect system behavior without updating model weights at that point. This connects the self-learning loop to harness design.
+
+After changing a proposer instruction, read the raw outputs alongside the execution log. Suppose ten requests produce seven outputs the parser can read and five of those pass the executable task checks. The fraction valid among parsed outputs is 5/7. The number of valid tasks obtained per request is 5/10. If a parser fix recovers the three previously unreadable outputs, **check the validity of those three**. The parser now accepts more outputs. Running the checks tells us how many additional tasks are fit to train on.
+
+## Second half, slide 7 — An agent combines a model and a harness
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/ntu-self-evolving-07-en.png"
+  alt="Under the title “AI Agent = Harness + LLM,” arrows run both ways between harness h and language model theta. A flame appears over the model. A person provides input to the agent through a phone."
+  caption="Second half, slide 7 — The model and the harness that uses it jointly determine agent behavior."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=7"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+“Harness + LLM” describes system composition. A language model receives context and produces a response or a tool call. The harness decides which context to provide, how to execute a generated call, and how to insert its results into the next input. [Lecture at 5:15](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=315s)
+
+Following the slide, use θ for the model parameters and <strong>lowercase h</strong> for the harness. Then the agent can be written as:
+
+<Math tex={String.raw`A_{\theta,h}.`} display />
+
+| Symbol | Meaning | Example change |
+|---|---|---|
+| θ | Learned weights of the language model | Fine-tuning or reinforcement learning updates internal parameters |
+| h | Configuration that calls the model and connects it to the environment | Instructions, tool specifications, output parsers, execution order, retry and memory rules |
+| H_info | Human-provided objectives, data, and evaluation information | Requirements, reference examples, grading rules |
+
+Capital H in Part 14 denoted human-provided information. Lowercase h here denotes the harness. We retain H_info for the former. The categories need not be physically separate files. A human-written objective can appear in the harness's system instructions. Distinguish <strong>the configuration open to optimization</strong> from <strong>the evidence used to evaluate it</strong>.
+
+Consider two search-tool interfaces. One returns an entire long document, and the other supplies its location, the relevant paragraph, and its source. With identical model weights, the next decision receives different information. After a tool call fails, the harness also decides whether to repeat the request or expose the error type so the model can revise the arguments.
+
+### A related CMU lecture — How memory is retained is part of the harness
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/cmu-rl-systems-sequence-extension.png"
+  alt="Two harnesses from CMU's RL Systems lecture. A appends every action A and observation O to task T. After two observations, B replaces the earlier history with summary S for the next input."
+  caption="CMU RL Systems, slide 19 — The same experience can produce different inputs depending on how the harness assembles context."
+  source="https://www.cmu-agents.com/slides/lecture-12-rl-systems.pdf#page=19"
+  credit="Apurva Gandhi / CMU 11-768 AI Agents, Fall 2026"
+  width={1800} height={1013}
+/>
+
+CMU's “Reinforcement Learning Systems” compares two harnesses. A on the left keeps appending actions A and observations O to task T. B on the right replaces earlier interactions with summary S after two observations. <strong>The difference is what the next model call sees.</strong> [CMU, slides 19–20](https://www.cmu-agents.com/slides/lecture-12-rl-systems.pdf#page=19)
+
+Imagine a code-editing agent reading a file and then running a test. A supplies the full code excerpt and error log on the next call. B might summarize them as “Empty input raised an exception in parse_input.” In this illustration, a shorter input could omit the reproduction conditions or exact line number, making the repair harder. A long history filled with irrelevant material could also make the important error harder to find.
+
+The slide's closing question concerns **training efficiency**. Slide 20 shows A's trajectory as one continuous training example. For B, the records before and after summarization become separate examples, each including task T. A shorter inference input therefore does not establish lower total compute. Examine inference context length separately from the computation repeated when training on those records later. [CMU, slide 20](https://www.cmu-agents.com/slides/lecture-12-rl-systems.pdf#page=20)
+
+Possible interventions include when to summarize, which error details to preserve, and how to format tool responses. All are part of h. Compare success rate and token usage, and also investigate <strong>failures caused by details lost in summarization</strong>. Even with fixed θ, the rules for presenting observations can change subsequent behavior.
+
+### Can a sixth tool record fit in the same context window?
+
+Give harnesses A and B in the CMU diagram an illustrative token budget. Each call has a 4,096-token context window. Instructions, the current request, and tool definitions use 700 tokens. Reserve 600 for the output. Assume a tool call and its return together occupy exactly 480 tokens. The space left for history is the full window minus the fixed input and the output reservation.
+
+<Math tex={String.raw`\begin{aligned}B_{\mathrm{history}}&=4096-700-600=2796,\\ n_{\max}&=\lfloor 2796/480\rfloor=5,\\ T_{\mathrm{raw}}(6)&=6(480)=2880,\qquad T_{\mathrm{summary}}(6)=200+2(480)=1160.\end{aligned}`} display />
+
+A can fit five full records. Six take 2,880 tokens, exceeding the history budget by 84. If B replaces the first four with a 200-token note and keeps the two most recent records intact, its history uses 1,160. <strong>The next input saves 1,720 tokens. What information did it lose?</strong> Suppose an inspection record specified a tolerance of 0.2 mm and the note retained only “dimensions checked.” The next request cannot recompute the bounds. Require the summary to preserve units and tolerances, then rerun the same task to test that failure. These figures budget the input for one call under a fixed-length assumption. Count the cost of generating the summary and of subsequent training separately. [CMU Lecture 12, pp. 19–20](https://www.cmu-agents.com/slides/lecture-12-rl-systems.pdf#page=19)
+
+## Second half, slide 8 — The flame moves from θ to h
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/ntu-self-evolving-08-en.png"
+  alt="The same agent architecture, with the flame symbolizing improvement moved from the language model to the harness h. A user stands to the left of the phone."
+  caption="Second half, slide 8 — Change the harness while keeping model weights fixed."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=8"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The principal difference between slides 7 and 8 is the position of the flame. The marker moves from the model to the harness. The two changes can be written side by side:
+
+<Math tex={String.raw`\begin{aligned}
+\text{model update:}\quad &(\theta,h)\longrightarrow(\theta',h),\\
+\text{harness update:}\quad &(\theta,h)\longrightarrow(\theta,h').
+\end{aligned}`} display />
+
+In the second case, the system changes without retraining the model. Generating one longer answer differs from revising a harness that can be reused across tasks. Preserve revised instructions, code, or memory rules in a form that can run again, so the configurations can be compared.
+
+Fixing θ alone does not complete the comparison. Differences in model version, tool access, starting data, execution budget, or success criteria can mix several effects. If h′ uses twice as many model calls as h, the observed difference is <strong>the effect of the system including the extra calls</strong>. A costlier design may be worthwhile, but an efficiency claim requires a matched-budget comparison.
+
+### If the weights and the instructions both changed, which contributed?
+
+Suppose the original model and instructions solved 70 of 100 tasks, and the configuration that changed both solved 86. Those two numbers cannot tell us how many of the 16 extra successes came from the harness. Run the two intermediate combinations on the same tasks with the same tools and call budget. Here are hypothetical success counts.
+
+| Same 100 tasks | Original instruction h₀ | New instruction h₁ |
+|---|---:|---:|
+| Original weights θ₀ | 70 | 80 |
+| New weights θ₁ | 85 | 86 |
+
+<Math tex={String.raw`\begin{aligned}\Delta_h(\theta_0)&=(80-70)/100=0.10,\\ \Delta_h(\theta_1)&=(86-85)/100=0.01,\\ \Delta_h(\theta_1)-\Delta_h(\theta_0)&=0.01-0.10=-0.09.\end{aligned}`} display />
+
+Read across a row to change the instruction while holding the weights fixed. The gain is 10 percentage points with the original model and 1 point with the new one. The difference of −9 points means <strong>the new instruction adds nine fewer points with the new model on this evaluation</strong>. It still increases the score in both rows. BetterTogether alternates weight and prompt optimization, giving a concrete reason to reevaluate instructions after changing the underlying model. The table illustrates that dependency. Generalization beyond these 100 tasks would require evaluation data excluded from candidate selection and repeated runs. [BetterTogether, EMNLP 2024](https://aclanthology.org/2024.emnlp-main.597/)
+
+### A related NAIRR lecture — Distinguishing a reflective note from a harness update
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/nairr-reflexion-memory-loop.png"
+  alt="The Reflexion slide from a NAIRR tutorial shows action, evaluation, verbal reflection after failure, memory storage, and a new attempt. It also notes the limits of reflection quality."
+  caption="NAIRR, slide 52 — A note explaining a failure enters the context of the next attempt."
+  source="https://www.sonthenguyen.com/slides/training-free-alignment/NAIRR_Tutorial_Intro_Guided_Decoding_Response_Engineering.pdf#page=52"
+  credit="Son The Nguyen, Tommy Cheng & Theja Tulabandhula / NAIRR 2026 / CC BY 4.0 original slide"
+  width={1800} height={1013}
+/>
+
+NAIRR's “Training-Free Alignment of LLMs” distinguishes three intervention points. Before generation, change the prompt. During generation, adjust token selection. After generation, inspect, filter, or revise the completed response. The tutorial calls the last approach response engineering. [Slides 38–40](https://www.sonthenguyen.com/slides/training-free-alignment/NAIRR_Tutorial_Intro_Guided_Decoding_Response_Engineering.pdf#page=38) · [Lecture, 2:07:29–2:09:28](https://www.youtube.com/watch?v=KkhyuMftyYw&t=7649s)
+
+Slide 52 shows Reflexion. The agent acts, receives an evaluation, describes the cause of failure in words, and puts that description into the next trial's context. The lecture follows **action → evaluation → reflection → memory → retry**. The model's capabilities limit the quality of the reflection. Writing an explanation does not establish that the diagnosis is correct. [Lecture, 2:21:42–2:22:53](https://www.youtube.com/watch?v=KkhyuMftyYw&t=8502s)
+
+Mapping this example onto θ and h requires distinguishing <strong>a run that appends one reflection under an existing rule</strong> from <strong>an experiment that changes the rule for producing or using reflections</strong>.
+
+| Change | What changes directly | Interpretation here |
+|---|---|---|
+| After a failure, add “Check empty inputs” to the next attempt | Contents of runtime memory | A fixed harness updates state according to its rules |
+| Change when to reflect, what to record, or when to retrieve it | Memory creation and use rules | A candidate harness h′ reusable across runs |
+| Fine-tune on records of successes and failures | Model parameters | An update to θ |
+
+The first system can use earlier experience to improve a later attempt. If the target h is defined as the rule for creating and using memory, changing the note's contents alone does not show that the harness code improved. Define the variables and controls before comparing runs.
+
+For example, one harness could store every reflection after every failure. Another could retain only causes confirmed by tests and prune stale notes. These are competing memory policies. Compare their success rates and costs on new tasks. The NAIRR lecture also describes the latency, cost, nontermination, and debugging difficulties that repeated processing can introduce. [Slides 50–52](https://www.sonthenguyen.com/slides/training-free-alignment/NAIRR_Tutorial_Intro_Guided_Decoding_Response_Engineering.pdf#page=50) · [Lecture, 2:19:42–2:21:39](https://www.youtube.com/watch?v=KkhyuMftyYw&t=8382s)
+
+## Second half, slide 9 — Can gradient descent be applied directly to a harness?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/ntu-self-evolving-09-en.png"
+  alt="A gradient-like harness update and red question marks separate the original agent Aθh and the new agent Aθh′. Their respective evaluation losses appear below. The two people evaluate the agent before and after the change."
+  caption="Second half, slide 9 — Writing a gradient update raises the question of what can actually be differentiated."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=9"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The lecturer adds harness h to the earlier diagram of learning. Let L denote the objective or feedback the system uses and L̂ the evaluation that checks the result. Smaller values of both losses are better.
+
+<Math tex={String.raw`L(A_{\theta,h},H_{\mathrm{info}}),\qquad\widehat L(A_{\theta,h}).`} display />
+
+The slide then presents a familiar-looking gradient descent expression with <strong>three red question marks</strong>. The expression poses a question. It is not an update rule ready to execute on an arbitrary harness.
+
+<Math tex={String.raw`h'=h-\eta\nabla_h L(A_{\theta,h},H_{\mathrm{info}})\qquad(?).`} display />
+
+Gradient descent requires a variable with a defined continuous variation. Changes such as adding a verification step after search, retrying only on failure, or clarifying a tool description have no given real-valued coordinate to differentiate or subtract. Harness code and strings cannot simply be treated as model weights. [Lecture, 5:48–7:07](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=348s)
+
+Individual numeric parameters in a harness can be optimized continuously, and differentiable representations can be designed. Neither makes the expression automatically valid for an arbitrary combination of prompts, branches, and tool connections. What is needed is <strong>a procedure to generate revisions and decide which to retain from their results</strong>.
+
+### Worked example 1 — Pairing results to see which tasks improved
+
+Consider a <strong>hypothetical experiment</strong> comparing two harnesses with a fixed model. Both run once on the same 100 tasks, with matched initial states, execution budgets, and success criteria. Suppose the paired outcomes are:
+
+| Outcome on the same task | Number of tasks |
+|---|---:|
+| Both h and h′ succeeded | 60 |
+| Only h succeeded | 10 |
+| Only h′ succeeded | 20 |
+| Both failed | 10 |
+
+Write s_i(h)∈{0,1} for success on task i. The mean success rates and their difference are calculated below. From here we use <strong>success rate S, where larger is better</strong>.
+
+<Math tex={String.raw`S(h)=\frac1N\sum_{i=1}^{N}s_i(h),\qquad\Delta S=\frac1N\sum_{i=1}^{N}\bigl[s_i(h')-s_i(h)\bigr].`} display />
+
+<Math tex={String.raw`S(h)=\frac{60+10}{100}=0.70,\quad S(h')=\frac{60+20}{100}=0.80,\quad\Delta S=\frac{20-10}{100}=0.10.`} display />
+
+The new harness scores 10 percentage points higher on these runs. It gained 20 successes and lost 10 others, a pattern that comparing two averages can hide. Reviewing the failures suggests hypotheses about which problem types the revision helped or hurt.
+
+This summarizes the 100 observed tasks. It neither guarantees a 10-point gain on new tasks nor establishes statistical significance. If generation or environment behavior is stochastic, repeat each task. Reset state before each run to keep edited files or conversation history from leaking into another condition.
+
+## Second half, slide 10 — AI proposes revisions and execution results guide selection
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/ntu-self-evolving-10-en.png"
+  alt="Under “How to improve harness,” the current harness h and its loss information flow into an AI that outputs a new harness h′."
+  caption="Second half, slide 10 — The current harness and its feedback become inputs for generating a candidate successor."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=10"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Slide 10 replaces the question marks with a different operation. Give an AI the current harness and signals from its runs, and ask it to propose a new harness. A model that handles language and code can revise instructions, choose examples, add steps, or change branch conditions. This is a different operation from differentiating strings numerically. [Lecture at 7:07](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=427s)
+
+For a concrete design, let F_dev contain development scores, failure types, tool responses, and differences from expected results. Write q_φ for the candidate generator. The model proposing revisions may be the target model or a separate fixed model. φ denotes the generator's parameters, without implying any weight update during proposal.
+
+<Math tex={String.raw`h'\sim q_\phi(\,\cdot\mid h,F_{\mathrm{dev}}),\qquad\theta\text{ fixed}.`} display />
+
+Check that each candidate runs, compare candidates on development tasks, and select the next configuration. For instance, let C_t be the valid candidates and include the original configuration in the comparison. The following is one possible selection rule. Different studies may use different procedures.
+
+<Math tex={String.raw`h_{t+1}\in\operatorname*{arg\,max}_{h\in\{h_t\}\cup C_t}S_{\mathrm{dev}}(h).`} display />
+
+Including the original configuration lets the search reject lower-scoring alternatives under the same development evaluation. This protects only <strong>the observed development score</strong>. Stochastic variation and overfitting to development tasks can still reduce true expected performance. Tasks repeatedly used for selection cannot also serve as an independent final evaluation.
+
+The lecturer also notes that an AI's internal criterion may differ from the human's final objective. A persuasive explanation of a proposed edit does not establish a reduction in L̂. [Lecture at 7:40](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=460s)
+
+### A related MIT lecture — Generating candidates and choosing among them
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/mit-alphaevolve-evaluator-loop.png"
+  alt="MIT's Self-evolving AI slide on AlphaEvolve and OpenEvolve. Humans specify the evaluator and initial solution. A prompt sampler, language model, evaluator, and program archive repeatedly generate and evaluate candidates."
+  caption="MIT, slide 55 — Candidate programs are evaluated under human-defined criteria, with execution results fed back into search."
+  source="https://mit-mi.github.io/mmai-course/spring2026/schedule/lec14.1%20-%20advanced%20topics.pdf#page=55"
+  credit="Paul Liang / MIT Multimodal AI, 2026-05-05; AlphaEvolve figure reproduced in the lecture"
+  width={1800} height={1013}
+/>
+
+Slide 55 of MIT's “Self-evolving AI” lecture describes AlphaEvolve and OpenEvolve. The top of the left diagram shows the human-defined evaluation criterion, initial solution, and background knowledge. Below, stored programs are sampled for a prompt, a language model proposes a revision, and an evaluator scores its execution. The programs and evaluation records inform future proposals. [MIT, slides 53–55](https://mit-mi.github.io/mmai-course/spring2026/schedule/lec14.1%20-%20advanced%20topics.pdf#page=53) · [Official lecture video](https://www.youtube.com/watch?v=FhcHTSjvuKk)
+
+Beside NTU slide 10, the diagram shows which steps follow “AI writes new code.” <strong>A code proposer, execution environment, evaluator, and archive of previous attempts</strong> each have a role. Errors and low scores from failed programs can inform future revisions. Reading those records alone cannot guarantee a correct fix.
+
+AlphaEvolve changes a program for solving a specified problem. Its diagram is not evidence that the entire harness rewrites itself. The connection here is **generating programs and selecting among them by execution results**. Restrict search to harness prompts, tool-call code, or execution order, and it can take the form of the search over h described above. AFlow, discussed later, makes this connection concrete for workflows.
+
+The evaluator matters. If runtime alone determines reward for a file-processing program, one that skips inputs may score highly for speed. This illustrative example explains the criterion rather than reporting a lecture result. Verify output correctness and input coverage before comparing runtimes. For harness revisions, also decide in advance how to treat hidden failures and successes achieved with extra calls.
+
+Alongside candidate scores, record the **evaluator version, execution environment, inputs, and costs**. The next example shows how changing just a cost constraint can change the selected harness.
+
+### How often will a search over ten candidates turn up a perfect development score?
+
+The selection rule on page 10 retains the highest development score. A lucky candidate can win even when all candidates are equally capable. Suppose the development set has four tasks. Every candidate succeeds on every task with probability one half. Assume the outcomes are independent across tasks and candidates. First compute the probability that one candidate gets a perfect score. Then take the complement of the probability that all ten miss it.
+
+<Math tex={String.raw`\begin{aligned}P(\text{one fixed candidate scores }4/4)&=(1/2)^4=1/16,\\ P(\text{at least one of 10 scores }4/4)&=1-(1-1/16)^{10}\simeq0.4755.\end{aligned}`} display />
+
+A candidate fixed in advance has a 6.25% chance of getting all four right. The chance that the best of ten gets all four is about 47.6%. Whichever candidate wins, its success probability on a fresh independent task in this example remains 50%. Cawley and Talbot explain how optimizing a selection criterion estimated on a finite sample can fit its random fluctuations. Actual harnesses often share a base model and its errors. If their perfect-score events coincide exactly, the chance of a perfect score remains 6.25% even with ten candidates. The 47.6% figure depends on independence. This is why we select one candidate on development tasks, then evaluate the selected harness on held-out tasks. [Cawley and Talbot, JMLR 2010](https://jmlr.org/papers/v11/cawley10a.html)
+
+### Worked example 2 — The highest success rate and the best candidate within budget
+
+This <strong>separate hypothetical comparison</strong> uses the same model and 100 development tasks. Add input and output tokens and average by task. Token usage is the resource measure in this example. It need not equal actual price or latency.
+
+| Harness | Successful tasks | Success rate | Average tokens per task | Total tokens for 100 tasks |
+|---|---:|---:|---:|---:|
+| A | 70 | 70% | 1,000 | 100,000 |
+| B | 80 | 80% | 2,000 | 200,000 |
+| C | 78 | 78% | 1,500 | 150,000 |
+
+To maximize success rate alone, choose B. If the design must average <strong>at most 1,500 tokens per task</strong>, B is ineligible and C wins. Write T̄(h) for average tokens and B_tok for the budget. The selection rule is:
+
+<Math tex={String.raw`h^*\in\operatorname*{arg\,max}_{h:\,\overline T(h)\le B_{\mathrm{tok}}}S_{\mathrm{dev}}(h),\qquad B_{\mathrm{tok}}=1500.`} display />
+
+C scores eight percentage points above A and uses 50% more tokens. B solves two more tasks than C using 50,000 additional tokens in total. Thus the observed <strong>incremental token cost per additional success</strong> between B and C is 25,000. This ratio describes these runs. It cannot predict the exact cost of the next additional success.
+
+An average constraint also differs from a per-task limit. If a single slow request matters, inspect maximum token usage or upper latency quantiles. Distinguish the cost of running the chosen harness from the cost of finding it. Let T_search be search tokens, Q the number of tasks after deployment, and T_run the mean execution tokens. Total usage is:
+
+<Math tex={String.raw`T_{\mathrm{total}}=T_{\mathrm{search}}+Q\,\overline T_{\mathrm{run}}.`} display />
+
+If finding C costs 300,000 tokens, its total through 100 subsequent tasks is 450,000 tokens. Counting only execution yields 150,000. Interpreting optimization efficiency requires stating which costs were counted.
+
+## Supplement A — SWE-agent changes the form of actions and observations
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/swe-agent-file-editor.png"
+  alt="SWE-agent Figure 3 shows a file viewer displaying a numbered code excerpt and an agent using the edit command to change a specified range of lines."
+  caption="SWE-agent Figure 3 — The code the model sees and the lines it edits are explicitly connected."
+  source="https://arxiv.org/pdf/2405.15793v3#page=4"
+  credit="John Yang et al. / NeurIPS 2024"
+  width={1800} height={531}
+/>
+
+SWE-agent treats the agent–computer interface (ACI) as a joint design problem involving the commands a model uses and feedback from its environment. The viewer shows file location and line numbers, and the editing command refers to those lines. The paper compares interfaces with a fixed base model. [Paper, sections 2–3](https://arxiv.org/pdf/2405.15793v3#page=3) During development, people analyzed trajectories and performed a grid search over configurations. [Paper, section 4, Configuration search](https://arxiv.org/pdf/2405.15793v3#page=5)
+
+The intervention changes <strong>what the model sees and the granularity of its actions</strong>, with code-representation weights held fixed. A command convenient for a person may not be the easiest for a model to use. Immediately seeing relevant code and errors after an edit changes the context for selecting the next action.
+
+SWE-agent illustrates concrete harness features that can affect performance. The design study itself does not show that AI automatically invented its harness. The next two examples make automatic revision and selection more explicit.
+
+## Supplement B — DSPy separates a program from its optimization
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/dspy-rag-program.png"
+  alt="A nine-line DSPy RAG program declares a retriever and an answer module and passes context retrieved for a question into answer generation."
+  caption="DSPy RAG example — Code defines the connection between retrieval and answering, and how the modules are used can be optimized."
+  source="https://proceedings.iclr.cc/paper_files/paper/2024/file/f1cf02ce09757f57c3b93c0db83181e0-Paper-Conference.pdf#page=5"
+  credit="Omar Khattab et al. / ICLR 2024"
+  width={1801} height={369}
+/>
+
+The program takes a question, retrieves documents, and passes the question and retrieved context to the answer module. DSPy distinguishes this program from the procedure that uses data and metrics to optimize it. The original compiler collects useful demonstrations from execution traces and selects candidates to construct module prompts and related settings. [Paper, sections 3.3–4](https://proceedings.iclr.cc/paper_files/paper/2024/file/f1cf02ce09757f57c3b93c0db83181e0-Paper-Conference.pdf#page=5)
+
+Choosing demonstrations for a fixed-weight model counts as improving h here. DSPy also supports fine-tuning with collected demonstrations, so fixed θ is not a framework-wide requirement. This discussion focuses on <strong>optimizing the configuration and demonstrations of a program that calls the same model</strong>.
+
+An experimental configuration needs more detail than a model name. Results with the same base model depend on which program was optimized, with which data and metric. Keeping the program, selected examples, and optimizer settings turns “we found a good prompt” into a configuration others can rerun and compare.
+
+## Supplement C — AFlow searches workflows expressed as code
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/aflow-workflow-search.png"
+  alt="AFlow Figure 3 shows the search space, search tree, and generated workflow. It fixes model, temperature, and output format while searching over prompts and code-defined connections."
+  caption="AFlow Figure 3 — Execution flows are programs, and their results inform the next search step."
+  source="https://arxiv.org/pdf/2410.10762v4#page=5"
+  credit="Jiayi Zhang et al. / ICLR 2025"
+  width={1801} height={1123}
+/>
+
+AFlow expresses model calls and their connections as code, then searches workflow candidates with a variant of Monte Carlo tree search (MCTS). Its practical search space fixes the model, temperature, and output format and revises prompts and code-defined connections. Each node in the search tree represents <strong>one complete workflow</strong>, rather than one model call. [Paper, sections 3.2–4](https://arxiv.org/pdf/2410.10762v4#page=6)
+
+The LLM proposing edits considers earlier changes and results, and the revised workflow is run to obtain a development score. “Experience Backpropagation” in the figure means propagating search records and scores to ancestor candidates. It differs from propagating gradients through a neural network's θ.
+
+This makes the arrow on slide 10 concrete. Code generation expands the candidate pool, while execution and evaluation guide future choices. The operators, runtime environment, scoring function, and search budget remain specified. A claim of automatic discovery therefore needs an account of the search space and evaluation conditions.
+
+## Supplement D — τ-bench distinguishes succeeding once from succeeding repeatedly
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-15-harness-optimization-and-evaluation/tau-bench-reliability.png"
+  alt="In τ-bench Figure 4, as the repetition count k increases, the solid pass^k curves for all attempts succeeding fall, while dashed pass@k curves for at least one success rise."
+  caption="τ-bench Figure 4 — All attempts succeeding and at least one attempt succeeding are different metrics even at the same k."
+  source="https://arxiv.org/pdf/2406.12045v1#page=7"
+  credit="Shunyu Yao et al. / τ-bench, 2024"
+  width={1801} height={958}
+/>
+
+In τ-bench an agent completes tasks through interaction with tools and a simulated user. The figure compares two metrics from the 2024 τ-retail experiments. <strong>pass@k asks whether at least one of k attempts succeeds</strong>, and <strong>pass^k asks whether all k succeed</strong>. The figure describes historical experiments rather than current model rankings. [Paper, sections 3 and 5](https://arxiv.org/pdf/2406.12045v1#page=4)
+
+Let p_i be the probability of success on one attempt at task i. Reset the task between runs and assume that, conditional on the task, attempts are independent and identically distributed. The first expression below multiplies the success probability k times. The second subtracts the probability of k failures from 1.
+
+<Math tex={String.raw`P_i(\text{all }k\text{ succeed})=p_i^k,\qquad P_i(\text{at least one succeeds})=1-(1-p_i)^k.`} display />
+
+Across tasks, <strong>compute these quantities for each task and then average them</strong>.
+
+<Math tex={String.raw`\operatorname{pass}^{k}=\frac1M\sum_{i=1}^{M}p_i^k,\qquad\operatorname{pass@}k=\frac1M\sum_{i=1}^{M}\bigl[1-(1-p_i)^k\bigr].`} display />
+
+Raising the overall average success probability to the kth power generally gives a different value because tasks vary in difficulty. For k=2 the difference is exact. The variance below measures variation in success probabilities across tasks.
+
+<Math tex={String.raw`\mathbb E_i[p_i^2]=\bigl(\mathbb E_i[p_i]\bigr)^2+\operatorname{Var}_i(p_i).`} display />
+
+At the same overall average, repeated-run metrics depend on which tasks the system solves consistently and which it repeatedly fails. A high pass^k by itself cannot establish uniform reliability across tasks.
+
+### Worked example 3 — Estimating both metrics from observed success counts
+
+In practice p_i is unknown. Running task i a total of n_i times yields c_i successes. For n_i≥k, τ-bench uses the combinations below. Count all ways to select k runs for a task, then count the selections satisfying each condition. [Paper's estimators](https://arxiv.org/pdf/2406.12045v1#page=5)
+
+<Math tex={String.raw`\begin{aligned}
+\widehat{\operatorname{pass}^{k}}&=\frac1M\sum_{i=1}^{M}\frac{\binom{c_i}{k}}{\binom{n_i}{k}},\\
+\widehat{\operatorname{pass@}k}&=1-\frac1M\sum_{i=1}^{M}\frac{\binom{n_i-c_i}{k}}{\binom{n_i}{k}}.
+\end{aligned}`} display />
+
+Under the independence and identical-distribution assumptions above, both expressions are unbiased estimators of their target probabilities. A combination is zero if its upper argument is smaller than k. These expressions differ from raising the observed ratio c_i/n_i to the kth power.
+
+Run <strong>two hypothetical tasks</strong> five times each, resetting between runs. The first succeeds four times and the second twice. Evaluate k=2. There are ten ways to choose two of the five runs for either task.
+
+| Task | Success count | Pairs where both succeed | Pairs where at least one succeeds |
+|---|---:|---:|---:|
+| First | 4/5 | 6/10 | 10/10 |
+| Second | 2/5 | 1/10 | 7/10 |
+
+<Math tex={String.raw`\widehat{\operatorname{pass}^{1}}=\frac{4/5+2/5}{2}=0.60,\quad\widehat{\operatorname{pass}^{2}}=\frac{6/10+1/10}{2}=0.35,\quad\widehat{\operatorname{pass@}2}=\frac{1+7/10}{2}=0.85.`} display />
+
+The same records yield a 60% mean single-run success rate, a 35% estimate for both runs succeeding, and an 85% estimate for at least one success. A task whose successful retry can be recognized and selected calls for a different metric from one that must complete reliably on every request. pass@k alone does not establish that the deployed system can identify the successful response.
+
+Repeated reliability also depends on <strong>what counts as success</strong>. The τ-bench paper acknowledges that an agent can produce the correct final database and required response yet violate a policy, for example by omitting user consent. pass^k measures repeated success under the stated scoring rule and cannot certify compliance with every policy. [Limitations of the reward definition](https://arxiv.org/pdf/2406.12045v1#page=4)
+
+## How to read claims of harness self-improvement
+
+These five slides build a connected argument. Slide 6 shows the role of predefined direction and output format in generating self-learning problems. Slides 7–8 shift the target from model weights to the harness. Slide 9 asks how that harness can be optimized. Slide 10 introduces an AI that generates candidate revisions.
+
+To evaluate the process, record <strong>the revision target, comparison conditions, and selection criterion</strong>. Include harness code and instructions, the exact base-model version, initial tool and environment state, development and final evaluation data, repetitions, and execution budgets. Distinguish selection scores from independent evaluation scores. Compare average performance, costs, and failure types to establish where the improvement holds.
+
+AI-generated edits are one important step. Executing them, learning from failures, and selecting the next configuration under comparable conditions complete the research loop. [Part 16](/en/posts/self-improving-ai-16-prompt-memory-code-evolution/) starts with slide 11 of the second lecture and focuses on prompt optimization.
+
+<details>
+<summary>Calculations and code</summary>
+
+[Python calculations](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/verify_examples_15.py) · [Results](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/numeric-checks-15.json)
+
+The code calculates paired success differences, budget-constrained candidate selection, combined search and execution tokens, and the combinatorial estimators for pass^k and pass@k. It checks task records against the aggregated table and verifies the estimators by enumerating all eligible groups of attempts. A separate calculation checks unbiasedness by assigning exact probabilities to every outcome in a small Bernoulli experiment. All numerical examples are illustrative and do not rerun the papers' benchmarks.
+
+</details>
+
+## Further reading
+
+| Resource | Relevant topic |
+|---|---|
+| [NTU second lecture](https://www.youtube.com/watch?v=cQLKVzbwN7I) · [Slides 6–10](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=6) | Human-provided information, harnesses and models, and AI-proposed harness revisions |
+| [SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering](https://arxiv.org/pdf/2405.15793v3) | Fixed-model ACI design and action and observation formats |
+| [DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines](https://proceedings.iclr.cc/paper_files/paper/2024/file/f1cf02ce09757f57c3b93c0db83181e0-Paper-Conference.pdf) | Modular programs and optimization against data and metrics |
+| [AFlow: Automating Agentic Workflow Generation](https://arxiv.org/pdf/2410.10762v4) | Code-defined workflows and search using execution feedback |
+| [τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains](https://arxiv.org/pdf/2406.12045v1) | Tool and user interaction, success definitions, pass^k, and pass@k |
+| [CMU RL Systems, slides 19–20](https://www.cmu-agents.com/slides/lecture-12-rl-systems.pdf#page=19) · [Official lecture video](https://www.youtube.com/watch?v=dwR6NP9nI-8) | Appended versus summarized histories and their representation for training |
+| [NAIRR, slides 38–40 and 50–52](https://www.sonthenguyen.com/slides/training-free-alignment/NAIRR_Tutorial_Intro_Guided_Decoding_Response_Engineering.pdf#page=38) · [Video at 2:07:29](https://www.youtube.com/watch?v=KkhyuMftyYw&t=7649s) · [2:19:42](https://www.youtube.com/watch?v=KkhyuMftyYw&t=8382s) · [2:21:42](https://www.youtube.com/watch?v=KkhyuMftyYw&t=8502s) | Response engineering, repeated evaluation and revision, reflective memory, and cost |
+| [MIT Self-evolving AI, slides 53–55](https://mit-mi.github.io/mmai-course/spring2026/schedule/lec14.1%20-%20advanced%20topics.pdf#page=53) · [Official lecture video](https://www.youtube.com/watch?v=FhcHTSjvuKk) | AlphaEvolve candidate generation, evaluation, and records under human-defined objectives and criteria |

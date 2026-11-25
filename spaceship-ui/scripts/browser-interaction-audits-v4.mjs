@@ -236,6 +236,32 @@ async function probeInternalTargets(entries, route) {
 
 async function validateClickedDestination(cdp, sessionId, route, entry) {
   await navigate(cdp, sessionId, route);
+  // Archive cards may live inside collapsed native series disclosures. Activate
+  // the outermost closed summary using a real pointer before testing the link.
+  // Do not silently omit these destinations or bypass their hit-test.
+  for (let depth = 0; depth < 4; depth += 1) {
+    const hasClosedParent = await evaluate(cdp, sessionId, `(() => {
+      ${identitySource(entry.link)}
+      return Boolean(target?.closest('details:not([open])'));
+    })()`);
+    if (!hasClosedParent) break;
+    await trustedClick(cdp, sessionId, `(async () => {
+      ${identitySource(entry.link)}
+      let disclosure = target?.closest('details:not([open])');
+      while (disclosure?.parentElement?.closest('details:not([open])')) {
+        disclosure = disclosure.parentElement.closest('details:not([open])');
+      }
+      const summary = disclosure?.querySelector(':scope > summary');
+      if (!summary) return null;
+      summary.scrollIntoView({ block: 'center', behavior: 'instant' });
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const rect = summary.getBoundingClientRect();
+      const point = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const hit = document.elementFromPoint(point.x, point.y);
+      if (!hit || (hit !== summary && !summary.contains(hit))) return { blocked: true };
+      return point;
+    })()`, `${entry.label} series disclosure`);
+  }
   await trustedClick(cdp, sessionId, stablePointExpression(entry.link), entry.label);
   await expectUrl(cdp, sessionId, entry.expected, `${entry.label} destination`);
 

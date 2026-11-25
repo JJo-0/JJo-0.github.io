@@ -11,6 +11,7 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeExternalLinks from 'rehype-external-links';
 import remarkEmoji from 'remark-emoji';
+import robotLearningSlideHeadings from './src/lib/remark/robot-learning-slide-headings.mjs';
 import modernAiPartOneReaderCleanup from './src/lib/remark/modern-ai-part1-reader-cleanup.mjs';
 import modernAiPartTwoReaderCleanup from './src/lib/remark/modern-ai-part2-reader-cleanup.mjs';
 import modernAiPartThreeReaderCleanup from './src/lib/remark/modern-ai-part3-reader-cleanup.mjs';
@@ -29,6 +30,9 @@ import {
 } from '@shikijs/transformers';
 
 import { SITE } from './site/config';
+import edition from './site/english-edition.json' with { type: 'json' };
+
+const englishArticles = new Set(edition.pairs.map(pair => pair.enSlug));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,7 +40,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function includeInSitemap(page) {
   const pathname = new URL(page).pathname;
 
+  const englishPost = /^\/en\/posts\/([^/]+)\/?$/.exec(pathname);
+  if (englishPost && !englishArticles.has(englishPost[1])) return false;
   if (isLegacyPathname(pathname)) return false;
+  if (pathname === '/analytics/' || pathname.startsWith('/analytics/')) return false;
   if (!SITE.publicSections.projects && pathname.startsWith('/projects')) return false;
   if (!SITE.publicSections.appearances && pathname.startsWith('/appearances')) return false;
 
@@ -55,6 +62,9 @@ export default defineConfig({
   // Keep small route-specific CSS inline, but let shared/large styles become
   // hashed assets so Astro ClientRouter transitions reuse the browser cache.
   build: { inlineStylesheets: 'auto' },
+  // ClientRouter opts every link into prefetch by default. Limit speculation
+  // to explicit navigation surfaces, not long article lists.
+  prefetch: { prefetchAll: false, defaultStrategy: 'hover' },
   markdown: {
     shikiConfig: {
       themes: { light: 'min-light', dark: 'catppuccin-frappe' },
@@ -68,6 +78,7 @@ export default defineConfig({
     },
     remarkPlugins: [
       remarkEmoji,
+      robotLearningSlideHeadings,
       modernAiPartOneReaderCleanup,
       modernAiPartTwoReaderCleanup,
       modernAiPartThreeReaderCleanup,

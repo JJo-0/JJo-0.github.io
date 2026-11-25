@@ -1,12 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import crypto from 'node:crypto';
 
 const root = process.cwd();
 const dist = path.join(root, 'dist');
 const postsDir = path.join(root, 'site', 'content', 'posts');
 const issues = [];
-const CHART_CDN = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+const CHART_SRC = '/assets/interactive/acts-native/chart.umd-4.4.8.js';
+const CHART_SHA256 = 'e4cf4d144b222634f2e64ff707cd57b953f8de4b65b231cd5ac6bde114648e4d';
 
 function filesUnder(dir, predicate = () => true) {
   if (!fs.existsSync(dir)) return [];
@@ -27,21 +29,20 @@ function scalar(frontmatter, key) {
   return frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'))?.[1]?.trim();
 }
 
-function expectedChartRoutes() {
+function chartSettings(contentDir) {
   const now = new Date();
-  const routes = new Set();
-  for (const file of filesUnder(postsDir, (p) => /\.mdx?$/.test(p) && !path.basename(p).startsWith('_'))) {
+  const settings = new Map();
+  for (const file of filesUnder(contentDir, (p) => /\.mdx?$/.test(p) && !path.basename(p).startsWith('_'))) {
     const raw = fs.readFileSync(file, 'utf8');
     const fm = getFrontmatter(raw);
-    if (!/^usesChart:\s*true\s*$/m.test(fm)) continue;
     if (/^draft:\s*true\s*$/m.test(fm)) continue;
 
     const pubDate = scalar(fm, 'pubDate');
     if (!pubDate) {
-      issues.push(`${path.relative(root, file)}: chart-enabled post is missing pubDate`);
+      issues.push(`${path.relative(root, file)}: post is missing pubDate`);
       continue;
     }
-    const parsedDate = new Date(`${pubDate}T00:00:00Z`);
+    const parsedDate = new Date(pubDate);
     if (Number.isNaN(parsedDate.valueOf())) {
       issues.push(`${path.relative(root, file)}: invalid pubDate ${pubDate}`);
       continue;
@@ -50,10 +51,10 @@ function expectedChartRoutes() {
 
     const explicitSlug = scalar(fm, 'slug');
     const id = path.basename(file).replace(/\.mdx?$/, '');
-    const slug = explicitSlug || `${pubDate}-${id}`;
-    routes.add(`posts/${slug}/index.html`);
+    const slug = explicitSlug || `${parsedDate.toISOString().slice(0, 10)}-${id}`;
+    settings.set(slug, /^usesChart:\s*true\s*$/m.test(fm));
   }
-  return routes;
+  return settings;
 }
 
 if (!fs.existsSync(dist)) {
@@ -103,11 +104,28 @@ for (const retiredTarget of ['x.com/intent', 't.me/share', 'facebook.com/sharer'
   }
 }
 
-const expected = expectedChartRoutes();
+const originals = chartSettings(postsDir);
+const translations = chartSettings(path.join(root, 'site', 'content', 'english'));
+const edition = JSON.parse(fs.readFileSync(path.join(root, 'site', 'english-edition.json'), 'utf8'));
+const translatedSlugs = new Map(edition.pairs.map(pair => [pair.koSlug, pair.enSlug]));
+const expected = new Set();
+for (const [slug, usesChart] of originals) {
+  if (usesChart) expected.add(`posts/${slug}/index.html`);
+  const translatedSlug = translatedSlugs.get(slug);
+  // Evaluate the frontmatter of the body actually served at the English route.
+  if (translatedSlug && translations.has(translatedSlug)) {
+    if (translations.get(translatedSlug)) expected.add(`en/posts/${translatedSlug}/index.html`);
+  } else if (usesChart) {
+    expected.add(`en/posts/${slug}/index.html`);
+  }
+}
+const vendorFile=path.join(dist,CHART_SRC.slice(1));
+if (!fs.existsSync(vendorFile) || crypto.createHash('sha256').update(fs.readFileSync(vendorFile)).digest('hex') !== CHART_SHA256) issues.push('Pinned self-hosted Chart.js asset is missing or changed');
 const actual = new Set();
-for (const file of filesUnder(path.join(dist, 'posts'), (p) => p.endsWith('index.html'))) {
+for (const file of [...filesUnder(path.join(dist, 'posts'), (p) => p.endsWith('index.html')), ...filesUnder(path.join(dist, 'en/posts'), (p) => p.endsWith('index.html'))]) {
   const html = fs.readFileSync(file, 'utf8');
-  if (!html.includes(CHART_CDN)) continue;
+  if (/https:\/\/cdn\.jsdelivr\.net\/npm\/chart\.js@4\//.test(html)) issues.push(`${path.relative(dist,file)}: mutable external Chart.js runtime`);
+  if (!html.includes(CHART_SRC)) continue;
   actual.add(path.relative(dist, file).replaceAll(path.sep, '/'));
 }
 
@@ -118,9 +136,9 @@ for (const route of actual) {
   if (!expected.has(route)) issues.push(`${route}: Chart.js runtime loaded without usesChart opt-in`);
 }
 
-for (const relative of ['index.html', 'research/index.html', 'posts/index.html', 'about/index.html']) {
+for (const relative of ['index.html', 'research/index.html', 'posts/index.html', 'about/index.html', 'en/index.html', 'en/research/index.html', 'en/posts/index.html', 'en/about/index.html']) {
   const file = path.join(dist, relative);
-  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8').includes(CHART_CDN)) {
+  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8').includes(CHART_SRC)) {
     issues.push(`${relative}: Chart.js must not load on a non-chart core page`);
   }
 }

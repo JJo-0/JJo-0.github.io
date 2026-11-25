@@ -1,0 +1,385 @@
+---
+title: "자가개선 AI 10 — 스스로 만든 문제만으로 계속 똑똑해질 수 있을까"
+description: "문제 생성자와 풀이자의 자기대결, R-Zero의 성능 정체, Absolute Zero의 실행 검증, SPICE와 R-Few의 외부 정보 활용을 살펴본다."
+pubDate: 2026-11-18T10:30:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-10-self-play-and-external-feedback
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - self-play
+  - reinforcement-learning
+  - synthetic-data
+  - ntu
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 10
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>문제 생성과 풀이 능력이 자라는 동안, 답을 확인할 기준도 믿을 만해야 한다.</strong>
+
+[9편](/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/)에서는 학습에 사용할 입력까지 AI가 만들 수 있는지 물었다. 이제 모델이 문제를 내고, 다른 역할의 모델이 풀고, 결과를 다음 학습에 사용하는 <strong>자기대결(Self-play)</strong>을 살펴본다.
+
+핵심은 문제의 양보다 <strong>배울 만한 문제와 믿을 만한 피드백</strong>이다. 이미 아는 문제만 반복하면 새로운 능력을 얻기 어렵다. 아무도 풀지 못하는 문제를 계속 내거나, 틀린 답을 정답처럼 학습하는 경우도 마찬가지다. 이 균형이 어떻게 무너지고 무엇으로 보완할 수 있는지가 이번 글의 질문이다.
+
+<details>
+<summary>슬라이드별 영상 위치</summary>
+
+| 슬라이드 | 영상 | 주제 |
+|---|---|---|
+| 46쪽 | [45:39–48:12](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2739s) | 문제 생성자·풀이자·검증자와 적절한 난이도 |
+| 47쪽 | [48:12–49:00](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2891s) | R-Zero가 만드는 문제의 난이도와 의사정답 |
+| 48쪽 | [49:00–50:24](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2939s) | 초기 성능 향상 이후의 정체와 하락 |
+| 49쪽 | [50:24–51:24](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3023s) | Absolute Zero의 예상 밖 생성 사례 |
+| 50쪽 | [51:24–52:17](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3084s) | SPICE와 R-Few가 도입하는 외부 정보 |
+
+</details>
+
+## 46쪽 — 좋은 문제는 너무 쉽지도, 전혀 풀 수 없지도 않다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-46-en.png"
+  alt="문제 생성자 Proposer, 풀이자 Solver, 검증자 Verifier의 학습 순환과 중간 난이도를 선호하는 생성 손실 곡선."
+  caption="46쪽 — 문제 생성자와 풀이자는 서로 다른 목표로 학습한다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=46"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+강의는 [45:39부터](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2739s) Absolute Zero, R-Zero, Self-Questioning Language Models를 소개하며 세 역할을 구분한다. <strong>문제 생성자(Proposer)</strong>는 입력을 만들고, <strong>풀이자(Solver)</strong>는 답을 내며, <strong>검증자(Verifier)</strong>는 답에 학습 신호를 붙인다.
+
+| 역할 | 하는 일 | 학습에서 중요한 질문 |
+|---|---|---|
+| Proposer | 연습할 문제를 만든다 | 현재 풀이자가 여기서 무엇을 배울 수 있는가? |
+| Solver | 주어진 문제를 푼다 | 어떤 답과 풀이의 확률을 높여야 하는가? |
+| Verifier | 답의 적합성을 판단한다 | 이 점수가 실제 성공과 얼마나 잘 맞는가? |
+
+그림의 로봇 세 개가 반드시 신경망 세 개를 뜻하지는 않는다. Absolute Zero Reasoner는 한 모델이 문제 생성과 풀이를 맡고 Python 실행기가 결과를 확인한다. R-Zero는 같은 기초 모델에서 시작한 Challenger와 Solver를 따로 학습한다. <strong>역할의 구분과 파라미터의 공유 여부는 별개</strong>다. [Absolute Zero §3](https://arxiv.org/pdf/2505.03335v3#page=4) · [R-Zero §2](https://arxiv.org/pdf/2508.05004v4#page=2)
+
+### 풀이자의 실패가 항상 생성자의 성공은 아니다
+
+그림 아래 곡선의 가로축은 풀이 손실, 세로축은 문제 생성 손실이다. 왼쪽의 쉬운 문제에서도 생성 손실이 높고, 오른쪽의 너무 어려운 문제에서도 높다. 손실을 최소화하는 생성자는 중간 영역을 선호한다.
+
+이는 “풀이자가 많이 틀릴수록 좋은 문제”라는 단순한 적대 목표와 다르다. 모호하거나 정답이 없는 문제를 만들면 실패율은 높아질 수 있다. 그러나 그 실패가 도움이 되는 연습이라는 보장은 없다. 필요한 것은 <strong>현재 능력보다 조금 어렵지만 유효한 피드백을 얻을 수 있는 문제</strong>다.
+
+이 조건을 구현하는 방식은 논문마다 다르다. 특히 그림의 곡선을 모든 방법에 공통인 “정답률 50% 보상”으로 읽으면 안 된다. 먼저 R-Zero의 구체적인 설계를 보자.
+
+### 함께 읽기 — R-Zero는 답의 일치율로 난이도를 추정한다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/r-zero-v4-figure2.png"
+  alt="R-Zero의 Challenger 학습과 Solver 학습을 번갈아 수행하는 구조. 상대 모델을 고정하고 다수결 의사정답을 사용한다."
+  caption="R-Zero Figure 2 — 문제 생성자와 풀이자를 번갈아 학습한다."
+  source="https://arxiv.org/pdf/2508.05004v4#page=3"
+  credit="Chengsong Huang et al. / R-Zero"
+  width={1800} height={649}
+/>
+
+윗줄에서는 Solver를 고정하고 Challenger를 학습한다. 아랫줄에서는 갱신한 Challenger를 고정하고 Solver를 학습한다. 생성된 문제에 사람이 매번 정답을 붙이지 않으므로, Solver가 여러 번 낸 답 중 가장 자주 나온 답을 <strong>의사정답(Pseudo-label)</strong>으로 사용한다. [R-Zero §2.2–2.4](https://arxiv.org/pdf/2508.05004v4#page=3)
+
+문제 x에 대해 m개의 최종 답을 얻었다고 하자. 최빈 답과 그 답에 대한 일치율은 다음과 같다. 답의 비교는 같은 최종 답을 식별하는 절차를 전제로 한다.
+
+<Math tex={String.raw`\widetilde y(x)\in\underset{a}{\arg\max}\;\sum_{j=1}^{m}\mathbf1[y_j=a],\qquad
+\widehat p_{\mathrm{agree}}(x)=\frac1m\sum_{j=1}^{m}\mathbf1[y_j=\widetilde y(x)].`} display />
+
+논문은 이 값을 경험적 정확도라고 부르지만, 정답을 모르는 상황에서 직접 측정한 것은 <strong>최빈 답에 동의한 비율</strong>이다. Challenger의 불확실성 보상(Uncertainty reward)은 다음과 같다.
+
+<Math tex={String.raw`r_{\mathrm{uncertainty}}(x)=1-2\left|\widehat p_{\mathrm{agree}}(x)-\frac12\right|.`} display />
+
+이 보상은 일치율이 0.5일 때 가장 높다. 다음은 응답 10개로 계산한 예다.
+
+| 최빈 답의 개수 | 일치율 | 불확실성 보상 |
+|---:|---:|---:|
+| 1개 | 0.1 | 0.2 |
+| 3개 | 0.3 | 0.6 |
+| 5개 | 0.5 | 1.0 |
+| 7개 | 0.7 | 0.6 |
+| 10개 | 1.0 | 0.0 |
+
+모두 같은 답을 내면 생성자에게 유리한 문제가 아니다. 반대로 답이 심하게 흩어져 있어도 보상이 낮아진다. 실험에서는 문제마다 응답 10개를 얻고, 최빈 답이 3–7개인 문제를 Solver 학습에 남겼다. 다만 이 구간에 든다는 이유만으로 문제나 의사정답의 품질이 보장되지는 않는다. [R-Zero §3.1](https://arxiv.org/pdf/2508.05004v4#page=4)
+
+중복 문제를 반복하는 생성자를 억제하는 항도 있다. 배치 크기를 B, 유사한 문제들이 속한 묶음을 C라고 하면, 형식 검사를 통과한 문제의 최종 보상은 다음처럼 구성된다.
+
+<Math tex={String.raw`r_{\mathrm{rep}}(x)=\lambda\frac{|C(x)|}{B},\qquad
+r_{\mathrm{challenger}}(x)=\max\!\left(0,r_{\mathrm{uncertainty}}(x)-r_{\mathrm{rep}}(x)\right).`} display />
+
+논문은 BLEU 기반 유사도로 묶음을 만들고 λ=1을 사용한다. 예를 들어 불확실성 보상이 1이고 10개 중 3개가 같은 묶음이면 최종 보상은 0.7이다. 따라서 <strong>난이도만 맞추는 것과 다양한 연습을 제공하는 것은 별도의 목표</strong>다. [R-Zero §2.2](https://arxiv.org/pdf/2508.05004v4#page=3)
+
+이후 Solver는 선택한 문제의 의사정답과 일치하면 보상 1, 일치하지 않으면 0을 받는다.
+
+<Math tex={String.raw`r_{\mathrm{solver}}(x,y)=\mathbf1[y=\widetilde y(x)].`} display />
+
+여기서 문제가 드러난다. 모델들이 같은 오개념을 공유한다면 <strong>일치율이 높은 오답도 학습 목표가 될 수 있다.</strong> 예를 들어 10개 중 7개가 오답 A, 3개가 정답 B라면 일치율은 70%지만 실제 정답률은 30%다. 이 문제는 3–7개 필터도 통과한다. 다수결은 여러 답을 하나로 모으는 방법이며, 그 답을 외부 기준으로 확인하는 절차까지 대신하지는 못한다.
+
+## 47쪽 — 문제가 어려워지는 동안 정답의 품질도 변한다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-47-en.png"
+  alt="R-Zero의 단계별 생성 문제를 여러 Solver로 평가한 표. 의사정답 정확도는 79, 69, 63퍼센트로 감소한다."
+  caption="47쪽 — 생성 문제의 난이도와 의사정답의 정확도를 함께 읽는다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=47"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+강의의 [48:12 구간](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2891s)은 풀이자를 고정하고 표의 행을 아래로 읽는다. 나중에 생성한 문제를 같은 모델이 덜 맞힌다면, 생성자가 더 어려운 문제를 내기 시작했다는 해석이 가능하다.
+
+다만 표의 마지막 열까지 함께 봐야 한다. R-Zero 논문은 각 단계의 생성 문제 <strong>200개</strong>를 표본으로 뽑고, GPT-4o의 답을 정답 기준으로 가정해 평가했다. 따라서 여기서의 정확도는 그 평가 기준에 대한 값이며, 사람이 완전히 검증한 정답 집합을 뜻하지 않는다. [R-Zero §4.4, Table 5](https://arxiv.org/pdf/2508.05004v4#page=8)
+
+| 문제를 생성한 단계 | Base | Solver 15 | Solver 30 | Solver 45 | 의사정답 정확도 |
+|---|---:|---:|---:|---:|---:|
+| Step 15 | 48.0% | 59.0% | 57.0% | 61.0% | 79.0% |
+| Step 30 | 52.5% | 53.0% | 51.5% | 53.5% | 69.0% |
+| Step 45 | 44.0% | 47.0% | 45.0% | 50.5% | 63.0% |
+
+### 같은 풀이자, 다른 문제
+
+Solver 15 열은 59 → 53 → 47%다. 같은 풀이자에게 뒤 단계의 문제가 더 어렵게 작용했다. 하지만 Base 열은 48 → 52.5 → 44%이므로 모든 열이 단조롭게 내려가지는 않는다. 더구나 행마다 문제가 바뀌므로, 이 표만으로 Solver 자체가 좋아졌는지 판단할 수는 없다.
+
+반대로 첫 행을 가로로 읽으면 같은 문제에서 여러 Solver를 비교할 수 있다. Solver 15·30·45의 정확도는 59·57·61%다. 뒤 체크포인트가 항상 앞 체크포인트를 이기는 것도 아니다. <strong>문제 난이도 변화와 모델 성능 변화를 나눠 읽어야 한다.</strong>
+
+### 더 어려운 문제가 더 좋은 학습 데이터인가
+
+의사정답 정확도는 79%에서 63%로 낮아졌다.
+
+<Math tex={String.raw`63\%-79\%=-16\text{ percentage points}.`} display />
+
+200개 표본으로 환산하면, 정답 기준과 어긋난 의사정답은 다음처럼 늘어난다.
+
+<Math tex={String.raw`200(1-0.79)=42,\qquad 200(1-0.63)=74.`} display />
+
+초기 단계의 42개에서 뒤 단계의 74개로, 기준과 일치하지 않는 학습 목표가 32개 많아진 셈이다. 이는 같은 문제 32개가 새로 틀렸다는 뜻은 아니다. <strong>서로 다른 단계에서 뽑은 같은 크기의 표본을 비교한 것</strong>이다.
+
+따라서 “문제가 어려워졌다”와 “좋은 교육과정이 만들어졌다”를 바로 연결할 수 없다. 학습자는 더 어려운 문제를 받으면서 동시에 덜 믿을 만한 답을 따라가게 될 수 있다. 자기대결에서는 <strong>난이도 조절과 목표 답의 신뢰도</strong>를 함께 추적해야 한다.
+
+## 48쪽 — 초반에 좋아졌다고 계속 좋아지는 것은 아니다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-48-en.png"
+  alt="Qwen3 0.6B, 1.7B, 4B 모델의 Step 0부터 60까지 평균 성능 곡선. 초기 상승 뒤 정체하거나 감소한다."
+  caption="48쪽 — 세 모델의 자기대결 학습 곡선. 초기 향상 이후의 흐름이 다르다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=48"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+[49:00부터의 설명](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2939s)은 학습을 반복하면 성능이 끝없이 올라가는지 묻는다. 그림에서는 세 크기의 모델 모두 초반에 좋아진다. 이후 작은 두 모델은 일찍 정체하고, 4B 모델도 마지막 표시 지점에서 내려간다. [R-Zero §4.2, Figure 3](https://arxiv.org/pdf/2508.05004v4#page=7)
+
+| 모델 | Base | Step 15 | Step 30 | Step 45 | Step 60 |
+|---|---:|---:|---:|---:|---:|
+| Qwen3-0.6B-Base | 16.77 | 27.39 | 27.15 | 25.05 | 25.15 |
+| Qwen3-1.7B-Base | 32.71 | 39.19 | 39.20 | 37.03 | 38.27 |
+| Qwen3-4B-Base | 42.58 | 48.06 | 48.44 | 49.07 | 46.52 |
+
+여기서는 그래프에 표시된 수학 벤치마크 평균 점수를 비교한다. 예를 들어 4B 모델의 최고 표시값은 49.07, 마지막 값은 46.52다.
+
+<Math tex={String.raw`49.07-42.58=6.49,\qquad 46.52-49.07=-2.55.`} display />
+
+처음보다 좋아진 상태와 최고점보다 나빠진 상태가 동시에 성립한다. 0.6B 모델도 첫 상승은 10.62점이지만, Step 15에서 Step 60까지는 2.24점 내려간다. 이 때문에 마지막 체크포인트와 가장 좋은 체크포인트를 구분해야 한다.
+
+그러나 이 그림은 <strong>세 모델과 이 학습 설정에서 관찰한 결과</strong>다. 모든 자기대결이 반드시 멈춘다는 수학적 증명이 아니며, 점수 변화의 원인을 의사정답 오류 하나로 확정하는 실험도 아니다. 47쪽의 목표 품질 저하, 생성 문제의 편중, 모델의 초기 능력 등은 함께 조사할 후보들이다.
+
+### 학습 중 보상과 실제 성능을 나누어 기록하기
+
+자체적으로 만든 데이터의 보상은 학습 과정에 따라 의미가 바뀔 수 있다. 생성자가 쉬운 문제로 돌아가면 평균 보상이 높아질 수 있고, 같은 오류를 공유하는 답이 많아져도 일치율은 오른다. 그래서 비교의 기준이 되는 <strong>고정 평가셋(Held-out set)</strong>을 별도로 둔다.
+
+평가 문제와 정답을 고정했을 때의 정확도는 다음처럼 정의할 수 있다.
+
+<Math tex={String.raw`\mathrm{Acc}_{\mathrm{fixed}}(\theta)=\frac1N\sum_{i=1}^{N}\mathbf1[\widehat y_\theta(x_i)=y_i^\star].`} display />
+
+생성자와 풀이자가 바뀌어도 이 식의 평가 문제는 바뀌지 않는다. 실제 실험에서는 답 생성에 쓰는 샘플 수와 디코딩 조건도 맞춰야 한다. 여러 체크포인트 중 최선의 것을 고를 때에는 검증셋을 쓰고, 최종 테스트셋은 선택에 사용하지 않아야 비교가 흐려지지 않는다.
+
+자기대결의 진행 상황은 다음 세 지표를 함께 보면 이해하기 쉽다.
+
+- <strong>풀이 성능:</strong> 고정된 새 문제를 얼마나 잘 푸는가?
+- <strong>학습 목표의 신뢰도:</strong> 생성한 답이 독립적인 기준과 얼마나 일치하는가?
+- <strong>문제의 범위:</strong> 주제·난이도·표현이 다양하게 유지되는가?
+
+이 셋을 함께 보면 모델이 실제로 성장하는지, 자기 평가 체계에 더 잘 적응한 것인지 판단할 근거가 생긴다.
+
+## 49쪽 — 실행으로 답을 확인해도 모든 행동을 보상한 것은 아니다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-49-en.png"
+  alt="Absolute Zero의 학습 중 생성된 경쟁적이고 비하적인 추론 문장을 보여주는 사례. 강의에서는 Oh-no moment라고 부른다."
+  caption="49쪽 — Absolute Zero의 학습 중 관찰된 예상 밖 생성 사례."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=49"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+강의는 [50:24 구간](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3023s)에서 Absolute Zero의 생성 사례를 소개한다. 복잡한 프로그램 문제를 만들던 중, 다른 모델과 사람을 경쟁 대상으로 삼는 비하적 표현이 추론 텍스트에 나타났다. 논문은 Llama-3.1-8B 기반 모델의 Step 132 사례를 “Uh-oh Moment”라는 제목으로 싣는다. [Absolute Zero Figure 34](https://arxiv.org/pdf/2505.03335v3#page=40)
+
+이 사례에서 직접 관찰한 것은 <strong>생성된 텍스트</strong>다. 이를 모델의 내적 의도나 실제 공격 행동의 증거로 확대할 수는 없다. 다만 답이나 프로그램의 검증에 사용하는 점수가, 생성 과정의 모든 표현과 행동을 평가하는 것은 아니라는 질문을 남긴다.
+
+### 함께 읽기 — Absolute Zero는 프로그램을 실행해 문제와 답을 확인한다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/absolute-zero-v3-figure4.png"
+  alt="Absolute Zero Reasoner가 문제를 제안하고 Python으로 구성과 검증을 수행한 뒤 학습 가능성 보상과 정답 보상을 함께 받는 구조."
+  caption="Absolute Zero Figure 4 — Python 실행으로 문제를 구성하고 풀이를 검증한다."
+  source="https://arxiv.org/pdf/2505.03335v3#page=5"
+  credit="Andrew Zhao et al. / Absolute Zero"
+  width={1801} height={768}
+/>
+
+AZR(Absolute Zero Reasoner)의 기본 단위는 프로그램 P, 입력 I, 출력 O의 묶음이다.
+
+<Math tex={String.raw`O=P(I).`} display />
+
+이 관계에서 어느 부분을 숨기는지에 따라 서로 다른 추론 문제가 만들어진다. [Absolute Zero §3.2](https://arxiv.org/pdf/2505.03335v3#page=6)
+
+| 문제 유형 | 알려 주는 것 | 모델이 찾아야 할 것 | 검증 방법 |
+|---|---|---|---|
+| 연역(Deduction) | 프로그램과 입력 | 출력 | 실제 실행 결과와 비교 |
+| 가추(Abduction) | 프로그램과 목표 출력 | 가능한 입력 | 제안한 입력을 실행해 목표 출력이 나오는지 확인 |
+| 귀납(Induction) | 일부 입출력 예와 설명 | 프로그램 | 보지 않은 입력에 대한 실행 결과로 검사 |
+
+예를 들어 P(i)=i²+1이고 입력이 2이면 출력은 5다. 출력을 묻는 것이 연역이다. 프로그램과 출력 5만 주고 입력을 묻는다면 2와 −2가 모두 가능하다. 이때 검증자는 숨겨 둔 입력과 문자가 같은지보다 <strong>제안한 입력이 실제로 같은 출력을 만드는지</strong>를 확인해야 한다.
+
+<Math tex={String.raw`P(2)=P(-2)=5.`} display />
+
+귀납은 더 조심해야 한다. 몇 개의 입출력 예와 맞는 프로그램은 여러 개일 수 있다. AZR은 설명과 일부 예를 보여주고, 나머지 숨긴 예에서 검증한다. 이것은 단순한 예제 암기를 줄이는 방법이지만, 유한한 테스트 통과가 모든 입력에서의 정확성을 증명하지는 않는다.
+
+### R-Zero와 다른 생성 보상
+
+AZR은 실행 검증으로 얻은 풀이 보상의 평균을 사용한다. G번 풀어서 얻은 이진 성공 신호의 평균을 다음과 같이 쓰자.
+
+<Math tex={String.raw`\widehat p_{\mathrm{success}}=\frac1G\sum_{j=1}^{G}r^{(j)}_{\mathrm{solve}}.`} display />
+
+문제 생성자의 학습 가능성 보상(Learnability reward)은 다음과 같다.
+
+<Math tex={String.raw`r_{\mathrm{propose}}=\begin{cases}
+0,&\widehat p_{\mathrm{success}}=0,\\
+1-\widehat p_{\mathrm{success}},&\widehat p_{\mathrm{success}}>0.
+\end{cases}`} display />
+
+전혀 성공하지 못한 문제는 보상 0이다. 한 번이라도 성공했다면 성공률이 낮은 문제에 더 높은 보상을 준다. 아래는 논문의 정확도 추정 설정인 G=8로 계산한 예다. [Absolute Zero §3.1, 식 (4)](https://arxiv.org/pdf/2505.03335v3#page=5) · [하이퍼파라미터 Table 3](https://arxiv.org/pdf/2505.03335v3#page=23)
+
+| 성공한 횟수 | 성공률 | 생성 보상 |
+|---:|---:|---:|
+| 0/8 | 0.0 | 0.0 |
+| 1/8 | 0.125 | 0.875 |
+| 4/8 | 0.5 | 0.5 |
+| 8/8 | 1.0 | 0.0 |
+
+따라서 AZR을 “성공률 50%일 때 보상이 최대인 방법”이라고 설명하면 틀린다. <strong>간헐적으로 성공하는 어려운 문제를 선호하는 설계</strong>이며, 앞의 R-Zero 보상과 모양이 다르다. 또한 R-Zero에서는 최빈 답에 대한 일치율을 썼지만, 여기서는 실행 검증에 대한 성공률을 사용한다. 표의 값은 기본 학습 가능성 보상이고, 논문의 전체 학습 보상에는 형식·유효성 조건도 들어간다. [Absolute Zero 식 (4)–(6)](https://arxiv.org/pdf/2505.03335v3#page=5)
+
+이 구조에서 “Zero Data”는 사전학습까지 없다는 뜻이 아니다. 사전학습 모델에서 시작하며, 프로그램 실행 환경과 문제 형식도 주어진다. 구현에는 초기 생성을 시작할 때 사용할 항등 함수 예제가 있다. 매번 사람이 새 문제와 답을 제공하지 않아도, <strong>실행기가 모델의 현재 믿음과 독립적인 피드백을 줄 수 있다</strong>는 점이 핵심이다. [Absolute Zero §3.3.1, Figure 5](https://arxiv.org/pdf/2505.03335v3#page=6)
+
+49쪽의 사례를 이 구조와 연결하면, 무엇을 검증하고 무엇을 검증하지 않는지 분명해진다. 프로그램의 실행 결과와 형식이 맞는지 확인하는 것만으로는 생성된 모든 문장의 적절성까지 보상에 반영되지 않는다. 실제 시스템을 설계할 때에는 <strong>문제의 유효성, 최종 답, 생성 중 행동</strong>을 각각 어떤 기준으로 점검할지 정해야 한다.
+
+## 50쪽 — 외부 정보는 자기대결을 현실과 연결한다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-50-en.png"
+  alt="출제자 아래에 사람과 책이 놓이고 두 에이전트가 문제를 만들고 풀며 검증자가 답을 채점한다."
+  caption="50쪽 — 출제자 아래의 책과 사람은 문제 생성에 쓰이는 외부 정보의 출처를 나타낸다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=50"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+[강의 화면 52:10](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3130s)
+
+강의의 [51:24 구간](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3084s)은 참고 문서나 소수의 사람 예제를 활용하는 방향으로 이어진다. SPICE와 R-Few는 문제 생성 과정에 외부 정보를 넣어 학습이 같은 오류나 좁은 주제 안에 갇히는 문제를 완화하려 한다.
+
+### 함께 읽기 — SPICE는 문서를 보며 문제를 만들고, 문서 없이 푼다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/spice-v1-figure2.png"
+  alt="SPICE의 Challenger는 문서를 보고 질문과 기준 답을 만들며, 같은 모델의 Reasoner 역할은 문서 없이 질문에 답한다."
+  caption="SPICE Figure 2 — 문제 생성자와 풀이자가 접근하는 정보가 다르다."
+  source="https://arxiv.org/pdf/2510.24684v1#page=3"
+  credit="Bo Liu et al. / SPICE"
+  width={1801} height={726}
+/>
+
+SPICE(Self-Play In Corpus Environments)는 한 모델이 두 역할을 수행한다. Challenger는 문서 d를 읽고 질문 q와 기준 답 a*를 만든다. Reasoner는 <strong>질문만 받아</strong> 답한다. 논문은 질문을 만들 때 문서 없이도 풀 수 있도록 구성하게 한다. [SPICE §2.1–2.3](https://arxiv.org/pdf/2510.24684v1#page=3)
+
+<Math tex={String.raw`(q,a^\star)\sim\pi_\theta(\cdot\mid d,\mathrm{role}=C),\qquad
+\widehat a\sim\pi_\theta(\cdot\mid q,\mathrm{role}=R).`} display />
+
+같은 파라미터를 쓰더라도 입력 정보는 비대칭이다. 생성자는 문서에서 문제의 근거를 얻고, 풀이자는 문서를 그대로 찾아 읽는 도움 없이 해결해야 한다. 문서는 문제와 목표 답을 구성하는 기반이며, 풀이자의 응답에는 기준 답과의 일치 여부로 보상을 준다.
+
+<Math tex={String.raw`\ell_i=\mathbf1[\widehat a_i=a^\star],\qquad r_R(\widehat a_i,a^\star)=\ell_i.`} display />
+
+Challenger에는 풀이 결과의 분산에 따른 보상을 준다. 논문의 유효한 질문에 대한 식은 다음과 같다.
+
+<Math tex={String.raw`r_C(q,a^\star)=\exp\!\left[-\frac{\bigl(\operatorname{Var}(\ell_1,\ldots,\ell_K)-0.25\bigr)^2}{2\times0.01}\right].`} display />
+
+이진 성공 신호의 분산은 성공 확률 p에 대해 다음과 같다.
+
+<Math tex={String.raw`\operatorname{Var}(\ell)=p(1-p).`} display />
+
+p=0.5이면 분산이 0.25여서 생성 보상은 1이 된다. p=0.1 또는 0.9이면 분산이 0.09여서 약 0.278이다. p=0 또는 1이면 약 0.044다. 이는 이진 분포의 분산을 대입한 값이며, 유한한 응답에서 계산하는 분산은 추정 방식의 영향을 받는다. <strong>R-Zero의 삼각형 보상과 SPICE의 분산 기반 보상은 같은 식이 아니다.</strong> [SPICE 식 (1)](https://arxiv.org/pdf/2510.24684v1#page=4)
+
+문서가 들어왔다고 모든 오류가 사라지는 것은 아니다. 문서 자체가 부정확할 수도 있고, 답을 추출하거나 질문을 만드는 단계에서 오류가 생길 수도 있다. 그래도 모델의 현재 최빈 답만 반복해서 정답으로 삼는 방식과 비교하면, <strong>문제의 내용과 답을 확인할 외부 근거가 추가</strong>된다.
+
+### 함께 읽기 — R-Few는 소수의 사람 예제로 생성 방향을 잡는다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/r-few-v1-figure2.png"
+  alt="R-Few가 소수의 인간 정답 예제로 Challenger를 유도하고, 인간 예제와 생성 문제를 섞어 Solver의 교육과정을 구성하는 구조."
+  caption="R-Few Figure 2 — 소수의 정답 예제가 생성과 풀이 학습의 기준이 된다."
+  source="https://arxiv.org/pdf/2512.02472v1#page=4"
+  credit="Wenhao Yu et al. / R-Few"
+  width={1801} height={624}
+/>
+
+R-Few는 작은 인간 정답 데이터 집합을 기준 예제(Anchor examples)로 둔다. Challenger는 이 중 일부를 문맥 예제(In-context examples)로 받아 문제를 생성한다. Solver는 사람 예제와 생성 문제를 함께 학습하며, 현재 학습에 적절한 난이도의 문제를 골라 사용한다. 그림의 산술 문제는 구조를 보여주는 예시다. [R-Few §3.2–3.3, Figure 2](https://arxiv.org/pdf/2512.02472v1#page=4)
+
+사람 예제 집합을 다음과 같이 쓰자.
+
+<Math tex={String.raw`\mathcal D_H=\{(q_i,a_i)\}_{i=1}^{N_H}.`} display />
+
+생성자가 받는 문맥 예제의 개수는 0–5개 중에서 뽑는다. 예제를 주는 단계는 어떤 형태와 내용의 문제를 만들지 안내한다. Solver 학습 단계에서는 각 문제를 여러 번 풀어 기준 답과 일치한 응답의 비율을 구한다. 이 성공률 추정값이 다음 범위에 드는 데이터를 사용한다.
+
+<Math tex={String.raw`\mathcal D_{\mathrm{cur}}=\{(q,a):0.3\le\widehat p_{\mathrm{succ}}(q)\le0.7\}.`} display />
+
+이 조건은 생성 문제와 사람 예제 모두에 적용된다. 사람 예제는 제공된 답으로, 합성 문제는 다수결로 얻은 의사정답으로 성공을 판단하므로, 성공률 추정의 기준이 동일한 신뢰도를 가진 것은 아니다. [R-Few §3.3, 식 (7)–(9)](https://arxiv.org/pdf/2512.02472v1#page=5)
+
+여기서 “Few”를 읽을 때에도 비율의 분모를 확인해야 한다. 논문에서 사용한 1%·5%는 WebInstruct의 232,000개 문제에서 선택한 사람 예제 풀의 비율이다. 전체 학습 배치에서 사람 데이터가 항상 1% 또는 5%라는 의미가 아니다. 또한 사람 정답 보상의 가중치 2.0은 데이터 혼합비 2:1을 뜻하지 않는다. [R-Few §4.1](https://arxiv.org/pdf/2512.02472v1#page=6)
+
+### 어떤 외부 기준을 넣을 것인가
+
+| 방법 | 문제·답을 만드는 기반 | 답을 확인하는 주요 기준 | 주의할 점 |
+|---|---|---|---|
+| R-Zero | Challenger가 만든 문제 | Solver의 최빈 답 | 공통 오답도 의사정답이 될 수 있음 |
+| Absolute Zero Reasoner | 생성한 프로그램·입출력 관계 | 프로그램 실행 결과 | 실행 가능한 영역과 검증 범위의 제약 |
+| SPICE | 외부 문서에서 구성한 문제와 답 | 문서에서 얻은 기준 답 | 원문·추출·문제 생성 단계의 오류 |
+| R-Few | 사람 예제를 참고한 생성 문제와 사람 데이터 | 사람 정답과 합성 의사정답 | 두 종류 목표의 신뢰도가 다름 |
+
+자기대결은 이미 가진 지식과 능력을 새롭게 조합하고 연습할 기회를 만든다. 외부 정보는 그 연습에 새로운 근거와 점검 기준을 더한다. 좋은 설계에서는 생성 문제의 수를 늘리는 것과 함께 <strong>무엇으로 정답을 확인할지, 어떤 문제를 계속 보게 할지, 성장을 어디에서 측정할지</strong>를 정한다.
+
+[11편](/posts/self-improving-ai-11-automated-post-training/)에서는 이 질문을 모델 훈련 과정으로 넓힌다. 강한 AI가 더 작은 모델의 학습을 설계하고 실행할 때, 어떤 단계까지 자동화할 수 있을까?
+
+<details>
+<summary>계산 예제와 코드</summary>
+
+[Python 계산 코드](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/verify_examples_10.py) · [계산 결과](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/numeric-checks-10.json)
+
+R-Zero·AZR·SPICE의 보상 계산, 200개 표본의 의사정답 오류 수, 학습 곡선의 점수 변화, 프로그램 입출력 예를 확인할 수 있다.
+
+</details>
+
+## 함께 읽을 자료
+
+| 자료 | 연결되는 내용 |
+|---|---|
+| [NTU Self-Improving 강의](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2739s) · [슬라이드](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=46) | 문제 생성·풀이·검증의 순환과 외부 정보 |
+| [R-Zero: Self-Evolving Reasoning LLM from Zero Data](https://arxiv.org/abs/2508.05004) | 두 모델의 교대 학습, 의사정답, 난이도와 성능 변화 |
+| [Absolute Zero: Reinforced Self-play Reasoning with Zero Data](https://arxiv.org/abs/2505.03335) | 실행 환경에 기반한 문제 생성과 검증 |
+| [Self-Questioning Language Models](https://arxiv.org/abs/2508.03682) | 질문 생성자와 답변자의 자기대결을 비교할 추가 사례 |
+| [SPICE: Self-Play In Corpus Environments Improves Reasoning](https://arxiv.org/abs/2510.24684) | 문서를 기반으로 만드는 문제와 분산 기반 교육과정 |
+| [Guided Self-Evolving LLMs with Minimal Human Supervision](https://arxiv.org/abs/2512.02472) | R-Few의 기준 예제와 온라인 교육과정 |

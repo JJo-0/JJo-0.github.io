@@ -1,0 +1,386 @@
+---
+title: "자가개선 AI 11 — 작은 모델의 후학습을 AI에게 맡길 수 있을까"
+description: "PostTrainBench와 FT-Dojo로 후학습 자동화를 살펴본다. 학습 에이전트와 대상 모델을 구분하고, 시간 예산·가중 평가 점수·데이터 오염을 함께 읽는다."
+pubDate: 2026-11-18T12:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-11-automated-post-training
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - post-training
+  - llm-agents
+  - fine-tuning
+  - ntu
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 11
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>문제를 잘 푸는 AI와 모델을 잘 훈련하는 AI는 서로 다른 능력으로 평가해야 한다.</strong>
+
+[10편](/posts/self-improving-ai-10-self-play-and-external-feedback/)에서는 AI가 문제와 답을 스스로 만들 때 피드백의 신뢰도가 중요하다는 점을 살펴봤다. 이번에는 역할을 바꾼다. 강한 AI에게 더 작은 모델과 학습 자원을 주고, 그 모델의 성능을 높이는 일을 맡긴다.
+
+이때 AI는 답만 생성하지 않는다. 데이터를 고르고, 학습 코드를 작성하고, 실패한 실행을 고치고, 결과를 보고 다음 실험을 정한다. <strong>후학습(Post-training)</strong>을 연구하는 사람의 작업 일부를 수행하는 것이다. 질문은 세 가지다. 무엇이 실제로 학습되는가? 제한된 시간 안에 얼마나 개선되는가? 높은 점수가 올바른 학습에서 나온 결과인가?
+
+<details>
+<summary>슬라이드별 영상 위치</summary>
+
+| 슬라이드 | 영상 | 주제 |
+|---|---|---|
+| 51쪽 | [52:16–52:53](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3136s) | 강한 AI가 더 작은 모델의 학습을 설계한다 |
+| 52쪽 | [52:53–53:47](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3173s) | PostTrainBench의 목표와 실행 조건 |
+| 53쪽 | [53:47–55:16](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3227s) | 데이터 준비, 시간 초과, 전략 변경 |
+| 54쪽 | [55:16–56:41](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3316s) | 기준 모델과 자동 후학습의 성능 비교 |
+| 55쪽 | [56:41–58:39](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3401s) | 데이터 오염, 모델 대체, API 이용 제한 |
+
+</details>
+
+## 51쪽 — 학습하는 작은 모델과 학습을 지휘하는 큰 모델
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-51-en.png"
+  alt="학습 목표를 정하고 가능한 선택지를 만든 뒤 좋은 선택을 찾는 세 단계를 강한 AI가 수행하여 더 작은 모델을 훈련한다는 슬라이드."
+  caption="51쪽 — 강한 AI가 모델 훈련의 선택과 실행을 맡을 수 있다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=51"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+강의의 [52:16 구간](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3136s)은 지속적인 자기성장 문제에서 <strong>강한 AI를 이용한 작은 모델 훈련</strong>으로 넘어간다. [2편](/posts/self-improving-ai-02-learning-targets/)에서 보았던 세 단계, 즉 목표를 정하고 선택지를 만들고 좋은 것을 찾는 과정을 AI에게 맡기는 것이다.
+
+여기에는 서로 다른 두 역할이 있다.
+
+| 역할 | 바꾸는 대상 | 개선을 확인하는 방법 |
+|---|---|---|
+| 학습 에이전트(Training agent) | 데이터 구성, 코드, 학습 설정, 실험 순서 | 제한된 자원으로 좋은 대상 모델을 만드는가? |
+| 대상 모델(Target model) | 미세조정할 파라미터 또는 어댑터 | 학습 뒤 새 문제를 얼마나 잘 푸는가? |
+
+예를 들어 에이전트가 Gemma의 학습 코드를 고친다고 해서 에이전트 자체의 신경망 가중치가 바뀌는 것은 아니다. 실험 기록을 읽고 다음 행동을 바꾸는 과정과, 대상 모델의 파라미터를 경사하강으로 갱신하는 과정은 구분해야 한다. PostTrainBench는 <strong>에이전트가 제출한 대상 모델</strong>을 평가한다. [PostTrainBench §2–2.1](https://arxiv.org/pdf/2603.08640v2#page=2)
+
+이를 한 번의 실험으로 표현해 보자.
+
+<Math tex={String.raw`\theta_k=\operatorname{Train}(\theta_0,\mathcal D_k,\lambda_k),\qquad
+v_k=\operatorname{Eval}_{\mathrm{val}}(\theta_k).`} display />
+
+| 기호 | 뜻 |
+|---|---|
+| θ₀ | 학습 전 대상 모델의 파라미터 |
+| Dₖ | k번째 실험에서 선택하고 가공한 학습 데이터 |
+| λₖ | 학습률·배치 크기·학습 횟수·어댑터 설정 등의 묶음 |
+| θₖ | 해당 실험에서 얻은 대상 모델 |
+| vₖ | 검증 데이터에서 측정한 성능 |
+
+이 식은 실험마다 같은 초기 모델에서 시작하는 경우를 설명한 것이다. 이전 체크포인트에서 이어서 학습한다면 초기값도 실험 설정에 포함한다. 에이전트는 결과를 보고 Dₖ와 λₖ를 바꾼다. 따라서 자동화해야 할 것은 학습 코드의 실행뿐 아니라 <strong>어떤 실험을 다음에 할지 결정하는 과정</strong>이다.
+
+### 함께 읽기 — FT-Agent는 실패 기록을 다음 실험의 근거로 쓴다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ft-dojo-v1-figure2.png"
+  alt="FT-Agent가 이전 성공과 실패를 기억하고 전략 제안, 구현과 검증, 피드백 분석을 반복하는 구조."
+  caption="FT-Agent Figure 2 — 가설을 세우고 실행한 뒤 여러 종류의 피드백을 해석한다."
+  source="https://arxiv.org/pdf/2603.01712v1#page=5"
+  credit="Qizheng Li et al. / FT-Dojo"
+  width={1801} height={1416}
+/>
+
+<strong>FT-Dojo</strong>는 미세조정 실험을 진행할 환경이고, <strong>FT-Agent</strong>는 그 환경에서 일하는 에이전트다. FT-Dojo는 수학·특허·화학·금융·표 질의응답의 5개 영역에 걸친 13개 작업을 제공한다. FT-Agent는 전략을 제안하고, 구현을 검사한 뒤 학습을 실행하고, 결과를 분석하는 순환을 사용한다. [FT-Dojo §2–3](https://arxiv.org/pdf/2603.01712v1#page=2)
+
+이 구조에서 중요한 것은 <strong>실패를 설명할 수 있는 피드백</strong>이다. 평균 정확도 하나만 내려갔다면 원인을 알기 어렵다. 학습 손실이 발산했는지, 출력 형식만 틀렸는지, 특정 유형의 문제에서 반복해서 실패했는지에 따라 다음 행동이 달라진다.
+
+| 관찰한 현상 | 먼저 확인할 대상 | 가능한 다음 실험 |
+|---|---|---|
+| 학습 시작 전에 실행 오류 발생 | 경로·설정·데이터 형식 | 작은 입력으로 파이프라인부터 확인 |
+| 학습 손실은 감소하지만 검증 성능은 하락 | 과적합·데이터와 과제의 불일치 | 학습량 또는 데이터 구성을 조정 |
+| 답의 내용은 맞지만 형식이 틀림 | 학습 템플릿·답 추출 방식 | 형식 예제와 평가 전처리를 점검 |
+| 일부 문제 유형에서만 반복 실패 | 해당 유형의 데이터 범위 | 해당 능력을 연습할 데이터를 보강 |
+
+이 표는 진단 방향을 설명하는 예다. 한 현상만으로 원인을 확정하지 않는다. 가설을 세우고 조건을 통제해 비교해야 한다.
+
+FT-Agent는 긴 학습 전에 설정 검사, 작은 데이터 실행, 손실·경사 등의 짧은 실행 점검을 한다. 이를 <strong>조기 오류 검증(Fail-fast validation)</strong>이라고 부른다. 잘못된 설정을 빨리 발견할수록 남은 시간으로 더 유용한 실험을 할 수 있다. [FT-Dojo §3.2](https://arxiv.org/pdf/2603.01712v1#page=5)
+
+또한 검증에 사용한 데이터와 마지막 성능을 보고할 데이터는 역할이 다르다. 여러 실험 중 하나를 선택하는 과정을 다음처럼 쓸 수 있다.
+
+<Math tex={String.raw`k^*\in\underset{1\le k\le K}{\arg\max}\;v_k,\qquad
+s_{\mathrm{final}}=\operatorname{Eval}_{\mathrm{test}}(\theta_{k^*}).`} display />
+
+검증 점수가 0.68, 0.74, 0.71이면 두 번째 모델을 선택한다. 그 모델의 별도 테스트 점수가 0.66이라면 마지막에 보고할 값은 0.66이다. 가장 높은 검증값 0.74를 새 데이터 성능으로 대신하면 선택 과정의 이득까지 섞인다. FT-Dojo는 반복 중 검증 피드백과 마지막 테스트 평가를 나누어 운영한다. [FT-Dojo §2.4](https://arxiv.org/pdf/2603.01712v1#page=3)
+
+## 52쪽 — 한 장의 GPU와 열 시간으로 무엇을 만들어야 하는가
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-52-en.png"
+  alt="작은 기반 모델을 특정 벤치마크에서 개선하도록 지시하고 데이터와 학습 방법의 선택을 에이전트에게 맡기는 PostTrainBench 프롬프트."
+  caption="52쪽 — 목표와 자원을 주고 데이터·방법·실험 순서는 에이전트가 선택한다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=52"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+[52:53부터](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3173s) 소개하는 PostTrainBench에서는 기반 모델(Base model), 목표 벤치마크, 평가 스크립트와 실행 환경을 제공한다. 에이전트는 H100 GPU 한 장과 최대 10시간을 사용해 학습한 모델을 제출한다. 특정 학습 알고리즘이나 학습 데이터를 미리 정해 주지는 않는다. [PostTrainBench §2, Appendix B](https://arxiv.org/pdf/2603.08640v2#page=2)
+
+여기서 10시간은 모델·벤치마크 조합 하나의 예산이다. 네 기반 모델과 일곱 벤치마크를 조합하므로 한 에이전트 설정의 평가에는 다음 수의 작업이 생긴다.
+
+<Math tex={String.raw`4\times7=28\text{ configurations}.`} display />
+
+각 작업이 시간 예산을 모두 사용한다면 한 번의 전체 평가에는 최대 280 GPU 시간이 필요하다. 세 번씩 반복하는 설정은 84개 작업이 된다.
+
+<Math tex={String.raw`28\times10=280\text{ GPU-hours},\qquad 28\times3=84\text{ runs}.`} display />
+
+이는 예산의 상한을 계산한 값이다. 실제 사용 시간은 조기 종료 여부에 따라 달라진다. 논문은 일부 주요 에이전트 설정을 세 번씩 실행하고 다른 설정은 한 번 실행했다. 모든 행이 동일한 횟수의 반복 실험을 가진 것은 아니다. [PostTrainBench §3.1, Table 1](https://arxiv.org/pdf/2603.08640v2#page=4)
+
+### 함께 읽기 — 학습 완료와 유효한 제출은 별개다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/posttrainbench-v2-figure2.png"
+  alt="PostTrainBench에서 학습 모델을 제출한 뒤 데이터 오염과 모델 대체를 검사하고 정상 제출만 벤치마크로 평가하는 흐름."
+  caption="PostTrainBench Figure 2 — 제출 모델의 성능과 실험 규칙 준수를 함께 확인한다."
+  source="https://arxiv.org/pdf/2603.08640v2#page=3"
+  credit="Ben Rank et al. / PostTrainBench"
+  width={1801} height={483}
+/>
+
+왼쪽은 에이전트가 수행하는 학습 과정이다. 오른쪽은 제출 이후의 검사와 평가다. 기반 모델을 실제로 학습했는지, 평가 데이터를 학습에 사용했는지 등을 확인한 뒤 점수를 계산한다. 규칙 위반이 검출된 실행에는 학습 전 기반 모델의 점수를 부여한다. [PostTrainBench §2, Figure 2](https://arxiv.org/pdf/2603.08640v2#page=3)
+
+대상 모델은 수학 문제를 풀거나 함수를 호출하는 모델이다. 학습 에이전트는 그 모델을 만드는 연구 작업을 수행한다. 따라서 결과표에 적힌 에이전트 이름을 보고 “그 에이전트 자체의 수학 정확도가 이 수치다”라고 읽으면 대상이 뒤바뀐다.
+
+범위가 다른 두 실험도 구분해야 한다. 한 작업에서 BFCL만 개선한 모델과, 다른 작업에서 수학만 개선한 모델은 서로 다른 제출물이다. <strong>여러 작업의 좋은 점수를 모았다고 해서 하나의 모델이 모든 능력을 동시에 얻었다는 뜻은 아니다.</strong>
+
+## 53쪽 — 좋은 계획도 실제 실행 시간 안에 끝나야 한다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-53-en.png"
+  alt="Opus 4.5가 Gemma3-4B를 학습하다 시간 초과를 만나고 데이터 수와 학습 횟수 및 배치 크기를 변경하는 실행 기록."
+  caption="53쪽 — 학습이 시간 안에 끝나지 않자 데이터와 실행 설정을 바꾼다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=53"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+강의의 [53:47 구간](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3227s)은 Opus 4.5가 Gemma3-4B의 코드 생성 능력을 개선하는 사례를 보여준다. 실행 기록에는 데이터 검색, 오염 필터 작성, 학습 시간 초과, 설정 변경이 들어 있다. 작은 모델을 개선하려면 학습 방법의 이름을 아는 것에 더해 <strong>데이터·메모리·시간·평가 도구가 함께 작동하도록 만들어야 한다.</strong> [PostTrainBench Figure 3](https://arxiv.org/pdf/2603.08640v2#page=4)
+
+### SFT는 무엇을 바꾸는가
+
+이 사례는 지도 미세조정(Supervised fine-tuning, SFT)과 LoRA를 사용한다. SFT에서는 입력 x와 목표 응답 y의 쌍을 학습한다. 응답 토큰을 예측하는 평균 손실을 한 가지 형태로 쓰면 다음과 같다.
+
+<Math tex={String.raw`\mathcal L_{\mathrm{SFT}}(\theta)=
+-\frac{1}{\sum_{i=1}^{N}T_i}\sum_{i=1}^{N}\sum_{t=1}^{T_i}
+\log p_\theta(y_{i,t}\mid x_i,y_{i,<t}).`} display />
+
+N은 학습 예제 수, Tᵢ는 i번째 응답의 토큰 수다. 분모는 학습할 응답 토큰의 총수다. 입력 부분은 조건으로 주고 응답 토큰에만 손실을 계산하는 경우를 표현했다. 올바른 코드가 목표 응답이면 그 코드의 토큰 확률을 높이는 방향으로 학습한다. [LoRA §2](https://arxiv.org/pdf/2106.09685v2#page=2)
+
+중요한 것은 이 손실이 <strong>목표 응답을 더 잘 모방하도록 한다</strong>는 점이다. 목표 코드가 잘못되었거나 평가 문제를 그대로 포함하면 손실을 낮춰도 원하는 일반화 능력이 생겼다고 판단할 수 없다. 데이터 선택이 학습 설정만큼 중요한 이유다.
+
+### LoRA는 전체 행렬 대신 작은 갱신 행렬을 학습한다
+
+LoRA는 기존 가중치 행렬을 고정하고 작은 두 행렬로 변화량을 표현한다. 배율을 생략한 표기는 다음과 같다.
+
+<Math tex={String.raw`W=W_0+BA,\qquad
+W_0\in\mathbb R^{d_{\mathrm{out}}\times d_{\mathrm{in}}},\quad
+B\in\mathbb R^{d_{\mathrm{out}}\times r},\quad
+A\in\mathbb R^{r\times d_{\mathrm{in}}}.`} display />
+
+W₀는 고정한 원래 가중치, A와 B는 학습하는 행렬, r은 작은 랭크(Rank)다. BA의 크기는 원래 행렬과 같지만 학습해야 할 숫자의 수가 줄어든다. [LoRA §4.1](https://arxiv.org/pdf/2106.09685v2#page=4)
+
+<Math tex={String.raw`N_{\mathrm{full}}=d_{\mathrm{out}}d_{\mathrm{in}},\qquad
+N_{\mathrm{LoRA}}=r(d_{\mathrm{out}}+d_{\mathrm{in}}).`} display />
+
+예를 들어 4,096×4,096 행렬 하나에 r=8을 적용하면 전체 미세조정은 16,777,216개, LoRA는 65,536개의 파라미터를 학습한다.
+
+<Math tex={String.raw`\frac{65{,}536}{16{,}777{,}216}=\frac1{256}=0.00390625.`} display />
+
+이 예의 학습 파라미터는 약 0.39%다. 이는 특정 행렬 하나를 설명하는 계산이며, Gemma 사례의 실제 설정을 복원한 수치가 아니다. 전체 메모리나 학습 시간이 256분의 1이 된다는 뜻도 아니다. 원래 가중치 저장, 활성값(Activation), 순전파·역전파 계산은 여전히 필요하다.
+
+### 함께 읽기 — 전체 실행 기록에서 계획 변경을 따라가기
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/posttrainbench-v2-figure3.png"
+  alt="Opus 4.5의 Gemma3-4B HumanEval 후학습 기록. 초기 평가, SFT와 LoRA, 시간 초과 후 2만 예제 학습, 설정 파일 복구, 마지막 모델 제출 순서."
+  caption="PostTrainBench Figure 3 — 데이터·학습·평가 오류를 고치며 제출 모델을 만든다."
+  source="https://arxiv.org/pdf/2603.08640v2#page=4"
+  credit="Ben Rank et al. / PostTrainBench"
+  width={1801} height={3027}
+/>
+
+| 단계 | 기록에서 확인할 변화 | 읽어야 할 의미 |
+|---|---|---|
+| 데이터 준비 | 203,178개 예제, SFT와 LoRA, 오염 필터 | 학습 전에 데이터와 구현을 구성함 |
+| 첫 학습 | 2 epochs, batch size 4, 실행 시간 초과 | 처음 계획한 학습을 완료하지 못함 |
+| 수정 학습 | 최대 20,000개, 1 epoch, batch size 8 | 남은 예산에 맞게 실행 규모를 축소함 |
+| 평가 복구 | 빠진 전처리 설정 파일을 준비 | 가중치뿐 아니라 평가에 필요한 구성도 맞춤 |
+| 마지막 반복 | 최대 30,000개로 추가 시도 후 제출 | 남은 시간으로 다시 개선을 시도함 |
+
+첫 계획의 예제 방문 횟수는 203,178개를 두 번 읽는 406,356회다. 수정 계획은 최대 20,000개를 한 번 읽는다.
+
+<Math tex={String.raw`203{,}178\times2=406{,}356,\qquad
+\frac{20{,}000}{406{,}356}\approx0.0492.`} display />
+
+단순한 예제 방문 수로는 약 4.92%로 줄인 셈이다. 다만 배치 크기도 바뀌었고 예제마다 토큰 길이가 다르므로, 이 비율을 실제 시간 감소율로 사용할 수는 없다. 또한 첫 실행은 중간에 멈췄으므로 406,356회를 모두 학습한 것이 아니다.
+
+실행 기록의 초기 평가는 <strong>20개 샘플에서 0.0%</strong>, 이후 평가는 <strong>150개 샘플에서 28.7%와 37.3%</strong>다. 평가 샘플 수가 다르므로 세 숫자를 모두 같은 테스트셋의 연속 개선으로 읽지 않는다. 이 그림이 직접 보여주는 것은 <strong>자원을 확인하고 실패 원인을 수정하면서 학습 모델을 완성한 과정</strong>이다.
+
+## 54쪽 — 평균 23.2점은 무엇을 평균한 값인가
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-54-en.png"
+  alt="PostTrainBench Table 1의 모델별 가중 평균과 일곱 벤치마크 결과. 공식 instruction 모델 51.1, Opus 4.6 에이전트 23.2, few-shot 기반 모델 18.1, 기반 모델 7.5."
+  caption="54쪽 — 전체 점수와 과제별 점수를 함께 비교한다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=54"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+[55:16부터의 설명](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3316s)은 후학습의 결과를 비교한다. 표의 Avg 열만 보면 순위를 빠르게 알 수 있다. 그러나 무엇을 평균했는지 알아야 그 순위가 답하는 질문도 알 수 있다.
+
+### 먼저 대상 모델을 평균하고, 그다음 과제를 가중 평균한다
+
+벤치마크 i에서 대상 모델 m의 점수를 sᵢ,ₘ이라고 하자. 먼저 네 기반 모델에 대한 결과를 평균한다.
+
+<Math tex={String.raw`\overline s_i=\frac14\sum_{m=1}^{4}s_{i,m}.`} display />
+
+이후 일곱 벤치마크를 가중 평균한다. 논문은 공식 instruction 모델과 기반 모델의 점수 차이가 작은 과제에 더 큰 가중치를 준다. [PostTrainBench §2.2, 식 (1)](https://arxiv.org/pdf/2603.08640v2#page=4)
+
+<Math tex={String.raw`w_i=\frac{1}{s_i^{\mathrm{instruct}}-s_i^{\mathrm{base}}},\qquad
+\widehat w_i=\frac{w_i}{\sum_{j=1}^{7}w_j},\qquad
+S=\sum_{i=1}^{7}\widehat w_i\overline s_i.`} display />
+
+이 정의는 기준 점수 차이가 양수인 과제를 전제로 한다. 차이가 0이면 역수가 정의되지 않으며, 다른 과제 집합에 무조건 그대로 적용할 수는 없다. S는 이 벤치마크가 선택한 집계 규칙의 결과이지, 보편적인 지능의 단위가 아니다.
+
+다음은 Table 5의 가중치와 Table 1의 Opus 4.6 행이다.
+
+| 벤치마크 | 가중치 | 후학습 결과 | 가중 기여분 |
+|---|---:|---:|---:|
+| AIME 2025 | 0.2265 | 5.0 | 1.1325 |
+| ArenaHard-Writing | 0.0904 | 7.8 | 0.7051 |
+| BFCL | 0.0746 | 75.9 | 5.6621 |
+| GPQA Main | 0.2246 | 25.5 | 5.7273 |
+| GSM8K | 0.0936 | 41.0 | 3.8376 |
+| HealthBench-Easy | 0.1841 | 18.8 | 3.4611 |
+| HumanEval | 0.1061 | 24.7 | 2.6207 |
+
+Table 5에 표시된 계수를 그대로 곱해 더하면 다음 결과를 얻는다.
+
+<Math tex={String.raw`S_{\mathrm{rounded}}=23.14641\approx23.1.`} display />
+
+원 논문의 Avg는 23.2다. 입력으로 쓴 표의 값들은 반올림되어 있고, 가중치 합도 0.9999다. 이 표시값만으로는 보고값 23.2를 마지막 소수자리까지 복원하지 못하므로, <strong>공개된 표시값으로 다시 계산한 근삿값과 논문의 보고값을 구분한다.</strong> 일곱 점수의 단순 평균은 약 28.39이므로 집계 방식을 단순 평균으로 바꿔 설명해도 안 된다. [Table 1](https://arxiv.org/pdf/2603.08640v2#page=5) · [Table 5](https://arxiv.org/pdf/2603.08640v2#page=14)
+
+### 비교 기준에 따라 질문이 달라진다
+
+| 비교 대상 | 보고된 가중 평균 | 이 행으로 확인하는 질문 |
+|---|---:|---|
+| 기반 모델(Zero-shot 기준 행) | 7.5 | 후학습 전 기준은 얼마인가? |
+| 기반 모델의 Few-shot 비교 행 | 18.1 | 가중치를 학습하지 않고 예제를 제시했을 때는 어떤가? |
+| Opus 4.6이 후학습한 대상 모델들 | 23.2 ± 1.8 | 이 에이전트 설정이 만든 모델들은 얼마나 좋은가? |
+| 공식 Instruction 모델들 | 51.1 | 제작사가 폭넓게 후학습한 모델들과 차이가 얼마나 나는가? |
+
+Table 1의 표준편차는 반복 실행의 변동을 나타낸다. ±1.8을 95% 신뢰구간이나 모든 대상 모델의 성능 범위로 읽으면 안 된다. 또한 각 행은 모델과 실행 도구인 스캐폴드(Scaffold)의 조합이다. 같은 모델도 도구·문맥 관리 구조가 달라지면 결과가 달라질 수 있다. [PostTrainBench Table 1, §4.4](https://arxiv.org/pdf/2603.08640v2#page=5)
+
+기반 모델의 Zero-shot 기준 행도 평가 절차에 명시된 GSM8K의 10-shot 예외를 포함한다. Few-shot 비교 행은 기반 모델에 chat template을 쓰지 않는 별도 조건이다. 두 행의 차이를 “예제 수만 바꾼 효과”로 단정할 수 없다. [PostTrainBench §2.2](https://arxiv.org/pdf/2603.08640v2#page=3)
+
+보고된 Avg 값으로 차이를 계산하면 다음과 같다.
+
+<Math tex={String.raw`23.2-7.5=15.7,\qquad
+23.2-18.1=5.1,\qquad
+51.1-23.2=27.9.`} display />
+
+각각 가중 평균 점수의 차이다. 첫 값은 학습 전 기준과의 차이, 두 번째는 Few-shot 비교 행과의 차이, 마지막은 공식 instruction 모델과 남은 차이다. 자동 후학습이 기반 모델을 개선했다는 관찰과, 공식 후학습 모델의 평균 성능에는 미치지 못했다는 관찰이 함께 성립한다.
+
+### 한 과제에서 이긴 결과와 범용 후학습은 구분한다
+
+논문은 Gemma-3-4B의 BFCL에서 GPT-5.1 Codex Max가 후학습한 모델의 점수 89%와 공식 instruction 모델의 67%를 비교한다. 이 조합에서는 22%p 높다. [PostTrainBench §3.2](https://arxiv.org/pdf/2603.08640v2#page=5)
+
+<Math tex={String.raw`89\%-67\%=22\text{ percentage points}.`} display />
+
+이 결과는 특정 모델과 함수 호출 평가에서 얻은 성과다. 에이전트는 그 벤치마크를 집중적으로 최적화했지만 공식 instruction 모델은 여러 능력을 함께 다루도록 만들어졌다. 훈련 자원과 최적화 목표도 다르다. 따라서 이를 모든 연구 작업이나 모든 능력에서 사람보다 낫다는 주장으로 넓힐 수 없다.
+
+점수를 읽을 때에는 <strong>어떤 모델을, 어떤 과제에, 얼마의 자원으로 맞췄는지</strong>를 함께 확인해야 한다. 좁은 과제의 개선은 유용하다. 그 성공이 다른 과제에서도 유지되는지는 별도로 평가한다.
+
+## 55쪽 — 평가 점수를 올리는 것과 모델을 개선하는 것
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/ntu-self-improving-55-en.png"
+  alt="PostTrainBench에서 관찰한 평가 데이터 학습, 다른 모델 API 이용, 이미 후학습된 모델 다운로드 사례를 나열한 슬라이드."
+  caption="55쪽 — 높은 점수를 만드는 경로가 실험의 목적과 어긋날 수 있다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=55"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+강의의 [56:41 구간](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3401s)은 점수를 높이는 과정에서 발생한 문제를 다룬다. 후학습의 목적은 지정된 모델이 새로운 문제를 더 잘 풀도록 하는 것이다. 평가 문제를 외우거나 다른 모델을 제출해 점수를 높이면, 그 목적을 달성한 것으로 볼 수 없다. 논문은 이런 사례를 보상 편법(Reward hacking)이라는 넓은 범주에서 분석한다. [PostTrainBench §5.3–5.5](https://arxiv.org/pdf/2603.08640v2#page=8)
+
+| 관찰된 방식 | 점수가 높아질 수 있는 이유 | 확인해야 할 경계 |
+|---|---|---|
+| 평가 데이터를 학습 데이터로 사용 | 평가에서 나올 문제나 답을 외움 | 학습 데이터와 평가 데이터의 내용 중복 |
+| 평가 문제를 합성 예제처럼 삽입 | 이름을 바꿔도 내용이 같은 문제가 남음 | 데이터의 이름뿐 아니라 출처와 내용 |
+| 이미 후학습된 다른 모델을 제출 | 지정된 기반 모델을 개선할 필요가 없어짐 | 제출 체크포인트가 어디에서 왔는가 |
+| 평가용 API를 학습 데이터 생성에 사용 | 허용된 범위 밖의 모델 도움을 얻음 | 해당 실험이 허용한 API 용도 |
+
+마지막 항목은 <strong>다른 모델의 도움을 받는 행위가 언제나 잘못이라는 뜻이 아니다.</strong> FT-Dojo는 데이터 합성을 위한 API 이용을 환경에 포함한다. 반면 PostTrainBench의 해당 사례는 평가 전용으로 제공한 OpenAI API를 다른 용도로 쓰지 말라는 제한을 어겼다. 동일한 도구도 실험이 허용한 범위에 따라 의미가 달라진다. [FT-Dojo §2.2](https://arxiv.org/pdf/2603.01712v1#page=2) · [PostTrainBench §5.4](https://arxiv.org/pdf/2603.08640v2#page=8)
+
+### 학습·검증·테스트를 나누는 이유
+
+집합 수준에서 필요한 출발점은 다음과 같다.
+
+<Math tex={String.raw`\mathcal D_{\mathrm{train}}\cap\mathcal D_{\mathrm{val}}=\varnothing,\qquad
+\mathcal D_{\mathrm{train}}\cap\mathcal D_{\mathrm{test}}=\varnothing,\qquad
+\mathcal D_{\mathrm{val}}\cap\mathcal D_{\mathrm{test}}=\varnothing.`} display />
+
+하지만 파일 경로나 행 ID가 다르다는 것만으로 충분하지 않다. 같은 문제를 번역하거나 함수 이름만 바꾸면 내용 중복이 남을 수 있다. 평가셋이 다른 데이터셋 안에 들어온 간접 오염도 가능하다. 또한 이름이 train인 데이터 분할이 실제 연구의 학습용 자료라는 보장은 없다. 논문은 BFCL의 공개 데이터 분할을 이 문제의 사례로 다룬다. [PostTrainBench §5.3, §5.5](https://arxiv.org/pdf/2603.08640v2#page=8)
+
+검증셋은 실험을 선택하는 데 사용한다. 테스트셋은 선택을 끝낸 뒤 성능을 확인하는 데 사용한다. 테스트 오류를 계속 들여다보고 그 문제를 겨냥한 데이터를 만들면, 원문을 그대로 복사하지 않아도 평가가 학습 과정에 영향을 준다.
+
+### 함께 읽기 — 제약을 한 번 기억했다고 끝까지 지키는 것은 아니다
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-11-automated-post-training/posttrainbench-v2-figure7.png"
+  alt="GPT-5.1 Codex Max가 처음에는 API 용도 제한을 확인하지만 이후 실패한 학습을 거친 뒤 제한된 API로 데이터를 생성한 실행 기록."
+  caption="PostTrainBench Figure 7 — 앞서 확인한 API 제한과 나중의 실행이 어긋난 사례."
+  source="https://arxiv.org/pdf/2603.08640v2#page=9"
+  credit="Ben Rank et al. / PostTrainBench"
+  width={1801} height={1147}
+/>
+
+그림에서는 에이전트가 API 이용 제한을 언급한 뒤, 여러 실패한 실험을 거쳐 그 API를 데이터 생성에 사용한다. 저자들은 긴 문맥 처리의 한계를 원인 후보로 제시한다. 이 기록만으로 내부 원인을 확정하거나 의도적인 속임수를 증명할 수는 없다. 확인할 수 있는 것은 <strong>제약을 앞서 인식한 사실과 실제 후속 행동이 일치하지 않았다는 점</strong>이다. [PostTrainBench §5.4, Figure 7](https://arxiv.org/pdf/2603.08640v2#page=9)
+
+따라서 연구 환경에서는 지시문과 실제 접근 범위를 함께 설계해야 한다. 예를 들어 최종 테스트 자료를 별도 평가 환경에 두고, 평가용 API를 데이터 생성 경로와 분리하고, 제출 모델의 기반 체크포인트를 기록할 수 있다. 이는 해당 사례로부터 얻는 시스템 설계상의 제안이다. 모델에게 규칙을 다시 읽히는 것과 별도로, 실험이 어떤 데이터를 보고 어떤 도구를 사용했는지 확인할 근거를 남긴다.
+
+PostTrainBench의 점수 처리도 이 목적을 반영한다. 위반이 검출된 실행의 점수는 다음과 같이 기반 모델 점수로 되돌린다.
+
+<Math tex={String.raw`s_{\mathrm{recorded}}=
+\begin{cases}
+s_{\mathrm{base}}, & \text{if a disallowed run is detected},\\
+s_{\mathrm{eval}}, & \text{otherwise}.
+\end{cases}`} display />
+
+예를 들어 기반 모델이 10점이고 제출 모델이 90점을 얻었어도, 금지된 평가 데이터 학습이 검출되면 기록 점수는 10점이다. 이것은 <strong>90점짜리 출력의 존재</strong>와 <strong>허용된 절차로 얻은 개선</strong>을 구분하는 규칙이다. 다만 검사를 통과했다는 사실이 모든 오염 가능성을 없앴다는 증명은 아니다. [PostTrainBench §2, Appendix E](https://arxiv.org/pdf/2603.08640v2#page=2)
+
+자동 후학습은 학습 방법, 실행 관리, 평가 설계가 함께 맞아야 성립한다. 작은 모델이 좋아진 결과를 인정하려면 그 모델이 무엇을 배웠는지와 어떤 절차로 평가했는지를 함께 확인해야 한다.
+
+다음 [12편](/posts/self-improving-ai-12-weak-to-strong-generalization/)에서는 관계를 반대로 놓는다. 약한 감독자가 더 강한 모델을 가르칠 수 있을까? 그리고 AI가 그 감독 방법을 연구한다면 무엇으로 성과를 판단해야 할까?
+
+<details>
+<summary>계산 예제와 코드</summary>
+
+[Python 계산 코드](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/verify_examples_11.py) · [계산 결과](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/numeric-checks-11.json)
+
+모델·벤치마크 조합 수, LoRA 행렬의 학습 파라미터 수, 예제 방문 횟수, 표시값으로 계산한 가중 평균, 비교 점수 차이와 검증 모델 선택 예제를 확인할 수 있다.
+
+</details>
+
+## 함께 읽을 자료
+
+| 자료 | 연결되는 내용 |
+|---|---|
+| [NTU Self-Improving 강의](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3136s) · [슬라이드](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=51) | 강한 AI를 이용한 후학습 자동화 |
+| [PostTrainBench](https://arxiv.org/abs/2603.08640v2) | 4개 기반 모델·7개 벤치마크, 제한된 자원, 결과 집계와 실행 위반 사례 |
+| [FT-Dojo](https://arxiv.org/abs/2603.01712v1) | 데이터와 학습 설정을 함께 탐색하는 환경 및 FT-Agent의 반복 구조 |
+| [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685v2) | 고정한 기반 가중치에 작은 학습 행렬을 더하는 방법 |

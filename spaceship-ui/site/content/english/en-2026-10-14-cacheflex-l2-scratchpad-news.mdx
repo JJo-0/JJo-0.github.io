@@ -1,0 +1,171 @@
+---
+title: CacheFlex turns part of the L2 cache into a workspace
+description: Even a fast CPU can stall while it waits for data. CacheFlex lets a program manage part of the storage
+  near the core as a scratchpad.
+pubDate: 2026-10-14 00:00:00+09:00
+updatedDate: 2026-11-08
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-14-cacheflex-l2-scratchpad-news
+category: software-engineering-cs
+subcategory: cpu-cache-architecture
+type: paper-review
+tags:
+- frontier-one
+- computer-architecture
+- cache
+- cpu-inference
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-10-14-cacheflex-l2-scratchpad-news
+translationKey: en-2026-10-14-cacheflex-l2-scratchpad-news
+---
+
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+> <strong>Scope of the evaluation.</strong> The performance results come from computer simulation. Some circuit characteristics come from physical design estimates. The study did not measure a fabricated CPU.
+
+## 1. Fast arithmetic can still stall on data
+
+A core executes instructions inside a CPU. Its vector unit can apply one instruction to many numbers at once. Widening that unit does little when reusable data cannot stay close enough to feed it. The CacheFlex paper studies this problem in regular AI computations such as matrix multiplication.
+
+A cache automatically keeps frequently used data near the core. L1 is a small cache close to the core. The private L2 is larger and belongs to that core.
+
+<strong>The design.</strong> CacheFlex converts part of the private L2 into scratchpad memory (SPM) that the program manages directly. The remainder continues to serve as a conventional cache.
+
+The reported benefits depend on the modeled vector width, matrix shape, tiling strategy, and single-core configuration. They do not establish a general speedup for CPU programs.
+
+## 2. Cache and scratchpad memory
+
+The gem5 model uses a 64 KB L1 data cache, a 512 KB private L2, and a 4 MB shared L3. Multiple cores can share the L3.
+
+With a cache, hardware determines where data goes and which entry to evict. With <strong>scratchpad memory (SPM)</strong>, software explicitly controls data placement and lifetime. CacheFlex repurposes existing L2 <strong>ways</strong> without adding a new SRAM array. A cache consists of sets selected by address. A way provides one alternative location within each set. The term describes storage organization, independently of the data paths used to access it.
+
+Why manage a scratchpad? A large matrix multiplication can be split into smaller <strong>tiles</strong> so each fetched value participates in several operations. Where the tile lives matters. A small tile may already fit in a nearby cache. An oversized tile can exceed even the designated scratchpad.
+
+General matrix multiplication (GEMM) uses the following shape convention, also used in Table III of the paper.
+
+<CandidateEquation lang="en" id="cacheflex-gemm-shape" title="How do the matrix dimensions fit together?" tex={String.raw`C_{M\times N}=A_{M\times K}\cdot B_{K\times N}`}>
+
+A has M rows and K columns. B has K rows and N columns. Their shared inner dimension K gives C a shape of M rows by N columns. M, K, and N are integer element counts. The paper follows the GEMM notation used by the BLIS matrix library. The evaluated microkernel used FP16 SVE. The expression describes matrix dimensions and does not predict a CacheFlex speedup.
+
+</CandidateEquation>
+
+### Vector width in bytes
+
+SVE is Arm’s Scalable Vector Extension. The paper writes the vector length, VL, in multiples of 128 bits. The table converts units. It gives neither measured throughput nor an experimental result.
+
+| Vector-length notation | Bits | Equivalent bytes |
+|---|---:|---:|
+| VL=4 | 512 bit | 64 B |
+| VL=8 | 1024 bit | 128 B |
+| VL=16 | 2048 bit | 256 B |
+
+The modeled cache line is 64 B, so one 2,048-bit vector access spans the width of four cache lines. With a fixed-size L1, the reusable working set can reach its capacity limit sooner as vector width increases.
+
+<NewsFigure media="cacheflex-vector-width-unit" lang="en" />
+
+## 3. How CacheFlex changes the data path
+
+The proposed design has three main steps.
+
+1. Through a management interface, the operating system or runtime assigns some private L2 ways to the thread as SPM. Allocating and releasing ways are privileged operations in this design.
+2. The program copies data from ordinary memory into an SPM slot with `spm_cp`, then reads or writes it directly with `spm_ld` and `spm_st` during repeated computation. The copy leaves the original memory value in place. The program uses `spm_wb` to write a result back to ordinary memory.
+3. The design uses an SPM load/store queue alongside the ordinary LSQ to maintain ordering between copy and write operations in the two domains. A load/store queue tracks memory operations, their ordering, and conflicts.
+
+SPM accesses are designed to bypass normal cache tag lookup, virtual-address translation, and cache-coherence checks. The SPM belongs to a single thread and uses different coherence rules from the ordinary cache. Unassigned L2 ways continue caching normally, and main memory remains in place.
+
+<strong>Operating-system boundary.</strong> The paper proposes draining pending SPM and copy operations on a thread switch, checking thread ownership, and then saving or reassigning state. It also describes retaining data in L2 for reuse or saving it to a backing region. These are architectural rules. The paper does not report measurements from a production OS scheduler or validation of security and side-channel behavior.
+
+## 4. What the authors compared
+
+The version reviewed was arXiv v1, submitted October 9, 2026. Single-core gem5 simulation supplied the performance data. For selected area and access-energy estimates, the authors synthesized, placed, and routed an RTL implementation in a commercial 12 nm process. No fabricated CPU was timed.
+
+Seven GEMM shapes represent workloads including LLaMA-family attention and feed-forward operations, BERT attention, and convolution. The authors searched tile sizes separately for the conventional cache and CacheFlex configuration at each shape. The core, cache sizes, and main-memory configuration were the same. CacheFlex added SPM instructions, control logic, and queues.
+
+The baseline uses normal SVE memory instructions and hardware prefetch enabled. A <strong>prefetch</strong> brings data in before demand. The authors also tested software L1 prefetch and Arm’s `PLDL2KEEP` L2 hint. This hint encourages reuse without guaranteeing L2 residency. Once hardware prefetch was enabled, manually tuned L1 prefetch added little benefit and was omitted from the separate plots.
+
+A further comparison is explicitly idealized. It adds guaranteed L2 line pinning to the hardware-prefetch baseline and uses non-temporal (NT) loads to avoid installing data in L1. The model omits practical pin/unpin and replacement-policy difficulties. The comparison represents a modeled alternative, not measurements from an existing CPU.
+
+### The same GEMM workloads in Figure 8
+
+Figure 8 compares shapes W3 and W5 on one core with VL=16. Each configuration used its own best tile. The matrix operation is the same, but the instruction and tile schedules can differ.
+
+| Shape | Matrix dimensions (M, K, N) | CacheFlex dedicated L2 read path vs. HW-PF | Idealized L2 Pin+NT vs. HW-PF | CacheFlex vs. idealized L2 Pin+NT |
+|---|---|---:|---:|---:|
+| W3 | (256, 2048, 2048) | 1.90× | 1.17× | 1.63× |
+| W5 | (2048, 2048, 2048) | 1.40× | 1.05× | 1.34× |
+
+HW-PF is the hardware-prefetch baseline. The 1.63× and 1.34× entries compare CacheFlex with idealized L2 pinning plus NT loads. Figure 8 models the CacheFlex dedicated read path and the idealized alternative separately.
+
+Figures 7 and 8 use different experiments. Figure 7 reports kernel results for seven shapes with independent tuning per design. Figure 8 compares several alternatives on W3 and W5 using a common code organization.
+
+## 5. Reported results
+
+### GEMM kernels
+
+Across seven shapes, the geometric-mean kernel speedup was <strong>1.12×</strong> at VL=4 (512 bits) and <strong>1.44×</strong> at VL=16 (2,048 bits). Under those conditions, reported memory-subsystem energy fell by <strong>26%</strong> and <strong>40%</strong>, respectively. The geometric mean summarizes shape-specific results, which varied.
+
+### Complete inference layers
+
+The authors also evaluated input-processing (prefill) layers shaped like LLaMA-3.2-1B and BERT-Base. They distinguished the conventional baseline (BL), CacheFlex using the SPM, baseline plus FlashAttention (BL+FA), and CacheFlex plus FlashAttention (CF+FA). Total layer time and memory energy sum operator results according to their modeled repetition counts.
+
+At T=4,096 and VL=16, CacheFlex plus FlashAttention was up to <strong>1.78×</strong> faster than the conventional cache baseline for the BERT-Base-shaped layer, with <strong>45%</strong> less memory-subsystem energy. The LLaMA-3.2-1B-shaped results were <strong>1.64×</strong> and <strong>38%</strong>. The BERT denominator is the plain baseline, without FlashAttention. Extending BERT well beyond its standard length of 512 tests capacity scaling. The experiment did not evaluate model accuracy or deployed performance at that length.
+
+## 6. Estimating energy
+
+The energy estimate combines simulated access counts with physical-design estimates of energy per access. The authors synthesized and placed and routed RTL for L1, L2, L3, and the SPM in a commercial 12 nm process. PrimePower analysis with switching activity supplied dynamic energy per access and leakage power. The DRAM estimate came from gem5’s memory power model. The reported scope is the <strong>cache, SPM, and DRAM memory subsystem</strong>. The model does not estimate total CPU, board, or power-supply consumption.
+
+The reviewed energy script multiplies gem5’s cache and scratchpad access counts by the energy per access. It adds cache idle energy using idle power and simulated duration and sums the DRAM energy recorded in the statistics. It converts nJ (nanojoules), mW (milliwatts), and pJ (picojoules) into a consistent mJ (millijoule) result.
+
+An SPM read instruction does not necessarily read a single 64 B line. The script explains that `spm.ld1qd` counts instructions, whereas access energy is specified per 64 B line. It multiplies the SPM read term by 1, 2, or 4 at VL=4, 8, or 16 because the corresponding vector widths are 64, 128, or 256 B.
+
+This account follows [the energy model at the reviewed commit](https://github.com/JingqunZhang/cacheflex-ae/blob/96084d8f693a87e13efaa1bcd9fec24f52c57643/scripts/energy_model.py) and Section IV of the paper. The review inspected the code without rerunning gem5 or recalculating the results from raw statistics. The accounting method is described here as such.
+
+<strong>Check your understanding.</strong> Do equal cache-access counts guarantee equal estimated energy? Execution time affects idle energy. SPM and DRAM accesses and vector width also contribute.
+
+## 7. Where the gains shrink
+
+Small working sets can fit in conventional cache. In the LLaMA FlashAttention kernel, the authors report a per-head K+V footprint of 64 KB at T=256 and 256 KB at T=1,024. The latter is half the 512 KB L2. CacheFlex gained 0–3.2% under these two conditions. Larger T can push the working set beyond L2 capacity and increase the potential benefit, though the effect varied by operation.
+
+Without FlashAttention, attention at T=4,096 saw almost no speedup. The paper reports a <strong>32 MB</strong> T×T score matrix, much larger than the modeled L2 or SPM. The source sentence does not specify the score element type or the MB/MiB convention. The 32 MB figure is the authors’ figure. It should not be treated as an independently verified FP16 storage calculation.
+
+In the authors’ account, the reuse tile of each GEMM already fits in L1 at that setting. Streaming inputs displacing reusable data is therefore a poor description of the bottleneck. FlashAttention avoids materializing the whole score matrix. CacheFlex can keep selected K/V tiles resident in L2. The two techniques reduce data movement in different ways.
+
+## 8. Comparison with earlier approaches
+
+The paper groups related work into three lines. The following distinctions reflect the CacheFlex authors’ account. This review did not independently reassess each earlier paper.
+
+- Kalokerinos et al. (2019) partitioned local SRAM at runtime between L2 cache and a directly addressed SPM. The CacheFlex paper describes an in-order MicroBlaze prototype oriented toward user-level remote direct memory access (RDMA).
+- Cong et al.’s Adaptive Hybrid Cache (2011) is described as converting part of a hybrid L1 cache into SPM and relocating scratchpad blocks across cache sets.
+- SPX64 (2021) placed a separate, non-coherent scratchpad next to an out-of-order (OoO) CPU and provided OS management facilities. An OoO CPU can issue ready instructions before some earlier ones.
+
+The authors emphasize the combination of reassigning existing private L2 capacity as per-thread SPM, bridge instructions between coherent memory and the scratchpad, and a dual-LSQ ordering mechanism. The paper gives no head-to-head measurements of the three prior designs and CacheFlex on the same GEMM workloads.
+
+## 9. Area, operating systems, and security
+
+After 12 nm place and route, the authors report 8,377 µm² for the extra SPM LSQ and control logic together. The L2 itself grew by 0.31%. Including the SPM LSQ, the overhead was <strong>2.02% relative to L2 area</strong>. That denominator is the L2 area, not the full chip.
+
+The mechanism-level performance model uses a single gem5 core. The proposed context-switch protocol describes intended OS compatibility. The study did not measure scheduler integration or tail latency under frequent preemption. It also did not establish multicore contention behavior, side-channel security, FPGA or silicon prototype results, or generalization across real applications.
+
+The public artifact offers both plotting from supplied results and rebuilding gem5 to run new simulations. The review inspected the accounting code. It did not run either reproduction workflow.
+
+## 10. What the design establishes
+
+CacheFlex dynamically divides existing L2 capacity between hardware-managed cache and program-managed space for reusable data. The paper shows potential for wide SVE vectors on selected GEMM and prefill workloads. Integration with operating systems, secure isolation, multicore execution, and a fabricated CPU remain to be tested.
+
+<details>
+<summary>Paper, code, figure sources, and review scope</summary>
+
+## Sources and scope
+
+- [CacheFlex arXiv v1](https://arxiv.org/abs/2610.12940), submitted October 9, 2026, 15 pages. The official arXiv comment lists planned publication at MICRO 2026.
+- [Official MICRO 2026 program](https://www.microarch.org/micro59/program/), which lists CacheFlex in Session 6D on November 4, 2026. The final proceedings paper was outside this review.
+- [CacheFlex artifact](https://github.com/JingqunZhang/cacheflex-ae). The paper’s appendix describes separate procedures for plotting the supplied results and rerunning the simulation.
+- The energy-method description is based on reading the pinned `energy_model.py`. The review did not execute the script or independently recalculate the numbers.
+- Original Figures 1–9 are not reproduced here. The IEEE notice on page 1 requires separate permission for reuse beyond personal use, including advertising or promotional republication and reuse of copyrighted components. Any explanatory visual would require a separate media and rights review.
+
+
+</details>

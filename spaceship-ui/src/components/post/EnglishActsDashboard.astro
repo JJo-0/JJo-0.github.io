@@ -1,0 +1,26 @@
+---
+import series from '@/data/acts-series.json';
+interface Props { order: number; }
+const { order } = Astro.props;
+const entry = series.entries.find(item => item.order === order);
+if (!entry) throw new Error(`Unknown Acts order ${order}`);
+const src = `/en/assets/interactive/${entry.slug}.html`;
+const title = order <= 3 ? `Acts overview ${order}` : `Acts ${order <= 6 ? '1:1–5' : '1:6–14'} · Study ${((order - 1) % 3) + 1}`;
+---
+<jjo-acts-dashboard class="not-prose" data-acts-dashboard={order} data-acts-reader={entry.slug}>
+  <div class="dashboard-toolbar"><a href={src} target="_blank" rel="noopener" data-astro-reload>Open English dashboard ↗</a><a href="/en/posts/">English series</a><a href="/bible/">Korean study catalogue</a></div>
+  <iframe data-acts-frame src={src} title={title} loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe>
+  <details data-acts-original class="dashboard-original"><summary>Original and source details</summary><p><a data-acts-source href={entry.source} target="_blank" rel="noopener noreferrer">Shared Gemini original ↗</a></p><p>The supplied text, tables, chart values, and layout are preserved in a separate English edition. Ratings and scholarly claims remain the original research draft’s assessments, rather than independently verified peer-review results. Scripture quotations identify their English source separately.</p></details>
+  <noscript><p><a href={src}>Open the English dashboard separately</a>. Tabs, search, and charts require JavaScript.</p></noscript>
+</jjo-acts-dashboard>
+<style>
+  jjo-acts-dashboard { display:block; width:100%; min-width:0; color:var(--color-foreground); background:var(--color-card); font-family:var(--font-reading); }
+  .dashboard-toolbar { display:flex; flex-wrap:wrap; gap:.75rem 1.25rem; padding:.85rem 1rem; border:1px solid var(--color-border); font-size:.85rem; }
+  a { color:var(--color-primary); text-decoration:underline; text-underline-offset:.2em; }
+  iframe { display:block; width:100%; height:88svh; min-height:640px; max-height:1200px; border:1px solid var(--color-border); border-top:0; background:var(--color-background); content-visibility:visible!important; }
+  .dashboard-original { padding:.75rem 1rem; border:1px solid var(--color-border); border-top:0; font-size:.85rem; line-height:1.7; }
+  summary { cursor:pointer; font-weight:600; }
+  p { margin:.6rem 0; }
+  :is(a,summary):focus-visible { outline:2px solid var(--color-ring); outline-offset:4px; }
+  @media(max-width:639px) { iframe { min-height:640px; height:90svh; } }
+</style>

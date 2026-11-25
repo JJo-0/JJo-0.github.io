@@ -1,0 +1,219 @@
+---
+title: 'AI Research Interns: What Does 3.1 Days Measure?'
+description: Read OpenAI’s research automation data through its original diagrams and equations. The analysis
+  covers agent roles, runtime, productivity, limits to parallel work, human intervention, and the denominator
+  behind success rates.
+pubDate: 2026-09-07
+updatedDate: 2026-09-12
+slug: 2026-09-07-openai-research-automation-frontier-one
+category: ai-machine-learning
+subcategory: ai-research-automation
+type: research-report
+tags:
+- frontier-one
+- ai-agents
+- research-automation
+- codex
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translationKey: en-2026-09-07-openai-research-automation-frontier-one
+translatedPosts:
+  ko-KR: 2026-09-07-openai-research-automation-frontier-one
+---
+
+import Math from '@/components/post/Math.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+<NewsFigure media="research-cycle" lang="en" priority />
+
+> <strong>Frontier One · selected September 7, 2026</strong><br />
+> Original announcement: September 6. This explainer was published and rechecked on September 10.<br />
+> <strong>Evidence category: INDUSTRY_TRIGGER.</strong> This is an internal operational report from OpenAI. It has neither the status of peer-reviewed research nor the design of an independent productivity experiment. The equations below are teaching models for interpreting the metrics. They do not reproduce unpublished aggregation code or measured plots.
+
+## L0. What changed, in 30 seconds?
+
+<strong>The report describes researchers dividing work among multiple agents. Its evidence concerns a change in how research is organized.</strong>
+
+OpenAI said it had reached its own “research intern” milestone for tasks assigned by humans. By mid-August 2026 its organizational aggregate was 3.1 agent-workdays per human workday. More than half of successful tasks estimated to take humans four to eight hours involved intervention. Available compute also grew alongside experiment counts. Execution volume, unassisted capability and causal productivity gains therefore need separate measurements. [Official report, sections 1–3 and methods][1]
+
+This article asks where agents fit into research, what the denominator of 3.1 is, and what a lab would need to measure before claiming to have saved time.
+
+## L1. How does writing code differ from carrying out research?
+
+Consider a hypothetical effort to improve perception in a robot camera. Code changes are only part of it. Define scenes where the system fails, choose a baseline, and run comparisons with the same data and compute budget. If the model appears to improve, check for leakage or evaluation mistakes.
+
+A coding answer supplies one part of this process. An <strong>agent</strong> can read files with permitted tools, edit code, observe test outcomes and select its next action. OpenAI’s 2025 introduction of Codex described isolated task environments, file edits, tests, type checks and review of the results. That document is used here for historical context. [Official 2025 introduction][2]
+
+There is an analogy with feedback control. A single answer proposes an action. Repairing code after a failed test feeds an observation back into the next action. But if the test is wrong, more feedback can improve performance against the wrong objective. <strong>Repeated execution and sound research judgment are different capabilities.</strong>
+
+### Six stages help identify what to delegate
+
+The report draws on Epoch AI’s taxonomy of research work: decide, design, build, run, analyze and communicate. The table applies that taxonomy to an invented vision experiment for illustration. [Original taxonomy][3]
+
+<div data-news-diagram="research-lifecycle">
+
+</div>
+
+| Stage | Question in a vision project | Example output |
+|---|---|---|
+| Decide | What is actually causing failures? | Research question and stopping conditions |
+| Design | How can we isolate an improvement? | Comparison conditions and data splits |
+| Build | Can the comparison be run as designed? | Code and unit tests |
+| Run | Did the experiment finish under its specified configuration? | Logs and checkpoints |
+| Analyze | Is the difference meaningful and reproducible? | Repeated experiments and error analysis |
+| Communicate | What was established, and under what conditions? | Report and reproduction instructions |
+
+<strong>Reading the figure.</strong> The six colors distinguish categories. Equal areas do not imply that each takes one-sixth of the time. The central circle is not an empirical productivity graph. The figure supplies names for the work being automated.
+
+Automating implementation will not repair an invalid validation set. Reliable log collection, by contrast, may spare a person repeated interruptions to check a run. Measure which stage changes and by how much.
+
+## L2. Are 3.1 agent-workdays equivalent to three additional people?
+
+The report gives an organization-wide aggregate converted to standard eight-hour workdays. It is neither the median individual researcher’s ratio nor a ratio of research outputs. “Researchers” includes infrastructure and project-support staff. The aggregate also does not capture every use of every tool. [Report, section 1 and appendix][1]
+
+The published description can be restated as follows. The equation does not reconstruct the organization’s exact rules for active and idle time.
+
+<Math display tex={String.raw`R=\frac{W_A}{W_H},\qquad W_A=\frac{T_A}{8\,\mathrm{h}},\quad W_H=\frac{T_H}{8\,\mathrm{h}}`} label="Ratio of agent-workdays to human workdays" />
+
+`T_A` is summed agent execution time and `T_H` is human labor time over the same scope. Dividing by eight hours yields workdays `W_A` and `W_H`. Their ratio `R` is dimensionless. Multiple agents’ operating times can count separately while overlapping on the clock.
+
+<strong>Hypothetical example.</strong> If four agents each run for 6.2 hours per eight human hours, summed agent time is 24.8 hours and the ratio is 3.1. This does not entail 24.8 hours of elapsed time or 3.1 times the human-quality output.
+
+The ratio contains no count of correct results, maintainability measure, human review time or cost of failed experiments. Longer compute time could mean more useful experiments or more repetitions of a mistake. The reported ratio alone cannot distinguish them.
+
+### Productivity needs definitions of output and cost
+
+A lab could define the following operational measures. These are proposals for the reader, distinct from OpenAI’s reported metric.
+
+<Math display tex={String.raw`P_H=\frac{N_{\mathrm{accepted}}}{T_{\mathrm{human}}},\qquad C_{\mathrm{unit}}=\frac{C_{\mathrm{compute}}+C_{\mathrm{review}}+C_{\mathrm{rework}}}{N_{\mathrm{accepted}}}`} label="Accepted outputs per human hour and cost per accepted output" />
+
+`N_accepted` counts outputs that pass a predefined check. The first measure is in accepted outputs per human hour, and the second in won per accepted output. Include instructions, review and rework in human time and define cost categories without double-counting. Unit cost is undefined if there are no accepted outputs.
+
+Counting a research idea and a cleaned-up log as equivalent outputs would distort the measure. Compare similar tasks and account for the possibility of choosing more easy ones. Time saved and research value need separate treatment.
+
+## L2. Why four agents need not make the entire project four times faster
+
+A <strong>bottleneck</strong> limits throughput of the entire process. Even with faster code generation, GPU queues or human review can determine how long it takes to reach a conclusion.
+
+Consider a simple fixed-work model. Let `T_0` be original total time, `p` the fraction that can be accelerated and `s` the actual speedup of that fraction. Start with perfect parallelization and no coordination overhead.
+
+<Math display tex={String.raw`T_{\mathrm{new}}=T_0(1-p)+\frac{T_0p}{s}`} label="New runtime split into serial and accelerated portions" />
+
+Overall speedup is the original time divided by the new time.
+
+<Math display tex={String.raw`S=\frac{T_0}{T_{\mathrm{new}}}=\frac{1}{(1-p)+p/s}`} label="How speeding up one part affects overall speedup" />
+
+If 70% of the work becomes four times faster, `S = 1/(0.3+0.7/4) ≈ 2.11`. Even infinitely fast execution of that part leaves the other 30%, capping overall speedup at about 3.33. This is the bottleneck expressed through Amdahl’s law.
+
+<div data-news-diagram="research-speedup-model">
+  <NewsFigure media="research-speedup" lang="en" />
+</div>
+
+<strong>Reading the graph.</strong> The horizontal axis is component speedup `s`, and the vertical axis is total speedup `S`. The three curves are calculations for `p` equal to 0.3, 0.7 and 0.9. They are illustrative, independent of the original report’s empirical graphs. All start at one when `s=1` and gradually flatten. A larger remaining serial fraction means diminishing returns arrive sooner.
+
+Adding the time a person spends integrating results changes the model to
+
+<Math display tex={String.raw`S=\frac{1}{(1-p)+p/s+h},\qquad h=\frac{T_{\mathrm{overhead}}}{T_0}`} label="Illustrative speedup model including coordination and re-review time" />
+
+With overhead `h=0.1` the earlier example falls to about 1.74×. Repeated rework after misunderstood instructions can push the denominator above one and make the project slower. Here `s` is measured acceleration of the component. It need not equal the number of agents.
+
+Actual research can expand to additional hypotheses instead of holding the workload fixed. This model cannot be used to infer OpenAI’s total research speedup. <strong>It explains why execution volume alone cannot determine overall productivity.</strong>
+
+## L3. Measuring assisted and unassisted success
+
+The report’s four-to-eight-hour category is <strong>a difficulty band based on estimated human completion time</strong>. It does not measure AI runtime. The intervention rate is conditional on success, and tasks with uncertain outcomes were excluded from the graph. [Report, section 3][1]
+
+Write `S` for the event of success, `I` for human intervention and `H` for membership in the specified human-time band. In this section `S` denotes an event, independent of the speedup notation above.
+
+<Math display tex={String.raw`\begin{aligned}P(I\mid S,H)&=\frac{P(I\cap S\cap H)}{P(S\cap H)}\\P(I\mid H)&=\frac{P(I\cap H)}{P(H)}\end{aligned}`} label="Two conditional intervention rates with different denominators" />
+
+The vertical bar means “conditional on,” and the intersection requires both events. With positive denominators, the first expression covers successful tasks in the time band, and the second covers all tasks in it. They could have the same numerical value but cannot be substituted without additional information.
+
+<strong>Teaching example.</strong> Suppose outcomes are known for all 100 tasks of a given difficulty. If 60 succeeded and 40 of the 60 involved intervention, the intervention rate *among successes* is 40/60. Unassisted successes account for the remaining 20 out of all 100 requests, or 20%. Calculating the overall intervention rate also requires knowing which failed tasks involved intervention.
+
+The report’s “more than half” does not imply an unassisted success rate such as 20%. One also needs the overall success rate, task distribution and definition of intervention. The purpose is to <strong>evaluate collaborative performance and independently delegable work separately</strong>, without classifying human help as a failure.
+
+### How do unknown outcomes affect success rates?
+
+Consider another hypothetical 100 requests: 60 successes, 20 failures and 20 unresolved outcomes. Of the 80 judged requests, 75% succeeded. The success rate across all requests is still unknown.
+
+<Math display tex={String.raw`\frac{N_S}{N}\le p_{\mathrm{all}}\le\frac{N_S+N_{?}}{N}`} label="Possible overall success rate when some task outcomes are unknown" />
+
+`N` is total requests, `N_S` confirmed successes and `N_?` unknown outcomes. If each request ultimately succeeds or fails, the possible overall rate here is 60–80%. This is <strong>an arithmetic range arising from missing outcomes</strong>, distinct from a statistical confidence interval. It is not a calculation from the report’s underlying data.
+
+Ask both “What fraction succeeded?” and “For what fraction of all requests could an outcome be judged?” If easy outcomes are more readily observed, the judged subset may misrepresent the whole.
+
+## L3. Why automating the Run stage matters as much as writing code
+
+The next original figure subdivides the Run stage into inputs, outputs, monitoring, diagnosis and recovery. It illustrates a classification rather than September performance measurements. [Epoch AI source][3]
+
+<div data-news-diagram="research-monitoring">
+  <NewsFigure media="research-run" lang="en" />
+</div>
+
+<strong>Reading the figure.</strong> Start with inputs and outputs at the top, then look at what monitoring can detect in the middle. The bracketed numbers beside entries are the taxonomy authors’ ratings of automation. They do not indicate success probabilities or OpenAI scores from September.
+
+If loss spikes in a hypothetical training run, the team must distinguish a high learning rate from damaged data. Plotting the curve, narrowing the cause, changing settings and authorizing changes are different tasks. Observations and proposals can be delegated before configuration changes.
+
+For example, agent A could flag anomalous logs, agent B could build a small reproduction test, and agent C could compare metrics before and after a proposed fix. A person would review final settings and data-split changes. This illustrates a lab workflow without making a claim about any company’s internal setup.
+
+Fix comparison criteria and failure conditions before work begins to avoid reporting improvements obtained by tuning to the evaluation set. If several agents edit one repository, isolate their changes and run integration checks.
+
+## Counterevidence and remaining uncertainty
+
+Tool capability changes quickly, so date and population matter. In July 2025, METR reported a randomized study of 246 real repository tasks completed by 16 experienced developers. With the tools then available, average completion time was 19% longer when AI use was allowed. The result applies to those conditions. [Study design and scope][4]
+
+In February 2026, METR reported selection effects as more developers declined participation and difficulties timing concurrent agents. The authors said a reliable current effect estimate was difficult and described changes to their design. The July 2025 figure cannot simply be carried forward as the effect of September 2026 tools. [Follow-up report][5]
+
+Neither METR report independently repeated the internal OpenAI comparison under the same conditions. Together they illustrate why <strong>user impressions, tool utilization and a controlled productivity measure provide different kinds of evidence</strong>.
+
+A stronger causal comparison would assign similar tasks to AI-permitted and AI-restricted conditions under the same compute budget and quality bar. Difficulty, expertise and task selection can confound a before-and-after comparison. A fixed-task timing study may also miss improvements in choosing research questions.
+
+## Security is part of the productivity comparison
+
+In an August 18, 2026 report, OpenAI said it paused reinforcement learning for two weeks on its latest model intended for deployment while strengthening isolation and monitoring in the research environment. The report described safeguards and conditions for resuming individual workstreams. The pause did not cover all research. [Official report][6]
+
+Think of automated equipment in a laboratory. Even fast equipment can endanger the whole lab without a stop command and limits on access. For a coding agent, the equivalent decisions concern which commands it can execute, which networks it can reach, which secret keys it can use, and which changes it can make to production data.
+
+Skipping tests or expanding permissions to save time changes the criteria for success. The time and cost measures proposed here are meaningful only for results that meet the safety and quality criteria set in advance.
+
+## What could a lab start recording next week?
+
+Select a set of comparable small tasks. Log each task ID, input version, permitted tools and completion criteria. Record instruction time, execution waits, review and rework separately. Finally distinguish passing a test, human acceptance and an unresolved outcome.
+
+The informative comparison is <strong>whether human time and total cost fell for results meeting the same standard</strong>. If more experiments fit the budget, separately assess whether they expanded the range of hypotheses actually tested.
+
+With humans designing criteria, agents running repeated experiments and people examining unexpected results, these records can reveal the limiting stage. Even weak initial gains can guide improvements in task decomposition and validation.
+
+## Check your understanding
+
+<strong>Question 1.</strong> If coding occupied half the project time and became ten times faster, while everything else took the same time, would the project finish ten times faster?
+
+With no added overhead, the speedup is `1/(0.5+0.5/10) ≈ 1.82`. This assumes comparable tasks and the same total workload.
+
+<strong>Question 2.</strong> If 60% of successful tasks involved human intervention, does it follow that AI completed 40% of all tasks unaided?
+
+No. Successful tasks and all requests use different denominators. One also needs the counts of successful tasks and total requests.
+
+<strong>In one sentence.</strong> Research automation becomes interpretable when a team can say what it delegated, how it judged success and how costs changed after including review.
+
+## Sources, figures and related reading
+
+- [OpenAI · Research acceleration: The view inside OpenAI · 2026-09-06][1]
+- [OpenAI, Introducing Codex, May 16, 2025. Historical introduction to the concept.][2]
+- [Denain, Kwon, Ho · Toward an O*NET for AI R&D · Epoch AI · 2026-06-17][3]
+- [METR, randomized study of experienced developer productivity, July 10, 2025][4]
+- [METR, selection effects and changes to the follow-up design, February 24, 2026][5]
+- [OpenAI · Pacing model development · 2026-08-18][6]
+- [Related reading: How can an AI-generated mathematical research claim be checked?](/en/posts/2026-09-09-navier-stokes-openai-frontier-one/)
+
+The two original diagrams are Epoch AI materials licensed under CC BY 4.0. Author, source and license are given, and their content was reproduced unchanged. The speedup curves are original teaching material calculated from the equation above. OpenAI’s own interactive empirical graphs are available in [source 1][1] and are distinct from the figures here.
+
+[1]: https://openai.com/index/research-acceleration-view-inside-openai/
+[2]: https://openai.com/index/introducing-codex/
+[3]: https://epoch.ai/gradient-updates/toward-an-onet-for-ai-rnd
+[4]: https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/
+[5]: https://metr.org/blog/2026-02-24-uplift-update/
+[6]: https://openai.com/index/pacing-model-development-cyber-capabilities/

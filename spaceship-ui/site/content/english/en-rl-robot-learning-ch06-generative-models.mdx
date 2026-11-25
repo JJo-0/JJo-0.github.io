@@ -1,0 +1,504 @@
+---
+title: Reinforcement Learning 06 — Generating Actions with VAEs, Diffusion, and Flow
+  Matching
+description: Why can averaging fail when a scene admits several correct actions? Explore
+  VAEs, VQ-VAEs, DDPM and DDIM, Diffusion Policy, and flow matching through original
+  figures, public captions, and supplementary lectures.
+pubDate: 2026-11-05 00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch06-generative-models
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags:
+- robot-learning
+- reinforcement-learning
+- generative-models
+- diffusion-policy
+- flow-matching
+draft: false
+lang: en
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 6
+translationKey: series-rl-robot-learning-ch06-generative-models-20261109
+translatedPosts:
+  ko-KR: rl-robot-learning-ch06-generative-models
+---
+
+
+import LectureSlide from '@/components/post/LectureSlide.astro';
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+Going around an obstacle on either side can succeed. Yet averaging the two demonstrations sends the robot straight into it. This chapter explores how to generate executable actions without collapsing several valid answers into one.
+
+[Oier Mees · ETH Zurich 2026, Lecture 6](https://www.youtube.com/watch?v=qd6Ldsuu46I) · [Official lecture](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Original PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture6_generative.pdf)
+
+<LectureSlide lecture={6} page={1} caption="Learning a distribution of possible actions rather than a single average" priority />
+
+[Chapter 05](/en/posts/rl-robot-learning-ch05-policy-gradients/) introduced policy gradients that increase the probability of good actions. Here, we focus on the <strong>shape of the distribution</strong> the policy can represent. Algorithms for improving policies and models for representing action distributions are different design choices. Generating actions with a diffusion model does not, by itself, constitute reinforcement learning.
+
+A generative model learns a data distribution and produces new samples. It might generate photographs, or generate a sequence of future joint targets conditioned on camera observations and instructions. We consider latent-variable models, diffusion models, and flow matching in turn. The original course is called Robot Learning, and the main robot examples in this chapter use imitation learning from demonstrations.
+
+[Original lecture from 0:00](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=0s).
+
+<LectureSlide lecture={6} page={2} caption="Opening the same drawer allows different joint configurations and approaches" />
+
+The robot arms in the three photographs adopt different configurations for the same drawer-opening goal. Different grasp positions, elbow orientations, and approach paths can all succeed. A seven-degree-of-freedom arm can move its elbow while maintaining the hand's position and orientation. This <strong>kinematic redundancy</strong> means multiple configurations can achieve the same goal.
+
+Demonstrators' habits introduce further variation into the data. A regression model assuming one correct action per observation can miss these alternatives. Redundancy does not itself imply randomness: a deterministic policy can consistently choose one solution. A generative policy's advantage is representing the distribution of several valid strategies together.
+
+[Original lecture from 0:40](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=40s).
+
+<LectureSlide lecture={6} page={3} caption="Averaging left and right detours is not a safe compromise" />
+
+Consider the two paths around the tree in the middle. Both the left and right paths succeed, but averaging their positions at corresponding stages points toward the tree. Here, <strong>multimodality</strong> means multiple peaks in probability density. This differs from multimodal inputs such as cameras and language.
+
+With sufficient expressive capacity and suitable training conditions, predicting one action by minimizing squared error targets the conditional mean action given the observation. If the region between two strategies is successful, averaging can work; if an obstacle lies between them, it becomes a problem. The precise point is not that averages are always bad, but that the average of separated valid answers is not guaranteed to be valid.
+
+<Math display tex={String.raw`a^*(o)=\mathbb E[a\mid o]`} label="The conditional mean targeted by squared-error regression" />
+
+<RobotEquationGuide id="rl06-e01" />
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch06-generative-models/multimodal-paths.png" alt="Two paths around an obstacle from above and below, and their average path passing through it" caption="The two paths and their pointwise average were calculated directly. The pink circle represents an obstacle; this is not a collision experiment on a real robot." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/06-generative-models" credit="JJo; directly executed numerical example" width={1350} height={525} />
+
+[Original lecture from 1:45](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=105s).
+
+<LectureSlide lecture={6} page={4} caption="Three starting points for modeling complex action distributions" />
+
+The latent-variable model on the left generates complex outcomes from a simple hidden variable. The diffusion model in the middle learns to reverse the addition of noise to data. Flow matching on the right learns a vector field transporting noise samples into the data distribution. All three begin with easily sampled random inputs to represent complex distributions.
+
+For robot applications, condition these models on current images, joint states, and task instructions. The aim is not to generate arbitrary actions but actions that open this drawer in this scene. These three families do not exhaust generative modeling: autoregressive models and GANs also exist. The lecture focuses on three families leading to robot action generation.
+
+[Original lecture from 3:00](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=180s).
+
+<LectureSlide lecture={6} page={5} caption="What it means to generate a sample from noise" />
+
+The figure starts with a vector of numbers sampled from a normal distribution and ends with a cat image. A normal distribution concentrates values in a bell shape around its mean; the standard normal has mean zero and variance one along each axis. A network learns a transformation from random numbers into outputs resembling the data.
+
+Do not understand this solely as memorizing a particular cat photograph assigned to every noise vector. The learning principle should make the overall distribution of transformed samples resemble the data distribution. For robots, output numbers can represent joint targets or hand displacements instead of pixel intensities. Even with the same random input, different observation conditions should produce different actions.
+
+[Original lecture from 3:35](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=215s).
+
+<LectureSlide lecture={6} page={6} caption="A latent variable captures choices among action strategies" />
+
+A latent variable is not directly given in the data but explains differences in outcomes. Think of approaching a cup from the left or right as a hidden choice. First sample the latent variable, then generate an action from both the observation and that variable.
+
+<Math display tex={String.raw`\pi_\theta(a\mid o)=\int p_\theta(a\mid o,z)p(z)\,dz`} label="A conditional action distribution obtained by averaging over latent variables" />
+
+<RobotEquationGuide id="rl06-e02" />
+
+The integral combines the distributions produced by different latent variables according to their frequency. Even if each conditional distribution is simple, the combined distribution can have several peaks. Distinguish expressive power available with sufficiently flexible networks and latent spaces from performance actually learned from limited data.
+
+Within an action sequence, maintaining the chosen strategy matters. Independently switching between left and right at every control instant can make the hand oscillate. Matching the distribution and producing temporally consistent behavior must be considered together.
+
+[Original lecture from 4:10](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=250s).
+
+<LectureSlide lecture={6} page={7} caption="An autoencoder reconstructs inputs from compressed information" />
+
+The encoder on the left compresses a large input into a smaller vector; the decoder on the right reconstructs the input from that vector. For photographs, a representation smaller than the pixel array can capture information such as object shape and arrangement. Reconstruction means producing an output resembling the input.
+
+<Math display tex={String.raw`z=f_\phi(x),\quad \widehat x=g_\theta(z),\quad \mathcal L_{\mathrm{AE}}=\lVert x-\widehat x\rVert_2^2`} label="Autoencoder encoding, reconstruction, and loss" />
+
+<RobotEquationGuide id="rl06-e03" />
+
+Encoder weights are denoted by <Math tex={String.raw`\phi`} /> and decoder weights by <Math tex={String.raw`\theta`} />. The bottleneck limits intermediate representation capacity. Too small a bottleneck loses needed information; too large a bottleneck may simply memorize inputs. Good reconstruction does not ensure preservation of contact or safety information essential to robot control. The inputs and reconstruction targets matter.
+
+[Original lecture from 5:00](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=300s).
+
+<LectureSlide lecture={6} page={8} caption="Codes that support reconstruction are not necessarily codes we can sample usefully" />
+
+Consider the clusters of colors in latent space. An autoencoder may reconstruct well where training inputs map, yet learn little about the sparsely used areas between them. Sampling an arbitrary point from a standard normal and feeding it to the decoder therefore need not produce a good sample.
+
+The decoder being deterministic is not itself the problem. A deterministic transformation of random input can still generate a probability distribution. The key limitation of an ordinary autoencoder is the lack of a mechanism aligning the distribution used to sample codes later with how the space is populated during training.
+
+[Original lecture from 5:55](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=355s).
+
+<LectureSlide lecture={6} page={9} caption="A VAE learns reconstruction and latent-distribution regularity together" />
+
+A variational autoencoder (VAE) encoder outputs a mean and variance rather than a single code. A code sampled from that distribution goes to the decoder. The prior specifies how to sample codes before observing data; the approximate posterior estimates suitable codes after seeing an input.
+
+<Math display tex={String.raw`\mathcal L_{\mathrm{ELBO}}=\mathbb E_{q_\phi(z\mid x)}[\log p_\theta(x\mid z)]-D_{\mathrm{KL}}(q_\phi(z\mid x)\Vert p(z))`} label="Reconstruction and prior-regularization terms" />
+
+<RobotEquationGuide id="rl06-e04" />
+
+<Math display tex={String.raw`\log p_\theta(x)=\mathcal L_{\mathrm{ELBO}}+D_{\mathrm{KL}}(q_\phi(z\mid x)\Vert p_\theta(z\mid x))`} label="Why the ELBO is a lower bound on log likelihood" />
+
+<RobotEquationGuide id="rl06-e05" />
+
+The expectation in the first equation evaluates how well a sampled code explains the input. KL divergence is a nonnegative measure of distribution mismatch. Since the second equation's KL is nonnegative, the ELBO cannot exceed log likelihood. Its name, evidence lower bound, describes precisely this lower bound on observed-data log likelihood. Distinguish the <strong>KL against the prior</strong> from the <strong>KL against the true posterior measuring the bound's gap</strong>.
+
+[Berkeley's VAE lecture, 53:50–56:53](https://www.youtube.com/watch?v=NlIqjtbjjRE&t=3230s) explains the source of this gap. The equation relates increasing the bound to increasing actual likelihood. A conditional action model can use an encoder seeing observations and demonstrated actions, and a decoder reconstructing actions from observations and latent variables. At execution time, future demonstrated actions are unknown and cannot be supplied as answers to the training encoder.
+
+[Original lecture from 6:35](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=395s).
+
+<LectureSlide lecture={6} page={10} caption="Reparameterization creates a gradient path while retaining randomness" />
+
+Leaving the distribution-sampling operation unchanged makes derivatives through to encoder weights inconvenient. Instead, draw standard-normal noise separately and transform it using the mean and standard deviation.
+
+<Math display tex={String.raw`\epsilon\sim\mathcal N(0,I),\qquad z=\mu_\phi(x)+\sigma_\phi(x)\odot\epsilon`} label="Reparameterizing a Gaussian latent variable" />
+
+<RobotEquationGuide id="rl06-e06" />
+
+The multiplication symbol in the middle means elementwise multiplication. For one backpropagation pass, hold the sampled noise fixed and differentiate how reconstruction changes with the mean and standard deviation. Randomness is not removed; its source is moved outside the weights.
+
+Also distinguish variance from standard deviation. If the figure's <Math tex={String.raw`\sigma^2`} /> denotes variance, its square root <Math tex={String.raw`\sigma`} /> belongs in the equation above. If an implementation outputs log variance, halve it and exponentiate to obtain standard deviation. Chapter 05's SAC uses the same pathwise-derivative idea for action samples.
+
+[Original lecture from 8:10](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=490s).
+
+<LectureSlide lecture={6} page={11} caption="Differentiating probabilities versus the path that generates samples" />
+
+The left side shows the score-function approach, calculating how outcome weights change as a distribution changes. REINFORCE's log-probability derivative belongs here. The right side shows the pathwise approach, differentiating directly through the function generating an outcome from fixed noise.
+
+<Math display tex={String.raw`\nabla_\phi\mathbb E_{q_\phi(z)}[f(z)]=\mathbb E_{\epsilon}[\nabla_\phi f(g_\phi(\epsilon))]`} label="Pathwise derivatives through differentiable reparameterization" />
+
+<RobotEquationGuide id="rl06-e07" />
+
+This expression requires a noise distribution independent of the weights and conditions permitting interchange of expectation and differentiation. Linearity of expectation alone does not make every random computation differentiable. Pathwise methods are useful for many continuous latent models, but do not universally guarantee lower variance or apply directly to discrete samples. They require a differentiable path to the output.
+
+[Original lecture from 9:10](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=550s).
+
+<LectureSlide lecture={6} page={12} caption="Generation starts from the prior without a training input" />
+
+The upper part shows training, which passes an input through the encoder; the lower part shows generation, which samples a code from the prior and sends it to the decoder. A VAE aims to create a shared latent space connecting these processes. Similar codes yielding similar outputs can help interpolation and sampling.
+
+KL regularization does not guarantee that every code is meaningful or every intermediate output natural. In particular, whether interpolation between action codes produces collision-free motion requires separate checks against the physical environment and constraints. Latent-space smoothness and real-robot trajectory safety are different properties.
+
+[Original lecture from 10:50](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=650s).
+
+<LectureSlide lecture={6} page={13} caption="The model may ignore latent variables or mismatch the prior" />
+
+Posterior collapse occurs when the decoder barely uses the latent variable. If other conditions already support good reconstruction, or regularization pressure is strong, different codes may yield little variation. This does not necessarily make the decoder deterministic: it can have other sources of randomness.
+
+Prior mismatch is a difference between the latent distribution actually used by training inputs and the prior sampled during generation. Think of aggregating the approximate posteriors across all inputs. A standard-normal sample landing in a region rarely used during training can reconstruct poorly. Low Gaussian density and being mathematically outside the support are different statements. Balancing reconstruction and regularization is a central VAE design issue.
+
+[Original lecture from 11:45](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=705s).
+
+<LectureSlide lecture={6} page={14} caption="VQ-VAE replaces a continuous code with its nearest codebook entry" />
+
+VQ stands for vector quantization. After the encoder produces a continuous vector, select the nearest representative from a fixed-size collection. The codebook is this list of representative vectors. The colored points denote codebook vectors, and each region contains inputs selecting the same representative.
+
+<Math display tex={String.raw`k^*=\arg\min_{k\in\{1,\ldots,K\}}\lVert z_e(x)-e_k\rVert_2^2,\qquad z_q=e_{k^*}`} label="Selecting the nearest codebook entry" />
+
+<RobotEquationGuide id="rl06-e08" />
+
+The index is discrete, but the selected vector has real-valued components. “Code 7” and “a seven-dimensional vector” mean entirely different things. Codebook size and vector dimension are separate as well. Images can select codes by location and be represented by multiple tokens. Basic VQ-VAE training differs from a VAE that outputs Gaussian means and variances for each input and computes a KL term.
+
+[Original lecture from 13:00](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=780s).
+
+<LectureSlide lecture={6} page={15} caption="Nearest-entry selection uses a surrogate gradient" />
+
+As the encoder output moves slightly, the quantized result stays unchanged while the same representative remains nearest. Its true derivative is therefore zero within that region and may be undefined at boundaries. Simply backpropagating reconstruction error through this operation would give the encoder an inadequate learning signal.
+
+<Math display tex={String.raw`z_{\mathrm{ST}}=z_e+\operatorname{sg}(z_q-z_e)`} label="A computational expression for the straight-through estimator" />
+
+<RobotEquationGuide id="rl06-e09" />
+
+Stop-gradient passes a value unchanged in the forward calculation but treats that path's gradient as zero during backpropagation. The expression above outputs the quantized code forward and passes gradients to the encoder output as if through an identity. The STE is a <strong>surrogate gradient for learning</strong>, not the exact derivative of quantization. It permits training through discrete choices but should not be claimed to be unbiased.
+
+[Original lecture from 14:25](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=865s).
+
+<LectureSlide lecture={6} page={16} caption="Reconstruction, codebook, and commitment terms update different components" />
+
+Separating the three losses reveals what each learns. Reconstruction recovers the original input from the code. The codebook term pulls the selected representative toward the encoder output. The commitment term keeps the encoder near its chosen representative.
+
+<Math display tex={String.raw`\mathcal L=\lVert x-D(z_q)\rVert^2+\lVert\operatorname{sg}(z_e)-e_k\rVert^2+\beta\lVert z_e-\operatorname{sg}(e_k)\rVert^2`} label="The three VQ-VAE training terms" />
+
+<RobotEquationGuide id="rl06-e10" />
+
+The middle term holds the encoder side fixed and changes the codebook. The last term holds the codebook side fixed and changes the encoder. Reconstruction error directly trains the decoder and reaches the encoder through the STE. Here, <Math tex={String.raw`\beta`} /> weights commitment; its role differs from the noise-variance symbol used later for diffusion.
+
+A learned codebook alone does not determine which index combinations to sample or how often. That question leads to the next generation stage. Variants can also update codebooks through moving averages rather than direct loss gradients.
+
+[Original lecture from 15:55](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=955s).
+
+<LectureSlide lecture={6} page={17} caption="Generating new codes also requires learning their index distribution" />
+
+After training the encoder, codebook, and decoder in the first stage, convert data into arrays of code indices. A second-stage model can learn the distribution of these arrays. At generation time, sample indices, retrieve their corresponding vectors, and pass them to the decoder.
+
+<Math display tex={String.raw`p(k_1,\ldots,k_M)=\prod_{j=1}^{M}p(k_j\mid k_1,\ldots,k_{j-1})`} label="An autoregressive distribution over code arrays" />
+
+<RobotEquationGuide id="rl06-e11" />
+
+Predicting each next index from preceding indices preserves relationships between tokens. Sampling codes independently and uniformly at different positions can produce combinations absent from the training data. For example, if two tokens always described the same approach direction, sampling one as left and the other as right would create an inconsistent action sequence. Quantization discretizes the representation; learning its correct joint distribution remains a separate requirement.
+
+[Original lecture from 17:10](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1030s).
+
+<LectureSlide lecture={6} page={18} caption="Discretization changes latent-space problems without removing them all" />
+
+The table contrasts reconstruction-focused AEs, VAEs with continuous probabilistic latent spaces, and VQ-VAEs with discrete code lists. VQ-VAE can learn a distribution over code indices instead of fitting a prior across every point of a continuous space. Problems remain, however, including codebook collapse, where only a few codes are selected, and poorly learned code distributions. “No gaps” does not guarantee the quality of every code combination.
+
+The [FSQ paper](https://arxiv.org/abs/2309.15505) rounds continuous values along each axis to a limited set of scalar levels, forming an implicit grid codebook. This reduces the need for a separate learned list of representative vectors and nearest-neighbor search. Networks before and after discretization, and the distribution of code use, still require learning. Representation resolution, compression, and distribution-learning difficulty must still be evaluated together.
+
+[Original lecture from 18:30](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1110s).
+
+<LectureSlide lecture={6} page={19} caption="Distinguishing visual tokens, latent actions, and real action tokens" />
+
+The three columns show different uses of discrete representations. First, tokenizing images or videos supports world models generating future scenes. Second, compressing changes between consecutive images into latent actions can teach patterns of change from videos without action labels. Third, tokenizing actual joint commands or action sequences represents robot-control outputs as discrete sequences.
+
+A latent action in the middle column encodes visual change; it is not immediately a physical command specifying motor voltages. A learned mapping or decoder must connect it to actual robot actions. The left and right columns also have different aims: generating the visible world versus generating executable actions. Names such as GAIA-1, Cosmos, Genie, and VQ-BeT should not all be understood as copies of one VQ-VAE architecture.
+
+[Original lecture from 20:15](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1215s).
+
+<LectureSlide lecture={6} page={20} caption="Diffusion learns how to reverse the progressive corruption of data" />
+
+The top row, where the cat gradually becomes noise, shows how training inputs are constructed. The bottom row generates data starting from noise. During training, the original sample is known, so we can create an input at a chosen noise level and its target. During generation, the original is unknown, requiring repeated use of learned predictions.
+
+Where latent-variable models emphasize generating outputs from a small code, diffusion constructs reconstruction problems across several noise levels. This does not mean all diffusion operates on original pixels or avoids latent spaces. Diffusion can operate on compressed latent representations too. For robot policies, the object being denoised can be an action sequence instead of an image.
+
+[Original lecture from 21:40](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1300s).
+
+<LectureSlide lecture={6} page={21} caption="One noise-addition step combines signal attenuation with noise" />
+
+At each step, slightly shrink the current value and add independent Gaussian noise. Unlike simply accumulating noise on an unchanged signal, this also controls signal magnitude.
+
+<Math display tex={String.raw`q(x_i\mid x_{i-1})=\mathcal N(\sqrt{1-\beta_i}x_{i-1},\beta_i I)`} label="A single forward diffusion transition" />
+
+<RobotEquationGuide id="rl06-e12" />
+
+Here, <Math tex={String.raw`\beta`} /> is the variance of the added noise, so its square root multiplies the actual noise sample. Repeated small <Math tex={String.raw`\beta`} /> values gradually weaken the original features. The list specifying noise amounts at each step is the noise schedule.
+
+The step index here is not physical robot time. Generating one action sequence at a control instant may require dozens of internal denoising calculations. Do not confuse the horizon of future robot actions with the number of neural-network denoising calls.
+
+[Original lecture from 22:40](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1360s).
+
+<LectureSlide lecture={6} page={22} caption="The reverse process estimates the unknown original while moving backward" />
+
+Training provides the original and the noise added to it, but execution provides only a noisy input. The model therefore estimates what to remove from the current input and noise level. Multiple originals can generally correspond to one noisy input, making denoising uncertain as well.
+
+A common training parameterization predicts the accumulated noise from the original to the current level, rather than just the noise added in the last step. Nor does subtracting a prediction once from the current input define every diffusion sampler. Actual updates include signal and noise coefficients and next-step variance.
+
+Conditioned on the known original, the reverse posterior can be expressed as a tractable Gaussian. At execution, however, the original is unknown, so a neural reverse process is trained to approximate it. Knowing the forward noising rule alone therefore does not solve generation.
+
+[Original lecture from 24:10](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1450s).
+
+<LectureSlide lecture={6} page={23} caption="DDPM learns to predict noise at different noise levels" />
+
+The upper equation uses a log-likelihood lower bound as in a VAE, but with multiple intermediate noisy states. The first KL aligns the final noisy distribution with the starting prior. The middle terms fit individual reverse-step distributions, and the final reconstruction term explains clean data. A rigorous bound includes expectations over the corresponding intermediate states.
+
+A widely used simplified training objective selects a random noise level and reduces squared error between predicted and actual noise.
+
+<Math display tex={String.raw`\mathcal L_{\mathrm{simple}}=\mathbb E_{x_0,i,\epsilon}[\lVert\epsilon-\epsilon_\theta(x_i,i)\rVert_2^2]`} label="DDPM's simplified noise-prediction loss" />
+
+<RobotEquationGuide id="rl06-e13" />
+
+Deriving the original variational objective can produce step-dependent weights. The simplified loss above should not be called term-for-term identical to the original likelihood objective. Notice that this model also uses MSE. The earlier averaging problem did not prohibit MSE itself; it concerned predicting an entire action directly as a mean. Repeatedly applying noise-level-dependent predictions during generation can produce multimodal distributions. [Original DDPM paper](https://arxiv.org/abs/2006.11239).
+
+[Original lecture from 25:50](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1550s).
+
+<LectureSlide lecture={6} page={24} caption="Constructing a training sample at any noise level in one step" />
+
+Repeated substitution of the one-step noising equation expresses the original-signal coefficient as a product of per-step signal coefficients. Independent Gaussian noises can be combined into one Gaussian by adding their variances.
+
+<Math display tex={String.raw`\alpha_i=1-\beta_i,\quad \bar\alpha_i=\prod_{j=1}^{i}\alpha_j`} label="Definition of the cumulative signal coefficient" />
+
+<RobotEquationGuide id="rl06-e14" />
+
+<Math display tex={String.raw`x_i=\sqrt{\bar\alpha_i}x_0+\sqrt{1-\bar\alpha_i}\epsilon,\quad\epsilon\sim\mathcal N(0,I)`} label="Direct sampling at a chosen noise level" />
+
+<RobotEquationGuide id="rl06-e15" />
+
+This equation avoids computing the first 799 steps merely to construct one training sample at step 800. Precomputed cumulative coefficients allow direct access to the chosen level. The computational advantage concerns noise-step count; it does not eliminate data dimensionality or network computation.
+
+Direct and sequential samples have matching marginal distributions at each level. Independently drawn sample values need not be identical. Sampling noise independently for several times also does not reproduce the joint path of the original Markov chain.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch06-generative-models/forward-marginals.png" alt="Histograms comparing sequential and direct noising, with signal and noise coefficients" caption="Each method generated 80,000 samples from the same fixed original. Overlapping histograms check agreement of marginal distributions, rather than identical individual paths." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/06-generative-models" credit="JJo; directly executed numerical example" width={1350} height={525} />
+
+[Original lecture from 27:50](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1670s).
+
+<LectureSlide lecture={6} page={25} caption="DDPM sampling combines a predicted mean with per-step randomness" />
+
+Generation begins with Gaussian noise and proceeds backward from high noise levels. Move toward a predicted mean and add noise matching the chosen reverse-process variance.
+
+Unlike DDPM's per-step noise addition, deterministic DDIM can follow a fixed path once the initial noise is selected. Different initial noise can still yield different outputs, so omitting per-step noise does not imply collapse to one result.
+
+<Math display tex={String.raw`x_{i-1}=\frac{1}{\sqrt{\alpha_i}}\left(x_i-\frac{\beta_i}{\sqrt{1-\bar\alpha_i}}\epsilon_\theta(x_i,i)\right)+\sigma_i z`} label="The DDPM reverse sampling update" />
+
+<RobotEquationGuide id="rl06-e16" />
+
+Fresh noise is sampled from a standard normal and set to zero at the final step. Here, <Math tex={String.raw`\sigma`} /> is the reverse-process standard deviation; it may use the square root of <Math tex={String.raw`\beta`} /> or another variance choice from the original paper. Using the predicted mean alone differs from sampling around it.
+
+Do not generalize that diverse outputs require fresh noise at every step. A deterministic transformation can produce different outputs from different initial noise, as DDIM illustrates next. Nor is deleting the noise term from this DDPM equation equivalent to every deterministic sampler. Each sampler has an update matching the reverse process it approximates. Here, score means the spatial gradient of data log density, not a reinforcement-learning reward score.
+
+[Original lecture from 31:00](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=1860s).
+
+<LectureSlide lecture={6} page={26} caption="DDIM estimates a clean sample and moves to a lower noise level" />
+
+First estimate the clean original from the current input. Then combine that estimate with the predicted noise direction to construct an input at a lower noise level. Skipping intermediate steps separates the training schedule's length from the number of predictions during execution.
+
+<Math display tex={String.raw`\widehat x_0=\frac{x_i-\sqrt{1-\bar\alpha_i}\epsilon_\theta(x_i,i)}{\sqrt{\bar\alpha_i}}`} label="Estimating the original from the current sample" />
+
+<RobotEquationGuide id="rl06-e17" />
+
+<Math display tex={String.raw`x_j=\sqrt{\bar\alpha_j}\widehat x_0+\sqrt{1-\bar\alpha_j}\epsilon_\theta(x_i,i),\quad j<i`} label="A DDIM update without fresh noise" />
+
+<RobotEquationGuide id="rl06-e18" />
+
+The expression above is deterministic DDIM with <Math tex={String.raw`\eta`} /> set to zero. <strong>The same conditions and initial noise</strong> produce the same output. Changing the initial noise can produce a different output, so multimodality is not lost. Fewer steps are faster, but change the effects of prediction and discretization error. Reducing 1,000 steps to 20 does not guarantee unchanged quality on every task.
+
+[Berkeley's diffusion lecture from 52:11](https://www.youtube.com/watch?v=DsEDMjdxOv4&t=3131s) distinguishes the training objective from the execution sampler. Sharing DDPM's forward marginal distributions does not imply identical generated distributions and sample paths under every finite-step procedure. [Original DDIM paper](https://arxiv.org/abs/2010.02502).
+
+[Original lecture from 34:00](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2040s).
+
+<LectureSlide lecture={6} page={27} caption="Conditional generation models the distribution of outcomes needed now" />
+
+In the astronaut illustration, a text instruction constrains the image to generate. Robots can condition on camera images, proprioception—their own joint-state sensing—and language instructions. Even for the same cup, “grasp it” and “push it aside” require different action distributions.
+
+Adding conditions to the noise-prediction network teaches observation-dependent reconstruction. The condition is not the target action itself and has a different role from a reinforcement-learning reward received afterward. Earlier diffusion equations omit conditioning only to introduce the noise process first. The latent-variable policies introduced earlier could already be conditioned on observations too.
+
+[Original lecture from 35:52](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2152s).
+
+<LectureSlide lecture={6} page={28} caption="CFG uses the difference between conditional and unconditional predictions" />
+
+During training, replace some conditions with an empty token so the same model learns both conditional and unconditional predictions. At execution, scale the difference between those predictions to the desired strength.
+
+<Math display tex={String.raw`\widehat\epsilon=\epsilon_u+w(\epsilon_c-\epsilon_u)`} label="Combining predictions with classifier-free guidance" />
+
+<RobotEquationGuide id="rl06-e19" />
+
+Here, <Math tex={String.raw`\epsilon_u`} /> is the noise prediction with an empty condition and <Math tex={String.raw`\epsilon_c`} /> the prediction with conditioning. The subscripts <Math tex={String.raw`u`} /> and <Math tex={String.raw`c`} /> distinguish the two predictions. Under this convention, <Math tex={String.raw`w`} /> equal to 0 gives the unconditional prediction, 1 gives the original conditional prediction, and values above 1 extrapolate farther along their difference. This can emphasize the desired condition while reducing diversity or introducing distortions.
+
+Unlike classifier guidance, which trains a separate classifier, CFG handles both cases within one prediction model through condition dropout. “Classifier-free” does not mean generating without conditioning. Nor does every Diffusion Policy necessarily use CFG. Robot applications must choose which conditions to drop; indiscriminately removing necessary state information does not make actions safe. [CFG paper](https://arxiv.org/abs/2207.12598).
+
+[Original lecture from 36:40](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2200s).
+
+<LectureSlide lecture={6} page={29} caption="Diffusion Policy generates future action sequences instead of pixels" />
+
+Consider pushing a <Math tex={String.raw`T`} />-shaped object on a table to match a target outline. Bringing the object center close is insufficient; orientation and contact location also matter. Several contact sequences can lead toward the same goal, making it useful to represent multimodality in demonstrations.
+
+Diffusion Policy adds noise to demonstrated action sequences and learns to predict that noise conditioned on the current observation. An action sequence concatenates commands for several future control instants. This basic training is imitation learning from demonstrations; it does not automatically perform reward-maximizing reinforcement learning.
+
+<Math display tex={String.raw`A_i=\sqrt{\bar\alpha_i}A+\sqrt{1-\bar\alpha_i}\epsilon,\quad \epsilon_\theta(A_i,i,o)`} label="Noise prediction for an observation-conditioned action sequence" />
+
+<RobotEquationGuide id="rl06-e20" />
+
+The slide's “add noise to actions” abbreviates the coefficient-weighted process above. Outputs are future actions, not necessarily predictions of future images or world states. A receding-horizon approach can predict a long action sequence, execute only part of it, then replan from a fresh observation. [Diffusion Policy paper, videos, and code](https://diffusion-policy.cs.columbia.edu/).
+
+[Original lecture from 38:44](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2324s).
+
+<LectureSlide lecture={6} page={30} caption="Share observations within one planning cycle while repeatedly updating the action array" />
+
+The images on the left show camera observations and joint states conditioning the transformation of noise into a coherent action sequence. The middle timeline separates prediction and execution horizons. Observing again after execution allows responses to environmental changes.
+
+Camera and robot-state encoding is paid once per planning cycle, and the representation is shared across denoising steps. In the temporal U-Net variant, FiLM adjusts internal feature scales and shifts using the observation; the Transformer variant attends to observations. [Diffusion Policy project](https://diffusion-policy.cs.columbia.edu/)
+
+The U-Net's 1D axis on the right is the action sequence's time axis. Downsampling gathers broader context, then upsampling reconstructs actions at each time, with skip connections preserving detail. FiLM derives feature-specific scales and shifts from conditioning to modulate intermediate activations. In a Transformer variant, action tokens can attend to observation tokens.
+
+Computing observation features once means reusing them across denoising steps <strong>within one action-sequence generation cycle</strong>. It does not mean reading the camera only once during the entire robot run. Normalizing action units and ranges also matters. Treating translations in meters and rotations in radians as if they shared a numerical scale changes the balance of learning.
+
+[Original lecture from 40:14](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2414s).
+
+<LectureSlide lecture={6} page={31} caption="Extending a task-specialized policy to multiple tasks" />
+
+Different objects, tools, and contact modes in the photographs call for different action distributions. A specialist trained for one task does not readily transfer unchanged to another task or robot. Beyond dataset size, observation formats, task conditions, action dimensions, and units must be handled together.
+
+The original lecture discusses training sensitivity and scaling difficulties in the early Transformer version of Diffusion Policy. This does not mean diffusion policies are fundamentally unable to learn multiple tasks. Octo and DiT Policy, discussed next, extend in that direction through changes to data and architecture. Successful single-task demonstrations and generalization under varied conditions require separate evaluation.
+
+[Original lecture from 41:08](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2468s).
+
+<LectureSlide lecture={6} page={32} caption="Octo connects multiple robot datasets through shared representations and an action-generation head" />
+
+The architecture below separates language or goal images, observation tokens, readout tokens, and an action head. A token is one information slot processed by the model. Readout tokens gather task and observation information into a representation for action output. A small diffusion head then generates an action sequence conditioned on that representation.
+
+The [Octo paper](https://arxiv.org/abs/2405.12213) studies a general robot policy trained on approximately 800,000 <strong>trajectories</strong> from Open X-Embodiment. Each trajectory contains multiple control steps, so this is not 800,000 individual actions. Its diffusion action head is a small MLP. Do not conflate the readout's attention-based information aggregation with the action head receiving that result, as if both were the same cross-attention block.
+
+The point is that pretrained representations can be adapted to new robots, not that a download instantly matches every robot's joint ordering and units. Input/output adapters and additional training conditions are required.
+
+[Original lecture from 42:00](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2520s).
+
+<LectureSlide lecture={6} page={33} caption="DiT Policy injects conditions through normalization-layer scales and shifts" />
+
+The observation encoder combines images and robot states, while the action generator updates noisy action tokens. AdaLN means adaptive layer normalization. It conveys observations and noise levels by conditioning how normalized features are scaled and shifted. This connects to FiLM's idea of modulating internal features with conditions.
+
+The [DiT Policy paper](https://arxiv.org/abs/2410.10088) reports stability and complex manipulation performance under particular architectural changes and training choices. This is not proof that cross-attention is unnecessary in every Transformer. A long task such as sushi cutting may span 1,500 control steps, which is different from the number of diffusion steps generating one action sequence. One measures control time in the environment; the other measures internal generation computation.
+
+[Original lecture from 42:43](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2563s).
+
+<LectureSlide lecture={6} page={34} caption="Flow matching learns a velocity field from noise to data" />
+
+Sample one noise value and one data example, then connect them with a straight line. Mixing them so that time 0 is noise and time 1 is data produces training examples anywhere along the path.
+
+<Math display tex={String.raw`x_\tau=(1-\tau)\epsilon+\tau x_{\mathrm{data}},\quad u=x_{\mathrm{data}}-\epsilon`} label="A straight probability path and the paired samples' target velocity" />
+
+<RobotEquationGuide id="rl06-e21" />
+
+<Math display tex={String.raw`\mathcal L_{\mathrm{FM}}=\mathbb E[\lVert v_\theta(x_\tau,\tau)-u\rVert^2]`} label="The flow-matching velocity-regression objective" />
+
+<RobotEquationGuide id="rl06-e22" />
+
+A vector field specifies which direction and how far to move given the current position and generation time. Generation starts from fresh noise and integrates this field. The simplest Euler method adds current velocity multiplied by a small time interval to the position.
+
+<Math display tex={String.raw`x_{\tau+\Delta\tau}=x_\tau+\Delta\tau\,v_\theta(x_\tau,\tau)`} label="One Euler integration step" />
+
+<RobotEquationGuide id="rl06-e23" />
+
+A particular noise–data pair has constant target velocity, but <strong>the overall learned velocity field is not constant everywhere</strong>. When several pairs pass near the same intermediate location, the model learns their conditional mean velocity, and paths obtained by integrating the field can curve. Although this also uses MSE, its generative structure differs from directly outputting one mean action. Generation time is not physical robot-motion time: the robot does not execute every intermediate action array along the generation path.
+
+Straight interpolation is the path selected in this lecture; flow matching as a whole need not use only this path. [Original Flow Matching paper](https://arxiv.org/abs/2210.02747).
+
+[Original lecture from 43:41](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2621s).
+
+<LectureSlide lecture={6} page={35} caption="Rectified flow retrains on generated pairs to straighten paths" />
+
+Randomly pairing arbitrary noise and data can produce crossing straight lines. When different target directions overlap at an intermediate location, representing them with one smooth vector field can lead to curved flow. The difference between the left and right curves illustrates an attempt to simplify this transport.
+
+First train a flow, then follow it from fresh noise to an endpoint. Pair that initial noise with the reached endpoint and train again. This recoupling and retraining is called reflow. It uses pairs connected by the current model instead of the original independently sampled pairs.
+
+Straighter paths can be easier to approximate with fewer integration steps. This does not make every flow exactly straight or guarantee equal quality in one step. Learning error, integration error, and representational limits remain. Also distinguish crossings of straight training pairs from crossings at the same space–time point by actual solution paths of a smooth ODE satisfying uniqueness conditions. [Rectified Flow paper](https://arxiv.org/abs/2209.03003).
+
+[Original lecture from 46:18](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2778s).
+
+<LectureSlide lecture={6} page={36} caption="π₀ generates continuous action sequences conditioned on visual and language representations" />
+
+The left side shows robot data and Internet pretraining data; the middle contains a vision–language model; the right contains an action expert. It uses representations interpreting camera images and instructions such as “fold the shirt,” while robot-specific weights process joint states and noisy actions. The dual-arm, mobile, and single-arm robots illustrate its intended range of embodiments.
+
+Rather than sampling every flow time equally often, the π₀ introduced in the lecture gives greater weight to high-noise regions. Which noise levels are practiced frequently during training and how many integration steps are used at execution are separate choices. [π₀ paper](https://arxiv.org/abs/2410.24164)
+
+In Section 4 and Appendix B of the [original π₀ paper](https://arxiv.org/abs/2410.24164), generation time runs from <strong>0 for noise to 1 for clean actions</strong>, matching this chapter's straight-flow equations. Mixing this with diffusion notation that uses zero for clean data can reverse the integration direction in code. Hold observations fixed, start from noisy actions, integrate from 0 to 1, execute part of the resulting action sequence, and observe again.
+
+Instead of uniform training-time sampling, the model uses a shifted Beta distribution emphasizing smaller times with more noise. The appendix specifies an upper bound of 0.999 and a transformed Beta(1.5,1). This allocates training effort to regions where predicting actions from observations is difficult; it is not a mandatory rule for every flow model.
+
+Model sizes and module names in the figure describe the original <Math tex={String.raw`\pi_0`} /> configuration cited by this lecture. Vision–language pretraining does not mean Internet images carry actual motor-command labels. Robot action data and flow training provide that connection. Joint training across robots also requires aligning action dimensions, normalization, and input/output mappings.
+
+[Original lecture from 48:01](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2881s).
+
+<LectureSlide lecture={6} page={37} caption="Comparing distribution representations and execution procedures together" />
+
+Rather than asking which family is newest, first ask what it predicts and how it generates samples.
+
+| Family | Core learning target | Generation procedure | Robot-specific question |
+|---|---|---|---|
+| VAE | Probabilistic latent representations and a decoder explaining inputs | Sample a prior code and reconstruct | Can codes be sampled without target actions at execution? |
+| VQ-VAE | Discrete codebook and reconstruction, plus a separate code distribution | Sample indices, retrieve vectors, and reconstruct | How do code combinations map to actual actions? |
+| DDPM and DDIM | Predictions at multiple noise levels | Iteratively recover data from noise | Are generation steps, latency, and action horizon distinguished? |
+| Flow matching | A velocity field over position and generation time | Integrate the field from noise | Are time direction and integration intervals consistent? |
+
+Diffusion noise prediction and flow velocity prediction can be connected through transformations under selected probability paths and time parameterizations. This does not make finite-step DDPM, DDIM, and every flow sampler identical algorithms or guarantee identical quality. Consider discretization, objective weights, conditioning, and computation together.
+
+The ability to generate diverse actions does not guarantee good actions. A dataset with many failures can teach their distribution too, and a model unaware of constraints can generate dangerous commands. Generative models provide policy representations; deciding what they learn and how they are evaluated remains a design problem for imitation learning, reinforcement learning, and control systems.
+
+[Original lecture from 48:55](https://www.youtube.com/watch?v=qd6Ldsuu46I&t=2935s).
+
+## Calculations run and checked for this article
+
+The [executable code and results](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/06-generative-models) are available so the equations can be explored without a robot. Calculations cover collision by averaging two detours, the ELBO and KL gap in a Gaussian latent model, reparameterization derivatives, true quantization derivatives versus STE, diffusion marginals, DDIM clean-sample reconstruction algebra, CFG weights, and flow integration error.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch06-generative-models/flow-integration.png" alt="Paths of an analytical velocity field transporting Gaussian distributions, with standard-deviation error versus integration-step count" caption="The conditional mean velocity field from straight interpolation between independent Gaussian pairs was integrated directly. Although training pairs follow straight lines, paths through the overall field can curve." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/06-generative-models" credit="JJo; directly executed numerical example" width={1350} height={525} />
+
+These examples are numerical calculations using known probability distributions. The DDIM check uses ground-truth noise and therefore does not evaluate a learned noise predictor. They also do not represent training VAE or Diffusion Policy networks, completing the official assignment, running robot physics simulation, or executing hardware. For executable robot examples, consult the [official Diffusion Policy code](https://github.com/real-stanford/diffusion_policy) and the project paper's simulation and experimental settings.
+
+## Related lectures and original sources
+
+- [Berkeley CS294-158, Deep Unsupervised Learning 2024](https://sites.google.com/view/berkeley-cs294-158-sp24/home): Lecture 4 on latent variables and VAEs, and Lecture 6 on diffusion. These supplement the ELBO-gap explanation and distinction between training and sampling.
+- [Original VAE paper](https://arxiv.org/abs/1312.6114) · [VQ-VAE](https://arxiv.org/abs/1711.00937): starting points for probabilistic latent representations, reparameterization, and codebook learning.
+- [DDPM](https://arxiv.org/abs/2006.11239) · [DDIM](https://arxiv.org/abs/2010.02502) · [CFG](https://arxiv.org/abs/2207.12598): read noise-prediction objectives separately from generation procedures.
+- [Diffusion Policy](https://diffusion-policy.cs.columbia.edu/) · [Octo](https://octo-models.github.io/) · [DiT Policy](https://arxiv.org/abs/2410.10088): compare action sequences, conditioning, and multitask scaling.
+- [Flow Matching](https://arxiv.org/abs/2210.02747) · [Rectified Flow](https://arxiv.org/abs/2209.03003) · [π₀](https://arxiv.org/abs/2410.24164): learning velocity fields and connecting them to action generation.
+- [Cheng Chi's invited talk](https://www.youtube.com/watch?v=tvFvIEOBKfM&t=270s): at 4:30–7:31, hardware, data, components, and procurement are discussed as essential system conditions alongside algorithms. This recording supplements implementation context beyond the model; it is not assumed to be an additional lecture deriving Diffusion Policy equations.
+
+Copyright in the slides and lecture belongs to <strong>Oier Mees and the rights holders of each cited resource</strong>. This English edition translates JJo's Korean explanation of the original materials; JJo generated the article's numerical figures. Figures and videos from cited papers and models remain subject to their original authors' rights. [Oier Mees](https://www.oiermees.com/) · [ETH Computer Vision and Geometry Group](https://cvg.ethz.ch/).

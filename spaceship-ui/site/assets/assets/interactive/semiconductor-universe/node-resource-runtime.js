@@ -1,4 +1,5 @@
 (() => {
+  const english = document.documentElement.lang === 'en';
   const registryUrl = './node-resources-fe-process.json';
   const hardeningRegistryUrl = './node-resources-fe-process-hardening.json';
   const state = { registry: null, panel: null };
@@ -12,18 +13,18 @@
     const panel = document.createElement('section');
     panel.className = 'company-link-panel node-resource-panel';
     panel.hidden = true;
-    panel.setAttribute('aria-label', '반도체 공정 및 장비 학습 외부 링크');
+    panel.setAttribute('aria-label', english ? 'Semiconductor process and equipment learning resources' : '반도체 공정 및 장비 학습 외부 링크');
     panel.innerHTML = `
       <div class="company-link-heading">
         <div>
           <p class="company-link-eyebrow">PROCESS / EQUIPMENT RESOURCES</p>
-          <h3 data-node-resource-title>공정·장비 자료</h3>
+          <h3 data-node-resource-title>${english ? 'Process and equipment resources' : '공정·장비 자료'}</h3>
         </div>
         <span class="company-link-market" data-node-resource-scope></span>
       </div>
       <p class="company-link-description" data-node-resource-description></p>
       <div class="company-link-actions is-resource-grid" data-node-resource-actions></div>
-      <p class="company-link-note">OFFICIAL은 제조사 1차 자료, LEARN은 대학·정부의 중립적 학습자료입니다. 핵심 공정 링크는 DOUBLE-CHECKED overlay를 통과해야 노출되며, 외부 링크만으로 Atlas의 공급관계·고객상태·점유율 evidence가 상향되지는 않습니다.</p>
+      <p class="company-link-note">${english ? 'OFFICIAL links lead to primary sources from manufacturers. LEARN links lead to independent educational material from universities or governments. Core process links appear only after a second review (DOUBLE-CHECKED). The atlas evaluates supplier relationships, customer status, and market share separately.' : 'OFFICIAL은 제조사 1차 자료, LEARN은 대학·정부의 중립적 학습자료입니다. 핵심 공정 링크는 DOUBLE-CHECKED overlay를 통과해야 노출되며, 외부 링크만으로 Atlas의 공급관계·고객상태·점유율 evidence가 상향되지는 않습니다.'}</p>
     `;
     (scoreGrid || inspector.firstElementChild)?.insertAdjacentElement('afterend', panel);
     state.panel = panel;
@@ -73,7 +74,9 @@
     const scope = nodeId.startsWith('SEM.PC') ? 'PROCESS CONTROL' : 'FE PROCESS';
     panel.querySelector('[data-node-resource-title]').textContent = profile.name || nodeId;
     panel.querySelector('[data-node-resource-scope]').textContent = scope;
-    panel.querySelector('[data-node-resource-description]').textContent = `${profile.name || nodeId}를 이해하기 위한 제조사 장비·공정 문서와 중립 학습자료입니다.`;
+    panel.querySelector('[data-node-resource-description]').textContent = english
+      ? `Explore manufacturer documentation and independent learning resources about ${profile.name || nodeId}.`
+      : `${profile.name || nodeId}를 이해하기 위한 제조사 장비·공정 문서와 중립 학습자료입니다.`;
     actions.replaceChildren();
     for (const resource of profile.resources || []) actions.append(createAnchor(resource));
 
