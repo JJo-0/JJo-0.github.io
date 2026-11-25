@@ -24,8 +24,13 @@ assert.deepEqual(restored.edges[2].reasons,mixed.edges[2].reasons,'Restored edge
 assert.deepEqual(parseGraphPayload(serializeGraphPayload({nodes:[],edges:[]})),{nodes:[],edges:[]});
 assert(!encoded.includes('<')&&!encoded.includes('</script>'),'JSON cannot terminate its inert script');
 const component=fs.readFileSync(new URL('../src/components/experience/ExperienceCanvas.astro',import.meta.url),'utf8');
-assert(component.includes('type="application/json" data-post-graph-source set:html={serializeGraphPayload(graph)}'));
-assert(component.includes('graph.nodes.map') && component.includes('data-post-graph-node={node.id}'));
+assert(!component.includes('data-post-graph-source'),'Cold HTML must not embed the complete graph');
+assert(component.includes('data-graph-preview') && component.includes('data-graph-url') && component.includes('data-graph-activate'));
+const endpoint=fs.readFileSync(new URL('../src/pages/writing-graph/[lang].json.ts',import.meta.url),'utf8');
+assert(endpoint.includes('serializeGraphPayload(graph)') && endpoint.includes('getWritingGraph'));
+const loader=fs.readFileSync(new URL('../src/lib/experience/graph-loader.ts',import.meta.url),'utf8');
+assert(loader.includes('fetch(url,') && loader.includes("import('./ascii-art')") && loader.includes('mountWritingGraph'));
 const runtime=fs.readFileSync(new URL('../src/lib/experience/ascii-art.ts',import.meta.url),'utf8');
 assert(runtime.includes("script[data-post-graph-source]") && runtime.includes("host.dataset.postGraph ?? 'null'"));
-console.log('graph-json: PASS lossless transport, closing-script safety, all native links and legacy fallback retained');
+assert(runtime.includes("document.createElement('a')") && runtime.includes('anchor.href = node.href') && runtime.includes('anchor.dataset.postGraphNode = node.id'));
+console.log('graph-json: PASS lossless transport, legacy decoding, static preview and on-demand native links');

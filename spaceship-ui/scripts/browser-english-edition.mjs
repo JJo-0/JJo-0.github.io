@@ -27,7 +27,7 @@ async function checkNumberBaseball(lang) {
   }
 }
 async function checkHomeParity(cdp, sessionId) {
-  const state = `(() => {
+  const state = `(async () => {
     const home = document.querySelector('[data-experience-page="home"]');
     const list = selector => [...home.querySelectorAll(selector)];
     return {
@@ -37,21 +37,29 @@ async function checkHomeParity(cdp, sessionId) {
       profile: home.querySelector('.experience-mouse-frame img')?.getAttribute('src'),
       cards: list('[data-post-transition-slug]').map(a => a.pathname),
       graph: list('[data-post-graph-node]').map(a => a.pathname),
-      edges: JSON.parse(home.querySelector('[data-post-graph-source]').textContent).edges,
+      edges: (await (await fetch(home.querySelector('[data-graph-url]').dataset.graphUrl)).json()).edges,
       overflow: document.documentElement.scrollWidth > innerWidth + 2,
       hasKoreanCopy: /[가-힣]/.test(home.innerText),
       coverageLink: Boolean(home.querySelector('a[href^="/en/translations"]')),
     };
   })()`;
+  async function activateGraph() {
+    await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0},sessionId);
+    await waitExpression(cdp,sessionId,`document.querySelector('[data-graph-activate]:not([hidden])') !== null`,'map activation available');
+    await evaluate(cdp,sessionId,`document.querySelector('[data-graph-activate]').scrollIntoView({block:'center',behavior:'instant'});document.querySelector('[data-graph-activate]').click()`);
+    await waitExpression(cdp,sessionId,`document.querySelector('[data-experience-canvas]').dataset.graphState==='ready' && !!document.querySelector('[data-post-graph-node]')`,'complete interactive graph');
+  }
   await navigate(cdp, sessionId, '/');
+  await activateGraph();
   const ko = await evaluate(cdp, sessionId, state);
   await enter('header a[data-locale-choice="en"]');
-  await waitExpression(cdp, sessionId, `location.pathname === '/en/' && document.documentElement?.lang === 'en' && !!document.querySelector('[data-post-graph-node]')`, 'English home after switching language');
+  await waitExpression(cdp, sessionId, `location.pathname === '/en/' && document.documentElement?.lang === 'en' && !!document.querySelector('[data-graph-activate]')`, 'English home after switching language');
+  await activateGraph();
   const en = await evaluate(cdp, sessionId, state);
   assert.deepEqual(en.sections, ko.sections, 'Both homepages show the same sections in order');
   assert.deepEqual(en.areas, ko.areas);
   assert.equal(en.layout, ko.layout);
-  assert.equal(en.profile, '/image/mouse_surprised.gif');
+  assert.equal(en.profile, '/assets/profile/mouse_surprised-still.webp');
   assert.equal(en.profile, ko.profile);
   assert(en.sections.includes('popular-heading'));
   assert(!en.overflow && !ko.overflow);

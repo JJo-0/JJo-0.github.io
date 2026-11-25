@@ -281,9 +281,7 @@ export function installExperienceRendererRuntime(): void {
 
     activeHost = host;
     const currentGeneration = generation;
-    const profile = detectExperienceCapability();
-    const route = experienceRouteFromPath(window.location.pathname);
-
+    // ASCII writing graphs never initialize or probe a GPU context.
     if (host.dataset.asciiGraph === 'true') {
       host.dataset.rendererTier = 'safe';
       host.dataset.rendererReason = 'ascii-writing-graph';
@@ -291,6 +289,8 @@ export function installExperienceRendererRuntime(): void {
       return;
     }
 
+    const profile = detectExperienceCapability();
+    const route = experienceRouteFromPath(window.location.pathname);
     document.documentElement.dataset.experienceTier = profile.tier;
     host.dataset.rendererTier = profile.tier;
     host.dataset.rendererReason = profile.reasons.join(',') || 'capable';
