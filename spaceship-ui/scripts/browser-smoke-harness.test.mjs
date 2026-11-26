@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { poll } from './browser-smoke-harness.mjs';
 
 const harnessUrl = new URL('./browser-smoke-harness.mjs', import.meta.url).href;
 
@@ -66,4 +67,18 @@ test('early Chrome exit reports the exit code and stderr and removes its profile
 
 test('missing Chrome executable reports a spawn error and removes its profile', (t) => {
   runFixture(t, null, `await assert.rejects(startChrome(), /ENOENT/);`);
+});
+
+test('a blocked hit test retries until the point is clickable', async () => {
+  const point = { x: 24, y: 48 };
+  const samples = [{ blocked: true }, point];
+  assert.equal(await poll(() => samples.shift(), 'result hit-test', 2_000, (p) => p && !p.blocked), point);
+});
+
+test('a persistent obstruction fails with the last hit-test diagnostic', async () => {
+  const blocked = { blocked: true, tag: 'DIV' };
+  await assert.rejects(
+    poll(() => blocked, 'result hit-test', 100, (p) => p && !p.blocked),
+    /Timed out: result hit-test; last=\{"blocked":true,"tag":"DIV"\}/,
+  );
 });

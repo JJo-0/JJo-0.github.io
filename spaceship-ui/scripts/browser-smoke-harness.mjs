@@ -48,7 +48,7 @@ export function setReducedMotionOverride(value) {
   reducedMotionOverride = value;
 }
 
-export async function poll(fn, label, timeout = TIMEOUT) {
+export async function poll(fn, label, timeout = TIMEOUT, isReady = Boolean) {
   const started = Date.now();
   let value;
   let lastTransientError = null;
@@ -56,7 +56,7 @@ export async function poll(fn, label, timeout = TIMEOUT) {
     try {
       value = await fn();
       lastTransientError = null;
-      if (value) return value;
+      if (isReady(value)) return value;
     } catch (error) {
       if (!isTransientNavigationError(error)) throw error;
       lastTransientError = error instanceof Error ? error.message : String(error);
