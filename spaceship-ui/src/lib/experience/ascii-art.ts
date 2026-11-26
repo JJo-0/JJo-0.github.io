@@ -1,7 +1,8 @@
 import { parseGraphPayload } from './graph-json.mjs';
+import { bundleAtlas, traceAtlasEdge } from './atlas-sphere.mjs';
 import {
   graphNodeVisual, graphDepth, graphEdgeAppearance, graphEdgeStops, graphStar, graphStarOpacity, graphStarSize,
-  projectAtlas, atlasProjectionRadius, stepAtlasRotation, wrapAtlasYaw,
+  atlasProjector, atlasProjectionRadius, stepAtlasRotation, wrapAtlasYaw,
 } from './graph-visuals.mjs';
 
 type Point3 = { x: number; y: number; z: number; edge: boolean };
@@ -19,6 +20,15 @@ type GraphNode = {
 };
 type GraphEdge = { source: string; target: string; weight: number; reasons: string[] };
 type PostGraph = { nodes: GraphNode[]; edges: GraphEdge[] };
+
+type SpectrumSampler = () => ArrayLike<number>;
+type AudioHost = HTMLElement & { atlasAudioSample?: SpectrumSampler | null };
+// The original and translation have the same model-space position.
+function audioBand(node: GraphNode) {
+  const seed = Math.imul(Math.round(node.x*1e4), 73856093) ^
+    Math.imul(Math.round(node.y*1e4), 19349663) ^ Math.round(node.z*1e4);
+  return (seed >>> 0) % 3;
+}
 
 const GLYPHS = ['·', ':', '+', '*', '#', '@'];
 
@@ -70,6 +80,10 @@ function installGraphCanvas(
 ): () => void {
   const context = canvas.getContext('2d', { alpha: true });
   if (!context) throw new Error('2D canvas unavailable');
+  const edgeLayer = document.createElement('canvas');
+  edgeLayer.dataset.graphEdgeLayer = '';
+  const edgeContext = edgeLayer.getContext('2d', {alpha:true});
+  if (!edgeContext) throw new Error('2D edge layer unavailable');
   const anchors = new Map(
     [...host.querySelectorAll<HTMLAnchorElement>('[data-post-graph-node]')].map((anchor) => [
       anchor.dataset.postGraphNode ?? '', anchor,
@@ -93,18 +107,34 @@ function installGraphCanvas(
   const strengths = new Map(graph.nodes.map(node => [
     node.id, (adjacency.get(node.id) ?? []).reduce((sum, edge) => sum + edge.weight, 0),
   ]));
+  const edgeGradients = new Map<GraphEdge, CanvasGradient>();
+  const hierarchy = bundleAtlas(graph.nodes);
+  const routes = new Map(graph.edges.map(edge => {
+    const world = hierarchy.route(nodeById.get(edge.source)!, nodeById.get(edge.target)!);
+    return [edge, {world, screen:world.map(() => ({x:0, y:0, z:0}))}];
+  }));
+  const bands = new Map(graph.nodes.map(n => [n.id, audioBand(n)]));
+  const neighborhood = new Map(graph.nodes.map(n => [n.id,
+    new Set((adjacency.get(n.id) || []).map(e => e.source === n.id ? e.target : e.source))]));
+  const noNeighbors = new Set<string>();
   const categoryButtons = [...host.querySelectorAll<HTMLButtonElement>('[data-graph-category]')];
+  const zoomButtons = [...host.querySelectorAll<HTMLButtonElement>('[data-graph-zoom]')];
   const english = host.dataset.graphUrl?.includes('/en.json') ?? false;
   const activeEdges = new Map(graph.nodes.map(node => [node.id, new Set(adjacency.get(node.id) ?? [])]));
   let width = 1, height = 1, dpr = 1, frame = 0;
-  let visible = false, dirty = true, projectionDirty = true, painted = false;
+  let visible = false, dirty = true, projectionDirty = true, edgesDirty = true, painted = false;
+  let lens = 0, targetLens = 0, audioTimer = 0, hoverTimer = 0;
+  let readBands = (host as AudioHost).atlasAudioSample ?? null;
+  let lastCost = 0, hoverLock = 0;
+  let dwellX = -Infinity, dwellY = -Infinity;
+  let pressX = 0, pressY = 0, moved = false, cancelClickUntil = -Infinity;
+  let lastActiveId: string | null | undefined;
   let dragPointer: number | null = null, lastX = 0, lastY = 0;
   let rotationX = -0.34, rotationY = 0.18, lastDrawAt = -Infinity;
   let targetX = rotationX, targetY = rotationY;
   const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
   const fitRadius = atlasProjectionRadius(graph.nodes);
   let hoverId: string | null = null, focusId: string | null = null, shownId: string | null = null;
-  const edgeGradients = new Map<GraphEdge, CanvasGradient>();
   let dark = document.documentElement.classList.contains('dark');
   let activeCategory: string | null = null;
   const nodeInk = (id: string) => {
@@ -129,7 +159,8 @@ function installGraphCanvas(
       const title = document.createElement('strong');
       title.textContent = node.title;
       const category = document.createElement('span');
-      category.textContent = node.category + ' / ' + node.subcategory;
+      const band = (english ? ['Bass', 'Midrange', 'Treble'] : ['저음', '중음', '고음'])[bands.get(id)!];
+      category.textContent = node.category + ' / ' + node.subcategory + ' · ' + band;
       const tags = document.createElement('span');
       tags.textContent = node.tags.slice(0, 3).map(tag => '#' + tag).join(' · ');
       const relations = [...(adjacency.get(id) ?? [])].sort((a,b) => b.weight-a.weight);
@@ -159,19 +190,28 @@ function installGraphCanvas(
     if (time - lastDrawAt < 1000 / 60 - 1) { frame = requestAnimationFrame(draw); return; }
     const elapsed = Number.isFinite(lastDrawAt) ? Math.min(34, time - lastDrawAt) : 1000 / 60;
     lastDrawAt = time;
+    const began = performance.now();
     const next = stepAtlasRotation({ x: rotationX, y: rotationY }, { x: targetX, y: targetY }, elapsed, motionPreference.matches, dragPointer !== null);
-    projectionDirty ||= next.x !== rotationX || next.y !== rotationY;
-    rotationX = next.x; rotationY = next.y;
-    dirty = next.moving;
-    const motionState = next.moving ? 'moving' : 'still';
+    const lensDelta = targetLens - lens;
+    const newLens = motionPreference.matches || Math.abs(lensDelta) < .002 ? targetLens :
+      lens + lensDelta * (1 - Math.exp(-elapsed / 76));
+    projectionDirty ||= next.x !== rotationX || next.y !== rotationY || newLens !== lens;
+    rotationX = next.x; rotationY = next.y; lens = newLens;
+    dirty = next.moving || lens !== targetLens;
+    const motionState = dirty ? 'moving' : 'still';
     if (host.dataset.graphMotion !== motionState) host.dataset.graphMotion = motionState;
     const activeId = focusId ?? hoverId;
+    const viewChanged = projectionDirty;
     if (projectionDirty) {
       edgeGradients.clear();
-      for (const row of projectAtlas(graph.nodes, width, height, rotationX, rotationY, fitRadius)) {
-        const point = projected.get(row.id)!;
-        point.x = row.x; point.y = row.y; point.z = row.z;
-        const anchor = anchors.get(row.id);
+      const project = atlasProjector(width, height, rotationX, rotationY, fitRadius, lens);
+      for (const route of routes.values()) {
+        route.world.forEach((point, i) => project(point, route.screen[i]));
+      }
+      for (const node of graph.nodes) {
+        const point = projected.get(node.id)!;
+        project(node, point);
+        const anchor = anchors.get(node.id);
         if (anchor) anchor.style.translate = point.x.toFixed(3) + 'px ' + point.y.toFixed(3) + 'px';
         const hit = Math.round(24 + graphDepth(point.z) * 4);
         if (point.hit !== hit) { point.hit = hit; anchor?.style.setProperty('--node-hit', hit + 'px'); }
@@ -182,53 +222,52 @@ function installGraphCanvas(
         const stack = index + 1;
         if (point.stack !== stack) { point.stack = stack; anchors.get(node.id)?.style.setProperty('--node-depth', String(stack)); }
       });
-      projectionDirty = false;
+      projectionDirty = false; edgesDirty = true;
     }
     context.clearRect(0, 0, width, height);
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.lineCap = 'round';
     const selectedEdges = activeId ? activeEdges.get(activeId) : undefined;
-    const neighbors = new Set<string>();
-    if (activeId && selectedEdges) {
-      for (const edge of selectedEdges) neighbors.add(edge.source === activeId ? edge.target : edge.source);
-    }
+    const neighbors = (activeId && neighborhood.get(activeId)) || noNeighbors;
     const categoryMatch = (id: string) => !activeCategory || nodeById.get(id)?.category === activeCategory;
-    const drawEdge = (edge: GraphEdge, selected: boolean) => {
-      const a = projected.get(edge.source), b = projected.get(edge.target);
-      if (!a || !b) return;
-      const sourceCategory = nodeById.get(edge.source)!.category;
-      const targetCategory = nodeById.get(edge.target)!.category;
-      const same = sourceCategory === targetCategory;
-      const relevant = categoryMatch(edge.source) || categoryMatch(edge.target);
-      const appearance = graphEdgeAppearance((a.z + b.z) / 2, edge.weight);
-      const startInk = nodeInk(edge.source);
-      if (startInk === nodeInk(edge.target) || (a.x === b.x && a.y === b.y)) {
-        context.strokeStyle = startInk;
-      } else {
-        let gradient = edgeGradients.get(edge);
-        if (!gradient) {
-          gradient = context.createLinearGradient(a.x, a.y, b.x, b.y);
-          for (const stop of spectralStops.get(edge)!) {
-            gradient.addColorStop(stop.offset, dark ? stop.dark : stop.light);
+    if (edgesDirty || activeId !== lastActiveId) {
+      const layer = edgeContext;
+      layer.clearRect(0, 0, width, height);
+      layer.lineCap = 'round';
+      const drawEdge = (edge: GraphEdge, selected: boolean) => {
+        const a = projected.get(edge.source)!, b = projected.get(edge.target)!;
+        const bridge = nodeById.get(edge.source)!.category !== nodeById.get(edge.target)!.category;
+        const relevant = categoryMatch(edge.source) || categoryMatch(edge.target);
+        const appearance = graphEdgeAppearance((a.z + b.z) / 2, edge.weight);
+        const ink = nodeInk(edge.source);
+        if (ink === nodeInk(edge.target) || (a.x === b.x && a.y === b.y)) layer.strokeStyle = ink;
+        else {
+          let gradient = edgeGradients.get(edge);
+          if (!gradient) {
+            gradient = layer.createLinearGradient(a.x, a.y, b.x, b.y);
+            for (const stop of spectralStops.get(edge)!) gradient.addColorStop(stop.offset, dark ? stop.dark : stop.light);
+            edgeGradients.set(edge, gradient);
           }
-          edgeGradients.set(edge, gradient);
+          layer.strokeStyle = gradient;
         }
-        context.strokeStyle = gradient;
-      }
-      context.globalAlpha = selected ? .93 : activeId || !relevant ? .10 : appearance.opacity;
-      context.lineWidth = selected ? 1.6 : appearance.width;
-      context.setLineDash(same ? [] : [2.3, 3.2]);
-      context.beginPath();
-      context.moveTo(a.x, a.y);
-      context.lineTo(b.x, b.y);
-      context.stroke();
-    };
-    // Draw background relations first. Highlight exactly the incident edges,
-    // never invent a relationship or turn a similarity edge into an arrow.
-    for (const edge of graph.edges) if (!selectedEdges?.has(edge)) drawEdge(edge, false);
-    if (selectedEdges) for (const edge of selectedEdges) drawEdge(edge, true);
-    context.setLineDash([]);
+        layer.globalAlpha = selected ? .94 : activeId || !relevant ? .10 : appearance.opacity;
+        layer.lineWidth = selected ? 1.5 : appearance.width;
+        layer.setLineDash(bridge ? [2.3,3.2] : []);
+        layer.beginPath();
+        traceAtlasEdge(routes.get(edge)!.screen, bridge, selected, (x,y,dx,dy) => {
+          layer.moveTo(x,y); layer.lineTo(x+dx,y+dy);
+        });
+        layer.stroke();
+      };
+      for (const edge of graph.edges) if (!selectedEdges?.has(edge)) drawEdge(edge, false);
+      if (selectedEdges) for (const edge of selectedEdges) drawEdge(edge, true);
+      edgesDirty = false;
+    }
+    context.globalAlpha = 1;
+    context.drawImage(edgeLayer, 0, 0, width, height);
+    const spectrum = readBands?.();
+    const reduced = motionPreference.matches;
     for (const node of order) {
       const point = projected.get(node.id)!;
       const selected = activeId === node.id;
@@ -237,7 +276,11 @@ function installGraphCanvas(
       const size = graphStarSize(point.z, strength) + (selected ? 3 : linked ? 1 : 0);
       const color = nodeInk(node.id);
       const emphasized = selected || linked;
-      context.globalAlpha = activeId ? (emphasized ? 1 : .26) : categoryMatch(node.id) ? graphStarOpacity(point.z) : .23;
+      const opacity = activeId ? (emphasized ? 1 : .29) : categoryMatch(node.id) ? graphStarOpacity(point.z) : .30;
+      // Selection remains legible, every star remains visible even in silence.
+      const energy = spectrum ? Math.min(1, Math.max(0, spectrum[bands.get(node.id)!] || 0)) : 0;
+      const gain = spectrum ? (reduced ? .88 + .3 * energy : .66 + .91 * energy) : 1;
+      context.globalAlpha = Math.min(1, Math.max(emphasized ? .75 : .18, opacity * gain));
       context.fillStyle = color;
       context.font = '500 ' + size.toFixed(1) + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
       context.fillText(graphStar(strength), point.x, point.y);
@@ -257,28 +300,46 @@ function installGraphCanvas(
         }
       }
     }
-    // Publish actual graph-focus state for accessibility and regression tests.
-    if (activeId) host.dataset.graphFocused = activeId;
-    else delete host.dataset.graphFocused;
-    host.dataset.graphNeighborCount = String(neighbors.size);
-    host.dataset.graphHighlightedEdges = String(selectedEdges?.size ?? 0);
+    // Avoid DOM/style updates during spectrum-only frames.
+    if (activeId !== lastActiveId) {
+      if (activeId) host.dataset.graphFocused = activeId;
+      else delete host.dataset.graphFocused;
+      host.dataset.graphNeighborCount = String(neighbors.size);
+      host.dataset.graphHighlightedEdges = String(selectedEdges?.size ?? 0);
+    }
+    if (!spectrum || viewChanged || activeId !== lastActiveId) updateTooltip(activeId);
+    lastActiveId = activeId;
     context.globalAlpha = 1;
-    updateTooltip(activeId);
     if (!painted) { painted = true; onPaint(); }
-    start();
+    lastCost = .85 * lastCost + .15 * (performance.now() - began);
+    if (dirty) start();
+    else if (readBands && visible && !document.hidden && !audioTimer) {
+      const fps = reduced ? 8 : width < 550 || lastCost > 12 || graph.nodes.length > 450 ? 18 : 24;
+      audioTimer = window.setTimeout(() => {
+        audioTimer = 0; dirty = true; start();
+      }, Math.ceil(1000 / fps));
+    }
   };
   const start = () => {
     if (!frame && dirty && visible && !document.hidden) frame = requestAnimationFrame(draw);
   };
   const stop = () => {
     if (frame) cancelAnimationFrame(frame);
+    clearTimeout(audioTimer); audioTimer = 0;
+    clearTimeout(hoverTimer); hoverTimer = 0;
     frame = 0;
     lastDrawAt = -Infinity;
   };
   const invalidate = (projection = false) => {
-    dirty = true;
+    clearTimeout(audioTimer); audioTimer = 0;
+    dirty = true; edgesDirty = true;
     projectionDirty ||= projection;
     start();
+  };
+  const audioChanged = (event: Event) => {
+    readBands = (event as CustomEvent<{sample:SpectrumSampler|null}>).detail?.sample ?? null;
+    clearTimeout(audioTimer); audioTimer = 0;
+    dirty = true; start();
   };
   const resize = () => {
     const bounds = host.getBoundingClientRect();
@@ -286,38 +347,81 @@ function installGraphCanvas(
     const ratio = Math.min(devicePixelRatio || 1, 1.75);
     if (painted && w === width && h === height && ratio === dpr) return;
     width = w; height = h; dpr = ratio;
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+    edgeLayer.width = canvas.width = Math.round(width * dpr);
+    edgeLayer.height = canvas.height = Math.round(height * dpr);
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    edgeContext.setTransform(dpr, 0, 0, dpr, 0, 0);
     invalidate(true);
   };
   const nodeId = (target: EventTarget | null) => target instanceof Element
     ? target.closest<HTMLElement>('[data-post-graph-node]')?.dataset.postGraphNode ?? null : null;
+  const setLens = (value: number) => {
+    targetLens = Math.min(1, Math.max(0, value));
+    for (const button of zoomButtons) {
+      const increase = Number(button.dataset.graphZoom) > 0;
+      button.setAttribute('aria-disabled', String(increase ? targetLens >= 1 : targetLens <= 0));
+    }
+  };
+  const setCategory = (category: string | null) => {
+    activeCategory = category;
+    const axis = category ? hierarchy.axes.get(category) : null;
+    targetY = axis ? Math.atan2(axis.x, axis.z) : .18;
+    targetX = axis ? Math.atan2(axis.y, Math.hypot(axis.x, axis.z)) : -.34;
+    setLens(axis ? .75 : 0);
+    for (const button of categoryButtons) button.setAttribute('aria-pressed', String(button.dataset.graphCategory === category));
+    clearTimeout(hoverTimer); hoverLock = performance.now() + 1100;
+    invalidate();
+  };
   const onPointerMove = (event: PointerEvent) => {
+    if (dragPointer === null) {
+      // Arm once on physical mouse movement. A moving projection can emit
+      // pointerover again at the same coordinates; it must not chain rotations.
+      if (event.pointerType !== 'mouse' || focusId || motionPreference.matches ||
+          performance.now() < hoverLock || Math.hypot(event.clientX-dwellX,event.clientY-dwellY) < 7) return;
+      const id = nodeId(event.target), category = id && nodeById.get(id)?.category;
+      if (!id || !category || activeCategory === category) return;
+      dwellX = event.clientX; dwellY = event.clientY;
+      clearTimeout(hoverTimer);
+      hoverTimer = window.setTimeout(() => {
+        if (visible && !document.hidden && dragPointer === null && hoverId === id && !focusId) setCategory(category);
+      }, 750);
+      return;
+    }
     if (dragPointer !== event.pointerId) return;
+    if (!moved && Math.hypot(event.clientX-pressX,event.clientY-pressY) < 5) return;
+    if (!moved) {
+      moved = true; host.setPointerCapture(event.pointerId); hoverId = null;
+    }
     targetY = wrapAtlasYaw(targetY + (event.clientX - lastX) * 0.005);
-    targetX = Math.max(-1.3, Math.min(1.3, targetX + (event.clientY - lastY) * 0.005));
+    targetX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetX + (event.clientY - lastY) * 0.005));
     lastX = event.clientX; lastY = event.clientY;
     invalidate();
   };
   const onPointerDown = (event: PointerEvent) => {
-    if (dragPointer !== null || event.button !== 0 || (event.target as Element).closest('a,button')) return;
-    dragPointer = event.pointerId;
-    lastX = event.clientX; lastY = event.clientY;
-    host.setPointerCapture(event.pointerId);
+    const target = event.target as Element;
+    if (dragPointer !== null || event.button !== 0 || target.closest('button,input,select,audio,label,[data-atlas-player]') ||
+        (target.closest('a') && !nodeId(target))) return;
+    clearTimeout(hoverTimer);
+    dragPointer = event.pointerId; moved = false;
+    lastX = pressX = event.clientX; lastY = pressY = event.clientY;
+    if (!nodeId(target)) host.setPointerCapture(event.pointerId);
   };
   const onPointerUp = (event: PointerEvent) => {
-    if (dragPointer !== event.pointerId) return;
+    if (dragPointer !== event.pointerId || (event.type === 'lostpointercapture' && event.target !== host)) return;
     dragPointer = null;
+    if (moved) cancelClickUntil = performance.now()+300;
     if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId);
   };
   const onPointerOver = (event: PointerEvent) => {
+    if (dragPointer !== null) return;
     const id = nodeId(event.target);
     if (hoverId !== id) { hoverId = id; invalidate(); }
+    clearTimeout(hoverTimer);
   };
   const onPointerOut = (event: PointerEvent) => {
+    clearTimeout(hoverTimer);
     const id = nodeId(event.relatedTarget);
     if (hoverId !== id) { hoverId = id; invalidate(); }
   };
@@ -331,19 +435,22 @@ function installGraphCanvas(
   };
   const onControlClick = (event: MouseEvent) => {
     if (!(event.target instanceof Element)) return;
+    if (event.detail > 0 && performance.now() < cancelClickUntil && nodeId(event.target)) {
+      event.preventDefault(); return;
+    }
     const button = event.target.closest<HTMLButtonElement>('button');
     if (!button || !host.contains(button)) return;
     if (button.hasAttribute('data-graph-reset')) {
-      targetX = -0.34; targetY = 0.18; activeCategory = null;
-      for (const item of categoryButtons) item.setAttribute('aria-pressed', 'false');
+      setCategory(null);
+    } else if (button.hasAttribute('data-graph-zoom')) {
+      if (button.getAttribute('aria-disabled') === 'true') return;
+      setLens(targetLens + Math.sign(Number(button.dataset.graphZoom)) * .25);
       invalidate();
     } else if (button.hasAttribute('data-graph-rotate')) {
       targetY = wrapAtlasYaw(targetY + Number(button.dataset.graphRotate) * Math.PI / 8);
       invalidate();
     } else if (button.dataset.graphCategory) {
-      activeCategory = activeCategory === button.dataset.graphCategory ? null : button.dataset.graphCategory;
-      for (const item of categoryButtons) item.setAttribute('aria-pressed', String(item.dataset.graphCategory === activeCategory));
-      invalidate();
+      setCategory(activeCategory === button.dataset.graphCategory ? null : button.dataset.graphCategory);
     }
   };
   const themeObserver = new MutationObserver(() => {
@@ -357,10 +464,12 @@ function installGraphCanvas(
   const ro = new ResizeObserver(resize);
   const io = new IntersectionObserver(([entry]) => {
     visible = entry?.isIntersecting ?? false;
-    if (visible) start(); else stop();
+    if (visible) { dirty = true; start(); } else stop();
   }, { rootMargin: '0px' });
   ro.observe(host); io.observe(host);
+  setLens(0);
   host.addEventListener('click', onControlClick);
+  host.addEventListener('atlas:audio', audioChanged);
   for (const button of categoryButtons) button.disabled = false;
   host.addEventListener('pointermove', onPointerMove, { passive: true });
   host.addEventListener('pointerdown', onPointerDown);
@@ -371,7 +480,7 @@ function installGraphCanvas(
   host.addEventListener('pointerout', onPointerOut);
   host.addEventListener('focusin', onFocusIn);
   host.addEventListener('focusout', onFocusOut);
-  const onVisibilityChange = () => { if (document.hidden) stop(); else start(); };
+  const onVisibilityChange = () => { if (document.hidden) stop(); else { dirty = true; start(); } };
   const onMotionPreference = () => invalidate();
   motionPreference.addEventListener('change', onMotionPreference);
   document.addEventListener('visibilitychange', onVisibilityChange);
@@ -379,6 +488,8 @@ function installGraphCanvas(
   return () => {
     stop(); ro.disconnect(); io.disconnect(); themeObserver.disconnect();
     host.removeEventListener('click', onControlClick);
+    host.removeEventListener('atlas:audio', audioChanged);
+    edgeLayer.width = edgeLayer.height = 1; readBands = null;
     for (const button of categoryButtons) { button.disabled = true; button.setAttribute('aria-pressed', 'false'); }
     host.removeEventListener('pointermove', onPointerMove);
     host.removeEventListener('pointerdown', onPointerDown);

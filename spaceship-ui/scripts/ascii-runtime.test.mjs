@@ -71,7 +71,7 @@ function activate(f){f.visible(true);f.runIdle();}
 test('fallback geometry is not allocated on module import',()=>{
   const context=vm.createContext({exports:{},require(name){
     if(name==='./graph-json.mjs')return {parseGraphPayload:JSON.parse};
-    assert.equal(name,'./graph-visuals.mjs');return {};
+    assert(['./graph-visuals.mjs','./atlas-sphere.mjs'].includes(name));return {};
   }});
   vm.runInContext(compile('ascii-art.ts'),context);
   assert.equal(vm.runInContext('artifact === undefined',context),true);
@@ -128,7 +128,7 @@ test('failed graph request does not loop and can retry explicitly',async()=>{
   assert.equal(f.trigger.hidden,true);
 });
 
-test('star and legend inks are distinguishable against the observatory sky in both themes', () => {
+test('star and legend inks are distinguishable against both atlas surfaces in either theme', () => {
   const styles = POST_CATEGORIES.map(graphVisual);
   assert.equal(new Set(styles.map(s=>s.glyph)).size, styles.length);
   const luminance = hex => {
@@ -136,7 +136,7 @@ test('star and legend inks are distinguishable against the observatory sky in bo
     return rgb.map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[0.2126,0.7152,0.0722][i],0);
   };
   const contrast = (a,b) => (Math.max(luminance(a),luminance(b))+.05)/(Math.min(luminance(a),luminance(b))+.05);
-  for (const [theme,sky] of [['light','#141e2e'],['dark','#0c1423']]) {
+  for (const [theme,sky] of [['light','#f3efe4'],['light','#ebe6d9'],['dark','#1c211d'],['dark','#171c18']]) {
     assert.equal(new Set(styles.map(style=>style[theme])).size, styles.length);
     for (const style of styles) assert(contrast(style[theme],sky)>=4.5, style[theme]+' / '+sky);
   }
@@ -184,32 +184,44 @@ test('two articles within one topic have their own stable spectrum endpoints', (
     assert.equal(graphNodeVisual({category,z:1.5})[theme],near[theme]);
   }
 });
-test('static SVG shares the article inks, two endpoint colors and line types with Canvas', () => {
+test('static SVG paints every bundled relation with both article inks and its actual endpoints', () => {
   const nodes = [
-    {id:'a',category:POST_CATEGORIES[1],x:0,y:0,z:-1.5},
-    {id:'b',category:POST_CATEGORIES[1],x:1,y:1,z:1.5},
-    {id:'c',category:POST_CATEGORIES[7],x:2,y:0,z:1},
+    {id:'a',category:POST_CATEGORIES[1],subcategory:'a',x:0,y:0,z:-1.5},
+    {id:'b',category:POST_CATEGORIES[1],subcategory:'b',x:1,y:1,z:1.5},
+    {id:'c',category:POST_CATEGORIES[7],subcategory:'c',x:2,y:0,z:1},
   ];
   const edges = [{source:'a',target:'b',weight:10},{source:'b',target:'c',weight:12}];
+  const attr = (tag,key) => tag.match(new RegExp('(?:^| )'+key+'="([^"]+)"'))?.[1];
   for (const theme of ['light','dark']) {
     const svg = renderAtlasPreview({nodes,edges},theme==='dark');
-    const attr = (tag,key) => tag.match(new RegExp(key+'="([^"]+)"'))?.[1];
     const gradients = new Map([...svg.matchAll(/<linearGradient ([^>]+)>(.*?)<\/linearGradient>/g)]
       .map(([,tag,body])=>[attr(tag,'id'),{tag,stops:[...body.matchAll(/<stop ([^>]+)\/>/g)].map(([,s])=>s)}]));
-    const lines = [...svg.matchAll(/<line ([^>]+)\/>/g)].map(([,tag])=>tag);
-    assert.equal(lines.length,edges.length);
-    for (const [i,line] of lines.entries()) {
+    const paths = [...svg.matchAll(/<path ([^>]+)\/>/g)].map(([,tag])=>tag).filter(tag=>attr(tag,'data-edge')!==undefined);
+    const stars = [...svg.matchAll(/<text ([^>]+)>/g)].map(([,tag])=>tag);
+    assert.equal(paths.length,edges.length);
+    assert.equal(stars.length,nodes.length);
+    for (const [i,path] of paths.entries()) {
       const a=nodes[i], b=nodes[i+1];
-      const gradient=gradients.get(attr(line,'stroke')?.match(/^url\(#(.+)\)$/)?.[1]);
-      assert(gradient,'Expected a colored SVG gradient for distinct endpoint inks');
+      assert.equal(Number(attr(path,'data-edge')),i);
+      assert.equal(Boolean(attr(path,'stroke-dasharray')),a.category!==b.category);
+      const gradient=gradients.get(attr(path,'stroke')?.match(/^url\(#(.+)\)$/)?.[1]);
+      assert(gradient,'Distinct endpoint inks must have a projected SVG gradient');
       assert.equal(attr(gradient.tag,'gradientUnits'),'userSpaceOnUse');
-      for (const axis of ['x1','y1','x2','y2']) assert.equal(attr(gradient.tag,axis),attr(line,axis));
       assert.equal(attr(gradient.stops[0],'stop-color'),graphNodeVisual(a)[theme]);
       assert.equal(attr(gradient.stops.at(-1),'stop-color'),graphNodeVisual(b)[theme]);
-      assert.equal(attr(line,'stroke-dasharray')!==undefined,a.category!==b.category);
+      const d=attr(path,'d');
+      const starts=[...d.matchAll(/M\s*([-+\d.]+)[,\s]+([-+\d.]+)/gi)].map(m=>m.slice(1,3).map(Number));
+      assert(starts.length>=3,'Connections must use a series of ASCII marks');
+      for(const [pos,pt,node] of [[1,starts[0],a],[2,starts.at(-1),b]]){
+        const star=stars.find(tag=>attr(tag,'fill')===graphNodeVisual(node)[theme]);
+        for(const [j,axis] of ['x','y'].entries()) {
+          const endpoint=Number(attr(gradient.tag,axis+pos));
+          assert(Math.abs(pt[j]-endpoint)<.1,'Bundled path joins the gradient endpoint');
+          assert(Math.abs(endpoint-4.8*parseFloat(attr(star,axis)))<.1,'Gradient endpoint joins the actual projected star');
+        }
+      }
     }
-    const fills = [...svg.matchAll(/<text ([^>]+)>/g)].map(([,tag])=>attr(tag,'fill'));
-    assert.deepEqual(fills.sort(),nodes.map(node=>graphNodeVisual(node)[theme]).sort());
+    assert.deepEqual(stars.map(tag=>attr(tag,'fill')).sort(),nodes.map(node=>graphNodeVisual(node)[theme]).sort());
   }
 });
 test('rotation eases across frame rates, follows shortest yaw, settles exactly and honors reduced motion', () => {

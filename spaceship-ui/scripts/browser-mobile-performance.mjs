@@ -17,9 +17,14 @@ async function capture(name) {
 function installAtlasPaintProbe() {
   const ctx = CanvasRenderingContext2D.prototype;
   const gradients = new WeakMap();
+  const edgeLayers = new WeakMap();
   const atlas = c => c.canvas.hasAttribute('data-ascii-art');
-  let frame, segment;
+  const edgeLayer = c => c.canvas.hasAttribute('data-graph-edge-layer');
+  const key = (x,y) => x.toFixed(3)+','+y.toFixed(3);
+  let frame, path, start;
   window.__sampleAtlas = true;
+  window.__edgeLayerPaints = 0;
+  window.__atlasPositionKey = key;
   const wrap = (prototype,name,inspect) => {
     const original = prototype[name];
     prototype[name] = function(...args) {
@@ -29,29 +34,63 @@ function installAtlasPaintProbe() {
     };
   };
   wrap(ctx,'createLinearGradient',function(coords,result) {
-    if (atlas(this)) gradients.set(result,{coords,stops:[]});
+    if (edgeLayer(this)) gradients.set(result,{coords,stops:[]});
   });
   wrap(CanvasGradient.prototype,'addColorStop',function([offset,color]) {
     gradients.get(this)?.stops.push({offset,color:color.toLowerCase()});
   });
   wrap(ctx,'clearRect',function() {
-    if (!atlas(this)) return;
-    window.__asciiDraws++;
-    frame = window.__sampleAtlas ? {stars:new Map(),edges:new Map()} : undefined;
-    if (frame) window.__atlasFrame = frame;
+    if (edgeLayer(this)) {
+      window.__edgeLayerPaints++;
+      if (window.__sampleAtlas) edgeLayers.set(this.canvas,new Map());
+    } else if (atlas(this)) {
+      window.__asciiDraws++;
+      frame = window.__sampleAtlas ? {stars:new Map(),edges:null} : undefined;
+      if (frame) window.__atlasFrame = frame;
+    }
   });
-  const key = (x,y) => x.toFixed(3)+','+y.toFixed(3);
-  window.__atlasPositionKey = key;
+  wrap(ctx,'drawImage',function([image]) {
+    if (frame && atlas(this) && edgeLayers.has(image)) frame.edges = edgeLayers.get(image);
+  });
   wrap(ctx,'fillText',function([,x,y]) {
     if (frame && window.__sampleAtlas && atlas(this)) frame.stars.set(key(x,y),String(this.fillStyle));
+    const sample = window.__audioPaint;
+    if (!sample || !atlas(this)) return;
+    const at = key(x,y), alpha = this.globalAlpha;
+    const initial = sample.stars.get(at);
+    if (initial === undefined) sample.stars.set(at,alpha);
+    else if (Math.abs(initial-alpha)>.001) sample.changed.add(at);
   });
-  wrap(ctx,'beginPath',function() { if (frame) segment = undefined; });
-  wrap(ctx,'moveTo',function([x,y]) { if (frame) segment = [key(x,y)]; });
-  wrap(ctx,'lineTo',function([x,y]) { if (frame && segment) segment.push(key(x,y)); });
+  wrap(HTMLMediaElement.prototype,'play',function() {
+    if (this instanceof HTMLAudioElement) window.__readingMedia = this;
+  });
+  wrap(AnalyserNode.prototype,'getByteFrequencyData',function([bins]) {
+    const sample = window.__audioPaint;
+    if (!sample) return;
+    const hz = this.context.sampleRate / this.fftSize;
+    sample.spectra.push([[45,240],[240,2200],[2200,12000]].map(([low,high])=>{
+      let energy=0;
+      for(let i=Math.ceil(low/hz);i<Math.min(bins.length,Math.ceil(high/hz));i++) energy+=bins[i];
+      return energy;
+    }));
+  });
+  wrap(ctx,'beginPath',function() {
+    if (window.__sampleAtlas && edgeLayer(this)) { path=[]; start=null; }
+  });
+  wrap(ctx,'moveTo',function([x,y]) {
+    if (window.__sampleAtlas && edgeLayer(this)) start = [x,y];
+  });
+  wrap(ctx,'lineTo',function([x,y]) {
+    if (window.__sampleAtlas && edgeLayer(this) && start) path.push({start,end:[x,y]});
+  });
   wrap(ctx,'stroke',function() {
-    if (!frame || !window.__sampleAtlas || !atlas(this) || segment?.length!==2) return;
-    frame.edges.set(segment.join('/'),{
-      ink:this.strokeStyle, gradient:gradients.get(this.strokeStyle), dashed:this.getLineDash().length>0
+    if (!window.__sampleAtlas || !edgeLayer(this) || !path?.length) return;
+    const a=path[0].start, b=path.at(-1).start;
+    edgeLayers.get(this.canvas).set(key(...a)+'/'+key(...b), {
+      ink:this.strokeStyle, gradient:gradients.get(this.strokeStyle), dashed:this.getLineDash().length>0,
+      marks:path.length, maxLength:Math.max(...path.map(({start,end})=>Math.hypot(start[0]-end[0],start[1]-end[1]))),
+      // Measure actual mark positions relative to the straight source-target chord.
+      curvature:Math.max(...path.map(({start:[x,y]})=>Math.abs((b[0]-a[0])*(a[1]-y)-(a[0]-x)*(b[1]-a[1]))))/Math.max(.01,Math.hypot(a[0]-b[0],a[1]-b[1])),
     });
   });
 }
@@ -83,11 +122,13 @@ function verifyAtlasPaint() {
     return Math.abs(rect.x + rect.width / 2 - expected.x) > .5 || Math.abs(rect.y + rect.height / 2 - expected.y) > .5;
   }).length;
   for (const [,point] of centers) point.remove();
-  let mismatchedStars=0, mismatchedEdges=0, cross=0, withinTopicGradients=0;
+  let mismatchedStars=0, mismatchedEdges=0, cross=0, withinTopicGradients=0, curvedBundles=0;
   for (const {at,ink} of articles.values()) if (frame.stars.get(at)!==ink) mismatchedStars++;
   for (const edge of window.__atlasPayload.edges) {
     const source=articles.get(edge.source ?? edge[0]), target=articles.get(edge.target ?? edge[1]);
-    const line=frame.edges.get(source.at+'/'+target.at);
+    const line=frame.edges?.get(source.at+'/'+target.at);
+    if (!line || line.marks<2 || line.maxLength>8) { mismatchedEdges++; continue; }
+    if (line.marks>2 && line.curvature>1) curvedBundles++;
     const bridge = source.category!==target.category;
     if (bridge) cross++;
     if (!bridge && source.ink!==target.ink) withinTopicGradients++;
@@ -97,16 +138,62 @@ function verifyAtlasPaint() {
         stops.at(-1)?.offset!==1 || stops.at(-1).color!==target.ink ||
         key(...gradient.coords.slice(0,2))!==source.at || key(...gradient.coords.slice(2))!==target.at) mismatchedEdges++;
   }
-  return {mismatchedStars,mismatchedEdges,misalignedLinks,cross,withinTopicGradients,legend:[...legend],theme:theme==='--graph-dark'?'dark':'light'};
+  return {mismatchedStars,mismatchedEdges,misalignedLinks,cross,withinTopicGradients,curvedBundles,
+    paintedEdges:frame.edges?.size ?? 0,expectedEdges:window.__atlasPayload.edges.length,legend:[...legend],theme:theme==='--graph-dark'?'dark':'light'};
 }
 async function checkAtlasPaint(label) {
   const actual = await evaluate(cdp,sessionId,'('+verifyAtlasPaint.toString()+')()');
   assert.equal(actual.mismatchedStars,0,label+' star inks');
   assert.equal(actual.mismatchedEdges,0,label+' edge strokes and endpoints');
   assert.equal(actual.misalignedLinks,0,label+' centered link hitboxes');
+  assert.equal(actual.paintedEdges,actual.expectedEdges,label+' complete composited relation layer');
+  assert(actual.curvedBundles>0,label+' contains curved bundles of short ASCII marks');
   assert(actual.cross>0,label+' includes cross-topic connections');
   assert(actual.withinTopicGradients>0,label+' distinguishes stars within one topic');
   for (const [category,ink] of actual.legend) assert.equal(ink,graphVisual(category)[actual.theme],label+' legend band');
+}
+async function checkAtlasAudio() {
+  const ui = selector => `document.querySelector('[data-audio-${selector}]')`;
+  const click = selector => evaluate(cdp,sessionId,ui(selector)+'.click()');
+  const position = "document.querySelector('[data-post-graph-node]').style.translate";
+  const before = await evaluate(cdp,sessionId,`({
+    position:${position}, layers:window.__edgeLayerPaints, reaction:${ui('react')}.checked,
+    tracks:${ui('track')}.options.length
+  })`);
+  assert(before.reaction,'Audio reaction enabled by default with standard motion preference');
+  assert(before.tracks>=4,'Reading audio offers four playable choices');
+  await evaluate(cdp,sessionId,"window.__audioPaint={stars:new Map(),changed:new Set(),spectra:[]}; true");
+  await click('play');
+  await waitExpression(cdp,sessionId,"window.__readingMedia?.currentTime>.35 && window.__audioPaint.spectra.length>=4",'interactive on-site playback and FFT samples');
+  await sleep(700);
+  const result = await evaluate(cdp,sessionId,`(() => {
+    const {spectra,changed}=window.__audioPaint;
+    const positions=new Set([...document.querySelectorAll('[data-post-graph-node]')].map(a=>{
+      const [x,y=0]=a.style.translate.split(/\\s+/).map(parseFloat); return window.__atlasPositionKey(x,y);
+    }));
+    window.__audioPaint=null;
+    return {
+      playing:!window.__readingMedia.paused, seconds:window.__readingMedia.currentTime,
+      samples:spectra.length, frequencies:[0,1,2].map(i=>new Set(spectra.map(s=>s[i]).filter(x=>x>0)).size),
+      changedStars:[...changed].filter(p=>positions.has(p)).length, samePosition:${position}===${JSON.stringify(before.position)},
+      rebuiltLayers:window.__edgeLayerPaints-${before.layers}
+    };
+  })()`);
+  assert(result.playing && result.seconds>0);
+  assert(result.frequencies.every(count=>count>1),'Real track produces a varying spectrum in each audible band');
+  assert(result.changedStars>2,'Distinct visible article stars vary in brightness as the track plays');
+  assert(result.samePosition,'Audio-only frames retain the projected article positions');
+  assert.equal(result.rebuiltLayers,0,'Audio-only frames reuse the complete cached edge canvas');
+  await click('react');
+  await sleep(150);
+  const still = await evaluate(cdp,sessionId,"({draws:window.__asciiDraws,time:window.__readingMedia.currentTime})");
+  await sleep(350);
+  assert.equal(await evaluate(cdp,sessionId,'window.__asciiDraws'),still.draws,'No graph frames after opting out while listening');
+  assert(await evaluate(cdp,sessionId,'window.__readingMedia.currentTime')>still.time,'Music continues while stars are stationary');
+  await click('play');
+  await click('react');
+  await waitExpression(cdp,sessionId,'window.__readingMedia.paused','explicit pause');
+  return result;
 }
 try {
   preview = await startPreview(); chrome = await startChrome(); cdp = await Cdp.connect(chrome.url);
@@ -160,7 +247,7 @@ try {
       assert.equal(cold.draws,0);
       assert.equal(cold.gpuProbes,0,'ASCII page must not probe a GPU context');
       assert.equal(cold.links,0);
-      assert(!cold.resources.some(r=>/writing-graph\/|mouse_surprised-once\.webp|mouse_surprised\.(gif|webp)/.test(r.url)), 'Held graph response and animated profile must not have downloaded');
+      assert(!cold.resources.some(r=>/writing-graph\/|\/audio\/atlas\/|mouse_surprised-once\.webp|mouse_surprised\.(gif|webp)/.test(r.url)), 'Held graph response, audio, and animated profile must not have downloaded');
       const rejectFirst = width === 390 && route === '/';
       await evaluate(cdp, sessionId, 'window.__releaseAtlas(' + rejectFirst + ')');
       if (rejectFirst) {
@@ -189,6 +276,7 @@ try {
       await sleep(800);
       const after = await evaluate(cdp, sessionId, 'window.__asciiDraws');
       assert.equal(after,before,'Graph must not redraw at rest on mobile or desktop');
+      const sound = await checkAtlasAudio();
       // Use a real mouse drag away from overlay controls and article links.
       if (!mobile) {
         const point = await evaluate(cdp,sessionId,`(() => {
@@ -278,10 +366,13 @@ try {
       await cdp.send('Input.dispatchKeyEvent', { type:'keyUp', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);
       const path = new URL(target, BASE).pathname;
       await waitExpression(cdp, sessionId, `${JSON.stringify([path, path.endsWith('/') ? path.slice(0,-1) : path+'/'])}.includes(location.pathname)`, 'native graph link destination');
-      results.push({width,route,cold,idleDraws:after-before,rotationDraws,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,activated});
+      results.push({width,route,cold,idleDraws:after-before,rotationDraws,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,sound,activated});
       console.log('mobile-performance: graph/profile PASS '+JSON.stringify({width,route,idleDraws:after-before,links:counts.actual}));
     }
   }
+  // Exercise the system default in a fresh preference state, after explicit
+  // toggles in the regular-motion cases above.
+  await evaluate(cdp,sessionId,"sessionStorage.removeItem('writing-audio.reaction')");
   await viewport(cdp,sessionId,{width:390,height:844,mobile:true,touch:true,reduced:true});
   await navigate(cdp,sessionId,'/');
   await evaluate(cdp,sessionId,`document.querySelector('[data-profile-animation]').scrollIntoView({block:'center',behavior:'instant'})`);
@@ -293,6 +384,7 @@ try {
   await waitExpression(cdp,sessionId,"typeof window.__releaseAtlas==='function'",'reduced motion still auto-loads graph');
   await evaluate(cdp,sessionId,'window.__releaseAtlas(false)');
   await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphState==='ready'",'reduced-motion graph ready');
+  assert.equal(await evaluate(cdp,sessionId,"document.querySelector('[data-audio-react]').checked"),false,'Reduced motion keeps reactive brightness off until requested');
   const reducedPosition = await evaluate(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.translate");
   await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
   await waitExpression(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.translate!=="+JSON.stringify(reducedPosition),'reduced-motion rotation applies');

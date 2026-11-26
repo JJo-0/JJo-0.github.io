@@ -53,6 +53,62 @@ function hash(value: string) {
   }
   return output >>> 0;
 }
+type Vector = [number, number, number];
+function spherePoint(index: number, count: number): Vector {
+  const y = 1 - (2 * index + 1) / count;
+  const radius = Math.sqrt(1 - y * y);
+  const longitude = index * Math.PI * (3 - Math.sqrt(5)) + 0.57;
+  return [Math.cos(longitude) * radius, y, Math.sin(longitude) * radius];
+}
+function direction(points: Vector[]): Vector {
+  const sum: Vector = [0, 0, 0];
+  for (const [x, y, z] of points) { sum[0] += x; sum[1] += y; sum[2] += z; }
+  const length = Math.hypot(...sum);
+  return length > 1e-6 ? [sum[0] / length, sum[1] / length, sum[2] / length] : points[0];
+}
+// Fit topic territories to their actual article counts on a nearly uniform
+// spherical lattice. Run at build time, using the shared post ID across editions.
+function spherePositions(posts: GraphPost[]) {
+  const fields = new Map<string, GraphPost[]>();
+  for (const post of posts) {
+    if (!fields.has(post.data.category)) fields.set(post.data.category, []);
+    fields.get(post.data.category)!.push(post);
+  }
+  const topics = [...fields.keys()].sort().map((key, i) => ({
+    members: fields.get(key)!, axis: spherePoint(i, fields.size), sites: [] as Vector[],
+  }));
+  const lattice = posts.map((_, i) => spherePoint(i, posts.length));
+  for (let iteration = 0; iteration < 4; iteration++) {
+    const proposals = topics.flatMap(topic => {
+      topic.sites.length = 0;
+      const [x, y, z] = topic.axis;
+      return lattice.map(([sx, sy, sz], i) => ({topic, i, score: sx * x + sy * y + sz * z}));
+    }).sort((a, b) => b.score - a.score || a.i - b.i);
+    const taken = new Uint8Array(lattice.length);
+    for (const {topic, i} of proposals) {
+      if (taken[i] || topic.sites.length >= topic.members.length) continue;
+      taken[i] = 1;
+      topic.sites.push(lattice[i]);
+    }
+    for (const topic of topics) topic.axis = direction(topic.sites);
+  }
+  const positions = new Map<string, Vector>();
+  for (const topic of topics) {
+    const [x, y, z] = topic.axis;
+    const h = Math.hypot(x, z);
+    const bearing = ([px, py, pz]: Vector) => h < 1e-6 ? Math.atan2(pz, px)
+      : Math.atan2(py * h - (px * x + pz * z) * y / h, (px * z - pz * x) / h);
+    topic.sites.sort((a, b) => bearing(a) - bearing(b));
+    topic.members.sort((a, b) => hash(a.data.subcategory) - hash(b.data.subcategory) ||
+      hash(a.id) - hash(b.id) || a.id.localeCompare(b.id));
+    topic.members.forEach((post, i) => {
+      const [sx, sy, sz] = topic.sites[i];
+      const dir = direction([[sx * .855 + x * .145, sy * .855 + y * .145, sz * .855 + z * .145]]);
+      positions.set(post.id, dir.map(v => Number((v * 1.9).toFixed(5))) as Vector);
+    });
+  }
+  return positions;
+}
 function graphPostPath(post: GraphPost, en: boolean): string {
   if (post.collection === 'englishPosts') return `/en/posts/${post.data.slug}/`;
   const slug = getPostSlug(post);
@@ -67,18 +123,13 @@ function keywords(post: GraphPost) {
   return new Set(tokens.filter((token) => !STOP_WORDS.has(token)).slice(0, 240));
 }
 export async function buildPostGraph(posts: GraphPost[], en = false): Promise<PostGraph> {
-  const categories = [...new Set(posts.map((post) => post.data.category))];
+  const positions = spherePositions(posts);
   // Keep relationship scores stable across editions. Translated wording changes
   // token overlap even when two articles describe exactly the same subject.
   const originals = en ? await getPublishedPosts() : posts;
   const keywordSets = new Map(originals.map((post) => [post.id, keywords(post)]));
   const nodes = posts.map((post, index): PostGraphNode => {
-    const ci = Math.max(0, categories.indexOf(post.data.category)),
-      angle = (ci / Math.max(1, categories.length)) * Math.PI * 2 - Math.PI / 2,
-      seed = hash(post.id),
-      local = ((seed % 1000) / 1000) * Math.PI * 2,
-      radius = 0.32 + (((seed >>> 10) % 1000) / 1000) * 0.5,
-      cluster = categories.length > 1 ? 1.52 : 0;
+    const [x, y, z] = positions.get(post.id)!;
     return {
       id: `post-${index}`,
       title: post.data.title,
@@ -87,9 +138,7 @@ export async function buildPostGraph(posts: GraphPost[], en = false): Promise<Po
       subcategory: post.data.subcategory,
       type: post.data.type,
       tags: post.data.tags,
-      x: Number((Math.cos(angle) * cluster + Math.cos(local) * radius).toFixed(4)),
-      y: Number((Math.sin(angle) * cluster + Math.sin(local) * radius).toFixed(4)),
-      z: Number(((((seed >>> 20) % 1000) / 1000 - 0.5) * 3.8).toFixed(4)),
+      x, y, z,
     };
   });
   const candidates: PostGraphEdge[] = [];
