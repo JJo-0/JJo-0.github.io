@@ -1,0 +1,128 @@
+---
+title: "AI Benchmark 08 — Why can the same math answer earn different scores?"
+description: "Compare how GSM8K, MATH, AIME, and MathArena Apex extract and grade answers, then check the denominators behind their scores with a camera calibration example and original research figures."
+pubDate: 2026-11-27
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-08-math-answer-grading
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - mathematics
+  - metrics
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 8
+translationKey: en-ai-benchmark-08-math-answer-grading
+translatedPosts:
+  ko-KR: ai-benchmark-08-math-answer-grading
+---
+
+import Math from '@/components/post/Math.astro';
+
+In [Chapter 7](/en/posts/ai-benchmark-07-mmlu-mmlu-pro-gpqa/), model A led with 84% when we averaged over 100 questions. Model B led with 85% when we gave each subject equal weight. Now go back **one step before averaging**. A camera calibration problem has a reference answer of `3/8`, and the model returns `0.375`. Do we add one to the count of correct answers? The two values are mathematically equal. Whether the benchmark awards the point depends on **which part of the response it extracts and which answer forms it accepts as equivalent**.
+
+## 1. Find the denominator in a math scorecard
+
+| Evaluation and scope | What each item contains or asks for | What to check alongside the score |
+|---|---|---|
+| GSM8K · original release | A grade-school word problem with a worked solution and final number. 7,473 training and 1,319 test problems | The final-answer marker and whether the system generated a single response or selected one of several candidates |
+| MATH · full original dataset | Competition problems and solutions across seven subjects. 7,500 training and 5,000 test problems | How the final expression was extracted, which equivalence checker was used, and whether the run covered the full test set or a subset |
+| AIME · 2026 competition | Each exam has 15 problems with integer answers from 0 to 999 | Whether the score covers AIME I, AIME II, or a 30-problem model evaluation combining the two |
+| MathArena Apex · August 2025 release | Final answers to 12 problems selected by testing the models available at the time | Attempts per problem, models used to screen candidate problems, and the date of the results |
+
+The original MATH test set has 5,000 problems. A result labeled `MATH-500` uses a different denominator. The 30 in a combined AIME model evaluation counts problems across two exam papers. An individual contestant in 2026 sat one 15-problem exam. Both distinctions matter when putting results side by side in an accuracy column. [GSM8K dataset card](https://huggingface.co/datasets/openai/gsm8k#data-splits) · [MATH §3.1, PDF pp. 4–5](https://arxiv.org/pdf/2103.03874v2#page=4) · [MAA 2026 schedule](https://maa.org/news/2025-26-aime-thresholds-are-now-available/) · [MathArena AIME 2026 dataset card](https://huggingface.co/datasets/MathArena/aime_2026/blob/main/README.md) · [Original Apex release](https://matharena.ai/apex/)
+
+## 2. How the GSM8K and MATH code handles equal values
+
+Grading has two steps. An **extractor** selects the part of the response to use as the answer. An **equivalence checker** compares that answer with the reference. Tracking the steps separately helps distinguish a calculation error from a formatting error.
+
+The public GSM8K implementation looks for the first occurrence of `#### ` followed by its numeric pattern, removes commas, and compares the resulting strings. The public MATH tools include an extractor that finds the last `\boxed` expression and matches its braces, and a comparator that normalizes selected LaTeX forms before comparing strings. For the MATH rows below, the inputs go directly into the comparator after extraction from the box. I constructed the examples and checked them with the functions at the linked commits. [GSM8K extraction and grading, lines 24–41](https://github.com/openai/grade-school-math/blob/3101c7d5072418e28b9008a6636bde82a006892c/grade_school_math/dataset.py#L24-L41) · [MATH box extraction, lines 16–41](https://github.com/hendrycks/math/blob/985bdc1696e88e8643f081a0ff4719da39f2ae2a/modeling/dataset/util.py#L16-L41) · [MATH comparator, lines 126–152](https://github.com/hendrycks/math/blob/985bdc1696e88e8643f081a0ff4719da39f2ae2a/modeling/math_equivalence.py#L126-L152)
+
+| Public implementation | Model response or extracted answer | Reference | Result and reason |
+|---|---|---|---|
+| GSM8K | `#### 1,200` | `#### 1200` | Pass. Removing the comma leaves identical strings. |
+| GSM8K | `#### 24.0` | `#### 24` | Fail. The decimal point and trailing zero remain. |
+| GSM8K | `24` | `#### 24` | Fail. The numerical value is correct, but the extractor requires the marker. |
+| MATH | `0.5` | `\frac{1}{2}` | Pass. The code has an explicit conversion for this decimal. |
+| MATH | `2/4` | `1/2` | Fail. Normalizing the fraction notation leaves different numerators and denominators. |
+
+On page 5 of the MATH paper, the passages on *Formatting* and *Automatically Assessing Generated Answers* say that factor order may vary, as in `4(x+1)(x-1)` and `4(x-1)(x+1)`. At the commit above, passing those two strings to `is_equiv` returns `False`. To reproduce a library's “MATH accuracy,” record **the paper version and the version of the comparator that actually ran**. [Paper, PDF p. 5](https://arxiv.org/pdf/2103.03874v2#page=5) · [Comparator tested, lines 138–152](https://github.com/hendrycks/math/blob/985bdc1696e88e8643f081a0ff4719da39f2ae2a/modeling/math_equivalence.py#L138-L152)
+
+A solution can reach the correct number through faulty reasoning. The GSM8K authors describe this limitation and report an experiment in which the system generated 100 candidate solutions and submitted **one** chosen by a verifier. If a candidate was correct but the verifier selected a wrong answer, the submitted answer failed. The *Evaluation Protocol* slide in Stanford CS329Z identifies what to record alongside such a score, including attempts per problem, the stopping budget, permitted tools, and how the runs were aggregated. [GSM8K §4.2 and Figure 5, PDF pp. 7–8](https://arxiv.org/pdf/2110.14168v2#page=7) · [Stanford CS329Z, November 4, 2026, PDF p. 37](https://web.stanford.edu/class/cs329z/slides/lecture13.pdf#page=37)
+
+## 3. Grade six camera calibration responses by hand
+
+Return to the camera in Chapter 7. Suppose a marker at a fixed depth moves 3 mm parallel to the image plane, and its image shifts by 8 pixels. We want the **local scale factor** for that interval, obtained by dividing the physical displacement by the pixel displacement. The reference and every output use mm/pixel. This example repeats the same input six times to compare grading rules.
+
+<Math display tex={String.raw`s=\frac{\Delta X}{\Delta u}=\frac{3\ \mathrm{mm}}{8\ \mathrm{pixel}}=0.375\ \mathrm{mm/pixel}`} />
+
+The reference string is `3/8`. The first grader compares literal strings. The second converts each string to an exact rational number. The third accepts an answer whose absolute error is within a specified tolerance. Let <Math tex="v" /> be the returned value, <Math tex="s" /> the reference, and <Math tex={String.raw`\varepsilon=0.001\ \mathrm{mm/pixel}`} /> the tolerance.
+
+<Math display tex={String.raw`g_{\varepsilon}(v,s)=\mathbf{1}\!\left[\lvert v-s\rvert\leq\varepsilon\right]`} />
+
+The indicator returns 1 if the condition holds and 0 otherwise. For this experiment, a scheduled request receiving no response scores 0. In the table, 1 means pass and 0 means fail.
+
+| Final model output | Absolute error (mm/pixel) | String match | Rational match | Within tolerance |
+|---|---:|---:|---:|---:|
+| `3/8` | 0 | 1 | 1 | 1 |
+| `0.375` | 0 | 0 | 1 | 1 |
+| `0.374` | 0.001 | 0 | 0 | 1 |
+| `0.373` | 0.002 | 0 | 0 | 0 |
+| `3/4` | 0.375 | 0 | 0 | 0 |
+| No response | Undefined | 0 | 0 | 0 |
+
+The third row lies on the boundary. With a common denominator of 1,000, the reference is 375/1000 and the response is 374/1000, so the difference is exactly 1/1000. The inclusive inequality awards the point. A strict inequality would reject the same response. The verification script reads terminating decimals as rational numbers so that binary floating-point rounding cannot change this decision.
+
+With all six scheduled requests in the denominator, the three graders produce **1/6 → 2/6 → 3/6**, or 16.67%, 33.33%, and 50.00%. Keep the tolerance rule but restrict the denominator to the five requests with responses, and the result becomes 3/5 = 60.00%. That measures the chance of meeting the tolerance *given a response*. For a service, the response rate of 5/6 and the overall request success rate of 3/6 also matter. The tolerance belongs to this example. AIME's integer answers and the two public scoring functions above each have their own grading rules.
+
+## 4. How many percentage points is one AIME problem worth?
+
+In 2026, AIME I took place on February 5 and its alternate, AIME II, on February 11. An individual contestant had three hours for the 15 problems on one paper. MathArena's 2026 AIME data card contains 30 rows. The label “AIME 2026” on a model scorecard does not tell us which denominator the authors used. [MAA 2025–26 competition hosting guide, PDF p. 6](https://maa.org/wp-content/uploads/2025/08/2025-2026-Hosting-MAA-Competitions-Guide.pdf#page=6) · [Official MAA exam dates](https://maa.org/news/2025-26-aime-thresholds-are-now-available/) · [MathArena release specification](https://huggingface.co/datasets/MathArena/aime_2026/blob/main/README.md)
+
+When each item receives one answer and has equal weight, one more correct answer raises accuracy by <Math tex={String.raw`100/N`} /> percentage points. On one paper that is 100/15 ≈ **6.67 percentage points**. On both papers combined it is 100/30 ≈ **3.33 percentage points**. When averaging repeated attempts, the attempt count per item also enters the denominator. For integer grading, the output specification can say whether leading zeros are acceptable. Credit for explanations or approximations requires its own rule.
+
+The year matters here too. Under the 2027 format the MAA announced for the United States and Canada, each contestant will sit one 15-problem exam during the February 5–6 window, divided into **eight problems and seven problems**, with 90 minutes for each part. The two parts of a 2027 exam have a different meaning from the two alternative papers in 2026. [MAA announcement, “What are the changes to AIME?”](https://maa.org/maa-invitational-competitions/)
+
+## 5. Recover 5.2% and 25% from the original MathArena figure
+
+For the Apex release on August 18, 2025, four models each attempted every candidate problem four times. The team excluded any candidate solved at least once and selected 12 problems. Six already required a final answer. The team converted the other six from proof problems to short-answer questions. The screening process selected for difficulty with those particular models. The results below describe the experiment reported on that date. [Original Apex methodology and aggregate results](https://matharena.ai/apex/)
+
+**Reading Figure 3.** The columns are problems 1–12, and each row is a model. Each cell gives the number of correct attempts over the number of attempts that model made on that problem. In the Qwen3-A22B-2507-Think row, problem 1 shows 7/16, problem 5 shows 2/16, problem 7 shows 1/16, and all other cells show 0/16. In the same figure, the team ran the GPT-5 agent only four times per problem because its internal iterations were expensive. Assuming 16 attempts for every row would distort the model comparison. [Original August 2025 Figure 3](https://matharena.ai/static/images/apex_results.png) · [Figure caption and run conditions](https://matharena.ai/apex/)
+
+Let <Math tex="N" /> be the number of problems, <Math tex="K" /> the number of attempts per problem, and write the correct-attempt count for problem <Math tex="i" /> as <Math tex="c_i" />. When every problem receives the same <Math tex="K" /> attempts, **accuracy per attempt** and **the share of problems solved at least once** follow these formulas.
+
+<Math display tex={String.raw`A_{\mathrm{trial}}=\frac{\sum_{i=1}^{N}c_i}{NK},\qquad A_{\mathrm{any}}=\frac{\sum_{i=1}^{N}\mathbf{1}[c_i>0]}{N}`} />
+
+Both formulas summarize observed runs and require no assumption of independence between attempts. The Qwen row contains 7 + 2 + 1 = 10 correct attempts. Accuracy per attempt is 10/(12 × 16) = **5.2083…%**, which rounds to the figure's **5.2%**. Problems 1, 5, and 7 were solved at least once, giving 3/12 = **25%**. Neither number establishes whether the system could select a correct answer from 16 candidates on a new problem. This is the distinction between producing a correct candidate and submitting it that we examined in Chapter 3. [Chapter 3's worked example on repeated attempts](/en/posts/ai-benchmark-03-reliability-and-uncertainty/)
+
+**Checking a second denominator.** On May 12, 2026, the team reported testing 176 new candidate problems, with four attempts per problem by Gemini 3.1 Pro. The table reconstructs the distribution by combining the 14 problems in Figure 3 of the follow-up with the 162 problems the text says the model solved on all four attempts. The right-hand column counts correct attempts. [Follow-up, “Construction Process and Results,” Figure 3](https://matharena.ai/no_final_answer/)
+
+| Correct attempts per problem | Number of problems | Contribution to total correct attempts |
+|---:|---:|---:|
+| 0/4 | 0 | 0 |
+| 1/4 | 1 | 1 |
+| 2/4 | 6 | 12 |
+| 3/4 | 7 | 21 |
+| 4/4 | 162 | 648 |
+
+On the **14 problems with one to three correct attempts apiece**, accuracy was (1 + 12 + 21)/(14 × 4) = **34/56 = 60.71%**. Across **all 176 problems**, it was (34 + 648)/(176 × 4) = **682/704 = 96.875%**. The model solved 176/176 problems at least once and 162/176 on every attempt. The original Apex screening criterion required a problem to go unsolved on every attempt, leaving zero eligible problems in this pool. The team did not release Apex v2. The two years use different problem sets and models, so the results cannot measure a single model's year-over-year improvement. [May 2026 follow-up conclusion](https://matharena.ai/no_final_answer/)
+
+## 6. What to record to reproduce the score
+
+The verification script starts with the counts in the tables and the output strings from the calibration example. Run this command from the repository root to perform twelve numerator-and-denominator checks. It requires no model calls. [Pinned verification script](https://github.com/JJo-0/JJo-0.github.io/blob/7778227ccccef338ec60e6f1a6d91edb2cdf4009/docs/ai-benchmark/check-chapter-08.py) · [Source locations and grader inputs and outputs](https://github.com/JJo-0/JJo-0.github.io/blob/4cbdf4a89ce99a2eb71c18292730a8535e73be31/docs/ai-benchmark/08-sources-and-checks.md)
+
+```bash
+python3 docs/ai-benchmark/check-chapter-08.py
+```
+
+For a math score, identify **the exam, year, subset, and grader commit**. Specify **the required output format, how missing responses were handled, how many attempts were allowed, and how the submitted candidate was selected**. Report **the correct count over its denominator**. For example, “Apex 5.2%” expands to “August 2025, Qwen row, 12 problems × 16 directly generated attempts, 10 correct final answers out of 192.” A reader can identify the denominator from that one line.
+
+Chapter 9 will examine *Humanity’s Last Exam* and *HLE-Diamond*. This chapter asked whether any difficult problems survived screening when the final answer was straightforward to check. The next question is **what evidence establishes both the correct answer and the quality of a difficult question written by a subject-matter expert**.
