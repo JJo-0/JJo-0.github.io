@@ -263,11 +263,26 @@ try {
       const initialPosition = await evaluate(cdp,sessionId,positionExpression);
       const zoomOut = "document.querySelector('[data-graph-zoom=\"-1\"]')";
       const zoomIn = "document.querySelector('[data-graph-zoom=\"1\"]')";
+      // The spherical magnifier targets the front hemisphere. Rear stars keep
+      // their original coordinates, so sample the full projected constellation.
+      const constellation = "[...document.querySelectorAll('[data-post-graph-node]')].map(a=>a.style.translate).join('|')";
+      await evaluate(cdp,sessionId,'window.__unzoomed='+constellation);
       assert.equal(await evaluate(cdp,sessionId,zoomOut+".getAttribute('aria-disabled')"),'true');
       await evaluate(cdp,sessionId,zoomIn+'.click()');
-      await waitExpression(cdp,sessionId,positionExpression+'!=='+JSON.stringify(initialPosition),'zoom changes the real 3D projection');
+      await waitExpression(cdp,sessionId,constellation+'!==window.__unzoomed','zoom changes the real 3D projection');
+      const zoom = await evaluate(cdp,sessionId,`(() => {
+        const initial=window.__unzoomed.split('|'), stage=document.querySelector('[data-experience-canvas]');
+        const nodes=[...document.querySelectorAll('[data-post-graph-node]')];
+        return {total:nodes.length,changed:nodes.filter((n,i)=>n.style.translate!==initial[i]).length,
+          clipped:nodes.filter(n=>{
+            const [x,y=0]=n.style.translate.split(/\\s+/).map(parseFloat);
+            return x<0 || x>stage.clientWidth || y<0 || y>stage.clientHeight;
+          }).length};
+      })()`);
+      assert(zoom.changed>zoom.total*.2,'The magnifier expands a substantial front-hemisphere region');
+      assert.equal(zoom.clipped,0,'Zoom keeps every projected article on the field');
       await evaluate(cdp,sessionId,zoomOut+'.click()');
-      await waitExpression(cdp,sessionId,positionExpression+'==='+JSON.stringify(initialPosition),'zoom out restores the original projection');
+      await waitExpression(cdp,sessionId,constellation+'===window.__unzoomed','zoom out restores the original projection');
       const beforeRotation = await evaluate(cdp,sessionId,'window.__asciiDraws');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
       await waitExpression(cdp,sessionId,positionExpression+'!=='+JSON.stringify(initialPosition),'rotation control projects real nodes');
@@ -277,7 +292,7 @@ try {
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-category]').click()");
       assert.equal(await evaluate(cdp,sessionId,"document.querySelector('[data-graph-category]').getAttribute('aria-pressed')"),'true');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-reset]').click()");
-      await waitExpression(cdp,sessionId,positionExpression+'==='+JSON.stringify(initialPosition)+" && !document.querySelector('[data-graph-category][aria-pressed=\"true\"]')",'reset restores projection and category');
+      await waitExpression(cdp,sessionId,constellation+"===window.__unzoomed && !document.querySelector('[data-graph-category][aria-pressed=\"true\"]')",'reset restores every projected article and clears category');
       await sleep(700);
       const before = await evaluate(cdp, sessionId, 'window.__asciiDraws');
       await sleep(800);
@@ -299,6 +314,27 @@ try {
           return null;
         })()`);
         assert(point,'Non-link map surface available for drag');
+        const star = await evaluate(cdp,sessionId,`(() => {
+          for(const a of document.querySelectorAll('[data-post-graph-node]')) {
+            const r=a.getBoundingClientRect(), x=r.x+r.width/2, y=r.y+r.height/2;
+            if (document.elementFromPoint(x,y)!==a) continue;
+            return {x,y,category:window.__atlasPayload.nodes.find(n=>n.id===a.dataset.postGraphNode).category};
+          }
+          return null;
+        })()`);
+        assert(star,'A visible star can receive real pointer input');
+        const move = (x,y) => cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y},sessionId);
+        const activeCategory = "document.querySelector('[data-graph-category][aria-pressed=true]')?.dataset.graphCategory";
+        await move(star.x,star.y);
+        await sleep(150);
+        await move(1,1);
+        await sleep(800);
+        assert.equal(await evaluate(cdp,sessionId,activeCategory+' ?? null'),null,'Leaving a star cancels its pending category focus');
+        await move(star.x,star.y);
+        await waitExpression(cdp,sessionId,activeCategory+'==='+JSON.stringify(star.category),'holding the real mouse over a star focuses its category');
+        await move(1,1);
+        await evaluate(cdp,sessionId,"document.querySelector('[data-graph-reset]').click()");
+        await waitExpression(cdp,sessionId,constellation+"===window.__unzoomed",'reset restores all positions after a mouse dwell');
         const previous = await evaluate(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.translate`);
         await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x,y:point.y},sessionId);
         await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',buttons:1,clickCount:1,x:point.x,y:point.y},sessionId);
@@ -375,7 +411,7 @@ try {
       await cdp.send('Input.dispatchKeyEvent', { type:'keyUp', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);
       const path = new URL(target, BASE).pathname;
       await waitExpression(cdp, sessionId, `${JSON.stringify([path, path.endsWith('/') ? path.slice(0,-1) : path+'/'])}.includes(location.pathname)`, 'native graph link destination');
-      results.push({width,route,cold,idleDraws:after-before,rotationDraws,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,sound,activated});
+      results.push({width,route,cold,idleDraws:after-before,rotationDraws,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,zoom,sound,activated});
       console.log('mobile-performance: graph/profile PASS '+JSON.stringify({width,route,idleDraws:after-before,links:counts.actual}));
     }
   }

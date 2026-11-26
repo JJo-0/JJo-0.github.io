@@ -126,7 +126,7 @@ function installGraphCanvas(
   let lens = 0, targetLens = 0, audioTimer = 0, hoverTimer = 0;
   let readBands = (host as AudioHost).atlasAudioSample ?? null;
   let lastCost = 0, hoverLock = 0;
-  let dwellX = -Infinity, dwellY = -Infinity;
+  let dwellX = -Infinity, dwellY = -Infinity, dwellId: string | null = null;
   let pressX = 0, pressY = 0, moved = false, cancelClickUntil = -Infinity;
   let lastActiveId: string | null | undefined;
   let dragPointer: number | null = null, lastX = 0, lastY = 0;
@@ -326,7 +326,7 @@ function installGraphCanvas(
   const stop = () => {
     if (frame) cancelAnimationFrame(frame);
     clearTimeout(audioTimer); audioTimer = 0;
-    clearTimeout(hoverTimer); hoverTimer = 0;
+    clearTimeout(hoverTimer); hoverTimer = 0; dwellId = null; dwellX = dwellY = -Infinity;
     frame = 0;
     lastDrawAt = -Infinity;
   };
@@ -371,22 +371,29 @@ function installGraphCanvas(
     targetX = axis ? Math.atan2(axis.y, Math.hypot(axis.x, axis.z)) : -.34;
     setLens(axis ? .75 : 0);
     for (const button of categoryButtons) button.setAttribute('aria-pressed', String(button.dataset.graphCategory === category));
-    clearTimeout(hoverTimer); hoverLock = performance.now() + 1100;
+    clearTimeout(hoverTimer); hoverTimer = 0; dwellId = null; hoverLock = performance.now() + 1100;
     invalidate();
+  };
+  const cancelDwell = () => {
+    clearTimeout(hoverTimer); hoverTimer = 0; dwellId = null;
   };
   const onPointerMove = (event: PointerEvent) => {
     if (dragPointer === null) {
-      // Arm once on physical mouse movement. A moving projection can emit
-      // pointerover again at the same coordinates; it must not chain rotations.
-      if (event.pointerType !== 'mouse' || focusId || motionPreference.matches ||
-          performance.now() < hoverLock || Math.hypot(event.clientX-dwellX,event.clientY-dwellY) < 7) return;
-      const id = nodeId(event.target), category = id && nodeById.get(id)?.category;
-      if (!id || !category || activeCategory === category) return;
+      if (event.pointerType !== 'mouse' || focusId || motionPreference.matches) { cancelDwell(); return; }
+      if (dwellX === event.clientX && dwellY === event.clientY) return;
       dwellX = event.clientX; dwellY = event.clientY;
-      clearTimeout(hoverTimer);
+      const id = nodeId(event.target), category = id && nodeById.get(id)?.category;
+      if (id === dwellId) return;
+      cancelDwell();
+      if (!id || !category || activeCategory === category) return;
+      dwellId = id;
+      const delay = 750 + Math.max(0, hoverLock - performance.now());
       hoverTimer = window.setTimeout(() => {
-        if (visible && !document.hidden && dragPointer === null && hoverId === id && !focusId) setCategory(category);
-      }, 750);
+        const underMouse = nodeId(document.elementFromPoint(dwellX, dwellY));
+        cancelDwell();
+        if (visible && !document.hidden && dragPointer === null && !focusId &&
+            !motionPreference.matches && underMouse === id) setCategory(category);
+      }, delay);
       return;
     }
     if (dragPointer !== event.pointerId) return;
@@ -403,7 +410,7 @@ function installGraphCanvas(
     const target = event.target as Element;
     if (dragPointer !== null || event.button !== 0 || target.closest('button,input,select,audio,label,[data-atlas-player]') ||
         (target.closest('a') && !nodeId(target))) return;
-    clearTimeout(hoverTimer);
+    cancelDwell();
     dragPointer = event.pointerId; moved = false;
     lastX = pressX = event.clientX; lastY = pressY = event.clientY;
     if (!nodeId(target)) host.setPointerCapture(event.pointerId);
@@ -418,13 +425,14 @@ function installGraphCanvas(
     if (dragPointer !== null) return;
     const id = nodeId(event.target);
     if (hoverId !== id) { hoverId = id; invalidate(); }
-    clearTimeout(hoverTimer);
   };
   const onPointerOut = (event: PointerEvent) => {
-    clearTimeout(hoverTimer);
+    // A projected anchor can generate out/over at an unmoved mouse position.
+    // Validate its final hit on expiry; only physical motion/exit cancels dwell.
     const id = nodeId(event.relatedTarget);
     if (hoverId !== id) { hoverId = id; invalidate(); }
   };
+  const onDwellLeave = () => { cancelDwell(); dwellX = dwellY = -Infinity; };
   const onFocusIn = (event: FocusEvent) => {
     const id = nodeId(event.target);
     if (focusId !== id) { focusId = id; invalidate(); }
@@ -478,6 +486,7 @@ function installGraphCanvas(
   host.addEventListener('lostpointercapture', onPointerUp);
   host.addEventListener('pointerover', onPointerOver);
   host.addEventListener('pointerout', onPointerOut);
+  host.addEventListener('pointerleave', onDwellLeave);
   host.addEventListener('focusin', onFocusIn);
   host.addEventListener('focusout', onFocusOut);
   const onVisibilityChange = () => { if (document.hidden) stop(); else { dirty = true; start(); } };
@@ -498,6 +507,7 @@ function installGraphCanvas(
     host.removeEventListener('lostpointercapture', onPointerUp);
     host.removeEventListener('pointerover', onPointerOver);
     host.removeEventListener('pointerout', onPointerOut);
+    host.removeEventListener('pointerleave', onDwellLeave);
     host.removeEventListener('focusin', onFocusIn);
     host.removeEventListener('focusout', onFocusOut);
     motionPreference.removeEventListener('change', onMotionPreference);
