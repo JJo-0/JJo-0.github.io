@@ -127,6 +127,7 @@ function installGraphCanvas(
   let readBands = (host as AudioHost).atlasAudioSample ?? null;
   let lastCost = 0, hoverLock = 0;
   let dwellX = -Infinity, dwellY = -Infinity, dwellId: string | null = null;
+  let committedDwell: {id: string; deadline: number; restore: () => void} | null = null;
   let pressX = 0, pressY = 0, moved = false, cancelClickUntil = -Infinity;
   let lastActiveId: string | null | undefined;
   let dragPointer: number | null = null, lastX = 0, lastY = 0;
@@ -326,7 +327,7 @@ function installGraphCanvas(
   const stop = () => {
     if (frame) cancelAnimationFrame(frame);
     clearTimeout(audioTimer); audioTimer = 0;
-    clearTimeout(hoverTimer); hoverTimer = 0; dwellId = null; dwellX = dwellY = -Infinity;
+    clearTimeout(hoverTimer); hoverTimer = 0; dwellId = null; committedDwell = null; dwellX = dwellY = -Infinity;
     frame = 0;
     lastDrawAt = -Infinity;
   };
@@ -365,6 +366,7 @@ function installGraphCanvas(
     }
   };
   const setCategory = (category: string | null) => {
+    committedDwell = null;
     activeCategory = category;
     const axis = category ? hierarchy.axes.get(category) : null;
     targetY = axis ? Math.atan2(axis.x, axis.z) : .18;
@@ -377,6 +379,19 @@ function installGraphCanvas(
   const cancelDwell = () => {
     clearTimeout(hoverTimer); hoverTimer = 0; dwellId = null;
   };
+  // Chrome can deliver a physical exit after the dwell timer despite an
+  // earlier input timestamp. Preserve deliberate long hovers and undo only
+  // the automatic view change caused by such a late-delivered short hover.
+  const reconcileDwell = (event: PointerEvent) => {
+    if (event.pointerType !== 'mouse') return;
+    const target = nodeId(event.target);
+    if (dwellId && target !== dwellId && (event.clientX !== dwellX || event.clientY !== dwellY)) cancelDwell();
+    const committed = committedDwell;
+    if (!committed) return;
+    if (event.timeStamp < committed.deadline && target === committed.id) return;
+    committedDwell = null;
+    if (event.timeStamp < committed.deadline) committed.restore();
+  };
   const onPointerMove = (event: PointerEvent) => {
     if (dragPointer === null) {
       if (event.pointerType !== 'mouse' || focusId || motionPreference.matches) { cancelDwell(); return; }
@@ -388,11 +403,21 @@ function installGraphCanvas(
       if (!id || !category || activeCategory === category) return;
       dwellId = id;
       const delay = 750 + Math.max(0, hoverLock - performance.now());
+      const deadline = performance.now() + delay;
       hoverTimer = window.setTimeout(() => {
         const underMouse = nodeId(document.elementFromPoint(dwellX, dwellY));
         cancelDwell();
-        if (visible && !document.hidden && dragPointer === null && !focusId &&
-            !motionPreference.matches && underMouse === id) setCategory(category);
+        if (!visible || document.hidden || dragPointer !== null || focusId ||
+            motionPreference.matches || underMouse !== id) return;
+        const before = {category: activeCategory, targetX, targetY, targetLens, rotationX, rotationY, lens, hoverLock};
+        setCategory(category);
+        committedDwell = {id, deadline, restore() {
+          setCategory(before.category);
+          targetX = before.targetX; targetY = before.targetY; setLens(before.targetLens);
+          rotationX = before.rotationX; rotationY = before.rotationY; lens = before.lens;
+          hoverLock = before.hoverLock;
+          invalidate(true);
+        }};
       }, delay);
       return;
     }
@@ -432,7 +457,10 @@ function installGraphCanvas(
     const id = nodeId(event.relatedTarget);
     if (hoverId !== id) { hoverId = id; invalidate(); }
   };
-  const onDwellLeave = () => { cancelDwell(); dwellX = dwellY = -Infinity; };
+  const onDwellLeave = (event: PointerEvent) => {
+    if (!event.relatedTarget) reconcileDwell(event);
+    cancelDwell(); dwellX = dwellY = -Infinity;
+  };
   const onFocusIn = (event: FocusEvent) => {
     const id = nodeId(event.target);
     if (focusId !== id) { focusId = id; invalidate(); }
@@ -443,6 +471,7 @@ function installGraphCanvas(
   };
   const onControlClick = (event: MouseEvent) => {
     if (!(event.target instanceof Element)) return;
+    committedDwell = null;
     if (event.detail > 0 && performance.now() < cancelClickUntil && nodeId(event.target)) {
       event.preventDefault(); return;
     }
@@ -479,6 +508,7 @@ function installGraphCanvas(
   host.addEventListener('click', onControlClick);
   host.addEventListener('atlas:audio', audioChanged);
   for (const button of categoryButtons) button.disabled = false;
+  document.addEventListener('pointermove', reconcileDwell, {capture: true, passive: true});
   host.addEventListener('pointermove', onPointerMove, { passive: true });
   host.addEventListener('pointerdown', onPointerDown);
   host.addEventListener('pointerup', onPointerUp);
@@ -500,6 +530,7 @@ function installGraphCanvas(
     host.removeEventListener('atlas:audio', audioChanged);
     edgeLayer.width = edgeLayer.height = 1; readBands = null;
     for (const button of categoryButtons) { button.disabled = true; button.setAttribute('aria-pressed', 'false'); }
+    document.removeEventListener('pointermove', reconcileDwell, true);
     host.removeEventListener('pointermove', onPointerMove);
     host.removeEventListener('pointerdown', onPointerDown);
     host.removeEventListener('pointerup', onPointerUp);

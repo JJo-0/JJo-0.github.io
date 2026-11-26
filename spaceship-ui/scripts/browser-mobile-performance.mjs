@@ -338,10 +338,25 @@ try {
         assert(star,'A visible star can receive real pointer input');
         const move = (x,y) => cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y},sessionId);
         const activeCategory = "document.querySelector('[data-graph-category][aria-pressed=true]')?.dataset.graphCategory";
-        await move(star.x,star.y);
+        assert.equal(await evaluate(cdp,sessionId,activeCategory+' ?? null'),null,'Hover cancellation starts with no selected category');
+        await evaluate(cdp,sessionId,`(() => {
+          window.__atlasMouseTimes = [];
+          const record = event => {
+            if (!event.isTrusted || event.pointerType !== 'mouse') return;
+            window.__atlasMouseTimes.push({time:event.timeStamp, x:event.clientX, y:event.clientY});
+            if (event.clientX === 1 && event.clientY === 1) document.removeEventListener('pointermove',record,true);
+          };
+          document.addEventListener('pointermove',record,true);
+          return true;
+        })()`);
+        // Issue the exit on schedule even if Chrome delays the first command's ACK.
+        const entered = move(star.x,star.y);
         await sleep(150);
-        await move(1,1);
+        await Promise.all([entered,move(1,1)]);
         await sleep(800);
+        const times = await evaluate(cdp,sessionId,'window.__atlasMouseTimes');
+        assert(times.length >= 2 && times.at(-1).time - times[0].time < 750,
+          'Quick-leave control needs two physical inputs within the dwell threshold: '+JSON.stringify(times));
         assert.equal(await evaluate(cdp,sessionId,activeCategory+' ?? null'),null,'Leaving a star cancels its pending category focus');
         await move(star.x,star.y);
         await waitExpression(cdp,sessionId,activeCategory+'==='+JSON.stringify(star.category),'holding the real mouse over a star focuses its category');
