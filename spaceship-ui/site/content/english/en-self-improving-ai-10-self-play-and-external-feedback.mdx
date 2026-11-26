@@ -1,0 +1,389 @@
+---
+title: Self-Improving AI 10 — Can a model keep improving on its own questions?
+description: Proposer–solver self-play connects R-Zero’s plateau, execution checks in Absolute Zero and external
+  information in SPICE and R-Few.
+pubDate: 2026-11-18 10:30:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-10-self-play-and-external-feedback
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- self-play
+- reinforcement-learning
+- synthetic-data
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 10
+translationKey: en-self-improving-ai-10-self-play-and-external-feedback
+translatedPosts:
+  ko-KR: self-improving-ai-10-self-play-and-external-feedback
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>As a model gets better at posing and solving problems, it still needs a trustworthy way to check its answers.</strong>
+
+[Part 9](/posts/self-improving-ai-09-entropy-paths-and-self-generated-inputs/) asked whether AI can even generate its own training inputs. Now we examine <strong>self-play</strong>: one role proposes problems, another solves them, and their results feed into the next round of training.
+
+What matters more than the number of problems is <strong>practice worth learning from and feedback worth trusting</strong>. Repeating familiar problems rarely builds a new skill. The same goes for posing impossible problems or learning incorrect answers as if they were true. How does that balance break down, and what can restore it?
+
+<details>
+<summary>Video timestamps by slide</summary>
+
+| Slide | Video | Topic |
+|---|---|---|
+| 46 | [45:39–48:12](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2739s) | Proposer, solver, verifier and appropriate difficulty |
+| 47 | [48:12–49:00](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2891s) | Difficulty and pseudo-labels of R-Zero's generated problems |
+| 48 | [49:00–50:24](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2939s) | Plateaus and declines after early gains |
+| 49 | [50:24–51:24](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3023s) | An unexpected generation in Absolute Zero |
+| 50 | [51:24–52:17](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3084s) | External information in SPICE and R-Few |
+
+</details>
+
+## Slide 46 — A good problem is challenging and still solvable
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-46-en.png"
+  alt="Training loop with a proposer, solver and verifier, and a proposer loss curve that favors intermediate difficulty."
+  caption="Slide 46 — The proposer and solver train on different objectives."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=46"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+At [45:39](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2739s), the lecture introduces Absolute Zero, R-Zero and Self-Questioning Language Models and distinguishes three roles. The <strong>proposer</strong> creates inputs, the <strong>solver</strong> answers them and the <strong>verifier</strong> supplies a training signal for each answer.
+
+| Role | What it does | Training question |
+|---|---|---|
+| Proposer | Creates practice problems | What can the current solver learn from this? |
+| Solver | Solves a given problem | Which answers and solutions should become more likely? |
+| Verifier | Judges the suitability of an answer | How well does the score reflect actual success? |
+
+The three robots need not represent three networks. In Absolute Zero Reasoner, one model proposes and solves problems and a Python executor checks the results. R-Zero trains a Challenger and a Solver separately from the same base model. <strong>Distinct roles can share parameters or use separate ones.</strong> [Absolute Zero §3](https://arxiv.org/pdf/2505.03335v3#page=4) · [R-Zero §2](https://arxiv.org/pdf/2508.05004v4#page=2)
+
+### A solver's failure is not always a proposer's success
+
+The lower graph puts solver loss on the horizontal axis and proposer loss on the vertical axis. Proposer loss is high on easy problems to the left and overly difficult problems to the right. Minimizing its loss draws the proposer toward the middle.
+
+A purely adversarial goal rewards whatever makes the solver fail. Ambiguous or unsolvable problems may drive up the failure rate while providing little useful practice. The goal here is <strong>a problem that slightly stretches current ability and still allows meaningful feedback</strong>.
+
+Papers implement that condition differently. The curve does not imply that every method peaks at 50% accuracy. Start with R-Zero's specific design.
+
+### Further reading — R-Zero estimates difficulty from answer agreement
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/r-zero-v4-figure2.png"
+  alt="R-Zero alternates Challenger and Solver training, fixing the other model and using majority-vote pseudo-labels."
+  caption="R-Zero, Figure 2 — Alternating training of the problem proposer and solver."
+  source="https://arxiv.org/pdf/2508.05004v4#page=3"
+  credit="Chengsong Huang et al. / R-Zero"
+  width={1800} height={649}
+/>
+
+The upper row fixes the Solver and trains the Challenger. The lower row fixes the updated Challenger and trains the Solver. Because people do not label each generated problem, the most frequent answer from repeated Solver attempts becomes a <strong>pseudo-label</strong>. [R-Zero §2.2–2.4](https://arxiv.org/pdf/2508.05004v4#page=3)
+
+Suppose we obtain m final answers for problem x. The modal answer and its agreement rate are defined as follows, assuming a procedure for recognizing equivalent final answers.
+
+<Math tex={String.raw`\widetilde y(x)\in\underset{a}{\arg\max}\;\sum_{j=1}^{m}\mathbf1[y_j=a],\qquad
+\widehat p_{\mathrm{agree}}(x)=\frac1m\sum_{j=1}^{m}\mathbf1[y_j=\widetilde y(x)].`} display />
+
+The paper calls this empirical accuracy. Without a known correct answer, the directly observed quantity is <strong>the proportion agreeing with the modal answer</strong>. The Challenger receives this uncertainty reward.
+
+<Math tex={String.raw`r_{\mathrm{uncertainty}}(x)=1-2\left|\widehat p_{\mathrm{agree}}(x)-\frac12\right|.`} display />
+
+The reward peaks at agreement 0.5. Here are examples from ten responses.
+
+| Count of modal answer | Agreement | Uncertainty reward |
+|---:|---:|---:|
+| 1 | 0.1 | 0.2 |
+| 3 | 0.3 | 0.6 |
+| 5 | 0.5 | 1.0 |
+| 7 | 0.7 | 0.6 |
+| 10 | 1.0 | 0.0 |
+
+Unanimous answers bring little reward to the proposer. Highly dispersed answers also reduce reward. In the experiment, the researchers obtained ten responses per problem and kept problems whose modal answer occurred three to seven times for Solver training. Passing this filter alone cannot guarantee the quality of the problem or its pseudo-label. [R-Zero §3.1](https://arxiv.org/pdf/2508.05004v4#page=4)
+
+A separate term discourages the proposer from repeating problems. Let B be the batch size and C a cluster of similar problems. For problems that pass the format check, the final reward is
+
+<Math tex={String.raw`r_{\mathrm{rep}}(x)=\lambda\frac{|C(x)|}{B},\qquad
+r_{\mathrm{challenger}}(x)=\max\!\left(0,r_{\mathrm{uncertainty}}(x)-r_{\mathrm{rep}}(x)\right).`} display />
+
+The paper clusters by BLEU-based similarity and uses λ=1. If uncertainty reward is 1 and three of ten items belong to the same cluster, the final reward is 0.7. <strong>Matching difficulty and providing varied practice are separate objectives.</strong> [R-Zero §2.2](https://arxiv.org/pdf/2508.05004v4#page=3)
+
+The Solver then receives reward 1 if its answer matches the selected problem's pseudo-label and 0 otherwise.
+
+<Math tex={String.raw`r_{\mathrm{solver}}(x,y)=\mathbf1[y=\widetilde y(x)].`} display />
+
+A shared misconception can make <strong>an agreed-upon wrong answer the training target</strong>. Suppose seven of ten responses give incorrect A and three give correct B. Agreement is 70%, while actual accuracy is 30%. This problem even passes the three-to-seven filter. Majority voting aggregates answers. It provides no independent check on the chosen answer.
+
+## Slide 47 — Answer quality can change as problems get harder
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-47-en.png"
+  alt="Table evaluating problems from successive R-Zero stages with different solvers. Pseudo-label accuracy falls from 79 to 69 to 63 percent."
+  caption="Slide 47 — Read generated problem difficulty alongside pseudo-label accuracy."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=47"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+At [48:12](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2891s), the lecturer fixes one solver and reads down its column. If the same solver answers fewer later-stage problems correctly, the proposer may have begun to create harder problems.
+
+Read the final column too. For each stage, R-Zero sampled <strong>a set of 200 generated problems</strong> and treated GPT-4o's answers as the reference. The reported accuracy is relative to that reference. The dataset was not fully verified by humans. [R-Zero §4.4, Table 5](https://arxiv.org/pdf/2508.05004v4#page=8)
+
+| Problem generation stage | Base | Solver 15 | Solver 30 | Solver 45 | Pseudo-label accuracy |
+|---|---:|---:|---:|---:|---:|
+| Step 15 | 48.0% | 59.0% | 57.0% | 61.0% | 79.0% |
+| Step 30 | 52.5% | 53.0% | 51.5% | 53.5% | 69.0% |
+| Step 45 | 44.0% | 47.0% | 45.0% | 50.5% | 63.0% |
+
+### The same solver on different problems
+
+The Solver 15 column goes from 59% to 53% to 47%. Later problems were harder for this solver. The Base column goes from 48% to 52.5% to 44%, so the decline is not monotonic in every column. Each row uses different problems, making the table alone insufficient to establish whether the Solver improved.
+
+Read across the first row to compare solvers on the same problems. Solvers 15, 30 and 45 reach 59%, 57% and 61%. A later checkpoint does not always outperform the preceding one. <strong>Changes in problem difficulty and changes in solver performance require separate comparisons.</strong>
+
+### Are harder problems better training data?
+
+Pseudo-label accuracy fell from 79% to 63%.
+
+<Math tex={String.raw`63\%-79\%=-16\text{ percentage points}.`} display />
+
+For samples of 200, the numbers of pseudo-labels that disagree with the reference are
+
+<Math tex={String.raw`200(1-0.79)=42,\qquad 200(1-0.63)=74.`} display />
+
+The count grows from 42 in the early stage to 74 in the later stage, or 32 more training targets that disagree with the reference. This is a comparison of <strong>equal-sized samples drawn at different stages</strong>. It does not mean that the same 32 problems changed from correct to incorrect.
+
+Harder problems alone do not establish a better curriculum. The learner can receive increasingly difficult problems and increasingly unreliable targets at the same time. Track <strong>difficulty and target reliability</strong> together in self-play.
+
+## Slide 48 — Early improvement need not continue
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-48-en.png"
+  alt="Mean scores of Qwen3 0.6B, 1.7B and 4B models from step 0 to 60. After an initial rise, scores plateau or decline."
+  caption="Slide 48 — Self-play training curves for three models diverge after early gains."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=48"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+From [49:00](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2939s), the lecturer asks whether repeated training raises performance indefinitely. All three model sizes improve initially. The two smaller models plateau early, and the 4B model also declines at the final point shown. [R-Zero §4.2, Figure 3](https://arxiv.org/pdf/2508.05004v4#page=7)
+
+| Model | Base | Step 15 | Step 30 | Step 45 | Step 60 |
+|---|---:|---:|---:|---:|---:|
+| Qwen3-0.6B-Base | 16.77 | 27.39 | 27.15 | 25.05 | 25.15 |
+| Qwen3-1.7B-Base | 32.71 | 39.19 | 39.20 | 37.03 | 38.27 |
+| Qwen3-4B-Base | 42.58 | 48.06 | 48.44 | 49.07 | 46.52 |
+
+We compare the mean math benchmark scores shown in the graph. The highest displayed score for the 4B model is 49.07 and the final score is 46.52.
+
+<Math tex={String.raw`49.07-42.58=6.49,\qquad 46.52-49.07=-2.55.`} display />
+
+A model can finish above its starting point and below its peak. The 0.6B model initially gains 10.62 points but loses 2.24 points from step 15 to step 60. Distinguish the final checkpoint from the best one.
+
+The figure reports <strong>observations on three models under this training setup</strong>. It neither proves that all self-play must stall nor isolates pseudo-label errors as the cause. Declining target quality from slide 47, a narrowing problem distribution and the model's initial capabilities are possibilities to investigate together.
+
+### Recording training reward separately from actual performance
+
+Reward on self-generated data can change meaning during training. A generator that returns to easier problems may raise average reward. More answers sharing the same mistake can raise agreement. Keep a separate <strong>fixed held-out set</strong> as a reference.
+
+With evaluation problems and answers held fixed, define accuracy as
+
+<Math tex={String.raw`\mathrm{Acc}_{\mathrm{fixed}}(\theta)=\frac1N\sum_{i=1}^{N}\mathbf1[\widehat y_\theta(x_i)=y_i^\star].`} display />
+
+The evaluation problems stay fixed as the proposer and solver change. In practice, also match decoding settings and the number of samples per answer. Select among checkpoints on a validation set and reserve the final test set for evaluation to preserve the comparison.
+
+Three measures help track self-play.
+
+- <strong>Solver performance.</strong> How well does it solve fixed, unseen problems?
+- <strong>Target reliability.</strong> How often do generated answers match an independent reference?
+- <strong>Problem coverage.</strong> Do topics, difficulty and phrasing remain diverse?
+
+Together they help distinguish genuine capability gains from adaptation to the model's own evaluation system.
+
+## Slide 49 — Checking answers by execution leaves some behavior unscored
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-49-en.png"
+  alt="Competitive and derogatory reasoning text generated during Absolute Zero training, called an Oh-no moment in the lecture."
+  caption="Slide 49 — An unexpected generation observed during Absolute Zero training."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=49"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+At [50:24](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3023s), the lecture discusses an Absolute Zero example. While generating a complex programming problem, the model produced derogatory reasoning text that cast another model and humans as competitors. The paper labels the example from step 132 of a Llama-3.1-8B-based model an “Uh-oh Moment.” [Absolute Zero, Figure 34](https://arxiv.org/pdf/2505.03335v3#page=40)
+
+What was observed directly was <strong>generated text</strong>. This observation alone establishes neither an internal intention nor actual aggressive behavior. It raises a narrower question: does the score used to check an answer or program evaluate every expression and action in the generating process?
+
+### Further reading — Absolute Zero uses execution to construct problems and check answers
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/absolute-zero-v3-figure4.png"
+  alt="Absolute Zero Reasoner proposes problems, uses Python for construction and verification, and receives learnability and correctness rewards."
+  caption="Absolute Zero, Figure 4 — Constructing problems and verifying solutions through Python execution."
+  source="https://arxiv.org/pdf/2505.03335v3#page=5"
+  credit="Andrew Zhao et al. / Absolute Zero"
+  width={1801} height={768}
+/>
+
+The basic unit in Absolute Zero Reasoner (AZR) is a triple consisting of program P, input I and output O.
+
+<Math tex={String.raw`O=P(I).`} display />
+
+Hiding different parts of the relationship produces different reasoning tasks. [Absolute Zero §3.2](https://arxiv.org/pdf/2505.03335v3#page=6)
+
+| Task | Given | Find | Verification |
+|---|---|---|---|
+| Deduction | Program and input | Output | Compare with the execution result |
+| Abduction | Program and target output | A possible input | Run the proposed input and check for the target output |
+| Induction | Some input-output examples and a description | Program | Test execution results on hidden inputs |
+
+For P(i)=i²+1 and input 2, the output is 5. Asking for the output is deduction. Given only the program and output 5, both 2 and −2 work. The verifier should check <strong>whether the proposed input actually produces the same output</strong>, even if it differs from the hidden input.
+
+<Math tex={String.raw`P(2)=P(-2)=5.`} display />
+
+Induction needs additional care. Many programs can match a few input-output examples. AZR supplies a description and some examples, then checks the others in secret. This reduces simple memorization. Passing finitely many tests does not prove correctness on every input.
+
+### A different proposer reward from R-Zero's
+
+AZR averages solver rewards from execution-based verification. For G attempts the mean binary success signal is
+
+<Math tex={String.raw`\widehat p_{\mathrm{success}}=\frac1G\sum_{j=1}^{G}r^{(j)}_{\mathrm{solve}}.`} display />
+
+The proposer's learnability reward is
+
+<Math tex={String.raw`r_{\mathrm{propose}}=\begin{cases}
+0,&\widehat p_{\mathrm{success}}=0,\\
+1-\widehat p_{\mathrm{success}},&\widehat p_{\mathrm{success}}>0.
+\end{cases}`} display />
+
+A problem with no successes earns zero. Once at least one attempt succeeds, a lower success rate gives a higher reward. The following example uses G=8, the paper's setting for estimating accuracy. [Absolute Zero §3.1, equation (4)](https://arxiv.org/pdf/2505.03335v3#page=5) · [Hyperparameters, Table 3](https://arxiv.org/pdf/2505.03335v3#page=23)
+
+| Successful attempts | Success rate | Proposer reward |
+|---:|---:|---:|
+| 0/8 | 0.0 | 0.0 |
+| 1/8 | 0.125 | 0.875 |
+| 4/8 | 0.5 | 0.5 |
+| 8/8 | 1.0 | 0.0 |
+
+AZR's reward therefore does not peak at 50% success. It <strong>favors difficult problems the solver can occasionally solve</strong>, with a different shape from R-Zero's reward. R-Zero measured agreement with a modal answer, whereas AZR measures success under execution. The table shows the base learnability reward. The full training reward also includes format and validity conditions. [Absolute Zero, equations (4)–(6)](https://arxiv.org/pdf/2505.03335v3#page=5)
+
+“Zero Data” here still assumes pretraining. The method starts with a pretrained model, a program execution environment and specified task formats. The implementation includes an identity-function example to initiate generation. Without a person supplying each new problem and answer, <strong>the executor can give feedback independent of the model's current beliefs</strong>. [Absolute Zero §3.3.1, Figure 5](https://arxiv.org/pdf/2505.03335v3#page=6)
+
+The example on slide 49 illustrates the scope of that verification. Checking format and execution results leaves the appropriateness of some generated text outside the reward. A system designer needs criteria for <strong>problem validity, the final answer and behavior during generation</strong>.
+
+## Slide 50 — External information connects self-play to the world
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/ntu-self-improving-50-en.png"
+  alt="A person and books appear below the proposer. The proposer generates a problem, the solver answers it, and the verifier scores the answer."
+  caption="Slide 50 — The person and books beneath the proposer show where outside information enters problem generation."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=50"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+[Lecture at 52:10](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3130s)
+
+At [51:24](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3084s), the lecture turns to reference documents and small sets of human examples. SPICE and R-Few bring external information into problem generation to reduce the risk of training getting stuck on shared mistakes or a narrow range of topics.
+
+### Further reading — SPICE reads a document to ask the question and answers without it
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/spice-v1-figure2.png"
+  alt="The SPICE Challenger reads a document to create a question and a reference answer. The same model in the Reasoner role answers without the document."
+  caption="SPICE, Figure 2 — The proposer and solver have access to different information."
+  source="https://arxiv.org/pdf/2510.24684v1#page=3"
+  credit="Bo Liu et al. / SPICE"
+  width={1801} height={726}
+/>
+
+SPICE (Self-Play In Corpus Environments) uses one model in two roles. The Challenger reads document d and produces question q and reference answer a*. The Reasoner receives <strong>only the question</strong>. The question-generation instructions call for questions answerable without the document. [SPICE §2.1–2.3](https://arxiv.org/pdf/2510.24684v1#page=3)
+
+<Math tex={String.raw`(q,a^\star)\sim\pi_\theta(\cdot\mid d,\mathrm{role}=C),\qquad
+\widehat a\sim\pi_\theta(\cdot\mid q,\mathrm{role}=R).`} display />
+
+The roles have asymmetric information despite shared parameters. The proposer grounds its problem in the document. The solver must answer without looking it up. The document grounds the question and target, and the solver earns a reward for matching the reference answer.
+
+<Math tex={String.raw`\ell_i=\mathbf1[\widehat a_i=a^\star],\qquad r_R(\widehat a_i,a^\star)=\ell_i.`} display />
+
+The Challenger's reward depends on the variance of solution outcomes. For a valid question, the paper defines it as follows.
+
+<Math tex={String.raw`r_C(q,a^\star)=\exp\!\left[-\frac{\bigl(\operatorname{Var}(\ell_1,\ldots,\ell_K)-0.25\bigr)^2}{2\times0.01}\right].`} display />
+
+The variance of a binary success signal with probability p is
+
+<Math tex={String.raw`\operatorname{Var}(\ell)=p(1-p).`} display />
+
+At p=0.5 the variance is 0.25 and the proposer reward is 1. At p=0.1 or 0.9 the variance is 0.09 and the reward is about 0.278. At p=0 or 1 the reward is about 0.044. These numbers use the binary distribution's variance. Variance from finitely many responses depends on the estimator. <strong>R-Zero's triangular reward and SPICE's variance-based reward have different formulas.</strong> [SPICE, equation (1)](https://arxiv.org/pdf/2510.24684v1#page=4)
+
+Documents can contain errors, and extraction or question generation can introduce new ones. Compared with repeatedly accepting the model's current modal answer, a document nevertheless supplies <strong>external evidence for checking the problem and its answer</strong>.
+
+### Further reading — R-Few uses a few human examples to guide generation
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-10-self-play-and-external-feedback/r-few-v1-figure2.png"
+  alt="R-Few guides its Challenger with a few human-labeled examples and builds a Solver curriculum from human examples and generated problems."
+  caption="R-Few, Figure 2 — A few labeled examples guide generation and solver training."
+  source="https://arxiv.org/pdf/2512.02472v1#page=4"
+  credit="Wenhao Yu et al. / R-Few"
+  width={1801} height={624}
+/>
+
+R-Few keeps a small set of human-labeled anchor examples. The Challenger takes some of them as in-context examples and generates problems. The Solver trains on human examples and generated problems selected at an appropriate difficulty for its current ability. The arithmetic problem in the figure illustrates the setup. [R-Few §3.2–3.3, Figure 2](https://arxiv.org/pdf/2512.02472v1#page=4)
+
+Write the set of human examples as
+
+<Math tex={String.raw`\mathcal D_H=\{(q_i,a_i)\}_{i=1}^{N_H}.`} display />
+
+The generator receives between zero and five in-context examples. These guide the form and content of the questions. For solver training, the model attempts each problem several times and measures the proportion of responses matching the reference. It uses data whose estimated success rates lie in this range.
+
+<Math tex={String.raw`\mathcal D_{\mathrm{cur}}=\{(q,a):0.3\le\widehat p_{\mathrm{succ}}(q)\le0.7\}.`} display />
+
+The condition applies to both generated and human examples. Human examples use supplied answers. Synthetic problems use majority-vote pseudo-labels. Their success-rate estimates therefore rely on references of different reliability. [R-Few §3.3, equations (7)–(9)](https://arxiv.org/pdf/2512.02472v1#page=5)
+
+The denominator matters when interpreting “Few.” The paper's 1% and 5% are fractions of WebInstruct's 232,000 problems selected for the pool of human examples. They are not fixed human-data fractions in every training batch. A reward weight of 2.0 for human-labeled answers likewise does not specify a 2:1 data mix. [R-Few §4.1](https://arxiv.org/pdf/2512.02472v1#page=6)
+
+### Which external reference should we add?
+
+| Method | Basis for problems and answers | Main answer check | Limitation |
+|---|---|---|---|
+| R-Zero | Challenger-generated problems | Solver's modal answer | A shared wrong answer can become a pseudo-label |
+| Absolute Zero Reasoner | Generated programs and input-output relations | Program execution | Limited to executable domains and the scope of the checks |
+| SPICE | Questions and answers built from external documents | Document-grounded reference answer | Errors in the source, extraction or question generation |
+| R-Few | Human examples and problems generated from them | Human labels and synthetic pseudo-labels | The two kinds of targets differ in reliability |
+
+Self-play creates opportunities to recombine existing knowledge and practice existing capabilities. External information adds evidence and independent checks. Alongside generating more problems, a good design specifies <strong>how to verify answers, which problems the model keeps seeing and where to measure growth</strong>.
+
+[Part 11](/posts/self-improving-ai-11-automated-post-training/) extends the question to the training process itself. When a stronger AI designs and runs training for a smaller model, how much of that process can it automate?
+
+<details>
+<summary>Worked examples and code</summary>
+
+[Python calculation code](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/verify_examples_10.py) · [Calculation results](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/numeric-checks-10.json)
+
+These cover R-Zero, AZR and SPICE rewards, pseudo-label errors in samples of 200, score changes on the training curve, and example program inputs and outputs.
+
+</details>
+
+## Further reading
+
+| Resource | Connection |
+|---|---|
+| [NTU Self-Improving lecture](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2739s) · [Slides](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=46) | The proposer-solver-verifier loop and external information |
+| [R-Zero: Self-Evolving Reasoning LLM from Zero Data](https://arxiv.org/abs/2508.05004) | Alternating training, pseudo-labels and changes in difficulty and performance |
+| [Absolute Zero: Reinforced Self-play Reasoning with Zero Data](https://arxiv.org/abs/2505.03335) | Problem generation and verification grounded in an execution environment |
+| [Self-Questioning Language Models](https://arxiv.org/abs/2508.03682) | Another example of self-play between a questioner and an answerer |
+| [SPICE: Self-Play In Corpus Environments Improves Reasoning](https://arxiv.org/abs/2510.24684) | Document-grounded problems and a variance-based curriculum |
+| [Guided Self-Evolving LLMs with Minimal Human Supervision](https://arxiv.org/abs/2512.02472) | R-Few's anchor examples and online curriculum |

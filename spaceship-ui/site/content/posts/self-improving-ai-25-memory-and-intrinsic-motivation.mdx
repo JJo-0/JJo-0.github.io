@@ -1,0 +1,319 @@
+---
+title: "자가개선 AI 25 — 대화가 끝나면 무엇이 남고, AI는 왜 새 일을 탐색할까?"
+description: "NTU 하편 56–60쪽. 세션을 넘는 기억, 연구 과제의 위임, 목표 설정, 호기심과 행동 영향력을 일곱 가지 식 풀이로 살펴본다. ICM에서 행동을 추정하는 손실과 탐색 보상을 구별한다."
+pubDate: 2026-11-23T10:56:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-25-memory-and-intrinsic-motivation
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - reinforcement-learning
+  - memory
+  - ntu
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 25
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+새 대화를 연 검사 로봇에게 어제 불량을 찾은 위치를 물었다. 로봇은 작업 일지를 읽고 “3번 선반”이라고 답했다. 이번에는 일지만 열어 두고 아무 지시도 주지 않았다. 로봇이 그 선반을 다시 조사하러 갈 이유가 있을까? <strong>정보가 남아 있는 것</strong>과 <strong>그 정보를 써서 다음 할 일을 고르는 것</strong>은 서로 다른 기능이다.
+
+[24편](/posts/self-improving-ai-24-learning-inside-the-hidden-state/)에서 문장을 읽는 동안 바뀌는 은닉 상태를 살펴봤다. 이번에는 대화가 끝나는 지점에서 시작한다. 56쪽에서는 무엇이 다음 세션으로 넘어가는지, 57–59쪽에서는 연구 과제와 수학 목표를 누가 정하는지, 60쪽에서는 다음 행동을 고르는 보상을 어떻게 계산하는지 따라간다. 손계산의 예시 수치와 연구진이 보고한 실험 결과는 각각 표시했다.
+
+<strong>식 풀이 바로가기</strong>　[세션 간 기억 검색](#식-풀이-1-기록이-세-개-남았다면-어느-기억이-새-입력에-들어갈까) · [연구 위임의 성공률](#식-풀이-2-실험-6건-중-보고서-3건이면-전체-성공률은-얼마일까) · [수학 목표의 비중](#식-풀이-3-같은-답안을-두고도-누가-더-수학을-잘하는지가-달라질까) · [재방문의 호기심](#식-풀이-4-같은-문을-두-번째-열면-호기심-보상은-얼마나-줄까) · [행동 영향력의 비트 수](#식-풀이-5-도착할-방이-두-개라면-행동-영향력은-몇-비트일까) · [이미 한 행동 예측](#식-풀이-6-이미-실행한-행동을-왜-다시-맞힐까) · [다음 선반 선택](#식-풀이-7-익숙한-선반보다-새-선반의-점수가-높아지는-조건은)
+
+<details>
+<summary>슬라이드별 영상 위치</summary>
+
+| 하편 원본 | 강의 영상 | 그때 확인할 질문 |
+|---|---|---|
+| 56쪽 | [52:22](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3142s) | 새 세션에 남는 파일과 함께 초기화되는 은닉 상태는 어떻게 다른가? |
+| 57쪽 | [55:23](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3323s) | 연구 질문 설정부터 원고 정리까지, 어느 일을 위임했는가? |
+| 58쪽 | [59:07](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3547s) | ‘수학을 잘하라’는 목표는 어디서 왔는가? |
+| 59쪽 | [59:17](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3557s) | 다음 탐색 대상을 에이전트가 고르게 하려면 어떤 신호가 필요한가? |
+| 60쪽 | [1:01:49](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3709s) | 강사가 권한 2018년 보충 강의에서 호기심은 어떻게 보상이 되는가? |
+
+링크는 각 주제의 발언 시각이다. 60쪽에 인쇄된 9:07은 2018년 별도 강의의 시각이다. [NTU 2026년 5월 22일 수업](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+</details>
+
+## 하편 56쪽 — 새 대화를 열면 어떤 기억부터 다시 읽어야 할까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-56-english.png"
+  alt="세션 경계에서 은닉 상태가 H₀로 돌아간다. 파일은 다음 세션으로 이어지고, 두 세션은 네트워크 가중치를 공유한다."
+  caption="하편 56쪽 · 점선을 기준으로 은닉 상태와 파일의 화살표를 각각 따라가 보자."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=56"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+윗줄의 H₀ → H₁ → H₂를 따라가다가 점선에서 멈춰 보자. 점선 너머의 첫 상자는 다시 H₀다. 이 그림에서 새 세션은 직전 대화의 실행 상태를 초기화한다. 가운데 줄의 파일은 그 경계를 건넌다. 앞 세션에서 기록을 <strong>써 두고</strong>, 다음 세션에서 그 기록을 <strong>찾아 입력에 넣으면</strong>, 새 H₁은 그 내용을 반영할 수 있다. 맨 아래의 네트워크 가중치는 두 세션이 공유한다. 강사가 가중치를 유전자에 빗댄 이유는 여기서 가장 느리게 바뀌는 값이기 때문이다. [강의 52:22, 세 층의 시간 척도](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3142s) · [53:47, 파일을 다시 문맥에 넣는 과정](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3227s)
+
+| 56쪽의 층 | 무엇이 값을 바꾸나? | 새 세션에서 확인할 것 |
+|---|---|---|
+| 은닉 상태(hidden state) | 현재 입력과 직전 상태 | 직전 대화의 내용이나 상태를 다시 불러왔는가? |
+| 파일 메모리(file-backed memory) | 에이전트나 시스템의 기록·편집 | 어느 기록을 골랐고, 실제 입력에 넣었는가? |
+| 네트워크 가중치(network weights) | 모델 훈련이나 체크포인트 교체 | 같은 모델 버전과 가중치로 시작했는가? |
+
+<strong>저장과 검색은 별개의 사건이다.</strong> 어제의 교대 지시서를 파일로 남겨도 오늘의 질의가 다른 문서만 검색하면 검사기는 그 지시서를 읽을 수 없다. 반대로 원본 대화를 닫은 뒤에도, 새 실행에 어제 기록을 다시 넣으면 같은 모델이 그 내용을 이용할 수 있다. 검색이 답에 미친 영향을 시험할 때는 같은 질문과 모델을 쓰고, 새 세션에서 해당 기록의 제공 여부만 바꾼다.
+
+### 식 풀이 1. 기록이 세 개 남았다면 어느 기억이 새 입력에 들어갈까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/generative-agents-memory-retrieval.png"
+  alt="왼쪽의 기억 목록에서 현재 질문에 관련된 항목을 골라 답에 사용한다. 아래에는 최신성·중요도·관련성을 표시한 세 후보의 비교를 확대했다."
+  caption="Park 등, 그림 6 · 파티에 대한 질문이 들어왔을 때 어떤 기록이 언어 모델의 입력에 들어가는지 보여 준다. 아래는 원 그림의 점수 비교 부분을 확대한 것이다."
+  source="https://arxiv.org/pdf/2304.03442v2#page=9"
+  credit="Joon Sung Park et al. / UIST 2023"
+  label="보충 자료"
+  width={1800} height={1943}
+/>
+
+Park 등의 *Generative Agents* 논문 그림 6은 가상 인물 이사벨라에게 지금 가장 기대하는 것이 무엇인지 묻는다. 메모리에서 찾은 후보에는 밸런타인데이 파티 계획, 장식 주문, 파티 아이디어 조사가 있다. 논문은 <strong>최신성(recency)</strong>을 마지막으로 그 기록에 접근한 시각으로부터, <strong>관련성(relevance)</strong>을 현재 질의와 기록의 임베딩 간 코사인 유사도로 계산한다. <strong>중요도(importance)</strong>는 기록을 만들 때 매긴다. 세 점수를 각각 0–1 범위로 정규화한 뒤 더하며, 이 구현에서는 가중치가 모두 1이다. [Park 등, 2023, §4.1 및 그림 6](https://arxiv.org/pdf/2304.03442v2#page=9)
+
+아래 식에서 r, i, q는 각각 정규화한 최신성, 중요도, 관련성이다. 원 그림의 숫자를 대입하면 다음 점수가 나온다.
+
+<Math tex={String.raw`S(m)=r_m+i_m+q_m.`} display />
+
+<Math tex={String.raw`S_{\rm plan}=0.91+0.63+0.80=2.34,\qquad S_{\rm order}=0.87+0.63+0.71=2.21.`} display />
+
+<Math tex={String.raw`S_{\rm ideas}=0.85+0.73+0.62=2.20.`} display />
+
+
+설명을 위해 입력에 기록 <strong>한 개</strong>만 넣을 수 있다고 하자. 순위 1위는 파티 계획이며 장식 주문과의 차이는 2.34−2.21=0.13이다. 실제 구현은 문맥 예산에 들어가는 상위 기록들을 고른다. 2.34는 후보의 순위를 정하는 점수다. 파티에 관한 답이 나올 확률을 뜻하지 않는다. 새 세션에서 이 기록을 검색하거나 읽는 단계를 끄면 파일은 남지만, 그 경로를 통해 파티 정보를 전달할 수는 없다. [메모리 구조, 그림 5](https://arxiv.org/pdf/2304.03442v2#page=8) · [메모리 검색, 그림 6](https://arxiv.org/pdf/2304.03442v2#page=9)
+
+## 하편 57쪽 — 연구의 어느 부분을 AI가 정했을까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-57-english.png"
+  alt="문제 발굴, 실험 계획과 수행, 자료 정리와 원고 편집을 맡은 세 로봇이 차례로 이어진다."
+  caption="하편 57쪽 · 연구 일을 나눠 맡기는 과정에서 맨 왼쪽 요청을 누가 했는지 살펴보자."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=57"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+오른쪽 로봇에게는 이미 결과가 있다. 맡은 일은 자료를 정리하고 원고를 다듬는 것이다. 가운데 로봇은 실험 계획과 실행까지 맡는다. 왼쪽 로봇은 특정 분야에서 연구 질문도 찾는다. 여기서 그림의 맨 왼쪽 말풍선으로 한 칸 더 가 보자. <strong>어느 분야에서 질문을 찾을지 정하는 지시</strong>가 여전히 들어온다. 강의에서 이 장면은 새 질문을 제안하는 능력과, 그 질문을 찾기 시작한 동기를 구분하는 데 쓰인다. [강의 55:23, 내재적 동기](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3323s) · [55:55, 연구 과업의 세 단계](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3355s)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-video-57-en.png"
+  alt="사람이 연구 분야를 지정한다. 세 로봇 사이로 연구 질문과 결과가 전달되며, 화면 아래 AI co-scientist와 AlphaEvolve가 표시된다."
+  caption="녹화 화면 57:15 · 연구 분야 → 연구 질문 → 실험 결과의 전달 경로. 녹화본의 중국어 설명을 영어로 옮겼다."
+  source="https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3435s"
+  credit="Hung-yi Lee / NTU ML 2026"
+  label="강의 녹화"
+  width={1280} height={720}
+/>
+
+강사는 실험 계획·실행 단계에 [AlphaEvolve를 먼저 표시하고(56:09)](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3369s), 연구 질문을 찾는 단계에는 [AI co-scientist를 덧붙인다(56:53)](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3413s). 왼쪽 사람이 등장하면 첫 화살표가 무엇을 전달하는지 분명해진다. 사람이 정한 것은 **연구 분야**이고, 그 안에서 찾을 **개별 질문**은 첫 로봇이 다음 단계로 넘긴다.
+
+강의가 언급하는 *AI co-scientist*의 입력을 보면 이 차이가 선명하다. 연구자가 자연어로 연구 목표를 주면 시스템은 그 안에서 가설과 연구 제안을 만들고 여러 후보를 검토한다. 예를 들어 ‘반사광 때문에 검사 카메라가 정상 부품을 불량으로 분류하는 문제를 연구하라’는 위임에서, 에이전트는 조명 각도와 노출 시간 중 어느 쪽을 먼저 시험할지 고를 수 있다. 이 예제에서 검사 카메라라는 분야와 불필요한 불량 판정을 줄이자는 목적은 지시서에서 주어졌다. [강의 56:59](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3419s) · [AI co-scientist 원 논문, 2025](https://arxiv.org/abs/2502.18864)
+
+### 식 풀이 2. 실험 6건 중 보고서 3건이면 전체 성공률은 얼마일까?
+
+같은 카메라 연구 지시로 <strong>10회</strong> 독립 실행한 가상 기록을 생각하자. 8회는 시험 가능한 질문을 냈고, 그중 6회는 실험을 끝냈다. 실험을 마친 6회 중 3회는 기록과 결론이 서로 맞아, 사전에 정한 보고서 검토를 통과했다. 중도에 탈락한 실행은 다음 단계로 가지 않는다.
+
+| 단계 | 이번 단계를 통과한 실행 | 분모가 되는 실행 |
+|---|---:|---:|
+| 시험 가능한 질문 제안 Q | 8 | 시작한 10회 |
+| 실험 완료 E | 6 | 질문을 통과한 8회 |
+| 최종 보고서 통과 R | 3 | 실험을 끝낸 6회 |
+
+<Math tex={String.raw`P(Q)=\tfrac{8}{10},\qquad P(E\mid Q)=\tfrac68,\qquad P(R\mid E,Q)=\tfrac36.`} display />
+
+<Math tex={String.raw`P(Q\cap E\cap R)=\tfrac{8}{10}\times\tfrac68\times\tfrac36=\tfrac3{10}=0.30.`} display />
+
+
+마지막 단계의 통과율은 50%이고 처음 위임한 작업 전체의 완수율은 30%다. 분모가 하나씩 줄어드는 조건부 비율을 곱했으므로 단계 간 독립성을 가정할 필요가 없다. 여기서 셌던 것은 주어진 연구 목표 아래에서 일련의 작업을 끝낸 횟수다. 목표의 출처는 별도 기록에 있다. 열 번 모두 사람이 같은 목표를 입력했다.
+
+## 하편 58쪽 — ‘수학을 잘하라’는 목표는 어떻게 점수가 될까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-58-original.png"
+  alt="수학을 잘하라는 목표 H를 거쳐 오른쪽의 에이전트를 평가하는 그림. 왼쪽에는 목표의 출처를 묻는 빈 자리가 있다."
+  caption="하편 58쪽 · 가운데 목표가 바뀌면 같은 에이전트의 손실도 바뀔 수 있다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=58"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+그림 가운데의 목표 H에는 ‘수학을 잘하라’는 문구가 있고, 오른쪽 로봇 위에는 L(Aθ,H)가 있다. Aθ는 파라미터 θ를 가진 에이전트, H는 사람이 제공한 목표나 정보, L은 그 조건에서의 손실이다. 출제기(proposer)가 스스로 어려운 문제를 골라도, 어떤 종류의 문제에 점수를 줄지 정한 사람이 있을 수 있다. 같은 에이전트가 받는 점수도 그 선택에 따라 달라진다. [강의 59:07, 사람에게서 온 목표](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3547s) · [58:06, 수학 문제를 내라는 지시](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3486s) · [14편, H의 정의](/posts/self-improving-ai-14-proposer-solver-verifier/)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-video-58-en.png"
+  alt="왼쪽 사람이 수학을 잘하라는 목표 H를 지정하고, 그 목표가 에이전트의 손실로 이어진다."
+  caption="녹화 화면 59:06 · H를 건넨 사람이 첫 화살표의 출발점이다."
+  source="https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3546s"
+  credit="Hung-yi Lee / NTU ML 2026"
+  label="강의 녹화"
+  width={640} height={360}
+/>
+
+직전 [57:39의 프롬프트 화면](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3459s)에는 사람이 출제 범위와 출력 형식을 적어 둔 사례가 나온다. [15편의 6쪽 그림](/posts/self-improving-ai-15-harness-optimization-and-evaluation/)에서 두 프롬프트를 함께 읽을 수 있다.
+
+### 식 풀이 3. 같은 답안을 두고도 누가 더 수학을 잘하는지가 달라질까?
+
+산술 10문제와 기하 10문제를 같은 두 모델에 풀린다. 가상 채점표에서 모델 A는 각각 8개와 4개, 모델 B는 6개와 8개를 맞혔다. 앞으로 평가할 문제 중 산술이 차지할 비율을 λ, 기하 비율을 1−λ로 놓는다. 모델의 <strong>가중 정확도</strong>는 두 과목 정답률의 가중평균이다. 이 예제에서는 틀리면 1, 맞으면 0을 주어 기대 손실을 1−정확도로 정의한다.
+
+<Math tex={String.raw`a_A(\lambda)=0.8\lambda+0.4(1-\lambda)=0.4+0.4\lambda.`} display />
+
+<Math tex={String.raw`a_B(\lambda)=0.6\lambda+0.8(1-\lambda)=0.8-0.2\lambda,\qquad L_j=1-a_j.`} display />
+
+
+| 평가 목표 H가 정한 산술 비율 | 모델 A의 정확도 / 손실 | 모델 B의 정확도 / 손실 | 손실이 낮은 모델 |
+|---|---|---|---|
+| 80% | 0.72 / 0.28 | 0.64 / 0.36 | A |
+| 25% | 0.50 / 0.50 | 0.75 / 0.25 | B |
+
+두 모델에 같은 점수를 주는 비율도 구할 수 있다. 식의 양변에서 0.4를 빼고 0.2λ를 더하면 0.6λ=0.4가 남는다.
+
+<Math tex={String.raw`a_A=a_B\ \Longleftrightarrow\ 0.4+0.4\lambda=0.8-0.2\lambda\ \Longleftrightarrow\ \lambda=\tfrac23.`} display />
+
+
+산술 비율이 2/3을 넘으면 A가 앞서고, 그 아래면 B가 앞선다. 답안과 모델 가중치는 내내 같았다. 바뀐 것은 평가 설계자가 목표를 수치로 옮기는 방법이다. 이제 59쪽의 질문을 더 정확히 말할 수 있다. 사람이 일일이 다음 산술 문제를 지정하지 않을 때, 에이전트 <strong>스스로 어떤 경험을 찾아갈지</strong> 결정하는 신호를 어떻게 만들까?
+
+## 하편 59쪽 — 다음 행동을 고를 때 무엇에 보상을 줄까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-59-english.png"
+  alt="목표 왼쪽에 로봇과 말풍선이 놓이고, 아래에 호기심과 행동 영향력이라는 두 탐색 기준이 적혀 있다."
+  caption="하편 59쪽 · 목표의 출처를 묻던 자리에 에이전트가 들어온다. 아래 두 기준은 서로 다른 탐색 행동에 보상을 줄 수 있다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=59"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+이번에는 로봇 자신에게서 말풍선이 나온다. 로봇이 수학이라는 목표 H를 택한 뒤 오른쪽에서 그 목표에 따른 성과를 평가하는 그림이다. 그렇다면 로봇은 <strong>어디를 더 살펴볼지</strong> 어떤 수치로 정할까? 슬라이드 아래의 두 갈래는 서로 다른 질문을 던진다. 호기심(curiosity)은 지금 보는 것을 얼마나 잘 예측하는지 묻는다. 행동 영향력(empowerment)은 지금 내가 한 선택이 이후에 일어날 일을 얼마나 구분해 주는지 묻는다. 두 질문에 점수를 주는 법을 차례로 계산해 보자. [강의 59:17](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3557s) · [NTU 하편 59쪽](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=59)
+
+### 식 풀이 4. 같은 문을 두 번째 열면 호기심 보상은 얼마나 줄까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/icm-forward-inverse-model-figure-2.png"
+  alt="두 프레임의 특징에서 행동을 맞히는 역모형과, 현재 특징과 행동에서 다음 특징을 예측하는 순방향 모형을 보여 준다."
+  caption="Pathak 외, ICML 2017 그림 2의 오른쪽 · 위쪽에서 예측한 특징과 실제 다음 특징의 차이가 호기심 보상이 된다."
+  source="https://arxiv.org/pdf/1705.05363v1#page=3"
+  credit="Deepak Pathak et al. / ICML 2017"
+  label="보충 자료"
+  width={1801} height={1641}
+/>
+
+로봇이 문을 밀었다. Pathak 등의 <strong>내재적 호기심 모듈(Intrinsic Curiosity Module, ICM)</strong> 그림에서 아래의 sₜ와 sₜ₊₁은 행동 전후의 영상이다. 오른쪽 역모형(inverse model)은 두 영상의 특징에서 그 사이에 일어난 행동을 맞힌다. 이 학습 신호가 특징 추출기에 ‘행동을 알아보려면 화면 어디를 보아야 하는가’를 가르친다. 왼쪽 순방향 모형(forward model)은 현재 특징과 실제 행동으로 다음 영상의 특징을 예측한다. 호기심 보상은 <strong>예측 특징과 실제 다음 특징 사이의 제곱거리</strong>에 비례한다. [Pathak 등, Curiosity-driven Exploration by Self-supervised Prediction, 식 (4)–(6)](https://arxiv.org/pdf/1705.05363v1#page=4)
+
+계산을 위해 실제 다음 특징을 (2, 1), 첫 예측을 (1, 1), 보상 배율 η를 0.2로 둔다. 첫 번째 특징에서만 1만큼 틀렸다. 같은 상황을 더 학습해 예측이 (1.8, 1)로 바뀌었다고 하자. 문을 두 번째 밀 때도 똑같은 특징이 관측된다는 가정이다.
+
+<Math tex={String.raw`r^{\rm ICM}_t=\frac{\eta}{2}\left\|\widehat{\phi}_{t+1}-\phi_{t+1}\right\|_2^2,\qquad r_{\rm first}=0.1(1^2+0^2)=0.1.`} display />
+
+<Math tex={String.raw`r_{\rm later}=0.1(0.2^2+0^2)=0.004,\qquad \frac{r_{\rm later}}{r_{\rm first}}=\frac{1}{25}.`} display />
+
+
+<strong>무작위 화면은 어떨까?</strong> 문 옆 전광판의 픽셀이 행동과 무관하게 0 또는 1로 반반씩 바뀐다. 픽셀 자체를 예측하면 최선의 값 0.5를 매번 내도 기대 제곱오차는 0.25다. 경험이 많아져도 남는 이 오차까지 보상하면 예측하기 어려운 전광판 앞에 머무를 이유가 생긴다. 이를 ‘노이즈 TV(noisy TV)’ 문제라고 한다. ICM의 역모형이 사용하는 특징은 문이 움직였다는 단서에 집중할 수 있다. 그런 특징이 실제 환경에서 잡음을 얼마나 줄이는지는 검증해야 한다. [ICM §2.1](https://arxiv.org/pdf/1705.05363v1#page=3)
+
+<strong>무작위 네트워크 증류(Random Network Distillation, RND)</strong>는 도착한 영상 한 장을 두 네트워크에 같이 준다. 하나는 무작위로 초기화한 뒤 고정한 표적망 f이고, 다른 하나는 그 출력을 흉내 내는 예측망이다. 한 영상의 표적값이 2이고 예측이 1.5에서 1.9로 가까워진다면 아래처럼 원시 보너스가 줄어든다. 같은 영상에는 매번 같은 표적이 나온다. 잡음이 매번 낯선 영상을 만들어 내는 경우까지 이 성질이 모두 없애 주지는 않는다. [Burda 등, 2018, Exploration by Random Network Distillation §2.2](https://arxiv.org/pdf/1810.12894v1#page=3)
+
+<Math tex={String.raw`b_{\rm RND}(x)=\left\|\hat f(x)-f(x)\right\|_2^2,\qquad (1.5-2)^2=0.25,\qquad (1.9-2)^2=0.01.`} display />
+
+
+여기까지의 특징과 보너스는 손계산용 수치다. 실제 RND 논문의 표 1에서 Atari 게임 *Montezuma’s Revenge*의 최종 평균 게임 점수는 RND <strong>8,152점</strong>, PPO 기준선 <strong>2,497점</strong>이었다. 차이는 5,655게임점이다. 이 표는 게임에서 획득한 외부 점수를 보고한다. 위의 0.25와 0.01은 탐색을 유도하는 내부 보너스여서 단위가 다르다. [RND 표 1](https://arxiv.org/pdf/1810.12894v1#page=9)
+
+### 식 풀이 5. 도착할 방이 두 개라면 행동 영향력은 몇 비트일까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/empowerment-two-room-channel.png"
+  alt="두 방으로 가는 행동의 오류 확률이 0%, 25%, 50%로 커질 때 행동 선택권은 1, 약 0.189, 0비트가 된다."
+  caption="Mohamed·Rezende 식 (2)를 대칭적인 두 방 예제에 적용한 계산 · 점은 논문의 측정값이 아니라 본문의 손계산을 나타낸다."
+  source="https://arxiv.org/pdf/1509.08731v1#page=3"
+  credit="JJo 도표 · 출처 Shakir Mohamed and Danilo Jimenez Rezende"
+  label="보충 자료"
+  width={1606} height={1123}
+/>
+
+로봇이 같은 갈림길 s에서 왼쪽 또는 오른쪽 버튼 A를 누르고, 한 번 이동한 뒤 방 S′를 관측한다. 두 방이 나온다는 사실만으로 로봇이 갈 방을 정할 수 있는지는 알 수 없다. Mohamed와 Rezende는 출발 상태와 행동 횟수를 고정한 뒤, <strong>행동과 도착 상태가 공유하는 정보량</strong>을 가장 크게 하는 행동 분포를 찾는다. 그 최댓값이 행동 영향력이다. 논문은 여러 행동의 열도 다룬다. 여기서는 한 번만 누르고, 로그 밑을 2로 택해 비트로 읽는다. [Mohamed·Rezende, 2015, Variational Information Maximisation for Intrinsically Motivated Reinforcement Learning, 식 (2)](https://arxiv.org/pdf/1509.08731v1#page=3)
+
+<Math tex={String.raw`\mathcal E(s)=\max_{p(A\mid s)} I(A;S'\mid s),\qquad I(A;S'\mid s)=H(S'\mid s)-H(S'\mid A,s).`} display />
+
+
+H는 여기서 확률분포의 불확실성을 재는 엔트로피(entropy)다. 첫 항은 버튼 정보를 가린 채 도착할 방을 예측할 때의 불확실성, 둘째 항은 어느 버튼을 눌렀는지 알려 준 뒤 남는 불확실성이다. 두 버튼 모두 같은 확률 ε로 반대 방에 보내는 <strong>대칭적인 갈림길</strong>을 생각하자. 왼쪽·오른쪽을 반반 택하면 도착할 방도 반반이므로 첫 항이 가능한 최댓값 1비트다. 둘째 항은 어느 버튼을 눌러도 같아서 이 선택이 최댓값을 달성한다.
+
+<Math tex={String.raw`H_2(\varepsilon)=-\varepsilon\log_2\varepsilon-(1-\varepsilon)\log_2(1-\varepsilon),\qquad \mathcal E(s)=1-H_2(\varepsilon).`} display />
+
+
+| 버튼을 누른 뒤의 동작 | 버튼을 알아도 남는 불확실성 | 행동 영향력 |
+|---|---:|---:|
+| 언제나 지시한 방으로 이동 | 0비트 | 1비트 |
+| 4번 중 평균 1번은 반대 방으로 이동 | 약 0.811비트 | 약 0.189비트 |
+| 버튼과 무관하게 동전으로 방을 결정 | 1비트 | 0비트 |
+
+<Math tex={String.raw`H_2(0.25)=-0.25(-2)-0.75\log_2(0.75)\approx0.8113,\qquad 1-0.8113\approx0.1887.`} display />
+
+
+가운데 행에서 왼쪽 버튼을 눌렀다는 단서는 분명 도움이 되지만 목적지를 완전히 정해 주지는 못한다. 마지막 행에서는 도착지가 매번 달라져도 어느 버튼을 눌렀는지 알아맞힐 단서가 없다. 무작위 결과가 호기심의 예측 오차를 키울 수 있으면서도 행동 영향력은 0일 수 있는 이유다. 그림의 세 점은 이 가상 갈림길에서 계산한 값이다.
+
+<strong>언어 모델은 무엇을 탐색할까?</strong> 59쪽이 함께 가리키는 2025년 연구 두 편은 탐색 대상부터 다르다. *Navigate the Unknown*의 IMAGINE은 수학 문제와 생성한 풀이 전체를 하나의 궤적(trajectory)으로 보고, 오답으로 판정된 풀이에 탐색 보너스를 배정한다. *WorldLLM*은 환경에 관한 가설을 문장으로 제안하고, 행동 후 관측한 결과를 근거로 가설을 갱신한다. 전자는 <strong>어떤 풀이를 더 생성할지</strong>, 후자는 <strong>어떤 관측이 현재 설명을 고치는 데 도움이 될지</strong>를 다룬다. [Navigate the Unknown: Enhancing LLM Reasoning with Intrinsic Motivation Guided Exploration, 식 (5)–(6)](https://arxiv.org/pdf/2505.17621v6#page=4) · [WorldLLM: Improving LLMs’ world modeling using curiosity-driven theory-making, §3](https://arxiv.org/pdf/2506.06725v3#page=5)
+
+## 하편 60쪽 — 호기심 보상이 실제 행동을 바꾸려면?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-60-original.png"
+  alt="2018년 강의의 ICM 화면에서 두 관측의 특징이 순방향 예측과 역방향 행동 추정에 함께 들어간다."
+  caption="하편 60쪽 · 왼쪽은 다음 특징을, 오른쪽은 이미 실행한 행동을 예측한다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=60"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+60쪽은 2018년 강화학습 강의의 <strong>내재적 호기심 모듈(Intrinsic Curiosity Module, ICM)</strong>을 다시 보여 준다. 아래의 두 상자에는 행동 전후의 관측 sₜ와 sₜ₊₁이 들어간다. 같은 특징 추출기 φ를 양쪽에 적용한다. 왼쪽 네트워크는 <strong>행동을 알 때 다음 특징을 예측</strong>하고, 오른쪽 네트워크는 <strong>두 특징을 보고 이미 한 행동을 추정</strong>한다. 그림 위쪽의 diff는 왼쪽 예측과 실제 다음 특징 사이의 차이다. [본강의 1:01:49](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3709s) · [2018년 영상 14:20, 두 네트워크](https://www.youtube.com/watch?v=-5cCWhu0OaM&t=860s) · [2018년 강의 슬라이드 7쪽](https://speech.ee.ntu.edu.tw/~tlkagk/courses/MLDS_2018/Lecture/Reward%20%28v3%29.pdf#page=7) · [Pathak 등, ICML 2017](https://proceedings.mlr.press/v70/pathak17a.html)
+
+### 식 풀이 6. 이미 실행한 행동을 왜 다시 맞힐까?
+
+검사 카메라가 ‘왼쪽으로 이동’과 ‘오른쪽으로 이동’ 중 하나를 고른다고 하자. 여기서는 실제로 오른쪽으로 이동했다. 자기 행동이므로 정답은 실행 기록에 있다. <strong>역동역학 모델(inverse dynamics model)</strong>이 두 영상 특징을 읽고 오른쪽에 준 확률을 p라고 쓰자. 정답 확률이 높아질수록 작아지는 교차엔트로피 손실은 다음과 같다. ln은 자연로그다. [Pathak 등, §2.2의 역모델과 순방향 모델](https://proceedings.mlr.press/v70/pathak17a/pathak17a.pdf#page=3)
+
+<Math tex={String.raw`L_{\rm inv}=-\ln p(a_t=\mathrm{right}\mid\phi(s_t),\phi(s_{t+1})).`} display />
+
+
+두 프레임에서 부품이 어느 방향으로 움직였는지 알 수 있어 p=0.8이라고 하자. 두 프레임 모두 깜박이는 배경만 남겨 어느 행동이었는지 구분하지 못하면, 같은 빈도로 선택된 두 행동에 각각 0.5를 줄 수 있다. 이 예제의 두 손실을 계산해 보자.
+
+<Math tex={String.raw`-\ln 0.8\approx0.223,\qquad -\ln 0.5\approx0.693,\qquad 0.693-0.223\approx0.470.`} display />
+
+
+역모델을 학습하는 쪽은 행동을 구별해 주는 특징을 선호한다. 여기서 얻은 0.470은 <strong>두 가상 예측의 역모델 손실 차이</strong>다. 에이전트에게 탐색 보상으로 들어가는 수치는 59쪽에서 계산한 <strong>순방향 특징 예측 오차</strong>다. 배경이 실제 행동과 늘 함께 변한다면 특징 추출기가 그 배경도 이용할 수 있다. 특징을 학습한다는 사실만으로 모든 잡음이 사라지지는 않는다. [Pathak 등, 그림 2와 식 (2)–(3)](https://proceedings.mlr.press/v70/pathak17a/pathak17a.pdf#page=3)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-drl-2018-curiosity-rewards.png"
+  alt="환경이 주는 보상과 ICM이 같은 전이에서 계산한 내재 보상이 시간축 아래에 나란히 표시돼 있다."
+  caption="NTU DRL 제7강 5쪽 · 시간이 흐르면서 두 보상이 합산되는 위치를 표시한 원본 슬라이드."
+  source="https://speech.ee.ntu.edu.tw/~tlkagk/courses/MLDS_2018/Lecture/Reward%20%28v3%29.pdf#page=5"
+  credit="Hung-yi Lee / NTU DRL 2018"
+  label="보충 자료"
+  width={1800} height={1350}
+/>
+
+2018년 강의 5쪽에서 위쪽 줄은 에이전트와 환경의 상호작용을, 아래쪽 줄은 같은 전이에서 얻는 두 보상을 그린다. 슬라이드 60쪽에 인쇄된 9:07은 호기심 예제의 도입이다. 애니메이션이 진행된 9:50 화면에서는 환경에서 받은 보상과 호기심 모듈이 만든 보상을 함께 읽을 수 있다. 이후에는 다음 상태를 예측하는 모듈과 특징 공간에서의 예측으로 설명이 이어진다. [2018년 영상 9:07, 호기심 예제 시작](https://www.youtube.com/watch?v=-5cCWhu0OaM&t=547s) · [9:50, 두 보상 표시](https://www.youtube.com/watch?v=-5cCWhu0OaM&t=590s) · [10:40, 다음 상태 예측](https://www.youtube.com/watch?v=-5cCWhu0OaM&t=640s) · [보충 강의 5쪽](https://speech.ee.ntu.edu.tw/~tlkagk/courses/MLDS_2018/Lecture/Reward%20%28v3%29.pdf#page=5)
+
+### 식 풀이 7. 익숙한 선반보다 새 선반의 점수가 높아지는 조건은?
+
+첫 장면의 검사 로봇으로 돌아가자. 한 번의 이동 예산이 남았다. 익숙한 3번 선반을 다시 검사하면 작업 보상 1점과 호기심 보너스 0.1점을, 새 선반으로 가면 작업 보상 0점과 보너스 0.6점을 받을 것으로 예상한다. 이 수치는 가정한 값이다. 두 선택의 기대 점수를 비교하기 위해, 보너스에 곱하는 계수 β를 명시한다. 여기서는 한 번만 결정하므로 미래 보상의 할인은 없다.
+
+<Math tex={String.raw`J_{\rm known}=1+0.1\beta,\qquad J_{\rm new}=0+0.6\beta.`} display />
+
+<Math tex={String.raw`J_{\rm new}>J_{\rm known}\iff0.5\beta>1\iff\beta>2.`} display />
+
+
+| 보너스 계수 β | 익숙한 선반 | 새 선반 | 높은 점수를 받는 행동 |
+|---:|---:|---:|---|
+| 1 | 1.1 | 0.6 | 익숙한 선반 재검사 |
+| 2 | 1.2 | 1.2 | 동점 |
+| 3 | 1.3 | 1.8 | 새 선반 탐색 |
+
+β=3일 때 새 선반의 총점은 1.8이다. 이 중 실제 작업 보상은 여전히 0점이다. 따라서 실험 결과를 기록할 때는 총점과 함께 <strong>작업 보상, 탐색한 선반 수, 발견한 불량 수</strong>를 따로 남겨야 무엇이 늘었는지 알 수 있다. β의 경계값 2는 이 예제에서 택한 보상 단위와 한 번의 이동 예산에 따라 나온다. [2018년 강의, 외재·내재 보상을 합산하는 그림](https://speech.ee.ntu.edu.tw/~tlkagk/courses/MLDS_2018/Lecture/Reward%20%28v3%29.pdf#page=5)
+
+56쪽의 작업 일지는 로봇이 <strong>어제 어디를 봤는지</strong> 알려 준다. 59–60쪽의 탐색 보상은 로봇이 <strong>오늘 어디로 갈지</strong>에 영향을 준다. 내일도 같은 기록을 읽을 수 있는가, 그리고 그 기록으로 사람이 원한 결과가 늘었는가는 두 번의 다른 시험으로 답할 수 있다. 다음 61쪽은 에이전트가 개선하려는 점수와 사람이 실제로 원하는 결과가 어긋나는 상황으로 이어진다. [NTU 하편 61쪽](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=61)

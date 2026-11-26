@@ -1,0 +1,403 @@
+---
+title: Self-Improving AI 03 — When does self-correction become learning?
+description: Worked examples contrast revising an answer with updating parameters through supervised learning on
+  corrections or reinforcement learning on revision actions.
+pubDate: 2026-11-16
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-03-self-correction-to-rl
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- self-correction
+- reinforcement-learning
+- fine-tuning
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 3
+translationKey: en-self-improving-ai-03-self-correction-to-rl
+translatedPosts:
+  ko-KR: self-improving-ai-03-self-correction-to-rl
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+[Self-Improving AI 02 — Who Sets the Learning Target?](/posts/self-improving-ai-02-learning-targets/) examined what has to change when a model uses its own answers as targets. These five slides explain **how revising an answer can supply material for subsequent training**.
+
+First, distinguish two outcomes. A system may improve the answer to its current question, or it may train parameters and change how it produces future outputs. Self-correction can accomplish the former. Its results can then feed supervised learning, or reinforcement learning can reward the correction behavior. Equating all self-improvement with reinforcement learning obscures these distinct processes.
+
+## Slide 11 — Can the same AI produce a better training target?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-11-en.png"
+  alt="Under a heading about AI generating its own answers, the slide links to the earlier Self-Correction lecture."
+  caption="NTU slide 11 — Using self-correction to generate training targets."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=11"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 11](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=11) · [Video at approximately 08:31–08:43](https://www.youtube.com/watch?v=s06mSAGN4gM&t=510s)
+
+This slide connects checking and revising answers, discussed in the earlier [Self-Correction lecture](https://www.youtube.com/watch?v=m3i2mk5hs8U), to generating training targets.
+
+Recall slide 10. If a model learns simply by copying its own output, where might the direction toward a better answer come from? Slide 11 introduces **a procedure that checks and revises the first answer**.
+
+### The same model can produce answers under different conditions
+
+Suppose a model attempts a multiplication problem in one pass and gets it wrong. The second call receives both the problem and the first solution and is asked to check each term. The two calls use the same parameters but have different contexts and tasks.
+
+The first call writes a solution. The next looks for errors in an existing solution. A draft provides something to inspect and permits a computational path different from solving from scratch. This explains **why a revision by the same model can differ from the first answer**. It does not guarantee a more accurate revision.
+
+The following roles clarify the later slides.
+
+| Stage | Operation | Passed to the next stage |
+|---|---|---|
+| Initial generation | Produce an initial answer from the input | Draft |
+| Review and revision | Identify problems in the draft and revise it | Candidate revision |
+| Acceptance | Judge whether the revision is suitable for training | Candidate training target |
+| Training | Change parameters using accepted targets | New model |
+
+Using revisions as training data requires an acceptance criterion. **Who generated an answer and what establishes its quality are separate questions.**
+
+A model saying “there are no more errors” produces another model output. A program's test record or an independent arithmetic check supplies a different kind of evidence. When an external verifier contributes, attribute that judgment accordingly.
+
+## Slide 12 — Self-correction can take different paths
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-12-en.png"
+  alt="Three paths show error detection and correction, regeneration after reflection, and correction through reasoning."
+  caption="NTU slide 12 — Self-correction through detection, critique, and reasoning."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=12"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 12](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=12) · [Video at approximately 08:43–09:31](https://www.youtube.com/watch?v=s06mSAGN4gM&t=523s)
+
+The diagram puts three paths with a shared goal side by side. Each ends with a corrected answer. Reading all three as instructions to “think again” would obscure their differences.
+
+### First row — Detect and correct the error
+
+A separate **Detection + Correction** stage follows the first answer. The lecture mentions detecting possible errors from changes in internal model representations and using the result to guide correction.
+
+The detection box need not be another language model. Identify the signal a particular method uses to judge errors. Knowing the error's location, knowing only that the answer is wrong, and observing low confidence provide different information.
+
+In a hypothetical calculation, the first answer is “17 × 6 = 112.” Compared with “incorrect,” feedback to “calculate 10 × 6 and 7 × 6 separately and check their sum” locates the correction more precisely. Following it gives 60 + 42 = 102.
+
+### Second row — Give the next generation the draft and a reflection
+
+The first output and a **reflection** enter the next LLM call. In this workflow, the model expresses a critique in language and generates a new answer conditioned on it.
+
+Self-Refine illustrates this design. The 2023 paper repeatedly uses one LLM to generate drafts, provide feedback, and revise them. The procedure requires no additional parameter training or reinforcement learning. [Self-Refine, section 2](https://arxiv.org/html/2303.17651v2#S2)
+
+“Reflection” need not imply an inner psychological state. Operationally, it is **textual criticism** included in the next generation's input.
+
+The critique can itself be wrong. A forcefully worded but mistaken critique may change a correct answer. Evaluate the ability to use feedback separately from the accuracy of that feedback.
+
+#### Supplementary lecture · Stanford CS329T — Distinguishing sources of feedback
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/stanford-cs329t-self-refine-p45.png"
+  alt="RARR at left revises a response using retrieved evidence. Self-Refine at right shows a draft, critique, and revision in a table tennis conversation."
+  caption="Stanford CS329T, PDF page 45 — Response revision in RARR and Self-Refine."
+  source="https://web.stanford.edu/class/archive/cs/cs329t/cs329t.1242/slides/lecture_9.pdf#page=45"
+  credit="Anupam Datta, John Mitchell, Ankur Taly / Stanford CS329T. Included examples: Gao et al. and Madaan et al., 2023."
+  width={1800}
+  height={1013}
+/>
+
+In the Self-Refine example on the right, the user expresses an interest in table tennis. The first answer gives generic remarks about exercise and socializing. The feedback says <strong>it lacks specific information about table tennis and pays too little attention to the user's situation</strong>. The revision describes features of the sport and asks whether the user has played or wants to learn. The critique identifies what to change and how. Including it in the next input corresponds to the second path on slide 12. [Supplementary slide 45](https://web.stanford.edu/class/archive/cs/cs329t/cs329t.1242/slides/lecture_9.pdf#page=45)
+
+In the RARR example on the left, retrieved documents ground the revision. Both approaches rewrite an answer, but different information enters their feedback. Record <strong>whether the method retrieves external evidence or uses only the model's critique</strong>. The example of better conversation on the right also does not demonstrate automatic verification of mathematical correctness. Check both task and feedback conditions when evaluating self-correction later.
+
+### Third row — Check and backtrack within reasoning
+
+The third row depicts an extended **reasoning** process. The lecture describes how extra tokens might support checking and revising earlier judgments. Two LLM boxes distinguish roles in sequential generation and need not denote different models.
+
+Here the model may redo a calculation during reasoning or notice an overlooked condition and change an intermediate choice. This differs from a new critique call after a completed answer. Counting only changes to final answers can miss revisions inside reasoning.
+
+### What comparison reveals the effect of self-correction?
+
+Extra calls and tokens consume compute. An illustrative comparison can include three conditions.
+
+| Condition | Effect to measure |
+|---|---|
+| Generate once with sufficiently clear instructions | Baseline first-generation performance |
+| Give feedback on the draft and revise | Improvement from using feedback |
+| Generate multiple independent answers and select one under a comparable budget | Effect of extra compute and additional candidates |
+
+If an evaluator with access to ground truth stops revision only on correct answers, its information contributes to performance. Clarify whether deployment provides the same information.
+
+Huang and colleagues' ICLR 2024 paper evaluated <strong>intrinsic self-correction</strong> without external ground-truth feedback and observed deterioration on the models and reasoning tasks studied. It also analyzes initial prompt strength, stopping rules using correct answers, and compute budgets. This empirical finding has a defined scope and does not establish that every model and revision method must fail. [Original paper, sections 3–5](https://proceedings.iclr.cc/paper_files/paper/2024/file/8b4add8b0aa8749d80a34ca5d941c355-Paper-Conference.pdf)
+
+## Slide 13 — The answer changes while the model parameters stay fixed
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-13-en.png"
+  alt="Above, self-correction revises the answer, but the LLM is labeled “Nothing changes.” Below, the same model generates its initial output again."
+  caption="NTU slide 13 — Revising an answer leaves the model parameters fixed."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=13"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 13](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=13) · [Video at approximately 09:31–10:13](https://www.youtube.com/watch?v=s06mSAGN4gM&t=570s)
+
+The phrase <strong>Nothing changes…</strong> refers specifically to **the language model's parameters** in this example. Something did happen in the upper diagram: the output was revised.
+
+### Changing context and changing weights
+
+Introduce notation for inference-time self-correction. Let <Math tex={String.raw`y_0`} /> be the first answer, <Math tex={String.raw`c_0`} /> the feedback, and <Math tex={String.raw`y_1`} /> the candidate revision.
+
+<Math tex={String.raw`y_0\sim p_\theta(\cdot\mid x),\qquad
+y_1\sim p_\theta(\cdot\mid x,y_0,c_0).`} display />
+
+Both expressions use the same <Math tex={String.raw`\theta`} />. The conditioning context changes. The second generation sees the draft and feedback in addition to the original question, so the same model can produce a different output.
+
+Now start a fresh run with only the original question, omitting the draft and feedback. The distribution is again <Math tex={String.raw`p_\theta(\cdot\mid x)`} />. The experience of revision was not automatically written into the weights.
+
+The lecture illustrates this by repeating the same incorrect answer to the same question. Under stochastic sampling, the exact wording need not repeat. More precisely, **if the model, input, and inference settings are identical, revising the preceding answer alone does not change the underlying output distribution**. Under identical deterministic decoding conditions, an output can repeat exactly.
+
+Keeping the conversation history or retrieving the revision from external memory can influence the next answer. In that case the input or system state changes. Record that separately from parameter learning.
+
+| Why a later answer changed | What changed | Parameter learning? |
+|---|---|---|
+| The prompt includes the first answer and critique | Input context | This operation alone does not train parameters |
+| The revision was saved and retrieved on the next run | External memory and input context | This operation alone does not train parameters |
+| A loss targeting the revision was computed and optimized | Model parameters | Yes |
+
+Self-correction can be useful in its own right when it improves inference accuracy, although each request may need another check. Slide 14 places the revision in training data so that the system can train to produce better first answers.
+
+### Measure changes to the output and changes to the model separately
+
+One successful revision leaves two questions open. Does the revision procedure work on other problems? Does a newly trained model give better first answers without the procedure?
+
+The first asks whether revision generalizes. The second asks about the effect of parameter learning. Even within one table, report **first-attempt accuracy**, **post-revision accuracy**, and **inference cost** separately. Using the same problems in training and evaluation must also be distinguished from generalization to new problems.
+
+#### Supplementary lecture · Aviral Kumar — Parallel candidate selection and sequential self-correction
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/aviral-simons-finetuning-p05.png"
+  alt="At left, a verifier ranks independent base-model candidates. At right, a trained model sequentially revises earlier responses."
+  caption="Aviral Kumar, Simons Institute, PDF page 5 — Parallel generation and sequential self-correction."
+  source="https://simons.berkeley.edu/sites/default/files/2025-04/LLM25-2%20Aviral%20Kumar%20Slides%20%281%29.pdf#page=5"
+  credit="Aviral Kumar, Carnegie Mellon University / Simons Institute. Included source: Snell et al., 2024."
+  width={1800}
+  height={1013}
+/>
+
+On the left, the system samples multiple candidates for one input and ranks them with a verifier. On the right, it revises an answer based on the previous response. The same extra compute can <strong>sample more independent candidates or revise an earlier candidate</strong>. To assess the value of self-correction, compare tokens and selection procedures as well as call counts. [Presentation slide 5](https://simons.berkeley.edu/sites/default/files/2025-04/LLM25-2%20Aviral%20Kumar%20Slides%20%281%29.pdf#page=5)
+
+<strong>Trained LLM</strong> on the right means that the model was trained to revise. Each arrow between responses need not update its weights. Distinguishing training to revise from repeated inference calls reconciles the diagram with the fixed parameters on slide 13. Slide 14 examines a separate step that uses revisions for actual parameter training.
+
+## Slide 14 — Use the revised answer as a training target
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-14-en.png"
+  alt="Fine-tuning uses the self-corrected answer as a target so that a new model can generate that answer directly from the input."
+  caption="NTU slide 14 — Fine-tuning the model to match a revised answer."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=14"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 14](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=14) · [Video at approximately 10:13–11:17](https://www.youtube.com/watch?v=s06mSAGN4gM&t=613s)
+
+The upper diagram shows the familiar self-correction procedure. The middle compares the current model's output with the revised answer. Below is the model **after fine-tuning its parameters**. The changed LLM box color distinguishes the before and after states.
+
+The <strong>?????</strong> in the middle represents the model output during training. Comparing it with the target marked “corrected” on the right connects the diagram to the loss on slide 8. The lower diagram illustrates a training goal. The lecture says the new model is **more likely** to output the revision, without guaranteeing that output on every input.
+
+### Freeze the accepted candidate as a target and update the student
+
+On the slide, <Math tex={String.raw`y`} /> is the model output and <Math tex={String.raw`\hat y`} /> the target. Write <Math tex={String.raw`\tilde y`} /> for a revised answer accepted for training. Then <Math tex={String.raw`\tilde y`} /> takes the position marked <Math tex={String.raw`\hat y`} />.
+
+For example, generate and revise drafts and collect input–revision pairs judged suitable for training. Let <Math tex={String.raw`I`} /> be the set of accepted example indices. When <Math tex={String.raw`I`} /> is nonempty, one supervised fine-tuning (SFT) loss for a language model is
+
+<Math tex={String.raw`L_{\mathrm{SFT}}(\theta)
+=-\frac{1}{|I|}\sum_{i\in I}\sum_{t=1}^{T_i}
+\log p_\theta\!\left(\tilde y_{i,t}\mid x_i,\tilde y_{i,<t}\right).`} display />
+
+- <Math tex={String.raw`\tilde y_{i,t}`} />: token <Math tex={String.raw`t`} /> of the accepted revision.
+- <Math tex={String.raw`\tilde y_{i,<t}`} />: the preceding target tokens.
+- <Math tex={String.raw`T_i`} />: the number of tokens in the answer.
+- Negative log probability: the loss grows as the probability assigned to a target token falls.
+
+This formulation sums token losses per example and divides by the number of examples. Averaging tokens within each example first changes the relative contributions of long and short answers. Dividing once by total token count instead rescales the loss for the same fixed batch. Distinguish these choices.
+
+The generated, revised answers are fixed training targets. We differentiate the student model's probabilities with respect to its parameters. The fact that a model generated the target does not imply backpropagating through the entire process that sampled it.
+
+### Where did the learning signal change?
+
+Compared with direct copying on slide 10, the target is now **an output that has been reviewed and revised**. The distribution of accepted revisions may differ from the initial output distribution. That difference can supply a new learning signal.
+
+A “revised” label does not establish quality. Changing 112 to 102 in our multiplication example gives a correct target. Changing 112 to 104 gives a new incorrect one. The SFT loss raises the probability of the target without independently testing its truth.
+
+Record the acceptance criterion before using revisions in training. Mathematical answer checks, code tests, explicit format checks, and human review cover different properties. Passing a limited test suite does not establish correctness for all inputs.
+
+### Learning the final answer and learning to revise
+
+This distinction matters particularly when implementing the training procedure.
+
+| Training objective | Model input | Target output | Primary evaluation |
+|---|---|---|---|
+| Produce a good answer immediately | Original problem | Accepted final answer | First-attempt performance on new problems |
+| Revise a draft | Problem + draft, optionally feedback | Revision or critique and revision | Revision performance on new drafts |
+
+The lower diagram on slide 14 directly illustrates the first objective. Train on an answer obtained through multistep revision so that a shorter procedure can reproduce it at deployment. In effect, some additional inference computation moves into training cost. Compare the trained model and the actual inference procedure to establish the effect.
+
+For the second objective, consider where the drafts came from. Errors produced by the model during training may differ from those made by its updated version. Correcting a previous model's fixed errors does not establish that the new model corrects its own new errors well.
+
+### Constitutional AI in the lecture
+
+Near the end of this slide, the instructor mentions Constitutional AI. In the supervised stage of the paper released on December 15, 2022, principles guide critiques and revisions of responses, then the original model is fine-tuned on those revisions. This stage corresponds directly to the slide. [Original paper, sections 1.2 and 3](https://arxiv.org/html/2212.08073v1)
+
+The paper also contains a separate reinforcement learning stage. AI comparisons between responses generate preference data. A preference model trained on those data supplies a reward signal. Distinguish SFT on revised answers from RL with AI feedback. Human-defined principles also enter the process, so the criteria do not arise autonomously. [Original paper, section 4](https://arxiv.org/html/2212.08073v1#S4)
+
+#### Supplementary lecture · Stanford CS224N — Turning principles into critiques and revisions
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/stanford-cs224n-constitutional-ai-p92.png"
+  alt="A Constitutional AI example critiques an initial response to an inappropriate request and revises it to remove the problem."
+  caption="Stanford CS224N, PDF page 92 — Critiquing and revising responses in Constitutional AI."
+  source="https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=92"
+  credit="Archit Sharma, Stanford CS224N; based on Jesse Mu's slides. Constitutional AI example: Bai et al., 2022."
+  width={1800}
+  height={1013}
+/>
+
+From top to bottom, the example on the right shows the initial response, a request for critique, the actual critique, a revision request, and the revised answer. The model is <strong>asked to explain the issue and then remove it</strong>, giving the revision more direction than a general request for improvement. A principle informs a critique, which in turn guides the edit. [Supplementary slide, PDF page 92](https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=92)
+
+The figure itself shows how to revise one response. Collecting revisions as SFT targets belongs to the supervised procedure in the original Constitutional AI paper. The AI-feedback RL at left is a subsequent training stage. Labeling <strong>critique generation, supervised training on revisions, and preference-based reinforcement learning</strong> clarifies where parameters change and which signal each stage uses. [Constitutional AI, sections 3–4](https://arxiv.org/html/2212.08073v1#S3)
+
+## Slide 15 — From supervised learning with target answers to reinforcement learning with scores
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/ntu-self-improving-15-en.png"
+  alt="Supervised learning compares output y with target y-hat. Reinforcement learning evaluates the output with a reward function."
+  caption="NTU slide 15 — Comparing a target answer in supervised learning and evaluating with rewards in reinforcement learning."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=15"
+  credit="Hung-yi Lee · NTU"
+  width={1800}
+  height={1013}
+/>
+
+[Original slide 15](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=15) · [Video at approximately 11:17–13:01](https://www.youtube.com/watch?v=s06mSAGN4gM&t=677s)
+
+The slide begins by asking what reinforcement learning requires if supervised learning needs target answers. At lower left, model output <Math tex={String.raw`y`} /> is compared with target <Math tex={String.raw`\hat y`} />. On the right, a reward function evaluates the output.
+
+### Specifying the answer versus scoring the outcome
+
+A typical supervised signal says, “For this input, produce this answer.” Reinforcement learning assigns scores to the outcomes of selected actions or outputs and trains a policy to increase cumulative or expected reward.
+
+| Aspect | Typical supervised learning | Typical reinforcement learning |
+|---|---|---|
+| Direct signal | Target output paired with input | Reward for the selected action or output |
+| Basic question | How well does it reproduce the target? | Which choice offers more reward? |
+| Example objective | Negative log-likelihood of target tokens | Expected cumulative reward |
+| Human design choices | Problems, data, targets, loss | Problems, environment, reward, constraints |
+
+A complete model answer may be unnecessary, but evaluation criteria are still required. For instance, rewarding generated code for passing tests incorporates test design and execution conditions. A math reward based on comparison with the answer key uses ground-truth information during training.
+
+### Watch the sign convention for reward
+
+In ordinary reinforcement learning, **larger reward is better** for <Math tex={String.raw`r`} />. Yet the slide shows <Math tex={String.raw`\ell`} />, denoting a loss, to the right of the reward function.
+
+The instructor explains that **to discuss both settings in one framework, this lecture treats the reward function's output like a loss, with smaller values preferred**. [Explanation at approximately 11:47–12:16](https://www.youtube.com/watch?v=s06mSAGN4gM&t=707s)
+
+An illustrative conversion between conventions is
+
+<Math tex={String.raw`\text{maximize }J(\theta)
+=\mathbb E_{y\sim p_\theta(\cdot\mid x)}[r(x,y)]
+\quad\Longleftrightarrow\quad
+\text{minimize }L(\theta)=-J(\theta).`} display />
+
+Here a complete answer to one input is simplified to one choice. With a binary reward, cost <Math tex={String.raw`1-r`} /> gives the same ranking of outputs. Actual sequential problems also require states, actions, rewards over time, and possibly discounting.
+
+**Aligning optimization directions does not make the training algorithms identical.** Rewards such as test pass/fail can be nondifferentiable, and token choices are discrete. An update can instead use probabilities the policy assigned to its choices. Policy gradients, which use the gradient of expected reward, are one example. [Sutton et al., NIPS 1999](https://proceedings.neurips.cc/paper/1999/hash/464d828b85b0bed98e80ade0a5c43b0f-Abstract.html)
+
+### A numerical example of reward learning with two choices
+
+Calculate the update direction for a **hypothetical problem** with two choices.
+
+| Candidate answer | Current choice probability | Reward <Math tex={String.raw`r`} /> | Cost <Math tex={String.raw`1-r`} /> |
+|---|---:|---:|---:|
+| A | 0.4 | 1 | 0 |
+| B | 0.6 | 0 | 1 |
+
+Expected reward is <Math tex={String.raw`0.4\times1+0.6\times0=0.4`} /> and expected cost is 0.6. Write the probability of choosing A as <Math tex={String.raw`p=\sigma(z)`} />, where <Math tex={String.raw`\sigma`} /> is the sigmoid. We know both rewards in this small example, so we can compute the expected reward and gradient exactly.
+
+<Math tex={String.raw`J(z)=\sigma(z),\qquad
+\frac{dJ}{dz}=\sigma(z)(1-\sigma(z))=0.4\times0.6=0.24.`} display />
+
+Take one step to increase expected reward using a learning rate of 0.1.
+
+<Math tex={String.raw`z=\log\frac{0.4}{0.6}\approx-0.405465,\qquad
+z'=z+0.1\times0.24\approx-0.381465.`} display />
+
+The new probability of A is approximately **0.405774** and expected cost is about **0.594226**. A's probability rises because A earns the higher reward. No loss asks for a completed target sentence to be copied. The score difference between outcomes determines the update direction.
+
+If a poorly designed reward scores B higher, the update changes direction. Distinguish optimizing the given reward from measuring the desired capability accurately. This explains the instructor's emphasis on human involvement in reward design.
+
+### Where do self-correction and reinforcement learning meet?
+
+SCoRe connects these distinctions in practice. Released in 2024 and presented at ICLR 2025, it trains self-correction behavior with reinforcement learning across multiple responses. Training uses the current model's own responses and revision attempts, a reward encouraging progress under revision, and a staged procedure. [SCoRe, sections 3–5](https://arxiv.org/html/2409.12917v2)
+
+The paper challenges the assumption that learning good final answers also teaches revision. In the settings studied, SFT on fixed revision data was vulnerable to mismatches between training and evaluation error distributions or produced second responses with almost no changes. Simple RL setups exhibited similar issues and required further design. This illustrates **how final-answer quality and learning correction behavior can be different objectives**. It does not imply every instance of SFT fails. [Original paper, sections 4–5](https://arxiv.org/html/2409.12917v2#S4)
+
+SCoRe revises without external ground-truth feedback at inference while using a reward function during training. Account for the training supervision when interpreting the inference setup.
+
+#### Supplementary figure · The two training stages of SCoRe
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-03-self-correction-to-rl/score-v2-fig07-two-stage-training.png"
+  alt="Stage I constrains the first response to stay close to the base model while increasing second-response reward. Stage II trains both responses and rewards progress under revision."
+  caption="SCoRe, arXiv v2 Figure 7 — Two stages for training correction behavior."
+  source="https://arxiv.org/pdf/2409.12917v2#page=9"
+  credit="Kumar, Zhuang, Agarwal, Su et al., Google DeepMind, 2024"
+  width={1800}
+  height={560}
+/>
+
+In Stage I on the left, a KL divergence constrains how far the first-response distribution moves from the base model. Training increases reward for the second response conditioned on the first. <strong>No hard rule fixes the first response to a single sentence.</strong> This initial stage aims to prevent premature convergence of the two responses to a behavior that makes no corrections. [Original paper, section 5.1 and Figure 7](https://arxiv.org/html/2409.12917v2#S5.SS1)
+
+Stage II on the right optimizes rewards for both responses. The second also receives a reward encouraging improvement over the first. The aim is <strong>effective revision when needed</strong>, rather than frequent changes. Slide 14 uses an accepted revision as a supervised target. SCoRe trains through rewards for a trajectory consisting of the model's own initial answer and subsequent revision. [Original paper, section 5.2](https://arxiv.org/html/2409.12917v2#S5.SS2)
+
+The three procedures can now be distinguished as follows.
+
+1. **Inference-time self-correction:** Revise using context and computation while keeping parameters fixed.
+2. **Supervised learning from revisions:** Use revised answers as targets to train parameters.
+3. **Reinforcement learning of correction behavior:** Train a policy with rewards for responses and their revisions.
+
+Beginning on <strong>slide 16, the lecture turns to sparse rewards</strong>. Even with a defined success criterion, training becomes difficult when success signals are rare. A robot opening a door makes the question of what to reward more concrete.
+
+Next: [Self-Improving AI 04 — When Correct Answers Are Rare, What Should We Reward?](/posts/self-improving-ai-04-sparse-rewards-and-shaping/).
+
+## Further reading
+
+[Lecture PPTX](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pptx) · [PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) · [Lecture video](https://www.youtube.com/watch?v=s06mSAGN4gM)
+
+1. [Hung-yi Lee, official NTU ML 2026 course](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php). Self-Improving, Part 1, May 8, 2026. PDF pages 11–15: from self-correction to training.
+2. [Hung-yi Lee, Self-Correction lecture](https://www.youtube.com/watch?v=m3i2mk5hs8U). Official course schedule: April 24, 2026. Earlier lecture linked on slide 11.
+3. [Madaan et al., Self-Refine: Iterative Refinement with Self-Feedback](https://arxiv.org/html/2303.17651v2). NeurIPS 2023. Iteration over drafts, feedback, and revisions without additional parameter training.
+4. [Huang et al., Large Language Models Cannot Self-Correct Reasoning Yet](https://proceedings.iclr.cc/paper_files/paper/2024/file/8b4add8b0aa8749d80a34ca5d941c355-Paper-Conference.pdf). ICLR 2024. Self-correction evaluation distinguishing external feedback, the initial prompt, and compute budgets.
+5. [Bai et al., Constitutional AI: Harmlessness from AI Feedback](https://arxiv.org/html/2212.08073v1). December 15, 2022. SFT with critiques and revisions, followed by separate RL with AI feedback.
+6. [Kumar et al., Training Language Models to Self-Correct via Reinforcement Learning](https://arxiv.org/html/2409.12917v2). Released in 2024, ICLR 2025. arXiv v2 (October 4, 2024). SCoRe trains self-correction behavior.
+7. [Sutton et al., Policy Gradient Methods for Reinforcement Learning with Function Approximation](https://proceedings.neurips.cc/paper/1999/hash/464d828b85b0bed98e80ade0a5c43b0f-Abstract.html). NIPS 1999. Training a policy with the gradient of expected reward.
+
+8. [Stanford CS329T, Lecture 9: Grounding](https://web.stanford.edu/class/archive/cs/cs329t/cs329t.1242/slides/lecture_9.pdf#page=45). Anupam Datta, John Mitchell, and Ankur Taly, Fall 2023. PDF page 45: feedback in Self-Refine and RARR.
+9. [Aviral Kumar, The Key Ingredients of Optimizing Test-Time Compute and What's Still Missing](https://simons.berkeley.edu/talks/aviral-kumar-carnegie-mellon-university-2025-03-31). Simons Institute, March 31, 2025. Slide 5: parallel generation and sequential self-correction.
+10. [Stanford CS224N, Lecture 10: Prompting, Instruction Finetuning, and DPO/RLHF](https://web.stanford.edu/class/cs224n/slides/cs224n-spr2024-lecture10-prompting-rlhf.pdf#page=92). Archit Sharma, May 2, 2024. PDF page 92 (printed page 97): critiques and revisions in Constitutional AI.
+11. [Figure 7 in SCoRe, arXiv v2](https://arxiv.org/pdf/2409.12917v2#page=9). arXiv v2 (October 4, 2024), PDF page 9: two-stage SCoRe training. The 2025 conference version uses different figure numbers.

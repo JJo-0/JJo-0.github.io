@@ -1,5 +1,6 @@
 ---
 import Layout from '@/layouts/Layout.astro';
+import EnglishReadingLinks from '@/components/post/EnglishReadingLinks.astro';
 import sep25 from '../../../../site/news-edition-20260925.json';
 import oct03 from '../../../../site/news-edition-20261003.json';
 import oct02 from '../../../../site/news-edition-20261002.json';
@@ -11,9 +12,10 @@ import wetlabEdition from '../../../../site/news-wetlab-20260919.json';
 import candidateEdition from '../../../../site/news-candidates-20260918.json';
 import '@/styles/code-blocks.css';
 import { render, type CollectionEntry } from 'astro:content';
+import type { EnglishPost } from '@/lib/english';
 import { formatDate } from '@/lib/utils/date';
 import TableOfContents from '@/components/TableOfContents.svelte';
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getPublishedPosts, getPostSlug, getPostSeriesId } from '@/lib/utils/posts';
 import { resolveSeriesPostTitle } from '@/lib/modern-ai-series';
 
 import Breadcrumbs from '@/components/Breadcrumbs.svelte';
@@ -34,18 +36,42 @@ export async function getStaticPaths() {
   }));
 }
 
-type Props = CollectionEntry<'posts'>;
+type Props = CollectionEntry<'posts'> & {
+  translation?: EnglishPost;
+  englishCard?: { title: string; description: string };
+};
 
 const post = Astro.props as Props;
-const { Content, headings } = await render(post);
+const { translation, englishCard } = post;
+const en = Boolean(englishCard);
+const article = translation ?? post;
+const { Content, headings } = await render(article);
 
 const effectiveSlug = getPostSlug(post);
+const reviewedBatchStages: Record<string, string> = {
+  '2026-10-06-shotgun-mammalian-metabolic-engineering-news': '실험 단계: 세포주에서의 개념증명',
+  '2026-10-07-deterministic-2d-semiconductor-nucleation-news': '실험 범위: 반도체 성장 공정·소자',
+  '2026-09-13-rentosertib-phase3-news': '임상 단계: 3상 시험 시작 · 3상 결과 미발표',
+};
+const englishStages: Record<string, string> = {
+  '2026-10-06-shotgun-mammalian-metabolic-engineering-news': 'Study stage: proof of concept in cell lines',
+  '2026-10-07-deterministic-2d-semiconductor-nucleation-news': 'Study scope: semiconductor growth and devices',
+  '2026-09-13-rentosertib-phase3-news': 'Clinical stage: phase 3 started; results pending',
+};
+const reviewedBatchStage = (en ? englishStages : reviewedBatchStages)[effectiveSlug];
+const reviewedBatchDescriptions: Record<string, string> = {
+  '2026-10-06-shotgun-mammalian-metabolic-engineering-news': '유전자 조각을 조합하고 기능이 남은 세포를 선별해 새로운 대사경로를 탐색했다. 세포주에서의 결과이며 치료나 산업 생산 공정의 완성은 아니다.',
+  '2026-10-07-deterministic-2d-semiconductor-nucleation-news': '성장과 식각을 조절해 정해진 구역의 가운데에 결정핵 하나가 남도록 했다. 성장 공정과 소자에서 확인한 결과이며 대규모 완성 칩 제조의 검증은 아니다.',
+  '2026-09-13-rentosertib-phase3-news': 'AI로 발굴한 폐섬유증 치료 후보가 임상 3상 시험을 시작했다. 앞선 소규모 2a상의 신호와 3상에서 효과를 입증한 결과는 구분해야 한다.',
+};
 const canonicalPostUrl = new URL(Astro.url.pathname, Astro.site).toString();
-const displayTitle = resolveSeriesPostTitle(post.data.title, post.data.series);
+const displayTitle = englishCard?.title ?? resolveSeriesPostTitle(post.data.title, post.data.series);
 const postTransitionName = `post-title-${effectiveSlug.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 const isModernAiSeries = post.data.series?.id === 'modern-artificial-intelligence';
 const isModernAiPart4 = isModernAiSeries && post.data.series?.order === 4;
 const isNewsPost = post.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate');
+// Preserve NEWS routing metadata without showing an internal candidate marker to readers.
+const readerTags = post.data.tags.filter((tag) => tag !== 'frontier-candidate');
 // An ad-free page does not establish permission to reuse its source figures.
 const sourceFigureAdsDisabledSlugs = new Set([
   '2026-09-06-clear-ec-news',
@@ -57,7 +83,7 @@ const sourceFigureAdsDisabledSlugs = new Set([
   '2026-09-08-chorus-news',
 ]);
 const parentSectionName = isNewsPost ? 'News' : 'Writing';
-const parentSectionHref = isNewsPost ? '/news' : '/posts';
+const parentSectionHref = en ? (isNewsPost ? '/en/news/' : '/en/posts/') : (isNewsPost ? '/news' : '/posts');
 
 const modernAiReaderDescriptions: Record<number, string> = {
   1: 'AI·ML·DL의 관계에서 선형대수, 확률, 최적화, 퍼셉트론과 컨볼루션까지 현대 인공지능의 수학적 기초를 한 흐름으로 정리한다.',
@@ -67,18 +93,20 @@ const modernAiReaderDescriptions: Record<number, string> = {
   5: '2D convolution과 ImageNet에서 AlexNet·VGG·GoogLeNet·ResNet·WRN·DenseNet·SE Network를 거쳐 현대 이미지 분류의 발전 흐름을 정리한다.',
 };
 const seriesOrder = isModernAiSeries ? post.data.series?.order : undefined;
-const effectiveDescription =
+const effectiveDescription = englishCard?.description ?? reviewedBatchDescriptions[effectiveSlug] ?? (
   typeof seriesOrder === 'number' && modernAiReaderDescriptions[seriesOrder]
     ? modernAiReaderDescriptions[seriesOrder]
-    : post.data.description;
+    : post.data.description
+);
 
 const schemas = [
   getBlogPostingSchema({
     title: displayTitle,
     description: effectiveDescription,
     pubDate: post.data.pubDate,
+    updatedDate: article.data.updatedDate,
     url: canonicalPostUrl,
-    lang: post.data.lang,
+    lang: article.data.lang,
     image: new URL(`/og/${effectiveSlug}.png`, Astro.site).toString(),
     tags: post.data.tags,
   }),
@@ -99,22 +127,23 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
 <Layout
   title={displayTitle}
   description={effectiveDescription}
-  lang={post.data.lang}
+  lang={en ? 'en' : post.data.lang}
+  noindex={en && !translation}
   ogImage={`/og/${effectiveSlug}.png`}
   ogType="article"
   schema={schemas}
-  adsEnabled={!sourceFigureAdsDisabledSlugs.has(effectiveSlug) && !oct02.entries.some((entry) => entry.slug === effectiveSlug) && !oct03.entries.some((entry) => entry.slug === effectiveSlug) && !sep25.entries.some((entry) => entry.slug === effectiveSlug) && !sep22.entries.some((entry) => entry.slug === effectiveSlug) && !sep21.entries.some((entry) => entry.slug === effectiveSlug) && !sep20.entries.some((entry) => entry.slug === effectiveSlug) && !candidates19.entries.some((entry) => entry.slug === effectiveSlug) && !candidateEdition.entries.some((entry) => entry.slug === effectiveSlug) && !wetlabEdition.entries.some((entry) => entry.slug === effectiveSlug)}
-  usesChart={post.data.usesChart}
-  languageAlternates={languageAlternates}
+  adsEnabled={!en && !sourceFigureAdsDisabledSlugs.has(effectiveSlug) && !oct02.entries.some((entry) => entry.slug === effectiveSlug) && !oct03.entries.some((entry) => entry.slug === effectiveSlug) && !sep25.entries.some((entry) => entry.slug === effectiveSlug) && !sep22.entries.some((entry) => entry.slug === effectiveSlug) && !sep21.entries.some((entry) => entry.slug === effectiveSlug) && !sep20.entries.some((entry) => entry.slug === effectiveSlug) && !candidates19.entries.some((entry) => entry.slug === effectiveSlug) && !candidateEdition.entries.some((entry) => entry.slug === effectiveSlug) && !wetlabEdition.entries.some((entry) => entry.slug === effectiveSlug)}
+  usesChart={article.data.usesChart}
+  languageAlternates={en ? {} : languageAlternates}
 >
-  <Breadcrumbs
+  <Breadcrumbs homeHref={en ? '/en/' : '/'}
     items={[
       { name: parentSectionName, href: parentSectionHref },
       { name: displayTitle, href: '#' },
     ]}
   />
 
-  <div class="article-layout lg:flex lg:gap-12" data-post-page-slug={effectiveSlug}>
+  <div class="article-layout lg:flex lg:gap-12" data-post-page-slug={translation?.data.slug ?? effectiveSlug}>
     <div class="flex-1 min-w-0">
       <div class="article-header mb-10">
         <header class="flex flex-col gap-4">
@@ -124,6 +153,9 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
             <time datetime={post.data.pubDate.toISOString()}>
               {formatDate(post.data.pubDate, post.data.publicationTimeZone)}
             </time>
+            {
+              translation?.data.updatedDate && <span>Translation updated <time datetime={translation.data.updatedDate.toISOString()}>{formatDate(translation.data.updatedDate, translation.data.publicationTimeZone)}</time></span>
+            }
             {
               post.data.draft && (
                 <>
@@ -147,11 +179,11 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
               )
             }
             {
-              post.data.tags && post.data.tags.length > 0 && (
+              readerTags.length > 0 && (
                 <>
                   <span class="hidden sm:inline text-border">•</span>
                   <div class="flex flex-wrap gap-2 text-xs uppercase font-bold tracking-widest text-muted-foreground/80">
-                    {post.data.tags.map((tag: string) => (
+                    {readerTags.map((tag: string) => (
                       <span class="opacity-80">#{tag}</span>
                     ))}
                   </div>
@@ -169,6 +201,8 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
             {displayTitle}
           </h1>
 
+          {reviewedBatchStage && <p class="mb-3 text-sm font-semibold text-foreground" data-research-stage>{reviewedBatchStage}</p>}
+
           <p class="article-deck text-lg text-muted-foreground border-l border-primary pl-5 py-1">
             {effectiveDescription}
           </p>
@@ -176,30 +210,33 @@ languageAlternates[post.data.lang] = `/posts/${effectiveSlug}`;
 
         {
           post.data.series && (
-            <SeriesNavigation seriesId={post.data.series.id} currentPostId={post.id} />
+            <SeriesNavigation seriesId={post.data.series.id} currentPostId={post.id} {en} />
           )
         }
 
-        {post.data.translatedPosts && <LanguageSelector translations={post.data.translatedPosts} />}
+        {!en && post.data.translatedPosts && <LanguageSelector translations={post.data.translatedPosts} />}
       </div>
 
-      <ContentNotice category={post.data.category} />
+      {en && !translation && <p class="mb-4 text-sm text-muted-foreground">Article text in Korean.</p>}
+      <ContentNotice {en} category={post.data.category} compact={Boolean(reviewedBatchStage)} />
 
-      <article
+      <article lang={article.data.lang} data-english-article={translation ? true : undefined}
         class:list={[
           'article-prose prose max-w-none mt-12 mb-16',
           isModernAiPart4 && 'part4-article',
         ]}
       >
-        <Content />
-        {isModernAiPart4 && <Part4ReviewCorrections />}
+        {en ? <EnglishReadingLinks sourceSlug={effectiveSlug}><Content /></EnglishReadingLinks> : <Content />}
+        {isModernAiPart4 && !translation && <Part4ReviewCorrections />}
       </article>
 
-      {post.data.showCTA !== false && <CTABlock />}
+      {post.data.showCTA !== false && <CTABlock {en} />}
 
       <SocialShare client:visible url={canonicalPostUrl} />
 
-      {post.data.showComments !== false && <Comments client:visible />}
+      {article.data.showComments !== false && <Comments client:visible lang={en ? 'en' : 'ko'} />}
+
+      {getPostSeriesId(post) && <SeriesNavigation seriesId={getPostSeriesId(post)!} currentPostId={post.id} {en} position="bottom" />}
     </div>
 
     <div class="hidden lg:block w-52 flex-shrink-0">

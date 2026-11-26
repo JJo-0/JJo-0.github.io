@@ -5,13 +5,36 @@ function walk(node, visit) {
   for (const child of node.children) walk(child, visit);
 }
 
+// The table remains a table. Only the surrounding region scrolls, so its
+// full-width border and the cell grid cannot use different layout algorithms.
+function wrapTables(node, label, inScrollRegion = false) {
+  if (!Array.isArray(node.children)) return;
+  const classes = node.properties?.className ?? [];
+  const scrollRegion = inScrollRegion || classes.includes('table-scroll') ||
+    ['CandidateTable', 'WetLabTable', 'StudyTable'].includes(node.name);
+  node.children = node.children.map(child => {
+    wrapTables(child, label, scrollRegion);
+    const isTable = (child.type === 'element' && child.tagName === 'table') ||
+      (child.type === 'mdxJsxFlowElement' && child.name === 'table');
+    if (!isTable || scrollRegion) return child;
+    return {
+      type: 'element', tagName: 'div',
+      properties: { className: ['table-scroll'], role: 'region', tabIndex: 0,
+        ariaLabel: label },
+      children: [child],
+    };
+  });
+}
+
 /**
  * Keep the first Markdown image eligible for above-the-fold rendering while
  * deferring every later raster/vector image. This is intentionally build-time:
  * browsers receive native loading/decoding hints without a client runtime.
  */
 export default function mediaPerformance() {
-  return (tree) => {
+  return (tree, file) => {
+    const en = file?.data?.astro?.frontmatter?.lang === 'en' || /[/\\]content[/\\]english[/\\]/.test(file?.path ?? '');
+    wrapTables(tree, en ? 'Scrollable table' : '가로로 스크롤할 수 있는 표');
     let imageIndex = 0;
 
     walk(tree, (node) => {

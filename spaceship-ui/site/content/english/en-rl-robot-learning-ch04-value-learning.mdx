@@ -1,0 +1,729 @@
+---
+title: 'Reinforcement Learning 04 — From Value to Action: Q-learning and DQN'
+description: From rewards and values to Bellman equations, value and policy iteration,
+  Q-learning, DQN and continuous-action control. Compare the original figures with
+  timestamped transcripts and work through small grids and numerical examples.
+pubDate: 2026-11-05 00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch04-value-learning
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags:
+- robot-learning
+- reinforcement-learning
+- q-learning
+- dqn
+- value-functions
+draft: false
+lang: en
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 4
+translationKey: series-rl-robot-learning-ch04-value-learning-20261109
+translatedPosts:
+  ko-KR: rl-robot-learning-ch04-value-learning
+---
+
+
+import LectureSlide from '@/components/post/LectureSlide.astro';
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+Which way should an arm move just before grasping a cup? Looking only at whether the hand gets closer can miss the benefit of a temporary detour around a collision. Reinforcement learning evaluates consequences beyond the immediate action in one number, then uses that assessment to change behavior. This chapter asks how to calculate and learn that number: value.
+
+[Oier Mees · ETH Zurich 2026, Lecture 4](https://www.youtube.com/watch?v=90raNpc11tQ) · [Official course](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Original PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture4_rl_I.pdf)
+
+<LectureSlide lecture={4} page={1} caption="From predicting expert actions to finding good outcomes" priority />
+
+Behavior cloning in [Chapter 03](/en/posts/rl-robot-learning-ch03-imitation-learning/) used the expert's action in a situation as its target. Now we use <strong>rewards</strong> received after the robot acts to find a rule for better future outcomes. Reward is an evaluation signal, not an answer directly specifying a motor command.
+
+We begin by listing every state in a small table and calculating values exactly. Next we learn values from observed transitions, and finally replace the table with a neural network to handle images and continuous actions. Distinguishing what is already known from what must be learned connects these three stages.
+
+
+[Original lecture, from 0:00](https://www.youtube.com/watch?v=90raNpc11tQ&t=0s).
+
+<LectureSlide lecture={4} page={2} caption="Following demonstrations and earning more reward are different objectives" />
+
+The dataset cylinder contains expert state–action trajectories. The road image passing through a policy box into steering illustrates training a model to map observations to demonstrated behavior.
+
+The basic behavior-cloning loss does not require <strong>finding a higher cumulative reward than the expert</strong>. Matching a demonstration can remain the objective even when it is mistaken or slow. Reinforcement learning changes the evaluation criterion to cumulative reward, offering a way to improve beyond those limitations.
+
+The figure's statement that a learner “cannot outperform the expert” emphasizes this objective difference. It should not be read as a universal mathematical impossibility for every imitation learner on every evaluation. Generalization or combining demonstrations can change performance, but behavior cloning alone does not guarantee reward improvement.
+
+
+[Original lecture, from 0:23](https://www.youtube.com/watch?v=90raNpc11tQ&t=23s).
+
+<LectureSlide lecture={4} page={3} caption="Bundling state, action, next state and reward into one experience" />
+
+A <strong>Markov decision process (MDP)</strong> represents repeated agent–environment interaction. State space <Math tex={String.raw`\mathcal S`} /> contains possible states, and action space <Math tex={String.raw`\mathcal A`} /> possible commands. Transition <Math tex={String.raw`P(s'\mid s,a)`} /> specifies the likelihood of next state <Math tex={String.raw`s'`} /> after action <Math tex={String.raw`a`} /> in current state <Math tex={String.raw`s`} />.
+
+The upper arrow carries state and reward back from the environment; the lower arrow carries the robot's action into it. One execution step produces the following record.
+
+
+<Math tex={String.raw`(s_t,a_t,r_t,s_{t+1})`} display label="Record a transition as current state, executed action, received reward and next state" />
+
+<RobotEquationGuide id="rl04-e01" />
+
+
+<Math tex={String.raw`t`} /> indexes physical execution, whereas <Math tex={String.raw`k`} /> below counts computational iterations. Reward may depend on the next state and is written <Math tex={String.raw`r_t=r(s_t,a_t,s_{t+1})`} />. When an expression abbreviates it as <Math tex={String.raw`r(s,a)`} />, read it as the expected immediate reward for that state–action transition. The source also uses both reward-function conventions.
+
+For cup grasping, state may include joint positions, velocities and object arrangements; actions may be tool-tip displacements or torques. With image observations alone, separately assess whether they constitute a full Markov state. Follow [Chapter 02](/en/posts/rl-robot-learning-ch02-control-mdp/) for the state–observation distinction.
+
+
+[Original lecture, from 1:31](https://www.youtube.com/watch?v=90raNpc11tQ&t=91s).
+
+<LectureSlide lecture={4} page={4} caption="Evaluating a sum over time, beyond one immediate reward" />
+
+A <strong>return</strong> sums rewards from a rollout. Discount factor <Math tex={String.raw`\gamma`} /> gives more distant rewards smaller weights. In the expression below, <Math tex={String.raw`T`} /> is the number of steps in a finite rollout.
+
+
+<Math tex={String.raw`G_0=\sum_{t=0}^{T-1}\gamma^t r_t,\qquad J(\pi)=\mathbb E_{\tau\sim p_\pi}[G_0]`} display label="Define policy performance by averaging discounted returns over the trajectories that policy can generate" />
+
+<RobotEquationGuide id="rl04-e02" />
+
+
+<Math tex={String.raw`\tau`} /> is a time-ordered state–action trajectory, <Math tex={String.raw`\pi`} /> the policy, and <Math tex={String.raw`\mathbb E`} /> an average weighted by possible outcomes' probabilities. Like the branching paths on the right, one policy can produce different runs through disturbances or stochastic actions. One successful video does not establish expected performance.
+
+An optimal policy <Math tex={String.raw`\pi^*`} /> maximizes expected return. While <Math tex={String.raw`\max`} /> denotes the greatest <strong>value</strong>, <Math tex={String.raw`\arg\max`} /> denotes the <strong>choice</strong> attaining it. Multiple policies may tie. Infinite-horizon sums commonly use bounded rewards and <Math tex={String.raw`0\le\gamma<1`} />.
+
+
+[Original lecture, from 2:52](https://www.youtube.com/watch?v=90raNpc11tQ&t=172s).
+
+<LectureSlide lecture={4} page={5} caption="Why differentiating a step-shaped reward is difficult" />
+
+Consider a simple reward of +1 on the path and −1 beyond a cliff. The red line jumps between outcomes as a <strong>step function</strong>. On flat regions, a small position change leaves reward unchanged, giving derivative zero; at the boundary, an ordinary derivative is undefined.
+
+A method that makes tiny changes to position or action and <strong>directly follows this reward's gradient</strong> therefore obtains little useful direction for improvement. The boundary does not offer an enormous gradient that can simply be followed either.
+
+Sparse and discontinuous rewards are different. Sparse means meaningful rewards arrive infrequently; discontinuous means a value jumps as its input changes. This example uses a binary outcome, but sparse rewards do not all have an identical step-function shape.
+
+
+[Original lecture, from 3:36](https://www.youtube.com/watch?v=90raNpc11tQ&t=216s).
+
+<LectureSlide lecture={4} page={6} caption="A discrete outcome can still have a smoothly changing probability" />
+
+Let <Math tex={String.raw`p_\theta(s)`} /> be the failure probability from the current state and <Math tex={String.raw`\theta`} /> the policy parameters. Modeling failure as a binary <strong>Bernoulli variable</strong> lets us calculate expected reward using failure and success probabilities.
+
+
+<Math tex={String.raw`J(\theta)=(-1)p_\theta(s)+(+1)(1-p_\theta(s))=1-2p_\theta(s)`} display label="Reducing failure probability increases the expectation of a binary reward" />
+
+<RobotEquationGuide id="rl04-e03" />
+
+
+A failure probability of 0.1 gives expected reward 0.8. It does not mean a single execution earns 0.8: each still receives +1 or −1, while many executions average to 0.8.
+
+If failure probability is differentiable in the parameters, expected reward can be differentiated through it. Differentiating an outcome's reward directly differs from <strong>changing the probability of a favorable outcome</strong>. Stochastic policies do not automatically make every objective smooth; distributional smoothness and conditions for interchanging expectation and differentiation matter.
+
+
+[Original lecture, from 5:01](https://www.youtube.com/watch?v=90raNpc11tQ&t=301s).
+
+<LectureSlide lecture={4} page={7} caption="Read the red step and blue curve with attention to their horizontal axes" />
+
+The red step describes whether a particular outcome is good or bad; the dashed blue curve describes average outcomes as the policy changes. The horizontal axis is policy parameters. An upward blue curve illustrates adjustments assigning more probability to success.
+
+The preceding section defined <Math tex={String.raw`p_\theta`} /> as failure probability, so increasing it lowers expected reward. Before comparing it with the rising curve, check whether a symbol denotes success or failure. Do not treat the two source curves as interchangeable functions of the same input without their conditions.
+
+This motivates how policy-gradient methods can learn even from binary rewards. Value iteration and Q-learning in this chapter instead use recursive value relationships and sampled updates, without differentiating reward directly. Reinforcement-learning algorithms do not all perform gradient descent on the blue curve.
+
+
+[Original lecture, from 6:22](https://www.youtube.com/watch?v=90raNpc11tQ&t=382s).
+
+<LectureSlide lecture={4} page={8} caption="Predicting the remaining outcome before a rollout ends" />
+
+Measuring all of <Math tex={String.raw`r_0+\gamma r_1+\gamma^2r_2+\cdots`} /> requires waiting for a complete rollout. That is intuitive, but updates are delayed in tasks whose consequences arrive much later.
+
+Instead, combine reward received now with an estimate of rewards still to come from the next state. A <strong>value function</strong> supplies that estimate. The key is being able to update before the execution ends.
+
+This does not reveal a cliff's danger automatically without experience. Future-value estimates must come from a model or earlier data, and can be wrong. A computational method for learning before an episode ends is distinct from operational measures preventing hazardous exploration on real equipment.
+
+
+[Original lecture, from 7:05](https://www.youtube.com/watch?v=90raNpc11tQ&t=425s).
+
+<LectureSlide lecture={4} page={9} caption="A value function averages future rewards from the current state" />
+
+<Math tex={String.raw`V^\pi(s)`} /> is the expected return starting in state <Math tex={String.raw`s`} /> and subsequently following policy <Math tex={String.raw`\pi`} />. Superscript <Math tex={String.raw`\pi`} /> identifies the policy being evaluated; it is not an exponent.
+
+
+<Math tex={String.raw`V^\pi(s)=\mathbb E_\pi\!\left[\sum_{k=0}^{\infty}\gamma^k r_{t+k}\,\middle|\,s_t=s\right]`} display label="State value is the expected sum of future discounted rewards when following a specified policy from that state" />
+
+<RobotEquationGuide id="rl04-e04" />
+
+
+A state close to a cup can still have low value under a policy that moves the gripper incorrectly. Value is therefore not a location's intrinsic score: environment, reward, discounting and policy determine it together. It is generally different from success probability and can be negative or greater than one.
+
+With starts sampled from distribution <Math tex={String.raw`\rho_0`} />, overall performance averages state values as <Math tex={String.raw`J(\pi)=\mathbb E_{s_0\sim\rho_0}V^\pi(s_0)`} />. This connects an expectation from one state to average performance across an experiment.
+
+
+[Original lecture, from 9:01](https://www.youtube.com/watch?v=90raNpc11tQ&t=541s).
+
+<LectureSlide lecture={4} page={10} caption="The Bellman expectation equation: connect current reward to next-state value" />
+
+Separate the first reward from the future sum, and the remaining terms share one discount factor. This simple decomposition turns a long-horizon problem into a one-step recursive relationship.
+
+
+<Math tex={String.raw`V^\pi(s)=\sum_a\pi(a\mid s)\sum_{s'}P(s'\mid s,a)\left[r(s,a,s')+\gamma V^\pi(s')\right]`} display label="The Bellman expectation equation averages over both policy actions and environmental next states" />
+
+<RobotEquationGuide id="rl04-e05" />
+
+
+The outer sum averages actions chosen by the policy; the inner sum averages next states the environment can produce after each action. Counting the current reward again inside next-state value would double-count it. Here <Math tex={String.raw`V^\pi(s')`} /> summarizes rewards <strong>after arriving in the next state</strong>.
+
+Using a current estimate to construct another estimate is <strong>bootstrapping</strong>. With next value 0.8, immediate reward 0.2 and discount factor 0.9, the one-step target is 0.92. After genuine task termination, there are no further rewards and the future term is zero.
+
+[Silver's dynamic-programming lecture, from 13:00](https://www.youtube.com/watch?v=Nd1-UUMVfz4&t=780s) also turns Bellman relationships into iterative calculations. Distinguish the relationship among true values from the algorithm repeatedly updating provisional values to obtain them.
+
+
+[Original lecture, from 10:41](https://www.youtube.com/watch?v=90raNpc11tQ&t=641s).
+
+<LectureSlide lecture={4} page={11} caption="Knowing optimal values lets us choose the next action" />
+
+Unlike <Math tex={String.raw`V^\pi`} /> for a fixed policy, <Math tex={String.raw`V^*(s)`} /> is the best value over policies. If we already know it, choose the action maximizing immediate reward plus discounted next optimal value.
+
+
+<Math tex={String.raw`\begin{aligned}V^*(s)&=\max_a\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V^*(s')]\\\pi^*(s)&\in\arg\max_a\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V^*(s')]\end{aligned}`} display label="The Bellman optimality equation makes a one-step choice incorporating optimal future performance" />
+
+<RobotEquationGuide id="rl04-e06" />
+
+
+The first line gives the maximum <strong>value</strong>; the second gives an <strong>action</strong> attaining it. Membership symbol <Math tex={String.raw`\in`} /> allows tied actions. Read these equations under the finite-state, finite-action discounted-MDP assumptions used here.
+
+This is not a shortsighted rule choosing only the largest immediate reward: the next-state value contains the longer future. A push with no reward now can still have high value if it makes a later grasp easier.
+
+
+[Original lecture, from 12:08](https://www.youtube.com/watch?v=90raNpc11tQ&t=728s).
+
+<LectureSlide lecture={4} page={12} caption="Value iteration: from an empty table toward optimal values" />
+
+<strong>Value iteration</strong> initializes state values simply—for example, all zeros—and repeatedly evaluates the right-hand side of the Bellman optimality relationship.
+
+
+<Math tex={String.raw`V_{k+1}(s)=\max_a\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V_k(s')]`} display label="Value iteration computes each state's best one-step target using values from the previous iteration" />
+
+<RobotEquationGuide id="rl04-e07" />
+
+
+One <strong>sweep</strong> updates every table state once. A synchronous sweep reads the old table throughout and writes a new table. Increasing <Math tex={String.raw`k`} /> does not mean the real robot took a step; it counts computations using the model.
+
+For a finite discounted MDP, this operation has a <strong>contraction</strong> property: the largest difference between two value tables shrinks by at most factor <Math tex={String.raw`\gamma`} />. Repetition approaches the same fixed point, the optimal value. The same guarantee does not automatically cover every problem with discount factor one.
+
+When the largest table change is small enough, stop and extract the best actions. Summing all next states through a dense transition matrix costs roughly <Math tex={String.raw`O(|\mathcal S|^2|\mathcal A|)`} /> per sweep. Sparse transitions with few feasible next states can be cheaper. With a small state set and known model, this makes a useful reference solution.
+
+
+[Original lecture, from 14:18](https://www.youtube.com/watch?v=90raNpc11tQ&t=858s).
+
+<LectureSlide lecture={4} page={13} caption="Reading numbers, colors and arrows separately in a grid" />
+
+Green marks the goal, red danger and gray walls. Numbers in the white cells estimate future discounted rewards from those states; arrows show actions chosen from those estimates. Color visualizes value magnitude, not visitation count or success probability itself.
+
+The source demo moves in the intended direction with probability 80% and to either side with 10% each. Handling walls and boundaries is also part of the transition model. Starting from zeros, values appear near the goal first because one sweep passes future-reward information one transition backward.
+
+The following is a separate 3×4 environment I made to check the same principle. Entering the goal gives +1 and entering danger −1, then terminates the episode. Thus <strong>future value after entering a terminal cell is zero</strong>. This convention keeps the goal's +1 entry reward distinct from its subsequent value.
+<LearningFigure src="/assets/posts/rl-robot-learning-ch04-value-learning/bellman-grid.png" alt="Directly calculated state values in a stochastic 3×4 grid at iterations 0, 1, 3 and convergence. Values propagate from cells near the goal and danger." caption="Value iteration in a separate grid environment, distinguishing goal/danger entry rewards from zero value after termination." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/04-value-learning" credit="JJo; executable code and value CSVs are public" width={1560} height={468} />
+
+
+[Original lecture, from 16:15](https://www.youtube.com/watch?v=90raNpc11tQ&t=975s).
+
+<LectureSlide lecture={4} page={14} caption="Policy evaluation: calculate the performance of the policy we have" />
+
+Now keep actions unchanged and ask how well a specified policy <Math tex={String.raw`\pi`} /> performs. <strong>Policy evaluation</strong> averages the actions that policy actually takes instead of selecting the best one.
+
+
+<Math tex={String.raw`V_{k+1}(s)=\sum_a\pi(a\mid s)\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V_k(s')]`} display label="Policy evaluation repeatedly updates values using a fixed policy's action-probability weighted average" />
+
+<RobotEquationGuide id="rl04-e08" />
+
+
+Suppose two actions have one-step expected outcomes 0 and 1, and the policy selects each half the time. Evaluation gives 0.5. Maximizing instead would give 1, but answers a different question from evaluating the current policy.
+
+The figure's “cheaper” description also depends on implementation. For a deterministic policy, or with policy-averaged transitions and rewards precomputed, a sweep can be counted as <Math tex={String.raw`O(|\mathcal S|^2)`} />. Explicitly summing every action of a stochastic policy retains action-count costs. Replacing a maximum with an average does not remove all action computations in every implementation.
+
+
+[Original lecture, from 17:46](https://www.youtube.com/watch?v=90raNpc11tQ&t=1066s).
+
+<LectureSlide lecture={4} page={15} caption="A maximum and a policy average answer different questions" />
+
+The red <Math tex={String.raw`\max`} /> asks what happens if we choose the best action from now on. The red <Math tex={String.raw`\pi(a\mid s)`} /> asks what happens if we behave according to an already specified policy. Both use next-state values, but differ in <strong>the rule determining the current action</strong>.
+
+For example, suppose moving directly toward a cup has expected outcome 0.8 and detouring has 0.6. A policy choosing both equally gives evaluation 0.7, whereas maximization gives 0.8. These numbers are a separate illustration of the distinction.
+
+This is why policy evaluation and value iteration should not be memorized as the same algorithm merely because their equations look similar. First identify what stays fixed and what improves; policy iteration then follows naturally.
+
+
+[Original lecture, from 18:53](https://www.youtube.com/watch?v=90raNpc11tQ&t=1133s).
+
+<LectureSlide lecture={4} page={16} caption="Policy iteration: evaluate, then improve using that evaluation" />
+
+<strong>Policy iteration</strong> alternates two operations. First evaluate the current policy sufficiently to obtain <Math tex={String.raw`V^{\pi_j}`} />, then choose better one-step actions using those values.
+
+
+<Math tex={String.raw`\pi_{j+1}(s)\in\arg\max_a\sum_{s'}P(s'\mid s,a)[r(s,a,s')+\gamma V^{\pi_j}(s')]`} display label="Policy improvement chooses more favorable actions using the current policy's future values" />
+
+<RobotEquationGuide id="rl04-e09" />
+
+
+<Math tex={String.raw`j`} /> counts policy changes, distinct from <Math tex={String.raw`k`} /> counting the inner value-evaluation iterations. One evaluation line in the source abbreviates a calculation usually repeated to convergence. Variants improving after just one evaluation step relate to generalized policy iteration, but differ from the exact evaluation described here.
+
+In a finite discounted MDP, exact evaluation followed by greedy improvement makes value <strong>no worse</strong>. It need not strictly increase every state's value or the return from a particular start at every iteration: actions may tie or already be optimal. A consistent tie rule, such as retaining the current action, reduces needless policy changes.
+
+[Silver's evaluation–improvement explanation, from 35:40](https://www.youtube.com/watch?v=Nd1-UUMVfz4&t=2140s) separates the same two questions. Instead of differentiating a loss once, we sum model probabilities to calculate values and then change the policy.
+
+
+[Original lecture, from 19:38](https://www.youtube.com/watch?v=90raNpc11tQ&t=1178s).
+
+<LectureSlide lecture={4} page={17} caption="Alternating policy-evaluation and policy-improvement screens" />
+
+The two steps above are <strong>evaluation</strong>, which calculates numbers while keeping arrows fixed, and <strong>improvement</strong>, which changes arrows using those numbers. Changing values during evaluation does not mean a new policy has been executed.
+
+The return graph on the right summarizes something different from the value tables over sweeps. Its interpretation requires knowing the starting distribution over which performance was averaged. A graph immediately after initializing provisional values to zero should not be equated with actual performance of a converged policy.
+
+In my example, I solved policy evaluation exactly as a small linear system and compared all nonterminal state values before and after improvement. I separately checked nondecreasing values and agreement with the final value-iteration solution. This makes the comparison more explicit than simply observing that a graph rises.
+
+
+[Original lecture, from 20:56](https://www.youtube.com/watch?v=90raNpc11tQ&t=1256s).
+
+<LectureSlide lecture={4} page={18} caption="Acting from state values requires more calculation of consequences" />
+
+<Math tex={String.raw`V(s)`} /> scores states. Choosing a current action requires comparing possible next states and their values for each action. The hypothetical arm trajectories feeding into the planning box illustrate that additional computation.
+
+This one-step lookahead needs queries to reward and transition model <Math tex={String.raw`P`} />. Models can be inaccurate under complex contact and friction, and slow calculations can miss the next control deadline. Learning state values does not make action selection free.
+
+This is not an absolute rule that a value-iteration policy must run the model again at deployment. A small tabular problem can store the best actions in advance. The limitation here concerns <strong>computing actions from state values on demand</strong>.
+
+
+[Original lecture, from 21:32](https://www.youtube.com/watch?v=90raNpc11tQ&t=1292s).
+
+<LectureSlide lecture={4} page={19} caption="A Q function specifies the first action as well as the state" />
+
+<Math tex={String.raw`Q^\pi(s,a)`} /> is expected return from the current state when <strong>only the first action is fixed to <Math tex={String.raw`a`} /></strong> and policy <Math tex={String.raw`\pi`} /> is followed afterward. It takes one additional action input compared with <Math tex={String.raw`V^\pi(s)`} />. Starred <Math tex={String.raw`Q^*`} /> assumes optimal behavior after that first action.
+
+
+<Math tex={String.raw`\begin{aligned}Q^*(s,a)&=\sum_{s'}P(s'\mid s,a)\left[r(s,a,s')+\gamma\max_{a'}Q^*(s',a')\right]\\V^*(s)&=\max_a Q^*(s,a)\end{aligned}`} display label="Optimal action value combines the first action's outcome with the next state's optimal action value" />
+
+<RobotEquationGuide id="rl04-e10" />
+
+
+<Math tex={String.raw`a'`} /> is an action considered in the next state, distinct from the currently executed <Math tex={String.raw`a`} />. “Move 1 cm left in front of the cup” and “move 1 cm right” can have different <Math tex={String.raw`Q`} /> values. A good <Math tex={String.raw`Q`} /> function compresses which commands are favorable over the long term.
+
+<strong><Math tex={String.raw`Q`} />-value iteration</strong> directly repeats this equation using a transition model during computation. A <Math tex={String.raw`Q`} /> function itself does not inherently require a model; Q-learning below learns the same relationship from sampled experience.
+
+
+[Original lecture, from 23:17](https://www.youtube.com/watch?v=90raNpc11tQ&t=1397s).
+
+<LectureSlide lecture={4} page={20} caption="With Q values available, execution compares actions at the current state" />
+
+For finitely many actions, read their <Math tex={String.raw`Q`} /> values and select an action attaining the largest.
+
+
+<Math tex={String.raw`\pi_{\mathrm{greedy}}(s)\in\arg\max_a Q(s,a)`} display label="A greedy policy selects an action maximizing the current action-value estimate" />
+
+<RobotEquationGuide id="rl04-e11" />
+
+
+The shorter flow below evaluates an already learned <Math tex={String.raw`Q`} /> function instead of simulating transitions at deployment. <strong>Greedy</strong> means maximizing the <Math tex={String.raw`Q`} /> estimate. Because <Math tex={String.raw`Q`} /> contains longer-term consequences, it does not mean seeking only immediate reward.
+
+An incorrect <Math tex={String.raw`Q`} /> estimate can still produce an incorrect choice. With continuous actions, listing every candidate is impossible, so <Math tex={String.raw`\arg\max`} /> itself becomes difficult. A one-line equation does not remove computational cost; CEM and DDPG later address this problem.
+
+
+[Original lecture, from 24:39](https://www.youtube.com/watch?v=90raNpc11tQ&t=1479s).
+
+<LectureSlide lecture={4} page={21} caption="Q-learning: update from observed transitions instead of model averages" />
+
+<strong>Q-learning</strong> uses environmental samples <Math tex={String.raw`(s_t,a_t,r_t,s_{t+1})`} />. Instead of summing every possible next state, it constructs an update target from the one actually observed. <strong>TD, or temporal difference,</strong> connects a current estimate with the next step's reward and estimate.
+
+
+<Math tex={String.raw`\begin{aligned}y_t&=r_t+\gamma(1-d_t)\max_{a'}Q(s_{t+1},a')\\\delta_t&=y_t-Q(s_t,a_t)\\Q(s_t,a_t)&\leftarrow Q(s_t,a_t)+\alpha_t\delta_t\end{aligned}`} display label="Q-learning updates one table entry toward a termination-aware TD target using its difference from the current value" />
+
+<RobotEquationGuide id="rl04-e12" />
+
+
+<Math tex={String.raw`d_t=1`} /> marks genuine task termination, removing the future term. <Math tex={String.raw`\delta_t`} /> is the <strong>TD error</strong> and <Math tex={String.raw`\alpha_t`} /> the learning rate setting update size. Other state–action entries stay unchanged in this individual tabular update.
+
+With current value 0.4, reward 0.2, next maximum 0.8, discount factor 0.9 and learning rate 0.25, the target is 0.92 and updated value 0.53. At task termination, the target is just 0.2 and the new value 0.35. Distinguish reward from target, and target from the updated estimate.
+
+One transition samples a Bellman target based on current <Math tex={String.raw`Q`} />; it is not an exact label already equal to true optimal value <Math tex={String.raw`Q^*`} />. Next-state estimation errors enter the target too. An externally truncated rollout can differ from genuine task termination, so implementations must distinguish them when defining the future term.
+
+
+[Original lecture, from 25:04](https://www.youtube.com/watch?v=90raNpc11tQ&t=1504s).
+
+<LectureSlide lecture={4} page={22} caption="Calculating every cell with a model versus learning the cells experienced" />
+
+Each cell's four triangles represent estimates for the four directional <Math tex={String.raw`Q`} /> values. Value iteration displayed one best value per state; Q-learning maintains separate action values within the same cell. Values near explored routes therefore change first.
+
+Repeatedly choosing only what currently looks best may miss other actions' benefits. <strong>Exploration</strong> tries less certain actions to gain information; <strong>exploitation</strong> selects actions already estimated to be good. <Math tex={String.raw`\epsilon`} />-greedy provides a simple compromise by choosing randomly with a specified probability.
+
+Neither using learning rate 0.1 nor running for a long time alone guarantees convergence. Typical tabular finite-discounted guarantees require state–action coverage, sufficient visits and suitable decreasing learning rates. Data never reaching an unfamiliar state cannot establish its best actions.
+
+
+[Original lecture, from 26:52](https://www.youtube.com/watch?v=90raNpc11tQ&t=1612s).
+
+<LectureSlide lecture={4} page={23} caption="Off-policy learning: separate the collection policy from the policy being learned" />
+
+The <strong>behavior policy</strong> chooses actions while collecting real transitions. The <strong>target policy</strong> is the rule currently being evaluated or improved. Learning that permits them to differ is <strong>off-policy</strong>.
+
+Q-learning uses the action <Math tex={String.raw`a_t`} /> actually taken and reward <Math tex={String.raw`r_t`} /> received, but assumes the next step takes the best action under current <Math tex={String.raw`Q`} />. This permits reusing records from older or exploratory policies. This target-policy distinction differs from the target network discussed later.
+
+Being able to reuse data does not mean quality and coverage can be ignored. Transitions must be valid for the same environment and reward definition; unobserved actions leave their values uncertain. Networks assigning exaggerated values to unseen actions become particularly important in offline reinforcement learning.
+
+[Silver on on-policy and off-policy learning, from 4:10](https://www.youtube.com/watch?v=0g4j2k_Ggc4&t=250s) also distinguishes whether the followed behavior matches the behavior being learned. Using someone else's records does not make the objective imitation learning: the update here uses recorded rewards and future values.
+
+
+[Original lecture, from 27:53](https://www.youtube.com/watch?v=90raNpc11tQ&t=1673s).
+
+<LectureSlide lecture={4} page={24} caption="SARSA: use the value of the next action actually selected" />
+
+<strong>SARSA</strong> takes its name from State–Action–Reward–State–Action. It uses the next action <Math tex={String.raw`a_{t+1}`} /> chosen by the current behavior policy after arriving in the next state.
+
+
+<Math tex={String.raw`\begin{aligned}y_t^{\mathrm{Q}}&=r_t+\gamma(1-d_t)\max_{a'}Q(s_{t+1},a')\\y_t^{\mathrm{SARSA}}&=r_t+\gamma(1-d_t)Q(s_{t+1},a_{t+1})\end{aligned}`} display label="Q-learning uses the next-action maximum; SARSA uses the value of the next action selected by the current policy" />
+
+<RobotEquationGuide id="rl04-e13" />
+
+
+Suppose next-state action values are 0.8 and −0.4, but exploration selects the second action. Q-learning uses 0.8 in its target, while SARSA uses −0.4. SARSA learns the consequences of the current policy including its exploratory behavior.
+
+The source contrasts “what is best possible” with “what will actually happen next.” Q-learning also issues real commands to collect experience. The distinction is <strong>which policy's action enters the future-value calculation</strong>, not whether the robot physically acts.
+
+
+[Original lecture, from 29:17](https://www.youtube.com/watch?v=90raNpc11tQ&t=1757s).
+
+<LectureSlide lecture={4} page={25} caption="Cliff-edge and detour routes: the cost of exploratory mistakes" />
+
+Both grids start at the bottom left and aim for the bottom-right goal. The red strip is a cliff. The route above it is short, but one mistaken downward move incurs a large loss. A detour takes more steps but is less sensitive to exploration errors.
+
+Imagine a training policy that occasionally moves into an adjacent cell. The cliff-side route can be shortest once exploration is disabled. While exploration continues, falling costs more than stepping away from the edge, so SARSA may assign higher value to a detour.
+
+SARSA evaluates persistent exploration errors as part of the current policy and can therefore favor a route farther from the edge in this setting. Q-learning's target assumes the next action is best, so its values can favor the shorter route under greedy evaluation.
+
+This does not guarantee that SARSA is always safe or Q-learning always risky. Outcomes depend on whether exploration decays, transitions themselves slip, and falls terminate the task or return to the start. Distinguish actual training-time behavior performance from evaluation with a fixed greedy policy.
+
+
+[Original lecture, from 30:40](https://www.youtube.com/watch?v=90raNpc11tQ&t=1840s).
+
+<LectureSlide lecture={4} page={26} caption="Two axes for the methods so far" />
+
+On the left is <strong>dynamic programming</strong>, which uses a known model to calculate possible next states. It breaks a large problem into overlapping smaller ones and reuses their solutions. Here we learned it through tables storing state values.
+
+On the right are <strong>model-free</strong> methods updating values from transition samples, without explicitly learning or querying a next-state predictor. This does not mean physics is absent or simulation forbidden: simulated experience can train a model-free method.
+
+Value iteration also uses values, so the diagram's columns collect the algorithms discussed rather than defining completely exclusive philosophies. Do not replace tabular Q-learning's convergence conditions and SARSA's policy-change conditions with a blanket rule that enough exploration always guarantees optimality.
+
+
+[Original lecture, from 31:34](https://www.youtube.com/watch?v=90raNpc11tQ&t=1894s).
+
+<LectureSlide lecture={4} page={27} caption="Why we cannot create a table entry for every image" />
+
+A grayscale pixel can take 256 values from 0 through 255. Stacking four 84×84 images gives the following enormous upper bound on pixel combinations.
+
+
+<Math tex={String.raw`256^{84\cdot84\cdot4}`} display label="Enumerating all pixel combinations makes the tabular state count grow exponentially" />
+
+<RobotEquationGuide id="rl04-e14" />
+
+
+Not every combination is a valid game scene. Even so, maintaining and sufficiently visiting independent entries for observed images is unrealistic. We need <strong>generalization</strong>: using what we learn in one scene in another.
+
+Stacking four frames has another purpose: one image showing a ball's position may not reveal whether it moves left or right. Several frames capture short-term change. A fixed frame count does not fully reconstruct hidden state in every environment.
+
+
+[Original lecture, from 32:24](https://www.youtube.com/watch?v=90raNpc11tQ&t=1944s).
+
+<LectureSlide lecture={4} page={28} caption="DQN: a network predicting action values from pixels" />
+
+A <strong>Deep Q-Network (DQN)</strong> replaces a <Math tex={String.raw`Q`} /> table with a neural network. <strong>Convolutional (CNN)</strong> layers read local image patterns, followed by feature-combining layers that output <Math tex={String.raw`Q`} /> for each discrete action, such as left, right or fire. These are neither action-success probabilities nor classification probabilities.
+
+The key was applying the same architecture and learning rules to multiple games. It did not mean one fixed set of weights mastered 49 games simultaneously: each game was trained separately. The source combines an image from the 2013 paper with a 49-game description, but <strong>the 2013 paper reports seven games and the 2015 Nature paper reports 49</strong>. Keep those scopes distinct.
+
+Below is the architecture from the 2015 paper. Convolutional layers transform image patterns into features, while outputs on the right value each action-button combination. This differs from memorizing whole images independently in an exhaustive action table.
+<LearningFigure src="/assets/posts/rl-robot-learning-ch04-value-learning/dqn-network.png" alt="Architecture from the original DQN Nature paper: image inputs pass through convolutional and fully connected layers to discrete action-value outputs." caption="Architecture excerpt from Mnih et al., 2015, Figure 1. Outputs are action values, not probabilities." source="https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf#page=2" credit="Mnih et al., Google DeepMind, and the respective rights holders" width={1465} height={659} />
+
+[Original 2013 paper](https://arxiv.org/abs/1312.5602) · [Original 2015 paper](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf).
+
+
+[Original lecture, from 33:14](https://www.youtube.com/watch?v=90raNpc11tQ&t=1994s).
+
+<LectureSlide lecture={4} page={29} caption="Reading DQN pseudocode through the movement of data" />
+
+The small-print algorithm follows <strong>collect → store → sample → construct targets → update the network</strong>. <Math tex={String.raw`\phi(s)`} /> denotes input preprocessing such as resizing, grayscaling and stacking frames. On this page, <Math tex={String.raw`\theta`} /> denotes the <Math tex={String.raw`Q`} /> network weights.
+
+1. Initialize experience memory and the <Math tex={String.raw`Q`} /> network.
+2. Choose an exploratory or best action from current <Math tex={String.raw`Q`} />. The action-returning operation is <Math tex={String.raw`\arg\max`} />; the maximum <Math tex={String.raw`Q`} /> number itself is not a motor command.
+3. Obtain a game transition and store it in memory.
+4. Sample a minibatch from past transitions in memory.
+5. Construct a TD target for each sample and update weights to reduce squared differences between current predictions and targets.
+
+A newly collected transition need not appear immediately in the next minibatch. Updating a tabular Q entry affects just that entry; updating shared network weights can also change outputs for other similar inputs. This sharing supports generalization but can also cause instability.
+
+This page shows the 2013 pseudocode. Subsequent pages add stabilization with a separate target network. Following the data flow makes the memories and symbols understandable even where the lecture passed quickly over the algorithm.
+
+
+[Original lecture, from 34:44](https://www.youtube.com/watch?v=90raNpc11tQ&t=2084s).
+
+<LectureSlide lecture={4} page={30} caption="Experience replay: reuse a transition after collecting it" />
+
+Cylinder <Math tex={String.raw`D_{\mathrm{replay}}`} /> is a <strong>replay buffer</strong> storing past transitions. Save experiences as they arrive, then sample records from different times for updates. One expensive real-world interaction can support several training updates.
+
+Consecutive game frames repeat similar screens and actions. Mixing transitions from different times in a replay batch reduces concentration on one scene. Rare transitions can also be learned again while they remain in the buffer.
+
+Training only on successive frames creates strongly similar inputs concentrated along a narrow visited route. Random sampling reduces temporal correlation and mixes update inputs. It does not make the stored distribution and visitation record perfectly independent and identically distributed: duplicates, changing buffer contents and changing policies remain.
+
+Data reuse and adequate coverage are separate benefits. A buffer that never experienced the goal reward cannot invent success information by resampling. Off-policy learning reconnects here with exploration coverage.
+
+
+[Original lecture, from 34:56](https://www.youtube.com/watch?v=90raNpc11tQ&t=2096s).
+
+<LectureSlide lecture={4} page={31} caption="Target networks: when the number being fitted keeps moving too" />
+
+The upper expression uses one set of weights for both the current prediction and next-state target. Adjusting weights to correct the current value also changes next-state outputs, moving the target just fitted.
+
+<Math tex={String.raw`\theta^-`} /> below denotes the <strong>target network</strong> weights. Copy the current learning network <Math tex={String.raw`\theta`} /> and hold that copy fixed for a period, separating the target-producing path.
+
+
+<Math tex={String.raw`\begin{aligned}y_i&=r_i+\gamma(1-d_i)\max_{a'}Q_{\theta^-}(s_i',a')\\L(\theta)&=\frac1B\sum_{i=1}^{B}\left(Q_\theta(s_i,a_i)-\operatorname{stopgrad}(y_i)\right)^2\end{aligned}`} display label="DQN constructs TD targets with a fixed target network and fits current predictions without differentiating through the target" />
+
+<RobotEquationGuide id="rl04-e15" />
+
+
+<Math tex={String.raw`B`} /> is minibatch size. <Math tex={String.raw`\operatorname{stopgrad}`} /> marks treating the target as a constant, blocking gradients through that path. This differs from differentiating both sides of a Bellman error. A target network does not guarantee global convergence of neural Q-learning.
+
+Weights can be copied periodically as <Math tex={String.raw`\theta^-\leftarrow\theta`} />. For the same transition, the target stays fixed between copies, but resampling changes which targets appear, and copying changes them again. [Berkeley CS285 Lecture 8 Part 2, 2:13–6:57](https://www.youtube.com/watch?v=lqC9w532erw&t=133s) separates collection, minibatch and target-copy intervals.
+
+
+[Original lecture, from 36:16](https://www.youtube.com/watch?v=90raNpc11tQ&t=2176s).
+
+<LectureSlide lecture={4} page={32} caption="What do game screens and score tables compare?" />
+
+The screens above show distinct games supplying observations. Table columns are games; rows compare random policies, earlier methods, DQN and human performance. Each entry is that game's score. Adding values across columns does not yield a universal intelligence score.
+
+In the source table, DQN scores 168 versus human 31 on Breakout, but 1705 versus 28010 on Seaquest. Exceeding human score in one game does not establish the same result everywhere. Pong also includes negative scores, complicating simple score-ratio interpretations.
+
+The table reports the seven-game 2013 results. A spoken 47 in the transcript or 49 elsewhere is not its column count. Generality here means applying a common architecture and learning method broadly instead of designing a separate specialized solution for each game.
+
+
+[Original lecture, from 37:32](https://www.youtube.com/watch?v=90raNpc11tQ&t=2252s).
+
+<LectureSlide lecture={4} page={33} caption="Why maximization can magnify estimation errors" />
+
+Two actions with equal true value can still have estimation errors. Selecting the larger estimate tends to favor one that happened to err upward. This is the intuition for <strong>overestimation bias</strong>.
+
+For unbiased estimates of the same action values, <strong>in expectation</strong> the maximum estimate can be at least the maximum true value. This does not say that every individual maximum is too high: one sample may underestimate all actions.
+
+<strong>Double DQN</strong> selects the next action with the current network and evaluates that action with the target network, reconnecting the two networks' roles.
+
+
+<Math tex={String.raw`\begin{aligned}a_{\mathrm{sel}}&\in\arg\max_{a'}Q_\theta(s',a')\\y^{\mathrm{Double}}&=r+\gamma(1-d)Q_{\theta^-}(s',a_{\mathrm{sel}})\end{aligned}`} display label="Double DQN separates the network selecting an action from the network evaluating it" />
+
+<RobotEquationGuide id="rl04-e16" />
+
+
+Suppose current-network outputs are 2 and 1, while target-network outputs are 0.5 and 1.5. Standard DQN takes target maximum 1.5. Double DQN instead evaluates the current network's first-action choice using the target network, obtaining 0.5. The networks can remain correlated, so separation alone does not remove all bias or always yield a better policy.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch04-value-learning/max-bias.png" alt="A directly computed distribution from 200,000 trials adding independent Gaussian errors to two true-zero action values. Selecting and evaluating with the same estimate shifts the mean above zero." caption="A separately computed noise example, not a Double DQN training result. It isolates bias from maximization." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/04-value-learning" credit="JJo; fixed seed and numerical results are public" width={1184} height={608} />
+
+[Original paper by van Hasselt et al.](https://arxiv.org/abs/1509.06461).
+
+
+[Original lecture from 38:01](https://www.youtube.com/watch?v=90raNpc11tQ&t=2281s).
+
+<LectureSlide lecture={4} page={34} caption="In continuous action spaces, we cannot enumerate every candidate" />
+
+If we command a separate torque for each of a robot arm's seven joints, the action is a vector of seven real numbers. We write it as <Math tex={String.raw`a\in\mathbb R^7`} />, but real hardware imposes limits and units. A seven-dimensional action space is very different from a space containing seven possible actions.
+
+Even discretizing each joint into just ten values produces <Math tex={String.raw`10^7`} /> combinations. Evaluating every combination with <Math tex={String.raw`Q`} /> quickly becomes expensive as the dimension increases. A neural network may evaluate values quickly, but finding a good action still takes computation.
+
+This chapter compares three approaches: use the geometry of the problem to <strong>discretize</strong> actions, sample candidates and <strong>search</strong>, or learn a <strong>separate policy</strong> that proposes the best action. This does not mean that continuous functions cannot be maximized. The difficulty is finding the maximum of a general nonlinear neural network quickly and accurately.
+
+
+[Original lecture from 39:14](https://www.youtube.com/watch?v=90raNpc11tQ&t=2354s).
+
+<LectureSlide lecture={4} page={35} caption="Representing pushing and grasping through image positions and orientations" />
+
+The RGB-<Math tex={String.raw`D`} /> camera on the left measures both color and depth. Converting its data into a top-down <strong>heightmap</strong> makes each pixel correspond to a position on the work surface and the height at that position. This differs from an ordinary perspective image, where equal pixel distances need not represent equal physical distances.
+
+The two networks in the middle evaluate <strong>pushing</strong> and <strong>grasping</strong> separately. Rather than producing a single output, each fully convolutional network (FCN) produces a dense spatial <Math tex={String.raw`Q`} /> map. A bright location means that starting the corresponding action there is expected to lead to a better outcome.
+
+The ×16 label and multiple small maps indicate that sixteen orientations are considered. The original paper rotates the input heightmap in 22.5-degree increments and compares 32 <Math tex={String.raw`Q`} /> maps in total: sixteen for pushing and sixteen for grasping. The final action combines <strong>action type, position, and orientation</strong>. The dot and line on the right indicate the selected action's position and direction.
+
+This method does not directly output every combination of torques for seven joints. People define the pushing and grasping <strong>action primitives</strong> and the workspace; inverse kinematics and motion planning handle lower-level execution. Learning determines when and where to choose those prepared actions. [Zeng et al., original paper, pp. 3–4](https://arxiv.org/pdf/1803.09956#page=3).
+
+
+[Original lecture from 41:16](https://www.youtube.com/watch?v=90raNpc11tQ&t=2476s).
+
+<LectureSlide lecture={4} page={36} caption="What if a push helps a later grasp?" />
+
+Objects packed together can be difficult to grasp immediately. Pushing one object aside first may make the subsequent grasp more likely to succeed. This is where long-term value matters: a push need not lift an object immediately to increase the grasping value of the next state.
+
+The Bellman update passes the high grasping value of the separated state back to the preceding push. The pushing behavior in the video is a strategy learned from the reward, rather than a fixed execution sequence supplied by a person. [Paper on the synergy between pushing and grasping](https://arxiv.org/abs/1803.09956)
+
+The Bellman update propagates the next state's good value back to the earlier push. It can therefore account for the benefit of preparation, unlike a method that selects actions solely by immediate grasp success.
+
+Do not read this as saying that everything emerged without any design. The original paper specifies the pushing and grasping actions, heightmaps, learning signals, and success criteria. Its reward assigns 1 to a successful grasp and 0.5 to a push that produces a detectable scene change. Describing the experiment as giving pushes no immediate reward would be inaccurate. What people did not prescribe was the exact sequence “push first, then grasp” for every scene. [Methods in the original paper](https://arxiv.org/pdf/1803.09956#page=4) · [Research project and code](https://vpg.cs.princeton.edu/).
+
+
+[Original lecture from 42:15](https://www.youtube.com/watch?v=90raNpc11tQ&t=2535s).
+
+<LectureSlide lecture={4} page={37} caption="Sampling and comparing candidate actions" />
+
+The simplest continuous optimization approach samples <Math tex={String.raw`N`} /> candidate actions within the valid range and compares their <Math tex={String.raw`Q`} /> values. Here, <strong>Monte Carlo sampling</strong> simply means using random samples.
+
+
+<Math tex={String.raw`\hat a\in\arg\max_{a\in\{a^{(1)},\ldots,a^{(N)}\}}Q(s,a)`} display label="Sampling returns the best action among the candidates actually drawn, rather than the best across the entire continuous space" />
+
+<RobotEquationGuide id="rl04-e17" />
+
+
+The high peak in the graph marks a region of actions with large <Math tex={String.raw`Q`} /> values. To choose a good action, a candidate has to land near it. Smoothness of <Math tex={String.raw`Q`} /> alone does not ensure that a finite random sample will contain an action near the global maximum. Narrow good regions and high dimensions make them easy to miss.
+
+If a single sample has a 1% chance of entering a good region, 100 independent samples have about a 63.4% chance of entering it at least once. This simple example shows that even a fairly large sample can fail. The probability is calculated as <Math tex={String.raw`1-(1-0.01)^{100}`} />.
+
+With <Math tex={String.raw`N`} /> candidates, roughly <Math tex={String.raw`N`} /> evaluations of <Math tex={String.raw`Q`} /> are needed. The candidates can, however, be processed in parallel as one minibatch; this does not necessarily mean waiting for <Math tex={String.raw`N`} /> sequential network calls. [Berkeley's discussion of continuous actions from 1:57](https://www.youtube.com/watch?v=Q-Qwjz8Zmh0&t=117s) also explains this trade-off between accuracy and parallel computation.
+
+
+[Original lecture from 43:16](https://www.youtube.com/watch?v=90raNpc11tQ&t=2596s).
+
+<LectureSlide lecture={4} page={38} caption="CEM: concentrating the next samples around good candidates" />
+
+The <strong>Cross-Entropy Method (CEM)</strong> is an iterative optimization method that updates a candidate distribution. Instead of repeatedly sampling the entire range in the same way, it concentrates subsequent samples around candidates that scored well.
+
+1. Sample candidate actions from a distribution with the current mean and variance.
+2. Select an <strong>elite set</strong> of candidates with the highest <Math tex={String.raw`Q`} /> values.
+3. Refit the distribution using those candidates' mean and standard deviation.
+4. Repeat for a fixed number of iterations and return an action.
+
+In the original figure, <Math tex={String.raw`\mu_k`} /> and <Math tex={String.raw`\sigma_k`} /> describe the center and spread of the current candidate distribution. They do not represent uncertainty about the environment's state or the policy's probability of success. Exploration may stop if the variance approaches zero too quickly, so a lower bound can help. Samples must also respect the actual action limits.
+
+This single-Gaussian version may collapse onto one of several peaks or concentrate incorrectly between them. CEM need not always use this particular distribution, but this simple version offers no global-optimality guarantee. With <Math tex={String.raw`N`} /> candidates and <Math tex={String.raw`K`} /> iterations, action selection costs roughly <Math tex={String.raw`N K`} /> evaluations of <Math tex={String.raw`Q`} />.
+
+<LearningFigure src="/assets/posts/rl-robot-learning-ch04-value-learning/cem-search.png" alt="A directly computed CEM example using a known one-dimensional quadratic Q function: five iterations with 64 candidates each concentrate samples near the maximum at 0.65" caption="A CEM calculation run for this article. It optimizes a predefined quadratic function and is not a performance result for a learned robot Q function." source="https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/04-value-learning" credit="JJo; candidate CSV and settings are available" width={1184} height={608} />
+
+[Berkeley's CEM explanation from 3:21](https://www.youtube.com/watch?v=Q-Qwjz8Zmh0&t=201s).
+
+
+[Original lecture from 44:26](https://www.youtube.com/watch?v=90raNpc11tQ&t=2666s).
+
+<LectureSlide lecture={4} page={39} caption="QT-Opt: searching for actions while reusing real robot data" />
+
+The robots in the photograph collect different grasping experiences. <strong>QT-Opt</strong> applies an image-conditioned <Math tex={String.raw`Q`} /> function and CEM-based continuous action search to a large real-world dataset. Reusing expensive robot transitions multiple times through a replay buffer is an important part of this approach.
+
+The original paper reports more than 580,000 real-world grasp attempts and a 96% grasp success rate in its evaluation on unseen objects. This does not mean that the training set contained 580,000 photographs, or that every robot achieves 96% success on every object and task. It is an experimental result with specified objects, equipment, and evaluation procedures.
+
+Rather than choosing a grasp point from a single initial image and executing the entire action unchanged, the method uses <strong>closed-loop control</strong> to adjust its grasping strategy in response to observations during execution. Regrasping or moving an object through contact can be understood as actions that improve the eventual grasp outcome. We should not turn this into a broad historical claim such as “the first real-world Q-learning.” [Original paper by Kalashnikov et al.](https://arxiv.org/abs/1806.10293).
+
+
+[Original lecture from 45:48](https://www.youtube.com/watch?v=90raNpc11tQ&t=2748s).
+
+<LectureSlide lecture={4} page={40} caption="DDPG: learning the action search itself with a neural network" />
+
+CEM compares candidates again each time the robot acts. <strong>Deep Deterministic Policy Gradient (DDPG)</strong> instead learns a network that directly outputs a good continuous action from a state. This network is the <strong>actor</strong>. The <Math tex={String.raw`Q`} /> network that evaluates actions is the <strong>critic</strong>.
+
+
+<Math tex={String.raw`a=\mu_\phi(s),\qquad \mu_\phi(s)\approx\arg\max_a Q_\theta(s,a)`} display label="The actor directly outputs an action from the state, and the critic evaluates that action's long-term value" />
+
+<RobotEquationGuide id="rl04-e18" />
+
+
+Here, <Math tex={String.raw`\phi`} /> denotes the actor's weights and <Math tex={String.raw`\theta`} /> the critic's weights. For the same state, the actor proposes a command and the critic estimates how good it is. The actor moves toward commands the critic values more highly, while the critic learns from a TD target based on the reward and next state.
+
+The original slide's “two networks” refers to these two <strong>roles</strong>. A practical DDPG implementation also has target copies of both, so there are more than two network instances. A typical critic target takes the following form.
+
+
+<Math tex={String.raw`y=r+\gamma(1-d)Q_{\theta^-}(s',\mu_{\phi^-}(s'))`} display label="DDPG constructs its target by evaluating the next state's target-actor action with the target critic" />
+
+<RobotEquationGuide id="rl04-e19" />
+
+
+At deployment, one forward pass through the actor can propose an action. The symbol <Math tex={String.raw`\approx`} /> indicates an approximation; it does not prove that the actor finds the true global maximum in every state. [Berkeley's introduction of the actor and target copies, 6:15–9:42](https://www.youtube.com/watch?v=Q-Qwjz8Zmh0&t=375s).
+
+
+[Original lecture from 46:42](https://www.youtube.com/watch?v=90raNpc11tQ&t=2802s).
+
+<LectureSlide lecture={4} page={41} caption="The actor gradient connects derivatives through the critic and the actor" />
+
+If the critic indicates that moving the action slightly in a particular direction increases <Math tex={String.raw`Q`} />, we adjust the actor's weights in that direction. The <strong>chain rule</strong> connects the sensitivities of these two changes.
+
+
+<Math tex={String.raw`\nabla_\phi J\approx\mathbb E_s\!\left[\left.\nabla_a Q_\theta(s,a)\right|_{a=\mu_\phi(s)}\nabla_\phi\mu_\phi(s)\right]`} display label="The actor update uses the chain rule to connect changes in value with respect to the action to changes in the action with respect to the weights" />
+
+<RobotEquationGuide id="rl04-e20" />
+
+
+The term <Math tex={String.raw`\nabla_a Q`} /> describes how the score changes when the action changes, while <Math tex={String.raw`\nabla_\phi\mu_\phi`} /> describes how the action changes when the weights change. For vectors, the calculation uses the appropriate Jacobian product. Computing the actor-loss gradient does not mean updating the critic's own weights together with the actor.
+
+In the article's one-dimensional example, <Math tex={String.raw`Q(a)=1-(a-0.65)^2`} />, <Math tex={String.raw`a=\phi s`} />, <Math tex={String.raw`s=2`} />, and <Math tex={String.raw`\phi=0.2`} /> give a current action of 0.4. The derivative with respect to the action is 0.5, and the derivative of the action with respect to the weight is 2, yielding a product of 1. The executable example also checks this against a finite difference obtained by slightly changing the weight.
+
+A deterministic actor returns the same action for the same input, so data collection often adds noise to its actions. Randomly mixing in actions probabilistically is not mathematically impossible in a continuous space; local noise is simply a common alternative. Action limits and noise magnitude must be specified, and adding independent Gaussian noise does not automatically produce temporally smooth commands.
+
+The [original DDPG paper](https://arxiv.org/abs/1509.02971) used temporally correlated Ornstein–Uhlenbeck noise. The Gaussian-noise diagram in the original lecture should be read as a simplified explanation of exploration.
+
+
+[Original lecture from 48:29](https://www.youtube.com/watch?v=90raNpc11tQ&t=2909s).
+
+<LectureSlide lecture={4} page={42} caption="Fast action output does not solve training stability" />
+
+The photograph of a robot manipulating a door or handle illustrates an application to continuous control. An actor removes the need to run a CEM candidate search at every step. It does not mean that the system <strong>always runs at any control frequency</strong>. The entire latency must be measured, including model size, image processing, hardware, and communication.
+
+For exploration, the illustrated DDPG setup adds small Gaussian noise to the actor's continuous commands. This makes it easy to try actions near a normal approach trajectory. If the noise is too small, other routes are rarely visited; if it is too large, commands fluctuate substantially during training.
+
+DDPG can be sensitive to critic error, the actor's exploitation of that error, exploration range, and learning rate. If the actor actively seeks actions the critic overvalues, predicted <Math tex={String.raw`Q`} /> can rise even as actual returns fall.
+
+Labels such as “two workers, 2.5 hours” in the original video describe a particular research experiment. They are not universal specifications promising that your robot will learn in the same time. [Gu et al.'s asynchronous off-policy robot learning](https://arxiv.org/abs/1610.00633) is a real-world research example, separate from the calculations performed for this article.
+
+
+[Original lecture from 49:56](https://www.youtube.com/watch?v=90raNpc11tQ&t=2996s).
+
+<LectureSlide lecture={4} page={43} caption="Choosing a method means considering the model, state, actions, and learning conditions together" />
+
+The table's columns cover the four groups discussed in this chapter: computing tables from a known model, learning tables from experience, learning discrete-action values with neural networks, and handling continuous actions.
+
+| Question | Tabular dynamic programming | Tabular Q-learning and SARSA | DQN and Double DQN | QT-Opt and DDPG |
+|---|---|---|---|---|
+| Is the transition model used directly? | Yes | Sampled experience | Sampled experience | Sampled experience |
+| How is the state represented? | Small state table | Small state–action table | Neural features, images, etc. | Neural features, images or vectors, etc. |
+| How are actions selected? | Model-based improvement or a stored policy table | Compare the <Math tex={String.raw`Q`} /> table | Compare outputs for finite actions | Candidate search or an actor |
+| Can old experience be reused? | Computation uses the model itself | Yes for Q-learning; SARSA requires attention to policy consistency | Replay | Off-policy replay |
+| Key conditions for guarantees | Finite discounted MDP, exact computation, etc. | Conditions on visits, learning rates, and policy changes | No general global-convergence guarantee | No general global-convergence guarantee |
+
+Do not memorize the original table as a strict set of mutually exclusive categories. <Math tex={String.raw`Q`} /> value iteration can use a model during learning yet execute using the stored <Math tex={String.raw`Q`} />. Within the continuous-action column, QT-Opt still pays a search cost, unlike DDPG's direct actor output. Images are not a requirement either: DQN can also handle continuous-vector states with discrete actions.
+
+Even methods described as “model-free” differ in their data requirements, execution time, and action representations. For a robot problem, ask together whether the model is known, whether observations contain the necessary information, whether actions can be enumerated, and how much expensive experience can be collected.
+
+
+[Original lecture from 50:44](https://www.youtube.com/watch?v=90raNpc11tQ&t=3044s).
+
+## Calculations run and checked for this article
+
+The article computes value iteration and policy iteration in a small 3×4 stochastic grid, then runs tabular Q-learning on 240,000 sampled transitions. Entering the goal or hazard gives +1 or −1 and terminates the episode; the discount factor is 0.9. All other immediate rewards are zero. This is a separate environment with explicitly defined walls, boundaries, and slipping, rather than a reproduction of the ETH demo or assignment.
+
+Q-learning uses individual next states and rewards sampled by the simulator, rather than an expected target from a precomputed transition matrix. Valid state–action pairs are queried uniformly to control visitation coverage. This experiment therefore does not compare sample efficiency for learning through exploration from the start of each episode.
+
+Eighteen checks cover transition-probability sums, avoiding duplicate terminal rewards, Bellman fixed points, exact policy evaluation, agreement between value and policy iteration, nondecreasing improvement, state–action coverage, learned <Math tex={String.raw`Q`} /> error, the learned policy's value gap, TD calculations, terminal targets, Double DQN's separation of selection and evaluation, noisy-maximum bias, CEM, and the actor's chain-rule derivative. In this run, the maximum <Math tex={String.raw`Q`} /> estimation error was about 0.0269, and the learned greedy policy matched the optimal policy's value within numerical tolerance in this small environment. Settings, seeds, and all numerical results are recorded with the [executable code and JSON/CSV results](https://github.com/JJo-0/JJo-0.github.io/tree/main/docs/robot-learning/labs/04-value-learning).
+
+These are not training results for DQN or DDPG neural networks or a real robot. The CEM example searches a predefined quadratic function, and the noise experiment involving two estimators is also distinct from an actual Double DQN experiment.
+
+## Continuing with the official assignment
+
+The [official ETH HW4](https://github.com/mees-robot-learning-course/ethz-course-2026/tree/2e089e97d84968182c1ffa2e1bc8177530feb6fe/hw4_reinforcement_learning) connects these concepts to executable implementations. This article refers to the instructions and relevant files at a pinned commit; it does not claim to have implemented and run the official assignment on the reader's behalf.
+
+| Assignment section | Questions to connect with this chapter |
+|---|---|
+| Ex1: value and policy iteration in GridWorld | Do both methods produce the same policy under the same model? How does the route change as slipping becomes more likely? |
+| Ex2: CartPole DQN | Have you distinguished four continuous state variables from two discrete actions? What are the replay-buffer and target-network update intervals? |
+| Ex3 and Ex4: PPO and SAC on SO100 | How do the policy and data-reuse strategy change for continuous actions? These algorithms connect to later chapters. |
+
+Seeing CartPole in the original assignment does not mean that its algorithm directly outputs robot joint torques. The SO100 assignments also use normalized joint-position commands, so distinguish their physical meaning from this chapter's illustrative torque vector.
+
+Chapter 05 continues with methods that improve policies directly and explores continuous control further.
+
+## Sources and further reading
+
+- [ETH Robot Learning, Lecture 4](https://cvg.ethz.ch/lectures/Robot-Learning/) · [Video](https://www.youtube.com/watch?v=90raNpc11tQ) · [PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture4_rl_I.pdf) · [Image copies](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-04)
+- [David Silver — Dynamic Programming](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-3-planning-by-dynamic-programming-.pdf) · [Lecture video](https://www.youtube.com/watch?v=Nd1-UUMVfz4) · [Model-Free Control](https://davidstarsilver.wordpress.com/wp-content/uploads/2025/04/lecture-5-model-free-control-.pdf) · [Lecture video](https://www.youtube.com/watch?v=0g4j2k_Ggc4)
+- [Berkeley CS285: Value Functions](https://rail.eecs.berkeley.edu/deeprlcourse-fa23/static/slides/lec-7.pdf) · [Deep RL with Q-Functions](https://rail.eecs.berkeley.edu/deeprlcourse-fa23/static/slides/lec-8.pdf) · [Target-network video](https://www.youtube.com/watch?v=lqC9w532erw) · [Continuous-action video](https://www.youtube.com/watch?v=Q-Qwjz8Zmh0)
+- [DQN 2013](https://arxiv.org/abs/1312.5602) · [DQN 2015](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf) · [Double DQN](https://arxiv.org/abs/1509.06461)
+- [Pushing and grasping](https://arxiv.org/abs/1803.09956) · [QT-Opt](https://arxiv.org/abs/1806.10293) · [DDPG](https://arxiv.org/abs/1509.02971) · [Asynchronous real-world robot learning](https://arxiv.org/abs/1610.00633)
+
+P numbers follow the file order of the image copies. Slides devoted solely to acknowledgments or references are omitted. Copyright in the slides belongs to <strong>Oier Mees and the respective rights holders of included material</strong>. Diagrams from the original DQN paper belong to their original authors. The grid, noise, and CEM figures are separate educational calculations created for this article.

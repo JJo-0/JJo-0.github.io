@@ -1,0 +1,475 @@
+---
+title: "강화학습 09 — 범용 로봇 정책"
+description: "여러 로봇을 한 모델로 제어하는 법."
+pubDate: 2026-11-06T12:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: rl-robot-learning-ch09-generalist-policies
+category: robotics-embedded
+subcategory: robot-learning
+type: study-note
+tags: ["robot-learning", "reinforcement-learning", "vision-language-action"]
+draft: false
+lang: ko
+researchFeatured: false
+showCTA: false
+showComments: false
+series:
+  id: rl-robot-learning
+  order: 9
+---
+
+import LectureSlide from '@/components/post/LectureSlide.astro';
+import Math from '@/components/post/Math.astro';
+import RobotEquationGuide from '@/components/post/RobotEquationGuide.astro';
+
+같은 컵을 집으라는 지시라도 로봇마다 보이는 장면과 받는 명령이 다르다. 한 대는 손목 카메라가 있고 다른 한 대는 작업대 카메라만 있다. 집게를 열라는 뜻도 어떤 기록에서는 1, 다른 기록에서는 0으로 저장된다. [이전 장 · 월드 모델](/posts/rl-robot-learning-ch08-world-models/)
+
+공식 강의 일정과 영상 자동 자막을 기준으로 설명을 정리했다. 그림은 공개 이미지 사본의 순서로 표시했다. 공식 PDF는 암호가 걸려 있어 PDF 내부와 이미지 사본의 일치 여부는 확인하지 못했다. [ETH 공식 일정](https://cvg.ethz.ch/lectures/Robot-Learning/) · [공식 PDF](https://cvg.ethz.ch/lectures/Robot-Learning/lectures/lecture9_generalist_policies.pdf) · [슬라이드 이미지 사본](https://github.com/SRA-VJTI/robotics-study-group/tree/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-09)
+
+## 한 로봇의 한 작업에서 출발하기
+
+<LectureSlide lecture={9} page={1} caption="범용 로봇 정책" priority />
+
+강의 사이트의 9주차 녹화다. 사본 표지에는 Lecture 10이라고 적혀 있다. 이 글의 장 번호는 공식 일정의 주차를 따른다.
+
+[원강의 0:00](https://www.youtube.com/watch?v=dtofzDY9zuo&t=0s)
+
+<LectureSlide lecture={9} page={2} caption="전문 정책의 장점" />
+
+한 종류의 팔로 케이블을 끼울 때 ACT나 Diffusion Policy는 그 작업에 맞는 정밀한 움직임을 배울 수 있다. 새 카메라나 다른 팔을 추가할 때마다 학습을 반복하면 작업 수와 장비 수가 늘어나는 만큼 비용도 커진다.
+
+[원강의 0:36](https://www.youtube.com/watch?v=dtofzDY9zuo&t=36s)
+
+<LectureSlide lecture={9} page={3} caption="범용성의 세 축" />
+
+정책은 지금 본 장면과 지시를 다음 행동으로 바꾸는 규칙이다. 새 물체, 새 환경, 새 로봇에서의 성공은 서로 다른 시험이다. 예를 들어 같은 팔로 낯선 컵을 집는 것과 새 팔을 연결하는 것은 필요한 적응이 다르다.
+
+[원강의 1:46](https://www.youtube.com/watch?v=dtofzDY9zuo&t=106s)
+
+<LectureSlide lecture={9} page={4} caption="설치해서 쓰는 로봇 두뇌라는 목표" />
+
+터미널 그림은 설치만으로 여러 장비를 제어하고 싶은 연구 목표를 보여 준다. 실제 연결에는 카메라 순서와 좌표계, 제어 주기, 명령 단위와 장비별 동작 범위를 맞추는 작업이 따른다.
+
+[원강의 2:30](https://www.youtube.com/watch?v=dtofzDY9zuo&t=150s)
+
+<LectureSlide lecture={9} page={5} caption="언어 모델에서 가져온 발상" />
+
+코드 완성과 번역처럼 입력과 출력이 다른 작업을 토큰 시퀀스로 다루면 한 모델에서 표현을 공유할 수 있다. 로봇에서는 사진, 지시, 움직임도 학습 단위로 바꿀 수 있지만 마지막 출력은 물리 장비가 실행할 수 있어야 한다.
+
+[원강의 3:12](https://www.youtube.com/watch?v=dtofzDY9zuo&t=192s)
+
+<LectureSlide lecture={9} page={6} caption="범용 모델과 전문 모델의 비교" />
+
+번역과 객체 검출 그림은 분야마다 전용 모델을 만들던 방식에서 공유 모델로 옮겨가는 흐름을 보여 준다. 로봇에서는 같은 과제의 성공률과 실행 속도를 전문 정책과 직접 비교해야 공유 모델의 이득을 판단할 수 있다.
+
+[원강의 3:53](https://www.youtube.com/watch?v=dtofzDY9zuo&t=233s)
+
+<LectureSlide lecture={9} page={7} caption="데이터·모델·평가" />
+
+다양한 장비의 경험을 모으는 방법, 입력과 출력 차이를 받아들이는 구조, 그 차이를 반복 측정하는 평가가 함께 필요하다.
+
+[원강의 4:22](https://www.youtube.com/watch?v=dtofzDY9zuo&t=262s)
+
+## 서로 다른 시연을 모으기
+
+데이터가 적다는 문제 외에 실행과 평가도 제약이 된다. 정책이 50Hz로 목표를 갱신하려면 한 주기가 20ms다. 큰 모델이 답을 만드는 데 더 오래 걸리면 빠른 저수준 제어와 느린 상위 판단을 나누거나 행동 묶음·비동기 실행을 설계해야 한다. 여기에 로봇 종류·물체·장소·지시를 늘릴수록 시험 조합도 증가한다. 범용 정책의 성장은 데이터만 많이 모으는 일로 끝나지 않고, 어떤 범위에서 작동하는지 반복 확인하는 비용까지 바꾼다.
+
+<LectureSlide lecture={9} page={8} caption="시연을 모으는 데 드는 비용" />
+
+사람이 팔을 조종해 컵을 놓는 장면 하나를 찍으려면 초기 위치를 맞추고, 실패하면 다시 배치하며, 센서와 동작을 함께 기록해야 한다. 이런 물리적 반복이 웹 문서 수집과 다른 비용을 만든다.
+
+[원강의 5:02](https://www.youtube.com/watch?v=dtofzDY9zuo&t=302s)
+
+<LectureSlide lecture={9} page={9} caption="이미 모은 자료를 공통 형식으로" />
+
+실험실마다 기록 방법이 다르더라도 한 에피소드에서 시간순 관측과 행동을 읽게 만들 수 있다. 이때 공통 저장 형식은 데이터에 접근하는 방법을 맞추고, 좌표와 의미 변환은 별도로 적용한다.
+
+강의의 촉각 연구실 예처럼, 개별 논문을 위해 모은 작은 자료도 다른 실험실 기록과 함께 쓸 수 있다. Mees는 박사과정에서 Franka를 직접 원격 조작하던 경험을 떠올리며, 새 과제마다 모든 시연을 다시 찍는 비용에서 이 아이디어가 출발했다고 설명한다.
+
+[원강의 8:21](https://www.youtube.com/watch?v=dtofzDY9zuo&t=501s)
+
+<LectureSlide lecture={9} page={10} caption="Open X-Embodiment" />
+
+여러 기관이 모은 조작 기록을 공동 학습에 쓴다. 어떤 부분이 공유되는지 보려면 에피소드 수와 함께 로봇 종류, 작업의 중복, 카메라 구성을 살펴야 한다. [프로젝트](https://robotics-transformer-x.github.io/)
+
+Open X-Embodiment 논문은 22종 로봇의 실제 에피소드 100만 개 이상을 보고한다. 이 숫자는 모아 놓은 자료 전체의 규모다. 아래 Octo의 약 80만은 그중 해당 모델의 사전학습에 쓰인 에피소드 수다. [Open X-Embodiment 논문](https://arxiv.org/abs/2310.08864)
+
+[원강의 9:20](https://www.youtube.com/watch?v=dtofzDY9zuo&t=560s)
+
+<LectureSlide lecture={9} page={11} caption="여러 장비에서 확인하는 전이" />
+
+서로 다른 실험실에서 촬영한 조작 영상은 모델을 훈련한 장면과 시험 장면을 구분해 읽어야 한다. 기존 장비에서 새 물체를 다루는 경우와 새 장비에 적응하는 경우의 증거가 각각 필요하다.
+
+[원강의 10:00](https://www.youtube.com/watch?v=dtofzDY9zuo&t=600s)
+
+<LectureSlide lecture={9} page={12} caption="공통 자료에서 여러 정책으로" />
+
+OXE는 여러 후속 정책이 일부 데이터를 다시 쓸 수 있게 했다. 공개된 전체 에피소드 수와 개별 정책의 훈련에 실제로 사용한 에피소드 수는 자료 선택과 필터에 따라 달라진다.
+
+[원강의 11:02](https://www.youtube.com/watch?v=dtofzDY9zuo&t=662s)
+
+<LectureSlide lecture={9} page={13} caption="이질적인 자료를 읽는 모델" />
+
+카메라가 하나인 팔과 손목 카메라가 있는 팔을 함께 학습시키려면 두 입력을 받아들이면서 빠진 관측이 무엇인지 알아야 한다.
+
+[원강의 11:30](https://www.youtube.com/watch?v=dtofzDY9zuo&t=690s)
+
+<LectureSlide lecture={9} page={14} caption="센서와 행동 공간" />
+
+외부 카메라와 손목 카메라는 같은 컵을 다른 위치에서 본다. 같은 출력값이라도 한 로봇은 손끝 이동량, 다른 로봇은 관절 속도로 해석할 수 있다. 두 차이를 입력과 출력에서 각각 처리한다.
+
+[원강의 11:46](https://www.youtube.com/watch?v=dtofzDY9zuo&t=706s)
+
+<LectureSlide lecture={9} page={15} caption="지시에서 동작으로" />
+
+숟가락을 집으라는 말과 사진을 함께 받은 정책은 어떤 물체인지 구별하고, 손을 어디로 이동할지 정한다.
+
+[원강의 12:21](https://www.youtube.com/watch?v=dtofzDY9zuo&t=741s)
+
+<LectureSlide lecture={9} page={16} caption="사진에서 답으로" />
+
+자유의 여신상 그림에 대해 설명을 요청하면 시각언어 모델은 이미지와 문장을 연결한다. 이 그림은 로봇 지시도 입력 형식이 비슷하다는 점을 보여 준다.
+
+[원강의 12:57](https://www.youtube.com/watch?v=dtofzDY9zuo&t=777s)
+
+<LectureSlide lecture={9} page={17} caption="VLM과 행동 정책의 연결" />
+
+시각언어 모델의 출력은 설명 문장이다. 행동 정책을 만들 때는 그 표현을 이용해 손끝 이동이나 집게 열림 같은 제어값을 예측하도록 학습한다.
+
+[원강의 13:20](https://www.youtube.com/watch?v=dtofzDY9zuo&t=800s)
+
+<LectureSlide lecture={9} page={18} caption="여러 종류의 토큰을 한 모델에" />
+
+이미지 패치와 지시의 단어를 벡터로 바꾸고 Transformer에서 서로 참고하게 한다. 행동도 토큰으로 표현하거나, 연속값을 만드는 별도 모듈을 붙일 수 있다.
+
+[원강의 13:31](https://www.youtube.com/watch?v=dtofzDY9zuo&t=811s)
+
+## Octo가 목표와 관측을 행동으로 바꾸는 법
+
+<LectureSlide lecture={9} page={19} caption="Octo의 학습 범위" />
+
+Octo는 OXE에서 선별한 약 80만 에피소드로 학습한 공개 정책이다. 언어 지시 또는 목표 이미지를 받을 수 있고, 데이터가 있는 장비에서 직접 평가하거나 새 장비의 자료로 미세조정한다. [Octo 프로젝트](https://octo-models.github.io/)
+
+[원강의 14:30](https://www.youtube.com/watch?v=dtofzDY9zuo&t=870s)
+
+<LectureSlide lecture={9} page={20} caption="작업 토큰과 관측 토큰" />
+
+칼을 접시 위에 놓으라는 문장은 목표를, 외부·손목 영상은 현재 위치를 알려 준다. 그림의 두 줄을 따라가면 무엇을 할지와 지금 어디에 있는지가 따로 들어간다.
+
+언어는 사전학습된 T5가 표현하고, 영상은 작은 합성곱 인코더에서 관측 토큰으로 바뀐다. Transformer는 둘을 함께 읽으며 보라색 리드아웃 토큰에 행동을 생성하는 데 필요한 정보를 모은다. 이 토큰 자체의 숫자를 모터에 보내는 대신 확산 헤드에 전달한다. [Octo 논문](https://arxiv.org/abs/2405.12213)
+
+[원강의 15:13](https://www.youtube.com/watch?v=dtofzDY9zuo&t=913s)
+
+<LectureSlide lecture={9} page={21} caption="시간 방향과 읽는 범위" />
+
+Octo는 블록 단위의 인과 어텐션을 사용한다. 현재 시점의 행동을 만드는 표현이 과거와 현재 관측을 읽게 해, 실행할 때 아직 찍히지 않은 미래 카메라를 참조하는 상황을 막는다.
+
+[원강의 16:10](https://www.youtube.com/watch?v=dtofzDY9zuo&t=970s)
+
+블록 인과 구조는 시간순 제약과 토큰 역할을 함께 정한다. 같은 시점의 여러 카메라 토큰은 함께 참고할 수 있고, 현재 관측은 목표와 이전 관측을 읽을 수 있지만 아직 오지 않은 미래 관측은 읽을 수 없다. 리드아웃은 목표와 관측을 모아 출력 헤드로 넘긴다. 목표 표현을 관측이나 출력 리드아웃으로 거꾸로 오염시키지 않도록 읽는 방향도 제한한다. 전사의 ‘작업 토큰은 서로를 참조할 수 없다’는 한 문장으로 모든 마스크를 요약하기보다, 논문의 토큰 종류별 허용 표를 함께 보아야 한다. [Octo 논문](https://arxiv.org/abs/2405.12213)
+
+<LectureSlide lecture={9} page={22} caption="목표를 조건으로 시연을 모방" />
+
+목표 상태 이미지를 준다면 접시에 칼이 놓인 완성 사진과 현재 사진의 차이가 행동 선택에 쓰인다. 언어로 목표를 표현할 때도 같은 방식으로 정책에 조건을 제공한다.
+
+<Math display tex={String.raw`\pi_\theta(a_t\mid o_{\le t},g)`} label="목표를 조건으로 행동 선택" />
+
+<RobotEquationGuide id="rl09-e01" />
+
+[원강의 16:46](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1006s)
+
+<LectureSlide lecture={9} page={23} caption="확산 모듈이 만드는 행동 묶음" />
+
+읽기용 토큰에 모인 정보를 행동 모듈에 보내면 노이즈에서 여러 시점의 연속 제어값을 만들어 낸다. 같은 컵을 왼쪽으로 돌아 집거나 오른쪽으로 접근하는 움직임을 학습하는 데 분포가 필요하다.
+
+[원강의 17:20](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1040s)
+
+<LectureSlide lecture={9} page={24} caption="집게 숫자의 의미를 맞춘다" />
+
+한 데이터의 1은 열림이고 다른 데이터의 1은 닫힘이다. 연속값이나 변화 방향만 기록한 데이터도 있다. 두 이진 절대값 규약은 반전으로 맞출 수 있고, 상대 명령은 열고 닫는 시점과 상태를 살펴 변환해야 한다.
+
+<Math display tex={String.raw`g_{\mathrm{open}}=1-g_{\mathrm{closed}}`} label="집게의 절대값 규약 변환" />
+
+<RobotEquationGuide id="rl09-e02" />
+
+[원강의 18:55](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1135s)
+
+Octo에서 맞춘 공통 의미는 열림 1·닫힘 0이다. 문제는 숫자를 뒤집는 데서 끝나지 않는다. 어떤 자료는 현재 열림 폭, 다른 자료는 ‘더 열어라’라는 상대 명령, 또 다른 자료는 닫힘의 이진 상태를 저장한다. 상대 명령에서 절대 열림 상태를 얻으려면 앞선 이력을 따라 상태를 복원해야 할 수 있다. 초기 파지 실패를 보고 이 한 차원을 정렬한 경험은, 큰 Transformer도 서로 반대 의미의 정답을 자동으로 해결해 주지는 않는다는 교훈이다. 모든 데이터셋의 좌표계까지 완전히 통일했다는 뜻은 아니다.
+
+<LectureSlide lecture={9} page={25} caption="바로 실행과 미세조정" />
+
+제로샷 결과는 해당 평가에서 새 시연으로 추가 학습하지 않은 모델의 결과다. 커피 만들기나 정밀 삽입 등 미세조정 결과는 해당 과제 자료를 쓴 뒤 측정한다. 그림의 두 묶음은 출발 조건이 다르다.
+
+[원강의 20:05](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1205s)
+
+<LectureSlide lecture={9} page={26} caption="평균 뒤에 있는 성공과 실패" />
+
+영상으로 집게가 닫히는 위치와 물체가 빠지는 시점을 살펴보면 성공률 숫자만으로 찾기 어려운 오류를 알 수 있다. 여러 장비를 평가할수록 조건별 반복과 실패 기록이 필요하다.
+
+강연자가 보여 준 첫 Google 로봇 파지에서는 원격 서버에서 정책을 실행했고 Quan Vuong이 현장 평가를 도왔다. 학습에 Google 로봇 기록이 들어 있었지만, 테스트 장소는 수집 때와 다른 건물이었다. 한 번 성공한 영상은 낯선 장소에서도 작동한 사례이며 성공률은 반복 시험으로 따로 계산한다.
+
+[원강의 21:20](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1280s)
+
+Octo 팀은 각 영상에 큰 ResNet을 따로 적용한 뒤 합치기보다, 작은 영상 토크나이저와 공유 Transformer에 계산을 집중했다. 당시에는 로봇 데이터만으로 표현을 처음부터 학습하는 길을 택했다. 강사가 이를 되돌아보며 언급하는 이유는, 뒤에서 인터넷 규모 VLM을 재사용하는 접근과 출발점이 다르기 때문이다. 논문의 비교에서 RT-1-X보다 좋은 결과와 훨씬 큰 RT-2-X에 견줄 만한 결과를 보였다는 것은 해당 장비·과제·데이터 조건의 관찰이다. 파라미터가 작다는 사실만으로 모든 의미 이해나 새 장비 적응에서 우월하다는 결론은 나오지 않는다. [Octo 연구팀](https://octo-models.github.io/)
+
+<LectureSlide lecture={9} page={27} caption="새 카메라와 새 명령 형식" />
+
+새 로봇의 손목 영상이나 힘 센서를 추가하면 입력 형식이 달라진다. 7개 관절 속도 대신 손끝 목표 자세를 내보내려면 출력 형식도 달라진다.
+
+[원강의 22:20](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1340s)
+
+<LectureSlide lecture={9} page={28} caption="입출력은 바꾸고 표현은 재사용" />
+
+Octo 그림의 위쪽은 사전학습, 아래쪽은 미세조정이다. 새 센서를 토큰으로 바꾸는 모듈과 새 출력 헤드를 연결하고, 이미 배운 장면 표현을 초기값으로 쓴다.
+
+[원강의 23:14](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1394s)
+
+<LectureSlide lecture={9} page={29} caption="적은 시연으로 새 작업에 적응" />
+
+그림의 시연은 연구팀이 공개 모델을 출발점으로 쓴 사례다. 약 50개라는 수치는 소개된 활용 사례의 규모다. 필요한 시연 수는 작업의 정밀도와 사전학습 자료의 관련성에 따라 달라진다.
+
+[원강의 24:34](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1474s)
+
+## 장비가 달라도 공유할 수 있는 것
+
+새 힘·토크 센서를 붙이면 그 값을 토큰으로 만드는 입력 모듈이 필요하다. 관절 목표를 출력하도록 바꾸려면 그 형식에 맞는 출력 헤드도 필요하다. Octo는 대부분의 파라미터를 공유 Transformer에 두어 그 표현을 새 입출력 모듈과 함께 미세조정한다. 원강의가 강조하는 비교는 로봇 행동으로 사전학습한 전체 정책에서 출발하는 것과, 시각 표현만 사전학습한 백본에서 출발하는 것의 차이다. Spot과 일본 기업 휴머노이드 사례는 후속 사용자가 장비에 맞게 적응시킨 활용 사례이며, 원래 체크포인트가 그 로봇을 추가 학습 없이 제어했다는 증거는 아니다.
+
+<LectureSlide lecture={9} page={30} caption="한 팔을 넘어서는 범용성" />
+
+바퀴 로봇의 주행, 네 발 로봇의 보행, 드론의 비행은 관측과 제어가 크게 다르다. 장면을 읽는 표현을 얼마나 공유할 수 있는지 보려면 이런 차이를 가진 장비까지 시험할 수 있다.
+
+[원강의 25:32](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1532s)
+
+<LectureSlide lecture={9} page={31} caption="조작과 주행·보행·비행을 함께" />
+
+CrossFormer는 약 90만 궤적을 모아 여러 장비를 하나의 정책 구조로 다뤘다. 사진에서 같은 장애물을 찾아도 팔을 피해 움직이는 방법과 드론이 고도를 바꾸는 방법은 다르다.
+
+[원강의 26:34](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1594s)
+
+<LectureSlide lecture={9} page={32} caption="공유 본체와 장비별 출력" />
+
+CrossFormer는 Transformer 본체를 공유하고 장비마다 출력 헤드를 둔다. 헤드는 공유 표현을 해당 장비의 제어 벡터로 바꾸는 마지막 모듈이다. 드론과 양팔의 행동 차원을 억지로 맞추지 않고도 본체를 공동 학습할 수 있다. [CrossFormer 프로젝트](https://crossformer-model.github.io/)
+
+강의의 예에서 WidowX는 5Hz, 양팔 정교 조작 장비는 50Hz로 제어한다. 같은 1초를 예측하려 해도 각각 다섯 개와 쉰 개의 명령이 필요하다. 장비별 헤드는 행동 벡터의 차원뿐 아니라 이런 시간 해상도도 맞출 수 있다.
+
+[원강의 27:05](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1625s)
+
+<LectureSlide lecture={9} page={33} caption="한 모델의 여러 실행 장면" />
+
+각 영상에서 같은 체크포인트의 공유 표현을 쓰지만 연결된 제어기는 다르다. 이미 지원하는 장비에서의 실행과 학습에 없던 장비의 즉시 제어를 구분해 읽는다.
+
+[원강의 29:11](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1751s)
+
+CrossFormer의 영상들은 로봇마다 가장 잘 나온 학습 시점의 가중치를 골라 조합한 결과가 아니라, 하나의 체크포인트에서 장비별 헤드를 선택한 실행이다. 같은 종류의 카메라 입력에는 인코더 가중치를 공유하는 등 공통 파라미터를 최대한 활용한다. 주행 경험이 시각적 장애물 표현에 도움을 줄 수는 있지만, 바퀴 속도를 사족 로봇의 관절 토크에 그대로 복사하는 전이는 아니다. 공유 표현과 장비별 행동 변환을 나누어야 서로 다른 경험을 공동 학습하는 의미가 분명해진다.
+
+<LectureSlide lecture={9} page={34} caption="장비마다 전문 정책과 비교" />
+
+평균 막대 옆의 장비별 막대가 중요하다. 일부 장비에서 얻은 큰 개선이 다른 장비에서의 하락을 가릴 수 있다. 기준 정책과 데이터, 시험 횟수가 같아야 비교를 해석할 수 있다.
+
+[원강의 30:22](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1822s)
+
+<LectureSlide lecture={9} page={35} caption="사전학습이 주는 시연 절약" />
+
+TRI는 29개 작업에서 사전학습 정책과 처음부터 학습한 정책을 비교했다. 환경 변화에 대응해야 하는 일부 설정에서는 새 작업에 필요한 데이터가 3~5배 적었다. 모든 작업의 성공률이 그 배수만큼 높아졌다는 수치는 아니다. [TRI 원자료](https://toyotaresearchinstitute.github.io/lbm1/)
+
+블라인드 A/B 실험에서는 운영자가 어느 정책을 평가하는지 모른 채 결과를 판정했다. 사후학습 자료가 적을 때 사전학습의 이점이 컸고, 데이터 정규화 선택도 결과에 영향을 줬다. 서로 다른 정책의 차이를 해석할 때 데이터 전처리까지 실험 조건으로 남겨야 하는 이유다. [TRI 연구](https://arxiv.org/abs/2507.05331)
+
+[원강의 30:57](https://www.youtube.com/watch?v=dtofzDY9zuo&t=1857s)
+
+## 웹에서 배운 표현을 로봇으로 옮기기
+
+강의에서 소개한 TRI 연구는 약 1,700시간 규모의 사전학습 경험을 활용한 diffusion Transformer 정책을 실제 조작과 시뮬레이션에서 조사했다. 사과 깎기처럼 긴 양팔 작업은 한 번 성공한 짧은 파지보다 더 많은 오류 지점을 갖는다. 평가자가 어느 정책인지 모르는 블라인드 비교와 반복 시험은 이런 변동 속에서 사전학습 효과를 구분하려는 장치다. 특히 정규화가 구조 변경보다 크게 영향을 준다는 관찰은, 같은 행동 단위와 데이터 처리 조건을 맞춘 뒤 모델을 비교해야 함을 뜻한다. [TRI 연구](https://toyotaresearchinstitute.github.io/lbm1/)
+
+<LectureSlide lecture={9} page={36} caption="인터넷에서 배운 표현을 제어에" />
+
+로봇 데이터만으로 배우면 새로운 물체 이름을 이해하는 데도 시연이 필요할 수 있다. 웹에서 배운 이미지와 단어의 연결을 재사용하면 물체를 찾는 단서를 얻고, 집는 동작은 로봇 기록으로 배운다.
+
+[원강의 33:50](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2030s)
+
+<LectureSlide lecture={9} page={37} caption="LLaVA의 이미지 토큰" />
+
+이미지 인코더가 사진을 벡터 묶음으로 바꾸고, 투영층이 언어 모델이 읽을 수 있는 크기로 맞춘다. 모델은 이 묶음과 텍스트를 같은 시퀀스에서 읽는다. [LLaVA 프로젝트](https://llava-vl.github.io/)
+
+[원강의 34:58](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2098s)
+
+<LectureSlide lecture={9} page={38} caption="행동도 토큰이 될까" />
+
+문장의 다음 단어를 고르는 문제에 연결하려면 연속 움직임을 번호로 바꾸는 규칙이 필요하다. 번호를 다시 물리 단위로 되돌리는 규칙까지 정해야 실행할 수 있다.
+
+[원강의 35:32](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2132s)
+
+<LectureSlide lecture={9} page={39} caption="VLM에서 VLA로" />
+
+VLM에 행동 학습을 더하면 지시와 영상에서 행동을 예측하는 VLA가 된다. 입력이 같은 사진이어도 출력 목표가 설명 문장인지 실제 제어값인지에 따라 학습 자료가 달라진다.
+
+[원강의 36:04](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2164s)
+
+<LectureSlide lecture={9} page={40} caption="분위수로 자르고 번호를 붙인다" />
+
+극단값 하나가 전체 구간을 넓히면 자주 쓰는 작은 이동을 촘촘히 표현하기 어렵다. 행동 차원별로 하한과 상한을 잡고, 범위를 자른 뒤 같은 폭의 칸으로 나눈다. 아래는 256칸을 쓰는 강의 예를 간단히 적은 식이다. [OpenVLA](https://openvla.github.io/)
+
+<Math display tex={String.raw`q=\min(255,\lfloor256\,\mathrm{clip}((a-l)/(u-l),0,1)\rfloor)`} label="연속 행동을 256칸으로 나누기" />
+
+<RobotEquationGuide id="rl09-e03" />
+
+[원강의 36:45](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2205s)
+
+<LectureSlide lecture={9} page={41} caption="번호 정확도와 물리 오차" />
+
+정답 칸과 바로 옆 칸을 고른 경우도 토큰 정확도에는 오답으로 들어간다. 실제 명령으로 되돌린 뒤 얼마나 벗어났는지도 함께 본다. 아래는 평균 절대 오차이며, 서로 다른 단위의 행동을 합칠 때는 차원별 값이나 정규화 기준을 함께 보고한다.
+
+강연에서 제시한 약 95%는 자기회귀형 모델의 학습 진행을 볼 때 쓴 경험칙이다. 정답 토큰을 앞에 넣는 교사 강요로 계산하므로, 모델이 자기 예측과 실제 센서 입력으로 이어가는 롤아웃의 성공률과는 측정 조건이 다르다. 같은 체크포인트에서 역변환한 제어 오차도 함께 보는 이유다.
+
+<Math display tex={String.raw`\mathrm{MAE}=\frac{1}{n}\sum_{i=1}^{n}\lvert\hat a_i-a_i\rvert`} label="명령의 평균 절대 오차" />
+
+<RobotEquationGuide id="rl09-e04" />
+
+학습 토큰 정확도를 실제 움직임으로 바꿔 생각해 보자. 손끝을 왼쪽으로 조금 움직이라는 정답과 한 칸 더 멀리 움직이는 예측은 토큰 지표에서 한 번의 오답이다. 그런데 손끝이 물체에서 멀리 떨어져 있을 때와 얇은 유리컵에 닿기 직전일 때 같은 오차의 결과는 다르다. 그래서 토큰 정확도, 차원별 L1·L2 오차, 실제 과제 성공을 함께 본다. 회전과 이동을 같은 숫자 범위로 정규화했다면 물리 단위로 되돌린 뒤 각 축의 오차도 읽을 수 있어야 한다.
+
+교사 강요에서는 앞 행동 차원의 정답을 다음 차원의 입력으로 받을 수 있다. 자율 생성에서는 모델이 앞에서 낸 예측을 다시 사용한다. 그 결과 같은 체크포인트의 학습 지표와 실제 실행이 달라질 수 있다. 강사의 95% 경험칙을 모델 수렴의 단서로 쓰되, 물체를 옮기는 전체 궤적은 별도로 확인한다.
+
+[원강의 37:40](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2260s)
+
+## 서로 다른 기록을 한 번에 학습하기
+
+<LectureSlide lecture={9} page={42} caption="패딩과 마스크" />
+
+카메라 하나인 예시를 카메라 세 대인 예시와 같은 길이로 만들려면 빈 자리를 채울 수 있다. 마스크는 그 자리가 실측 관측이 아님을 알려 준다. 일반적인 밀집 계산에서는 빈 자리에도 일부 비용이 든다.
+
+예를 들어 카메라 토큰이 100개인 샘플과 300개인 샘플을 같은 길이 300으로 만들면 총 600자리 중 200자리가 비어 있다. 어텐션 마스크로 이를 읽지 않게 해도, 구현에 따라 그 자리를 담는 메모리와 연산이 남는다. 패딩은 입력 형식을 맞추기 쉽고, 패킹은 이 빈자리를 줄이는 대신 샘플 경계를 엄격하게 처리해야 한다.
+
+[원강의 39:00](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2340s)
+
+<LectureSlide lecture={9} page={43} caption="패킹으로 빈 자리 줄이기" />
+
+길이가 다른 샘플을 이어 붙여 같은 배치에 넣으면 패딩을 줄인다. 각 샘플의 시작과 끝을 기록해야 서로 무관한 영상과 지시가 섞이지 않는다.
+
+<Math display tex={String.raw`b_0=0,\qquad b_i=\sum_{j=1}^{i}\ell_j`} label="이어 붙인 시퀀스의 경계" />
+
+<RobotEquationGuide id="rl09-e05" />
+
+[원강의 40:36](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2436s)
+
+<LectureSlide lecture={9} page={44} caption="샘플 경계에서 어텐션 차단" />
+
+그림의 대각선 블록은 같은 샘플 안에서만 토큰이 서로를 읽을 수 있음을 뜻한다. 샘플마다 위치 번호도 처음부터 부여한다. 아래의 마스크에 시간 방향 제약이 필요하면 인과 마스크를 함께 적용한다.
+
+<Math display tex={String.raw`M_{ij}=\begin{cases}0 & s_i=s_j\\-\infty & s_i\ne s_j\end{cases}`} label="샘플 사이의 어텐션 차단" />
+
+<RobotEquationGuide id="rl09-e06" />
+
+길이 3과 5인 두 예시를 연결하면 경계는 0, 3, 8이다. 첫 예시의 위치 번호는 0·1·2, 두 번째는 0·1·2·3·4로 다시 시작한다. 같은 예시 안에서 미래 행동을 가려야 한다면 시간 인과 마스크도 적용한다. 시퀀스 패킹의 구현에서는 서로 다른 집과 로봇에서 찍은 두 예시가 정답을 서로 엿보지 않게 하는 것이 중요하다.
+
+[원강의 41:32](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2492s)
+
+<LectureSlide lecture={9} page={45} caption="읽는 속도와 섞는 품질" />
+
+순차 읽기는 저장 장치에 유리하지만 버퍼가 작으면 같은 시연의 이웃 프레임이 배치에 몰린다. 무작위 읽기는 섞기 쉽지만 저장 장치 탐색이 늘어난다. 실제 선택은 처리량과 배치 내 장비·과제 비율을 함께 재어 정한다.
+
+Mees는 초기 Octo 실험에서 약 2만 표본의 버퍼와 궤적 단위 섞기를 함께 사용했을 때 일반화가 나빴다고 회고한다. 이미지 디코딩 전에 여러 궤적의 프레임을 섞고 버퍼를 약 50만 표본으로 늘렸다. 두 변경을 함께 적용한 경험이므로 버퍼 크기 하나만의 효과로 볼 수는 없다.
+
+셔플 버퍼는 스트리밍 자료를 잠시 쌓아 무작위로 뽑는 공간이다. 한 번의 긴 집기 시연이 버퍼 대부분을 차지하면, 배치가 달라도 거의 같은 탁자와 팔 자세만 반복해서 볼 수 있다. 이미지 압축을 푼 뒤 큰 버퍼를 유지하면 메모리 비용이 커지므로, 압축된 프레임을 먼저 섞고 뽑힌 이미지에만 디코딩을 적용하는 선택이 도움이 된다.
+
+전체 자료에 대한 인덱스를 만들고 무작위로 읽는 방법은 데이터셋 여러 곳의 표본에 바로 접근할 수 있다. 저장 장치의 탐색과 작은 파일 읽기가 느리면 GPU가 다음 배치를 기다리게 된다. 무작위로 큰 청크를 골라 읽고 그 안에서 섞는 절충도 가능하다. 강의의 데이터 로더 경험은 모델 구조를 그대로 둔 상태에서도 어떤 경험이 연속으로 들어오는지가 결과를 바꾼다는 점을 보여 준다.
+
+[원강의 42:49](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2569s)
+
+<LectureSlide lecture={9} page={46} caption="여러 출력 헤드와 하나의 행동 모듈" />
+
+왼쪽은 장비에 맞는 헤드가 별도로 있다. 오른쪽은 길이를 맞춘 제어 벡터를 한 모듈에서 내고 장비마다 사용하는 부분을 정한다. 공통 길이를 맞춰도 각 차원이 뜻하는 물리 명령은 별도로 정의한다.
+
+WidowX를 5Hz, 양팔 로봇을 50Hz로 제어한다고 해 보자. 같은 10단계 행동 청크라도 앞쪽은 2초, 뒤쪽은 0.2초에 해당한다. CrossFormer처럼 헤드를 나누면 서로 다른 행동 차원과 청크 길이를 직접 지정할 수 있다. 하나의 행동 모듈을 쓰면 최대 차원에 맞춘 벡터와 유효 차원 마스크를 정의하고, 각 장비가 어느 부분을 실행할지 연결한다. 청크 길이와 초 단위의 미래 계획 길이를 함께 봐야 하는 이유다.
+
+[원강의 46:07](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2767s)
+
+<LectureSlide lecture={9} page={47} caption="실행할 장비를 어떻게 알까" />
+
+같은 사진과 같은 지시라도 연결된 팔이 다르면 실행할 명령이 달라질 수 있다. 명시적으로 장비 종류를 지정하거나 관절 상태와 영상에서 단서를 얻는 방식이 있다.
+
+[원강의 48:18](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2898s)
+
+<LectureSlide lecture={9} page={48} caption="장비를 지정하거나 관측에서 추정" />
+
+왼쪽에서는 지정된 장비의 헤드를 선택한다. 오른쪽의 단일 전문가 구조에서는 사진, 관절 등 자기 상태, 과제 지시가 장비의 단서가 된다. 낯선 장비에서도 이 단서로 올바른 출력을 얻는지는 별도 평가가 필요하다.
+
+[원강의 48:52](https://www.youtube.com/watch?v=dtofzDY9zuo&t=2932s)
+
+<LectureSlide lecture={9} page={49} caption="FAST 토큰과 연속 행동을 함께 학습" />
+
+FAST는 여러 시점의 움직임을 압축한 토큰으로 학습 신호를 준다. 연속 행동 모듈은 flow matching으로 실행할 수치 묶음을 만들고, 정지된 기울기 경로는 연속 행동 손실이 본체를 직접 바꾸지 않게 한다. 본체는 토큰과 웹 데이터 손실을 통해 여전히 학습한다. [Knowledge Insulation](https://www.pi.website/research/knowledge_insulation)
+
+논문의 행동 전문가는 VLM의 관측 표현을 읽고, 학습 표적으로 사용한 FAST 정답 행동 토큰은 직접 읽지 않는다. 이 참조 제한과 기울기 차단은 역할이 다르다. 전자는 행동을 예측할 때 읽을 정보를 정하고, 후자는 연속 행동 손실로 어느 파라미터를 갱신할지 정한다. [연구팀 설명](https://www.pi.website/research/knowledge_insulation)
+
+<Math display tex={String.raw`\mathcal L=\mathcal L_{\rm token}(\theta)+\lambda\mathcal L_{\rm act}(\phi,\operatorname{sg}(h_\theta))`} label="연속 행동 손실의 기울기 차단" />
+
+<RobotEquationGuide id="rl09-e07" />
+
+연속 행동 손실의 기울기를 차단하는 부분을 두 학습 경로로 읽어 보자. 본체는 이미지·지시를 읽고 FAST 행동 토큰과 웹 문장을 예측하는 손실로 갱신된다. 행동 전문가는 이 본체의 특징을 읽고 연속적인 행동 묶음을 예측하는 손실로 갱신된다. 웹 공동 학습은 기존 의미 표현을 유지하는 데 도움을 주고, 분리한 기울기 경로는 행동 학습이 본체를 바꾸는 경로를 제한한다. 표현을 공유하는 것과 모든 손실이 모든 층을 갱신하는 것은 다른 설계 선택이다.
+
+[원강의 52:06](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3126s)
+
+## 시뮬레이션 점수를 실물과 비교하기
+
+<LectureSlide lecture={9} page={50} caption="평가도 여러 환경에서 반복" />
+
+데이터와 모델을 키웠다면 시험 장비도 늘어난다. 대표 사례 몇 개의 영상에서 벗어나 물체 위치나 배경을 바꾸고 같은 조건을 여러 번 시험해야 비교할 수 있다.
+
+[원강의 54:10](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3250s)
+
+<LectureSlide lecture={9} page={51} caption="실물 시험에서 변하는 조건" />
+
+사람이 카메라에 부딪히거나 물체 위치가 달라지면 같은 체크포인트도 다른 결과를 낸다. 시뮬레이터는 초기 위치를 반복하기 쉽고, 실물 시험은 실제 접촉과 마찰을 반영한다.
+
+강연의 다른 예는 고장 난 모터를 교체하는 상황이다. 같은 팔 자세에서도 관절 영점이나 센서값이 바뀌면 기존 정책이 다른 자세로 읽을 수 있다. 카메라 위치가 바뀌는 경우와 마찬가지로 체크포인트를 비교하기 전에 장비 설정과 보정을 기록해 둬야 결과를 해석할 수 있다.
+
+[원강의 54:50](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3290s)
+
+<LectureSlide lecture={9} page={52} caption="실물 평가 환경을 시뮬레이터에 옮기기" />
+
+SIMPLER는 기존 Google Robot과 WidowX 평가 장면을 대응시킨다. 정책을 같은 종류의 지시로 실행하되 실제 카메라와 제어기의 차이가 결과를 좌우하는지 따져야 한다. [SIMPLER 프로젝트](https://simpler-env.github.io/)
+
+[원강의 56:52](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3412s)
+
+<LectureSlide lecture={9} page={53} caption="성공률보다 상대 비교가 유용할 때" />
+
+산점도의 한 점은 같은 정책과 과제의 실물·시뮬레이션 결과를 연결한다. 비슷한 순서를 보이는 범위에서 후보를 선별할 수 있지만, 새 과제에서 순서가 유지되는지와 실제 성공률은 실물에서 확인한다.
+
+가령 시뮬레이션에서 정책 A가 70%, B가 50%이고 실물에서 A가 55%, B가 40%일 수 있다. 숫자 차이는 있어도 A가 B보다 높다는 순서는 일치한다. 반대로 새로운 마찰 조건에서 순서가 뒤집히면 그 조건의 후보 선별에는 시뮬레이션을 다시 점검해야 한다. 평가할 때는 각 정책을 같은 초기 배치에서 반복하고, 대응하는 실물 과제까지 확인한다. 위 비율은 순위 상관의 뜻을 설명하기 위한 숫자다.
+
+[원강의 58:10](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3490s)
+
+<LectureSlide lecture={9} page={54} caption="같은 명령으로 손끝 경로 비교" />
+
+같은 명령열을 실물과 시뮬레이터에 넣고 손끝이 움직인 경로를 비교한다. 이 차이를 줄이도록 제어 반응을 조정하는 절차가 시스템 식별이다. 그림의 조정 전후 경로에서 명령과 실제 이동 사이의 어긋남을 읽는다.
+
+<Math display tex={String.raw`\phi^\star=\arg\min_\phi\sum_t\lVert x_t^{\rm sim}(\phi)-x_t^{\rm real}\rVert_2^2`} label="같은 명령에 대한 손끝 경로 맞추기" />
+
+<RobotEquationGuide id="rl09-e08" />
+
+[원강의 59:02](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3542s)
+
+<LectureSlide lecture={9} page={55} caption="카메라에서 보이는 장면도 맞춘다" />
+
+실물 작업대와 가상 작업대의 배경·질감 차이만으로도 정책의 입력이 달라진다. Visual Matching은 외형 차이를 줄여 제어 비교에 집중하도록 돕는다. 접촉이나 관절 지연은 앞 슬라이드의 동역학과 관련된 문제다.
+
+그린 스크린 방식은 시뮬레이터에서 움직이는 로봇과 물체를 분리해 실제 작업대 배경 위에 합성한다. 텍스처 매칭은 실제 캔의 무늬를 가상 캔의 표면에 입힌다. 전자는 배경, 후자는 물체 외형에 주로 작용한다. [SIMPLER 프로젝트](https://simpler-env.github.io/)
+
+[원강의 59:40](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3580s)
+
+<LectureSlide lecture={9} page={56} caption="후속 벤치마크의 방향" />
+
+PolaRiS, RobotArena, RoboLab은 실물 장면을 다양한 가상 환경으로 옮기고 비교할 수 있는 과제를 넓힌다. 각 도구를 비교할 때는 장비·카메라·과제 범위와 실제 비교에 쓰인 대응 실험을 먼저 확인한다.
+
+[원강의 61:39](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3699s)
+
+<LectureSlide lecture={9} page={57} caption="학습과 평가의 연결" />
+
+같은 집기 과제라도 데이터에서는 집게 명령의 뜻을 맞추고, 모델에서는 로봇별 출력으로 연결하며, 평가에서는 새 물체와 새 장비를 따로 시험한다. 세 단계의 선택을 기록해야 다음 실패가 어디에서 생겼는지 좁힐 수 있다.
+
+[원강의 62:25](https://www.youtube.com/watch?v=dtofzDY9zuo&t=3745s)
+
+## 초청 강연에서 보는 성공률과 실행 시간
+
+Quan Vuong은 같은 작업에서 성공률과 실행 시간을 함께 비교한다. 두 정책이 모두 10번 중 8번 성공해도, 한쪽이 30초 걸리고 다른 쪽이 15초에 끝난다면 처리량이 다르다. 강연 그래프에서 가로축은 실행 시간, 세로축은 성공률이다. 위 숫자는 그래프의 축을 읽기 위한 예다. [Quan Vuong 초청 강연 3:43](https://www.youtube.com/watch?v=pzolgvyWEFY&t=223s)
+
+공식 읽기 자료의 Gato는 여러 종류의 관측과 행동을 시퀀스로 묶는 사례다. π∗0.6 논문의 RECAP은 실제 실행과 사람의 교정에서 얻은 경험을 다시 정책 개선에 사용한다. 같은 사전학습 정책도 이후 어떤 경험을 모으고 활용하는지에 따라 달라질 수 있다. [Gato](https://arxiv.org/abs/2205.06175) · [π∗0.6 및 RECAP](https://arxiv.org/abs/2511.14759)

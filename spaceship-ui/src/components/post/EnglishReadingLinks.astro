@@ -1,0 +1,20 @@
+---
+import { localizeReadingLinks } from '@/lib/english-reading-links.mjs';
+import { englishPostPathForSlug, nativeAlternates, normalizeLocalePath } from '@/lib/locales';
+import { getPostSlug, getPublishedPosts } from '@/lib/utils/posts';
+
+interface Props { sourceSlug: string; }
+const { sourceSlug } = Astro.props;
+const originalURL = new URL(`/posts/${sourceSlug}/`, Astro.site);
+const posts = await getPublishedPosts();
+const destinations = new Map(posts.map(post => {
+  const slug = getPostSlug(post);
+  return [`/posts/${slug}`, englishPostPathForSlug(slug)];
+}));
+const content = localizeReadingLinks(await Astro.slots.render('default'), originalURL, (pathname: string) => {
+  const path = normalizeLocalePath(pathname);
+  if (path === '/en' || path.startsWith('/en/')) return undefined;
+  return destinations.get(path) ?? nativeAlternates(path).en;
+});
+---
+<Fragment set:html={content} />

@@ -1,16 +1,24 @@
 ---
-import { englishSwitchPath } from '@/lib/locales';
-interface Props { lang: 'ko' | 'en'; }
-const { lang } = Astro.props;
+interface Props { englishPath?: string; }
+const { englishPath } = Astro.props;
 ---
-{lang === 'ko' && <aside data-language-hint hidden class="language-hint" lang="en" aria-label="Language preference">
-  <span>Prefer English?</span> <a href={englishSwitchPath(Astro.url.pathname)} data-locale-choice="en" data-astro-reload>Open the English edition</a>
+{englishPath && <aside data-language-hint hidden class="language-hint" lang="en" aria-label="Language preference">
+  <span>Prefer English?</span> <a href={englishPath} data-locale-context data-locale-choice="en" data-astro-reload>View this page in English</a>
   <button type="button" data-language-dismiss aria-label="Keep reading in Korean">Keep Korean</button>
 </aside>}
 <script>
   const readChoice = () => { try { return localStorage.getItem('jjo-locale'); } catch { return null; } };
   const saveChoice = (locale: string) => { try { localStorage.setItem('jjo-locale', locale); } catch { /* Storage is optional. */ } };
+  const syncLocaleLinks = () => {
+    for (const link of document.querySelectorAll<HTMLAnchorElement>('a[data-locale-context]')) {
+      const url = new URL(link.href);
+      url.search = location.search;
+      url.hash = location.hash;
+      link.setAttribute('href', url.pathname + url.search + url.hash);
+    }
+  };
   const init = () => {
+    syncLocaleLinks();
     const hint = document.querySelector<HTMLElement>('[data-language-hint]');
     if (!hint) return;
     const primary = (navigator.languages?.[0] || navigator.language || '').toLowerCase();
@@ -23,6 +31,8 @@ const { lang } = Astro.props;
     if (choice === 'en' || choice === 'ko') saveChoice(choice);
     if (target?.closest('[data-language-dismiss]')) { saveChoice('ko'); init(); }
   });
+  window.addEventListener('hashchange', syncLocaleLinks);
+  window.addEventListener('popstate', syncLocaleLinks);
   document.addEventListener('astro:page-load', init);
   init();
 </script>

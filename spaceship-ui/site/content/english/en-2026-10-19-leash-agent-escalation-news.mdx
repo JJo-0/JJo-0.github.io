@@ -1,0 +1,126 @@
+---
+title: When should a smaller agent call a stronger model?
+description: LEASH uses uncertainty in hidden states to escalate selected computer-use tasks. The preprint
+  compares cost and success on OSWorld and identifies gaps in validation.
+pubDate: 2026-10-19 00:00:00+09:00
+updatedDate: 2026-10-19
+publicationTimeZone: Asia/Seoul
+slug: leash-agent-escalation
+category: ai-machine-learning
+subcategory: agentic-ai
+type: research-report
+tags:
+- frontier-candidate
+- ai-agents
+- uncertainty
+- computer-use
+researchFeatured: false
+draft: false
+lang: en
+translationKey: en-leash-agent-escalation
+translatedPosts:
+  ko-KR: leash-agent-escalation
+---
+
+import Math from '@/components/post/Math.astro';
+
+> **Preprint, before peer review · review draft.** This study uses a smaller model’s internal representations to decide when to hand a task to a larger model. The performance and cost figures describe particular benchmark configurations. They do not measure current service prices or the cost of running this blog.
+
+<details>
+<summary>Selection record and sources reviewed</summary>
+
+As of October 19, 2026 (KST): rank 3, score 86/100, EARLY_SIGNAL. The review checked the methods, relevant experiments and selected appendices in arXiv v1 against earlier review notes. A complete figure review, code execution and independent reproduction remain open.
+
+## Record fields
+
+- rank: 3
+- contentId: `2026-10-19-leash-agent-escalation`
+- status: `BACKLOG_CANDIDATE`
+- title: `LEASH: Uncertainty-Aware Weak-to-Strong Escalation and Oversight for Computer-Use Agents`
+- normalizedTitle: `leash uncertainty aware weak to strong escalation and oversight for computer use agents`
+- date: `2026-10-15T17:40:12Z`
+- venue: `arXiv preprint (cs.AI)`
+- DOI: unverified
+- arxivId: `2610.22280`
+- officialUrl: `https://arxiv.org/abs/2610.22280`
+- evidenceGrade: `EARLY_SIGNAL`
+- score: `86 = 18+14+19+18+8+9`, with no deductions. Findings remain preliminary pending peer review.
+- oneSentenceConclusion: A training-free routing signal compares a weaker agent’s hidden state with past successful and failed trajectories to decide when to call a stronger model and when to intervene after handoff.
+- whyItMatters: The system addresses the cost of using a top model at every step and the failures that arise when a small model works alone.
+- keyDifference: One measure of latent uncertainty connects initial routing, escalation during execution and a shadow observer after handoff.
+- strongestEvidence: The authors report gains of 6.55–11.94 percentage points over random routing at matched escalation rates across four OSWorld backbones in the abstract.
+- metrics: The Qwen3.5-35B-A3B configuration achieved 73.66% success at $0.4117 per task. The authors report 19.2% lower cost than always using Claude Opus 5, which achieved 72.90%.
+- limitations: Preprint centered on OSWorld. Cost assumptions, model versions and task composition await external verification. The weak model must expose hidden states. Transfer of uncertainty under a domain shift remains untested.
+- conflictsOfInterest: unverified
+- codeAvailable: unverified on the abstract page
+- dataAvailable: OSWorld was used. A new data release could not be verified.
+- sourceLocators: arXiv v1 §3 for methods, §4 for experiments and component comparisons, and Appendices A–B for reference data, calibration and cost settings. Submission time comes from the bibliographic record.
+- revisitTriggers: peer review, independent reproduction, released code or trajectories, tests in other computing environments, or an audit of cost assumptions.
+
+</details>
+
+## In one sentence
+
+LEASH uses internal representations to decide when a smaller model should ask a larger one for help. Its authors evaluated it on OSWorld in a preprint. It needs no newly trained monitoring model, but it does require reference data and calibration.
+
+## Why the distinction matters
+
+As a computer-use task grows longer, small mistakes can accumulate. Calling a strong API model throughout is expensive, while relying on a small open model can increase failures. LEASH bases escalation on how closely the weak model’s representation resembles those seen in previous failures. After handoff, the weak model stays on as a shadow observer of the stronger black-box agent.
+
+## Interpreting the score
+
+A hidden state is a vector of numbers produced as a model processes its input and action history. LEASH builds separate reference groups from past successful and failed runs. The following notation simplifies equations 2–3 in §3.2. The original channel subscript c is omitted here. The implementation uses separate reference data for the initial query and for actions during execution.
+
+<Math display tex={"\\begin{aligned}d_y^2&=(z-\\mu_y)^\\top\\Sigma_\\lambda^{-1}(z-\\mu_y)\\\\u&=d_{\\mathrm{Pass}}^2-d_{\\mathrm{Fail}}^2\\end{aligned}"} />
+
+The current vector z is standardized against the reference data. μy is the center of the success or failure group. Σλ adds a positive regularization term to their shared covariance estimate. The inverse matrix weights differences according to how much the representation typically varies in each direction. The representation and score are dimensionless. Moving closer to the failure center reduces the second distance and tends to increase u. A score of 0.8 has no direct interpretation as an 80% chance of failure. A relative score may also miss a new setting that lies far from both groups.
+
+Covariance describes how numbers vary individually and together. The same numerical difference can be ordinary in one direction and unusual in another. **Hypothetical calculation.** In one dimension, a difference of 2 from the center and variance of 4 give a squared distance of 2²/4 = 1. With variance of 1, the same difference gives 4. The second deviation counts more because that direction is usually more stable. These invented values illustrate the equation. The multidimensional calculation also accounts for correlations between directions.
+
+Section 3.3 sets a threshold using the **largest action score within each reference task**. One crossing is enough to trigger a handoff, so treating each step as an independent sample would answer a different question. The escalation rate targeted on the calibration data may differ from the rate observed in evaluation.
+
+**Check your understanding.** If only the highest-scoring 10% of steps trigger handoff, does that mean only 10% of long tasks are escalated? **Explanation.** No. Each task offers several chances to cross the threshold. The paper therefore calibrates against task-level maxima. The 10% here is hypothetical.
+
+## What does the theory guarantee?
+
+The proposition in §5 covers a single handoff decision at the start of a task. It assumes Gaussian representations for the success and failure groups, common covariance, and an exact handoff fraction. Optimizing overall success also requires the benefit of handoff to be nondecreasing with the score. If both models find a task difficult, the weaker model may face high failure risk while handoff offers little benefit. The proposition does not establish optimality for the entire runtime and shadow system.
+
+The calibration split matters too. Appendices A.2–A.3 use cross-validation that keeps all steps from one task in the same group. Putting similar steps from one task into both training and validation could overestimate generalization to a new task. Reusing hidden states still requires this separation.
+
+## Results and comparison conditions
+
+The evaluation used 262 OSWorld tasks. The method requires a separate set of successful and failed reference trajectories and threshold calibration. The shadow threshold used data from 99 tasks separate from the evaluation tasks. The weak model needs a history against which to compare a current representation.
+
+In LEASH, Claude Opus 5 also acts as a Manager that plans and checks subgoals. The always-Opus baseline lacks this Manager, so the comparison is between system configurations. Costs estimate token use at OpenRouter rates and include the Manager, weak and strong agents, and shadow calls. They are estimates rather than invoices or measurements of local operating costs.
+
+The 6.55–11.94 percentage-point gains are relative to random escalation at matched rates. The 73.66% and 72.90% values are OSWorld success rates for specific Qwen and Claude configurations. They do not establish general equivalence. The $0.4117 per task and 19.2% savings also depend on the paper’s prices, calls and definition of a task.
+
+## Who acts after the monitor raises a concern?
+
+In Appendices A.4 and B.1, the small model receives a shadow call every three execution steps of the large model. Its proposed action is never executed. The system computes a score from the hidden state and, when appropriate, sends the large model a neutral message asking it to reconsider its strategy. There is no vote between two actions, and the smaller model cannot impose a correction.
+
+A task can receive up to six interventions. Once two interventions have changed the large model’s action, further interventions stop. Oversight has a finite budget and cannot intercept every error.
+
+Runtime AUROC measures discrimination between success and failure for subgoal segments labeled by the Manager. It does not estimate the probability that an individual mouse click is correct.
+
+**Check your understanding.** Does the system execute the small model’s alternative action as soon as it raises a concern? No. The larger model retains control and reconsiders its decision.
+
+## Limitations and counterevidence
+
+### Matching call rates and matching cost answer different questions
+
+For the Qwen configuration in Table 1, random escalation handed off 64.4% of tasks, achieved 61.72% success and cost an estimated $0.3768 per task. LEASH handed off 64.1%, achieved 73.66% and cost $0.4117. Success improved at a similar handoff rate, but cost rose too. The earlier 19.2% cost saving uses a different comparator, the always-strong model.
+
+The paper says runtime scoring reuses hidden states from ordinary action generation. The full monitoring system still incurs costs. Initial decisions and post-handoff monitoring require small-model calls. Interventions can prompt extra computation by the strong model (Appendix B.4). To interpret the cost comparison, check which of task count, handoff rate and model prices are held fixed.
+
+**Check your understanding.** If two systems call the large model for the same proportion of tasks, must their costs match? No. Call counts, input and output lengths, and computation for management, monitoring and reconsideration may differ. Task handoff rate and total token cost are separate metrics.
+
+In the component ablation, adding shadow oversight to one Qwen configuration changed success from 67.94% to 73.66% and estimated cost from $0.4050 to $0.4117 per task. These results describe that setting. Requiring access to the weaker model’s hidden states limits direct use with two closed models. A representation associated with failure in OSWorld may have another meaning across interfaces, languages or permission settings. A complete equation-to-figure crosswalk, independent reproduction and operational validation remain open.
+
+## Code, data and reasons to revisit
+
+The review checked the public text and relevant appendices. It did not independently audit the official repository’s contents, license or runtime environment. Reasons to revisit include verifiable code and execution records, an independent equal-budget comparison, results on another computer-use benchmark, peer review or substantive counterevidence.
+
+## Sources
+
+- Wang et al., [arXiv:2610.22280](https://arxiv.org/abs/2610.22280), submitted 2026-10-15 17:40:12 UTC

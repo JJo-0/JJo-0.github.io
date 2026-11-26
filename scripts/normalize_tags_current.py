@@ -20,6 +20,32 @@ POST_TAXONOMY.update({
 
 POST_TAXONOMY.update(
     {
+        "bengio-berlin-safe-by-design-ai.mdx": Taxonomy(
+            "ai-machine-learning", "ai-safety", "research-report",
+            ("ai-safety", "alignment", "scientist-ai", "ai-lectures-interviews"),
+        ),
+        "hinton-lectures-2026-paul-christiano.mdx": Taxonomy(
+            "ai-machine-learning", "ai-safety", "research-report",
+            ("ai-safety", "alignment", "ai-governance", "ai-lectures-interviews"),
+        ),
+        "ai-consciousness-deep-research-5.mdx": Taxonomy(
+            "ai-machine-learning", "ai-consciousness", "research-report",
+            ("consciousness", "philosophy-of-mind", "ai-welfare", "ai-governance", "ai-lectures-interviews"),
+            "ai-consciousness-governance", True, 5,
+        ),
+        "lecun-ntu-world-models.mdx": Taxonomy(
+            "ai-machine-learning", "computer-vision", "research-report",
+            ("world-models", "computer-vision", "robot-learning", "ai-lectures-interviews"),
+        ),
+        "segmentation-from-pixels-to-robot-observations.mdx": Taxonomy(
+            "ai-machine-learning", "semantic-segmentation", "study-note",
+            ("computer-vision", "semantic-segmentation", "robot-learning", "study"),
+        ),
+        "human-motion-study-0.md": Taxonomy(
+            "vision-perception-neuroscience", "human-motion", "study-note",
+            ("human-pose-estimation", "motion-prediction", "human-robot-interaction", "uncertainty"),
+            "vision-pose-human-perception", True, 5,
+        ),
         "self-improving-ai-chip-design.md": Taxonomy(
             "ai-machine-learning", "semiconductor-ai", "research-report",
             ("ai-for-eda", "reinforcement-learning", "chip-design", "openroad", "semiconductor"),
@@ -357,14 +383,14 @@ POST_TAXONOMY.update({
     '2026-10-04-nutrivax-measles-uptake-news.mdx': Taxonomy('health-lifestyle', 'vaccine-implementation-science', 'paper-review', ('frontier-candidate', 'vaccination', 'public-health')),
     '2026-10-04-room-temperature-cqd-phase-shift-news.mdx': Taxonomy('finance-industry', 'room-temperature-quantum-photonics', 'paper-review', ('frontier-one', 'quantum-photonics', 'semiconductor')),
     '2026-10-04-ultrahigh-voltage-li-metal-pouch-cell-news.mdx': Taxonomy('finance-industry', 'ultrahigh-voltage-lithium-metal-battery', 'paper-review', ('frontier-candidate', 'lithium-metal-battery', 'machine-learning')),
-    '2026-10-05-avian-r2-targeted-integration-news.mdx': Taxonomy('health-lifestyle', 'targeted-gene-integration', 'paper-review', ('frontier-candidate', 'genome-editing', 'synthetic-biology')),
+    '2026-10-05-avian-r2-targeted-integration-news.mdx': Taxonomy('health-lifestyle', 'targeted-gene-integration', 'paper-review', ('frontier-one', 'genome-editing', 'synthetic-biology')),
     '2026-10-05-inspire-photonic-in-situ-learning-news.mdx': Taxonomy('ai-machine-learning', 'photonic-in-situ-learning', 'paper-review', ('frontier-one', 'photonic-ai', 'neuromorphic-computing')),
     '2026-10-05-survodutide-phase3-news.mdx': Taxonomy('health-lifestyle', 'obesity-diabetes-therapy', 'paper-review', ('frontier-candidate', 'metabolic-medicine', 'phase-3')),
     '2026-10-06-rapid-wgs-pediatric-cancer-news.mdx': Taxonomy('health-lifestyle', 'rapid-cancer-genomics', 'paper-review', ('frontier-candidate', 'pediatric-oncology', 'genomics')),
-    '2026-10-06-shotgun-mammalian-metabolic-engineering-news.mdx': Taxonomy('health-lifestyle', 'mammalian-metabolic-engineering', 'paper-review', ('frontier-candidate', 'synthetic-biology', 'cell-engineering')),
+    '2026-10-06-shotgun-mammalian-metabolic-engineering-news.mdx': Taxonomy('health-lifestyle', 'mammalian-metabolic-engineering', 'paper-review', ('frontier-one', 'synthetic-biology', 'cell-engineering')),
     '2026-10-06-visionary-ai-preeclampsia-news.mdx': Taxonomy('health-lifestyle', 'retinal-ai-preeclampsia', 'paper-review', ('frontier-one', 'maternal-health', 'medical-ai')),
     '2026-10-07-7ev-colossal-bandgap-semiconductor-news.mdx': Taxonomy('finance-industry', 'colossal-bandgap-semiconductor', 'paper-review', ('frontier-one', 'semiconductor', 'power-electronics')),
-    '2026-10-07-deterministic-2d-semiconductor-nucleation-news.mdx': Taxonomy('finance-industry', 'deterministic-2d-crystal-growth', 'paper-review', ('frontier-candidate', 'two-dimensional-materials', 'semiconductor-manufacturing')),
+    '2026-10-07-deterministic-2d-semiconductor-nucleation-news.mdx': Taxonomy('finance-industry', 'deterministic-2d-crystal-growth', 'paper-review', ('frontier-one', 'two-dimensional-materials', 'semiconductor-manufacturing')),
     '2026-10-07-horizontal-up-microfluidic-chip-cooling-news.mdx': Taxonomy('finance-industry', 'embedded-chip-cooling', 'paper-review', ('frontier-candidate', 'semiconductor-cooling', 'data-center-infrastructure')),
     '2026-10-08-google-constellation-nuclear-uprate-news.mdx': Taxonomy('finance-industry', 'nuclear-power-uprates', 'research-report', ('frontier-one', 'nuclear-energy', 'power-grid', 'ai-infrastructure')),
     '2026-10-08-overhead-cable-radiative-cooling-news.mdx': Taxonomy('finance-industry', 'grid-radiative-cooling', 'paper-review', ('frontier-candidate', 'power-grid', 'radiative-cooling')),
@@ -393,8 +419,258 @@ POST_TAXONOMY.update({
 POST_TAXONOMY.update({
     '2026-10-10-cuopt-mpdlp-multi-gpu-news.mdx': Taxonomy('software-engineering-cs', 'distributed-linear-optimization', 'research-report', ('frontier-one', 'linear-programming', 'gpu-computing', 'numerical-optimization')),
     '2026-10-10-neural-crest-nuclear-confinement-news.mdx': Taxonomy('health-lifestyle', 'developmental-cell-mechanics', 'paper-review', ('frontier-candidate', 'cell-mechanics', 'developmental-biology')),
-    '2026-10-10-endometriosis-spatial-neuroimmune-news.mdx': Taxonomy('health-lifestyle', 'spatial-transcriptomics-endometriosis', 'paper-review', ('frontier-candidate', 'spatial-transcriptomics', 'endometriosis')),
+    '2026-10-10-endometriosis-spatial-neuroimmune-news.mdx': Taxonomy('health-lifestyle', 'spatial-transcriptomics-endometriosis', 'paper-review', ('frontier-one', 'spatial-transcriptomics', 'endometriosis')),
 })
+
+# Register existing October 14–21 drafts without changing their metadata or visibility.
+POST_TAXONOMY.update({
+    '2026-10-14-cacheflex-l2-scratchpad-news.mdx': Taxonomy(category='software-engineering-cs', subcategory='cpu-cache-architecture', content_type='paper-review', tags=('frontier-one', 'computer-architecture', 'cache', 'cpu-inference'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-14-cpu-gpu-uma-memory-sharing-news.mdx': Taxonomy(category='software-engineering-cs', subcategory='heterogeneous-memory-systems', content_type='paper-review', tags=('frontier-candidate', 'heterogeneous-computing', 'unified-memory', 'systems'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-14-iot-ai-self-replication-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='autonomous-replication-safety', content_type='research-report', tags=('frontier-candidate', 'ai-safety', 'cybersecurity', 'edge-ai'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-15-iea-ai-data-centre-grid-integration-news.mdx': Taxonomy(category='finance-industry', subcategory='ai-data-centre-power-grid', content_type='research-report', tags=('frontier-one', 'power-grid', 'data-centre', 'energy-policy'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-15-pjm-emergency-order-backup-generation-news.mdx': Taxonomy(category='finance-industry', subcategory='grid-reliability', content_type='research-report', tags=('frontier-candidate', 'power-grid', 'reliability'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-15-tva-grid-expansion-84-projects-news.mdx': Taxonomy(category='finance-industry', subcategory='grid-modernization', content_type='research-report', tags=('frontier-candidate', 'power-grid', 'transmission'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-16-computational-metalloproteases-news.mdx': Taxonomy(category='health-lifestyle', subcategory='computational-protein-design', content_type='paper-review', tags=('frontier-candidate', 'protein-design', 'enzyme-engineering', 'bio-ai'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-16-fomo-multiseason-robot-navigation-news.mdx': Taxonomy(category='robotics-embedded', subcategory='multiseason-robot-navigation', content_type='paper-review', tags=('frontier-candidate', 'robotics', 'slam', 'open-dataset'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-16-satellite-methane-blind-test-news.mdx': Taxonomy(category='finance-industry', subcategory='satellite-methane-monitoring', content_type='paper-review', tags=('frontier-one', 'methane', 'satellite-remote-sensing', 'climate-tech'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-17-autonomous-wet-lab-verid-news.mdx': Taxonomy(category='robotics-embedded', subcategory='autonomous-wet-lab', content_type='research-report', tags=('frontier-candidate', 'lab-automation', 'ai-agents', 'digital-twin'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-17-magic-state-cultivation-news.mdx': Taxonomy(category='software-engineering-cs', subcategory='fault-tolerant-quantum-computing', content_type='paper-review', tags=('frontier-one', 'quantum-computing', 'error-correction', 'google-quantum-ai'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-17-perovskite-led-additive-pathways-news.mdx': Taxonomy(category='software-engineering-cs', subcategory='perovskite-led', content_type='paper-review', tags=('frontier-candidate', 'perovskite-led', 'materials-chemistry', 'optoelectronics'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-18-coral-extinction-risk-news.mdx': Taxonomy(category='research-methods-tools', subcategory='biodiversity-risk-assessment', content_type='research-report', tags=('frontier-candidate', 'coral-reefs', 'climate-risk', 'biodiversity'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-18-ferroptosis-self-organization-news.mdx': Taxonomy(category='health-lifestyle', subcategory='ferroptosis-spatial-biology', content_type='research-report', tags=('frontier-candidate', 'ferroptosis', 'spatial-biology', 'cell-death'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-18-zr-oxyhalide-solid-electrolyte-news.mdx': Taxonomy(category='finance-industry', subcategory='solid-state-batteries', content_type='paper-review', tags=('frontier-one', 'solid-state-battery', 'solid-electrolyte', 'energy-storage'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-19-clinical-llm-validation-framework-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='clinical-ai', content_type='paper-review', tags=('frontier-one', 'clinical-ai', 'llm-evaluation', 'information-extraction'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-19-leash-agent-escalation-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='agentic-ai', content_type='research-report', tags=('frontier-candidate', 'ai-agents', 'uncertainty', 'computer-use'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-19-oncology-consultation-ai-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='clinical-ai', content_type='paper-review', tags=('frontier-candidate', 'clinical-ai', 'oncology', 'workflow-evaluation'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-20-airscope-wireless-cortex-imaging-news.mdx': Taxonomy(category='vision-perception-neuroscience', subcategory='neural-imaging', content_type='paper-review', tags=('frontier-candidate', 'neuroscience', 'wireless-imaging', 'animal-research'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-20-miopm-multi-immersion-light-sheet-news.mdx': Taxonomy(category='research-methods-tools', subcategory='light-sheet-microscopy', content_type='paper-review', tags=('frontier-one', 'light-sheet-microscopy', 'bioimaging', 'open-data'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-20-multi-ancestry-breast-cancer-gwas-news.mdx': Taxonomy(category='health-lifestyle', subcategory='cancer-genomics', content_type='paper-review', tags=('frontier-candidate', 'breast-cancer', 'genomics', 'multi-ancestry'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-21-analog-fft-sonos-news.mdx': Taxonomy(category='software-engineering-cs', subcategory='analog-in-memory-computing', content_type='paper-review', tags=('frontier-one', 'in-memory-computing', 'signal-processing', 'semiconductor'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-21-augmented-vision-sensor-news.mdx': Taxonomy(category='vision-perception-neuroscience', subcategory='event-driven-vision-sensors', content_type='research-report', tags=('frontier-candidate', 'vision-sensor', 'event-camera', 'edge-ai'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-21-sixppac-wireless-ml-engine-news.mdx': Taxonomy(category='robotics-embedded', subcategory='wireless-baseband-accelerator', content_type='research-report', tags=('frontier-candidate', 'wireless-baseband', 'ml-accelerator', 'semiconductor'), research_area=None, research_featured=False, research_order=None),
+})
+
+
+# Register the existing October 22–23 drafts without changing their content or visibility.
+POST_TAXONOMY.update({
+    '2026-10-22-directed-cathode-interlayer-solar-cell-news.mdx': Taxonomy(category='finance-industry', subcategory='organic-photovoltaics', content_type='paper-review', tags=('frontier-one', 'solar-cell', 'organic-photovoltaics', 'energy'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-22-doe-grid-resilience-funding-news.mdx': Taxonomy(category='finance-industry', subcategory='grid-investment', content_type='research-report', tags=('frontier-candidate', 'power-grid', 'grid-resilience', 'public-funding'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-22-low-chloride-zinc-iodine-battery-news.mdx': Taxonomy(category='finance-industry', subcategory='aqueous-batteries', content_type='paper-review', tags=('frontier-candidate', 'zinc-iodine-battery', 'energy-storage'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-23-spectral-swarm-arena-shape-news.mdx': Taxonomy(category='robotics-embedded', subcategory='swarm-robotics', content_type='paper-review', tags=('frontier-one', 'swarm-robotics', 'graph-laplacian', 'embodied-ai'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-23-structural-bias-swarm-sim2real-news.mdx': Taxonomy(category='robotics-embedded', subcategory='swarm-robotics', content_type='paper-review', tags=('frontier-candidate', 'swarm-robotics', 'reinforcement-learning'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-23-t-wla-vision-touch-news.mdx': Taxonomy(category='robotics-embedded', subcategory='robot-manipulation', content_type='research-report', tags=('frontier-one', 'robotics', 'tactile-sensing', 'vision-language-action'), research_area=None, research_featured=False, research_order=None),
+})
+
+# Register the incoming drafts without changing their text or publication state.
+POST_TAXONOMY.update({
+    '2026-10-24-flora-robotics-data-engine-news.mdx': Taxonomy(category='robotics-embedded', subcategory='robotics-data-engine', content_type='research-report', tags=('frontier-candidate', 'robotics', 'dataset-annotation', 'vision-language-model'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-24-nexus-ai-tb-screening-news.mdx': Taxonomy(category='health-lifestyle', subcategory='tuberculosis-screening', content_type='research-report', tags=('frontier-candidate', 'tuberculosis', 'medical-imaging', 'health-ai'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-24-sequential-diagnosis-benchmark-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='clinical-ai', content_type='paper-review', tags=('frontier-one', 'clinical-ai', 'diagnostic-reasoning', 'ai-agents'), research_area=None, research_featured=False, research_order=None),
+})
+
+
+POST_TAXONOMY.update({
+    '2026-10-25-chemistry-infused-bandit-electrocatalysis-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='autonomous-laboratory', content_type='research-report', tags=('frontier-candidate', 'autonomous-lab', 'electrocatalysis', 'bandit-learning'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-25-circular-oligodisulfide-flow-battery-news.mdx': Taxonomy(category='finance-industry', subcategory='grid-energy-storage', content_type='paper-review', tags=('frontier-one', 'flow-battery', 'energy-storage', 'circular-chemistry'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-25-slow-light-silicon-modulator-news.mdx': Taxonomy(category='finance-industry', subcategory='silicon-photonics', content_type='research-report', tags=('frontier-candidate', 'silicon-photonics', 'optical-interconnect', 'semiconductors'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-26-active-learning-ood-uncertainty-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='uncertainty-quantification', content_type='paper-review', tags=('frontier-one', 'active-learning', 'uncertainty-quantification', 'out-of-distribution'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-26-agentic-rl-interference-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='agentic-reinforcement-learning', content_type='research-report', tags=('frontier-candidate', 'agentic-ai', 'reinforcement-learning', 'tool-use'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-26-traceweaver-web-agent-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='web-agents', content_type='research-report', tags=('frontier-candidate', 'web-agents', 'episodic-memory', 'action-selection'), research_area=None, research_featured=False, research_order=None),
+})
+
+POST_TAXONOMY.update({
+    '2026-10-27-late-mt-news.mdx': Taxonomy('health-lifestyle', 'stroke-thrombectomy', 'paper-review', ('frontier-one', 'stroke', 'thrombectomy', 'clinical-trial')),
+    '2026-10-27-saffron-nsclc-news.mdx': Taxonomy('health-lifestyle', 'lung-cancer', 'research-report', ('frontier-candidate', 'lung-cancer', 'targeted-therapy', 'clinical-trial')),
+    '2026-10-27-volga-bladder-cancer-news.mdx': Taxonomy('health-lifestyle', 'bladder-cancer', 'research-report', ('frontier-candidate', 'bladder-cancer', 'immunotherapy', 'clinical-trial')),
+})
+
+# Register the October 28–31 drafts from their existing canonical frontmatter.
+POST_TAXONOMY.update({
+    '2026-10-28-iii-nitride-in-sensor-computing-news.mdx': Taxonomy(category='software-engineering-cs', subcategory='in-sensor-computing', content_type='research-report', tags=('frontier-candidate', 'in-sensor-computing', 'semiconductor', 'neuromorphic-hardware'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-28-ultraviolet-lithium-tantalate-modulator-news.mdx': Taxonomy(category='software-engineering-cs', subcategory='ultraviolet-integrated-photonics', content_type='paper-review', tags=('frontier-one', 'integrated-photonics', 'semiconductor', 'quantum-hardware'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-28-vera-rubin-oci-availability-news.mdx': Taxonomy(category='finance-industry', subcategory='ai-compute-infrastructure', content_type='research-report', tags=('frontier-candidate', 'ai-infrastructure', 'semiconductor', 'cloud-computing'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-29-ai-guided-sam-perovskite-news.mdx': Taxonomy(category='finance-industry', subcategory='ai-guided-perovskite-interface', content_type='research-report', tags=('frontier-candidate', 'perovskite-photovoltaics', 'ai-for-materials', 'solar-energy'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-29-existing-grid-colocation-pnas-news.mdx': Taxonomy(category='finance-industry', subcategory='grid-interconnection-colocation', content_type='research-report', tags=('frontier-candidate', 'power-grid', 'renewable-energy', 'energy-storage'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-29-pseudo-direct-semiconductor-solar-energy-news.mdx': Taxonomy(category='finance-industry', subcategory='pseudo-direct-semiconductor', content_type='paper-review', tags=('frontier-one', 'solar-energy', 'semiconductor-physics', 'photovoltaics'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-30-just-action-models-news.mdx': Taxonomy(category='robotics-embedded', subcategory='robot-policy-foresight', content_type='research-report', tags=('frontier-candidate', 'vision-language-action', 'world-models', 'robot-learning'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-30-surgical-robot-adaptive-autonomy-news.mdx': Taxonomy(category='robotics-embedded', subcategory='surgical-robot-safety', content_type='paper-review', tags=('frontier-candidate', 'surgical-robotics', 'adaptive-autonomy', 'robot-safety'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-30-vla-stem-safety-layer-news.mdx': Taxonomy(category='robotics-embedded', subcategory='vla-safety-control', content_type='research-report', tags=('frontier-one', 'vision-language-action', 'robot-safety', 'reinforcement-learning'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-31-one-minute-grid-synchronization-news.mdx': Taxonomy(category='finance-industry', subcategory='cyber-physical-power-grid', content_type='paper-review', tags=('frontier-one', 'power-grid', 'cyber-physical-systems', 'grid-stability'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-31-self-reinforcing-co2-catalyst-news.mdx': Taxonomy(category='finance-industry', subcategory='reactive-carbon-capture', content_type='research-report', tags=('frontier-candidate', 'carbon-capture', 'electrocatalysis', 'molecular-catalyst'), research_area=None, research_featured=False, research_order=None),
+    '2026-10-31-subvolt-hzo-dram-capacitor-news.mdx': Taxonomy(category='finance-industry', subcategory='ferroelectric-dram', content_type='research-report', tags=('frontier-candidate', 'semiconductor', 'ferroelectric-memory', 'dram'), research_area=None, research_featured=False, research_order=None),
+    '2026-11-01-pbs-infrared-imager-news.mdx': Taxonomy(category='software-engineering-cs', subcategory='monolithic-infrared-imaging', content_type='research-report', tags=('frontier-candidate', 'infrared-imaging', 'semiconductor', 'cmos-integration'), research_area=None, research_featured=False, research_order=None),
+    '2026-11-01-perinatal-neuron-selection-news.mdx': Taxonomy(category='health-lifestyle', subcategory='developmental-neurogenomics', content_type='research-report', tags=('frontier-candidate', 'neurodevelopment', 'single-cell-genomics', 'copy-number-variation'), research_area=None, research_featured=False, research_order=None),
+    '2026-11-01-tenk10k-single-cell-eqtl-news.mdx': Taxonomy(category='health-lifestyle', subcategory='single-cell-genomics', content_type='paper-review', tags=('frontier-one', 'single-cell-genomics', 'human-genetics', 'immunology'), research_area=None, research_featured=False, research_order=None),
+    '2026-11-02-ccq-linear-attention-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='linear-attention', content_type='paper-review', tags=('frontier-one', 'linear-attention', 'long-context', 'efficient-llm'), research_area=None, research_featured=False, research_order=None),
+    '2026-11-02-discotrace-answer-strategies-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='discourse-analysis', content_type='research-report', tags=('frontier-candidate', 'llm-evaluation', 'discourse-analysis'), research_area=None, research_featured=False, research_order=None),
+    '2026-11-02-skillharm-agent-skills-news.mdx': Taxonomy(category='ai-machine-learning', subcategory='agent-security', content_type='research-report', tags=('frontier-candidate', 'agent-security', 'llm-agents', 'benchmark'), research_area=None, research_featured=False, research_order=None),
+})
+
+# Register November 3 drafts without changing their existing taxonomy or draft status.
+POST_TAXONOMY.update({
+    "2026-11-03-povorcitinib-stop-v-vitiligo-news.mdx": Taxonomy("health-lifestyle", "vitiligo-treatment", "paper-review", ("frontier-one", "clinical-trials", "vitiligo", "jak1-inhibitor")),
+    "2026-11-03-tribo-seq-active-trna-news.mdx": Taxonomy("research-methods-tools", "nanopore-trna-profiling", "paper-review", ("frontier-candidate", "nanopore-sequencing", "trna", "translation")),
+    "2026-11-03-unicorn-colon-cancer-news.mdx": Taxonomy("health-lifestyle", "colorectal-cancer-immunotherapy", "paper-review", ("frontier-candidate", "clinical-oncology", "colon-cancer", "immunotherapy")),
+})
+
+# Register November 4 drafts using their existing frontmatter.
+POST_TAXONOMY.update({
+    '2026-11-04-alscn-igo-mfmis-fefet-news.mdx': Taxonomy('finance-industry', 'ferroelectric-memory', 'paper-review', ('frontier-one', 'ferroelectric-memory', 'oxide-semiconductors', 'neuromorphic-computing')),
+    '2026-11-04-cryogenic-gaa-interconnect-news.mdx': Taxonomy('finance-industry', 'cryogenic-computing', 'paper-review', ('frontier-candidate', 'cryogenic-computing', 'gate-all-around', 'superconducting-interconnects')),
+    '2026-11-04-millisecond-in-sensor-olfaction-news.mdx': Taxonomy('robotics-embedded', 'in-sensor-computing', 'paper-review', ('frontier-candidate', 'in-sensor-computing', 'gas-sensors', 'edge-ai')),
+})
+
+POST_TAXONOMY.update({
+    "rl-robot-learning-ch02-control-mdp.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "robot-control", "mdp", "eth-zurich")),
+    "rl-robot-learning-ch03-imitation-learning.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "imitation-learning", "behavioral-cloning", "dagger", "latent-plans")),
+    "rl-robot-learning-ch05-policy-gradients.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "policy-gradients", "ppo", "sac")),
+    "rl-robot-learning-ch06-generative-models.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "generative-models", "diffusion-policy", "flow-matching")),
+    "2026-11-06-asynchronous-robot-policies-news.mdx": Taxonomy("robotics-embedded", "asynchronous-vla-control", "research-report", ("frontier-candidate", "vision-language-action", "real-time-control", "robot-manipulation")),
+    "2026-11-07-autodna-autonomous-lab-news.mdx": Taxonomy("ai-machine-learning", "autonomous-laboratory", "paper-review", ("frontier-one", "autonomous-lab", "ai-for-science", "laboratory-robotics")),
+    "2026-11-07-rybrevant-faspro-hnscc-news.mdx": Taxonomy("health-lifestyle", "head-neck-cancer-treatment", "research-report", ("frontier-candidate", "oncology", "accelerated-approval", "bispecific-antibody")),
+    "2026-11-07-smartwatch-hypertension-screening-news.mdx": Taxonomy("health-lifestyle", "wearable-hypertension-screening", "research-report", ("frontier-candidate", "wearable-health", "hypertension", "clinical-ai")),
+    "2026-11-06-curobov2-fast-motion-planning-news.mdx": Taxonomy("robotics-embedded", "gpu-motion-planning", "research-report", ("frontier-candidate", "motion-planning", "gpu-robotics", "robot-control")),
+    "2026-11-06-halo-humanoid-sim2real-news.mdx": Taxonomy("robotics-embedded", "humanoid-sim-to-real", "paper-review", ("frontier-one", "humanoid-robotics", "sim-to-real", "embodied-ai")),
+    "rl-robot-learning-ch09-generalist-policies.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "vision-language-action")),
+    "rl-robot-learning-ch10-embodied-reasoning.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "vision-language-action")),
+    "rl-robot-learning-ch11-frontiers-open-problems.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "vision-language-action")),
+    "rl-robot-learning-ch08-world-models.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "world-models", "model-based-rl")),
+    "rl-robot-learning-ch07-sequence-transformers.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "transformers", "sequence-modeling", "action-tokenization")),
+    "rl-robot-learning-ch04-value-learning.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "q-learning", "dqn", "value-functions")),
+    "rl-robot-learning-ch01-introduction.mdx": Taxonomy("robotics-embedded", "robot-learning", "study-note", ("robot-learning", "reinforcement-learning", "eth-zurich", "study")),
+})
+
+# Register November 5 drafts from their existing frontmatter; keep them private.
+POST_TAXONOMY.update({
+    "2026-11-05-anode-free-sodium-battery-news.mdx": Taxonomy("finance-industry", "anode-free-sodium-battery", "paper-review", ("frontier-candidate", "sodium-ion-battery", "anode-free-battery", "energy-storage")),
+    "2026-11-05-conjugation-regulated-tandem-solar-news.mdx": Taxonomy("finance-industry", "tandem-solar-interface", "paper-review", ("frontier-one", "tandem-photovoltaics", "self-assembled-monolayer", "solar-energy")),
+    "2026-11-05-metallomesogen-tandem-solar-news.mdx": Taxonomy("finance-industry", "perovskite-grain-boundary", "paper-review", ("frontier-candidate", "tandem-photovoltaics", "perovskite-stability", "grain-boundary-engineering")),
+})
+
+# Register existing November 7 drafts without changing article content.
+POST_TAXONOMY.update({
+    '2026-11-07-autodna-autonomous-lab-news.mdx': Taxonomy('ai-machine-learning', 'autonomous-laboratory', 'paper-review', ('frontier-one', 'autonomous-lab', 'ai-for-science', 'laboratory-robotics')),
+    '2026-11-07-rybrevant-faspro-hnscc-news.mdx': Taxonomy('health-lifestyle', 'head-neck-cancer-treatment', 'research-report', ('frontier-candidate', 'oncology', 'accelerated-approval', 'bispecific-antibody')),
+    '2026-11-07-smartwatch-hypertension-screening-news.mdx': Taxonomy('health-lifestyle', 'wearable-hypertension-screening', 'research-report', ('frontier-candidate', 'wearable-health', 'hypertension', 'clinical-ai')),
+})
+
+# Register the three existing November 8 private drafts; article bytes and visibility unchanged.
+POST_TAXONOMY.update({
+    '2026-11-08-angptl3-base-editing-news.mdx': Taxonomy('health-lifestyle', 'in-vivo-base-editing', 'research-report', ('frontier-candidate', 'crispr-base-editing', 'cardiovascular-disease', 'gene-therapy')),
+    '2026-11-08-perovskite-led-1000nit-lifetime-news.mdx': Taxonomy('finance-industry', 'perovskite-led-stability', 'paper-review', ('frontier-one', 'perovskite-led', 'display-technology', 'device-stability')),
+    '2026-11-08-tfln-optical-memristor-news.mdx': Taxonomy('finance-industry', 'photonic-memristor', 'research-report', ('frontier-candidate', 'photonic-computing', 'lithium-niobate', 'neuromorphic-hardware')),
+})
+
+# Register the November 9 posts using their existing frontmatter; retain draft flags.
+POST_TAXONOMY.update({
+    "2026-11-09-gait-foundation-model-news.mdx": Taxonomy("vision-perception-neuroscience", "gait-foundation-model", "paper-review", ("frontier-one", "gait-analysis", "foundation-model", "digital-biomarker")),
+    "2026-11-09-multishap-cross-modal-news.mdx": Taxonomy("ai-machine-learning", "multimodal-interpretability", "paper-review", ("frontier-candidate", "multimodal-ai", "interpretability", "shapley-values")),
+    "2026-11-09-redundancy-hopfield-memory-news.mdx": Taxonomy("ai-machine-learning", "associative-memory", "paper-review", ("frontier-candidate", "associative-memory", "information-theory", "hopfield-network")),
+})
+
+# Register November 10 drafts from their existing frontmatter; retain draft flags.
+POST_TAXONOMY.update({
+    "2026-11-10-left-bundle-pacing-av-block-news.mdx": Taxonomy("health-lifestyle", "conduction-system-pacing", "research-report", ("frontier-candidate", "cardiac-pacing", "atrioventricular-block", "randomized-trial")),
+    "2026-11-10-retatrutide-knee-osteoarthritis-news.mdx": Taxonomy("health-lifestyle", "knee-osteoarthritis-obesity", "paper-review", ("frontier-one", "obesity", "osteoarthritis", "phase-3-trial")),
+    "2026-11-10-semaglutide-hfpef-hemodynamics-news.mdx": Taxonomy("health-lifestyle", "hfpef-hemodynamics", "research-report", ("frontier-candidate", "hfpef", "semaglutide", "hemodynamics")),
+})
+
+# Register November 11 drafts using their existing frontmatter; keep draft status unchanged.
+POST_TAXONOMY.update({
+    "2026-11-11-fe-vofet-reservoir-readout-news.mdx": Taxonomy("finance-industry", "neuromorphic-vision-hardware", "paper-review", ("frontier-candidate", "semiconductor", "neuromorphic-vision", "ferroelectric-transistor")),
+    "2026-11-11-pico-x-nanowatt-microcontroller-news.mdx": Taxonomy("finance-industry", "ultra-low-power-microcontroller", "paper-review", ("frontier-candidate", "semiconductor", "ultra-low-power", "fdsoi")),
+    "2026-11-11-tsmc-40b-capital-approval-news.mdx": Taxonomy("finance-industry", "semiconductor-capacity-investment", "research-report", ("frontier-one", "semiconductor", "advanced-packaging", "foundry")),
+})
+
+POST_TAXONOMY.update({
+    "2026-11-12-flexible-tidal-turbine-blades-news.mdx": Taxonomy("finance-industry", "tidal-turbine-load-control", "paper-review", ("frontier-one", "tidal-energy", "turbine-blades", "aeroelasticity")),
+    "2026-11-12-four-electron-iodine-battery-news.mdx": Taxonomy("finance-industry", "aqueous-iodine-battery", "paper-review", ("frontier-candidate", "aqueous-battery", "iodine-chemistry", "energy-storage")),
+    "2026-11-12-organic-photocatalyst-sheet-news.mdx": Taxonomy("finance-industry", "solar-water-splitting", "paper-review", ("frontier-candidate", "solar-hydrogen", "photocatalyst", "organic-semiconductor")),
+})
+
+# Register the existing November 14–16 drafts from their current frontmatter.
+# This repairs manifest coverage without changing article bytes or visibility.
+POST_TAXONOMY.update({
+    "2026-11-14-aluminium-graphite-3v-battery-news.mdx": Taxonomy("finance-industry", "aluminium-graphite-battery", "paper-review", ("frontier-candidate", "energy-storage", "aluminium-battery", "electrolyte")),
+    "2026-11-14-perovskite-molecular-anchor-transistor-news.mdx": Taxonomy("finance-industry", "perovskite-transistor", "paper-review", ("frontier-candidate", "semiconductor", "perovskite-transistor", "ion-migration")),
+    "2026-11-14-single-crystal-dielectric-2d-cfet-news.mdx": Taxonomy("finance-industry", "two-dimensional-cfet", "paper-review", ("frontier-one", "semiconductor", "two-dimensional-materials", "low-power-logic")),
+    "2026-11-15-cervical-pathology-self-supervised-ai-news.mdx": Taxonomy("finance-industry", "pathology-ai", "paper-review", ("frontier-candidate", "medical-ai", "digital-pathology", "self-supervised-learning")),
+    "2026-11-15-disordered-rocksalt-li-transport-news.mdx": Taxonomy("finance-industry", "battery-materials", "paper-review", ("frontier-candidate", "battery-materials", "lithium-transport", "machine-learning-potential")),
+    "2026-11-15-split-rna-guided-scas9-news.mdx": Taxonomy("finance-industry", "molecular-diagnostics", "paper-review", ("frontier-one", "biotechnology", "crispr-diagnostics", "molecular-sensing")),
+    "2026-11-16-cue-locality-temporal-shortcuts-news.mdx": Taxonomy("finance-industry", "ai-robustness", "paper-review", ("frontier-one", "machine-learning", "shortcut-learning", "ood-generalization")),
+    "2026-11-16-multi-topology-rl-critical-nodes-news.mdx": Taxonomy("finance-industry", "graph-learning", "paper-review", ("frontier-candidate", "reinforcement-learning", "graph-neural-network", "network-science")),
+    "2026-11-16-self-supervised-polishing-collision-news.mdx": Taxonomy("finance-industry", "robot-safety-ai", "paper-review", ("frontier-candidate", "self-supervised-learning", "industrial-robotics", "collision-detection")),
+})
+
+# Register the three NTU Self-Improving lecture installments.
+POST_TAXONOMY.update({
+    "self-improving-ai-01-overview.mdx": Taxonomy(
+        "ai-machine-learning", "self-improving-ai", "study-note",
+        ("self-improvement", "self-correction", "reinforcement-learning", "ntu", "study"),
+    ),
+    "self-improving-ai-02-learning-targets.mdx": Taxonomy(
+        "ai-machine-learning", "self-improving-ai", "study-note",
+        ("self-improvement", "knowledge-distillation", "self-training", "ntu", "study"),
+    ),
+    "self-improving-ai-03-self-correction-to-rl.mdx": Taxonomy(
+        "ai-machine-learning", "self-improving-ai", "study-note",
+        ("self-improvement", "self-correction", "reinforcement-learning", "fine-tuning", "ntu"),
+    ),
+})
+
+# Register Self-Improving AI lessons 04–05.
+POST_TAXONOMY.update({
+    "self-improving-ai-04-sparse-rewards-and-shaping.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "reward-shaping", "robotics", "ntu")),
+    "self-improving-ai-05-reward-design-to-ai-feedback.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "reward-shaping", "robotics", "ntu")),
+})
+
+# Register chapter 06 and repair coverage of existing November 17 drafts.
+# Existing NEWS article bytes and draft flags are unchanged.
+POST_TAXONOMY.update({
+    "self-improving-ai-06-self-evaluation-and-entropy.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-evaluation", "entropy-minimization", "test-time-adaptation", "ntu")),
+    "2026-11-17-cd7-aav-immune-cell-engineering-news.mdx": Taxonomy("finance-industry", "cell-gene-therapy", "paper-review", ("frontier-candidate", "gene-delivery", "cell-therapy", "immunoengineering")),
+    "2026-11-17-openscientist-biomedical-agentic-ai-news.mdx": Taxonomy("finance-industry", "biomedical-ai", "paper-review", ("frontier-one", "agentic-ai", "biomedical-research", "scientific-discovery")),
+    "2026-11-17-superb-seq-crispr-transcriptome-news.mdx": Taxonomy("finance-industry", "genome-editing-methods", "paper-review", ("frontier-candidate", "crispr", "single-cell", "functional-genomics")),
+})
+
+# Register the transcript-aligned Self-Improving AI chapter 07.
+POST_TAXONOMY.update({
+    "self-improving-ai-07-unsupervised-rlvr-and-test-time-training.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "unsupervised-rlvr", "test-time-training", "perplexity", "ntu")),
+})
+
+# Register the transcript-aligned Self-Improving AI chapter 08.
+POST_TAXONOMY.update({
+    "self-improving-ai-08-entropy-estimation-and-gradients.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "entropy-minimization", "policy-gradient", "test-time-adaptation", "ntu")),
+    "self-improving-ai-09-entropy-paths-and-self-generated-inputs.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "entropy-minimization", "policy-gradient", "synthetic-data", "ntu")),
+    "self-improving-ai-10-self-play-and-external-feedback.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-play", "reinforcement-learning", "synthetic-data", "ntu")),
+    "self-improving-ai-11-automated-post-training.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "post-training", "llm-agents", "fine-tuning", "ntu")),
+    "self-improving-ai-12-weak-to-strong-generalization.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "weak-to-strong", "alignment", "automated-research", "ntu")),
+    "self-improving-ai-13-agent-harness-and-system-improvement.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "harness", "memory", "ntu")),
+    "self-improving-ai-14-proposer-solver-verifier.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "self-play", "reinforcement-learning", "verification", "ntu")),
+    "self-improving-ai-15-harness-optimization-and-evaluation.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "harness", "evaluation", "ntu")),
+    "self-improving-ai-16-prompt-memory-code-evolution.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "prompt-optimization", "ai-agents", "memory", "ntu")),
+    "self-improving-ai-17-archive-dspy-experience.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "dspy", "retrieval-augmented-generation", "ntu")),
+    "self-improving-ai-18-better-together-and-evolving-goals.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "fine-tuning", "ntu")),
+    "self-improving-ai-19-test-time-training-and-forgetting.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "test-time-training", "test-time-adaptation", "fine-tuning", "ntu")),
+    "self-improving-ai-20-retaining-skills-and-improving-the-improver.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
+    "self-improving-ai-21-learning-to-improve-the-improver.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
+    "self-improving-ai-22-learning-the-parameter-update-rule.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
+    "self-improving-ai-23-self-edits-and-meta-learning.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "ai-agents", "prompt-optimization", "ntu")),
+    "self-improving-ai-24-learning-inside-the-hidden-state.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "test-time-training", "memory", "ntu")),
+    "self-improving-ai-25-memory-and-intrinsic-motivation.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "memory", "ntu")),
+    "self-improving-ai-26-when-the-score-and-the-goal-diverge.mdx": Taxonomy("ai-machine-learning", "self-improving-ai", "study-note", ("self-improvement", "reinforcement-learning", "alignment", "ntu")),
+})
+
+# Preserve the existing November 18 candidate's taxonomy and draft visibility.
+POST_TAXONOMY.update({
+    "2026-11-18-nvidia-fovi-dex-foveated-robot-learning-news.mdx": Taxonomy("robotics-embedded", "foveated-dexterous-manipulation", "research-report", ("frontier-candidate", "physical-ai", "dexterous-manipulation", "robot-learning")),
+})
+
+POST_TAXONOMY["ai-consciousness-deep-research-4.md"] = Taxonomy(
+    "ai-machine-learning", "ai-consciousness", "research-report",
+    ("consciousness", "philosophy-of-mind", "ai-governance", "knowledge-distillation", "ai-lectures-interviews"),
+    "ai-consciousness-governance", True, 4,
+)
 
 if __name__ == "__main__":
     raise SystemExit(main())

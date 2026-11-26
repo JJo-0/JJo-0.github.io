@@ -1,5 +1,6 @@
 import type { CollectionEntry } from 'astro:content';
-import { getPostSlug } from '@/lib/utils/posts';
+import { englishPostPathForSlug } from '@/lib/locales';
+import { getPostSlug, getPublishedPosts } from '@/lib/utils/posts';
 type GraphPost = CollectionEntry<'posts'> | CollectionEntry<'englishPosts'>;
 export interface PostGraphNode {
   id: string;
@@ -52,6 +53,11 @@ function hash(value: string) {
   }
   return output >>> 0;
 }
+function graphPostPath(post: GraphPost, en: boolean): string {
+  if (post.collection === 'englishPosts') return `/en/posts/${post.data.slug}/`;
+  const slug = getPostSlug(post);
+  return en ? englishPostPathForSlug(slug) : `/posts/${slug}`;
+}
 function keywords(post: GraphPost) {
   const source = `${post.data.title} ${post.data.description} ${post.body ?? ''}`
     .replace(/```[\s\S]*?```/g, ' ')
@@ -60,9 +66,12 @@ function keywords(post: GraphPost) {
   const tokens = source.match(/[a-z][a-z0-9-]{3,}|[가-힣]{2,}/g) ?? [];
   return new Set(tokens.filter((token) => !STOP_WORDS.has(token)).slice(0, 240));
 }
-export function buildPostGraph(posts: GraphPost[]): PostGraph {
+export async function buildPostGraph(posts: GraphPost[], en = false): Promise<PostGraph> {
   const categories = [...new Set(posts.map((post) => post.data.category))];
-  const keywordSets = new Map(posts.map((post) => [post.id, keywords(post)]));
+  // Keep relationship scores stable across editions. Translated wording changes
+  // token overlap even when two articles describe exactly the same subject.
+  const originals = en ? await getPublishedPosts() : posts;
+  const keywordSets = new Map(originals.map((post) => [post.id, keywords(post)]));
   const nodes = posts.map((post, index): PostGraphNode => {
     const ci = Math.max(0, categories.indexOf(post.data.category)),
       angle = (ci / Math.max(1, categories.length)) * Math.PI * 2 - Math.PI / 2,
@@ -73,7 +82,7 @@ export function buildPostGraph(posts: GraphPost[]): PostGraph {
     return {
       id: `post-${index}`,
       title: post.data.title,
-      href: post.collection === 'englishPosts' ? `/en/posts/${post.data.slug}/` : `/posts/${getPostSlug(post)}`,
+      href: graphPostPath(post, en),
       category: post.data.category,
       subcategory: post.data.subcategory,
       type: post.data.type,

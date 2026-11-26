@@ -1,0 +1,160 @@
+---
+title: 'PANXEON: What Does 86.8% Mean for a Pancreatic Cancer Blood Test?'
+description: PANXEON combines ten microRNAs with CA19-9. The denominators for sensitivity, false-positive
+  rate, and positive predictive value clarify what diagnostic performance can tell us about a future screening
+  program.
+pubDate: 2026-09-18
+slug: 2026-09-18-panxeon-pancreatic-liquid-biopsy-news
+category: health-lifestyle
+subcategory: cancer-early-detection
+type: paper-review
+tags:
+- frontier-candidate
+- cancer-early-detection
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translationKey: en-2026-09-18-panxeon-pancreatic-liquid-biopsy-news
+translatedPosts:
+  ko-KR: 2026-09-18-panxeon-pancreatic-liquid-biopsy-news
+---
+
+import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+<NewsFigure media="panxeon-workflow" lang="en" priority />
+
+## 1. The first question to ask about a blood test
+
+Detecting pancreatic cancer earlier in blood presents two challenges. The test has to pick up signals in people with cancer while limiting unnecessary follow-up in people without it. <strong>PANXEON combines a ten-microRNA signature with CA19-9 to distinguish early pancreatic ductal adenocarcinoma (PDAC).</strong> A multicenter prospective observational study published in Nature Medicine on September 16, 2026 assessed the approach in 1,785 participants from four countries.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The first question is more specific than whether blood can reveal cancer. <strong>Which people were compared, what stages of disease did the test detect, and how often did controls test positive?</strong> Those details determine what 86.8% means. In particular, low-risk and high-risk controls need to be read separately.
+
+This article explains the study. It does not interpret an individual’s symptoms or test result. The research institution describes PANXEON as investigational and potentially complementary to other tools for identifying people at high risk who need further evaluation.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+## 2. Why a single marker can be difficult to interpret
+
+The inputs are molecules measured in blood. The clinical question is whether a person has PDAC. Several steps connect the two. How much of each molecule appears in blood? How consistently can it be measured after collection and storage? Do other conditions generate similar signals? At which threshold does a score combining several signals count as positive?
+
+The idea behind PANXEON is to <strong>improve discrimination by combining sources of information</strong>. The paper combines a microRNA signature with CA19-9. The institution describes integrating circulating microRNAs, exosome-associated microRNAs and CA19-9 in one score.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+MicroRNAs provide molecular signals. Exosomes describe a biological context in which signals are observed. CA19-9 contributes a different marker. <strong>The measured markers and the final prediction score are different quantities.</strong> An elevated marker, a high combined score and a score above the positive threshold are three separate observations.
+
+The distinction also matters in machine learning. Adding features does not necessarily improve generalization. Once a combination has been selected using training data, it needs evaluation on data that played no part in that choice. Independent evaluation tells us more about potential use than training accuracy alone.
+
+## 3. Reading the ten microRNAs and CA19-9
+
+The paper names hsa-miR-142-3p, hsa-miR-30c-5p, hsa-miR-335-5p, hsa-miR-340-5p, hsa-miR-200b-3p, hsa-miR-1260b, hsa-miR-145-3p, hsa-miR-145-5p, hsa-miR-429 and hsa-miR-200a-3p. These identify the biological inputs. The authors also identify a separate repository for analysis and visualization code.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+Conceptually, the assay measures each marker, a learned combination turns the measurements into a score, and a prespecified threshold separates positive from negative results. <strong>This describes the general structure of a classification test.</strong> It supplies no unpublished PANXEON coefficients or assumed weighted sum.
+
+Reading the score as an individual probability of cancer requires more evidence. Ranking cases and controls accurately and calibrating scores to observed event frequencies are different properties. Even if people with higher scores more often have cancer, a score of 0.8 means an 80% probability only if calibration supports that interpretation.
+
+Start with the flowchart to see which participants and specimens entered each cohort. Then read the performance panel for the threshold applied there. Before interpreting a model diagram, ask <strong>who supplied the training data and who was tested independently</strong>.
+
+## 4. Sensitivity, false-positive rate and AUC answer different questions
+
+Sensitivity is the proportion of people with cancer who test positive. The false-positive rate is the proportion of controls without cancer who test positive. Their denominators contain different people.
+
+<CandidateEquation lang="en" id="panxeon-sensitivity" title="Who enters the denominator for 86.8%?" tex={String.raw`\mathrm{Sensitivity}=\frac{TP}{TP+FN},\qquad \mathrm{FPR}=\frac{FP}{FP+TN}`}>
+
+<Math tex={String.raw`TP`} /> counts true positives, people with cancer who test positive. <Math tex={String.raw`FN`} /> counts false negatives, people with cancer who test negative. The sensitivity denominator <Math tex={String.raw`TP+FN`} /> thus consists of people with cancer. <Math tex={String.raw`FP`} /> counts false positives and <Math tex={String.raw`TN`} /> counts true negatives. The false-positive-rate denominator <Math tex={String.raw`FP+TN`} /> consists of controls without cancer.
+
+Count the outcome of interest in the numerator and divide by the group in which that outcome could occur. Specificity is the proportion of people without cancer who test negative, so it equals <Math tex={String.raw`\mathrm{Specificity}=1-\mathrm{FPR}`} />. A 3.2% false-positive rate corresponds to 96.8% specificity in the same group.
+
+A different question is what proportion of people with a positive result actually have cancer. Its denominator is <Math tex={String.raw`TP+FP`} />. This is the positive predictive value calculated below. Start with <strong>who is in the denominator</strong> before interpreting any percentage.
+
+</CandidateEquation>
+
+A receiver operating characteristic (ROC) curve shows how sensitivity and false-positive rate vary with the threshold. AUC is the area under that curve. It differs from sensitivity or accuracy at any one cutoff. The reported testing-cohort AUC of 88.6% for the miRNA signature does not mean that 88.6% of all participants received a correct diagnosis.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Lowering the threshold can detect more cases but also flag more controls. Raising it can reduce follow-up while missing more cancers. A useful test needs an <strong>acceptable balance of missed cases and additional examinations in its intended population</strong>.
+
+## 5. What the study reported
+
+<NewsFigure media="panxeon-performance" lang="en" />
+
+| Population or measure | Reported value | Condition to keep in view |
+|---|---:|---|
+| Enrollment and analysis | 1,785 enrolled → 1,757 analyzed | RNA quality excluded 28 participants. Each performance measure has its own evaluation set. |
+| Testing AUC of the miRNA signature | 88.6% | Different measure from the combined test’s early-cancer sensitivity. |
+| Sensitivity of the miRNA signature for early PDAC | 83.8% | Result for the miRNA signature. |
+| PANXEON sensitivity for stages I–II | 86.8% | Result for miRNAs combined with CA19-9. |
+| False-positive rate in low-risk controls | 3.2% | Corresponds to 96.8% specificity in these controls. |
+| False-positive rate in high-risk controls | 15.6% | Corresponds to 84.4% specificity in these controls. |
+| Detection of high-grade dysplasia in high-risk pancreatic cysts | 64.3% | Evaluates a different condition from invasive PDAC. |
+
+The table draws on the public abstract and the legends to Figures 1 and 4. Figure 1 lists 707 participants for training, 305 for independent validation and 440 for external independent testing. It also shows 137 in a separate pre-/post-treatment assessment and 168 assessed for cross-reactivity. These groups do not belong in a single accuracy calculation.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The study also followed 19 people around treatment. The microRNA signature reportedly declined during chemotherapy and surgery and rose before recurrence. That is an observation of marker changes over time. Repeated screening of initially healthy people to assess how early disease can be found would answer a different question.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<strong>Prospective data collection and a randomized screening trial</strong> also provide different evidence. The prospective study supports further clinical validation. It did not compare randomized screened and unscreened groups to establish a reduction in pancreatic cancer mortality.
+
+## 6. False positives can outnumber true positives when disease is rare
+
+Clinical interpretation depends on disease prevalence in the population tested. With sensitivity and false-positive rate held constant, many positives can be false positives when few people have cancer. This follows from the denominators and applies to screening tests generally.
+
+<CandidateEquation lang="en" id="panxeon-ppv" title="How do we calculate the proportion of positive results that represent cancer?" tex={String.raw`\mathrm{PPV}=\frac{Se\,\pi}{Se\,\pi+FPR\,(1-\pi)}`}>
+
+<Math tex={String.raw`Se`} /> denotes sensitivity, <Math tex={String.raw`FPR`} /> the false-positive rate and <Math tex={String.raw`\pi`} /> disease prevalence in the population tested. The numerator <Math tex={String.raw`Se\,\pi`} /> is the fraction of everyone tested who has disease and tests positive. The second denominator term <Math tex={String.raw`FPR(1-\pi)`} /> is the fraction without disease who test positive. <strong>Add both kinds of positive result, then calculate the true-positive share.</strong>
+
+Suppose 10,000 people are tested at a hypothetical prevalence of 0.1%, sensitivity of 86.8% and false-positive rate of 3.2%. There would be 10 expected cases and 8.68 true positives. The 9,990 people without disease would produce 319.68 false positives. The positive predictive value would be <Math tex={String.raw`8.68/(8.68+319.68)\approx2.64\%`} />.
+
+The 0.1% prevalence is an assumption for illustration. The study did not measure it as general-population incidence. Fractional people represent expected counts across repeated populations. These values cannot estimate an individual’s risk or PANXEON’s actual performance in population screening.
+
+</CandidateEquation>
+
+A high-risk population may have higher prevalence, but its score distribution can also change. The study found a 15.6% false-positive rate in high-risk controls. Applying the low-risk false-positive rate to that population would mix testing conditions.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Now <strong>assume 1% prevalence</strong>, 86.8% sensitivity and a 15.6% false-positive rate. Among 10,000 people, the expected counts are 86.8 true positives and 1,544.4 false positives, giving a positive predictive value of about 5.32%. These hypothetical populations show why <strong>prevalence and control-group specificity are both needed</strong>. They do not establish which actual population benefits more.
+
+## 7. From discrimination to the effects of screening
+
+A blood-test flag leads to further assessment, potentially including imaging and clinical review. The evaluation must therefore extend beyond the blood draw. Could a detected early lesion be treated beneficially? What burdens arose from extra testing? When were people with negative results tested again? Did changing the time of detection improve health outcomes?
+
+The public legends also describe simulations of population effects and cost-effectiveness. <strong>A simulation in a hypothetical population and an observed reduction in deaths are different forms of evidence.</strong> Results depend on assumed transitions and test performance. A simulation can guide a subsequent trial. Its bars need not represent events observed in practice.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The same principle applies to high-grade dysplasia. Detecting it in high-risk cysts is an important separate task. The subgroup detection rate cannot be generalized to finding precancerous changes in every healthy person. Check what lesion defined a case, how the reference diagnosis was established and how long participants with negative results were followed.
+
+A next evaluation should examine <strong>the path after a test result</strong> alongside model performance. Prespecified measures should cover differences between collection sites, sample handling and storage, repeatability, completion of follow-up tests and outcomes for detected lesions. This is a proposal for evaluating implementation.
+
+### A small example of separating development and testing
+
+Suppose a team compares thresholds of 0.3, 0.5 and 0.7 on one dataset and selects the most favorable. That dataset has helped choose the threshold. Reporting the chosen cutoff’s performance only on the same dataset may give a different result from testing new participants.
+
+Recruiting in several countries does not settle that issue. Check how samples from each site were used. Fixing the assay and algorithm at one stage and applying them at another site or time strengthens independence. This example explains the roles of development, validation and testing without alleging leakage in PANXEON.
+
+Percentages also carry sampling uncertainty. Nine out of ten and 900 out of 1,000 both give 90% with different precision. Read each stage-specific denominator alongside its confidence interval. Figure 4 lists 90 PDAC cases, 14 high-grade dysplasia cases, 93 nondisease controls and 243 high-risk controls in the independent test set. Family history or hereditary risk and cysts can overlap in Figure 1’s high-risk categories, so adding every category can double-count people.
+
+The denominator for the reported 64.3% high-grade dysplasia detection rate was 14 surgically confirmed high-risk cyst cases in Figure 4. Multiplying that rate by all 1,785 participants answers no corresponding study question. Similarly, the 23.8% “Saved” in panel h is a model estimate based on a SEER stage-shift assumption. It is not an observed reduction in subsequent deaths.
+
+### How the two error types affect subsequent testing
+
+A false negative misses disease under the evaluation’s reference definition. A false positive classifies someone without that disease as positive. Even equal numbers of the two errors lead down different paths. False positives affect demand for imaging and additional evaluations. For a negative result, the characteristics of missed cases matter when deciding on follow-up intervals. Benefits need testing in a study that includes those subsequent steps.
+
+Before choosing a threshold, define what follows a positive result and how people with negative results are followed. These are research design questions. Future evidence on PANXEON can then cover the entire pathway as well as the blood test’s discrimination.
+
+## 8. Questions for the next study
+
+First, can the team evaluate a fixed assay threshold and algorithm while enrolling additional independent participants? Retuning after observing results requires a new evaluation. The <strong>boundary between the data used to select the threshold and the data used to report performance</strong> should be clear.
+
+Second, what volume of additional testing follows a 15.6% false-positive rate in the high-risk group? Reducing unnecessary examinations and avoiding missed cancers need to be considered together. The institution’s description of PANXEON as a potential complement to imaging places the score before that further confirmation.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Third, can readers inspect the analysis with public data and code? The paper identifies anonymized data on OSF and XGBoost analysis and visualization code on Zenodo. This review checked the accessible abstract, legends and availability statements. It did not rerun the raw analysis or infer unreported model coefficients or subgroup denominators.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a><a href="#news-ref-4" data-news-citation="4" aria-label="Go to reference 4" data-astro-reload>[4]</a>
+
+Some authors disclosed industry consulting, research support or related patents. The original publication gives those disclosures.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+PANXEON provides <strong>multicenter evidence that a combination of distinct markers may help distinguish early pancreatic cancer</strong>. Sensitivity, control-specific false-positive rates, positive predictive value and actual health outcomes each answer a different question. Keeping them distinct clarifies what the next study needs to test.
+
+## 9. Sources and scope
+
+<a id="news-ref-1" href="https://www.nature.com/articles/s41591-026-04625-x" data-news-reference="1" target="_blank" rel="noopener noreferrer">[1]</a> Xu, C., Mannucci, A., Han, H. et al. *Liquid biopsy for early detection of pancreatic ductal adenocarcinoma*. Nature Medicine, 2026-09-16.
+
+<a id="news-ref-2" href="https://www.cityofhope.org/research/research-news/new-study-blood-test-shows-promise-for-detecting-pancreatic-cancer-at-its-earliest-stages" data-news-reference="2" target="_blank" rel="noopener noreferrer">[2]</a> City of Hope institutional announcement, *New Study: Blood Test Shows Promise for Detecting Pancreatic Cancer at Its Earliest Stages*.
+
+<a id="news-ref-3" href="https://doi.org/10.5281/zenodo.15041773" data-news-reference="3" target="_blank" rel="noopener noreferrer">[3]</a> Analysis and visualization code repository identified in the paper.
+
+<a id="news-ref-4" href="https://doi.org/10.17605/OSF.IO/V5MTA" data-news-reference="4" target="_blank" rel="noopener noreferrer">[4]</a> Anonymized data repository identified in the paper.
+<small>Source cutoff: September 18, 2026. The public abstract, extended figure legends, data and code availability statements, and institutional announcement were compared. The full subscription text was not reviewed and the raw data were not reanalyzed. Prevalences of 0.1% and 1% are educational assumptions. Original figure panels were matched to their public captions.</small>

@@ -1,0 +1,117 @@
+---
+title: Why sharing memory still costs CPUs and GPUs time
+description: Measurements on four unified-memory platforms separate data transfer from completion signals and
+  compare correctness, cache policy and application performance.
+pubDate: 2026-10-14 00:02:00+09:00
+updatedDate: 2026-11-11
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-14-cpu-gpu-uma-memory-sharing-news
+category: software-engineering-cs
+subcategory: heterogeneous-memory-systems
+type: paper-review
+tags:
+- frontier-candidate
+- heterogeneous-computing
+- unified-memory
+- systems
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-10-14-cpu-gpu-uma-memory-sharing-news
+translationKey: en-2026-10-14-cpu-gpu-uma-memory-sharing-news
+---
+
+import NewsFigure from "@/components/post/NewsFigure.astro";
+
+> This article follows **arXiv v1**. The comment on the arXiv abstract page reports acceptance at EuroSys 2027. The review did not independently verify the final proceedings paper or its publication page, so acceptance is attributed here to the arXiv metadata.
+
+## What you will learn
+
+Even when a CPU and GPU use the same physical memory, the latest value written by one is not necessarily visible to the other. Start by distinguishing **sharing an address**, **seeing data** and **preserving concurrent updates**. Then examine the single-sender, single-receiver correctness checks and the data-transfer and synchronization benchmarks on four platforms. Finally, the application examples show why their timing baselines differ and how Figure 14 estimates request time.
+
+A **unified memory architecture (UMA)** lets the CPU and GPU use one physical memory system. <strong>Coherence</strong> describes the rules by which a change made by one processor is reflected in what the other can read. Think of workers using the same warehouse while holding separate inventory lists. Sharing the warehouse does not instantly update every list. The analogy illustrates the distinction without modeling a particular cache protocol.
+
+## Sharing an address and copying data, in pictures
+
+<NewsFigure media="uma-v1-figure2" lang="en" />
+
+The left of the diagram shows a CPU and GPU with separate memories, the middle shows UMA and the right illustrates different internal connections, such as a ring or a network-on-chip (NoC), and additional hardware. The caption identifies the lines as logical connections. For example, a shared last-level cache (LLC) on a ring can be physically distributed around the cores. UMA platforms can therefore organize memory access differently, with different performance consequences. ([Section 2.1 and Figure 2](https://arxiv.org/html/2610.13125v1#S2.F2.fig1))
+
+<NewsFigure media="uma-v1-figure3" lang="en" />
+
+On the left, copying moves values from one memory to the other and requires space for the copy. On the right, direct access can avoid that step by allowing both devices to read and write the same region. The hardware still has to permit both devices to access it, and the read/write ordering and cache handling must be appropriate. Eliminating a copy can reduce cost, but its performance depends on those remaining operations. ([Section 2.3 and Figure 3](https://arxiv.org/html/2610.13125v1#S2.SS3))
+
+## Seeing a new value and preserving simultaneous updates
+
+Suppose a CPU writes a new value into its cache. If the GPU’s read path has not yet observed that write, the GPU can still read the old value. In the reverse direction, an outdated CPU cache entry can conceal a GPU write. Addressability and visibility at a specified point in time are separate conditions.
+
+The paper divides sharing into **Bind, Write, Read and Unbind** operations for correctness testing. Bind prepares a shared region and its access attributes. Write records data, Read retrieves the value on the receiving side, and Unbind ends the association. The same operation name can map to different hardware behavior. Page size, CPU and GPU cache policies, coherence mechanisms and the boundaries between reads and writes influence which combinations are supported. ([Section 4.1, Table 1 and Figure 4](https://arxiv.org/html/2610.13125v1#S4))
+
+### What did the correctness test establish?
+
+The basic test in Section 4.1 has one sender write a known pattern and one receiver read it. It checks every received word against the expected value. The authors use a persistent receiving GPU kernel to check reads and distinguish device errors or timeouts from data mismatches. This is an **empirical test** of data visibility on the tested platforms and configurations. It offers no mathematical proof for every program, device or ordering.
+
+Exchanging the expected values between one sender and one receiver also leaves a separate question. When several processors increment one counter concurrently, preserving each update requires an atomic read–modify–write. In a separate discrete-GPU check, the authors observed successful returns from the atomic API even as concurrent CPU increments to the same counter caused some updates to be lost. The observation applies to that configuration. It does not establish a general failure of the API across GPUs or memory types. ([Section 4.1.4](https://arxiv.org/html/2610.13125v1#S4.SS1.SSS4))
+
+**Visibility** asks whether another processor saw the value written. **Atomicity** asks whether all concurrent updates survived without overwriting one another. Answering the two questions takes different tests.
+
+## Platforms and methods compared
+
+The main study covers four platforms with one-way coherence. Raptor uses a Core i5-14500 and UHD 770 with a ring interconnect. Arrow uses a Core Ultra 285H and Arc 140T with a NoC and no MSC. Lunar has a Core Ultra 258V, Arc 140V and 8 MB MSC. Orin uses a Jetson AGX Orin with Cortex-A78AE CPU cores, an NVIDIA Ampere GPU and 4 MB MSC. The core comparisons described in the paper use one-way coherence on all four. Appendix B separately extends the investigation to the NVIDIA DGX Spark/GB10, which includes two-way coherence. ([Sections 3.1–3.3 and 5.2, Appendix B](https://arxiv.org/html/2610.13125v1#S3))
+
+Policy choices depend on data direction (CPU to GPU or GPU to CPU), whether the transfer occurs during file I/O, and whether the program reads and writes within a kernel or passes data between kernels. The paper and archived reference materials identify options such as `W_A/W_F/W_B` (write-alone, write-then-flush, write-bypass) and `R_A/R_I/R_B` (read-alone, read-after-invalidate, read-bypass). These are names for the alternatives examined. The best choice still depends on the device and use case.
+
+The comparisons fall into two groups.
+
+1. **Native load-plus-copy or mmap-and-copy versus direct UMA access.** PyTorch model loading, OpenCV image preprocessing, OpenVINO output and point-cloud transfers each have their own baseline implementation. Some file-loading baselines include the cost of a deferred Bind on the conventional copy path. Check the measured interval and the treatment of initialization costs in each comparison. ([Sections 2.3 and 6.1.1–6.1.2, Figures 9–10](https://arxiv.org/html/2610.13125v1#S6.SS1))
+2. **Runtime events, CPU delegation or block synchronization versus shared-memory wait/set or CAS.** EdgeNN’s event and serialization path, GoFS’s delegated locking and GPUfs’s block-level waiting address different control problems. Wait/set, direct locking and grid-level synchronization have different baselines. Read operator time, time to first token (TTFT), synchronization time and locking overhead against the corresponding denominator. ([Sections 4.1.4 and 6.2.1–6.2.2, Figures 11–13](https://arxiv.org/html/2610.13125v1#S6.SS2))
+
+### How to read the reported ranges
+
+Across four platforms and nine real application or system cases, the abstract reports reductions of 16–75% in data-plane time and 7–90% in control-plane overhead. The endpoints refer to different cases, measured intervals and baselines. They cannot be applied to whole-application speed or every synchronization cost, and the nine cases are spread across the four devices.
+
+In the Arrow PyTorch case, model loading took 75% less time than the copy baseline. With transparent huge pages (THP), that time fell another 5%. Arrow’s OpenCV case cut the interval for combined CPU preprocessing and GPU transfer by 16%. A separate OpenVINO output case reports an 18% reduction for its application stage, and point-cloud transfer took 34% less time than its copy baseline. Different inputs, intervals and denominators make these percentages nonadditive. ([Sections 6.1.1–6.1.2, Figures 9–10](https://arxiv.org/html/2610.13125v1#S6.SS1))
+
+The same distinction applies to the control plane. Accelerate on Arrow reduced TTFT by 11% for a 10-token prefill. In Demand Layering on Orin, the grid-level method reduced the measured time by 14% relative to a block barrier, while the block-level path took 1.8 times as long. GPUfs reduced synchronization time by about 7% with many blocks. GoFS on Orin cut locking overhead by about 90% relative to delegated locking in a CPU-heavy, low-contention case. Locking overhead here is the time for one lock operation minus the execution time of its protected critical section. The comparison used direct compare-and-swap (CAS) and delegated locks, one CPU thread and one GPU thread contending for the same lock, and CPU-heavy file operations with microsecond-scale critical sections. The 11%, 14%, 7% and 90% describe distinct measures, each for its own workload. ([Sections 6.2.1–6.2.2, Figures 11–13](https://arxiv.org/html/2610.13125v1#S6.SS2))
+
+In Figure 6 the vertical lines are described by the archived results README as the span of the coherence-handling cost added to GPU time. `y_lower` and `y_upper` mark the endpoints of that cost. They are neither confidence bounds nor dispersion estimates from repeated trials. Figure 7 omits Raptor and Lunar data panels, and Figure 8 omits Raptor. An absent panel supplies no result, including zero or a failed test. Match platform, buffer size, page conditions, cache policy, direction and synchronization method for a comparison. Most CSVs in the reference materials contain aggregates without individual trial logs or confidence intervals. ([Reference results guide at the pinned revision](https://github.com/XpuOS/libumsh-artifacts/blob/880d535a86c3d82277f4c546edf386ef16ef7380/reference_results/README.md))
+
+## Figure 14 estimates request time by adding measured averages
+
+<NewsFigure media="uma-v1-figure14" lang="en" />
+
+In the TaskBench scenario, GLM-4.7-Flash orchestrates a sequence of three tools, ViT, SD-Turbo and DETR. The paper runs the LLM with `llama.cpp` and the tools in PyTorch. The execution environment is warm, but models are reloaded as needed. Figure 14 **adds the separately measured mean time of the orchestrator and the mean combined execution time of the three tools** to estimate time per request. The authors did not trace a distribution of individual requests continuously from beginning to end. The figure therefore cannot establish p95 or p99 latency, the slowest request or queueing delay under service load. ([Section 6.3 and Figure 14](https://arxiv.org/html/2610.13125v1#S6.F14.fig1))
+
+Using that estimate, the paper reports request-time reductions of 9.0–15.9% across the four platforms. On Arrow, the estimate fell from 43.78 to 37.65 seconds, a difference of 6.13 seconds. Dividing the reported difference by its baseline gives 6.13 ÷ 43.78 ≈ 14.0%. This arithmetic checks how to read the result. The LLM loading interval on its own fell from 10.40 to 5.06 seconds, a reported 51.3% reduction. The stage-level 51.3% and request-level 14.0% have different denominators. The authors attribute most of the saving to LLM loading. ([Section 6.3 and discussion of Figure 14](https://arxiv.org/html/2610.13125v1#S6.F14.fig1))
+
+**Check your understanding.** Can separately averaged times tell us the latency of the slowest 1% of real requests? **No.** Summing means loses the distribution of between-stage variability, correlations within actual requests, queueing and tail latency.
+
+## The paper’s implementation and the repository at a pinned revision
+
+The paper describes `libumsh` as selecting read/write policies and implementations for the platform, data direction, I/O or kernel boundary and application sharing requirements. On Arrow and Lunar, the authors modified the runtime to expose fine-grained coherence controls. Deploying it on a different device with an unchanged runtime would require separate evidence of support. ([Section 5, including Sections 5.1–5.2](https://arxiv.org/html/2610.13125v1#S5))
+
+This review statically inspected documentation and headers at revision `880d535a86c3d82277f4c546edf386ef16ef7380` of the separate public artifact repository. The README organizes policies into data access and memory bind attributes. The declarations in `policy.hpp` cover direction (CPU to GPU or GPU to CPU), boundary (I/O, within kernels or between kernels), read/write policy, implementation, granularity, participation scope and `Unsupported/Experimental/Supported` status. The control-plane documentation distinguishes acquire/release ownership primitives from higher-level lock/unlock and wait/set helpers. It documents support only for system scope and thread participation. Block and grid participation are rejected, and fairness is not guaranteed. Successful control synchronization still leaves payload caching policy and any required cache handling to be addressed.
+
+The file-loader header declares `Direct`, `Copy` and `Mmap` choices and options for file path, range and cache flushing. This review read the header’s interface declarations, the README and the control-plane documentation. It did not check the entire repository, implementation files, every CSV or plotting script, or the exact commit used for the paper. No build or benchmark was run. This snapshot expands the code-reading record. Reproduction of the reported results and identification of the exact experimental version remain open. ([README at the pinned revision](https://github.com/XpuOS/libumsh-artifacts/blob/880d535a86c3d82277f4c546edf386ef16ef7380/README.md), [policy.hpp](https://github.com/XpuOS/libumsh-artifacts/blob/880d535a86c3d82277f4c546edf386ef16ef7380/include/umsh/policy.hpp), [control-plane documentation](https://github.com/XpuOS/libumsh-artifacts/blob/880d535a86c3d82277f4c546edf386ef16ef7380/docs/control-plane.md))
+
+## How far do the results generalize?
+
+The paper reports measurements on four UMA platforms, several low-level transfer and synchronization paths, and nine application or system cases. Each comparison applies to a particular device, runtime, cache policy and workload boundary. Other CPU/GPU combinations, drivers, page sizes and request compositions require their own measurements. Byte transfers, file-loading intervals, operator execution time, TTFT and locking overhead answer different questions.
+
+Correctness tests do not prove every shared-memory program correct, and good timings do not establish correctness. The study is not a reason to disable caches or arbitrarily change OS or device settings. Choosing a policy requires checking supported combinations, data direction, synchronization boundaries and the actual workload.
+
+## A reading route through the paper
+
+Start with physical memory organization in Figure 2 and copying versus direct access in Figure 3. Keep three conditions distinct: a common address, visibility of the latest value and preservation of concurrent updates. For implementation work, read Section 4 for the scope of the single-sender and single-receiver check, then identify the data-plane and control-plane baselines separately. Before interpreting Figure 14, recall that its request estimate is a sum of means rather than a measured distribution across requests.
+
+**Final check.** The 75% reduction in model-loading time, the 16% reduction in one preprocessing interval and the 14% reduction in Arrow’s estimated request time cannot be added together. Read each percentage with its workload, baseline, measured interval and platform.
+
+<details>
+<summary>Sources, rights and scope of review</summary>
+
+The primary source is Jinrong Yang, Zimeng Wang, Rong Chen and Haibo Chen, “Characterizing CPU-GPU Memory Sharing over Unified Memory Architecture,” arXiv:2610.13125v1, October 9, 2026. Figures 2, 3 and 14 use the original SVGs from the v1 HTML. The captions contained no separate third-party credit or exclusion from reuse, and the arXiv HTML displays CC BY 4.0. That license allows commercial sharing and adaptation with appropriate author, source and license attribution and disclosure of changes. For Figures 2 and 3 the viewport removes the outer A4 page margins. The drawings and data are unchanged. These observations apply only to the specified v1 files. The full chain of rights and separate rights such as privacy, publicity and trademarks were not independently audited. [CC BY 4.0 terms](https://creativecommons.org/licenses/by/4.0/).
+
+The source-review record covers the abstract and introduction, Sections 2–6.3 and 7–9, and Appendices A and B in the November 11, 2026 inventory. This article reused its source and claim map after verifying the hash. It did not repeat a complete review of the original material. Static inspection of the public artifact repository covered only the documents and headers at the pinned revision listed above. The original review did not execute code or benchmarks, reproduce the paper’s results, compare the final proceedings version, check browser or mobile rendering, or obtain an external reader review.
+
+</details>

@@ -1,0 +1,177 @@
+---
+title: When Should Medical AI Hand a Case to a Clinician?
+description: A Nature Medicine study assesses a medical AI system run inside a hospital. Consistency across repeated
+  answers guides case selection. The denominators behind 49.4% and 98.9% clarify what external evaluation can establish
+  before clinical use.
+pubDate: 2026-09-16
+slug: 2026-09-16-onprem-medical-agent-news
+category: health-lifestyle
+subcategory: clinical-ai
+type: paper-review
+tags:
+- frontier-candidate
+- clinical-ai
+researchFeatured: false
+draft: false
+lang: en
+translationKey: en-2026-09-16-onprem-medical-agent-news
+translatedPosts:
+  ko-KR: 2026-09-16-onprem-medical-agent-news
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+<NewsFigure media="sep16-medical-6" lang="en" priority />
+
+> <strong>Study stage. This is a text simulation constructed from historical medical records and case reports. It did not prospectively treat patients in a clinical trial.</strong> The opening illustration reproduces Figure 6 of the Nature Medicine paper. It shows both the fraction of cases retained for automatic handling and the accuracy within that group.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 1. In one sentence
+
+The study asks which cases a medical AI can handle and which should go to a human. Consistency across repeated attempts at the same case helped select a subset with fewer errors in the test data. Errors persisted even among retained cases, and the experiment did not establish safety in clinical practice.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+This was the second candidate in the September 16 editorial selection. More important than its editorial score of 94 is what was measured. Overall accuracy, a consistency score, the fraction handled automatically and accuracy within that fraction are four different quantities.
+
+## 2. Why is this difficult?
+
+### An answer can sound confident even when it is wrong
+
+A long, fluent response to a medical question can create an impression of solid evidence, especially when it contains specialist terminology. The ability to generate such prose differs from the ability to distinguish the patient's condition. The paper treats this as a question of when a decision deserves trust.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<strong>Diagnosis</strong> means identifying a condition using observations such as symptoms and tests. Several conditions can produce similar symptoms, and relevant information may only emerge later. Naming a disease after one question and gathering further history and tests before deciding exercise different abilities.
+
+The paper's <strong>agent</strong> chooses actions such as follow-up questions and test requests, then uses the information returned to choose its next action. In this experiment the simulation supplies information from prepared records. A test request does not cause a real patient to undergo a procedure.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+### Keeping data inside a hospital and getting the diagnosis right
+
+An <strong>on-premises</strong> deployment runs the model in an environment managed by the institution. A <strong>cloud API</strong> sends requests to an external provider's servers. Local hosting can give the institution more direct control over model versions, access and record retention. The authors distinguish that operational control from confidence in clinical decisions.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+An internal server still requires oversight of record access, log contents and security updates for models and devices. Preventing external transmission also does not directly increase diagnostic accuracy. Hosting location and decision quality enter deployment decisions separately.
+
+The distinction also applies to industrial AI. Running a model on a computer beside a robot can reduce network latency, without establishing that the robot avoids every dangerous movement. In medicine, where data are processed and what the system may do with the result are separate questions.
+
+## 3. What was missing in existing approaches?
+
+### A single average cannot justify assigning every case to the AI
+
+In a hypothetical test, 90 correct answers out of 100 give 90% accuracy. A user facing one particular case wants to know whether it is more like the 90 successes or the ten errors. The overall average alone cannot tell them. When errors have serious consequences, identifying cases to withhold from automatic processing matters.
+
+This is <strong>selective prediction</strong>: accept an answer when a condition is satisfied and defer the rest. The paper connects the idea to the agent's <strong>selective autonomy</strong>. Autonomy here describes a routing rule proposed for evaluation, rather than legal or clinical authorization to practice independently.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+### Wording and next-token probabilities do not give the probability of a correct diagnosis
+
+A language model computes probabilities for the next <strong>token</strong>, a small unit of text. Generating a familiar diagnostic phrase with high probability does not make the disease equally probable. Fluency and correctness depend on different evidence.
+
+The researchers assessed several signals separately: generation probabilities, hedging expressions such as “perhaps,” density of clinical concepts and consistency across repeated runs. They compared how well each distinguished right from wrong answers. Technical vocabulary alone was insufficient as a proxy for clinical accuracy.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Would an additional agent acting as a critic always help? In the paper's comparison, overall diagnostic accuracy was 87.1% with the critic and 88.4% without it. There were disease-specific exceptions, but overall accuracy did not improve. Subsequent reliability analyses therefore used the baseline single-agent configuration. Multiple agents debating a case cannot be assumed to make it safer.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 4. The new approach in three steps
+
+### First, compare models inside the same clinical simulation
+
+The clinician agent converses with a simulated patient, requests test results and finally provides a diagnosis and rationale. The patient agent responds from cases reconstructed from historical records. A request for blood tests or radiology information does not mean the agent operated a medical instrument or interpreted original images.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The agent architecture and evaluation procedure were held constant when comparing language models. This makes differences associated with model choice easier to interpret. Model size, server configuration and throughput can still differ. Comparing operational costs requires additional data.
+
+### Second, solve the same case five times
+
+Stochastic generation can yield different outputs from the same case. The primary protocol used five independent stochastic runs per case. Final diagnoses and explanations were each converted to numerical vectors called <strong>embeddings</strong>. The vectors represent text for semantic comparison rather than the patient's biological state.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<strong>Cosine similarity</strong> compares the directions of the vectors for two texts. The intent is to recognize similar meaning despite differences in wording. Five outputs give ten distinct pairs, and the paper averages the similarities across all ten.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<Math display tex={"\\bar{s}=\\frac{2}{N(N-1)}\\sum_{1\\leq i<j\\leq N}\\cos(e_i,e_j)"} />
+
+<strong>N</strong> is the number of runs and <strong>eᵢ</strong> the embedding for output i. The leading coefficient averages the sum over pairs. The average is then constrained to the interval from 0 to 1 to give the consistency score <strong>Scon</strong>. This equation describes the study's method.
+
+<Math display tex={"S_{\\mathrm{con}}=\\min(1,\\max(0,\\bar{s}))"} />
+
+A score of 0.90 cannot mean that 90% of five runs voted for the same diagnosis. It is a continuous vector similarity score, not a vote share or a 90% patient-level disease probability.
+
+### Third, retain cases above a consistency threshold
+
+Sufficiently consistent diagnoses were considered candidates for automatic handling. Other cases were referred for human review. The authors varied the threshold and plotted **how many cases remained** alongside **accuracy within those cases**. The former is <strong>coverage</strong>, while the error level within the retained subset describes selective risk.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Answering fewer questions can raise an average, but selecting easy questions using an answer key would offer no operational rule. The study instead uses repeated-run consistency, which can be observed without the correct answer. Its relationship with correctness may change if future patients differ from the evaluation population.
+
+## 5. Main experiments and numbers
+
+### Which model led the diagnostic comparison, and which was used for selection?
+
+MIRA-v2 included 551 cases across seven diseases. CDM included 2,400 cases across four abdominal conditions. Both main evaluations drew on single-institution MIMIC-IV records. These counts describe benchmark cases rather than newly recruited trial patients.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Qwen3.5 achieved about 90.0% accuracy on MIRA-v2 and 83.8% on CDM. Cloud-hosted GPT-5.2 in the same agent architecture achieved 90.7% on MIRA-v2. The main reliability and selection analysis instead used the <strong>baseline GLM-4.5-Air configuration</strong> with the architecture held constant. Qwen's best accuracy and the later selective results come from separate configurations.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<NewsFigure media="sep16-medical-2" lang="en" />
+
+Figure 2 shows evaluations across models and diseases, with variation across runs. Read the disease-specific differences and comparison conditions alongside bar height. Good results on one condition leave open the possibility of errors on another. A single summary number can hide that distribution.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+### Which denominator gives 98.9% accuracy at 49.4% coverage?
+
+At a consistency threshold of 0.90, 272 of 551 MIRA-v2 cases were retained. Among the 272, 269 diagnoses were correct and three were wrong. Coverage was therefore about 49.4%, and accuracy within the retained subset was about 98.9%. <strong>The denominator for 98.9% is 272.</strong><a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+| Selection outcome | Cases | Interpretation |
+| --- | ---: | --- |
+| Original evaluation set | 551 | All cases in the main reliability assessment |
+| Retained as candidates for automatic handling | 272 | 49.4% of all cases |
+| Correct among retained cases | 269 | Denominator of 272 |
+| Incorrect among retained cases | 3 | Errors persisted despite high consistency |
+| Routed to human review | 279 | Includes 230 originally correct and 49 originally incorrect |
+
+The final row matters. The human queue includes 230 cases the model had already answered correctly. This table alone cannot show whether humans resolved all 279 cases correctly, how long review took or whether outcomes improved relative to practice without AI. It therefore provides no estimate that physician workload fell by half.
+
+### The study also included an external benchmark
+
+In addition to the two main evaluations, the paper assessed <strong>990 VivaBench cases across ten specialties</strong>, an external benchmark based on PubMed case reports curated by physicians. The MIMIC-IV origin of the two main benchmarks should not be generalized to all evaluated data.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+An external text benchmark differs from deployment at another hospital with actual patients. Qwen3.5 achieved 72.22% accuracy on VivaBench. At one selective operating point, a threshold of 0.85 retained 32.0% of cases with 89.9% accuracy. Both overall accuracy and the result of a selection rule change with the data. Keep these results separate from the MIRA threshold of 0.90 and retained accuracy of 98.9%.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 6. Limitations and counterevidence
+
+### Repeated answers can be consistently wrong
+
+A model can repeat the same error five times because of shared bias or missing information. The three retained errors show that consistency alone cannot prove correctness. Comparing test findings against an external standard answers a different question from comparing model outputs with one another.
+
+The paper also measured how well diagnostic consistency distinguished correctness using <strong>AUC</strong>, the area under the ROC curve. Values of 0.860 in the main condition and 0.875 in the stress condition describe the score's discrimination of errors. They do not establish 86.0% diagnostic accuracy. Metrics on the same 0–1 scale can have different meanings.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Consistency depends on the embedding model, generation temperature and number of runs. <strong>Temperature</strong> here controls randomness in generation. The paper examines sensitivity to these implementation choices. Updating a deployment model while keeping the threshold fixed at 0.90 would require renewed validation.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+### Five runs consume more computation
+
+Five independent attempts use more tokens and compute than a single attempt. Serial execution can add latency, while parallel execution demands more server resources. Owning internal servers alone cannot demonstrate that the repeated evaluation meets time and cost requirements.
+
+Some medical decisions are time-sensitive. Assessment should include time to decision, the workflow after referral and fallback procedures during failure alongside selective accuracy. These are questions for deployment rather than capabilities already established by the paper.
+
+### A conversation reconstructed from records differs from a real patient encounter
+
+Historical records contain information eventually collected. Real patients may describe symptoms incompletely or misunderstand a question. Tests also take time, incur costs and expose patients to risks. A patient agent cannot represent every such difference. Standard integration with clinical information systems requires separate testing.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+A prospective study follows new cases using a protocol defined in advance. This retrospective benchmark raises questions for that next stage. Human evaluation of some cases does not amount to a clinical trial of harm under autonomous care.
+
+### Read code availability and disclosures together with the results
+
+The authors released code and reproducibility materials through an official repository and Zenodo. This review checked the public paper, methods, results and availability statement without rerunning the full experiments or independently reproducing clinical performance.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Some authors disclosed advisory, equity or employment relationships with medical AI or pharmaceutical companies. For example, the corresponding author disclosed consultancy for AstraZeneca and Bioptimus and equity in several AI companies. Another author disclosed equity and employment in Synagen. These disclosures do not establish errors but add context to the need for independent validation before adoption.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 7. What could change in practice?
+
+Medical AI evaluation can move from asking only about overall accuracy to specifying which cases a model may handle and which signal sends a case to a human. Model development and the design of the authority granted to it are related tasks.
+
+This also applies to agent operations more generally. Distinguishing computation, evidence review and authorization to act makes failures easier to locate. A clinical authorization threshold must reflect the hazards of the particular task and actual validation data.
+
+An institutionally hosted model may help teams fix a version and audit its outputs. Operational control alone cannot establish readiness to replace clinicians. The study's contribution is an approach to measuring when to restrict autonomy.
+
+## 8. What to check next
+
+Follow-up should examine real cases across hospitals, prospective clinician-assistance evaluations and the accuracy and time required after deferral. In particular, the final system's rate of accepting wrong answers should be shown alongside review burden. A strong result at one coverage level cannot settle cost, safety and benefit together.
+
+The consistency threshold should also be checked across model versions, languages and specialties. Trying to identify cases of uncertainty can be valuable, but the ability to recognize uncertainty itself requires independent validation.
+
+The day's top selection on [combined hydrogen and freshwater production](/en/posts/2026-09-16-seawater-hydrogen-water-news/) and another candidate on [measuring OECT swelling](/en/posts/2026-09-16-oect-swelling-mapping-news/) can be read in the same way. Conditions under which a system fails, as well as good average performance, identify the next questions for real-world use.
+
+## 9. Sources
+
+<a id="news-ref-1" href="https://www.nature.com/articles/s41591-026-04609-x" data-news-reference="1" target="_blank" rel="noopener noreferrer">[1]</a> Zhang et al., [On-premise medical AI agents for reliable clinical decision-making](https://www.nature.com/articles/s41591-026-04609-x), Nature Medicine, September 15, 2026. DOI: 10.1038/s41591-026-04609-x. The public main text, Methods, Results, Discussion, Figures 2 and 6, disclosures and supplement were compared. Figures 2 and 6 are reproduced in full with credit under CC BY 4.0. Figure 1 carries separate Flaticon rights and is available from the publisher.
+
+<a id="news-ref-2" href="https://github.com/KatherLab/onprem-medical-agents" data-news-reference="2" target="_blank" rel="noopener noreferrer">[2]</a> The authors' [official code repository](https://github.com/KatherLab/onprem-medical-agents) and [Zenodo reproducibility materials](https://doi.org/10.5281/zenodo.20233449), linked from the paper's Code availability statement. Public availability is distinct from an independently successful reproduction.

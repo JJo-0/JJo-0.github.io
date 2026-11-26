@@ -7,6 +7,7 @@ const rendererModules = import.meta.glob(
 async function mountFormulaLesson(host) {
   if (!(host instanceof HTMLElement) || host.dataset.lessonMounted === 'true') return;
 
+  const english = document.documentElement.lang === 'en';
   const renderer = host.dataset.lessonRenderer;
   const stage = host.querySelector('[data-formula-lesson-stage]');
   const payloadNode = host.querySelector('script[data-formula-lesson-payload]');
@@ -17,7 +18,7 @@ async function mountFormulaLesson(host) {
   const modulePath = `../components/post/formula-lessons/renderers/${renderer}.svelte`;
   const loadRenderer = rendererModules[modulePath];
   if (!loadRenderer) {
-    stage.innerHTML = '<p class="m-0 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm">등록된 수식 학습 렌더러를 찾지 못했습니다.</p>';
+    stage.innerHTML = `<p class="m-0 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm">${english ? 'The registered formula lesson renderer could not be found.' : '등록된 수식 학습 렌더러를 찾지 못했습니다.'}</p>`;
     throw new Error(`Unknown formula lesson renderer: ${renderer}`);
   }
 
@@ -25,7 +26,7 @@ async function mountFormulaLesson(host) {
   try {
     payload = JSON.parse(payloadNode.textContent || '{}');
   } catch (error) {
-    stage.innerHTML = '<p class="m-0 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm">수식 학습 명세를 읽지 못했습니다.</p>';
+    stage.innerHTML = `<p class="m-0 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm">${english ? 'The formula lesson specification could not be read.' : '수식 학습 명세를 읽지 못했습니다.'}</p>`;
     throw error;
   }
 

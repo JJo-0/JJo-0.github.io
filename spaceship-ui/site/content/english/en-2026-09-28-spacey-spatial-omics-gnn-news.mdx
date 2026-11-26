@@ -1,0 +1,233 @@
+---
+title: How SpaCEy finds tissue patterns linked to prognosis
+description: An explainable graph neural network searches for prognostic motifs in spatial relationships between
+  cells. Small examples explain graphs, AUC and the concordance index, and show the limits of causal interpretation.
+pubDate: 2026-09-28 00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: 2026-09-28-spacey-spatial-omics-gnn-news
+category: ai-machine-learning
+subcategory: explainable-spatial-omics
+type: paper-review
+tags:
+- frontier-candidate
+- ai-for-science
+researchFeatured: false
+draft: false
+lang: en
+translationKey: en-2026-09-28-spacey-spatial-omics-gnn-news
+translatedPosts:
+  ko-KR: 2026-09-28-spacey-spatial-omics-gnn-news
+---
+
+import Cite from '@/components/post/NewsCitation.astro';
+import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import BeginnerGuide from '@/components/post/BeginnerGuide.astro';
+import SpaCEyPrimer from '@/components/post/SpaCEyPrimer.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+**Start with the map.** A school map tells you both how many students are present and who is next to whom. In tumor tissue, the arrangement of cells can carry information beyond their types and counts. **SpaCEy reads a map of cells, predicts prognosis and highlights neighborhoods that contributed to its prediction.** The analogy illustrates spatial arrangement. The analysis identifies predictors, while establishing disease causation takes other evidence.
+
+<BeginnerGuide lang="en" title="New to spatial omics, graphs or GNNs? Start with a cell map">
+
+<SpaCEyPrimer lang="en" />
+
+<strong>Spatial proteomics</strong> measures protein markers in tissue while preserving each cell's location.
+A table of per-cell values can therefore be connected to another observation:
+which cells were next to one another.
+
+- A <strong>node</strong> is a point representing one cell.
+- An <strong>edge</strong> connects two spatially neighboring cells.
+- A <strong>node feature</strong> is a measured protein-marker abundance for that cell.
+- A <strong>GNN</strong> exchanges information between neighboring nodes to classify the graph or predict a score. It is a graph
+  neural network
+- An <strong>explainer</strong> identifies a subset of nodes and edges that preserves much of an already trained model's prediction.
+- A <strong>motif</strong> is a small connected spatial pattern that recurs.
+
+SpaCEy can operate without pathologist-assigned cell-type or anatomical-region labels as input. It still uses a graph constructed from single-cell protein abundance and cell positions. Cell-type annotations help interpret the explanation afterward.
+
+</BeginnerGuide>
+
+<NewsFigure media="sep28-spacey-fig1" lang="en" priority />
+
+### Reading original Figure 1: input, prediction and explanation
+
+**Panel a follows the data into the model.** Protein markers are measured in each cell, and nearby cells are connected into a graph. Dots represent cells and lines represent spatial neighbors. Lines do not depict vessels or causal links. The GNN uses the map to produce a prognosis score. Tissue imaging and cell segmentation precede this step. An ordinary photograph on its own is insufficient.
+
+**Panel b asks what the model used.** Once the predictor is fixed, the explainer selectively weakens or retains edges to find compact neighborhoods supporting the original prediction. It asks **which parts of the graph preserve this model's prediction**. **Panel c compares the selected neighborhoods biologically.** Follow the distinction between making a score in a and locating the spatial evidence for that score in b.<Cite n={1} />
+
+This is an original figure from the paper. In addition to the article's CC BY 4.0 license, the caption credits the woman icon to Servier Medical Art under CC BY 4.0 and the breast icon to Bioicons under CC BY 3.0. Select the figure for the full-resolution image.
+
+Icon sources: [Servier Medical Art](https://smart.servier.com/), [Bioicons](https://bioicons.com/), [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The original figure is reproduced unchanged.
+
+## 1. In one sentence: a performance score plus a map of what informed it
+
+Published in *Nature Communications* on September 26, 2026, SpaCEy converts spatial proteomics samples into cell graphs, uses a graph neural network (GNN) to predict cancer progression or survival, and extracts connected subgraphs that mattered for a prediction. The researchers report finding prognostic motifs from protein expression and spatial neighborhoods without requiring cell-type or anatomical-region labels as model inputs.<Cite n={1} />
+
+The result extends beyond a comparison with baseline performance. After fixing the predictor weights, the explainer learns an edge mask and displays compact, connected tissue patterns associated with outcomes. This moves analysis from a single black-box score toward asking which arrangement of cells contributed to it.<Cite n={1} /><Cite n={2} />
+
+Explainability alone does not establish clinical cause or justify individual treatment. Mean AUC for lung adenocarcinoma (LUAD) progression was 0.62, above the baselines but modest in absolute terms. An explainer motif is a **predictive feature whose causal role remains unestablished**.<Cite n={1} />
+
+## 2. What cell counts leave out
+
+A simple approach relates the proportions of immune, tumor and stromal cells in each sample to its outcome. These measurements are interpretable but lose spatial arrangement. Two tissues with 30% tumor cells and 20% T cells may differ biologically if T cells penetrate the tumor in one and remain at its margin in the other.
+
+Spatial proteomics retains neighborhoods. SpaCEy applies Delaunay triangulation to cell centroids to construct a graph. Nodes carry protein-marker measurements and edges connect nearby cells. Successive GNN layers combine each node's features with information aggregated from neighboring nodes.<Cite n={1} /><Cite n={2} />
+
+The term “label-free” needs qualification. Supervised prediction still needs outcome labels, and segmented cells and marker measurements are already processed inputs. The model dispenses with predefined **cell-type and region labels** as predictors. It does not automate every stage from raw pathology images onward.
+
+This matters for reproducibility. Segmentation errors, marker-panel composition, tissue sampling and batch effects can change graph features and edges. Reduced dependence on anatomical labels coexists with dependence on upstream measurement quality.
+
+## 3. SpaCEy operates in two stages
+
+The first stage is prediction. A GNN takes each sample's spatial graph and learns a binary outcome such as LUAD progression, or a survival risk score. Images and regions from the same patient must stay in the same split to avoid leakage. The paper used fixed patient-separated splits for its survival evaluation.<Cite n={1} /><Cite n={2} />
+
+The second stage is explanation. The GNN weights are frozen, and a mask is optimized to estimate how necessary each edge was for the prediction. Retaining many edges helps preserve the score but can make an explanation too large. Keeping too few can lose the score. The explainer balances fidelity with sparsity and connectivity.<Cite n={1} />
+
+A connected subgraph can be easier to interpret biologically. An actual neighborhood more naturally suggests a cell–cell interaction hypothesis than isolated cells from opposite ends of a tissue section. But imposing connectivity also shapes the explanations that can emerge. Stability across explainer hyperparameters needs to be tested.
+
+A separate explainer still inherits the predictor's limitations. If a predictor learns a spurious batch signal, its explainer can faithfully describe an erroneous prediction. Explainability therefore needs to be assessed alongside accuracy and external validity.
+
+## 4. Reading an AUC of 0.62
+
+AUC can be interpreted as the probability that a randomly selected positive sample receives a higher risk score than a randomly selected negative one. An AUC of 0.5 represents random ranking and 1.0 perfect ranking. It summarizes ranking across thresholds, as distinct from sensitivity or specificity at one chosen threshold.
+
+The LUAD dataset included 416 patients. The reported progression evaluation used the 404 with progression information. In fivefold cross-validation, SpaCEy had mean accuracy 0.68, F1 0.68 and AUC 0.62. Baseline AUCs were 0.57 and 0.52.<Cite n={1} />
+
+An AUC of 0.62 improves on these baselines but offers limited support for decisions about an individual patient. Class balance, confidence intervals, calibration and external cohorts need examination. Accuracy of 0.68 on its own could obscure the role of a majority class. AUC and F1 add context.
+
+The study nevertheless demonstrates a methodological point: outcome-associated spatial information can be extracted from a high-dimensional tissue graph without predefined cell-type labels. Its immediate value lies in discovery.
+
+## 5. The survival C-index as a ranking test
+
+In a survival task, the time of death or recurrence is not observed for every patient. Some records are censored because follow-up ends before an event. Among comparable patient pairs, the C-index counts how often the model assigned higher risk to the person with the earlier event.
+
+<CandidateEquation lang="en" id="spacey-cindex" title="How do we score the risk ranking for three patients?" tex={String.raw`C=\frac{N_{\mathrm{concordant}}+0.5N_{\mathrm{tied}}}{N_{\mathrm{comparable}}}\tag{1}`}>
+
+<Math tex={String.raw`N_{\mathrm{comparable}}`} /> counts patient pairs
+for which event order can be compared. <Math tex={String.raw`N_{\mathrm{concordant}}`} /> counts pairs in which
+the earlier event was assigned higher predicted risk. Tied pairs have equal risk scores.
+
+Suppose patients A, B and C yield three comparable pairs. If the model gets two orders right and one wrong, <Math tex={String.raw`C=2/3\approx0.667`} />. Three correct orders yield 1.0, while random ranking approaches about 0.5 over many pairs.
+
+This hypothetical example illustrates the calculation. Handling censoring and defining comparable pairs in practice depend on the evaluation library and study protocol.
+
+</CandidateEquation>
+
+In the JacksonFischer breast-cancer cohort (720 samples from 357 patients), SpaCEy's C-index was 0.720 ± 0.061. The best baseline, combining cell-type composition with gradient boosting, reached 0.617 ± 0.092. A Cox proportional hazards baseline reached 0.600 ± 0.095. In METABRIC (460 images from 405 patients), the corresponding results were 0.688 ± 0.038 for SpaCEy, 0.570 ± 0.071 for the best baseline and 0.562 ± 0.048 for CoxPH.<Cite n={1} /><Cite n={2} />
+
+The ± values reflect variation across splits. Compare methods on the same dataset and splits. The values 0.720 and 0.688 come from different datasets.
+
+## 6. Reading the explainer's node importance
+
+<NewsFigure media="sep28-spacey-fig3" lang="en" />
+
+### Reading original Figure 3: what do the colored regions mean?
+
+**Start with f.** The same tissue is shown with cell or region annotations and with model importance. An important region is one used by the predictor. A dark mark should not be interpreted as a dead cell, a metastatic route or a causal cell. The 55.2%, 32.0% and 12.8% in e describe selected important regions inside, around and outside the tumor, respectively. They describe locations, not patient classification accuracy.<Cite n={1} />
+
+**The survival curves in a provide clinical context.** The horizontal axis is months, the vertical axis is survival proportion, and color denotes groups defined by hormone receptor and HER2 status. Curve height at a particular time differs from a C-index. Panel b uses UMAP coordinates to compress features. Its axes do not represent anatomical location or time. Clusters can help identify shared tissue and clinical characteristics.
+
+Panels c, d, g and h show patterns and frequencies by marker or group. They help evaluate biological consistency in the selected neighborhoods. A plausible explanation within these data cannot by itself establish causality or support treatment decisions in another hospital.
+
+After computing the edge mask, weights around a node can be summarized as its importance. The paper uses masked edge weights in a k-hop neighborhood to characterize cell importance, then examines cell phenotypes and spatial motifs.<Cite n={1} /><Cite n={2} />
+
+<CandidateEquation lang="en" id="spacey-node-importance" title="How do neighboring edge weights give one cell an importance score?" tex={String.raw`I(v_i)=\frac{1}{|E_k(v_i)|}\sum_{(v_j,v_l)\in E_k(v_i)}w_{jl}\tag{2}`}>
+
+<Math tex={String.raw`v_i`} /> denotes the focal cell node, and <Math tex={String.raw`E_k(v_i)`} /> is the
+edge set in its k-hop neighborhood. <Math tex={String.raw`w_{jl}`} /> denotes the
+mask weight assigned by the explainer. A high mean indicates that links around the cell were often retained to preserve the prediction.
+
+For neighboring weights of 0.9, 0.7 and 0.2, the mean importance is <Math tex={String.raw`(0.9+0.7+0.2)/3=0.6`} />. This hypothetical example is independent of any actual patient's cell score.
+
+A high <Math tex={String.raw`I(v_i)`} /> is an algorithmic attribution under this model's inputs, weights and mask objective. It does not measure a causal treatment effect of removing the cell.
+
+</CandidateEquation>
+
+The authors compared selected subgraphs with post-hoc cell annotations to assess enrichment of phenotypes and neighborhoods. This can generate hypotheses. Imaging from other cohorts, perturbation experiments or spatial transcriptomics would be needed to test whether motifs recur.
+
+## 7. Evidence for performance and interpretation
+
+<CandidateTable id="spacey-evidence-boundaries" label="Direct findings and remaining questions in the SpaCEy study">
+
+| Subject | Direct finding in the paper | Question left open |
+| ---------------- | ------------------------------------------------ | ----------------------------------------- |
+| Graph input | Cell positions, protein-marker features and Delaunay edges | Fully automatic diagnosis from raw whole-slide images |
+| LUAD progression | 416 patients in the dataset, mean AUC 0.62, baselines 0.57 and 0.52 | Sufficient clinical performance for individual treatment decisions |
+| Breast-cancer survival | C-index 0.720 in JacksonFischer and 0.688 in METABRIC | Transfer across cancers, hospitals and marker panels |
+| Explainer | Compact connected subgraph preserving the prediction | Causality of any particular motif |
+| Availability | GitHub code, archived code and preprocessed data | Fully automatic reproduction starting from raw tissue preprocessing |
+
+</CandidateTable>
+
+Higher C-index than the baselines in both breast-cancer cohorts strengthens the finding. At the same time, LUAD AUC of 0.62 illustrates a limit in absolute discrimination. Relative gains and their uncertainty belong in the same interpretation.<Cite n={1} />
+
+Sample and patient counts must also stay distinct. One patient can contribute several images or regions. The 720 samples do not represent 720 independent patients, which is why the split must be patient-separated.<Cite n={2} />
+
+## 8. Paper-specific results and general AI concepts
+
+<NewsFigure media="sep28-spacey-cover" lang="en" />
+
+The editorial diagram above summarizes **input → prediction → explanation** for teaching. Original Figures 1 and 3 near the opening and in section 6 are the researchers' figures, with original axes, panels, colors and markings preserved and sources and licenses supplied. The explanatory illustration was created by JJo.
+
+Nodes, edges, message passing, AUC and the C-index are general concepts in graph learning and survival evaluation. The Delaunay graph construction, frozen-predictor edge-mask explainer, results across the three cohorts and the identified motifs are specific to SpaCEy.<Cite n={1} />
+
+The team published the SpaCEy code on GitHub, archived the publication snapshot on Zenodo and linked preprocessed data in a separate Zenodo record.<Cite n={3} /><Cite n={4} /> These resources facilitate reruns, while differences in raw acquisition, segmentation and institutional preprocessing remain relevant.
+
+The paper discloses pharmaceutical-company funding and fees for J.S.R. and states that the other authors have no competing interests.<Cite n={1} /> A disclosure does not establish an error, but readers need it alongside the results.
+
+Biological names assigned to the motifs depend on post-hoc annotation and prior knowledge. Discovering them without supplied cell-type labels does not automatically establish their biological meaning.
+
+## 9. What to verify next: start with explanation stability
+
+First, does the model validate externally? Outcome rankings and spatial motifs should be assessed at other hospitals, on other imaging platforms and with other marker panels. Second, how stable is the explainer? Quantify whether the same neighborhoods recur across seeds, splits and mask sparsity levels.
+
+Third, consider whole-slide coverage and scale. Do sampled regions capture the tumor's heterogeneity, and can memory and runtime accommodate graphs with millions of cells? Fourth, can integration of spatial transcriptomics, morphology and clinical covariates yield additional testable findings?
+
+Finally, independent cohorts and experimental perturbations could test the selected neighborhoods and develop predictive motifs into mechanistic hypotheses. At present, SpaCEy is an **open analysis tool linking tissue architecture to outcome prediction and interpretable subgraphs**.
+
+## Sources and scope of review
+
+<a
+  id="news-ref-1"
+  data-news-reference="1"
+  href="https://www.nature.com/articles/s41467-026-77924-z"
+  target="_blank"
+  rel="noopener noreferrer"
+>
+  [1] Ahmet Sureyya Rifaioglu et al., “SpaCEy links spatial tissue patterns to clinical outcomes
+  using explainable graph neural networks,” Nature Communications, Version of Record 2026-09-26, DOI
+  10.1038/s41467-026-77924-z. Methods, results, data and code availability, and competing interests.
+</a>
+
+<a
+  id="news-ref-2"
+  data-news-reference="2"
+  href="https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-026-77924-z/MediaObjects/41467_2026_77924_MOESM1_ESM.pdf"
+  target="_blank"
+  rel="noopener noreferrer"
+>
+  [2] Supplementary Information accompanying the same paper. Cohort composition, splits, model and explainer settings, and additional results.
+</a>
+
+<a
+  id="news-ref-3"
+  data-news-reference="3"
+  href="https://github.com/saezlab/SpaCEy"
+  target="_blank"
+  rel="noopener noreferrer"
+>
+  [3] saezlab/SpaCEy GitHub repository. Installation, executable code and examples. Accessed September 28, 2026.
+</a>
+
+<a
+  id="news-ref-4"
+  data-news-reference="4"
+  href="https://doi.org/10.5281/zenodo.22073069"
+  target="_blank"
+  rel="noopener noreferrer"
+>
+  [4] SpaCEy archived code, Zenodo DOI 10.5281/zenodo.22073069. Preprocessed data record: DOI
+  10.5281/zenodo.17710588
+</a>

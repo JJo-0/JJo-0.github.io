@@ -1,0 +1,163 @@
+---
+title: Learning Slow Dynamics and Correcting Errors in Soft Robotic Muscles
+description: Time-scale separation helps model a soft robotic muscle’s input–output behavior. The slow manifold,
+  feedforward control, and PI feedback explain the measured error and the range of motions the method covers.
+pubDate: 2026-09-18
+slug: 2026-09-18-soft-muscle-spectral-control-news
+category: robotics-embedded
+subcategory: soft-robotics-control
+type: paper-review
+tags:
+- frontier-candidate
+- soft-robotics-control
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-18-soft-muscle-spectral-control-news
+translationKey: en-2026-09-18-soft-muscle-spectral-control-news
+---
+
+import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+<NewsFigure media="soft-muscles-hardware" lang="en" priority />
+
+## 1. How large a model does a soft robotic muscle need?
+
+Soft artificial muscles yield to external forces, but the same input does not always produce the same motion. Material deformation, electric fields, fluids, friction, and the history of past motion all contribute. <strong>The researchers learned a low-dimensional relationship for the complex response within the muscle’s actual range of slow motions. They then inverted that relationship to obtain control commands.</strong> Adding proportional–integral (PI) feedback reduced tracking error at the physical joint.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+If internal transients settle faster than the input changes, a model can approximate the slow response without tracking every internal state equally precisely at every instant. The first step is to ask <strong>over what range of motions a simple model is adequate</strong>, then collect data in that range.
+
+Here SSM stands for spectral submanifold. In robot safety the same initials also stand for speed and separation monitoring. This paper uses the theory of spectral submanifolds and slow manifolds to connect model reduction from experimental data with control.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+## 2. Dynamics that decay quickly and dynamics that persist
+
+Changes within a complex system occur on different time scales. Some die away shortly after an input is applied. Others persist and dominate the motion we can observe. Model reduction exploits these differences to describe the important motion with fewer variables.
+
+The study focuses on an <strong>adiabatic regime</strong> in which inputs change more slowly than internal transients. If trajectories rapidly approach a low-dimensional attracting structure, learning the input–output relationship on that structure can be useful. The paper distinguishes a spectral submanifold in nonlinear theory, an aSSM that varies with the input, and a slow manifold under stronger time-scale separation.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Ask whether internal changes have time to settle as the control input varies. When the internal response is slow and the target changes rapidly, the influence of the previous state can be substantial. When settling takes less time than a significant input change, a low-dimensional response can offer a practical approximation.
+
+<CandidateEquation lang="en" id="soft-timescale" title="What makes an input slow?" tex={String.raw`\varepsilon=\frac{\tau_{\mathrm{internal}}}{\tau_{\mathrm{input}}}\ll1`}>
+
+This illustrative ratio expresses time-scale separation. <Math tex={String.raw`\tau_{\mathrm{internal}}`} /> is the time scale of the internal transient of interest, and <Math tex={String.raw`\tau_{\mathrm{input}}`} /> is the time over which the input changes appreciably. The numerator measures how long the system takes to catch up, the denominator how long the input takes to change. Their ratio is dimensionless.
+
+For an internal time scale of 0.05 seconds and an input time scale of one second, the ratio is 0.05. If both are 0.05 seconds, it is one. These are hypothetical values. A small ratio alone cannot guarantee accuracy or stability for every nonlinear system. The trajectories and residual errors provide a direct check.
+
+</CandidateEquation>
+
+A low-pass filter smooths observations. Learning a low-dimensional input-dependent structure is a different operation. One must characterize how the data cluster around that structure, then test its value for prediction and control.
+
+## 3. Why record operating trajectories?
+
+One way to identify a system is to apply a large step and watch it settle. With soft muscles this can excite hysteresis rarely encountered in normal operation. The researchers address the mismatch by learning the slow response from trajectories recorded while driving the device through motions relevant to control.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+A model describes behavior represented in its training range. Data collected only during recovery from large disturbances may say little about a task that requires smooth motion. Conversely, a model trained exclusively on very slow inputs may struggle with rapid transitions. Data collection needs to cover both input range and rate of change.
+
+The public preprint distinguishes a single HASEL actuator from a joint that combines two artificial muscles and clutches. Seven forced response trajectories were used for the single actuator. For the joint, three trajectories were used to approximate its slow manifold with a polynomial of up to degree seven. The reported normalized mean trajectory error for joint prediction was 8.13%.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+<strong>Model prediction error and closed-loop control error answer different questions.</strong> First one tests how well a model predicts the output for a specified input. Then one tests how well the joint follows a target when the model generates commands. Actuator limits and measurement delays can introduce errors even with a good predictive model.
+
+## 4. Expressing joint motion with one command
+
+The preprint describes a joint with a HASEL muscle on either side and a clutch controlling the transmission of force from each muscle. Although it has several physical inputs, the controller activates a muscle and its clutch together and uses one side at a time. The sign of a scalar command can therefore select the active side.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Varying four arbitrary inputs simultaneously presents a different modeling problem from varying a scalar under a prescribed operating rule. To interpret the success of a low-dimensional model, examine the material time scales and <strong>how the controller restricts the input space</strong>.
+
+With joint angle <Math tex={String.raw`\theta`} /> and command <Math tex={String.raw`u`} />, the learned relationship is <Math tex={String.raw`\theta\approx g(u)`} />. Forward prediction takes a command and returns an angle. Control starts with a desired angle and therefore uses the inverse, <Math tex={String.raw`u_{\mathrm{ff}}=g^{-1}(\theta_d)`} />. This inverse supplies the feedforward command.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+A polynomial approximation need not have a unique inverse over its entire domain. Several inputs may yield the same angle, and the curve may turn outside the training range. An implementation must specify the valid input interval and the rules for direction and switching. These considerations arise when converting a model into a controller.
+
+## 5. Why add error correction to the predicted command?
+
+If the model captures the main trend, it can anticipate an input close to the one required. Changes in load and residual modeling errors can still displace the measured joint angle from its target. Feedforward supplies the principal command, while PI feedback uses the measured error to correct the remaining discrepancy.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+<NewsFigure media="soft-muscles-controller" lang="en" />
+
+<CandidateEquation lang="en" id="soft-controller" title="How are the target command and error correction combined?" tex={String.raw`u_{\mathrm{cmd}}=g^{-1}(\theta_d)+K_pe+K_i\int_0^t e(\tau)\,\mathrm{d}\tau,\qquad e=\theta_d-\theta`}>
+
+<Math tex={String.raw`\theta_d`} /> is the desired angle, <Math tex={String.raw`\theta`} /> the measured angle, and <Math tex={String.raw`e`} /> their difference. Subtraction gives a signed measure of how far the joint falls short or overshoots. <Math tex={String.raw`g^{-1}(\theta_d)`} /> is the feedforward command obtained by inverting the learned relationship.
+
+<Math tex={String.raw`K_pe`} /> corrects in proportion to the current error. The integral term accumulates persistent error over time. The three terms can be added because the base input and both corrections share the same command units. The device subsequently applies saturation, slew-rate limits, and clutch switching. This expression shows the sum before those operations.
+
+For illustration, <strong>assume</strong> a dimensionless command <Math tex={String.raw`u`} /> produces an angle of <Math tex={String.raw`g(u)=40u`} /> degrees. A target of 20 degrees gives a feedforward command of 0.5. A measurement of 18 degrees leaves a two-degree error. With proportional gain 0.02 command units per degree and an already computed integral correction of 0.01, the total is <Math tex={String.raw`0.5+0.04+0.01=0.55`} />. These numbers demonstrate the addition. They are neither the paper’s voltages and gains nor suggested operating settings.
+
+</CandidateEquation>
+
+An integral term can remove persistent error. If it continues to accumulate while the actuator is saturated, however, an excessive command can persist. The paper’s control diagram includes anti-windup and command limits. Both connect the mathematical controller to inputs the physical device can accept.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Switching force transmission to the opposite clutch introduces a transition that a single continuous polynomial cannot describe on its own. The paper distinguishes summing commands, coupling muscles to clutches, and limiting the input. Comparisons on switching hardware should apply the same rules to the baseline.
+
+## 6. What did the experiment compare?
+
+The closed-loop preprint experiment compared PI alone, learned inverse-model feedforward alone, and the two together. It used a previously unseen random target trajectory, with identical saturation, slew-rate limits, and clutch schedules. The PI gains for the combined and feedback-only controllers were tuned separately on short calibration trajectories and then fixed.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+| Controller | RMS tracking error | Maximum absolute error |
+|---|---:|---:|
+| PI feedback alone | 7.63° | 26.00° |
+| Inverse-model feedforward alone | 3.63° | 16.67° |
+| Inverse-model feedforward + PI | 2.38° | 10.41° |
+
+<small>The table values were checked against arXiv v1 (January 6, 2026) and page 8 of the September 16, 2026 accepted early-release PDF. Original Figures 6 and 7 are excerpted from the latter under CC BY 4.0. It is an Article in Press, ahead of final copyediting.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a></small>
+
+RMS summarizes tracking across an entire trajectory. Maximum error identifies the largest single deviation. Together they show whether improvements in average tracking extend to the worst observed instant.
+
+<CandidateEquation lang="en" id="soft-rms" title="Why square the errors, average them, and take a square root?" tex={String.raw`e_{\mathrm{RMS}}=\sqrt{\frac{1}{N}\sum_{i=1}^{N}(\theta_{d,i}-\theta_i)^2}`}>
+
+<Math tex={String.raw`N`} /> is the number of time points, and <Math tex={String.raw`\theta_{d,i}-\theta_i`} /> is the error at each point. Subtracting gives the signed difference between target and measurement. Squaring prevents positive and negative errors from canceling and gives large errors more weight. Summation gathers the errors, division by <Math tex={String.raw`N`} /> takes their mean, and the square root restores the angular unit.
+
+For errors of 1°, −1°, 3°, and −3°, the signed mean is zero, while the RMS is <Math tex={String.raw`\sqrt{(1+1+9+9)/4}=\sqrt{5}\approx2.236`} /> degrees. A zero mean alone is insufficient evidence of good tracking. RMS describes error across the record, and maximum absolute error captures the largest departure.
+
+</CandidateEquation>
+
+Relative to feedback alone, the reduction in RMS with the combined controller is <Math tex={String.raw`(7.63-2.38)/7.63\times100\approx68.8\%`} />. Relative to feedforward alone it is <Math tex={String.raw`(3.63-2.38)/3.63\times100\approx34.4\%`} />. The denominators differ, so a phrase such as “a reduction of roughly two-thirds” needs to identify the baseline.
+
+A lower average still permits large momentary deviations. The combined controller’s 2.38° RMS belongs alongside its 10.41° maximum. In a precision task with a tight tolerance for a single deviation, average performance cannot establish suitability.
+
+## 7. Conditions that made a simple model possible
+
+First, the model describes slow operation. As inputs change faster, omitted transients and hysteresis can matter more. The compact relationship must be judged within the regime that supports it. The experiments do not establish its accuracy for fast impacts or arbitrary high-frequency motion.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Second, the joint follows a restricted input rule for paired muscles and clutches. Extending it to different loads, simultaneous activation, or multiple coupled joints would require reconsidering the input and state spaces. These are transfer questions for a different robot.
+
+Third, sample count and representativeness differ. Each of the three training trajectories can contain many successive observations. Three trajectories do not mean that three independent numbers characterize every motion. Replicate devices, changed loads, and materials after aging are separate tests.
+
+Fourth, the preprint estimates control effort from the magnitudes of the voltages commanded to the two muscles. Smaller errors over a similar command range do not determine how much electric power was saved. Voltage magnitude alone gives neither current nor energy consumption.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+### Checking whether the model learned its operating range
+
+A follow-up experiment could fix the split between training and evaluation trajectories in advance. Adjacent time-series samples are often similar. Randomly mixing all samples can turn the task into predicting a near neighbor of a training observation. Holding out entire trajectories better tests tracking of a new motion.
+
+Amplitude and rate could then be varied independently. Errors that emerge with a larger amplitude can have a different cause from errors at higher speed within the same range. This helps distinguish leaving the valid input–output interval from losing time-scale separation. These are proposed experiments, not additional results from the paper.
+
+Control evaluation also needs the time history. Even with lower overall RMS, a concentration of errors at reversals may determine practical precision. Aligning the target, measurement, command saturation, and clutch state on one time axis helps distinguish model residuals from switching effects.
+
+For a device intended for long-term use, repeating the procedure over time would show how far the input–output relationship drifts. The size of that drift informs the choice between a small correction and retraining. Knowing when to recheck a compact model makes it more useful in service.
+
+### Different motions can have the same RMS
+
+Compare hypothetical four-point errors <Math tex={String.raw`[2,2,2,2]`} /> and <Math tex={String.raw`[0,0,0,4]`} />. Both have a sum of squared errors of 16, a mean square of four, and an RMS of two. One has a persistent offset. The other concentrates its entire error in one instant. This is why tracking assessments should include peak error and a time trace alongside RMS.
+
+Dividing the record into command reversals, clutch transitions, and stationary targets can expose patterns hidden in the aggregate. The two arrays illustrate the metric. They do not come from an independent analysis of the robot’s raw logs.
+
+## 8. What carries over to control research?
+
+For a new device, start by asking <strong>which states decay quickly and which persist during the motion it will actually perform</strong>. Collect data in that regime and examine residuals in the learned input–output relationship. Identify where the inverse is usable, specify the input limits, and then test the closed loop.
+
+This sequence is a research-design perspective. A real high-voltage HASEL device requires electrical and mechanical protection and an assessment of its measurement conditions. The example’s dimensionless command must not be applied as a device voltage.
+
+The authors’ Zenodo release describes MATLAB examples linked to SSMLearn, including a numerical model and an experimental actuator. Reproducing the hardware results also requires checking the data, software environment, sensor processing, and command limits.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+Sophisticated nonlinear theory can lead to a simple real-time controller. <strong>Theory identifies when the simplification is valid, data supply the device-specific relationship, and feedback reduces the remaining discrepancy.</strong> These distinct roles connect the reduced model to measured robot performance.
+
+## 9. Sources and scope
+
+<a id="news-ref-1" href="https://www.nature.com/articles/s41467-026-77664-0" data-news-reference="1" target="_blank" rel="noopener noreferrer">[1]</a> Bettini, L., Kazemipour, A., Katzschmann, R. K. & Haller, G. *Nonlinear spectral modeling and control of soft-robotic muscles from data*. Nature Communications, early release on September 16, 2026.
+
+<a id="news-ref-2" href="https://arxiv.org/html/2601.03247v1" data-news-reference="2" target="_blank" rel="noopener noreferrer">[2]</a> Public preprint of the same study, arXiv:2601.03247v1, January 6, 2026. Earlier version used to compare the architecture, equations, and experimental values.
+
+<a id="news-ref-3" href="https://zenodo.org/records/21412026" data-news-reference="3" target="_blank" rel="noopener noreferrer">[3]</a> MATLAB materials and examples released by the authors.
+<small>Sources reviewed through September 18, 2026. The publisher identifies the early release as peer-reviewed. Experimental values were checked against arXiv v1 and the accepted early-release PDF. Original Figures 6 and 7 come from the latter under CC BY 4.0 and link to that version. This review did not independently repeat the hardware experiments or execute the code.</small>

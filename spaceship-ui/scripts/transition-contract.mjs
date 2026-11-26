@@ -114,6 +114,7 @@ const transitionCss = read('src/styles/transitions.css');
 const postCard = read('src/components/PostCard.svelte');
 const writingItem = read('src/components/WritingListItem.astro');
 const researchPage = read('src/pages/research.astro');
+const groupedWriting = read('src/components/GroupedWritingList.astro');
 const postPage = read('src/pages/posts/[...slug]/index.astro');
 
 if (!layout.includes("import '@/styles/transitions.css'")) {
@@ -132,11 +133,21 @@ if (!layout.includes('<ClientRouter fallback="animate"')) {
 for (const [relative, source] of [
   ['PostCard.svelte', postCard],
   ['WritingListItem.astro', writingItem],
-  ['research.astro', researchPage],
 ]) {
   if (!source.includes('data-post-transition-slug') || !source.includes('data-post-transition-title')) {
     issues.push(`${relative}: post transition source markers are incomplete`);
   }
+}
+
+// Research delegates its links to the same marked WritingListItem component.
+// Keep source-chain checks and the rendered source/title parity checks below.
+const inlineResearchSources = researchPage.includes('data-post-transition-slug') && researchPage.includes('data-post-transition-title');
+const groupedResearchSources = researchPage.includes("import GroupedWritingList from '@/components/GroupedWritingList.astro'") &&
+  researchPage.includes('<GroupedWritingList ') &&
+  groupedWriting.includes("import WritingListItem from './WritingListItem.astro'") &&
+  groupedWriting.includes('<WritingListItem ');
+if (!inlineResearchSources && !groupedResearchSources) {
+  issues.push('research.astro: marked post links must be inline or delegated to GroupedWritingList/WritingListItem');
 }
 
 if (!postPage.includes('data-post-page-slug') || !postPage.includes('data-post-transition-static')) {

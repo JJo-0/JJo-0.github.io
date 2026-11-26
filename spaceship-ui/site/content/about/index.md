@@ -37,14 +37,15 @@ title: '안녕하세요, 박지호입니다.'
 
 고대역폭 센서 데이터를 임베디드 시스템에 기록할 때 발생하는 Page Cache Writeback 병목과 완화 방안을 다룬 연구입니다.
 
-### ICCAS 2026 · 채택, 발표예정
+### ICCAS 2026 · 포스터 발표 완료
 
-**Markerless RGB-D speed and separation monitoring with directed dynamic safety zones**
+**[Markerless Multi RGB-D Speed and Separation Monitoring with Perception-Aware Dynamic Safety Zones](https://ras.papercept.net/conferences/scripts/rtf/ICCAS2026_ContentListWeb_3.html)**
 
-**Ji-Ho Park**, Sang-Jun Lee, Kwang-Hee Lee, Tae-Yong Kuc  
-ICCAS 2026 · 제1저자
+**Ji Ho Park**, Sangjun Lee, Tae-Yong Kuc, Kwang Hee Lee, Hyunsu Kim, Hyeong Rae Cho  
+ICCAS 2026 · 제1저자 · 포스터 발표 (ThPo4P.4)  
+2026.10.29 · 일본 삿포로, Hotel Emisia
 
-RGB-D 카메라로 사람의 관절 위치를 추정하고, 로봇 방향의 접근속도와 인식 불확실성을 반영해 동적 안전영역을 구성하는 연구입니다.
+다중 RGB-D 카메라로 융합한 사람 관절 위치를 활용하여 로봇 링크 방향 접근속도와 작업환경별 센서 보정 잔차를 반영한 동적 안전영역을 갱신합니다. UR5e 작업환경 녹화 데이터 재생 평가에서 고정속도 기준 방식과 비교했습니다. 안전 인증 제어기 자체가 아닌 온라인 인식 입력에 관한 연구입니다.
 
 ## 🔬 연구 및 프로젝트
 

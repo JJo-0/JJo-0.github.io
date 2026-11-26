@@ -57,14 +57,14 @@ These third-party images are not relicensed under the repository MIT license. Se
 - `cover-imec-nbtin` — ©imec · 2026 · Figure 1; imec 보도·발표용 사진 이용 조건; https://www.imec-int.com/en/press/imec-advances-scalable-superconducting-technology-world-first-nbtin-circuits-and-30nm
 - `cover-rentosertib-aging` — Alex Zhavoronkov 외 · Nature Biotechnology · 2026 · Figure 1; CC BY 4.0; https://www.nature.com/articles/s41587-026-03286-y
 
-## Additional NEWS source figures — 2026-09-13
+## Additional NEWS source figures (2026-09-13)
 
-Pending item-level review: seven figure assets and inherited extraction records are retained from the existing PR for review; source-pixel correspondence and all individual reuse/credit conditions have not been confirmed. This notice and the inherited license fields are not a current rights clearance. No article deployment is authorized by these records.
+The two figure excerpts below appear with their original captions under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Each publisher article includes the images under its license unless a separate credit line provides otherwise. These specific figure captions give no separate credit exclusion. On 2026-11-27 the lossless WebP images were checked pixel by pixel against the recorded PDF crops. The two source links, PDF digests, crop coordinates, dimensions, and output checksums are in `spaceship-ui/site/assets/assets/posts/news-depth-20260913/provenance.json`.
 
-Seven figures described in the inherited records as complete with original captions are stored in `spaceship-ui/site/assets/assets/posts/news-depth-20260913/`. `provenance.json` gives each source URL, PDF SHA-256, page and bounding rectangle, resulting dimensions, image SHA-256, original authors and license. Figure panels, axes and values were not rewritten; extraction and lossless WebP conversion are documented. CLEAR-EC/HugCL/MnTe/DLCatalysis/CHORUS retain CC BY-NC-ND 4.0; solar-blind/GLUD1 retain the terms recorded from their articles. These scientific figures are not relicensed as repository code; commercial/advertising reuse requires a separate rights decision.
+- Yang Liu et al., *Nature Communications*, 2026. [Optical properties of BTBTT8-syn phototransistor, Fig. 2](https://www.nature.com/articles/s41467-026-77523-y/figures/2).
+- Michihiro Hashimoto et al., *Nature Communications*, 2026. [Glud1 inhibition supports HSC maintenance in the context of robust cytokine responses, Fig. 4](https://www.nature.com/articles/s41467-026-77151-6/figures/4).
 
-The two `sulfur-*-en.svg` files are English-label editions of this blog's own educational plots. Their geometry and illustrative data are preserved; they are not measurements from the research paper. `site/news-media-en.json` preserves attribution, license and change descriptions for the existing four translated articles' media.
-
+For the five additional figures from CC BY-NC-ND articles, the new explanatory sections link to the publisher's figure pages and captions.
 
 ## September 15, 2026 NEWS background research figures
 
@@ -96,3 +96,10 @@ The July hydrogen and 2024 OECT figures are background from different papers, no
 - rubin-rack-background: Genevieve Martin / Oak Ridge National Laboratory; CC BY 2.0; https://commons.wikimedia.org/wiki/File:ORNL_Launches_Summit_Supercomputer_(31430046567).jpg; https://creativecommons.org/licenses/by/2.0/. 2018 Summit rack photograph; not Vera Rubin or its benchmark system. Proportional resize and WebP conversion only.
 - ms-ebv-micrograph: NIAID; Public domain; https://www.eurekalert.org/multimedia/963089; https://www.eurekalert.org/multimedia/963089. NIAID electron microscopy of three Epstein-Barr virions; background, not the 2026 study specimen. Proportional resize and WebP conversion only.
 - hemophilia-aav-micrograph: Graham Beards; CC BY-SA 4.0; https://commons.wikimedia.org/wiki/File:AAVs_by_electron_microscopy.jpg; https://creativecommons.org/licenses/by-sa/4.0/. 2019 micrograph: large adenovirus particles surrounded by smaller AAV particles; not BBM-H901 trial material. Proportional resize and WebP conversion only.
+
+
+## Stanford CS231n 2026 semantic segmentation commentary
+
+`spaceship-ui/site/assets/assets/posts/segmentation-from-pixels-to-robot-observations/slides/` contains full-page rasterizations of pages 32–64 of [CS231n 2026 Lecture 9](https://cs231n.stanford.edu/slides/2026/lecture_9.pdf), dated April 28, 2026. The original author footer and source credits are retained. Each page is paired with original Korean explanation of its specific visual and operation, rather than offered as a standalone replacement for the full lecture. The complete 147-page PDF is not bundled.
+
+The original slides and embedded material remain the property of their respective rights holders. This notice does not assert that public accessibility grants a redistribution license or grant any new rights to readers. Use in this article is contextual educational quotation/commentary; a blanket reuse license has not been verified. Source and output hashes, pages, dimensions, and transformations are recorded in `spaceship-ui/docs/segmentation-slide-provenance.json`. Proportional rasterization and WebP conversion only; no cropping or removal of credits.

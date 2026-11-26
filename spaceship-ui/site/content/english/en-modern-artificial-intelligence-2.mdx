@@ -1,0 +1,1240 @@
+---
+title: Modern Artificial Intelligence II — Core Learning Tasks and Generalization
+description: A complete page, paragraph, figure, and equation ledger for thirteen
+  ECE5992 pages, connecting classification, regression, density estimation, generalization,
+  regularization, cross-validation, SVMs, minimum-distance and Bayes classifiers,
+  and dimensionality to research through 2026.
+pubDate: 2026-08-18
+updatedDate: 2026-08-18
+category: ai-machine-learning
+subcategory: machine-learning-foundations
+type: study-note
+tags:
+- machine-learning
+- generalization
+- bayes-classifier
+- support-vector-machine
+- uncertainty
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 2
+featured: true
+lang: en
+series:
+  id: modern-artificial-intelligence
+  order: 2
+slug: 2026-08-18-modern-artificial-intelligence-2
+draft: false
+translationKey: series-modern-artificial-intelligence-2-20261109
+translatedPosts:
+  ko-KR: 2026-08-18-modern-artificial-intelligence-2
+---
+
+
+import SourceFormula from '@/components/post/SourceFormula.astro';
+import KFoldConceptLesson from '@/components/post/KFoldConceptLesson.astro';
+import { part2Formula } from '@/lib/modern-ai-part2';
+
+> **Completeness contract**  
+> This article follows all thirteen pages of `1_Ch2 Fundamentals of ML.pdf`. Numbered and unnumbered displayed equations, meaningful inline mathematics, equations inside figures, question placeholders `??`, captions, footnotes, references, and legible handwriting are individually linked to ledgers. Source blanks and suspected errors are preserved first; completed and corrected variants receive separate statuses.
+
+> **Keep three layers distinct.**  
+> Separate **the 2025 PDF reconstruction**, **editorial and mathematical verification**, and **the research update dated August 18, 2026**. Later research does not retroactively rewrite the lecture's claims.
+
+## Ledger status
+
+- PDF mapping: **13 of 13 pages**
+- Source equations: **103** (`MAI-P2-001`–`MAI-P2-103`)
+- Equation statuses: `source-exact`, `source-suspect`, `editorially-completed`, `corrected-variant`
+- Source PDF SHA-256: `c6ac9d80c5ae2bc96f0aa8aec70c126f559e6dd5c36d51a46eb1bdb6775e836c`
+- Figures are reconstructed as new diagrams or precise descriptions preserving axes, legends, values, and structure, rather than reproducing source images.
+
+---
+
+# Reconstructing the PDF source
+
+
+{/* source-content:P2-C001 */}
+## 2. Fundamentals of machine learning
+
+
+{/* source-content:P2-C002 */}
+Machine learning is introduced as methods that automatically discover patterns in large datasets and use them to predict future data or make decisions under uncertainty. The lecture presents it as a response to automated-analysis demands in the era of big data.
+
+
+{/* source-content:P2-C003 */}
+Even an apparently enormous dataset can contain few effective samples of a rare event of interest. The lecture describes this **long-tail** property: a few events are common, while most are rare.
+
+
+{/* source-content:P2-C004 */}
+## 2.1 Tasks
+
+
+{/* source-content:P2-C005 */}
+### 2.1.1 Classification
+
+
+{/* source-content:P2-C006 */}
+Classification learns a mapping from inputs to outputs. The output space is <SourceFormula formula={part2Formula('MAI-P2-001')} display={false} />. With <SourceFormula formula={part2Formula('MAI-P2-002')} display={false} />, the task is binary classification, usually using <SourceFormula formula={part2Formula('MAI-P2-003')} display={false} />; with <SourceFormula formula={part2Formula('MAI-P2-004')} display={false} />, it is multiclass classification.
+
+
+{/* source-content:P2-C007 */}
+- Nonexclusive classes give multilabel classification, which can be viewed as a multioutput model predicting several related binary labels together.
+
+
+{/* source-content:P2-C008 */}
+Unless otherwise stated, classification here means single-output multiclass classification.
+
+
+{/* source-content:P2-C009 */}
+As function approximation, classification assumes an unknown relationship <SourceFormula formula={part2Formula('MAI-P2-005')} display={false} /> and estimates it from labeled training examples.
+
+
+{/* source-content:P2-C010 */}
+<SourceFormula formula={part2Formula('MAI-P2-006')} display={true} />
+
+
+{/* source-content:P2-C011 */}
+After learning, <SourceFormula formula={part2Formula('MAI-P2-007')} display={false} /> predicts new inputs. Working well on previously unseen inputs is generalization.
+
+
+{/* source-content:P2-C012 */}
+### 2.1.2 Regression
+
+
+{/* source-content:P2-C013 */}
+Regression predicts numerical values from inputs. The learned function has form <SourceFormula formula={part2Formula('MAI-P2-008')} display={false} />. Its structure resembles classification, but its outputs are real-valued.
+
+
+{/* source-content:P2-C014 */}
+The lecture compares a line and quadratic polynomial using one real input <SourceFormula formula={part2Formula('MAI-P2-009')} display={false} /> and response <SourceFormula formula={part2Formula('MAI-P2-010')} display={false} />. The page ends by asking which fit looks better, leaving `??` rather than supplying an answer.
+
+
+{/* source-annotation:P2-ANN-01 */}
+> **Lecture annotation — PDF p. 1**  
+> A note appearing to read “path” and a λ symbol occur near the regression example. Context is insufficient to determine their meaning, so the ledger marks them **uncertain to read**.
+
+
+{/* source-figure:P2-FIG-01 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 760 260" role="img" aria-label="A newly drawn comparison of linear and quadratic models" class="w-full">
+    <g transform="translate(35 25)">
+      <text x="125" y="0" text-anchor="middle" font-size="18" font-weight="700">Simple linear model</text>
+      <line x1="20" y1="190" x2="300" y2="190" stroke="currentColor"/><line x1="20" y1="190" x2="20" y2="20" stroke="currentColor"/>
+      <g fill="currentColor" opacity=".65"><circle cx="45" cy="170" r="5"/><circle cx="78" cy="145" r="5"/><circle cx="105" cy="153" r="5"/><circle cx="138" cy="110" r="5"/><circle cx="172" cy="125" r="5"/><circle cx="205" cy="70" r="5"/><circle cx="238" cy="92" r="5"/></g>
+      <line x1="38" y1="168" x2="255" y2="55" stroke="currentColor" stroke-width="3"/>
+      <text x="155" y="218" text-anchor="middle">MAI-P2-011: y=b₀+b₁x</text>
+    </g>
+    <g transform="translate(405 25)">
+      <text x="125" y="0" text-anchor="middle" font-size="18" font-weight="700">Polynomial model</text>
+      <line x1="20" y1="190" x2="300" y2="190" stroke="currentColor"/><line x1="20" y1="190" x2="20" y2="20" stroke="currentColor"/>
+      <g fill="currentColor" opacity=".65"><circle cx="45" cy="170" r="5"/><circle cx="78" cy="145" r="5"/><circle cx="105" cy="153" r="5"/><circle cx="138" cy="110" r="5"/><circle cx="172" cy="125" r="5"/><circle cx="205" cy="70" r="5"/><circle cx="238" cy="92" r="5"/></g>
+      <path d="M38 174 C95 165, 145 145, 180 115 S230 48,255 35" fill="none" stroke="currentColor" stroke-width="3"/>
+      <text x="155" y="218" text-anchor="middle">MAI-P2-012: y=b₀+b₁x+b₂x²</text>
+    </g>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 1, reconstructed.</strong> A line and quadratic curve fit the same scatterplot. Visual fit alone should not select a model; the figure anticipates the need for generalization and validation.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C015 */}
+<SourceFormula formula={part2Formula('MAI-P2-011')} display={false} />
+
+
+{/* source-content:P2-C016 */}
+<SourceFormula formula={part2Formula('MAI-P2-012')} display={false} />
+
+
+{/* source-content:P2-C017 */}
+### 2.1.3 Density estimation
+
+
+{/* source-content:P2-C018 */}
+Density estimation learns <SourceFormula formula={part2Formula('MAI-P2-013')} display={false} />, interpreting <SourceFormula formula={part2Formula('MAI-P2-014')} display={false} /> as a PDF or PMF over the space generating samples.
+
+
+{/* source-content:P2-C019 */}
+A good density model learns data structure, including dense regions and rarely observed ones. Knowing a density does not automatically solve every related task: required computations can still be intractable.
+
+
+{/* source-content:P2-C020 */}
+## 2.2 Example: linear regression
+
+
+{/* source-content:P2-C021 */}
+The input is <SourceFormula formula={part2Formula('MAI-P2-015')} display={false} /> and output is scalar <SourceFormula formula={part2Formula('MAI-P2-016')} display={false} />. Predictions are defined as follows.
+
+
+{/* source-content:P2-C022 */}
+<SourceFormula formula={part2Formula('MAI-P2-017')} display={true} />
+
+
+{/* source-content:P2-C023 */}
+Here, <SourceFormula formula={part2Formula('MAI-P2-018')} display={false} /> is the parameter vector. Each component multiplies its corresponding feature, determining that feature's contribution to prediction.
+
+
+{/* source-content:P2-C024 */}
+The learning algorithm adjusts weights using training data <SourceFormula formula={part2Formula('MAI-P2-019')} display={false} />. An intuitive criterion minimizes training mean squared error (MSE).
+
+
+{/* source-content:P2-C025 */}
+<SourceFormula formula={part2Formula('MAI-P2-020')} display={true} />
+
+
+{/* source-content:P2-C026 */}
+The lecture derives the normal equation by setting the gradient to zero without skipping intermediate lines.
+
+
+{/* source-content:P2-C027 */}
+<SourceFormula formula={part2Formula('MAI-P2-021')} display={true} />
+
+
+{/* source-content:P2-C028 */}
+<SourceFormula formula={part2Formula('MAI-P2-022')} display={true} />
+
+
+{/* source-content:P2-C029 */}
+<SourceFormula formula={part2Formula('MAI-P2-023')} display={true} />
+
+
+{/* source-content:P2-C030 */}
+<SourceFormula formula={part2Formula('MAI-P2-024')} display={true} />
+
+
+{/* source-content:P2-C031 */}
+<SourceFormula formula={part2Formula('MAI-P2-025')} display={true} />
+
+
+{/* source-content:P2-C032 */}
+<SourceFormula formula={part2Formula('MAI-P2-026')} display={true} />
+
+
+{/* source-content:P2-C033 */}
+<SourceFormula formula={part2Formula('MAI-P2-027')} display={true} />
+
+
+{/* source-content:P2-C034 */}
+The final expression is source equation (1). Its inverse form implicitly assumes an invertible Gram matrix.
+
+
+{/* source-content:P2-C035 */}
+<SourceFormula formula={part2Formula('MAI-P2-028')} display={true} />
+
+
+{/* source-content:P2-C036 */}
+The source attributes this derivative identity to The Matrix Cookbook.
+
+
+{/* source-annotation:P2-ANN-02 */}
+> **Lecture annotation — PDF p. 2, training-sample notation**  
+> The note reads `(x_l,y_l)` as one training sample and stacks rowwise feature vectors to form `X^(train)`.
+
+
+{/* source-content:P2-C037 */}
+<SourceFormula formula={part2Formula('MAI-P2-032')} display={true} />
+
+
+{/* source-content:P2-C038 */}
+<SourceFormula formula={part2Formula('MAI-P2-033')} display={true} />
+
+
+{/* source-content:P2-C039 */}
+<SourceFormula formula={part2Formula('MAI-P2-029')} display={true} />
+
+
+{/* source-content:P2-C040 */}
+<SourceFormula formula={part2Formula('MAI-P2-030')} display={true} />
+
+
+{/* source-content:P2-C041 */}
+<SourceFormula formula={part2Formula('MAI-P2-031')} display={true} />
+
+
+{/* source-annotation:P2-ANN-03 */}
+> **Uncertain reading — lower-right PDF p. 2**  
+> A dimensional comparison resembling `L ≫ N` and a numerical example are obscured by overlapping handwriting. Their location is retained without speculative reconstruction.
+
+
+{/* source-content:P2-C042 */}
+## 2.3 Underfitting and overfitting
+
+
+{/* source-content:P2-C043 */}
+The central machine-learning challenge is maintaining performance on inputs not used in training. This is generalization.
+
+
+{/* source-content:P2-C044 */}
+Optimizing parameters to reduce training-set error is an optimization problem. Machine learning adds the requirement of low generalization or test error: expected error on new inputs.
+
+
+{/* source-content:P2-C045 */}
+The linear-regression example evaluates the model from equation (1) on a test set.
+
+
+{/* source-content:P2-C046 */}
+<SourceFormula formula={part2Formula('MAI-P2-034')} display={true} />
+
+
+{/* source-content:P2-C047 */}
+Here, M is the number of test samples.
+
+
+{/* source-content:P2-C048 */}
+Training and test data are modeled as draws from a data-generating distribution. The typical i.i.d. assumption makes samples independent and gives training and test sets the same distribution.
+
+
+{/* source-content:P2-C049 */}
+For a procedure that samples training data, optimizes parameters, and then samples test data, the lecture explains that expected test error is no smaller than expected training error.
+
+
+{/* source-content:P2-C050 */}
+<SourceFormula formula={part2Formula('MAI-P2-035')} display={true} />
+
+
+{/* source-content:P2-C051 */}
+- A good learning algorithm should achieve low training error.
+
+
+{/* source-content:P2-C052 */}
+- It should also keep the gap between training and test errors small.
+
+
+{/* source-content:P2-C053 */}
+<strong>Underfitting</strong> occurs when the model cannot obtain sufficiently low error even on training data.
+
+
+{/* source-content:P2-C054 */}
+<strong>Overfitting</strong> occurs when the training–test error gap is excessively large.
+
+
+{/* source-content:P2-C055 */}
+Changing model capacity controls these possibilities. Low capacity may fail to represent the training set; high capacity may memorize properties that do not help on test data.
+
+
+{/* source-content:P2-C056 */}
+### 2.3.1 No free lunch theorem
+
+
+{/* source-content:P2-C057 */}
+> “All models are wrong, but some are useful.” — George Box
+
+
+{/* source-content:P2-C058 */}
+Machine learning designs models and fitting algorithms. Cross-validation can select empirically better methods for a particular problem, but no single model is optimal for every problem: assumptions useful in one domain can hurt in another.
+
+
+{/* source-annotation:P2-ANN-04 */}
+> **Uncertain reading — bottom of PDF p. 3**  
+> Handwriting following “example” cannot be determined reliably because of image resolution and overlapping strokes.
+
+
+{/* source-figure:P2-FIG-02 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-3">
+    <div class="rounded-xl border border-border p-4"><h4 class="font-bold">Underfitting</h4><p class="text-sm text-muted-foreground">A simple line misses the samples' curvature, producing high training error.</p></div>
+    <div class="rounded-xl border border-border p-4"><h4 class="font-bold">Overfitting</h4><p class="text-sm text-muted-foreground">An excessively complex curve oscillates through samples, widening the training–test gap.</p></div>
+    <div class="rounded-xl border border-border p-4"><h4 class="font-bold">Appropriate capacity</h4><p class="text-sm text-muted-foreground">A curve follows the overall trend without chasing local noise.</p></div>
+  </div>
+  <figcaption class="mt-4 text-sm text-muted-foreground"><strong>Figure 2, reconstructed.</strong> Compare insufficient, excessive, and appropriate capacity in one view.</figcaption>
+</figure>
+
+
+{/* source-figure:P2-FIG-03 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-3">
+    <div class="rounded-xl bg-muted/30 p-4"><strong>Underfitting — Excessive λ</strong><p class="text-sm">The degree-nine model becomes almost flat and underfits.</p></div>
+    <div class="rounded-xl bg-muted/30 p-4"><strong>Appropriate weight decay — Medium λ</strong><p class="text-sm">Suppressing high-order oscillations brings the fit closer to the true quadratic.</p></div>
+    <div class="rounded-xl bg-muted/30 p-4"><strong>Overfitting — λ→0</strong><p class="text-sm">An overfitted curve diverges strongly at the boundaries.</p></div>
+  </div>
+  <figcaption class="mt-4 text-sm text-muted-foreground"><strong>Figure 3, reconstructed.</strong> The true function is quadratic, but all models have degree nine; varying only λ illustrates regularization.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C059 */}
+The no-free-lunch result motivates multiple model families for varied real data structures. Even the same model has different speed, accuracy, and complexity trade-offs under different training algorithms.
+
+
+{/* source-content:P2-C060 */}
+### 2.3.2 Regularization
+
+
+{/* source-content:P2-C061 */}
+A learning algorithm can incorporate preferences suited to a task. Performance improves when those preferences match the problem's structure.
+
+
+{/* source-content:P2-C062 */}
+The linear-regression example adds weight decay to favor smaller weights.
+
+
+{/* source-content:P2-C063 */}
+<SourceFormula formula={part2Formula('MAI-P2-036')} display={true} />
+
+
+{/* source-content:P2-C064 */}
+λ is selected in advance. With <SourceFormula formula={part2Formula('MAI-P2-037')} display={false} /> there is no small-weight preference; larger λ shrinks weights more strongly.
+
+
+{/* source-content:P2-C065 */}
+<SourceFormula formula={part2Formula('MAI-P2-038')} display={false} />
+
+
+{/* source-content:P2-C066 */}
+Figure 3 compares underfitting at excessive λ, a suitable intermediate fit, and overfitting near zero.
+
+
+{/* source-content:P2-C067 */}
+Preferences can be explicit or implicit. This example explicitly favors small-weight linear functions through an added objective term.
+
+
+{/* source-annotation:P2-ANN-05 */}
+> **Lecture annotation — right of Figure 2, PDF p. 4**  
+> Added error-versus-iteration curves distinguish three trends appearing to indicate training, test, and underfitting.
+
+
+{/* source-annotation:P2-ANN-06 */}
+> **Uncertain reading — lower-right PDF p. 4**  
+> Partially legible short notes are not completed by guessing their meaning.
+
+
+{/* source-content:P2-C068 */}
+These different ways of introducing preferences are collectively called regularization.
+
+
+{/* source-content:P2-C069 */}
+**Regularization is any modification of a learning algorithm intended to reduce generalization error rather than training error.**
+
+
+{/* source-content:P2-C070 */}
+Just as no algorithm is best for every problem, no regularizer is universally best. Choose one suited to the task.
+
+
+{/* source-content:P2-C071 */}
+The lecture summarizes deep learning's philosophy as solving broad classes of tasks effectively through very general forms of regularization.
+
+
+{/* source-content:P2-C072 */}
+## 2.4 Hyperparameters and validation sets
+
+
+{/* source-content:P2-C073 */}
+Most learning algorithms have hyperparameters controlling their behavior. These are not the model parameters adapted by the algorithm itself.
+
+
+{/* source-content:P2-C074 */}
+Polynomial degree in Figure 1 is a capacity hyperparameter, as is weight-decay λ.
+
+
+{/* source-content:P2-C075 */}
+Some settings remain hyperparameters because optimization is difficult. More commonly, learning them on the training set is inappropriate: choosing capacity there can favor the maximum available capacity and overfit.
+
+
+{/* source-content:P2-C076 */}
+A validation set unseen by the training algorithm addresses this problem.
+
+
+{/* source-content:P2-C077 */}
+### 2.4.1 Training, validation, and test sets
+
+
+{/* source-content:P2-C078 */}
+- **Training set:** learns model parameters.
+
+
+{/* source-content:P2-C079 */}
+- **Validation set:** estimates generalization to unseen data and selects hyperparameters and configurations.
+
+
+{/* source-content:P2-C080 */}
+- **Test set:** evaluates the final frozen model on genuinely unseen data for an unbiased generalization estimate.
+
+
+{/* source-figure:P2-FIG-04 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-3 md:grid-cols-3"><div class="rounded-xl border p-4 text-center font-bold">Train</div><div class="rounded-xl border p-4 text-center font-bold">Validation</div><div class="rounded-xl border p-4 text-center font-bold">Test</div></div>
+  <div class="mt-4 grid gap-4 md:grid-cols-[1fr_auto_1fr]"><div class="rounded-xl bg-muted/30 p-4"><strong>Hyperparameter candidates</strong><p class="text-sm">iterations, depth, width, optimizer, learning rate, batch size, epochs, …</p></div><div class="self-center text-2xl">→</div><div class="space-y-3"><div class="rounded-xl border p-4 text-center">Model — parameter tuning</div><div class="rounded-xl border p-4 text-center">Frozen model — one final test</div></div></div>
+  <figcaption class="mt-4 text-sm text-muted-foreground">Unnumbered source diagram: training fits model parameters, validation selects configurations, and testing evaluates the frozen model at the end.</figcaption>
+</figure>
+
+
+{/* source-annotation:P2-ANN-07 */}
+> **Lecture annotation — PDF p. 5**  
+> Notes appearing to read “hyper” beside the hyperparameter heading and “dropout” near regularization are present.
+
+
+{/* source-figure:P2-FIG-05 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="space-y-2 font-mono text-xs sm:text-sm">
+    <div><strong>Iteration 1</strong> [TEST][TRAIN][TRAIN][TRAIN][TRAIN]</div>
+    <div><strong>Iteration 2</strong> [TRAIN][TEST][TRAIN][TRAIN][TRAIN]</div>
+    <div><strong>Iteration 3</strong> [TRAIN][TRAIN][TEST][TRAIN][TRAIN]</div>
+    <div class="text-muted-foreground">⋮</div>
+    <div><strong>Iteration k</strong> [TRAIN][TRAIN][TRAIN][TRAIN][TEST]</div>
+  </div>
+  <figcaption class="mt-4 text-sm text-muted-foreground"><strong>Figure 4, reconstructed.</strong> Rotate K nonoverlapping subsets through evaluation while training on the remainder.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C081 */}
+### 2.4.2 Cross-validation
+
+
+{/* source-content:P2-C082 */}
+With a small test set in a fixed split, statistical uncertainty in mean test error makes claims that algorithm A beats B difficult.
+
+
+{/* source-content:P2-C083 */}
+This matters less with hundreds of thousands of samples. Small datasets can instead spend extra computation on repeated training and evaluation across splits, using all samples to estimate mean test error.
+
+
+{/* source-content:P2-C084 */}
+The usual K-fold procedure divides data into K disjoint subsets and runs K experiments. Run k tests on subset k and trains on the remainder; average the K test errors.
+
+
+<KFoldConceptLesson />
+
+
+{/* source-content:P2-C085 */}
+## 2.5 Supervised-learning example: support vector machines
+
+
+{/* source-content:P2-C086 */}
+Like logistic regression, an SVM centers on a linear function <SourceFormula formula={part2Formula('MAI-P2-039')} display={false} /> but outputs class identity rather than probability. It predicts positive for <SourceFormula formula={part2Formula('MAI-P2-040')} display={false} /> and negative for <SourceFormula formula={part2Formula('MAI-P2-041')} display={false} />.
+
+
+{/* source-content:P2-C087 */}
+Its key innovation is the kernel trick. Learning algorithms expressible through sample inner products can fit linear models in transformed spaces without explicitly constructing high-dimensional features.
+
+
+{/* source-content:P2-C088 */}
+The footnote introduces logistic regression as generalized linear regression for binary classification: targets are <SourceFormula formula={part2Formula('MAI-P2-042')} display={false} />, and <SourceFormula formula={part2Formula('MAI-P2-043')} display={false} /> squashes the linear output for probabilistic interpretation.
+
+
+{/* source-content:P2-C089 */}
+<SourceFormula formula={part2Formula('MAI-P2-044')} display={true} />
+
+
+{/* source-content:P2-C090 */}
+The SVM linear function can be rewritten as a sum of inner products with training samples.
+
+
+{/* source-content:P2-C091 */}
+<SourceFormula formula={part2Formula('MAI-P2-045')} display={true} />
+
+
+{/* source-content:P2-C092 */}
+Here, x_l is a training sample and α a coefficient vector. Map inputs through φ(x), then replace inner products with a kernel.
+
+
+{/* source-content:P2-C093 */}
+<SourceFormula formula={part2Formula('MAI-P2-046')} display={true} />
+
+
+{/* source-content:P2-C094 */}
+<SourceFormula formula={part2Formula('MAI-P2-047')} display={true} />
+
+
+{/* source-content:P2-C095 */}
+The function may be nonlinear in x while remaining linear in φ(x) and in α. This corresponds exactly to transforming every input through φ and learning a linear model in that space.
+
+
+{/* source-content:P2-C096 */}
+- With φ fixed and only α optimized, a model nonlinear in original inputs can be learned through convex optimization.
+
+
+{/* source-content:P2-C097 */}
+- κ may be much cheaper to compute than explicitly constructing and dotting the high-dimensional feature vectors.
+
+
+{/* source-content:P2-C098 */}
+The lecture's representative example is the Gaussian kernel.
+
+
+{/* source-content:P2-C099 */}
+<SourceFormula formula={part2Formula('MAI-P2-048')} display={true} />
+
+
+{/* source-content:P2-C100 */}
+The notation <SourceFormula formula={part2Formula('MAI-P2-049')} display={false} /> denotes a normal density with mean μ and covariance Σ.
+
+
+{/* source-figure:P2-FIG-06 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 600 250" role="img" aria-label="A sigmoid rises from near zero to near one as x runs from −6 to 6" class="w-full"><line x1="50" y1="210" x2="560" y2="210" stroke="currentColor"/><line x1="305" y1="20" x2="305" y2="225" stroke="currentColor" opacity=".4"/><path d="M55 205 C180 204 250 185 300 120 C350 55 420 30 555 28" fill="none" stroke="currentColor" stroke-width="4"/><text x="565" y="215">x</text><text x="310" y="28">1</text><text x="310" y="125">0.5</text></svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">The footnote on PDF p. 6 continues into the unnumbered graph at the top of p. 7. Output lies in (0,1), with value 0.5 at x=0.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C101 */}
+## 2.6 Minimum-distance classifiers: deterministic classification
+
+
+{/* source-content:P2-C102 */}
+A minimum-distance classifier calculates distance from a pattern vector to each class prototype and assigns the nearest prototype's class.
+
+
+{/* source-content:P2-C103 */}
+Prototypes are usually class-mean vectors.
+
+
+{/* source-content:P2-C104 */}
+<SourceFormula formula={part2Formula('MAI-P2-050')} display={true} />
+
+
+{/* source-content:P2-C105 */}
+M_c counts patterns used for mean c, S_c is pattern class c, and C is the number of classes.
+
+
+{/* source-content:P2-C106 */}
+Using Euclidean similarity gives the following distances.
+
+
+{/* source-content:P2-C107 */}
+<SourceFormula formula={part2Formula('MAI-P2-051')} display={true} />
+
+
+{/* source-content:P2-C108 */}
+Assign x to the class whose distance is smaller than every other class's.
+
+
+{/* source-content:P2-C109 */}
+<SourceFormula formula={part2Formula('MAI-P2-052')} display={true} />
+
+
+{/* source-content:P2-C110 */}
+Ties with <SourceFormula formula={part2Formula('MAI-P2-053')} display={false} /> are resolved arbitrarily.
+
+
+{/* source-content:P2-C111 */}
+Minimizing distance is equivalent to maximizing the following discriminant.
+
+
+{/* source-content:P2-C112 */}
+<SourceFormula formula={part2Formula('MAI-P2-054')} display={true} />
+
+
+{/* source-content:P2-C113 */}
+<SourceFormula formula={part2Formula('MAI-P2-055')} display={true} />
+
+
+{/* source-content:P2-C114 */}
+In recognition, this is called a decision or discriminant function.
+
+
+{/* source-content:P2-C115 */}
+A two-class boundary contains x where their discriminants agree.
+
+
+{/* source-content:P2-C116 */}
+<SourceFormula formula={part2Formula('MAI-P2-056')} display={true} />
+
+
+{/* source-content:P2-C117 */}
+<SourceFormula formula={part2Formula('MAI-P2-057')} display={true} />
+
+
+{/* source-content:P2-C118 */}
+It is the perpendicular bisector of the segment joining m_c and m_c′: a line for <SourceFormula formula={part2Formula('MAI-P2-058')} display={false} />, a plane for <SourceFormula formula={part2Formula('MAI-P2-059')} display={false} />, and a hyperplane in higher dimensions.
+
+
+{/* source-content:P2-C119 */}
+## 2.7 Bayes classifiers: statistical classification
+
+
+{/* source-content:P2-C120 */}
+Since pattern classes arise from random processes, probabilities matter. This section derives a rule minimizing average classification-error probability.
+
+
+{/* source-content:P2-C121 */}
+### 2.7.1 Bayes classifiers for arbitrary pattern classes
+
+
+{/* source-content:P2-C122 */}
+The quantity <SourceFormula formula={part2Formula('MAI-P2-060')} display={false} /> is the posterior probability that x came from S_c; <SourceFormula formula={part2Formula('MAI-P2-061')} display={false} /> is the loss of action a_c when the true class is S_c′.
+
+
+{/* source-content:P2-C123 */}
+The usual 0–1 loss gives zero for correct decisions and the same unit loss of one for mistakes.
+
+
+{/* source-content:P2-C124 */}
+<SourceFormula formula={part2Formula('MAI-P2-062')} display={true} />
+
+
+{/* source-content:P2-C125 */}
+Conditional mean risk averages the loss of assigning x to a class under posterior probabilities.
+
+
+{/* source-content:P2-C126 */}
+<SourceFormula formula={part2Formula('MAI-P2-063')} display={true} />
+
+
+{/* source-content:P2-C127 */}
+#### Bayes' rule, priors, and class-conditional densities
+
+
+{/* source-content:P2-C128 */}
+<SourceFormula formula={part2Formula('MAI-P2-064')} display={true} />
+
+
+{/* source-content:P2-C129 */}
+In words: posterior = likelihood × prior / evidence. P(S_c) is class probability before observation, P(S_c|x) the posterior afterward, and p(x|S_c) the class-conditional density.
+
+
+{/* source-content:P2-C130 */}
+<SourceFormula formula={part2Formula('MAI-P2-065')} display={true} />
+
+
+{/* source-content:P2-C131 */}
+The source leaves equation (6) blank for students to complete the posterior.
+
+
+{/* source-content:P2-C132 */}
+<SourceFormula formula={part2Formula('MAI-P2-066')} display={true} />
+
+
+{/* source-content:P2-C133 */}
+#### Bayes classifier
+
+
+{/* source-content:P2-C134 */}
+Substituting equation (6) into risk produces the common positive factor 1/p(x).
+
+
+{/* source-content:P2-C135 */}
+<SourceFormula formula={part2Formula('MAI-P2-068')} display={true} />
+
+
+{/* source-content:P2-C136 */}
+Because it is positive and shared across candidate risks, removing it does not change the minimum-risk class.
+
+
+{/* source-content:P2-C137 */}
+<SourceFormula formula={part2Formula('MAI-P2-069')} display={true} />
+
+
+{/* source-content:P2-C138 */}
+Calculating risks at each x and selecting the smallest minimizes overall mean risk.
+
+
+{/* source-content:P2-C139 */}
+<SourceFormula formula={part2Formula('MAI-P2-070')} display={true} />
+
+
+{/* source-content:P2-C140 */}
+#### Bayes classifier with 0–1 loss
+
+
+{/* source-content:P2-C141 */}
+<SourceFormula formula={part2Formula('MAI-P2-071')} display={true} />
+
+
+{/* source-content:P2-C142 */}
+<SourceFormula formula={part2Formula('MAI-P2-072')} display={false} />
+
+
+{/* source-content:P2-C143 */}
+<SourceFormula formula={part2Formula('MAI-P2-073')} display={false} />
+
+
+{/* source-content:P2-C144 */}
+Substituting into equation (7) gives this sum.
+
+
+{/* source-content:P2-C145 */}
+<SourceFormula formula={part2Formula('MAI-P2-074')} display={true} />
+
+
+{/* source-content:P2-C146 */}
+The source again leaves `??` for simplification using total probability.
+
+
+{/* source-content:P2-C147 */}
+<SourceFormula formula={part2Formula('MAI-P2-075')} display={true} />
+
+
+{/* source-content:P2-C148 */}
+When risks are compared, the common p(x) cancels.
+
+
+{/* source-content:P2-C149 */}
+<SourceFormula formula={part2Formula('MAI-P2-077')} display={true} />
+
+
+{/* source-content:P2-C150 */}
+The equivalent rule selects the greatest product of class-conditional likelihood and prior.
+
+
+{/* source-content:P2-C151 */}
+<SourceFormula formula={part2Formula('MAI-P2-078')} display={true} />
+
+
+{/* source-content:P2-C152 */}
+The discriminant under 0–1 loss is:
+
+
+{/* source-content:P2-C153 */}
+<SourceFormula formula={part2Formula('MAI-P2-079')} display={true} />
+
+
+{/* source-content:P2-C154 */}
+Maximizing this discriminant minimizes mean classification risk. Claiming optimality, however, requires knowing p(x|S_c) and P(S_c).
+
+
+{/* source-content:P2-C155 */}
+- Equal class frequencies permit <SourceFormula formula={part2Formula('MAI-P2-080')} display={false} />. Otherwise, domain knowledge or sample frequencies can estimate priors.
+
+
+{/* source-content:P2-C156 */}
+- Estimating N-dimensional class-conditional density p(x|S_c) is difficult with few class samples or poorly behaved densities. Practical Bayes classifiers therefore often assume analytical density families.
+
+
+{/* source-content:P2-C157 */}
+### 2.7.2 Gaussian pattern classes
+
+
+{/* source-content:P2-C158 */}
+Assuming a class-conditional distribution family reduces learning to estimating its parameters rather than an entire density. The most common assumption is multivariate Gaussian.
+
+
+{/* source-content:P2-C159 */}
+<SourceFormula formula={part2Formula('MAI-P2-081')} display={true} />
+
+
+{/* source-content:P2-C160 */}
+A mean vector and covariance matrix fully specify each density.
+
+
+{/* source-content:P2-C161 */}
+<SourceFormula formula={part2Formula('MAI-P2-082')} display={true} />
+
+
+{/* source-content:P2-C162 */}
+<SourceFormula formula={part2Formula('MAI-P2-083')} display={true} />
+
+
+{/* source-content:P2-C163 */}
+Approximating expectations by sample averages gives these estimators.
+
+
+{/* source-content:P2-C164 */}
+<SourceFormula formula={part2Formula('MAI-P2-084')} display={true} />
+
+
+{/* source-content:P2-C165 */}
+<SourceFormula formula={part2Formula('MAI-P2-085')} display={true} />
+
+
+{/* source-content:P2-C166 */}
+The source's covariance denominator 1/M_c is a maximum-likelihood-style sample moment, distinct from the unbiased estimator's 1/(M_c−1).
+
+
+{/* source-content:P2-C167 */}
+The example uses <SourceFormula formula={part2Formula('MAI-P2-086')} display={false} />, class means m₁,m₂, and standard deviations σ₁,σ₂.
+
+
+{/* source-content:P2-C168 */}
+The one-dimensional Gaussian discriminant is printed at the source page's bottom as follows.
+
+
+{/* source-content:P2-C169 */}
+<SourceFormula formula={part2Formula('MAI-P2-087')} display={true} />
+
+
+{/* source-content:P2-C170 */}
+**Source exercise `??`:** sketch both classes' one-dimensional densities.
+
+
+{/* source-content:P2-C171 */}
+Their boundary is a point x₀ where discriminant values agree.
+
+
+{/* source-content:P2-C172 */}
+<SourceFormula formula={part2Formula('MAI-P2-089')} display={true} />
+
+
+{/* source-content:P2-C173 */}
+For equally frequent classes:
+
+
+{/* source-content:P2-C174 */}
+<SourceFormula formula={part2Formula('MAI-P2-090')} display={true} />
+
+
+{/* source-content:P2-C175 */}
+The decision boundary lies at the density curves' intersection.
+
+
+{/* source-content:P2-C176 */}
+<SourceFormula formula={part2Formula('MAI-P2-091')} display={true} />
+
+
+{/* source-content:P2-C177 */}
+Taking a monotone increasing logarithm simplifies Gaussian exponentials.
+
+
+{/* source-content:P2-C178 */}
+<SourceFormula formula={part2Formula('MAI-P2-092')} display={true} />
+
+
+{/* source-content:P2-C179 */}
+<SourceFormula formula={part2Formula('MAI-P2-093')} display={true} />
+
+
+{/* source-content:P2-C180 */}
+Removing the class-independent −N/2 ln(2π) term gives the Gaussian discriminant under 0–1 loss.
+
+
+{/* source-content:P2-C181 */}
+<SourceFormula formula={part2Formula('MAI-P2-094')} display={true} />
+
+
+{/* source-content:P2-C182 */}
+This is a quadratic function, or hyperquadric, in N-dimensional space. For Gaussian classes, pairwise quadratic decision boundaries achieve the Bayes classifier's minimum mean risk.
+
+
+{/* source-content:P2-C183 */}
+If all covariances agree, <SourceFormula formula={part2Formula('MAI-P2-095')} display={false} />, class-independent terms can be removed.
+
+
+{/* source-content:P2-C184 */}
+<SourceFormula formula={part2Formula('MAI-P2-096')} display={true} />
+
+
+{/* source-content:P2-C185 */}
+The resulting discriminants and class boundaries are linear hyperplanes.
+
+
+{/* source-content:P2-C186 */}
+Further, if <SourceFormula formula={part2Formula('MAI-P2-097')} display={false} /> and every class has prior <SourceFormula formula={part2Formula('MAI-P2-098')} display={false} />, the common prior term disappears too.
+
+
+{/* source-content:P2-C187 */}
+<SourceFormula formula={part2Formula('MAI-P2-099')} display={true} />
+
+
+{/* source-content:P2-C188 */}
+This equals the minimum-distance discriminant in equation (2). Minimum-distance classification is therefore Bayes-optimal for Gaussian classes with identity covariances and equal priors.
+
+
+{/* source-content:P2-C189 */}
+These classes form equally shaped spherical clouds in N dimensions, separated by perpendicular-bisector hyperplanes between their centers.
+
+
+{/* source-figure:P2-FIG-07 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-3"><div class="rounded-xl border p-4 text-center"><strong>(a) 1D</strong><p class="mt-2 font-mono">● ● ● ● ●</p><p class="text-sm">5 points</p></div><div class="rounded-xl border p-4 text-center"><strong>(b) 2D</strong><p class="mt-2 font-mono leading-5">●●●●●<br/>●●●●●<br/>●●●●●<br/>●●●●●<br/>●●●●●</p><p class="text-sm">25 points</p></div><div class="rounded-xl border p-4 text-center"><strong>(c) 3D</strong><p class="mt-2">5×5×5 grid</p><p class="text-sm">125 points</p></div></div>
+  <figcaption class="mt-4 text-sm text-muted-foreground"><strong>Figure 5, reconstructed.</strong> Keeping five samples per axis requires 5 points in 1D, 25 in 2D, and 125 in 3D.</figcaption>
+</figure>
+
+
+{/* source-content:P2-C190 */}
+### 2.7.3 Naive Bayes classifier
+
+
+{/* source-content:P2-C191 */}
+Assume individual features <SourceFormula formula={part2Formula('MAI-P2-101')} display={false} /> are conditionally independent given class S_c.
+
+
+{/* source-content:P2-C192 */}
+The source writes the resulting posterior relationship as follows.
+
+
+{/* source-content:P2-C193 */}
+<SourceFormula formula={part2Formula('MAI-P2-102')} display={true} />
+
+
+{/* source-content:P2-C194 */}
+- Estimate separate univariate conditional densities instead of facing direct multivariate p(x|S_c) estimation.
+
+
+{/* source-content:P2-C195 */}
+- Accuracy can remain surprisingly high even when actual feature independence fails.
+
+
+{/* source-content:P2-C196 */}
+## 2.8 Reinforcement learning
+
+
+{/* source-content:P2-C197 */}
+Some algorithms do not encounter only fixed datasets. Reinforcement learning interacts with the environment, creating feedback between experience and policy. The lecture places it outside this course's scope and refers readers to Sutton–Barto and the DQN paper.
+
+
+{/* source-content:P2-C198 */}
+## 2.9 The curse of dimensionality
+
+
+{/* source-content:P2-C199 */}
+Many learning problems become extremely difficult as data dimension grows: the curse of dimensionality.
+
+
+{/* source-content:P2-C200 */}
+The source describes high-dimensional data as having more features than observations, emphasizing the deeper issue of too little data relative to intrinsic dimension.
+
+
+{/* source-content:P2-C201 */}
+<SourceFormula formula={part2Formula('MAI-P2-100')} display={true} />
+
+
+{/* source-content:P2-C202 */}
+More feature dimensions increase both computation and the training data needed for useful models.
+
+
+{/* source-content:P2-C203 */}
+### 2.9.1 Dimensionality reduction as a major response
+
+
+{/* source-content:P2-C204 */}
+Dimensionality reduction reduces the variables considered, retaining important information while removing redundant or less relevant features.
+
+
+{/* source-content:P2-C205 */}
+- Principal component analysis (PCA)
+
+
+{/* source-content:P2-C206 */}
+- Linear discriminant analysis (LDA)
+
+
+{/* source-content:P2-C207 */}
+- t-distributed stochastic neighbor embedding (t-SNE)
+
+
+{/* source-content:P2-C208 */}
+### 2.9.2 Does deep learning overcome dimensionality?
+
+
+{/* source-content:P2-C209 */}
+The lecture cites practical image-classification experience with deep networks handling inputs as large as 7,500 dimensions. CNNs and Transformers often outperform traditional methods on high-dimensional inputs.
+
+
+{/* source-content:P2-C210 */}
+It explicitly describes why deep learning often suffers less from dimensionality as an open question.
+
+
+{/* source-content:P2-C211 */}
+- **Hypothesis 1: the manifold hypothesis and automatic feature extraction.** High-dimensional observations may contain low-dimensional effective structure.
+
+
+{/* source-content:P2-C212 */}
+- **Hypothesis 2: locality and symmetry.** Structural inductive biases reduce the function space to search.
+
+
+{/* source-content:P2-C213 */}
+- **Hypothesis 3: regularization.** Weight decay, dropout, augmentation, and early stopping aid generalization.
+
+
+{/* source-content:P2-C214 */}
+The lecture concludes that deep learning mitigates dimensionality in many problems without becoming immune to all high-dimensional limitations.
+
+
+{/* source-content:P2-C215 */}
+Data quality, architecture, tuning, and compute still affect performance; some problems need feature engineering or additional tuning.
+
+
+{/* source-content:P2-C216 */}
+## References in the original source
+
+
+{/* source-content:P2-C217 */}
+1. I. Goodfellow, Y. Bengio, A. Courville, *Deep Learning*, MIT Press, 2016 — `http://www.deeplearningbook.org`.
+
+
+{/* source-content:P2-C218 */}
+2. R. S. Sutton, A. G. Barto, *Reinforcement Learning: An Introduction*, 2nd ed., MIT Press, 2018.
+
+
+{/* source-content:P2-C219 */}
+3. V. Mnih et al., “Human-level control through deep reinforcement learning,” *Nature*, no. 7540, pp. 529–533, Feb. 2015.
+
+
+
+---
+
+# Editorial and mathematical audit
+
+
+{/* source-content:P2-C220 */}
+## 1. Completing `??` in equation (6)
+
+
+{/* source-content:P2-C221 */}
+<SourceFormula formula={part2Formula('MAI-P2-067')} display={true} />
+
+
+{/* source-content:P2-C222 */}
+Divide two factorizations of joint probability by p(x). The original blank is preserved, and this expression is separately registered as `editorially-completed`.
+
+
+{/* source-content:P2-C223 */}
+## 2. Completing `??` in 0–1 risk
+
+
+{/* source-content:P2-C224 */}
+<SourceFormula formula={part2Formula('MAI-P2-076')} display={true} />
+
+
+{/* source-content:P2-C225 */}
+The full sum equals p(x); only the c=c′ term is omitted under 0–1 loss, giving this expression.
+
+
+{/* source-content:P2-C226 */}
+## 3. A missing square in the univariate Gaussian exponent
+
+
+{/* source-content:P2-C227 */}
+<SourceFormula formula={part2Formula('MAI-P2-088')} display={true} />
+
+
+{/* source-content:P2-C228 */}
+The printed exponent numerator `(x-m_c)^2` on PDF p. 10 has no visible square. A corrected variant accompanies it based on multivariate equation (9) and the standard univariate normal density.
+
+
+{/* source-content:P2-C229 */}
+## 4. Priors in the naive Bayes equation
+
+
+{/* source-content:P2-C230 */}
+<SourceFormula formula={part2Formula('MAI-P2-103')} display={true} />
+
+
+{/* source-content:P2-C231 */}
+The source expression applies unchanged only for equal priors or where P(S_c) is absorbed into a proportionality factor. General MAP classification retains the prior.
+
+
+{/* source-content:P2-C232 */}
+## 5. Conditions for closed-form linear regression
+
+
+{/* source-content:P2-C233 */}
+Equation (1) assumes invertible XᵀX. Linear dependence or overparameterization with N>L requires a Moore–Penrose pseudoinverse, minimum-norm solution, or ridge regularization. The source equation itself is unchanged.
+
+
+{/* source-content:P2-C234 */}
+## 6. Conditional-risk index conventions
+
+
+{/* source-content:P2-C235 */}
+The PDF describes `R_{c′}(x)` as the risk of assigning x to `S_{c′}` while writing loss `L(a_c|S_{c′})` in the sum. Many textbooks reverse action and true-class indices, writing `L(a_{c′}|S_c)`. We preserve the source notation and explicitly state its meaning.
+
+
+{/* source-content:P2-C236 */}
+## 7. The covariance denominator
+
+
+{/* source-content:P2-C237 */}
+The PDF's 1/M_c corresponds to Gaussian maximum likelihood or a second-moment-style estimator. Common unbiased covariance instead multiplies the centered sum by 1/(M_c−1). Different purposes do not make the source a typographical error.
+
+
+{/* source-content:P2-C238 */}
+## 8. Scope of regularization
+
+
+{/* source-content:P2-C239 */}
+The lecture defines regularization as modifications intended to reduce generalization rather than training error. Modern usage includes augmentation, early stopping, and implicit optimization biases. Actual generalization improvement still depends on data, model, and training procedure.
+
+
+{/* source-content:P2-C240 */}
+## 9. Destinations of “this link” in figures
+
+
+{/* source-content:P2-C241 */}
+Several captions say “this link” or “wiki,” but the PDF retains no active link annotations, so their URIs could not be reliably recovered. Visible source labels remain in the ledger; destinations are not guessed.
+
+
+
+---
+
+# Research update: August 18, 2026
+
+> The following is not PDF source material. It tracks extensions of the lecture's questions through peer-reviewed 2025–2026 papers and official proceedings.
+
+
+## 1. Generalization extends beyond new samples from the same distribution
+
+The i.i.d. framework remains a theoretical reference, but deployment changes sensors, regions, user groups, time, class ratios, and background correlations. Distinguish **in-distribution performance**, **distribution shift**, **OOD generalization**, and **OOD detection**.
+
+- **ICML 2025, peer-reviewed:** Qiang et al. analyze how self-supervised learning can acquire spurious correlations and lose OOD generalization, proposing batch construction targeting a causal post-intervention distribution. [PMLR paper](https://proceedings.mlr.press/v267/qiang25a.html)
+- **ICML 2025, peer-reviewed:** Harun et al. report a layerwise trade-off in which stronger neural collapse can help OOD detection yet hurt OOD generalization. Rejecting unfamiliar inputs and predicting well on them are different objectives. [PMLR paper](https://proceedings.mlr.press/v267/harun25a.html)
+- **UAI 2025, peer-reviewed:** Cai et al. distinguish ordinary out-of-sample robustness from OOD robustness with different training and test environments, showing that structural assumptions such as covariate or label shift may be necessary for nontrivial solutions. [PMLR paper](https://proceedings.mlr.press/v286/cai25c.html)
+
+Modern test sets should therefore include **environment, temporal, group, and difficulty splits** specifying anticipated changes, rather than one random holdout alone.
+
+## 2. Overparameterized models challenge “zero training error means overfitting”
+
+Classical capacity diagrams suggest worsening test error after fitting training data exactly. Modern research studies **double descent**, where risk falls again beyond interpolation; **benign overfitting**, which fits noise yet generalizes; and **implicit regularization**, through which optimization selects particular solutions.
+
+- **ICML 2025, peer-reviewed:** Xu and Chen analyze two-layer networks with class-dependent heterogeneous noise, showing how some long-tail noise can aid implicit feature learning. Benign versus harmful overfitting depends on data structure and learning dynamics, not parameter count alone. [PMLR paper](https://proceedings.mlr.press/v267/xu25d.html)
+- **ICML 2025, peer-reviewed:** Sakamoto and Sato analyze signal-to-noise conditions under which attention token selection generalizes despite fitting label noise. [PMLR paper](https://proceedings.mlr.press/v267/sakamoto25a.html)
+- **COLT 2026, peer-reviewed extended abstract:** Wu et al. compare finite-sample risks of early-stopped GD, ridge, and online SGD instance by instance in linear regression. GD can dominate ridge within constants in some regimes, yet SGD can be polynomially better than optimally stopped GD in benign-overfitting-type problems. No regularizer is always superior. [PMLR paper](https://proceedings.mlr.press/v336/wu26a.html)
+
+The capacity diagram remains introductory, but examine **function spaces, data spectra, margins, optimization paths, and stopping times** too.
+
+## 3. Repeatedly reused validation data become training information
+
+Define train/validation/test by **information flow**, not labels. Repeatedly consulting the same evaluation results during development fits the research process to that set, even without direct model gradients.
+
+- **NeurIPS 2025 Datasets & Benchmarks, peer-reviewed:** TabArena proposes a living benchmark addressing static-benchmark defects and aging versions. Time budgets, ensembles, and validation choices substantially affect rankings; overrepresentation of some models in cross-model ensembles is linked to validation overfitting. [Official proceedings](https://proceedings.neurips.cc/paper_files/paper/2025/hash/1697e3fb412da11dc9488249f9e7bbc9-Abstract-Datasets_and_Benchmarks_Track.html)
+- **NeurIPS 2025 Datasets & Benchmarks, peer-reviewed:** The Scientific ML Common Task Framework proposes standardized tasks, realistic noise, limited data, and genuinely hidden tests to reduce weak baselines, reporting bias, and inconsistent evaluation. [Official proceedings](https://proceedings.neurips.cc/paper_files/paper/2025/hash/f908bc294862a555413fbe43ff08933f-Abstract-Datasets_and_Benchmarks_Track.html)
+- **COLT 2026, peer-reviewed:** Nachum et al. analyze k-fold CV as a data-reusing risk estimator and give unavoidable minimax MSE lower bounds when fold count grows with sample size. Cross-validation is not an infinitely precise evaluator. [PMLR paper](https://proceedings.mlr.press/v336/nachum26a.html)
+
+Practical protocols should include **group/patient/entity splits, temporal splits, fitting preprocessing and feature selection within folds, nested CV, one final test use, and disclosed seeds/folds**.
+
+## 4. Accuracy alone does not describe risk: calibration and conformal prediction
+
+Calibration asks whether predictions assigned probability 0.9 are correct about 90% of the time. Good aggregate calibration can still fail for subgroups, OOD inputs, or temporal changes. Conformal prediction provides finite-sample coverage under exchangeability or i.i.d. assumptions, which must be revisited under shift.
+
+- **ICML 2025, peer-reviewed:** Van der Laan and Alaa extend Venn/Venn–Abers methods to general losses, proposing finite-sample set-valued calibration and subpopulation multicalibration. [PMLR paper](https://proceedings.mlr.press/v267/van-der-laan25a.html)
+- **ICML 2025, peer-reviewed:** Bashari, Sesia, and Romano analyze partly contaminated reference sets for conformal outlier detection. Under nonadversarial conditions, type-I error remains conservatively controlled while power declines. [PMLR paper](https://proceedings.mlr.press/v267/bashari25a.html)
+- **ALT 2026, peer-reviewed:** Vovk quantifies efficiency universality of conformal predictors under i.i.d. randomness. This supports their strength, not unconditional validity under shift. [PMLR paper](https://proceedings.mlr.press/v313/vovk26a.html)
+
+Alongside accuracy/F1, record **reliability diagrams, ECE bin dependence, NLL/Brier scores, prediction-set coverage and size, subgroup coverage, and shift-specific performance**.
+
+## 5. From observed dimension to effective dimension and inductive bias
+
+Handling high-dimensional inputs does not eliminate dimensionality limits. Ask which low-dimensional structures models actually exploit and whether those structures persist in testing.
+
+- **ICML 2025, peer-reviewed:** Dong et al. analyze weak-to-strong fine-tuning through ridgeless regression, explaining variance reduction through adaptation in a low-intrinsic-dimensional subspace. [PMLR paper](https://proceedings.mlr.press/v267/dong25g.html)
+- **ICML 2025, peer-reviewed:** Chen et al. show that low-to-high-dimensional generalization requires suitable inductive bias; architecture and (S)GD must select interpolators aligned with the target. [PMLR paper](https://proceedings.mlr.press/v267/chen25cb.html)
+- **COLT 2026, peer-reviewed open problem:** Feldman, Kamath, and Srebro formally ask whether deep learning's advantage over linear models is inherently distribution-dependent. Why deep learning mitigates dimensionality remains open in 2026. [PMLR paper](https://proceedings.mlr.press/v336/feldman26a.html)
+
+Replace “many pixels, yet DNNs work” with measurements of **intrinsic/effective dimension, architectural symmetry, locality, data spectra, and sample-to-dimension ratios**.
+
+## 6. Classical classifiers remain strong baselines
+
+SVMs, minimum-distance classifiers, LDA/QDA, and naive Bayes are not universal competitors to large foundation models, but remain important for small datasets, interpretability, probabilistic-assumption checks, calibration, and inexpensive deployment.
+
+- Nearest class mean is Gaussian Bayes with shared identity covariance and equal priors.
+- LDA gives Gaussian Bayes boundaries with shared covariance; QDA allows class-specific covariances.
+- SVM kernels support convex optimization in fixed feature spaces, but kernel-matrix time and memory become bottlenecks at large sample counts.
+- Even when independence fails, naive Bayes offers useful low-variance, fast-learning bias with limited data.
+
+---
+
+## Key terms
+
+| Term | Meaning |
+|---|---|
+| **Generalization** | Maintaining low risk on unseen inputs; specify shift/OOD axes as well as i.i.d. evaluation. |
+| **Capacity and interpolation** | Generalization depends on data spectra, margins, optimization paths, and implicit regularization, not just parameter count. |
+| **Validation leakage** | Repeated use of validation/test results in development effectively fits those evaluation sets. |
+| **Calibration** | Agreement between predicted probabilities and observed frequencies, checked by group, OOD condition, and time. |
+| **Conformal prediction** | Set-valued predictions with finite-sample coverage under exchangeability; reassess assumptions and weighting under shift. |
+| **Intrinsic dimension** | Effective degrees of freedom actually used rather than observed dimension; a candidate explanation for high-dimensional generalization. |
+
+## Research questions and next experiments
+
+1. **Split units in robot vision:** how do frame-random, sequence, and subject/site splits change performance and calibration?
+2. **Explaining post-interpolation generalization:** when comparing ridge, early-stopped GD, and SGD with matched linear, kernel, and neural features, how do covariance spectra relate to risk curves?
+3. **Shift-aware uncertainty:** which layers, representations, and regularizers form a Pareto frontier when seeking ID calibration, OOD detection, and conformal coverage together?
+
+## Recent research references
+
+- Qiang et al., *On the Out-of-Distribution Generalization of Self-Supervised Learning*, ICML 2025.
+- Harun et al., *Controlling Neural Collapse Enhances Out-of-Distribution Detection and Transfer Learning*, ICML 2025.
+- Xu & Chen, *Rethinking Benign Overfitting in Two-Layer Neural Networks*, ICML 2025.
+- Wu et al., *Risk Comparisons in Linear Regression: Implicit Regularization Dominates Explicit Regularization*, COLT 2026.
+- Nachum et al., *Minimax Limits of k-Fold Cross-Validation via Majority*, COLT 2026.
+- Van der Laan & Alaa, *Generalized Venn and Venn-Abers Calibration with Applications in Conformal Prediction*, ICML 2025.
+- Vovk, *Universality of Conformal Prediction under the Assumption of Randomness*, ALT 2026.
+- Dong et al., *Discrepancies are Virtue: Weak-to-Strong Generalization through Lens of Intrinsic Dimension*, ICML 2025.
+- Feldman, Kamath, Srebro, *Is the Power of Deep Learning over Linear Models Inherently Distribution Dependent?*, COLT 2026.

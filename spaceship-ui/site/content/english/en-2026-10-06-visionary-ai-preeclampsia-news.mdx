@@ -1,0 +1,198 @@
+---
+title: Can retinal blood vessels help predict preeclampsia?
+description: Visionary AI uses retinal vessels to estimate risk. The article examines the study population, the
+  two models, preprocessing in external validation and the influence of disease prevalence on predictive values.
+pubDate: 2026-10-06 00:00:00+09:00
+updatedDate: 2026-11-06
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-06-visionary-ai-preeclampsia-news
+category: health-lifestyle
+subcategory: retinal-ai-preeclampsia
+type: paper-review
+tags:
+- frontier-one
+- maternal-health
+- medical-ai
+researchFeatured: false
+draft: false
+lang: en
+translationKey: en-2026-10-06-visionary-ai-preeclampsia-news
+translatedPosts:
+  ko-KR: 2026-10-06-visionary-ai-preeclampsia-news
+---
+
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+> **Evidence stage.** Prospective observational prediction study with external validation at an independent institution. The study did not change care in response to Visionary AI or validate an approved screening test.
+
+**Conclusion in one sentence.** Visionary AI used quantified retinal blood vessels to predict subsequent preeclampsia. A predictive signal was present at a second hospital, where external validation included 13 events. Whether using the predictions improves clinical outcomes remains open.
+
+## Why look at vessels in the eye?
+
+Preeclampsia is diagnosed from findings that include high blood pressure and organ abnormalities during pregnancy. The study asked whether images could predict a diagnosis after 20 weeks of pregnancy, following imaging. It did not use the photographs to confirm existing disease at the time of the scan.
+
+The retina is the light-sensitive tissue inside the eye. Its vascular branching, thickness and curvature were investigated as indirect signals of systemic vascular status. An association with vessel shape does not establish causation.
+
+<NewsFigure media="visionary-retinal-anatomy-schematic" lang="en" />
+
+In the schematic, the bright circle on the right is the optic disc, where the simplified vessels branch out. The macula is involved in central vision. The original illustration shows these anatomical relationships. It contains no actual fundus photographs, participant images, measurements or predictions. The positions and vessels are schematic.
+
+Both sites used Optos ultra-widefield fundus imaging equipment. Columbia University (CU) preferentially used first-trimester images, substituting second-trimester images obtained before 20 weeks when necessary. NYU external validation used first-trimester images from weeks 6–13 only. The images were obtained with dedicated instruments and under distinct timing conditions across the two cohorts.
+
+## How does an image become a prediction?
+
+The first step creates a vessel segmentation image (VSI). Segmentation identifies vascular regions within the photograph, allowing the later analysis to focus on vessels.
+
+The vessels are represented as a graph of nodes and edges. Nodes identify branches and endpoints, while edges represent vessel segments. Topological length is a feature of branching extent or hierarchical depth from the root toward a terminal branch. It differs from physical vessel length. The Methods describe graph hierarchy. The supplement weights the number of downstream branches to terminal branches and vessel cross-sectional width. The feature therefore also differs from simply counting branch points.
+
+Length, width, tortuosity, space-filling behavior, connectivity at several scales and loop structure also enter the feature set. Examining which features contributed to prediction gives the approach some interpretability. Establishing a cause would require other evidence.
+
+### How do many vessel measurements become features of one person?
+
+One image contains many vessel segments. Two images with the same average width might show mostly similar widths in one and a mixture of narrow and wide vessels in the other. Some features therefore use **differences between distributions** as well as means and medians. Supplementary Note 1 describes comparing a participant's distribution of vessel measurements with each healthy control's distribution using the Kolmogorov–Smirnov (KS) statistic. It measures the greatest separation of the two cumulative distributions. It is neither a disease probability nor the corresponding test's p-value.
+
+The researchers summarized patterns of variation across those comparisons using principal component analysis (PCA). The first ten components became prediction features. Other feature families followed different processing paths, including box-counting and topological features. In cross-validation that held out a control, the authors excluded distribution comparisons with that control. This describes one measure against leakage. The article did not independently audit the entire training implementation. [Official supplement, Note 1, distributional differences and feature groups 4–8 and 15–22]
+
+Check your understanding. Must two photographs with the same mean vessel width have identical inputs? Their vessel distributions, connections and multiscale properties may differ. A detectable difference also leaves open whether it caused preeclampsia.
+
+The team applied logistic regression, random forests and XGBoost to 32 feature sets, generating **96 candidate** base learners. The final predictor used stacking. Out-of-fold predictions for participants excluded from the corresponding training folds were passed to an XGBoost metalearner. First pregnancy and prior preeclampsia entered a separate obstetric-history adjustment using weights determined at CU and added to the model's predictions. The first-pregnancy adjustment applied only above a CU-defined age threshold. The adjusted results therefore reflect more than the image alone.
+
+## Check the denominators first
+
+<CandidateTable id="visionary-cohorts" label="Enrollment and image-analysis populations at each institution">
+
+| Population | Participants and preeclampsia events | Interpretation |
+|---|---|---|
+| CU enrollment | 1,267 participants, 55 events | Prospective cohort before image-model selection |
+| CU events in image model | 54 events | One preeclampsia case excluded for image quality |
+| NYU enrollment | 79 participants, 14 events, about 17.7% | Original external-site enrollment |
+| NYU image analysis | 66 participants, 13 events, about 19.7% | Population used for external performance after quality exclusions |
+
+</CandidateTable>
+
+The 17.7% and 19.7% use different populations and denominators. This distinction also matters when interpreting positive predictive value below.
+
+## Do CU's 0.91 and NYU's 0.81 measure the same model before and after transfer?
+
+The investigators used two different model-selection objectives.
+
+The performance-optimized model prioritized prediction within the CU setting. Its population-wide analysis roster comprised 1,137 individuals: 54 with preeclampsia, 82 selected healthy controls and 1,001 population-wide controls. Performance came from ten sampled control settings, rather than a single evaluation with the full roster at its original proportions. Across settings, mean ± SD was 0.91 ± 0.05 for AUC and 0.81 ± 0.11 for AP. The sampled groups' AP cannot be applied directly to screening the whole CU population.
+
+The stability-optimized model selected configurations that reduced AP variability and maximized minimum AUC across five nonoverlapping CU control groups. The team narrowed the candidates, including removal of redundant features, retaining eight final base learners per configuration for preeclampsia. This was the model transferred to NYU.
+
+In the NYU analysis of 66 people with 13 events, AUC was 0.81 and AP 0.68. Describing these results as a drop from 0.91 to 0.81 for a single model would overlook changes in both the selection objective and the evaluation population.
+
+In the same NYU cohort, the Fetal Medicine Foundation (FMF) calculator had an AUC of 0.73 and AP of 0.50. The comparator used the maternal demographic, clinical and obstetric-history variables specified in the paper. It did not establish performance against the complete FMF screening program with all blood biomarkers and Doppler measurements.
+
+## What was transferred without retraining?
+
+The authors report that they neither retrained the model on individual NYU outcomes nor used those outcomes to reselect features or hyperparameters. Raw NYU features still underwent preprocessing.
+
+For each feature, the team subtracted the NYU median, divided by the NYU interquartile range (IQR), and rescaled using a CU reference median and IQR. The CU reference population was sampled to match the overall event proportion in the NYU analysis cohort. This procedure differs from retraining on individual labels, yet it uses information about the target cohort. How it would operate when a single new patient presents remains unresolved.
+
+The public Figure 4 notebook averages stored predictions from five CU control configurations to calculate the metrics. Inspecting these cells alone does not reproduce the whole training and preprocessing pipeline.
+
+## What an AUC of 0.81 measures
+
+AUC summarizes how well risk scores rank cases relative to noncases. It cannot be read as the fraction of people classified correctly. Average precision (AP) summarizes precision–recall performance and also depends on how frequent events are in the evaluation population.
+
+Screening raises two related questions. Positive predictive value (PPV) asks what proportion of those classified positive actually developed preeclampsia. Negative predictive value (NPV) asks what proportion of those classified negative remained free of it.
+
+The four relationships below appear without equation numbers in the paper's Methods under **Prevalence-adjusted PPV and NPV**.
+
+<CandidateEquation lang="en" id="visionary-fpr" title="Why do greater specificity and fewer false positives go together?" tex={String.raw`\mathrm{FPR}=1-\mathrm{Specificity}`}>
+
+**Definition from the paper.** Specificity is the fraction of actual noncases classified negative. The false-positive rate (FPR) is the fraction of those same noncases classified positive. At a given threshold, both are dimensionless proportions from 0 to 1 and add to 1. Without any noncases, the observed rates have a zero denominator.
+
+At one reported operating point, an FPR of 0.13 means about 13% of actual noncases were classified positive. The denominator is actual noncases, rather than everyone tested or actual cases.
+
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="visionary-tpr" title="Sensitivity of 0.69 uses which denominator?" tex={String.raw`\mathrm{TPR}=\mathrm{Sensitivity}`}>
+
+**Definition from the paper.** The true-positive rate (TPR), or sensitivity, is the fraction of people who actually developed the condition whom the test classified positive. It is dimensionless and cannot be calculated from observations with no events.
+
+TPR 0.69 means around 69% of cases were detected at that operating point. AUC and overall accuracy are separate measures. Changing the threshold can change both sensitivity and FPR.
+
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="visionary-ppv" title="Why does the meaning of a positive result depend on prevalence?" tex={String.raw`\mathrm{PPV}=\frac{\mathrm{Sensitivity}\times\mathrm{Prevalence}}{\mathrm{Sensitivity}\times\mathrm{Prevalence}+(1-\mathrm{Specificity})\times(1-\mathrm{Prevalence})}`}>
+
+**Prevalence adjustment from the paper.** Sensitivity, specificity and prevalence, the proportion experiencing the event in the target population, are dimensionless fractions.
+
+The numerator gives the population share experiencing the event and classified positive. The denominator adds the population share free of the event but classified positive. The result is the fraction of all positives that are cases. If there are no positive classifications, the denominator is zero.
+
+Changing prevalence in the calculation assumes the selected operating point's sensitivity and specificity apply in the target population. This arithmetic does not provide observations from newly tested patients.
+
+</CandidateEquation>
+
+<CandidateEquation lang="en" id="visionary-npv" title="What remains of event risk after a negative result?" tex={String.raw`\mathrm{NPV}=\frac{\mathrm{Specificity}\times(1-\mathrm{Prevalence})}{(1-\mathrm{Sensitivity})\times\mathrm{Prevalence}+\mathrm{Specificity}\times(1-\mathrm{Prevalence})}`}>
+
+**Prevalence adjustment from the paper.** Symbols and units follow the PPV equation. The numerator gives the share free of the event and classified negative. The denominator adds those with the event who were missed and classified negative. NPV is the noncase fraction among all negatives. It is undefined if there are no negative results.
+
+Even a high NPV must be read with sensitivity, event frequency and the harm of missing a case. High NPV alone is insufficient grounds for stopping usual prenatal care or surveillance.
+
+</CandidateEquation>
+
+### Observed predictive values and estimates for a different prevalence
+
+The 66-person NYU analysis contained 13 cases and 53 noncases. Observed PPV was 0.56 and NPV was 0.92. The 0.31 and 0.97 below come from standardizing to an institutional estimate of 8% annual event prevalence. The meaning of a positive result can change with the event rate even if the model stays the same.
+
+Before NYU validation, the target operating point called for FPR at or below 0.10. The actual NYU FPR was 0.13 and TPR was 0.69. The target and the result measured at the new institution should be reported separately.
+
+### A worked example using a hypothetical cohort
+
+At the reported operating point, FPR was 0.13 and TPR 0.69. Applying the estimated annual institutional prevalence of 8% gave reported PPV 0.31 and NPV 0.97. The 8% standard differs from NYU's 17.7% at enrollment and 19.7% after exclusions.
+
+In an **illustrative group** of 1,000, an 8% event rate gives 80 cases. Applying the rounded sensitivity and FPR gives the expectations below. Fractional counts are expected values and do not represent study participants.
+
+<CandidateTable id="visionary-prevalence-example" label="Actual outcomes and model classifications in the hypothetical population">
+
+| Actual outcome | Model positive | Model negative | Total |
+|---|---:|---:|---:|
+| Event | True positive 55.2 | False negative 24.8 | 80 |
+| No event | False positive 119.6 | True negative 800.4 | 920 |
+| Total | 174.8 | 825.2 | 1,000 |
+
+</CandidateTable>
+
+Read across the 80 cases to obtain sensitivity. Then read down the positive column: 55.2 of 174.8 positives are true positives. Choosing a row or a column as denominator changes the question.
+
+The fraction of true positives among positives is about 0.316. The fraction of true negatives among 825.2 negatives is about 0.970. Recalculation with rounded operating-point values does not reproduce the last digit of the reported 0.31 exactly. The example illustrates prevalence effects. It did not test 1,000 people or reproduce clinical outcomes.
+
+**Check the table.** Do 119.6 false positives versus 55.2 true positives indicate an error? There are 920 noncases, so even a relatively small FPR can generate many positives. The target population's event rate matters. Choosing a clinically suitable threshold requires more than this table.
+
+### Ranking and calibration
+
+A model can rank people with later events above others, yet its numerical probabilities may differ from observed frequencies. Agreement between probabilities and frequencies is calibration. A score of 0.7 alone does not show that 70% of people with that score develop the condition. This is an illustration, not a reported score group.
+
+The version-pinned Figure 4 notebook averages five stored predictions, adds obstetric-history adjustments and calculates ROC and PR curves. A ranking evaluation does not establish that the final score is a calibrated individual probability. The paper identifies calibration, operating thresholds and clinical utility as questions for future prospective studies. Standardizing PPV and NPV to prevalence does not calibrate every individual score. [Paper, Discussion, and pinned main_text_figure_4.ipynb]
+
+## The most important limits
+
+The NYU validation included only 13 events. With 10,000 participant-level bootstrap replicates, estimated AUC was 0.81 (95% CI 0.62–0.95) and estimated AP was 0.69 (95% CI 0.47–0.88). Bootstrap AP of 0.69 and original-sample AP of 0.68 summarize different calculations. Resampling introduces no new patients.
+
+The institutions and imaging devices tested were limited. Performance with inexpensive cameras, different health systems and other populations remains open.
+
+The deep-learning comparison also had boundaries. RETFound's publicly pretrained weights were fine-tuned for up to 25 epochs. For Inception-ResNet-v2 only the last classifier layer was trained, with other layers frozen. The study cannot establish superiority to every deep-learning method or to an optimized end-to-end pipeline.
+
+## Reproducibility and next tests
+
+The public analysis notebooks load saved predictions and outcomes. Individual images, derived features and clinical outcomes are not freely downloadable. Eligible researchers may request access under institutional review, consent conditions and data-use agreements. Public code therefore supports inspection without permitting unrestricted end-to-end training reproduction.
+
+The paper evaluated predictive performance and comparative metrics. It did not test whether changing aspirin use or surveillance based on Visionary AI improved maternal or fetal outcomes. Clinical use would require further study.
+
+Next steps include larger multicenter validation, calibration and reliability under population and device shifts, preprocessing for genuinely new patients and prospective assessment of clinical utility when used in care.
+
+<details>
+<summary>Original paper, code and figure coverage</summary>
+
+- [Original paper](https://www.nature.com/articles/s41587-026-03303-0). The public article and Methods were checked for cohorts, model objectives, external validation, preprocessing and definitions of four metrics. The four displayed relationships appear in the paper.
+- [Public analysis repository](https://github.com/Shenhav-Lab/Visionary-AI-HDP). Static inspection at commit `5a478bd8e1b00a94842d7acf09a579c39666a4e2` covered the file list, relevant cells of the Figure 2–5 notebooks and sections of the metric and feature utilities. The code depends on private data and saved predictions. Training and results were not reproduced. Prevalence constants and threshold-boundary handling vary by notebook, so values from distinct analyses remain separate.
+- [Figure 1, design and computational workflow](https://www.nature.com/articles/s41587-026-03303-0#Fig1), [Figure 4, NYU external validation](https://www.nature.com/articles/s41587-026-03303-0#Fig4), and [Figure 5, vascular features](https://www.nature.com/articles/s41587-026-03303-0#Fig5) can be viewed in the paper. No original paper figure is reproduced here.
+- JJo NEWS created the general retinal anatomy schematic. It includes no patient image, study data or original research figure. The terminology source and rights appear beneath the illustration.
+- In Supplementary Note 1, the prose and displayed nesting-ratio equation reverse which side appears in the denominator. Some notation in the coordinate-distance equation is also unclear. These features were not silently corrected or transcribed. Their precise definitions require checking implementation or clarification from the authors.
+
+</details>

@@ -1,0 +1,1313 @@
+---
+title: 'Modern Artificial Intelligence V — The Evolution of Image Classification:
+  From AlexNet to SE Networks'
+description: Trace modern image classification from 2D convolution and ImageNet through
+  AlexNet, VGG, GoogLeNet, ResNet, WRN, DenseNet, and SE Networks.
+pubDate: 2026-08-23
+updatedDate: 2026-08-23
+category: ai-machine-learning
+subcategory: image-classification
+type: study-note
+tags:
+- image-classification
+- convolutional-neural-network
+- imagenet
+- vision-transformer
+- foundation-model
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 7
+featured: true
+lang: en
+series:
+  id: modern-artificial-intelligence
+  order: 5
+slug: 2026-08-23-modern-artificial-intelligence-5
+draft: false
+translationKey: series-modern-artificial-intelligence-5-20261109
+translatedPosts:
+  ko-KR: 2026-08-23-modern-artificial-intelligence-5
+---
+
+
+import SourceFormula from '@/components/post/SourceFormula.astro';
+import Part5ArchitectureVisual from '@/components/post/Part5ArchitectureVisual.astro';
+import { part5Formula } from '@/lib/modern-ai-part5';
+
+> **Completeness contract**  
+> This article covers **18 / 18 pages** of `5_Ch5-Image classification.pdf`. The canonical source is 13,823,037 B, with SHA-256 `45102cfc6e7add2d671924ca2f3bc2e373270a915236db364f00f9871cd9ba52`. All 18 pages were cross-checked against 200 dpi renders and extracted text. A second Drive copy with the same filename has a different byte-level SHA but is pixel-identical on all 18 / 18 pages, so it is recorded only as re-save provenance.
+
+> **Keep the three layers distinct.**  
+> Separate ① **reconstruction of the 2025 source PDF**, ② **editorial and mathematical verification**, and ③ **research updates as of 2026-08-18**. Preserve the source’s historical wording; place present-day limitations and corrections in a separate layer.
+
+## Ledger overview
+
+- PDF: **18 / 18 pages**
+- PDF SHA-256: `45102cfc6e7add2d671924ca2f3bc2e373270a915236db364f00f9871cd9ba52`
+- Source formula records: **52** — **19** display, **33** inline
+- PDF-source content records: **135**
+- Source visual groups: **34**
+- Readable or partially readable handwritten annotation clusters: **15**
+- Editorial audits: **5**
+- Research updates as of 2026-08-18: **13**
+- Part V display-lesson state: **19 / 19 `unreviewed`** — no generic visual is attached during source reconstruction; exact-ID lessons are reviewed separately in the follow-up to #38.
+
+---
+# Reconstruction of the source PDF
+
+## PDF p.1 — 5.0 Reviewing 2D convolution
+
+{/* source-content:P5-C001 */}
+
+### The lecture cover reads ECE5992: Modern Artificial Intelligence, Il Yong Chun, 2025-03-19. Chapter 5 is titled ‘Modern AI for image classification.’
+
+{/* source-content:P5-C002 */}
+
+### Section 5.0 begins with a review of 2D convolution and max pooling.
+
+{/* source-content:P5-C003 */}
+
+The source lists constructor forms for the PyTorch convolution modules Conv1d, Conv2d, and Conv3d.
+
+```text
+torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0,
+                dilation=1, groups=1, bias=True, padding_mode='zeros', ...)
+torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0,
+                dilation=1, groups=1, bias=True, padding_mode='zeros', ...)
+torch.nn.Conv3d(in_channels, out_channels, kernel_size, stride=1, padding=0,
+                dilation=1, groups=1, bias=True, padding_mode='zeros', ...)
+```
+
+{/* source-content:P5-C004 */}
+
+The example is a 2D convolution with 64 input channels, 64 output channels, kernel size 3, padding 1, and stride 1.
+
+{/* source-content:P5-C005 */}
+
+**Source figure.** The Step 1/Step 2 diagrams show how kernel responses across input channels combine to produce an output channel.
+
+<Part5ArchitectureVisual kind="convolution" />
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-001** · PyTorch convolution example configuration: <SourceFormula formula={part5Formula('MAI-P5-001')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-01 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-01" data-source-page="1">
+
+  <figcaption class="font-black">PyTorch convolution module signatures</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.1: Conv1d/2d/3d API boxes.</p>
+</figure>
+
+{/* source-figure:P5-FIG-02 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-02" data-source-page="1">
+
+  <figcaption class="font-black">2D convolution Step 1/Step 2</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.1: multi-channel convolution geometry.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-01 */}
+> **P5-ANN-01 · PDF p.1 · Partially legible.** Channel and stride notes around the convolution diagram. Some handwriting is uncertain; no definitive numbers or meanings are assigned.
+
+## PDF p.2 — Reviewing max pooling
+
+{/* source-content:P5-C006 */}
+
+The source lists the PyTorch max-pooling modules MaxPool1d, MaxPool2d, and MaxPool3d.
+
+```text
+torch.nn.MaxPool1d(kernel_size, stride=None, padding=0, dilation=1,
+                   return_indices=False, ceil_mode=False)
+torch.nn.MaxPool2d(kernel_size, stride=None, padding=0, dilation=1,
+                   return_indices=False, ceil_mode=False)
+torch.nn.MaxPool3d(kernel_size, stride=None, padding=0, dilation=1,
+                   return_indices=False, ceil_mode=False)
+```
+
+{/* source-content:P5-C007 */}
+
+The max-pooling example uses stride 2 and padding 1.
+
+{/* source-content:P5-C008 */}
+
+**Source figure.** Step 1 shows a padded grid and a 3x3 pooling window; Step 2 shows the window after it moves to the next position.
+
+<Part5ArchitectureVisual kind="pooling" />
+
+{/* source-content:P5-C009 */}
+
+The slide contrasts the spatial movement of convolution and pooling using actual grid values.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-002** · PyTorch max-pooling example configuration: <SourceFormula formula={part5Formula('MAI-P5-002')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-03 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-03" data-source-page="2">
+
+  <figcaption class="font-black">PyTorch max-pooling module signatures</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.2: MaxPool1d/2d/3d API boxes.</p>
+</figure>
+
+{/* source-figure:P5-FIG-04 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-04" data-source-page="2">
+
+  <figcaption class="font-black">Max-pooling Step 1/Step 2</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.2: a padded grid and moving window.</p>
+</figure>
+
+## PDF p.3 — 5.1 ImageNet and ILSVRC
+
+{/* source-content:P5-C010 */}
+
+### 5.1 Trends of DL-based image classifications.
+
+{/* source-content:P5-C011 */}
+
+ImageNet is introduced as an image database organized according to the WordNet noun hierarchy.
+
+{/* source-content:P5-C012 */}
+
+The source specifies 1,000 object classes, approximately 1.2M training images, 50K validation images, and 100K test images.
+
+{/* source-content:P5-C013 */}
+
+ILSVRC is described as a major driver of deep learning research over its eight-year history, 2010–2017.
+
+{/* source-content:P5-C014 */}
+
+**Source figure.** The ILSVRC trend chart shows classification error falling sharply from the high levels of the early 2010s through AlexNet, ZFNet, GoogLeNet/VGGNet, ResNet, Inception-v3/WRN, and SENet.
+
+<Part5ArchitectureVisual kind="imagenet-trend" />
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-003** · ImageNet object-class count: <SourceFormula formula={part5Formula('MAI-P5-003')} part={5} display={false} />
+
+- **MAI-P5-004** · Dataset split sizes: <SourceFormula formula={part5Formula('MAI-P5-004')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-05 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-05" data-source-page="3">
+
+  <figcaption class="font-black">ILSVRC trend chart</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.3: the classification-error trajectory from 2010 to 2017.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-02 */}
+> **P5-ANN-02 · PDF p.3 · Partially legible.** A short handwritten note to the right of the ILSVRC trend chart. Only markings concerning the human/error trend are legible; reconstructing a full sentence is deferred.
+
+## PDF p.4 — 5.2 AlexNet: Architecture and input
+
+{/* source-content:P5-C015 */}
+
+### 5.2 AlexNet — Overview / Details.
+
+{/* source-content:P5-C016 */}
+
+AlexNet is introduced as the ILSVRC 2012 winner and a large CNN for its time, with approximately 60M parameters and 650K neurons.
+
+{/* source-content:P5-C017 */}
+
+It classifies an input image into one of 1,000 classes. Each component of the 1,000-dimensional output is interpreted as a class probability, and the components sum to 1.
+
+{/* source-content:P5-C018 */}
+
+Input images are prepared as RGB 256x256 images: resize the shorter side to 256, then crop. For grayscale images, replicate the single channel to obtain three RGB channels.
+
+{/* source-content:P5-C019 */}
+
+During training, take a random 227x227 crop within the 256x256 image and feed it to the first layer.
+
+{/* source-content:P5-C020 */}
+
+AlexNet consists of five convolutional layers and three fully connected layers.
+
+<Part5ArchitectureVisual kind="alexnet" />
+
+{/* source-content:P5-C021 */}
+
+ReLU follows convolutional and fully connected layers. The first two convolutions are followed by local normalization and then pooling. The slide adds that normalization later proved to offer limited benefit.
+
+{/* source-content:P5-C022 */}
+
+A central point is that ReLU accelerated deep CNN training compared with saturating activations such as tanh and sigmoid.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-005** · AlexNet scale stated in source: <SourceFormula formula={part5Formula('MAI-P5-005')} part={5} display={false} />
+
+- **MAI-P5-006** · 1000-dimensional classifier output: <SourceFormula formula={part5Formula('MAI-P5-006')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-007')} part={5} display={true} />
+
+- **MAI-P5-008** · RGB input size: <SourceFormula formula={part5Formula('MAI-P5-008')} part={5} display={false} />
+
+- **MAI-P5-009** · Random crop fed to the first layer: <SourceFormula formula={part5Formula('MAI-P5-009')} part={5} display={false} />
+
+- **MAI-P5-010** · AlexNet layer summary: <SourceFormula formula={part5Formula('MAI-P5-010')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-06 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-06" data-source-page="4">
+
+  <figcaption class="font-black">AlexNet architecture</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.4: five convolutional stages and three fully connected stages.</p>
+</figure>
+
+{/* source-figure:P5-FIG-07 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-07" data-source-page="4">
+
+  <figcaption class="font-black">AlexNet resize/crop preprocessing</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.4: short-side resizing, a 256 crop, and a random 227 crop.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-03 */}
+> **P5-ANN-03 · PDF p.4 · Partially legible.** Input/weight notes above the AlexNet architecture and notes beside the crop. They are not promoted to formal equations.
+
+## PDF p.5 — AlexNet: ReLU·augmentation·dropout
+
+{/* source-content:P5-C023 */}
+
+**Source figure.** A CIFAR-10 plot states that ReLU (solid) reached 25% training error about six times faster than tanh (dotted).
+
+{/* source-content:P5-C024 */}
+
+For large positive or negative inputs, tanh saturates and its slope approaches zero, which can slow gradient descent.
+
+{/* source-content:P5-C025 */}
+
+The intuition is that ReLU speeds optimization because its slope in the positive region stays away from zero. The source also notes that its slope in the negative region is zero.
+
+{/* source-content:P5-C026 */}
+
+Mirroring and random crops mitigate overfitting. The source describes mirroring as doubling the dataset and random cropping as expanding it by a factor of 2048.
+
+{/* source-content:P5-C027 */}
+
+Dropout is another form of regularization.
+
+{/* source-content:P5-C028 */}
+
+**Source figure.** The bottom of the page shows examples of intermediate AlexNet feature maps.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-011** · Training-error level used in ReLU-vs-tanh comparison: <SourceFormula formula={part5Formula('MAI-P5-011')} part={5} display={false} />
+
+- **MAI-P5-012** · Source says ReLU reached 25% error six times faster: <SourceFormula formula={part5Formula('MAI-P5-012')} part={5} display={false} />
+
+- **MAI-P5-013** · Mirroring doubles the dataset: <SourceFormula formula={part5Formula('MAI-P5-013')} part={5} display={false} />
+
+- **MAI-P5-014** · Source-reported random-cropping augmentation factor: <SourceFormula formula={part5Formula('MAI-P5-014')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-08 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-08" data-source-page="5">
+
+  <figcaption class="font-black">ReLU vs tanh convergence chart</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.5: comparison at 25% error.</p>
+</figure>
+
+{/* source-figure:P5-FIG-09 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-09" data-source-page="5">
+
+  <figcaption class="font-black">tanh and ReLU function sketches</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.5: saturation versus a positive linear slope.</p>
+</figure>
+
+{/* source-figure:P5-FIG-10 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-10" data-source-page="5">
+
+  <figcaption class="font-black">AlexNet feature-map examples</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.5: intermediate feature visualization.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-04 */}
+> **P5-ANN-04 · PDF p.5 · Partially legible.** Gradient/slope notes around the ReLU/tanh plot and notes on feature maps.
+
+## PDF p.6 — 5.3 VGGNet: Stacking small kernels deeply
+
+{/* source-content:P5-C029 */}
+
+### 5.3 VGGNet — Overview / Motivation / Details.
+
+{/* source-content:P5-C030 */}
+
+VGG16 is introduced as a 16-layer CNN and a leading ILSVRC 2014 model; the source gives an ImageNet test accuracy of 92.7%.
+
+{/* source-content:P5-C031 */}
+
+Instead of AlexNet’s large early kernels (11x11 and 5x5), VGG uses sequences of small 3x3 filters.
+
+{/* source-content:P5-C032 */}
+
+The first convolution uses a 3x3 receptive field and stride 1, compared with AlexNet’s 11x11 kernel and stride 4.
+
+{/* source-content:P5-C033 */}
+
+Stacking smaller convolutions provides a large receptive field while inserting more nonlinear activations.
+
+{/* source-content:P5-C034 */}
+
+The slide suggests that small convolutions reduce overfitting and describes 3x3 as the smallest size that captures left–right and up–down spatial information.
+
+{/* source-content:P5-C035 */}
+
+VGG16 has approximately 138M parameters and is described as 13 convolutional layers plus three fully connected layers.
+
+<Part5ArchitectureVisual kind="vgg" />
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-015** · VGG16 depth: <SourceFormula formula={part5Formula('MAI-P5-015')} part={5} display={false} />
+
+- **MAI-P5-016** · Source-reported VGG16 test accuracy: <SourceFormula formula={part5Formula('MAI-P5-016')} part={5} display={false} />
+
+- **MAI-P5-017** · VGG versus early AlexNet kernel sizes: <SourceFormula formula={part5Formula('MAI-P5-017')} part={5} display={false} />
+
+- **MAI-P5-018** · VGG16 parameter count: <SourceFormula formula={part5Formula('MAI-P5-018')} part={5} display={false} />
+
+- **MAI-P5-019** · VGG16 layer decomposition: <SourceFormula formula={part5Formula('MAI-P5-019')} part={5} display={false} />
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-05 */}
+> **P5-ANN-05 · PDF p.6 · Partially legible.** Notes summarizing the small-kernel/more-layer idea in the VGG section.
+
+## PDF p.7 — VGG16 details and the transition to GoogLeNet
+
+{/* source-content:P5-C036 */}
+
+VGG takes RGB 224x224 inputs; the source describes center cropping to standardize ImageNet input size.
+
+{/* source-content:P5-C037 */}
+
+Convolutions mainly use 3x3 kernels, with some 1x1 convolutions. A 1x1 convolution combined with ReLU increases nonlinearity without changing the receptive field.
+
+{/* source-content:P5-C038 */}
+
+Hidden layers use ReLU. AlexNet-style Local Response Normalization is described as increasing time and memory costs with little accuracy improvement.
+
+{/* source-content:P5-C039 */}
+
+Pooling reduces feature-map dimensionality and parameter burden, while channel counts grow from 64 to 128 to 256 to 512.
+
+{/* source-content:P5-C040 */}
+
+The fully connected layers have 4096, 4096, and 1000 channels.
+
+{/* source-content:P5-C041 */}
+
+Two 3x3 convolutions correspond to a 5x5 receptive field; three correspond to a 7x7 receptive field.
+
+{/* source-content:P5-C042 */}
+
+Three 3x3 layers provide three ReLU operations and use 27C^2 parameters, fewer than the 49C^2 parameters of one 7x7 layer.
+
+{/* source-content:P5-C043 */}
+
+### Section 5.4 introduces GoogLeNet as the ILSVRC 2014 winner, noting its improvement over ZFNet/AlexNet and lower error than VGGNet.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-020** · VGG image input: <SourceFormula formula={part5Formula('MAI-P5-020')} part={5} display={false} />
+
+- **MAI-P5-021** · Channel growth described in source: <SourceFormula formula={part5Formula('MAI-P5-021')} part={5} display={false} />
+
+- **MAI-P5-022** · Three FC widths: <SourceFormula formula={part5Formula('MAI-P5-022')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-023')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-024')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-025')} part={5} display={true} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-11 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-11" data-source-page="7">
+
+  <figcaption class="font-black">VGG16 architecture</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.7: 224x224 input, repeated 3x3 convolutions, and a fully connected head.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-06 */}
+> **P5-ANN-06 · PDF p.7 · Partially legible.** Notes such as “input channel size” around the VGG receptive-field and parameter comparisons.
+
+## PDF p.8 — 5.4 GoogLeNet: 1×1 bottlenecks and Inception
+
+{/* source-content:P5-C044 */}
+
+GoogLeNet uses 1x1 convolutions internally and replaces the final fully connected layer with global average pooling. The source credits both ideas to Network In Network.
+
+{/* source-content:P5-C045 */}
+
+An Inception module applies different convolution and pooling branches to the same input in parallel, then stacks or concatenates their outputs.
+
+{/* source-content:P5-C046 */}
+
+NIN’s 1x1 convolution is introduced as a way to increase representational nonlinearity when combined with ReLU.
+
+{/* source-content:P5-C047 */}
+
+GoogLeNet uses 1x1 convolutions for dimensionality reduction, reducing computational bottlenecks and enabling greater depth and width.
+
+{/* source-content:P5-C048 */}
+
+Applying a 48-channel 5x5 convolution directly to a 14x14x480 input gives a stated operation count of 112.9M.
+
+{/* source-content:P5-C049 */}
+
+First reducing the input to 16 channels with a 1x1 convolution and then producing 48 channels with a 5x5 convolution reduces the stated count to 5.3M.
+
+{/* source-content:P5-C050 */}
+
+**Source figure.** The original Inception module places 1x1, 3x3, and 5x5 convolutions alongside 3x3 max pooling in parallel.
+
+<Part5ArchitectureVisual kind="inception" />
+
+#### Formula and numerical ledger for this page
+
+<SourceFormula formula={part5Formula('MAI-P5-026')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-027')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-028')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-029')} part={5} display={true} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-12 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-12" data-source-page="8">
+
+  <figcaption class="font-black">Inception naming/meme panel</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.8: the source context for the Inception name.</p>
+</figure>
+
+{/* source-figure:P5-FIG-13 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-13" data-source-page="8">
+
+  <figcaption class="font-black">GoogLeNet 1x1 bottleneck computation</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.8: the 112.9M versus 5.3M paths.</p>
+</figure>
+
+{/* source-figure:P5-FIG-14 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-14" data-source-page="8">
+
+  <figcaption class="font-black">Native inception module</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.8: parallel 1x1/3x3/5x5/max-pooling branches.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-07 */}
+> **P5-ANN-07 · PDF p.8 · Partially legible.** Big-O and bottleneck notes around the Inception/1x1 calculations.
+
+## PDF p.9 — Inception and global average pooling
+
+{/* source-content:P5-C051 */}
+
+Each Inception branch extracts different features. Their outputs are concatenated and passed to the next module.
+
+{/* source-content:P5-C052 */}
+
+Because the original Inception module is computationally expensive, 1x1 dimensionality reduction is inserted before costly branches.
+
+{/* source-content:P5-C053 */}
+
+### Global average pooling.
+
+{/* source-content:P5-C054 */}
+
+An AlexNet-style final fully connected layer is illustrated as requiring 7x7x1024x1024=51.3M connections.
+
+{/* source-content:P5-C055 */}
+
+GoogLeNet’s global average pooling averages each 7x7 feature map down to 1x1, creating a channel descriptor without separate fully connected connections.
+
+#### Formula and numerical ledger for this page
+
+<SourceFormula formula={part5Formula('MAI-P5-030')} part={5} display={true} />
+
+- **MAI-P5-031** · Global average pooling geometry: <SourceFormula formula={part5Formula('MAI-P5-031')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-15 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-15" data-source-page="9">
+
+  <figcaption class="font-black">Reduced inception module</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.9: 1x1 reductions before expensive branches.</p>
+</figure>
+
+{/* source-figure:P5-FIG-16 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-16" data-source-page="9">
+
+  <figcaption class="font-black">FC versus global average pooling</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.9: 51.3M fully connected weights versus pooling.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-08 */}
+> **P5-ANN-08 · PDF p.9 · Partially legible.** Notes on 7x7/1x1 dimensions and pooling around the fully connected/GAP diagrams.
+
+## PDF p.10 — The complete GoogLeNet architecture, auxiliary classifiers, and the transition to ResNet
+
+{/* source-content:P5-C056 */}
+
+The GAP example is stated to require zero additional weights.
+
+{/* source-content:P5-C057 */}
+
+The source reports an approximately 0.6% improvement in top-1 accuracy from replacing fully connected layers with GAP, connecting this to NIN’s idea for reducing overfitting.
+
+{/* source-content:P5-C058 */}
+
+### Overall architecture.
+
+{/* source-content:P5-C059 */}
+
+The complete GoogLeNet architecture has 22 layers and achieves its depth by linking multiple Inception modules.
+
+{/* source-content:P5-C060 */}
+
+It is described as much deeper than AlexNet, ZFNet, and VGGNet, yet shallower than the later ResNet.
+
+{/* source-content:P5-C061 */}
+
+### Auxiliary classifiers for training.
+
+{/* source-content:P5-C062 */}
+
+The intermediate softmax branches are auxiliary classifiers used only during training. Their losses enter the total loss with weight 0.3.
+
+{/* source-content:P5-C063 */}
+
+The authors’ claim is presented that these branches mitigate vanishing gradients and also provide regularization.
+
+{/* source-content:P5-C064 */}
+
+### 5.5 ResNet — Overview.
+
+{/* source-content:P5-C065 */}
+
+ResNet is introduced as the ILSVRC 2015 winner, with residual learning enabling much deeper networks at similar parameter counts.
+
+{/* source-content:P5-C066 */}
+
+The source introduces the degradation problem: accuracy saturates and then worsens as depth increases. This is not attributed solely to overfitting, because the deeper plain model’s training error itself rises.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-032** · Source example: GAP adds no FC connections: <SourceFormula formula={part5Formula('MAI-P5-032')} part={5} display={false} />
+
+- **MAI-P5-033** · Source-reported top-1 gain after replacing FC with GAP: <SourceFormula formula={part5Formula('MAI-P5-033')} part={5} display={false} />
+
+- **MAI-P5-034** · Source says 22 layers in total: <SourceFormula formula={part5Formula('MAI-P5-034')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-035')} part={5} display={true} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-17 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-17" data-source-page="10">
+
+  <figcaption class="font-black">GoogLeNet global average pooling</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.10: 7x7x1024 reduced to 1x1x1024.</p>
+</figure>
+
+{/* source-figure:P5-FIG-18 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-18" data-source-page="10">
+
+  <figcaption class="font-black">GoogLeNet overall architecture</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.10: the 22-layer Inception stack.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-09 */}
+> **P5-ANN-09 · PDF p.10 · Partially legible.** Reduction/parameter notes around GAP and the GoogLeNet architecture, and skip-connection notes at the start of ResNet.
+
+## PDF p.11 — 5.5 ResNet: Degradation and residual blocks
+
+{/* source-content:P5-C067 */}
+
+> A passage from the ResNet paper on degradation emphasizes that increasing the depth of an already sufficiently deep model can raise training error.
+
+{/* source-content:P5-C068 */}
+
+The proposed solution is residual learning, centered on residual or skip connections.
+
+{/* source-content:P5-C069 */}
+
+**Source figure.** A residual block combines the nonlinear transform F(x) with the identity x through element-wise addition.
+
+<Part5ArchitectureVisual kind="resnet-wrn" />
+
+{/* source-content:P5-C070 */}
+
+**Source figure.** A ResNet-18 architecture example is presented as blocks A–E.
+
+{/* source-content:P5-C071 */}
+
+**Source figure.** ImageNet Figure 1 compares training and validation errors for plain 18/34-layer networks and 18/34-layer ResNets.
+
+{/* source-content:P5-C072 */}
+
+The plain 34-layer model has higher validation error than the plain 18-layer model, as well as higher training error throughout, demonstrating degradation.
+
+{/* source-content:P5-C073 */}
+
+> **Source footnote.** Preserve the note that vanishing or exploding gradients can impede convergence from the outset, and that normalized initialization, intermediate normalization, and ReLU can mitigate them.
+
+#### Formula and numerical ledger for this page
+
+<SourceFormula formula={part5Formula('MAI-P5-036')} part={5} display={true} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-19 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-19" data-source-page="11">
+
+  <figcaption class="font-black">Residual block</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.11: F(x) plus the identity connection.</p>
+</figure>
+
+{/* source-figure:P5-FIG-20 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-20" data-source-page="11">
+
+  <figcaption class="font-black">ResNet-18 architecture</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.11: stage/block layout.</p>
+</figure>
+
+{/* source-figure:P5-FIG-21 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-21" data-source-page="11">
+
+  <figcaption class="font-black">Plain vs residual ImageNet curves</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.11: training/validation errors for 18 and 34 layers.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-10 */}
+> **P5-ANN-10 · PDF p.11 · Partially legible.** Skip-connection, identity, and gradient-direction notes around the residual block.
+
+## PDF p.12 — ResNet details, BN, and 5.6 WRN
+
+{/* source-content:P5-C074 */}
+
+With ResNet, the 34-layer model outperforms the 18-layer model and achieves lower training error, illustrating the resolution of plain-network degradation.
+
+{/* source-content:P5-C075 */}
+
+### Further details.
+
+{/* source-content:P5-C076 */}
+
+ResNet is described as using batch normalization after every convolutional layer.
+
+{/* source-content:P5-C077 */}
+
+BN normalizes hidden activations using the current batch’s mean and variance and is generally applied immediately before the nonlinear function.
+
+{/* source-content:P5-C078 */}
+
+The source says the explanation for BN’s effectiveness remains unsettled. It presents the original internal-covariate-shift account, the hypothesis of reduced interdependence between layers, and the optimization-landscape-smoothing account alongside one another.
+
+{/* source-content:P5-C079 */}
+
+The source states that ResNet does not use dropout.
+
+{/* source-content:P5-C080 */}
+
+### 5.6 Wide residual network (WRN).
+
+{/* source-content:P5-C081 */}
+
+Widening ResNet can produce shallower networks with equal or better accuracy, reducing the layer count and training time.
+
+{/* source-content:P5-C082 */}
+
+From circuit complexity, the source notes that shallow circuits may require exponentially more components than deeper circuits.
+
+{/* source-content:P5-C083 */}
+
+The diminishing-feature-reuse problem is described: in thin, deep ResNets, gradients may bypass residual weights, leaving only some blocks to learn useful representations.
+
+{/* source-content:P5-C084 */}
+
+WRN widens networks by increasing feature planes. It uses deepening factor l and widening factor k: k=1 gives the ResNet width, while k>1 makes it k times wider.
+
+{/* source-content:P5-C085 */}
+
+> **Source footnote.** Preserve the note that BN is sometimes applied after the nonlinear function.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-037** · WRN widening-factor definition: <SourceFormula formula={part5Formula('MAI-P5-037')} part={5} display={false} />
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-11 */}
+> **P5-ANN-11 · PDF p.12 · Partially legible.** Short notes on researchers/optimization around the BN discussion, and notes on widening WRN.
+
+## PDF p.13 — Comparing WRNs and 5.7 DenseNet
+
+{/* source-content:P5-C086 */}
+
+**Source figure.** The source compares basic, bottleneck, basic-wide, and wide-dropout residual-block variants.
+
+{/* source-content:P5-C087 */}
+
+**Source table.** The ILSVRC 2012 single-crop validation table compares top-1/top-5 error, parameter counts, and batch time for ResNet-50/101/152, WRN-50-2-bottleneck, and pre-ResNet-200.
+
+{/* source-content:P5-C088 */}
+
+WRN-50-2-bottleneck is described as faster than ResNet-152 with one-third as many layers, while achieving results close to pre-ResNet-200.
+
+{/* source-content:P5-C089 */}
+
+Pre-Activation ResNet uses BN–ReLU–Conv, whereas the original ResNet uses Conv–BN–ReLU. The source says pre-activation is generally better, but offers no clear improvement on ImageNet at around 100 layers.
+
+{/* source-content:P5-C090 */}
+
+### 5.7 DenseNet — Overview.
+
+{/* source-content:P5-C091 */}
+
+DenseNet received the CVPR 2017 Best Paper Award. Each layer takes all preceding feature maps as input and passes its own feature maps to all subsequent layers.
+
+{/* source-content:P5-C092 */}
+
+A standard network has L connections, whereas an L-layer DenseNet has L(L+1)/2 connections and uses concatenation instead of summation.
+
+{/* source-content:P5-C093 */}
+
+The l-th layer is described as receiving l inputs comprising all preceding feature maps.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-038** · Standard network connection count: <SourceFormula formula={part5Formula('MAI-P5-038')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-039')} part={5} display={true} />
+
+- **MAI-P5-040** · The l-th dense layer receives l inputs: <SourceFormula formula={part5Formula('MAI-P5-040')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-22 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-22" data-source-page="13">
+
+  <figcaption class="font-black">WRN block variants</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.13: basic/bottleneck/basic-wide/wide-dropout blocks.</p>
+</figure>
+
+{/* source-figure:P5-FIG-23 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-23" data-source-page="13">
+
+  <figcaption class="font-black">WRN/ResNet comparison table</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.13: top-1/top-5 error, parameters, and time.</p>
+</figure>
+
+{/* source-figure:P5-FIG-24 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-24" data-source-page="13">
+
+  <figcaption class="font-black">DenseNet connectivity overview</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.13: reuse of all preceding features.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-12 */}
+> **P5-ANN-12 · PDF p.13 · Partially legible.** Pre-activation notes in the WRN table and recycling/connection notes on the DenseNet diagram.
+
+## PDF p.14 — Dense block: sequential/addition/concatenation
+
+{/* source-content:P5-C094 */}
+
+In the dense-block discussion, a standard feed-forward network connects the l-th output to the (l+1)-th input.
+
+{/* source-content:P5-C095 */}
+
+The standard transition is defined as `x_l=H_l(x_{l-1})`, with H_l representing a composite function such as convolution, ReLU, pooling, or BN.
+
+{/* source-content:P5-C096 */}
+
+ResNet uses identity mapping and element-wise addition to obtain `x_l=H_l(x_{l-1})+x_{l-1}`.
+
+{/* source-content:P5-C097 */}
+
+DenseNet concatenates all preceding features and supplies them as `x_l=H_l([x_0,...,x_{l-1}])`.
+
+{/* source-content:P5-C098 */}
+
+DenseNet defines H_l as the sequence BN → ReLU → 3x3 convolution.
+
+{/* source-content:P5-C099 */}
+
+Transition layers between dense blocks use a 1x1 convolution followed by 2x2 average pooling.
+
+{/* source-content:P5-C100 */}
+
+Feature maps within a dense block have the same spatial size, allowing concatenation. The final dense block is followed by GAP and a softmax classifier.
+
+#### Formula and numerical ledger for this page
+
+<SourceFormula formula={part5Formula('MAI-P5-041')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-042')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-043')} part={5} display={true} />
+
+- **MAI-P5-044** · DenseNet transition-layer structure: <SourceFormula formula={part5Formula('MAI-P5-044')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-25 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-25" data-source-page="14">
+
+  <figcaption class="font-black">Standard/ResNet/DenseNet connectivity</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.14: sequential connections, addition, and concatenation.</p>
+</figure>
+
+{/* source-figure:P5-FIG-26 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-26" data-source-page="14">
+
+  <figcaption class="font-black">DenseNet blocks and transitions</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.14: transitions with 1x1 convolution and 2x2 average pooling.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-13 */}
+> **P5-ANN-13 · PDF p.14 · Partially legible.** Input/output/concatenation notes around the standard-network, ResNet, and DenseNet equations.
+
+## PDF p.15 — DenseNet growth rate and advantages
+
+{/* source-content:P5-C101 */}
+
+Reusing preceding feature maps allows the network to be thinner and more compact.
+
+{/* source-content:P5-C102 */}
+
+The growth rate k is defined as the number of channels added by each layer.
+
+{/* source-content:P5-C103 */}
+
+**Source figure.** The forward-propagation concatenation diagram shows how each layer receives accumulated features from earlier layers.
+
+<Part5ArchitectureVisual kind="densenet" />
+
+{/* source-content:P5-C104 */}
+
+### Advantages of DenseNet.
+
+{/* source-content:P5-C105 */}
+
+Strong gradient flow: error signals from the final classification layer reach earlier layers directly, producing an implicit deep-supervision effect.
+
+{/* source-content:P5-C106 */}
+
+Parameter/computational efficiency: the source contrasts ResNet layer parameters proportional to CxC with DenseNet parameters proportional to l*k*k, where k&lt;&lt;C.
+
+{/* source-content:P5-C107 */}
+
+**Source figure.** The diagram compares parameter scaling under ResNet and DenseNet connectivity.
+
+{/* source-content:P5-C108 */}
+
+**Source figure.** A plot compares top-1 error against parameter counts for DenseNet and ResNet families.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-045** · Growth-rate definition: <SourceFormula formula={part5Formula('MAI-P5-045')} part={5} display={false} />
+
+- **MAI-P5-046** · Source connectivity parameter scaling: <SourceFormula formula={part5Formula('MAI-P5-046')} part={5} display={false} />
+
+<SourceFormula formula={part5Formula('MAI-P5-047')} part={5} display={true} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-27 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-27" data-source-page="15">
+
+  <figcaption class="font-black">DenseNet growth-rate connectivity</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.15: k channels per dense layer.</p>
+</figure>
+
+{/* source-figure:P5-FIG-28 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-28" data-source-page="15">
+
+  <figcaption class="font-black">DenseNet gradient-flow diagram</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.15: direct paths for error signals.</p>
+</figure>
+
+{/* source-figure:P5-FIG-29 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-29" data-source-page="15">
+
+  <figcaption class="font-black">ResNet vs DenseNet parameter scaling</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.15: C^2 versus l k^2.</p>
+</figure>
+
+{/* source-figure:P5-FIG-30 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-30" data-source-page="15">
+
+  <figcaption class="font-black">DenseNet/ResNet top-1 error plot</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.15: error versus parameters.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-14 */}
+> **P5-ANN-14 · PDF p.15 · Partially legible.** Emphasis marks on growth rate k, gradient flow, and the k&lt;&lt;C parameter comparison.
+
+## PDF p.16 — DenseNet feature reuse and 5.8 SE Networks
+
+{/* source-content:P5-C109 */}
+
+Each DenseNet layer receives all preceding features, enabling more diverse and richer patterns.
+
+{/* source-content:P5-C110 */}
+
+A standard convolutional classifier mainly uses the most complex final features, whereas a DenseNet classifier can use features at multiple levels of complexity.
+
+{/* source-content:P5-C111 */}
+
+Following the authors’ argument, the source connects this to potentially smoother decision boundaries and better performance when data are scarce.
+
+{/* source-content:P5-C112 */}
+
+### 5.8 Squeeze-and-Excitation Networks.
+
+{/* source-content:P5-C113 */}
+
+The SE architecture is introduced as the ILSVRC 2017 winner. It adds content-aware, adaptive channel weighting in place of the equal channel weighting of a conventional CNN.
+
+{/* source-content:P5-C114 */}
+
+The SE block is introduced as a lightweight gating mechanism that strengthens channel interdependencies with little additional cost.
+
+{/* source-content:P5-C115 */}
+
+Squeeze reduces each feature map to a single number, producing a C-dimensional vector. A two-layer neural network outputs another vector of the same size, whose C values rescale the original feature maps channel by channel.
+
+#### Formula and numerical ledger for this page
+
+- **MAI-P5-048** · Squeezed channel descriptor size: <SourceFormula formula={part5Formula('MAI-P5-048')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-31 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-31" data-source-page="16">
+
+  <figcaption class="font-black">Feature-complexity reuse</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.16: classifier inputs in standard networks versus DenseNet.</p>
+</figure>
+
+## PDF p.17 — SE squeeze·excitation·scale
+
+{/* source-content:P5-C116 */}
+
+SE weights rescale the original feature maps according to each channel’s importance.
+
+{/* source-content:P5-C117 */}
+
+**Source figure.** The SE diagram follows transform X→U, squeeze F_sq, excitation F_ex, and scale F_scale, alongside the HxWxC tensor geometry.
+
+<Part5ArchitectureVisual kind="se-network" />
+
+{/* source-content:P5-C118 */}
+
+The squeeze equation computes z_c as a spatial average.
+
+{/* source-content:P5-C119 */}
+
+The excitation equation generates channel gates s through a two-layer W1/W2 bottleneck, activation delta, and sigmoid.
+
+{/* source-content:P5-C120 */}
+
+The scale equation recalibrates each channel by multiplying s_c and u_c.
+
+{/* source-content:P5-C121 */}
+
+SE blocks are described as easy to integrate into popular convolutional modules such as ResNet and Inception.
+
+{/* source-content:P5-C122 */}
+
+**Source figure.** The SE-ResNet module inserts global pooling → FC(C/r) → ReLU → FC(C) → sigmoid → scale into the residual branch; r is the reduction ratio.
+
+{/* source-content:P5-C123 */}
+
+**Source figure.** Training and validation top-1 error curves are compared for SE-ResNet-50 and ResNet-50.
+
+{/* source-content:P5-C124 */}
+
+Top-1 scoring checks whether the class with the highest predicted probability matches the target label.
+
+{/* source-content:P5-C125 */}
+
+The statement that SE blocks add depth in a computationally efficient way continues onto the first line of p.18.
+
+#### Formula and numerical ledger for this page
+
+<SourceFormula formula={part5Formula('MAI-P5-049')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-050')} part={5} display={true} />
+
+<SourceFormula formula={part5Formula('MAI-P5-051')} part={5} display={true} />
+
+- **MAI-P5-052** · SE bottleneck widths with reduction ratio r: <SourceFormula formula={part5Formula('MAI-P5-052')} part={5} display={false} />
+
+#### Diagram, table, and chart mapping for this page
+
+{/* source-figure:P5-FIG-32 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-32" data-source-page="17">
+
+  <figcaption class="font-black">SE squeeze-excitation-scale diagram</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.17: the tensor geometry of F_sq, F_ex, and F_scale.</p>
+</figure>
+
+{/* source-figure:P5-FIG-33 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-33" data-source-page="17">
+
+  <figcaption class="font-black">SE-ResNet module</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.17: global pooling, fully connected layers, reduction ratio, sigmoid, and scaling.</p>
+</figure>
+
+{/* source-figure:P5-FIG-34 */}
+<figure class="my-6 rounded-2xl border border-border bg-card/45 p-5" data-source-figure="P5-FIG-34" data-source-page="17">
+
+  <figcaption class="font-black">SE-ResNet-50 training curves</figcaption>
+
+  <p class="mb-0 mt-2 text-sm text-muted-foreground">A structural explanation rather than a reproduction of the original image on PDF p.17: training/validation top-1 error.</p>
+</figure>
+
+#### Instructor’s handwritten notes
+
+{/* source-annotation:P5-ANN-15 */}
+> **P5-ANN-15 · PDF p.17 · Partially legible.** Channel-aggregation notes to the left of the squeeze/excitation diagram and a “weight matrix” note on SE-ResNet.
+
+## PDF p.18 — References
+
+{/* source-content:P5-C126 */}
+
+### References.
+
+{/* source-content:P5-C127 */}
+
+- [1] Simonyan & Zisserman, Very Deep Convolutional Networks for Large-Scale Image Recognition, ICLR 2015.
+
+{/* source-content:P5-C128 */}
+
+- [2] Szegedy et al., Going Deeper with Convolutions, CVPR 2015.
+
+{/* source-content:P5-C129 */}
+
+- [3] LeCun et al., Gradient-Based Learning Applied to Document Recognition, Proc. IEEE 1998.
+
+{/* source-content:P5-C130 */}
+
+- [4] Lin, Chen & Yan, Network in Network, ICLR 2014.
+
+{/* source-content:P5-C131 */}
+
+- [5] He et al., Deep Residual Learning for Image Recognition, CVPR 2016.
+
+{/* source-content:P5-C132 */}
+
+- [6] Ioffe & Szegedy, Batch Normalization, ICML 2015.
+
+{/* source-content:P5-C133 */}
+
+- [7] Santurkar et al., How Does Batch Normalization Help Optimization?, NeurIPS 2018.
+
+{/* source-content:P5-C134 */}
+
+- [8] Huang et al., Densely Connected Convolutional Networks, CVPR 2017.
+
+{/* source-content:P5-C135 */}
+
+- [9] Hu, Shen & Sun, Squeeze-and-Excitation Networks, CVPR 2018.
+
+---
+# Editorial and mathematical verification
+
+{/* editorial-content:P5-E001 */}
+
+### P5-E001
+Read the VGG slide’s statement that “3x3 is the optimal/smallest possible size” as lecture intuition about the smallest odd kernel that captures spatial context in both directions. A 1x1 convolution also exists; the statement does not establish that 3x3 is universally optimal for every purpose.
+
+{/* editorial-content:P5-E002 */}
+
+### P5-E002
+The AlexNet slide’s intuition that “most neurons usually end up positive” is not a general theorem. Keep that sentence separate from the historical explanation that ReLU’s nonsaturating positive branch helped optimization.
+
+{/* editorial-content:P5-E003 */}
+
+### P5-E003
+As in the source, retain multiple hypotheses about BN’s effectiveness. Do not identify internal covariate shift as the sole established cause; note that later work discusses optimization landscapes and reparameterization.
+
+{/* editorial-content:P5-E004 */}
+
+### P5-E004
+DenseNet’s claim of “higher computational and memory efficiency” concerns parameter reuse and compactness. Dense concatenation can increase activation-memory traffic, so this claim should not be equated with hardware efficiency in modern implementations.
+
+{/* editorial-content:P5-E005 */}
+
+### P5-E005
+Preserve the source wording that the SE architecture won ILSVRC 2017, while reading the end of the challenge and SENet’s competition results in their historical context.
+
+---
+# Research updates as of 2026-08-18
+
+This section does not count toward PDF page coverage. Rather than replacing the lecture’s AlexNet-to-SE history, it connects primary sources to additional axes relevant to image classification as of 2026-08-18: architecture, training, robustness, and transfer.
+
+{/* research-content:P5-R001 */}
+
+### P5-R001
+ConvNeXt progressively modernized ResNet using a Transformer-era recipe, showing that a pure ConvNet can remain competitive with ViT/Swin-family backbones.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/2201.03545)
+
+{/* research-content:P5-R002 */}
+
+### P5-R002
+ConvNeXt V2 jointly designed architecture and self-supervised pretraining by combining a fully convolutional masked autoencoder with Global Response Normalization.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/2301.00808)
+
+{/* research-content:P5-R003 */}
+
+### P5-R003
+Vision Transformer established a pure Transformer route that treats image patches as a token sequence and transfers large-scale pretraining to image recognition.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/2010.11929)
+
+{/* research-content:P5-R004 */}
+
+### P5-R004
+Swin Transformer used shifted local windows and hierarchical feature maps to serve as a general-purpose backbone for classification and dense prediction. Swin V2 strengthened stability at larger scales and resolutions.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/2111.09883)
+
+{/* research-content:P5-R005 */}
+
+### P5-R005
+ResNet-RS research separated architectural differences from training and scaling recipes, showing how a strong recipe can substantially improve the classic ResNet baseline itself.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/2103.07579)
+
+{/* research-content:P5-R006 */}
+
+### P5-R006
+ImageNet-1K top-1 accuracy alone cannot adequately characterize generalization. ImageNet-C/P separately measure robustness to common corruptions and perturbations.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/1903.12261)
+
+{/* research-content:P5-R007 */}
+
+### P5-R007
+ImageNet-A used adversarial filtration to assemble naturally occurring hard images on which models commonly fail, revealing the gap between in-distribution accuracy and robustness.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/1907.07174)
+
+{/* research-content:P5-R008 */}
+
+### P5-R008
+Modern neural classifiers can have poor confidence calibration despite high accuracy. Temperature scaling remains a simple post-hoc baseline.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/1706.04599)
+
+{/* research-content:P5-R009 */}
+
+### P5-R009
+CLIP used natural-language supervision to construct zero-shot classifiers, making distribution shifts beyond ImageNet and transfer evaluation central questions for image classification.
+
+- Evidence: [peer-reviewed / official preprint](https://arxiv.org/abs/2103.00020)
+
+{/* research-content:P5-R010 */}
+
+### P5-R010
+In the era of foundation vision encoders, frozen or transferable representations and downstream linear-probe or fine-tuning performance have become more important than a fixed 1,000-way classifier.
+
+- Evidence: [official preprint (DINOv2)](https://arxiv.org/abs/2304.07193)
+
+{/* research-content:P5-R011 */}
+
+### P5-R011
+DINOv3 used large-scale self-supervised training and Gram anchoring in 2025 to counter dense-feature degradation and pursue general-purpose encoder performance across vision tasks.
+
+- Evidence: [technical report / official preprint](https://arxiv.org/abs/2508.10104)
+
+{/* research-content:P5-R012 */}
+
+### P5-R012
+SigLIP 2 combined captioning, self-distillation, masked prediction, and online curation to improve multilingual zero-shot classification, retrieval, transfer, localization, and dense features together.
+
+- Evidence: [technical report / official preprint](https://arxiv.org/abs/2502.14786)
+
+{/* research-content:P5-R013 */}
+
+### P5-R013
+The historical AlexNet → VGG → Inception → ResNet → DenseNet → SE progression remains useful for understanding architecture. Practical comparisons in 2026 must also consider training recipes, pretraining data, calibration, distribution shift, and transfer costs.
+
+- Evidence: [synthesis grounded in cited primary sources](https://arxiv.org/abs/2201.03545)
+
+## A compact map, reread from a 2026 perspective
+
+AlexNet made large-scale CNN training practical through **ReLU, data augmentation, and dropout**. VGG emphasized **the simplicity of deep stacks of small 3×3 kernels**; GoogLeNet, **1×1 bottlenecks, multi-branch Inception, and GAP**; ResNet/WRN, **identity paths and the depth/width trade-off**; DenseNet, **feature reuse through concatenation**; and SE, **adaptive channel-wise recalibration**.
+
+In 2026, evaluation also includes **ViT/Swin attention backbones**, **modernized ConvNets such as ConvNeXt**, **training/scaling recipes**, **self-supervised or multimodal foundation encoders**, and **calibration, distribution shift, robustness, and transfer**. Asking only which architecture has the highest ImageNet top-1 accuracy is therefore no longer enough.

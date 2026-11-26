@@ -9,4 +9,10 @@ assert.equal(tree.children[0].children[1].data.hProperties['data-astro-reload'],
 let ko=fixture(); const saved=JSON.stringify(ko);transform()(ko,{path:'/site/content/posts/example.mdx'});assert.equal(JSON.stringify(ko),saved);
 let duplicate=fixture();duplicate.children.push(paragraph('[1] Duplicate'));assert.throws(()=>transform()(duplicate,{path:'/site/content/english/x.mdx'}),/Duplicate/);
 let missing=fixture();missing.children[0]=paragraph('Unknown [3]');assert.throws(()=>transform()(missing,{path:'/site/content/english/x.mdx'}),/Undefined/);
+const authoredLink = {type:'mdxJsxTextElement',name:'a',attributes:[{name:'href',value:'#news-ref-1'}],children:[{type:'text',value:'[1]'}]};
+const authoredReference = {type:'mdxJsxTextElement',name:'a',attributes:[{name:'id',value:'news-ref-1'}],children:[{type:'text',value:'Original paper'}]};
+const mixed = {type:'root',children:[paragraph('Another claim [1]'),authoredLink,authoredReference]};
+transform()(mixed,{path:'/site/content/english/authored.mdx'});
+assert.equal(mixed.children[0].children[1].url,'#news-ref-1');
+assert.deepEqual(authoredLink.children,[{type:'text',value:'[1]'}]);
 console.log('english-citations: PASS real transform, Korean isolation, duplicate and undefined references rejected');

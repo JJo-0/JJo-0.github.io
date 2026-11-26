@@ -1,4 +1,7 @@
 <script>
+ import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+ const formulaEnglish = document.documentElement.lang === 'en';
+ const formulaText = value => formulaEnglish ? englishFormulaText(value) : value;
   import {
     buildSyntheticRegressionDataset,
     computeGeneralizationRidge,
@@ -71,14 +74,14 @@
   <section class="chart-panel">
     <header>
       <div>
-        <p>현재 수식의 초점</p>
+        <p>{formulaText("현재 수식의 초점")}</p>
         <h6>{spec.focusLabels[focus]}</h6>
       </div>
-      <span>w★는 train으로만 계산</span>
+      <span>{formulaText("w★는 train으로만 계산")}</span>
     </header>
 
     <div class="chart-scroll">
-      <svg viewBox="0 0 660 360" role="img" aria-label="훈련 표본, 시험 표본, 실제 이차함수와 훈련 집합으로 적합한 모델">
+      <svg viewBox="0 0 660 360" role="img" aria-label="{formulaText("훈련 표본, 시험 표본, 실제 이차함수와 훈련 집합으로 적합한 모델")}">
         <rect width="660" height="360" rx="18" class="plot-bg" />
         <line x1={chart.left} y1={chart.bottom} x2={chart.right} y2={chart.bottom} class="axis" />
         <line x1={xScale(0)} y1={chart.top} x2={xScale(0)} y2={chart.bottom} class="axis" />
@@ -102,7 +105,7 @@
           <circle cx={xScale(value)} cy={yScale(dataset.train.y[index])} r="5" class="train-point" />
         {/each}
         {#each dataset.test.x as value, index (index)}
-          <button aria-label={`시험 표본 ${index + 1} 선택`} on:click={() => selectTest(index)}>
+          <button aria-label={(formulaEnglish ? `Select test sample ${index + 1}` : `시험 표본 ${index + 1} 선택`)} on:click={() => selectTest(index)}>
             <circle
               cx={xScale(value)}
               cy={yScale(dataset.test.y[index])}
@@ -116,31 +119,31 @@
     </div>
 
     <div class="legend">
-      <span><i class="train-dot"></i>훈련 표본 L={dataset.train.x.length}</span>
-      <span><i class="test-dot"></i>시험 표본 M={dataset.test.x.length}</span>
-      <span><i class="truth-line"></i>데이터 생성 이차함수</span>
-      <span><i class="fit-line"></i>훈련으로 고른 w★</span>
+      <span><i class="train-dot"></i>{formulaText("훈련 표본 L=")}{dataset.train.x.length}</span>
+      <span><i class="test-dot"></i>{formulaText("시험 표본 M=")}{dataset.test.x.length}</span>
+      <span><i class="truth-line"></i>{formulaText("데이터 생성 이차함수")}</span>
+      <span><i class="fit-line"></i>{formulaText("훈련으로 고른 w★")}</span>
     </div>
   </section>
 
   <section class="metric-panel">
     <header>
-      <p>분리 원칙</p>
+      <p>{formulaText("분리 원칙")}</p>
       <h6>fit on train, evaluate on test</h6>
     </header>
     <ol class="process-rail">
-      <li><b>1</b><span>훈련 표본 추출</span><strong>L={dataset.train.x.length}</strong></li>
-      <li><b>2</b><span>훈련 MSE 최소화</span><strong>w★ 선택</strong></li>
-      <li><b>3</b><span>독립 시험 표본 추출</span><strong>M={dataset.test.x.length}</strong></li>
-      <li class:active={focus === 'test-mse'}><b>4</b><span>시험 잔차 제곱 평균</span><strong>{format(fit.testMse)}</strong></li>
-      <li class:active={focus === 'expected-gap'}><b>5</b><span>전체 절차 반복 후 평균</span><strong>{spec.expectation.trials}회</strong></li>
+      <li><b>1</b><span>{formulaText("훈련 표본 추출")}</span><strong>L={dataset.train.x.length}</strong></li>
+      <li><b>2</b><span>{formulaText("훈련 MSE 최소화")}</span><strong>{formulaText("w★ 선택")}</strong></li>
+      <li><b>3</b><span>{formulaText("독립 시험 표본 추출")}</span><strong>M={dataset.test.x.length}</strong></li>
+      <li class:active={focus === 'test-mse'}><b>4</b><span>{formulaText("시험 잔차 제곱 평균")}</span><strong>{format(fit.testMse)}</strong></li>
+      <li class:active={focus === 'expected-gap'}><b>5</b><span>{formulaText("전체 절차 반복 후 평균")}</span><strong>{spec.expectation.trials}{formulaText("회")}</strong></li>
     </ol>
 
     <dl class="metric-grid">
       <div><dt>MSE train</dt><dd>{format(fit.mse)}</dd></div>
       <div class:active={focus === 'test-mse'}><dt>MSE test</dt><dd>{format(fit.testMse)}</dd></div>
-      <div><dt>한 분할의 gap</dt><dd>{format(fit.generalizationGap)}</dd></div>
-      <div><dt>모델 차수</dt><dd>{spec.degree}</dd></div>
+      <div><dt>{formulaText("한 분할의 gap")}</dt><dd>{format(fit.generalizationGap)}</dd></div>
+      <div><dt>{formulaText("모델 차수")}</dt><dd>{spec.degree}</dd></div>
     </dl>
   </section>
 </div>
@@ -149,24 +152,24 @@
   <header>
     <div>
       <p>MAI-P2-034 · test MSE</p>
-      <h6>선택한 시험 표본의 중간 계산</h6>
+      <h6>{formulaText("선택한 시험 표본의 중간 계산")}</h6>
     </div>
     <span>sample {selectedTestIndex + 1} / {dataset.test.x.length}</span>
   </header>
 
   <div class="selected-flow">
-    <article><small>입력</small><strong>x</strong><code>{format(dataset.test.x[selectedTestIndex], 3)}</code></article>
+    <article><small>{formulaText("입력")}</small><strong>x</strong><code>{format(dataset.test.x[selectedTestIndex], 3)}</code></article>
     <b>→ w★</b>
-    <article><small>예측</small><strong>ŷ</strong><code>{format(fit.testPrediction[selectedTestIndex])}</code></article>
+    <article><small>{formulaText("예측")}</small><strong>ŷ</strong><code>{format(fit.testPrediction[selectedTestIndex])}</code></article>
     <b>− y</b>
-    <article><small>잔차</small><strong>ŷ−y</strong><code>{format(fit.testResidual[selectedTestIndex])}</code></article>
-    <b>제곱</b>
-    <article class="emphasis"><small>오차 기여</small><strong>(ŷ−y)²</strong><code>{format(fit.testSquaredResidual[selectedTestIndex])}</code></article>
+    <article><small>{formulaText("잔차")}</small><strong>ŷ−y</strong><code>{format(fit.testResidual[selectedTestIndex])}</code></article>
+    <b>{formulaText("제곱")}</b>
+    <article class="emphasis"><small>{formulaText("오차 기여")}</small><strong>(ŷ−y)²</strong><code>{format(fit.testSquaredResidual[selectedTestIndex])}</code></article>
   </div>
 
   <div class="test-table-wrap">
     <table>
-      <thead><tr><th>m</th><th>xₘ</th><th>yₘ(test)</th><th>ŷₘ</th><th>잔차</th><th>잔차²</th></tr></thead>
+      <thead><tr><th>m</th><th>xₘ</th><th>yₘ(test)</th><th>ŷₘ</th><th>{formulaText("잔차")}</th><th>{formulaText("잔차²")}</th></tr></thead>
       <tbody>
         {#each dataset.test.x as value, index (index)}
           <tr class:selected={selectedTestIndex === index} on:click={() => selectTest(index)}>
@@ -180,8 +183,8 @@
         {/each}
       </tbody>
       <tfoot>
-        <tr><th colspan="5">Σ 잔차²</th><th>{format(fit.testSse)}</th></tr>
-        <tr><th colspan="5">(1/M)Σ 잔차²</th><th>{format(fit.testMse)}</th></tr>
+        <tr><th colspan="5">{formulaText("Σ 잔차²")}</th><th>{format(fit.testSse)}</th></tr>
+        <tr><th colspan="5">{formulaText("(1/M)Σ 잔차²")}</th><th>{format(fit.testMse)}</th></tr>
       </tfoot>
     </table>
   </div>
@@ -191,13 +194,13 @@
   <header>
     <div>
       <p>MAI-P2-035 · expectation</p>
-      <h6>한 번의 분할이 아니라 표본 추출과 학습 전체를 반복</h6>
+      <h6>{formulaText("한 번의 분할이 아니라 표본 추출과 학습 전체를 반복")}</h6>
     </div>
     <span>{expectation.trials} deterministic trials</span>
   </header>
 
   <div class="expectation-grid">
-    <div class="bar-figure" role="img" aria-label="반복 실험에서 평균 훈련오차보다 평균 시험오차가 큰 결과">
+    <div class="bar-figure" role="img" aria-label="{formulaText("반복 실험에서 평균 훈련오차보다 평균 시험오차가 큰 결과")}">
       <div>
         <span style={`height:${(expectation.expectedTrainError / expectationMaximum) * 100}%`}></span>
         <strong>{format(expectation.expectedTrainError)}</strong>
@@ -211,15 +214,15 @@
     </div>
 
     <div class="expectation-readout">
-      <article><small>기대 일반화 간극</small><strong>{format(expectation.expectedGap)}</strong><p>E[test]−E[train]</p></article>
-      <article><small>개별 분할의 예외</small><strong>{expectation.reversalCount} / {expectation.trials}</strong><p>test error가 더 작았던 횟수</p></article>
+      <article><small>{formulaText("기대 일반화 간극")}</small><strong>{format(expectation.expectedGap)}</strong><p>E[test]−E[train]</p></article>
+      <article><small>{formulaText("개별 분할의 예외")}</small><strong>{expectation.reversalCount} / {expectation.trials}</strong><p>{formulaText("test error가 더 작았던 횟수")}</p></article>
       <p class="interpretation">
-        개별 분할에서는 순서가 뒤집힐 수 있지만, 훈련자료로 모델까지 선택한 절차를 반복해 평균하면 시험오차가 더 크게 나타난다.
+        {formulaText("개별 분할에서는 순서가 뒤집힐 수 있지만, 훈련자료로 모델까지 선택한 절차를 반복해 평균하면 시험오차가 더 크게 나타난다.")}
       </p>
     </div>
   </div>
 
-  <div class="trial-strip" aria-label="첫 24개 반복 실험의 훈련오차와 시험오차 비교">
+  <div class="trial-strip" aria-label="{formulaText("첫 24개 반복 실험의 훈련오차와 시험오차 비교")}">
     {#each expectation.trainErrors.slice(0, 24) as trainError, index (index)}
       <div title={`trial ${index + 1}: train ${format(trainError)}, test ${format(expectation.testErrors[index])}`}>
         <i style={`height:${Math.min(100, (trainError / expectationMaximum) * 100)}%`}></i>
@@ -230,7 +233,7 @@
 </section>
 
 <aside class="assumptions">
-  <strong>원자료의 문장을 정확히 읽는 조건</strong>
+  <strong>{formulaText("원자료의 문장을 정확히 읽는 조건")}</strong>
   <ul>
     {#each spec.assumptions as assumption, index (index)}
       <li>{assumption}</li>

@@ -1,13 +1,17 @@
 ---
 import WritingListItem from '@/components/WritingListItem.astro';
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getLocalizedPosts } from '@/lib/localized-posts';
+import { englishPostPathForSlug } from '@/lib/locales';
+import { getPostSlug } from '@/lib/utils/posts';
 import { getReadTime } from '@/lib/utils/readTime';
 import series from '@/data/acts-series.json';
 import SeriesGroup from './SeriesGroup.astro';
-const allPosts = (await getPublishedPosts()).filter((post) => post.data.category === 'biblical-studies');
+interface Props { en?: boolean; }
+const { en = false } = Astro.props;
+const allPosts = (await getLocalizedPosts(en)).filter((post) => post.data.category === 'biblical-studies');
 const groups = [
-  { id: 'overview', title: '먼저 · 사도행전 전체 읽기', description: '책의 큰 구조, 역사 자료, 여러 해석 관점을 먼저 살펴봅니다.', entryGroups: ['overview'] },
-  { id: 'acts-1-1-14', title: '사도행전 1장 1–14절', description: '1:1–5의 서문과 1:6–14의 회복·승천·기도 공동체를 각각 세 관점으로 읽습니다.', entryGroups: ['exegesis', 'exegesis-1-6-14'] },
+  { id: 'overview', title: (en ? 'Start here · Overview of Acts' : '먼저 · 사도행전 전체 읽기'), description: (en ? 'Begin with the structure of Acts, its historical sources and interpretive approaches.' : '책의 큰 구조, 역사 자료, 여러 해석 관점을 먼저 살펴봅니다.'), entryGroups: ['overview'] },
+  { id: 'acts-1-1-14', title: (en ? 'Acts 1:1–14' : '사도행전 1장 1–14절'), description: (en ? 'Read the prologue in Acts 1:1–5 and the restoration, ascension and praying community in 1:6–14 from three perspectives.' : '1:1–5의 서문과 1:6–14의 회복·승천·기도 공동체를 각각 세 관점으로 읽습니다.'), entryGroups: ['exegesis', 'exegesis-1-6-14'] },
 ];
 const entries = series.entries.map((entry) => ({ ...entry, post: allPosts.find((post) => getPostSlug(post) === entry.slug) }));
 const actsPassagePosts = allPosts.filter((post) => post.data.series?.id === 'acts-pentecost-study').sort((a, b) => (a.data.series?.order || 0) - (b.data.series?.order || 0));
@@ -17,17 +21,17 @@ const otherPosts = allPosts.filter((post) => post.data.series?.id !== 'isaiah-st
 ---
 <div data-acts-shelf class="acts-shelf">
   {groups.map((group) => <section class="acts-shelf__group" data-acts-group={group.id}>
-    <SeriesGroup groupId={group.id} title={group.title} description={group.description} count={entries.filter(entry => group.entryGroups.includes(entry.group) && entry.post).length}>
-      {group.entryGroups.map(entryGroup => <div>{group.entryGroups.length > 1 && <h4 class="acts-shelf__range">{entryGroup === 'exegesis' ? '1장 1–5절 · 서문' : '1장 6–14절 · 회복·승천·기도 공동체'}</h4>}{entries.filter((entry) => entry.group === entryGroup && entry.post).map((entry) => entry.post && <div data-acts-card={entry.slug} data-acts-order={entry.order}>
-        <WritingListItem post={entry.post} slug={entry.slug} readTime={getReadTime(entry.post.body || '')} />
+    <SeriesGroup {en} groupId={group.id} title={group.title} description={group.description} count={entries.filter(entry => group.entryGroups.includes(entry.group) && entry.post).length}>
+      {group.entryGroups.map(entryGroup => <div>{group.entryGroups.length > 1 && <h4 class="acts-shelf__range">{entryGroup === 'exegesis' ? (en ? '1:1–5 · Prologue' : '1장 1–5절 · 서문') : (en ? '1:6–14 · Restoration, ascension and the praying community' : '1장 6–14절 · 회복·승천·기도 공동체')}</h4>}{entries.filter((entry) => entry.group === entryGroup && entry.post).map((entry) => entry.post && <div data-acts-card={entry.slug} data-acts-order={entry.order}>
+        <WritingListItem {en} post={entry.post} slug={entry.slug} readTime={getReadTime(entry.post.body || '')} />
       </div>)}</div>)}
     </SeriesGroup>
   </section>)}
-  <aside class="acts-shelf__header" data-bible-coverage-gap aria-label="본문 연구 범위 안내"><h3>아직 자료가 없는 구간</h3><p>사도행전 1:15–26과 2:1–13의 본문 연구는 아직 제공되지 않았습니다. 공개된 연구는 범위별 자료이며, 모든 절을 연속해서 해설하는 주석은 아닙니다.</p></aside>
-  {actsPassagePosts.length > 0 && <section class="acts-shelf__group" data-bible-group="acts-2-14-37"><SeriesGroup groupId="acts-2-14-37" title="사도행전 2장 14–37절" description="Naver 완성 원문 · 세 연구 관점 안내" count={actsPassagePosts.length}><p class="acts-shelf__source"><a href="https://blog.naver.com/jjo_09_/224428120204" target="_blank" rel="noopener noreferrer">Naver 전체 원문 읽기 ↗</a></p>{actsPassagePosts.map((post) => <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}</SeriesGroup></section>}
-  {ezekielPosts.length > 0 && <section class="acts-shelf__group" data-bible-group="ezekiel-2-1-3-11"><SeriesGroup groupId="ezekiel-2-1-3-11" title="에스겔 2장 1절–3장 11절" description="블로그 본문에서 읽는 전체 연구 · 세 연구 관점" count={ezekielPosts.length}>{ezekielPosts.map((post) => <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}<p class="acts-shelf__source">세 글에 전체 연구 본문·표·참고문헌을 내장했습니다. <a href="https://blog.naver.com/jjo_09_/224428051487" target="_blank" rel="noopener noreferrer">Naver 원문과 대조하기 ↗</a></p></SeriesGroup></section>}
-  {isaiahPosts.length > 0 && <section class="acts-shelf__group" data-bible-group="isaiah-43-18-21"><SeriesGroup groupId="isaiah-43-18-21" title="이사야 43장 18–21절" description="Gemini 채팅 본문 · 세 연구와 대시보드" count={isaiahPosts.length}>{isaiahPosts.map(post => <p class="acts-shelf__source"><a href={`/posts/${getPostSlug(post)}/`}>{post.data.title}</a></p>)}</SeriesGroup></section>}
-  {otherPosts.length > 0 && <section class="acts-shelf__group"><header class="acts-shelf__header"><h3>다른 성경 연구</h3></header>{otherPosts.map((post) => <WritingListItem {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}</section>}
+  <aside class="acts-shelf__header" data-bible-coverage-gap aria-label={en ? 'Passage coverage' : '본문 연구 범위 안내'}><h3>{en ? 'Passages awaiting study' : '아직 자료가 없는 구간'}</h3><p>{en ? 'The published studies cover selected passages. Acts 1:15–26 and 2:1–13 are still to come.' : '사도행전 1:15–26과 2:1–13의 본문 연구는 아직 제공되지 않았습니다. 공개된 연구는 범위별 자료이며, 모든 절을 연속해서 해설하는 주석은 아닙니다.'}</p></aside>
+  {actsPassagePosts.length > 0 && <section class="acts-shelf__group" data-bible-group="acts-2-14-37"><SeriesGroup {en} groupId="acts-2-14-37" title={en ? 'Acts 2:14–37' : '사도행전 2장 14–37절'} description={en ? 'Full Korean text on Naver · Guide to three approaches' : 'Naver 완성 원문 · 세 연구 관점 안내'} count={actsPassagePosts.length}><p class="acts-shelf__source"><a href="https://blog.naver.com/jjo_09_/224428120204" target="_blank" rel="noopener noreferrer">{en ? 'Read the full Korean text on Naver ↗' : 'Naver 전체 원문 읽기 ↗'}</a></p>{actsPassagePosts.map((post) => <WritingListItem {en} {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}</SeriesGroup></section>}
+  {ezekielPosts.length > 0 && <section class="acts-shelf__group" data-bible-group="ezekiel-2-1-3-11"><SeriesGroup {en} groupId="ezekiel-2-1-3-11" title={en ? 'Ezekiel 2:1–3:11' : '에스겔 2장 1절–3장 11절'} description={en ? 'Three perspectives · Full research reports on the blog' : '블로그 본문에서 읽는 전체 연구 · 세 연구 관점'} count={ezekielPosts.length}>{ezekielPosts.map((post) => <WritingListItem {en} {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}<p class="acts-shelf__source">{en ? 'The three articles include the full reports, tables and references.' : '세 글에 전체 연구 본문·표·참고문헌을 내장했습니다.'} <a href="https://blog.naver.com/jjo_09_/224428051487" target="_blank" rel="noopener noreferrer">{en ? 'Compare with the Korean source on Naver ↗' : 'Naver 원문과 대조하기 ↗'}</a></p></SeriesGroup></section>}
+  {isaiahPosts.length > 0 && <section class="acts-shelf__group" data-bible-group="isaiah-43-18-21"><SeriesGroup {en} groupId="isaiah-43-18-21" title={en ? 'Isaiah 43:18–21' : '이사야 43장 18–21절'} description={en ? 'Three studies and dashboards based on the Gemini transcripts' : 'Gemini 채팅 본문 · 세 연구와 대시보드'} count={isaiahPosts.length}>{isaiahPosts.map(post => <p class="acts-shelf__source"><a href={en ? englishPostPathForSlug(getPostSlug(post)) : `/posts/${getPostSlug(post)}/`}>{post.data.title}</a></p>)}</SeriesGroup></section>}
+  {otherPosts.length > 0 && <section class="acts-shelf__group"><header class="acts-shelf__header"><h3>{en ? 'Other biblical studies' : '다른 성경 연구'}</h3></header>{otherPosts.map((post) => <WritingListItem {en} {post} slug={getPostSlug(post)} readTime={getReadTime(post.body || '')} />)}</section>}
 </div>
 <style>
   .acts-shelf { min-width: 0; }

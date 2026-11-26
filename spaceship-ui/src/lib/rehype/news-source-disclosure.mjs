@@ -12,9 +12,20 @@ function references(node, ids = new Set()) {
   for (const child of node.children ?? []) references(child, ids);
   return ids;
 }
-const titles = new Set(['출처·도판 권리와 열람 범위', '출처와 열람 범위', '원문·그림·수식의 출처', '원문·그림 사용 범위']);
+const koreanTitles = new Set(['출처·도판 권리와 열람 범위', '출처와 열람 범위', '원문·그림·수식의 출처', '원문·그림 사용 범위']);
+const englishTitles = new Set([
+  'Sources and access scope',
+  'Sources and scope',
+  'Sources and scope of review',
+  'Sources and figure use',
+  'Sources, figure rights, and scope of review',
+  'Sources, figure rights and scope of review',
+]);
 export default function newsSourceDisclosure() {
-  return tree => {
+  return (tree, file) => {
+    const english = String(file?.path ?? '').replaceAll('\\', '/').includes('/content/english/');
+    const titles = english ? englishTitles : koreanTitles;
+    const label = english ? 'Sources, figure rights and review scope' : '출처·도판 권리·열람 범위';
     function transform(parent) {
       if (!parent.children || parent.tagName === 'details' || parent.name === 'details') return;
       for (let i = 0; i < parent.children.length; i++) {
@@ -27,7 +38,7 @@ export default function newsSourceDisclosure() {
           const ids = references({children: original});
           if (ids.size) {
             parent.children.splice(i, end - i, {type: 'element', tagName: 'details', properties: {className: ['news-source-disclosure'], 'data-news-source-disclosure': true}, children: [
-              {type: 'element', tagName: 'summary', properties: {}, children: [{type: 'text', value: `출처·도판 권리·열람 범위 (${ids.size})`}]},
+              {type: 'element', tagName: 'summary', properties: {}, children: [{type: 'text', value: `${label} (${ids.size})`}]},
               {type: 'element', tagName: 'div', properties: {className: ['news-source-disclosure__body']}, children: original},
             ]});
             continue;

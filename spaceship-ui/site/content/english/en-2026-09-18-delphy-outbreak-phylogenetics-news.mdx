@@ -1,0 +1,158 @@
+---
+title: Delphy Speeds Up Outbreak Phylogenetics with Sparse Mutations
+description: Delphy’s mutation-annotated trees reduce repeated work across similar pathogen sequences. Outbreak
+  datasets and a 100,000-sequence experiment illustrate Bayesian inference, convergence, and uncertainty in
+  dates.
+pubDate: 2026-09-18
+slug: 2026-09-18-delphy-outbreak-phylogenetics-news
+category: research-methods-tools
+subcategory: bayesian-phylogenetics
+type: paper-review
+tags:
+- frontier-candidate
+- bayesian-phylogenetics
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translationKey: en-2026-09-18-delphy-outbreak-phylogenetics-news
+translatedPosts:
+  ko-KR: 2026-09-18-delphy-outbreak-phylogenetics-news
+---
+
+import Math from '@/components/post/Math.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsFigure from '@/components/post/NewsFigure.astro';
+
+<NewsFigure media="delphy-emat" lang="en" priority />
+
+## 1. Following evolution before an outbreak ends
+
+Pathogen sequences can accumulate rapidly during an outbreak. If it takes too long to infer when their lineages diverged from common ancestors, the results arrive too late for people working in the field. <strong>Delphy is a Bayesian phylogenetics tool that takes advantage of the close similarity among sequences sampled during an outbreak.</strong> It reorganizes inference around explicitly recorded mutations on a tree, updating those records as it explores possible histories.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The Nature paper published on September 16, 2026 presents analyses of Ebola, Zika, SARS-CoV-2, mpox and H5N1 data, along with large simulations. The authors report statistical agreement with established Bayesian methods, speedups of roughly 100- to 1,000-fold in some comparisons, and an analysis environment that runs in a browser. Reducing computation while retaining estimates of uncertainty can bring analyses that once required waiting for a specialist server closer to where the observations were collected.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The benefit depends on the input. Mutation-focused calculations can save considerable work when an outbreak dataset contains many closely related sequences. For more diverse sequences spanning long evolutionary periods, the advantage needs fresh evaluation. The first question is <strong>which information recurs often enough that the calculation can avoid repeating it.</strong>
+
+## 2. Why infer a distribution of trees?
+
+The leaves of a phylogenetic tree represent observed samples, the internal branching points represent inferred common ancestors, and branches trace the evolutionary paths between them. The sequences at the tips and their collection times are observable. The ancestral sequences and exact divergence times are hidden. Different trees can explain the same observations, leaving uncertainty among the candidates.
+
+Consider three samples with identical sequences. The sequences alone may be unable to distinguish which two samples shared a common ancestor first. Collection dates and an evolutionary model add information, but relationships the data cannot resolve deserve limited confidence. Selecting a single topology answers a different question from assigning probabilities across possible topologies.
+
+In Bayesian inference, <strong>the likelihood measures how well a candidate explains the observations. Combining it with a prior distribution over trees and parameters yields the posterior distribution.</strong> Delphy retains this framework. The following generic notation explains the principle without reproducing a numbered equation from the paper.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<CandidateEquation id="delphy-bayes" lang="en" title="What determines the probability of a phylogenetic tree?" tex={String.raw`p(T,\theta\mid D)=\frac{p(D\mid T,\theta)\,p(T,\theta)}{p(D)}`}>
+
+<Math tex={String.raw`D`} /> denotes the data, including observed sequences and dates. <Math tex={String.raw`T`} /> is a phylogenetic tree with time information, and <Math tex={String.raw`\theta`} /> represents parameters such as an evolutionary rate. The likelihood <Math tex={String.raw`p(D\mid T,\theta)`} /> measures how well a given tree and its parameters explain the data. The prior <Math tex={String.raw`p(T,\theta)`} /> describes which trees and parameter values the model considers plausible before observing the data.
+
+The numerator multiplies likelihood and prior <strong>to give greater weight to candidates that are plausible under the model and fit the observations well.</strong> The denominator <Math tex={String.raw`p(D)`} /> integrates that numerator over all candidates. Dividing by this normalizing constant gives a posterior distribution with total probability one.
+
+Suppose two candidates have likelihoods 0.8 and 0.2 and both have prior probability 0.5. Their unnormalized weights are 0.4 and 0.1. Dividing by the sum, 0.5, gives posterior probabilities of 0.8 and 0.2. If their prior probabilities change to 0.2 and 0.8, both weights become 0.16 and both posterior probabilities become 0.5. <strong>These are illustrative values</strong> rather than estimates from a particular outbreak.
+
+</CandidateEquation>
+
+In Figure 1, the explicit mutation-annotated tree (EMAT) includes each branch’s mutation history in its state. Given this expanded state, an indicator of 0 or 1 checks consistency between tip sequences and observations. The probabilities of the mutation paths enter the genetic prior. Integrating out those hidden paths gives the connection to a traditional tree likelihood. The genetic-prior factor in the figure therefore has a different role from the likelihood in the generic formula above. In the Metropolis–Hastings explanation below, <Math tex={String.raw`\pi(s)`} /> denotes the entire target weight. Figure 1 uses <Math tex={String.raw`\pi`} /> for a prior factor that excludes the genetic contribution.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+There are too many possible trees to enumerate in realistic cases. Markov chain Monte Carlo (MCMC) explores the posterior distribution through successive changes to the current candidate. Much of the computational work lies in repeatedly proposing candidates and evaluating their weights before the final tree is drawn.
+
+## 3. The cost of repeatedly evaluating similar sequences
+
+Even a long pathogen sequence sampled early in an outbreak may differ from its nearest neighbor at very few sites. The authors cite closely related outbreak sequences differing at just zero to two sites. If each proposed move requires reevaluating many sites and ancestral states, most of that work revisits information shared by the sequences.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Imagine storing two almost identical versions of a ten-page document. Recording only which characters changed avoids duplicating every unchanged letter. Phylogenetic inference adds time and probability to this comparison. The analysis must account for which state changed, what it changed to and how much time was available for that change along the branch.
+
+<strong>Making mutations explicit preserves the scientific assumptions while expressing the same inferential target in a state space that is easier to explore.</strong> Delphy’s EMAT includes mutation events on branches. Unobserved mutation paths enter the inferred state. Summing or integrating over those paths connects the expanded representation to the distribution over trees that the researchers seek.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+A compressed file usually saves storage. Delphy’s representation also changes how the algorithm proposes moves, handles missing observations and identifies regions that can be updated in parallel. The inner calculations then depend more directly on local mutations than on the length of the entire genome.
+
+## 4. Moving between trees and handling missing observations
+
+An algorithm can explore alternative trees by pruning a subtree and reattaching it elsewhere. Delphy uses mutation-directed subtree prune and regraft (SPR) proposals that favor attachment points requiring few mutations. Distant attachments remain possible, while the search spends more time considering plausible candidates.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Preferentially proposing promising locations could bias the sample. A Metropolis–Hastings step accounts for both proposal frequency and target probability. The following general expression shows the correction without specifying Delphy’s complete proposal distribution.
+
+<CandidateEquation id="delphy-mh" lang="en" title="How can the algorithm favor promising proposals without biasing the result?" tex={String.raw`\alpha(s\to s')=\min\!\left(1,\frac{\pi(s')q(s\mid s')}{\pi(s)q(s'\mid s)}\right)`}>
+
+<Math tex={String.raw`s`} /> is the current state, including the tree, mutation events and parameters. <Math tex={String.raw`s'`} /> is the proposed state. <Math tex={String.raw`\pi`} /> is a weight proportional to the target posterior distribution. <Math tex={String.raw`q(s'\mid s)`} /> is the probability of proposing the new state from the current one, and <Math tex={String.raw`q(s\mid s')`} /> is the probability of making the reverse proposal.
+
+A larger target weight in the numerator favors acceptance. The ratio of proposal probabilities corrects for differences in how often the two directions are proposed. The final <Math tex={String.raw`\min(1,\cdot)`} /> caps the acceptance probability at one. The two <Math tex={String.raw`q`} /> terms cancel for symmetric proposals and both matter for asymmetric ones.
+
+Suppose the target weight rises from 0.2 to 0.3, while the forward proposal probability is 0.6 and the reverse probability is 0.2. The ratio is <Math tex={String.raw`(0.3\times0.2)/(0.2\times0.6)=0.5`} />. Although the candidate has a higher target weight, the correction for the asymmetric proposal gives it a 50% chance of acceptance. This calculation illustrates the correction itself.
+
+</CandidateEquation>
+
+The representation must also accommodate gaps in the observations. Delphy’s N-pruning integrates out the relevant mutation paths in regions leading to tips with missing observations. Rather than forcing a particular base into each gap, the search can avoid tracking unnecessary events in unobserved regions. The implementation has limits on partially ambiguous nucleotide codes, so the format of missing data matters.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Partitioning the tree lets several regions update in parallel. The current implementation uses numerical discretization when calculating the coalescent prior. <strong>The exact theoretical reformulation and the approximation in the parallel implementation must therefore be assessed separately.</strong> Higher resolution can reduce numerical error at additional computational cost. Both enter the tradeoff between accuracy and speed.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 5. Comparing speed alongside agreement between distributions
+
+Across several outbreak datasets, the authors compare key estimates, support for branching relationships and computational efficiency against established Bayesian tools. A small difference in a weakly supported branch need not indicate a substantive difference in the distributions. Even two finite MCMC runs of the same tool will generally sample different individual trees.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<NewsFigure media="delphy-h5n1" lang="en" />
+
+| Comparison | Reported conditions and result | How to interpret it |
+|---|---|---|
+| Observed outbreak data | Analyses of Ebola, Zika, SARS-CoV-2, mpox and H5N1 | Compare models and convergence conditions for each dataset. A single speedup does not apply to every case. |
+| H5N1 example | Delphy returned results for 3,339 sequences in 42 minutes | The BEAST X run stopped after 21 days. A precise ratio of completion times cannot be inferred. |
+| Large simulation | Up to 100,000 sequences on 96 vCPUs, under 15 hours, ESS 248 | These are simulation results on the stated hardware, distinct from runtime on a field laptop. |
+| Limits of the large simulation | Discretization error in the coalescent prior and limits to parallel efficiency | Evaluate parameter recovery and convergence alongside completion time. |
+
+These figures refer to conditions reported in the Nature article. In the 100,000-sequence simulation, the generating model and true tree were known. A simulation cannot capture every complication in data collected in the field. <strong>Read the runtime of under 15 hours alongside the effective sample size of 248.</strong> The latter accounts for autocorrelation that remains among outputs even after the run finishes.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+For MCMC, speed involves more than the number of iterations per second. Similar successive samples carry less independent information than their raw count suggests. Effective sample size (ESS) accounts for this autocorrelation, and it matters which quantity the ESS describes.
+
+<CandidateEquation id="delphy-ess" lang="en" title="Why can the same number of MCMC samples carry different amounts of information?" tex={String.raw`N_{\mathrm{eff}}\approx\frac{N}{1+2\sum_{k=1}^{\infty}\rho_k}`}>
+
+<Math tex={String.raw`N`} /> is the number of recorded samples, and <Math tex={String.raw`\rho_k`} /> is their autocorrelation at lag <Math tex={String.raw`k`} />. The one in the denominator is the baseline for independent samples. The remaining terms reflect how much successive samples repeat information. A larger sum of autocorrelations increases the denominator and reduces effective sample size.
+
+For example, with 1,000 samples and a sum of autocorrelations of 4.5, the denominator is 10 and ESS is approximately 100. In practice, the autocorrelation sum must be estimated and truncated using finite data. No single number diagnoses convergence for every parameter and tree topology.
+
+</CandidateEquation>
+
+## 6. Where the data go when analysis runs in a browser
+
+Delphy’s web interface connects a TypeScript front end to a C++ computation engine compiled to WebAssembly. A user supplies aligned sequences and dates, and the computation runs on the user’s device. The paper describes the inputs as staying on that device. The application is distributed on the web while the calculations run on the client.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+This architecture allows online distribution without requiring users to upload all their raw data. A deployment review still needs to establish which application version loads, how it uses external resources and browser storage, and where its result files are kept. These are considerations for local use. This review did not conduct a separate security audit of a deployment.
+
+The input must meet the model’s requirements. Alignment quality and date accuracy determine the observations available for inference. The authors describe aligned FASTA or MAPLE input, dates embedded in sample identifiers, and optional categorical metadata. Inferred date intervals and support for branches must be read in light of input quality and model assumptions.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 7. Uncertainty remaining after a fast analysis
+
+One limitation is <strong>sequence diversity and sparsity.</strong> As mutation records become denser, working with explicit events also becomes more expensive. As with sparse-matrix optimizations, the gains need separate evaluation on dense inputs. Performance on outbreaks cannot simply be extended to every phylogenetic dataset.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+A second is <strong>uncertainty in sampling dates.</strong> The authors note that convergence can become difficult when many samples have wide date ranges. Some public H5N1 records with insufficiently precise dates and locations were excluded. Those omissions matter when interpreting the sample count and its representativeness. Accepting uncertain dates and achieving stable convergence in their presence are distinct properties.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+A third is <strong>the range of supported evolutionary models.</strong> The initial public configuration centers on single-partition HKY with limited model choices. Possible mathematical extensions are distinct from features available to a user today. An analysis that needs complex partitions, particular molecular-clock assumptions or alternative priors requires a comparison with capabilities in other tools.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Phylogenetic relatedness provides one line of evidence about transmission. Closely related samples alone cannot establish which individual directly infected another, since intervening links may have gone unsampled. Epidemiological interpretation also requires information about sampling and other evidence.
+
+### What to record for a repeat comparison
+
+Keep records at three levels. For inputs, document the sequences, alignment method, excluded samples and collection-date format. For the model and computation, record the evolutionary model, priors, MCMC run length, sampling interval, parallel settings and discretization resolution. For output evaluation, identify the quantities for which ESS was checked and how much of the initial adaptation period was discarded.
+
+These details give context to a figure such as 42 minutes. Comparing runs with different data cleaning, models or convergence criteria confounds software performance with analytical difficulty. Matching the inputs and target and checking agreement among posterior summaries makes it easier to attribute time saved to a computational improvement. This is a suggested comparison principle, not an additional benchmark.
+
+A representative tree is a summary for communicating results. Revisiting uncertainty about a particular branch or date requires more posterior output. Delphy’s compatible tree and log files provide a way to carry out those follow-up analyses in other tools.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 8. Assessing Delphy for a study
+
+Start by asking <strong>whether the supported model represents the research question.</strong> Next use the same small dataset to compare posterior summaries, branch support and estimated dates with an established analysis. As the dataset grows, record ESS and discretization resolution alongside iteration counts. This is a suggested evaluation procedure, rather than a report of further independent experiments.
+
+The authors released the computation engine, web interface, reproduction materials, run scripts and an archive. These allow direct comparisons, although this review did not rerun the benchmarks. Recording the environment, commit, model, alignment and dates together would let another researcher verify that they are making the same comparison.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+The publisher discloses certain authors’ equity holdings and interests in software and design businesses. These disclosures provide context for interpreting evaluations of a tool by its own developers.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Delphy retains Bayesian uncertainty while exploiting repeated information. <strong>Adapting the representation, proposed moves and parallel calculations to sparse data can bring inference closer to where those data are collected.</strong> Speed, model suitability and convergence diagnostics each contribute to the assessment.
+
+## 9. Sources and scope
+
+<a id="news-ref-1" href="https://www.nature.com/articles/s41586-026-11012-6" data-news-reference="1" target="_blank" rel="noopener noreferrer">[1]</a> Varilly, P. et al. *Scalable near-real-time Bayesian phylogenetics for outbreaks with Delphy*. Nature, 2026-09-16.
+
+<a id="news-ref-2" href="https://github.com/broadinstitute/delphy" data-news-reference="2" target="_blank" rel="noopener noreferrer">[2]</a> Official Delphy computation engine and user guide.
+
+<a id="news-ref-3" href="https://github.com/broadinstitute/delphy-2026-paper-data" data-news-reference="3" target="_blank" rel="noopener noreferrer">[3]</a> The authors’ reproduction materials and figure-generation scripts.
+
+<a id="news-ref-4" href="https://www.biorxiv.org/content/10.1101/2025.03.25.645253v1.full" data-news-reference="4" target="_blank" rel="noopener noreferrer">[4]</a> Early Delphy preprint, version posted March 26, 2025. <small>Sources current as of September 18, 2026. This review draws on the public Nature article, including its Methods and limitations, and on the official repository documentation. The small probability and ESS calculations are illustrative. Figures 1 and 4 use the original, unchanged files.</small>

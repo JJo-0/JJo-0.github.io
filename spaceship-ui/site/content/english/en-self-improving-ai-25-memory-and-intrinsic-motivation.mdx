@@ -1,0 +1,322 @@
+---
+title: "Self-Improving AI 25 — What survives a session, and what makes an agent explore?"
+description: "NTU Part II, pages 56–60. Seven worked examples connect session memory, delegated research and goal choice to curiosity, empowerment and the rewards that drive exploration."
+pubDate: 2026-11-23T10:56:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-25-memory-and-intrinsic-motivation
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - reinforcement-learning
+  - memory
+  - ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 25
+translationKey: en-self-improving-ai-25-memory-and-intrinsic-motivation
+translatedPosts:
+  ko-KR: self-improving-ai-25-memory-and-intrinsic-motivation
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+An inspection robot starts a new session. Asked where it found a defect yesterday, it reads the shift log and answers “shelf three.” Now leave the same log available but give no instruction. What would make the robot go back to that shelf? <strong>Keeping information</strong> and <strong>using it to choose what to do next</strong> are different capabilities.
+
+[Chapter 24](/en/posts/self-improving-ai-24-learning-inside-the-hidden-state/) followed the hidden state as a model read a sentence. Here we pick up at the session boundary. Page 56 asks what carries over. Pages 57–59 trace who chooses a research task or a mathematical goal. Page 60 shows how to compute a reward that can change the next action. The worked examples distinguish illustrative numbers from results reported by researchers.
+
+<strong>Worked examples</strong>　[Retrieving a memory](#worked-example-1-which-of-three-stored-memories-enters-the-new-input) · [Delegating research](#worked-example-2-if-three-of-six-experiments-yield-an-accepted-report-what-fraction-of-assignments-succeeded) · [Weighting math goals](#worked-example-3-can-the-better-math-model-change-when-the-answers-stay-the-same) · [Curiosity on a repeat visit](#worked-example-4-how-much-curiosity-reward-remains-the-next-time-a-robot-opens-a-door) · [Bits of empowerment](#worked-example-5-how-many-bits-of-control-do-two-possible-destinations-provide) · [Predicting the action](#worked-example-6-why-predict-an-action-that-has-already-happened) · [Choosing the next shelf](#worked-example-7-how-large-a-bonus-would-favor-the-unfamiliar-shelf)
+
+<details>
+<summary>Video guide by slide</summary>
+
+| Part II page | Lecture video | Question to listen for |
+|---|---|---|
+| 56 | [52:22](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3142s) | What survives in a file when a new session resets the hidden state? |
+| 57 | [55:23](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3323s) | Which parts of research, from choosing a question to editing a report, were delegated? |
+| 58 | [59:07](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3547s) | Where did “be good at math” come from? |
+| 59 | [59:17](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3557s) | What signal could let an agent choose where to explore next? |
+| 60 | [1:01:49](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3709s) | How does curiosity become a reward in the earlier lecture Lee recommends? |
+
+These are spoken topic anchors. The 9:07 printed on page 60 belongs to a separate lecture recorded in 2018. [NTU course schedule, May 22, 2026](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+</details>
+
+## Part II, page 56 — Which memories have to be read again in a new session?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-56-english.png"
+  alt="The hidden state starts again at H₀ across the session boundary. Files carry over, and the two sessions share the network weights."
+  caption="Part II, page 56. Follow the hidden state and the file across the dotted line separately."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=56"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Follow H₀ → H₁ → H₂ across the top row and stop at the dotted line. The first box on the other side is H₀ again. A new session resets the runtime state in this diagram. The file in the middle row crosses that boundary. If the first session <strong>writes a record</strong>, and the next session <strong>retrieves it and places it in the input</strong>, the new H₁ can depend on what happened earlier. Both sessions share the network weights at the bottom. Lee compares the weights to genes because they change most slowly in this example. [Lecture at 52:22, three timescales](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3142s) · [53:47, bringing a file back into context](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3227s)
+
+| Layer on page 56 | What changes it? | What to check in a fresh session |
+|---|---|---|
+| Hidden state | The current input and the preceding state | Was any part of the previous conversation or state restored? |
+| File-backed memory | A record written or edited by the agent or system | Which record was retrieved, and did it reach the input? |
+| Network weights | Training or replacing a model checkpoint | Did both runs start from the same model version and weights? |
+
+<strong>Storage and retrieval are separate events.</strong> A sorting agent can save yesterday's shift instructions and still miss them today if its query retrieves other documents. Conversely, the original conversation can be closed and a fresh run of the same model can still use yesterday's record when it is supplied again. To test the effect of retrieval, use the same model and question in fresh sessions and vary access to the record.
+
+### Worked example 1. Which of three stored memories enters the new input?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/generative-agents-memory-retrieval.png"
+  alt="A question retrieves a subset of the memory stream. The enlarged inset compares three candidates on recency, importance and relevance."
+  caption="Park et al., Figure 6. Only a subset of memories reaches the language model when the agent is asked what it looks forward to. The lower panel enlarges the original score comparison."
+  source="https://arxiv.org/pdf/2304.03442v2#page=9"
+  credit="Joon Sung Park et al. / UIST 2023"
+  label="Supplementary material"
+  width={1800} height={1943}
+/>
+
+Figure 6 of Park et al.'s *Generative Agents* asks a simulated character, Isabella, what she is looking forward to most. The candidate memories include planning a Valentine's Day party, ordering decorations and researching party ideas. <strong>Recency</strong> depends on time since a record was last accessed. <strong>Relevance</strong> comes from the cosine similarity between the query and record embeddings. <strong>Importance</strong> is assigned when a record is created. The implementation normalizes each component to the 0–1 range and adds the three scores with equal weights of one. [Park et al., 2023, §4.1 and Figure 6](https://arxiv.org/pdf/2304.03442v2#page=9)
+
+Let r, i and q denote normalized recency, importance and relevance. Substituting the numbers printed in the original figure gives the following scores.
+
+<Math tex={String.raw`S(m)=r_m+i_m+q_m.`} display />
+
+<Math tex={String.raw`S_{\rm plan}=0.91+0.63+0.80=2.34,\qquad S_{\rm order}=0.87+0.63+0.71=2.21.`} display />
+
+<Math tex={String.raw`S_{\rm ideas}=0.85+0.73+0.62=2.20.`} display />
+
+
+Suppose there is room for <strong>one record</strong> in this example. The party plan ranks first, 2.34−2.21=0.13 ahead of ordering decorations. The actual implementation takes as many of the highest-ranked records as fit in the available context. The 2.34 is a ranking score, not a probability of answering about the party. Turning off retrieval or access to this record in a fresh session leaves the file intact while cutting off that route for supplying the party information. [Memory architecture, Figure 5](https://arxiv.org/pdf/2304.03442v2#page=8) · [Memory retrieval, Figure 6](https://arxiv.org/pdf/2304.03442v2#page=9)
+
+## Part II, page 57 — Which part of the research did the agent choose?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-57-english.png"
+  alt="Three robots take successive roles in choosing a question, planning and running experiments, and organizing results and editing the manuscript."
+  caption="Part II, page 57. Trace the chain of delegated work back to the initial request."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=57"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Start with the robot on the right. The results already exist. Its job is to organize the material and polish the manuscript. The middle robot also plans and runs the experiment. The robot on the left can find a research question within a field. Look one step farther left, at the speech bubble. It still <strong>specifies the field in which to look for questions</strong>. Lee uses this slide to separate the ability to propose a question from the motive for starting the search. [Lecture at 55:23, intrinsic motivation](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3323s) · [55:55, three stages of research](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3355s)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-video-57-en.png"
+  alt="A person specifies the research field; three agents pass a question and results along. AI co-scientist and AlphaEvolve are labeled below."
+  caption="Lecture recording at 57:15. The field, research question and results pass between stages. Chinese labels are translated into English."
+  source="https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3435s"
+  credit="Hung-yi Lee / NTU ML 2026"
+  label="Lecture recording"
+  width={1280} height={720}
+/>
+
+The lecturer introduces [AlphaEvolve at the experiment-planning stage (56:09)](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3369s), then [AI co-scientist at the question-finding stage (56:53)](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3413s). The person at the left supplies the **research field**. The first robot selects a **specific question** within it and passes that question to the next stage.
+
+The input to the *AI co-scientist* project, which Lee mentions, makes that distinction concrete. A scientist supplies a research goal in natural language. The system generates hypotheses and proposals within that goal and compares candidates. Consider the assignment “Study why reflections make this inspection camera reject good parts.” An agent could decide whether to test lighting angle or exposure time first. The assignment already chose the field, camera inspection, and the objective, reducing false rejects. [Lecture at 56:59](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3419s) · [Original AI co-scientist paper, 2025](https://arxiv.org/abs/2502.18864)
+
+### Worked example 2. If three of six experiments yield an accepted report, what fraction of assignments succeeded?
+
+Consider <strong>ten</strong> independent, hypothetical runs of the camera assignment. Eight produce a testable question. Six of those complete an experiment. Of the six completed experiments, three pass a prespecified report review that checks the conclusions against the experimental record. A run that drops out does not proceed to the next stage.
+
+| Stage | Runs passing this stage | Runs entering this stage |
+|---|---:|---:|
+| Propose a testable question Q | 8 | 10 starts |
+| Complete an experiment E | 6 | 8 with accepted questions |
+| Pass final report review R | 3 | 6 with completed experiments |
+
+<Math tex={String.raw`P(Q)=\tfrac{8}{10},\qquad P(E\mid Q)=\tfrac68,\qquad P(R\mid E,Q)=\tfrac36.`} display />
+
+<Math tex={String.raw`P(Q\cap E\cap R)=\tfrac{8}{10}\times\tfrac68\times\tfrac36=\tfrac3{10}=0.30.`} display />
+
+
+The pass rate at the last stage is 50%. The end-to-end completion rate is 30%. Multiplying the conditional fractions uses the progressively smaller denominators and requires no independence assumption between stages. These counts measure the ability to finish a sequence of tasks under a given research objective. The origin of that objective is a separate observation. A person supplied it in all ten runs.
+
+## Part II, page 58 — How does “be good at math” become a score?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-58-original.png"
+  alt="A goal H, labeled “be good at math,” sits before the evaluated agent. The empty position at left leaves the origin of that goal open."
+  caption="Part II, page 58. Changing the middle goal can change the loss assigned to the same agent."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=58"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The goal in the middle of the slide is labeled H. The model on the right is labeled L(Aθ,H). Here Aθ is the agent with parameters θ, H represents human-provided goals or information, and L is a loss under those conditions. A proposer can pick hard questions on its own while someone has already chosen which kinds of questions earn credit. Changing that choice can change the score for the same agent. [Lecture at 59:07, the external source of the goal](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3547s) · [58:06, being asked to propose math problems](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3486s) · [Definition of H in chapter 14](/en/posts/self-improving-ai-14-proposer-solver-verifier/)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-video-58-en.png"
+  alt="A person supplies the goal H, “be good at math,” which leads to an agent evaluated against that goal."
+  caption="Lecture recording at 59:06. The person who supplied H stands at the start of the first arrow."
+  source="https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3546s"
+  credit="Hung-yi Lee / NTU ML 2026"
+  label="Lecture recording"
+  width={640} height={360}
+/>
+
+The preceding [prompt slide at 57:39](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3459s) gives examples of a person specifying a question-generating task and its output format. Both prompts appear on [page 6 in Chapter 15](/en/posts/self-improving-ai-15-harness-optimization-and-evaluation/).
+
+### Worked example 3. Can the better math model change when the answers stay the same?
+
+Give two models the same ten arithmetic problems and ten geometry problems. In this hypothetical scorecard, model A solves eight arithmetic and four geometry problems. Model B solves six arithmetic and eight geometry problems. Let λ be the proportion of arithmetic problems in the intended evaluation and 1−λ the proportion of geometry problems. <strong>Weighted accuracy</strong> averages the two subject scores under those proportions. Awarding a loss of one for an error and zero for a correct answer makes expected loss equal to one minus accuracy.
+
+<Math tex={String.raw`a_A(\lambda)=0.8\lambda+0.4(1-\lambda)=0.4+0.4\lambda.`} display />
+
+<Math tex={String.raw`a_B(\lambda)=0.6\lambda+0.8(1-\lambda)=0.8-0.2\lambda,\qquad L_j=1-a_j.`} display />
+
+
+| Arithmetic proportion specified by H | Model A accuracy / loss | Model B accuracy / loss | Lower-loss model |
+|---|---|---|---|
+| 80% | 0.72 / 0.28 | 0.64 / 0.36 | A |
+| 25% | 0.50 / 0.50 | 0.75 / 0.25 | B |
+
+We can also find the proportion at which the two scores tie. Subtract 0.4 from both sides and add 0.2λ to both sides. This leaves 0.6λ=0.4.
+
+<Math tex={String.raw`a_A=a_B\ \Longleftrightarrow\ 0.4+0.4\lambda=0.8-0.2\lambda\ \Longleftrightarrow\ \lambda=\tfrac23.`} display />
+
+
+A ranks first when the arithmetic share exceeds two thirds. B ranks first below that point. The answers and model weights stayed fixed throughout. What changed was the evaluator's translation of the goal into a number. This sets up the question on page 59. When nobody specifies the next arithmetic problem, what signal could guide an agent in <strong>choosing its next experience</strong>?
+
+## Part II, page 59 — What should earn a reward when the agent chooses its next action?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-59-english.png"
+  alt="A robot and speech bubble appear before the goal. Curiosity and empowerment are listed below as two criteria for exploration."
+  caption="Part II, page 59. The agent now appears where the source of the goal had been left open. Its two candidate criteria can favor different actions."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=59"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+This time the speech bubble belongs to the robot. It chooses mathematics as its goal H and is evaluated against that goal on the right. How might it decide <strong>what to explore next</strong>? The two bullets at the bottom of the slide ask different questions. Curiosity asks how well the agent can predict what it observes. Empowerment asks how much its choice now can influence what it observes later. We can build a score for each question. [Lecture at 59:17](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3557s) · [NTU Part II, page 59](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=59)
+
+### Worked example 4. How much curiosity reward remains the next time a robot opens a door?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/icm-forward-inverse-model-figure-2.png"
+  alt="The inverse model infers the action from two feature vectors. The forward model uses the first vector and the action to predict the second."
+  caption="Pathak et al., ICML 2017, right panel of Figure 2. The discrepancy between predicted and observed next features supplies the curiosity reward."
+  source="https://arxiv.org/pdf/1705.05363v1#page=3"
+  credit="Deepak Pathak et al. / ICML 2017"
+  label="Supplementary material"
+  width={1801} height={1641}
+/>
+
+A robot pushes a door. In Pathak et al.'s <strong>Intrinsic Curiosity Module (ICM)</strong>, the frames at the bottom, sₜ and sₜ₊₁, show the scene before and after the action. The inverse model on the right uses the features of both frames to infer which action occurred. This training signal teaches the feature encoder which parts of the scene help identify the action. The forward model on the left takes the initial features and the actual action to predict the features of the next frame. The curiosity reward is proportional to the <strong>squared distance between predicted and observed next features</strong>. [Pathak et al., Curiosity-driven Exploration by Self-supervised Prediction, Equations 4–6](https://arxiv.org/pdf/1705.05363v1#page=4)
+
+For a hand calculation, set the observed next features to (2, 1), the first prediction to (1, 1), and the reward scale η to 0.2. Only the first feature is off, by one unit. Suppose that after more training on this situation, the model predicts (1.8, 1). The same door and action produce the same observed features on the return visit in this example.
+
+<Math tex={String.raw`r^{\rm ICM}_t=\frac{\eta}{2}\left\|\widehat{\phi}_{t+1}-\phi_{t+1}\right\|_2^2,\qquad r_{\rm first}=0.1(1^2+0^2)=0.1.`} display />
+
+<Math tex={String.raw`r_{\rm later}=0.1(0.2^2+0^2)=0.004,\qquad \frac{r_{\rm later}}{r_{\rm first}}=\frac{1}{25}.`} display />
+
+
+<strong>What about a screen of random pixels?</strong> A pixel on a display next to the door takes values zero or one with equal probability, independently of the action. A predictor of the raw pixel still incurs expected squared error 0.25 when it always outputs the best prediction, 0.5. If this irreducible error earns a reward, staying near the screen can be attractive. This is the “noisy TV” problem. Features trained by ICM's inverse task can focus on cues that the door moved. How much unrelated noise they suppress needs to be tested in the actual environment. [ICM, §2.1](https://arxiv.org/pdf/1705.05363v1#page=3)
+
+<strong>Random Network Distillation (RND)</strong> gives the same observed frame to two networks. One is a randomly initialized target f whose weights stay fixed. The other is a predictor trained to match its output. If the target on one image is 2 and the prediction improves from 1.5 to 1.9, the raw bonus decreases as follows. An identical image always has the same target. Noise can still supply a stream of previously unseen images. [Burda et al., 2018, Exploration by Random Network Distillation, §2.2](https://arxiv.org/pdf/1810.12894v1#page=3)
+
+<Math tex={String.raw`b_{\rm RND}(x)=\left\|\hat f(x)-f(x)\right\|_2^2,\qquad (1.5-2)^2=0.25,\qquad (1.9-2)^2=0.01.`} display />
+
+
+These feature values and bonuses are illustrative. In Table 1 of the RND paper, the reported final mean score for the Atari game *Montezuma’s Revenge* was <strong>8,152 points for RND</strong> and <strong>2,497 for the PPO baseline</strong>, a difference of 5,655 game points. The table measures extrinsic game performance. The values 0.25 and 0.01 above are units of an internal exploration bonus. [RND, Table 1](https://arxiv.org/pdf/1810.12894v1#page=9)
+
+### Worked example 5. How many bits of control do two possible destinations provide?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/empowerment-two-room-channel.png"
+  alt="In a symmetric two-room system, routing error rates of 0%, 25% and 50% yield capacities of 1, approximately 0.189 and 0 bits."
+  caption="Applying Mohamed and Rezende’s Equation 2 to the two-room example. The points show the worked calculation for this hypothetical channel."
+  source="https://arxiv.org/pdf/1509.08731v1#page=3"
+  credit="JJo illustration · based on Shakir Mohamed and Danilo Jimenez Rezende"
+  label="Supplementary material"
+  width={1606} height={1123}
+/>
+
+At a junction s, a robot presses a left or right button A and observes its destination S′ one step later. Knowing that two rooms are possible tells us little about whether the robot can choose its destination. Mohamed and Rezende fix the starting state and action horizon, then find the distribution over actions that maximizes the <strong>information shared by the action and the destination</strong>. The maximum is empowerment. The paper also considers sequences of actions. Here we allow one press and use base-two logarithms to report bits. [Mohamed and Rezende, 2015, Variational Information Maximisation for Intrinsically Motivated Reinforcement Learning, Equation 2](https://arxiv.org/pdf/1509.08731v1#page=3)
+
+<Math tex={String.raw`\mathcal E(s)=\max_{p(A\mid s)} I(A;S'\mid s),\qquad I(A;S'\mid s)=H(S'\mid s)-H(S'\mid A,s).`} display />
+
+
+Here H denotes entropy, the uncertainty of a probability distribution. The first term measures how uncertain the destination is before we see the action. The second measures the uncertainty that remains once we know which button was pressed. At a <strong>symmetric junction</strong>, each button routes the robot to the opposite room with probability ε. Pressing the two buttons equally often makes the rooms equally likely and gives the first term its maximum of one bit. The second term is the same for either button, so that choice maximizes their difference.
+
+<Math tex={String.raw`H_2(\varepsilon)=-\varepsilon\log_2\varepsilon-(1-\varepsilon)\log_2(1-\varepsilon),\qquad \mathcal E(s)=1-H_2(\varepsilon).`} display />
+
+
+| What happens after a button press | Uncertainty given the action | Empowerment |
+|---|---:|---:|
+| The robot always reaches the indicated room | 0 bits | 1 bit |
+| On average, one trip in four reaches the opposite room | About 0.811 bits | About 0.189 bits |
+| A fair coin selects the room independently of the button | 1 bit | 0 bits |
+
+<Math tex={String.raw`H_2(0.25)=-0.25(-2)-0.75\log_2(0.75)\approx0.8113,\qquad 1-0.8113\approx0.1887.`} display />
+
+
+In the middle row, knowing that the left button was pressed helps predict the destination but leaves some doubt. In the final row the destination can vary on every trip, yet seeing it gives no clue about the button. Random outcomes can thus keep a prediction error high in a system with zero empowerment. The three points in the figure are calculated for this hypothetical junction.
+
+<strong>What can a language model explore?</strong> Two studies first posted in 2025 appear among the slide's references. In *Navigate the Unknown*, IMAGINE treats a math problem and a complete generated solution as one trajectory. It allocates the exploration bonus to solutions judged incorrect. *WorldLLM* instead proposes natural-language hypotheses about an environment, takes actions and uses the observed transitions as evidence to revise those hypotheses. One system explores <strong>which lines of reasoning to generate</strong>. The other explores <strong>which observations could help refine an explanation of the world</strong>. [Navigate the Unknown: Enhancing LLM Reasoning with Intrinsic Motivation Guided Exploration, Equations 5–6](https://arxiv.org/pdf/2505.17621v6#page=4) · [WorldLLM: Improving LLMs’ world modeling using curiosity-driven theory-making, §3](https://arxiv.org/pdf/2506.06725v3#page=5)
+
+## Part II, page 60 — When does a curiosity bonus change the next action?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-60-original.png"
+  alt="In the ICM diagram from the 2018 lecture, features from two observations feed both a forward prediction and an inverse action prediction."
+  caption="Part II, page 60. The left network predicts the next features. The right one predicts the action that was taken."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=60"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+Page 60 revisits the <strong>Intrinsic Curiosity Module (ICM)</strong> from Lee's 2018 reinforcement learning lecture. The two boxes at the bottom take observations before and after an action, sₜ and sₜ₊₁. The same encoder φ produces features from both. The network on the left <strong>uses the action to predict the next features</strong>. The one on the right <strong>infers which action took place from the two sets of features</strong>. At the top, diff compares the left network's prediction with the observed next features. [Main lecture at 1:01:49](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=3709s) · [2018 recording at 14:20, both networks](https://www.youtube.com/watch?v=-5cCWhu0OaM&t=860s) · [2018 lecture, page 7](https://speech.ee.ntu.edu.tw/~tlkagk/courses/MLDS_2018/Lecture/Reward%20%28v3%29.pdf#page=7) · [Pathak et al., ICML 2017](https://proceedings.mlr.press/v70/pathak17a.html)
+
+### Worked example 6. Why predict an action that has already happened?
+
+An inspection camera can move left or right. Suppose it moved right. Its own action log supplies the label. Let p be the probability that the <strong>inverse dynamics model</strong> assigns to “right” after seeing features from both frames. Cross-entropy loss falls as the model places more probability on the correct action. Here ln denotes the natural logarithm. [Pathak et al., §2.2, inverse and forward models](https://proceedings.mlr.press/v70/pathak17a/pathak17a.pdf#page=3)
+
+<Math tex={String.raw`L_{\rm inv}=-\ln p(a_t=\mathrm{right}\mid\phi(s_t),\phi(s_{t+1})).`} display />
+
+
+If the frames reveal which way the part shifted in the image, suppose the model assigns p=0.8. If all it can see is a flashing background that carries no action information, it can give 0.5 to each of two equally frequent actions. Compute the two illustrative losses.
+
+<Math tex={String.raw`-\ln 0.8\approx0.223,\qquad -\ln 0.5\approx0.693,\qquad 0.693-0.223\approx0.470.`} display />
+
+
+The inverse model's training objective favors features that distinguish the actions. The 0.470 above is the <strong>difference between two inverse-model losses</strong>. The quantity supplied to the agent as an exploration bonus is the <strong>forward feature-prediction error</strong> from page 59. If a background change is consistently correlated with the action, the encoder can learn to use it. The inverse objective therefore does not guarantee that it will eliminate every distraction. [Pathak et al., Figure 2 and Equations 2–3](https://proceedings.mlr.press/v70/pathak17a/pathak17a.pdf#page=3)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-25-memory-and-intrinsic-motivation/ntu-drl-2018-curiosity-rewards.png"
+  alt="Environment rewards and intrinsic rewards computed by ICM from the same transitions appear below the time axis."
+  caption="NTU DRL Lecture 7, page 5. The original slide shows where the two rewards enter the return."
+  source="https://speech.ee.ntu.edu.tw/~tlkagk/courses/MLDS_2018/Lecture/Reward%20%28v3%29.pdf#page=5"
+  credit="Hung-yi Lee / NTU DRL 2018"
+  label="Supplementary material"
+  width={1800} height={1350}
+/>
+
+On page 5 of the 2018 deck, the top row follows the agent's interactions with the environment. The bottom row records two reward signals for the same transition. The time printed on page 60 of the main lecture, 9:07, opens the curiosity example. By 9:50 the animation shows both the environment reward and the bonus produced by the curiosity module. The recording then develops next-state prediction and prediction in feature space. [2018 recording at 9:07, introduction](https://www.youtube.com/watch?v=-5cCWhu0OaM&t=547s) · [9:50, both rewards visible](https://www.youtube.com/watch?v=-5cCWhu0OaM&t=590s) · [10:40, next-state prediction](https://www.youtube.com/watch?v=-5cCWhu0OaM&t=640s) · [Supplementary lecture, page 5](https://speech.ee.ntu.edu.tw/~tlkagk/courses/MLDS_2018/Lecture/Reward%20%28v3%29.pdf#page=5)
+
+### Worked example 7. How large a bonus would favor the unfamiliar shelf?
+
+Return to the inspection robot. It has enough time for one move. Revisiting shelf three has an expected task reward of 1 and a curiosity bonus of 0.1. Visiting a new shelf has an expected task reward of zero and a bonus of 0.6. These numbers are hypothetical. To compare the two scores, introduce an explicit weight β on the bonus. A one-decision horizon leaves no future rewards to discount.
+
+<Math tex={String.raw`J_{\rm known}=1+0.1\beta,\qquad J_{\rm new}=0+0.6\beta.`} display />
+
+<Math tex={String.raw`J_{\rm new}>J_{\rm known}\iff0.5\beta>1\iff\beta>2.`} display />
+
+
+| Bonus weight β | Familiar shelf | New shelf | Higher-scoring action |
+|---:|---:|---:|---|
+| 1 | 1.1 | 0.6 | Reinspect the familiar shelf |
+| 2 | 1.2 | 1.2 | Tie |
+| 3 | 1.3 | 1.8 | Explore the new shelf |
+
+At β=3 the new shelf scores 1.8, of which zero comes from the task reward. Report <strong>task reward, shelves visited and defects found</strong> alongside the total to see which outcome improved. The threshold of 2 depends on the units chosen for these rewards and on the one-move budget. [2018 lecture, combining environment and intrinsic rewards](https://speech.ee.ntu.edu.tw/~tlkagk/courses/MLDS_2018/Lecture/Reward%20%28v3%29.pdf#page=5)
+
+The log on page 56 tells the robot <strong>where it inspected yesterday</strong>. The exploration bonus on pages 59–60 influences <strong>where it goes today</strong>. Whether the robot can read that log tomorrow and whether its choices produce more of the outcome people want are separately testable questions. Page 61 takes up the case in which the quantity an agent improves drifts away from the outcome people care about. [NTU Part II, page 61](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=61)

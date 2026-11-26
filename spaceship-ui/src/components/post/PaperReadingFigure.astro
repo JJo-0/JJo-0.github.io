@@ -2,6 +2,7 @@
 import manifest from '../../../site/assets/assets/posts/modern-ai-continuation/figures.json';
 interface Props { figure: string; alt: string; }
 const { figure, alt } = Astro.props;
+const isEnglish = Astro.url.pathname.startsWith('/en/');
 const record = manifest.figures.find((row) => row.id === figure);
 if (!record || !alt?.trim()) throw new Error(`Unknown paper reading figure / empty alt: ${figure}`);
 if (record.status !== 'ACQUIRED' || record.local_visual_review.status !== 'REVIEWED' || record.local_visual_review.image_sha256 !== record.sha256) {
@@ -11,17 +12,17 @@ const src = `/assets/posts/modern-ai-continuation/${record.file}`;
 const label = `${record.paper} Figure ${record.figure}`;
 ---
 <figure class="reading-figure" data-reading-figure={figure} data-source-version={record.version}>
-  <a class="reading-image" href={src} target="_blank" rel="noopener noreferrer" aria-label={`${label} 크게 보기`}>
+  <a class="reading-image" href={src} target="_blank" rel="noopener noreferrer" aria-label={`${label} ${isEnglish ? 'Enlarge' : '크게 보기'}`}>
     <img src={src} alt={alt} width={record.width} height={record.height} loading="lazy" decoding="async" />
   </a>
   <figcaption>
     <strong>{label}.</strong> <slot />
     <span class="reading-credit">{record.authors} · {record.version} ·
-      <a href={record.source} target="_blank" rel="noopener noreferrer">원논문</a> ·
-      <a href={record.origin_figure_link} target="_blank" rel="noopener noreferrer">원문 속 그림</a> ·
-      <a href={src} target="_blank" rel="noopener noreferrer">크게 보기</a>
+      <a href={record.source} target="_blank" rel="noopener noreferrer">{isEnglish ? "Original paper" : "원논문"}</a> ·
+      <a href={record.origin_figure_link} target="_blank" rel="noopener noreferrer">{isEnglish ? "Figure in original" : "원문 속 그림"}</a> ·
+      <a href={src} target="_blank" rel="noopener noreferrer">{isEnglish ? "Enlarge" : "크게 보기"}</a>
     </span>
-    <span class="reading-rights">원논문 도판 발췌. {record.mode === 'image' ? '원문 PNG 파일을 그대로 사용했다.' : '원문 PDF에서 도판 영역만 잘라 고해상도로 렌더링했다.'} 한국어 해설은 별도 작성. 원권리자의 권리가 유지되며 블로그 코드의 MIT 라이선스가 도판의 재배포 허락을 뜻하지 않는다.</span>
+    <span class="reading-rights">{isEnglish ? <>Excerpt from the original paper. {record.mode === 'image' ? 'The original PNG is used unchanged.' : 'The figure region was cropped from the original PDF and rendered at high resolution.'} Commentary was written separately and translated for this edition. Rights remain with the original rights holders; the blog code’s MIT license does not grant figure redistribution rights.</> : <>원논문 도판 발췌. {record.mode === 'image' ? '원문 PNG 파일을 그대로 사용했다.' : '원문 PDF에서 도판 영역만 잘라 고해상도로 렌더링했다.'} 한국어 해설은 별도 작성. 원권리자의 권리가 유지되며 블로그 코드의 MIT 라이선스가 도판의 재배포 허락을 뜻하지 않는다.</>}</span>
   </figcaption>
 </figure>
 <style>

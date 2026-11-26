@@ -1,0 +1,174 @@
+---
+title: How Vera Rubin gets more work out of a rack
+description: MLPerf Inference v6.1 puts Vera Rubin NVL72's GPUs, memory, interconnect, and serving software to the test. The scenario
+  results show where the headline 3.7× applies and why Preview status, production announcements, throughput, and cost answer different
+  questions.
+pubDate: 2026-09-17
+category: ai-machine-learning
+subcategory: ai-compute-hardware
+type: research-report
+tags:
+- frontier-one
+- ai-infrastructure
+slug: 2026-09-17-vera-rubin-mlperf-news
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-17-vera-rubin-mlperf-news
+translationKey: en-2026-09-17-vera-rubin-mlperf-news
+---
+
+import NewsFigure from "@/components/post/NewsFigure.astro";
+import Math from "@/components/post/Math.astro";
+
+<NewsFigure media="rubin-rack-background" lang="en" priority />
+
+> <strong>Evidence as of September 17, 2026, checked against the September 16 announcement. Evidence grade: INDUSTRY_TRIGGER.</strong> These are company submissions under MLPerf rules. They do not constitute academic peer review or an independent rerun on Rubin hardware. The cover photograph shows racks of the Summit supercomputer in 2018. For images of the Rubin platform and the company's original charts, see [NVIDIA's announcement](https://blogs.nvidia.com/blog/vera-rubin-nvl72-mlperf-inference/).
+
+## 1. In one sentence
+
+<strong>Vera Rubin NVL72's MLPerf debut provides a way to compare how many requests a whole rack can serve under matched quality and response requirements.</strong> NVIDIA reported up to 3.7× the throughput of GB300 NVL72 on Qwen3-VL and up to 2.5× on DeepSeek-R1. The gains vary by scenario, and the Rubin submission is classified as Preview.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+A token is a piece of text the model processes. It need not coincide with a word or character. Throughput measures work completed per unit of time, while latency measures the time an individual user waits. A restaurant can serve many people each day and still take a long time with one customer's meal. The same distinction matters when deciding what “3.7×” means for a service.
+
+MLCommons publishes the standard testing rules and results. NVIDIA submits results for its own hardware and software under those rules. This provides a stronger basis for comparison than a vendor demonstration alone, while the submitter still has an interest in the outcome. Below, the company's explanations, values checked against the official summary, and illustrative calculations are identified separately.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+## 2. Why is inference performance difficult to predict?
+
+### A fast GPU can still deliver a slow answer
+
+A GPU performs many similar operations in parallel. The CPU coordinates tasks such as running the operating system, scheduling work, and preparing data. High-bandwidth memory (HBM) near the GPU stores model values and intermediate states. When multiple GPUs share a model, their interconnect can become as important as arithmetic. A stall in one part of the system prevents another part from using its full compute capacity.
+
+FLOPS counts floating-point operations per second. Peak FLOPS indicate potential arithmetic speed under specified conditions. The time for one user's request also depends on model size, input and output lengths, and simultaneous requests, all of which can move the bottleneck. A design optimized for a large matrix multiplication may behave differently on a sequence of small operations.
+
+Language-model inference has two broad phases. <strong>Prefill</strong> reads the prompt and any supplied documents to prepare internal state. <strong>Decode</strong> uses that state to generate successive tokens. Long inputs offer opportunities to batch prefill work. Decoding repeats while waiting for earlier generated tokens. Treating the two as identical can lead to poor resource allocation.
+
+The key-value (KV) cache stores intermediate results for context the model has already processed, allowing reuse at the next step. It works a little like an index that saves you from rereading a whole book. Long inputs or many concurrent conversations expand this storage requirement. Even with all weights in memory, the system can run out of space as concurrency grows.
+
+### Splitting a model creates communication work
+
+A mixture-of-experts (MoE) model selects a subset of computational blocks, called experts, for each input. Expert parallelism places these blocks across accelerators. Selecting fewer experts can save arithmetic, but an expert on another GPU still needs the input sent to it and the result returned.
+
+Peak network bandwidth tells only part of the story. Small-message latency, load imbalance when many requests target one device, and overlap of transfer and computation also matter. Extrapolating MoE response time from GPU compute gains alone can miss both communication stalls and underused devices.
+
+A rack is a physical frame for servers and network equipment. In an NVL72 design, it also serves as a system unit in which many accelerators cooperate. The comparison here uses systems with equal accelerator counts. The official CSV was filtered for `total_accelerators` equal to 72, rather than relying on “72” in the system name. The same GB300 family name also appears on 288-accelerator results.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+## 3. What peak arithmetic and earlier comparisons leave out
+
+### Peak calculations and service performance test different things
+
+Peak FLOPS describe what hardware can do with a specified numerical format and calculation. A service must also deliver acceptable answer quality and user response times. Skipping work can make answers fast but wrong. Holding requests until a large batch forms can boost throughput while leaving a user waiting.
+
+MLPerf's Closed division defines rules for the reference model and quality. Submitters can still use different execution code and permitted numerical formats. Kernels, allowed optimizations, and request batching remain design choices. Closed therefore compares systems performing a specified task at a specified quality level. It is not an experiment changing hardware alone.<a href="#news-ref-4" data-news-citation="4" aria-label="Go to reference 4" data-astro-reload>[4]</a>
+
+Scenarios also differ. Offline emphasizes the work completed with prepared inputs and ample demand. Server evaluates capacity as requests arrive under latency constraints. Interactive imposes tighter response requirements for interaction. Exact quality and latency thresholds depend on both the model and the applicable version of the rules.<a href="#news-ref-4" data-news-citation="4" aria-label="Go to reference 4" data-astro-reload>[4]</a><a href="#news-ref-6" data-news-citation="6" aria-label="Go to reference 6" data-astro-reload>[6]</a>
+
+An overnight document-analysis job might prioritize bulk throughput. For an interactive conversation, time to the first token and the rate of subsequent tokens are important. A gain in the Interactive scenario cannot simply be transferred to the Offline scenario of another service.
+
+### A benchmark win does not cover every workload
+
+Vision-language models (VLMs) combine image processing with text generation. Reasoning models may require long outputs and multiple reasoning steps. The same hardware can therefore perform differently across models. Qwen3-VL and DeepSeek-R1 are substantial test workloads but cannot represent every internal company model or prompt length.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+The following three-part breakdown explains the proposed contributors. No independent ablation was identified that turned each component on and off to measure its separate contribution. The overall effect cannot be apportioned into percentages for the GPU, numerical precision, and the network from these results.
+
+## 4. Three parts of the system design
+
+### First, reduce both arithmetic and data movement
+
+NVIDIA identifies Rubin's Tensor Cores, Transformer Engine, and use of NVFP4 as important contributors. Tensor Cores accelerate matrix operations. Transformer Engine includes hardware and software support for choosing numerical formats appropriate to the model computation. Precision describes the detail with which numbers are represented.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Moving to a smaller format can reduce storage and transfers, but fewer digits introduce rounding and range limitations. Imagine recording a value to two decimal places instead of ten. NVFP4 does not simply convert every value to an ordinary four-bit integer. The analogy illustrates the broader trade-off between precision and cost.
+
+The company describes extending low-precision processing beyond weights to attention and the KV cache. The CSV's `weight_data_types` field has narrower scope. The reviewed VLM rows list bf16 there, and the DeepSeek-R1 rows list fp4. Those entries and NVIDIA's account of its full stack cannot justify a blanket statement that every operation uses NVFP4.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+### Second, separate reading a request from writing the answer
+
+Disaggregated serving assigns prefill and decode to different resources. Think of a restaurant with one team preparing orders and another sending completed dishes out. The system can adjust the staffing of the two tasks so that reading long documents does not repeatedly displace work on short responses.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Separation introduces costs. The state produced during prefill must move to the decode resources. If only one pool is busy, the other can sit idle. The best ratio also changes with input and output lengths. The benefit depends on managing transfer costs and allocating resources well.
+
+NVIDIA reports using vLLM and Dynamo for Qwen3-VL and TensorRT-LLM for DeepSeek-R1. vLLM and TensorRT-LLM execute models and serve requests. Dynamo coordinates distributed inference resources. These are software components within the system.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+### Third, coordinate movement among GPUs within the rack
+
+NVLink and NVLink Switch provide the interconnect over which GPUs exchange data. NVIDIA highlights sixth-generation NVLink and large-scale expert parallelism. The CPU prepares work, GPUs execute it, HBM holds state, and the interconnect joins the distributed experts. The company designs these elements together.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Co-design allows a choice at one layer to relieve a constraint at another. Users also depend on the maturity of the runtime software and operating practices. Reusing the benchmark model and configuration can have quite different costs from porting a custom model.
+
+## 5. Reading the conditions behind the headline numbers
+
+The 3.7× headline does not apply to all three Qwen3-VL scenarios. The table pairs NVIDIA's 72-accelerator GB300 and VR200 entries by model and scenario in the MLCommons `summary.csv` retrieved on September 17. VR200 is the name in that summary. The product announcement calls the platform Vera Rubin NVL72.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+| Workload | Scenario | GB300 result | VR200 result | Ratio of matched entries |
+|---|---|---:|---:|---:|
+| Qwen3-VL | Offline | 1,304.99 samples/s | 2,392.70 samples/s | About 1.83× |
+| Qwen3-VL | Server | 1,210.49 queries/s | 2,323.27 queries/s | About 1.92× |
+| Qwen3-VL | Interactive | 349.29 queries/s | 1,306.61 queries/s | About 3.74× |
+| DeepSeek-R1 | Offline | 679,740 tokens/s | 1,183,326.85 tokens/s | About 1.74× |
+| DeepSeek-R1 | Server | 596,944 tokens/s | 1,175,890.22 tokens/s | About 1.97× |
+| DeepSeek-R1 | Interactive | 253,506 tokens/s | 652,750.14 tokens/s | About 2.57× |
+
+The displayed scores are rounded, while the ratios use the original precision. <strong>Qwen3-VL queries/s and DeepSeek-R1 tokens/s have different units. Dividing one by the other cannot rank the two models.</strong> These ratios were calculated from matched source rows. The hardware was not rerun for this article.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+NVIDIA describes the DeepSeek-R1 improvement as up to 2.5×. The two Interactive rows in the retrieved CSV instead give approximately 2.57×. The company figure and the dated table calculation are reported separately. Submission IDs on the official results site and platform or path identifiers in the CSV are different fields. An ID cited in the announcement need not appear verbatim in the CSV.
+
+The Rubin rows carry `inferred` set to 1 in the summary. This flag alone cannot establish that each full-rack scenario was independently measured. Establishing the scope of direct measurements requires the flag definition and individual submission logs. Nor does the flag alone invalidate the results. The public summary, measurement logs, and submission rules need to be read together.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+MLCommons' 2.99× and 5.7× figures answer other questions. The former compares the best per-accelerator VLM Server result with the previous v6.0 round. The latter compares the best DeepSeek-R1 result with v5.1. They describe changes in round leaders. The denominator differs from the matched Rubin–GB300 comparisons above.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 6. Limitations and counterevidence
+
+### Interpreting the Preview designation
+
+Available identifies a submitted configuration that can be purchased or used in the cloud under MLPerf's criteria. Preview identifies a submission that has yet to meet that classification. <strong>The availability category of a benchmark configuration and the manufacturing status of an entire platform are separate facts.</strong><a href="#news-ref-4" data-news-citation="4" aria-label="Go to reference 4" data-astro-reload>[4]</a>
+
+NVIDIA had already announced its Vera Rubin full-production ramp on May 31, 2026. This Preview result cannot establish that no Rubin hardware had been made or that no Rubin products could be bought anywhere. The precise claim concerns the particular Rubin submission compared here. Manufacturing, availability of a specific server configuration to order, and stable operation at a customer site are distinct stages.<a href="#news-ref-5" data-news-citation="5" aria-label="Go to reference 5" data-astro-reload>[5]</a>
+
+MLCommons' review is also distinct from journal peer review in medicine or engineering. The audit requirements for Available submissions cannot simply be transferred to Preview as evidence of an independent remeasurement. The value of the release is that its rules and results are public. Independent laboratory replication addresses a further question.<a href="#news-ref-6" data-news-citation="6" aria-label="Go to reference 6" data-astro-reload>[6]</a>
+
+### Power and price are missing from the cost comparison
+
+The reviewed rows have `has_power` set to False. A GPU design-power figure in the metadata differs from a time series measuring electricity drawn by the complete rack during the test. Multiplying that rating by GPU count cannot establish actual energy efficiency, and applying 3.7× to it cannot establish electricity savings.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+Total cost of ownership (TCO) includes hardware purchases, electricity, cooling, networking, space, maintenance, and operations staff. Higher throughput may deliver limited savings per token if equipment cost rises faster or useful utilization is low. The following accounting identity illustrates the relationship. It is not a calculation of Rubin's actual cost.
+
+<Math display tex={String.raw`\text{Cost per million tokens}=\frac{\text{cost per hour}}{3600\,T\,u}\times 10^6`} label="Illustrative accounting identity: divide hourly cost by tokens actually served" />
+
+T is token capacity per second, and u is the fraction of it used for effective requests. At equal hourly cost and utilization, doubling throughput halves cost per token. If hourly cost doubles as well, that saving disappears. The example illustrates the importance of units and denominators. It makes no price or utilization forecast for this system.
+
+## 7. What changes for operators?
+
+Buyers can now ask more than which GPU has the most FLOPS. At a service's actual input and output lengths, how much useful work can one rack complete while meeting its response-time target? A vendor's best result can help shortlist candidate systems. It cannot guarantee performance under a service contract.
+
+First define the workload. Images, long input documents, long generated responses, and bursts of traffic each change the appropriate test. Compare at matched model quality and similar input and output distributions. Alongside peak throughput, record time to first token, sustained generation rate, request failures, actual power, and useful utilization.
+
+The same bottlenecks matter in small labs running VLMs on limited GPUs. Memory capacity, KV cache size, concurrent requests, and runtime choice still interact. The speed ratio from a 72-accelerator rack cannot be applied to a laptop simply because both systems encounter related constraints.
+
+This article's Top 1 selection began with a 95-point editorial judgment. It is neither a conference award nor an overall MLCommons score. What warranted attention was a new product accompanied by public comparative results. Source checks added scenario-specific differences, units, production context, and unresolved metadata questions. New performance numbers do not diminish the scientific value of the previously featured hydrogen-process research.
+
+## 8. What to check next
+
+First, watch whether the same configuration moves to Available and which hardware or software changes before it does. A shared name alone cannot establish continuity between Preview and Available results. Changes in the model version or runtime settings require a separate comparison.
+
+Second, look for measured power. Computing energy per token, the reciprocal of tokens per joule, requires both consumed energy and useful work during the test. The boundary must specify whether cooling and networking are included. Mixing boundaries can produce a misleading energy-efficiency ranking.
+
+Third, resolve the metadata using raw logs. These should make it possible to trace the meaning of `inferred`, the mapping between submission-site IDs and repository paths, and the difference between the company's 2.5× and the retrieved table's ratio. Public summaries can change, making the review date and file hash important.
+
+Fourth, examine varied customer workloads and sustained operation. In a shared system, tail latency and recovery from failures can matter more than peak throughput. Disaggregated serving should be checked both for long inputs with short outputs and for short inputs with long outputs.
+
+The other research candidates reviewed alongside this announcement were [EBV signals before MS relapse](/en/posts/2026-09-17-ms-ebv-prerelapse-news/) and [gene therapy for adolescents with hemophilia B](/en/posts/2026-09-17-adolescent-hemophilia-b-news/). The former turns on causal inference in an observational study, the latter on safety interpretation in an early human trial. All three articles ask what was measured and which denominator gives the number meaning.
+
+## 9. Sources
+
+<a id="news-ref-1" href="https://mlcommons.org/2026/09/mlperf-inference-v6-1-results/" data-news-reference="1" target="_blank" rel="noopener noreferrer">[1]</a> MLCommons, official MLPerf Inference v6.1 results announcement, September 16, 2026. Changes in the leading results across the round and introduction of new tests.
+
+<a id="news-ref-2" href="https://blogs.nvidia.com/blog/vera-rubin-nvl72-mlperf-inference/" data-news-reference="2" target="_blank" rel="noopener noreferrer">[2]</a> Zhihan Jiang / NVIDIA, technical account of the Vera Rubin NVL72 MLPerf debut, September 16, 2026. Peak ratios and hardware and software explanations are attributed to NVIDIA.
+
+<a id="news-ref-3" href="https://github.com/mlcommons/inference_results_v6.1/blob/main/summary.csv" data-news-reference="3" target="_blank" rel="noopener noreferrer">[3]</a> MLCommons, inference_results_v6.1 / summary.csv. NVIDIA rows with 72 accelerators, the same model, and the same scenario were compared in the September 17, 2026 snapshot. The table divides published results rather than reporting reruns. The repository's review record preserves the acquisition hash and source rows.
+
+<a id="news-ref-4" href="https://mlcommons.org/benchmarks/inference-datacenter/" data-news-reference="4" target="_blank" rel="noopener noreferrer">[4]</a> MLCommons, MLPerf Inference: Datacenter. Guide to the Closed/Open and Available/Preview categories and interpretation of the results. Checked September 17, 2026.
+
+<a id="news-ref-5" href="https://nvidianews.nvidia.com/news/vera-rubin-full-production-agentic-ai-factory" data-news-reference="5" target="_blank" rel="noopener noreferrer">[5]</a> NVIDIA, announcement of the Vera Rubin full-production ramp, May 31, 2026. Provides context for distinguishing platform production from the benchmark's Preview classification.
+
+<a id="news-ref-6" href="https://github.com/mlcommons/inference_policies/blob/master/inference_rules.adoc" data-news-reference="6" target="_blank" rel="noopener noreferrer">[6]</a> MLCommons, Inference Rules. Covers model, quality, scenario, and submission auditing rules. The repository can change. This review reflects the material checked on September 17, 2026.
