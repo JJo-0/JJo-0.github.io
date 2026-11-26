@@ -672,5 +672,17 @@ POST_TAXONOMY["ai-consciousness-deep-research-4.md"] = Taxonomy(
     "ai-consciousness-governance", True, 4,
 )
 
+# AI Benchmark series
+POST_TAXONOMY.update({
+    "ai-benchmark-01-overview.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "llm", "agent")),
+    "ai-benchmark-02-metrics.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "statistics", "metrics")),
+    "ai-benchmark-03-reliability-and-uncertainty.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "statistics", "reliability")),
+    "ai-benchmark-04-evaluation-harness.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "agent", "testing")),
+    "ai-benchmark-05-contamination-and-reward-hacking.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "ai-safety", "data-quality")),
+    "ai-benchmark-06-composite-indices.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "llm", "metrics")),
+    "ai-benchmark-07-mmlu-mmlu-pro-gpqa.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "llm", "metrics")),
+    "ai-benchmark-08-math-answer-grading.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "mathematics", "metrics")),
+})
+
 if __name__ == "__main__":
     raise SystemExit(main())

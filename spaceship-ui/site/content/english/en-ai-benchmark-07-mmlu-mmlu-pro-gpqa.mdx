@@ -1,0 +1,85 @@
+---
+title: "AI Benchmark 07 — Reading MMLU, MMLU-Pro, and GPQA Diamond scores"
+description: "Compare how three multiple-choice exams select questions, work through a ranking reversal, and turn a single-answer camera problem into an agent evaluation."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-07-mmlu-mmlu-pro-gpqa
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - llm
+  - metrics
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 7
+translationKey: en-ai-benchmark-07-mmlu-mmlu-pro-gpqa
+translatedPosts:
+  ko-KR: ai-benchmark-07-mmlu-mmlu-pro-gpqa
+---
+
+Can a model that picks the right correction formula on a physics exam also repair a camera calibration file? The first test needs an answer key. The second needs a camera configuration, observations, a tool for editing the file, and a procedure for checking the result. Chapter 7 starts with what one answer can establish, then turns the same topic into an agent task to see what else needs measuring.
+
+## 1. How do the three exams select questions?
+
+| Exam | Scope and size | Multiple-choice design | What the result captures |
+|---|---|---|---|
+| MMLU | 57 subjects. The CAIS release has 14,042 questions in `all/test` | Four options per question | Accuracy across academic and professional subjects and variation between subjects |
+| MMLU-Pro | 14 domains. The authors' dataset composition table accounts for 12,032 questions | Usually ten options. Reviewers removed options from some questions | Accuracy on an exam that introduced both more distractors and more reasoning-focused questions |
+| GPQA Diamond | Physics, chemistry, and biology. A 198-question subset of the 448-question GPQA Main set | One correct option and three distractors. Selection uses responses from specialists and validators from other fields | Accuracy on a selected set of graduate-level science questions |
+
+Start with the unit. MMLU's 57 counts subjects. Diamond's 198 counts questions. The order of publication is also worth checking. MMLU first appeared in September 2020, GPQA in November 2023, and MMLU-Pro in June 2024. A separate research team built GPQA around a different question. [MMLU paper](https://arxiv.org/abs/2009.03300) · [CAIS release metadata](https://huggingface.co/datasets/cais/mmlu/blob/main/README.md) · [GPQA paper](https://arxiv.org/abs/2311.12022) · [MMLU-Pro paper](https://arxiv.org/abs/2406.01574)
+
+## 2. What changed between MMLU and MMLU-Pro?
+
+MMLU asks whether a model can apply what it learned during pretraining across fields ranging from elementary mathematics to professional law. Its authors evaluated models with no demonstrations (zero-shot) and with a few worked examples (few-shot). Even for one model, the number of demonstrations matters. So does the way an answer is read, whether the evaluator compares probabilities for option labels or extracts the final choice from generated text. [Original MMLU paper](https://openreview.net/pdf?id=d7KBjmI3GmQ) · [Authors' evaluation code](https://github.com/hendrycks/test)
+
+The MMLU-Pro team selected existing questions and added questions from other sources. The authors' table lists 6,810 from MMLU and 5,222 additions. With one correct answer, a uniform guess among four options succeeds 25% of the time, while a guess among ten succeeds 10% of the time. Some items have fewer than ten options. To obtain the expected accuracy of uniform guessing for the entire test, use each item's actual option count and average the resulting probabilities. A model's score change across the two exams can reflect the options, the mix of questions, and the instructions for solving them. [MMLU-Pro authors' dataset card](https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro)
+
+## 3. How did GPQA choose its Diamond subset?
+
+GPQA began with the expertise of the people checking the answers. Specialists reviewed questions in their own fields. Three validators trained in other fields tried each problem with access to the web. Diamond required at least two of those three to miss the question and agreement from both experts on the correct answer. The second expert could initially answer incorrectly if the first was correct and the second could clearly explain the mistake or show understanding of the writer's explanation. Expert agreement on a Diamond item and accuracy on a first attempt are therefore different statistics. [GPQA §2.3 and Table 2, PDF pp. 6–7](https://arxiv.org/pdf/2311.12022#page=6)
+
+The term “Google-proof” refers to the internet access that validators from other fields had during dataset construction. When reading a new model score, check the model's own search permissions separately. If every one of the 198 items receives one equally weighted answer, a single additional correct answer moves the score by about 0.505 percentage points. To interpret a small gap between two models, examine the items on which their answers differed and the variation across repeated runs. [GPQA validation protocol and limitations](https://arxiv.org/pdf/2311.12022#page=5)
+
+## 4. How can the same answers give two rankings?
+
+In this illustrative exam, both models answered the same 100 items once. Only the aggregation changes. The counts below were made up for the calculation and represent no reported model result.
+
+| Illustrative subject | Questions | Model A correct | Model B correct |
+|---|---:|---:|---:|
+| Optics | 90 | 81 | 72 |
+| Control engineering | 10 | 3 | 9 |
+
+**Give each question one vote** and A scores 84/100, or 84%, while B scores 81/100, or 81%. **Give each subject one vote** and A scores (90% + 30%)/2 = 60%, while B scores (80% + 90%)/2 = 85%. A's nine extra correct optics answers determine the first ranking. In the second calculation, the 60-point gap in control engineering has the same weight as the 10-point gap in optics. Which average to read, the item-level micro-average or the subject-level macro-average, depends on the distribution of tasks a user expects to encounter.
+
+## 5. Turning an exam question into a camera calibration task
+
+Stanford's November 4, 2026 CS329Z lecture introduces the MMLU family and GPQA, then examines how to define agent tasks and set the conditions for running them. Consider that distinction in camera calibration. Both test designs below are original illustrations. [CS329Z schedule](https://cs329z.stanford.edu/) · [Exam questions, Lecture 13 pp. 14–16](https://web.stanford.edu/class/cs329z/slides/lecture13.pdf#page=14) · [Agent task design, pp. 29–37](https://web.stanford.edu/class/cs329z/slides/lecture13.pdf#page=29)
+
+| Design decision | Single-answer exam | Agent task |
+|---|---|---|
+| Request and input | Choose the correction formula for a calibration coefficient entered at twice its proper value | Given a configuration with the same error and measurement logs, repair the calibration file |
+| Environment and tools | Supply the question and four options | Supply an isolated read/write workspace and sample observations for checking the change |
+| Stopping rule | End after one submitted answer | End on submission or after a predetermined allowance of five tool calls |
+| Grading | Compare the selected option with the key | Use a separate grader to compute reprojection error on held-out observations, check its tolerance, and verify that protected settings were preserved |
+
+Two systems that select the same option can diverge on the file repair. One might find the correct formula, then overwrite a different camera's configuration. The files it opened and the final changes help pinpoint that failure. Exam accuracy summarizes the first test. The second needs its own task-success rate and a breakdown of failure types.
+
+## 6. A reading card for a reported score
+
+| What to check | What to record |
+|---|---|
+| Data and denominator | Dataset version or revision, subset, number of evaluated items, and reasons for exclusions |
+| Model and run | Provider and model snapshot, demonstration count and solution instructions, search and tool access, reasoning budget, and attempts per item |
+| Grading and aggregation | Choice extraction, handling of malformed responses, correct and total counts, weighting, and accuracy with higher values indicating better performance |
+| Basis for comparison | Provider report or independent run, differences on shared items and variation across runs, and possible training exposure to public questions |
+
+When a table says only “GPQA 80%,” first look for Main or Diamond, the number of questions, and whether search was enabled. Those details help identify which results can be reproduced or compared. Chapter 8 moves to mathematics exams where the answer is a number or expression and the grader must decide what counts as equivalent.

@@ -5,6 +5,8 @@ import { englishSwitchPath } from '@/lib/locales';
 import modernAiSeries from '@/data/modern-ai-series.json';
 import { getSelfImprovingPart, selfImprovingSeries } from '@/lib/self-improving-series';
 import SelfImprovingSeriesMap from './SelfImprovingSeriesMap.astro';
+import AiBenchmarkSeriesMap from './AiBenchmarkSeriesMap.astro';
+import aiBenchmarkSeries from '@/data/ai-benchmark-series.json';
 
 interface Props {
   en?: boolean;
@@ -36,6 +38,7 @@ const nextPost = seriesPosts[currentIndex + 1];
 const currentOrder = currentPost?.data.series?.order ?? currentIndex + 1;
 const isModernAiSeries = seriesId === modernAiSeries.id;
 const isSelfImprovingSeries = seriesId === selfImprovingSeries.id;
+const isAiBenchmarkSeries = seriesId === aiBenchmarkSeries.id;
 const currentPart = getSelfImprovingPart(currentPost?.data.series);
 const previousPart = getSelfImprovingPart(previousPost?.data.series);
 const nextPart = getSelfImprovingPart(nextPost?.data.series);
@@ -44,7 +47,7 @@ const modernAiEntries = (modernAiSeries.entries as ModernAiEntry[]).map((entry) 
   post: seriesPosts.find((post) => post.data.series?.order === entry.order),
 }));
 
-if (currentIndex < 0 || (position === 'top' && !isModernAiSeries && !isSelfImprovingSeries && seriesPosts.length <= 1)) {
+if (currentIndex < 0 || (position === 'top' && !isModernAiSeries && !isSelfImprovingSeries && !isAiBenchmarkSeries && seriesPosts.length <= 1)) {
   return null;
 }
 ---
@@ -57,6 +60,8 @@ if (currentIndex < 0 || (position === 'top' && !isModernAiSeries && !isSelfImpro
   </nav>
 ) : isSelfImprovingSeries ? (
   <SelfImprovingSeriesMap {en} posts={seriesPosts} {currentPostId} />
+) : isAiBenchmarkSeries ? (
+  <AiBenchmarkSeriesMap {en} posts={seriesPosts} {currentPostId} />
 ) : (
 <section
   class="series-map mt-8 mb-12 overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-sm"

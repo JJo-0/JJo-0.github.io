@@ -1,0 +1,101 @@
+---
+title: "AI Benchmark 01 — How do we measure AI intelligence?"
+description: "From GLUE to autonomous research: learn the history of evaluation and how to interpret model-card scores."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-01-overview
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - llm
+  - agent
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 1
+translationKey: en-ai-benchmark-01-overview
+translatedPosts:
+  ko-KR: ai-benchmark-01-overview
+---
+
+import Math from '@/components/post/Math.astro';
+
+A model scorecard looks like a report card. But the same score of 80 means different things when the questions, grading, environment, and time limits change. This series is not about memorizing rankings. Its goal is to **explain what capability was measured under what conditions, and design an evaluation when needed**.
+
+## 1. Benchmark, dataset, and evaluation
+
+A dataset is a collection of tasks and associated material. An evaluation is the act of running a model on those tasks and measuring its outputs. A benchmark defines a common basis for comparison: tasks, execution conditions, grading rules, and aggregation. A leaderboard lists results produced under that basis.
+
+A math test must decide whether to grade only the final number or the derivation. A coding test benefits from executing tests rather than merely examining text. An agent test also includes its environment and permissions, such as files, browsers, and APIs.
+
+| Element | Question |
+|---|---|
+| Task / dataset | What must be solved? |
+| Harness / tools | Under what conditions does it act? |
+| Grader / verifier | What counts as success? |
+| Aggregation | How are task results combined? |
+| Reporting | Are cost, time, failures and versions disclosed? |
+
+**How would you grade a room booking?** A reply that names a room and time could pass a writing task. To evaluate a booking agent on the same request, inspect the calendar and check that exactly one reservation exists at the requested time. Start with an occupied room and you can also test whether the agent prevents a duplicate booking. The request fits on one line, but each task needs different evidence. The first Stanford CS329Z lecture breaks down the model, tools and environment. [Lecture video at 22:05](https://www.youtube.com/watch?v=DGI4vucR71w&t=1325s)
+
+## 2. Evolution: from language understanding to real work
+
+This timeline uses initial papers or representative public releases. Later versions are not treated as identical to earlier tests.
+
+| Period | Representative benchmark | Focus |
+|---|---|---|
+| 2018–2019 | [GLUE](https://arxiv.org/abs/1804.07461), [SuperGLUE](https://arxiv.org/abs/1905.00537) | Multiple language understanding tasks |
+| 2020–2021 | [MMLU](https://arxiv.org/abs/2009.03300), [HumanEval](https://arxiv.org/abs/2107.03374) | Academic knowledge and executable functions |
+| 2022 | [HELM](https://arxiv.org/abs/2211.09110) | Multiple dimensions including calibration, robustness and efficiency |
+| 2023–2024 | [SWE-bench](https://arxiv.org/abs/2310.06770), [OSWorld](https://os-world.github.io/) | Repository editing and goals in GUI environments |
+| 2025 | [HLE](https://lastexam.ai/), [GDPval](https://openai.com/index/gdpval/) | Expert knowledge and professional work |
+| 2026 | [AA Intelligence Index v5](https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v5/) | Composite measurement including autonomous coding, science and knowledge work |
+
+GLUE unified multiple language understanding tasks. MMLU covered academic knowledge and problem solving across 57 subjects. HumanEval tested function behavior; SWE-bench introduced real issues and codebases. HELM emphasized multiple dimensions beyond accuracy. The shift was not just toward harder questions: evaluation expanded from answers to executed outcomes.
+
+## 3. Reading a real model card: Inkling 2 Mini
+
+The [Thinking Machines Lab release](https://thinkingmachines.ai/news/inkling-2-mini/) dated November 20, 2026 provides the following numbers. Keep the original evaluation conditions when reading them.
+
+| Evaluation | Reported score | Condition / unit |
+|---|---:|---|
+| Terminal-Bench 2.1 | 71.6% | Pi v0.83.0 |
+| Terminal-Bench 4.0 | 5.6% | mini-swe-agent v2.4.6 |
+| Chartography | 22.1% / 72.5% | Original / with Python |
+| GDPval-AA v2.1 | 1319 | Elo rating |
+| AA Index v5.0 | 20.1 | Composite index |
+| Vals Index v2.2 | 46.5% | Industry-weighted score |
+
+The terminal scores differ by 66.0 percentage points, but both the version and harness changed. This table cannot establish a decline in the model's capability. The Chartography difference is 50.4 percentage points. Performance was higher with tools, but attributing the gain to a particular operation requires traces or controlled experiments. Elo and composite index values are not percentages of questions answered correctly.
+
+## 4. A measurement model
+
+For task i, specify a model M, dataset D, harness H, tools T, budget B, grader G and randomness R. The score S depends on all these factors.
+
+<Math display tex={"S=f(M,D,H,T,B,G,R)"} />
+
+If 70 of 100 tasks succeed, the simple success rate is 70%. But task duplication, sample bias and timeout policy can change the observation. To compare models, first fix the evaluation conditions. To compare systems, allow a model-specific harness but disclose cost and time. The two experiments answer different questions about the model and the deployed system.
+
+## 5. Practice
+
+Hypothetical task: model A solves 80 out of 100 problems in ten minutes. Model B solves 85 in thirty minutes. Which is better?
+
+The answer depends on the objective. For maximum accuracy, B is preferable. With a strict fifteen-minute deadline, B's score at that deadline is needed. If prices differ, compare cost per successful task. If versions or graders differ, redesign the comparison before ranking the models.
+
+The next chapter computes what changes when outcomes are expressed using accuracy, F1, Elo or AUC.
+
+## References
+
+- [GLUE (Wang et al., 2018)](https://arxiv.org/abs/1804.07461)
+- [MMLU (Hendrycks et al., 2020)](https://arxiv.org/abs/2009.03300)
+- [HumanEval (Chen et al., 2021)](https://arxiv.org/abs/2107.03374)
+- [HELM (Liang et al., 2022)](https://arxiv.org/abs/2211.09110)
+- [SWE-bench (Jimenez et al., 2023)](https://arxiv.org/abs/2310.06770)
+- [Inkling 2 Mini model card (2026-11-20)](https://thinkingmachines.ai/model-card/inkling-2-mini/)

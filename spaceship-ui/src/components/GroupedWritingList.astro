@@ -6,6 +6,7 @@ import { getPostSlug, getPostSeriesId, compareSeriesPosts } from '@/lib/utils/po
 import { ENGLISH_SERIES_TITLES } from '@/lib/english-series';
 import { getReadTime } from '@/lib/utils/readTime';
 import { getSelfImprovingPart, selfImprovingSeries } from '@/lib/self-improving-series';
+import aiBenchmarkSeries from '@/data/ai-benchmark-series.json';
 interface Props { posts: CollectionEntry<'posts'>[]; en?: boolean; }
 const { posts, en = false } = Astro.props;
 const names: Record<string, string> = {
@@ -25,7 +26,7 @@ const emitted = new Set<string>();
 interface ListItem { post: CollectionEntry<'posts'>; key?: string; title?: string; description?: string; members: CollectionEntry<'posts'>[]; }
 const items = posts.flatMap<ListItem>(post => {
   const key = getPostSeriesId(post);
-  if (!key || ((grouped.get(key)?.length || 0) < 2 && key !== 'human-motion-study' && key !== 'rl-robot-learning' && key !== 'segmentation' && key !== selfImprovingSeries.id)) return [{ post, key: undefined, members: [] }];
+  if (!key || ((grouped.get(key)?.length || 0) < 2 && key !== 'human-motion-study' && key !== 'rl-robot-learning' && key !== 'segmentation' && key !== selfImprovingSeries.id && key !== aiBenchmarkSeries.id)) return [{ post, key: undefined, members: [] }];
   if (emitted.has(key)) return [];
   emitted.add(key);
   const members = [...grouped.get(key)!].sort((a, b) => compareSeriesPosts(a, b, key));
@@ -33,6 +34,14 @@ const items = posts.flatMap<ListItem>(post => {
     return selfImprovingSeries.parts.flatMap(part => {
       const partMembers = members.filter(member => getSelfImprovingPart(member.data.series)?.number === part.number);
       return partMembers.length ? [{ post: partMembers[0], key: part.groupId, title: en ? part.englishTitle : part.title, description: en ? part.englishDescription : part.description, members: partMembers }] : [];
+    });
+  }
+  if (key === aiBenchmarkSeries.id) {
+    return aiBenchmarkSeries.parts.flatMap(part => {
+      const orders = new Set(part.entries.map(entry => entry.order));
+      const partMembers = members.filter(member => orders.has(member.data.series?.order ?? 0));
+      const title = en ? `AI Benchmark — Part ${part.roman}. ${part.englishTitle}` : `AI 벤치마크 — Part ${part.roman}. ${part.title}`;
+      return partMembers.length ? [{ post: partMembers[0], key: part.groupId, title, description: en ? `${part.entries.length} planned chapters` : `${part.entries.length}편 구성`, members: partMembers }] : [];
     });
   }
   return [{ post, key, members }];

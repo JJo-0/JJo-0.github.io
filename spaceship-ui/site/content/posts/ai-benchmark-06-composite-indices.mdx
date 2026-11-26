@@ -1,0 +1,115 @@
+---
+title: "AI 벤치마크 06 — Artificial Analysis Index와 Vals Index"
+description: "AA v5와 Vals v2.2의 구성, 가중치, 버전 변경, 공식 점수를 분석하고 종합 지수의 민감도와 한계를 계산합니다."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-06-composite-indices
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - llm
+  - metrics
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 6
+---
+
+import Math from '@/components/post/Math.astro';
+
+종합 지수는 여러 벤치마크를 하나의 숫자로 요약한다. 편리하지만 평가 목적과 가중치가 다르면 동일한 모델의 순위가 바뀔 수 있다. 이 글의 공개 자료 확인일은 2026년 11월 25일이며, 발표 당시 버전과 현재 버전을 구분한다.
+
+## 1. Artificial Analysis Intelligence Index v5
+
+[AA v5 공식 발표](https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v5/)는 2026년 10월 27일 공개되었다. 지식 업무, 코딩, 과학, 일반 영역을 각각 25%로 구성한다. 공식 발표에 따르면 60%는 비공개 테스트 세트 또는 비공개 정답을 사용한 평가에 기반한다.
+
+| 영역 | 평가 항목 | 가중치 |
+|---|---|---:|
+| Knowledge Work | AA-Briefcase | 15% |
+| Knowledge Work | AutomationBench-AA | 5% |
+| Knowledge Work | GDP.pdf | 5% |
+| Coding | FrontierCode 2.0 | 15% |
+| Coding | Terminal-Bench 4.0 | 10% |
+| Science | Terminal-Bench-Science | 15% |
+| Science | CritPt v2 Hard | 10% |
+| General | AA-Omniscience v1.1 Accuracy | 10% |
+| General | AA-Omniscience v1.1 Non-hallucination | 5% |
+| General | HLE-Diamond | 10% |
+
+9개 평가를 10개 가중치 항목으로 집계한다. Omniscience에서 두 지표를 사용하기 때문이다. [현재 AA 사이트](https://artificialanalysis.ai/)는 v5.0.2 및 Terminal-Bench 4.1을 표시한다. v5.0 점수와 v5.0.2 점수를 같은 버전이라고 생각하면 안 된다.
+
+## 2. 가중 합산과 정규화
+
+종합 지수의 개념적 형태는 각 평가를 공통 점수 척도로 변환한 뒤 가중 합산하는 것이다.
+
+<Math display tex={"I=\\sum_{j=1}^{m}w_j s_j,\\qquad \\sum_{j=1}^{m}w_j=1"} />
+
+가령 4개 영역의 정규화 점수가 각각 60, 80, 40, 60이고 가중치가 동일하면 지수는 60점이다. 코딩을 10점 높이면 전체 점수는 2.5점 상승한다. 이 계산은 가중 합산의 원리 설명이며 실제 AA Elo 변환 등을 포함한 전체 구현을 복제한 것이 아니다. AA-Briefcase의 원시 Elo를 백분율과 그대로 평균 내지 않는다.
+
+AA는 범용 능력을 포괄하는 지수다. 데이터셋의 선정, 버전, 난이도 및 정규화 방식이 달라지면 종합 결과도 달라진다.
+
+## 3. Vals Index v2.2 — 산업 가중치
+
+[Vals 공식 방법론](https://www.vals.ai/benchmarks/vals_index)에 따르면 v2.2는 2026년 10월 19일 공개되었다. 미국 GDP의 산업 비중을 근사 가중치로 사용한다.
+
+| 부문 | 구성 시험 | 원래 가중치 | 정규화 비중 |
+|---|---|---:|---:|
+| Finance | Finance Agent v2.1, Excel Modeling v1.1 | 8.0 | 52.29% |
+| Coding | Terminal-Bench 4, Vibe Code, Code Migration | 5.6 | 36.60% |
+| Legal | Legal Research, HLAB-Vals-1.1 | 1.2 | 7.84% |
+| Tax | Tax Agent Bench | 0.5 | 3.27% |
+
+부문 내 시험을 평균한 뒤 다음과 같이 결합한다.
+
+<Math display tex={"I_{\\mathrm{Vals}}=\\frac{8F+5.6C+1.2L+0.5T}{15.3}"} />
+
+가상 모델의 F=60, C=70, L=40, T=20이면 분자는 480+392+48+10=930이고 지수는 약 60.78%이다. 금융이 10%p 증가하면 전체 지수는 약 5.23%p 오른다. 세무가 10%p 증가하면 약 0.33%p 오른다.
+
+v2.2의 Code Migration은 공식 실행의 고정 부분집합을 사용한다. 원래 전체 벤치마크와 완전히 같은 시험으로 간주하면 안 된다. 또한 세무는 all-pass 정확도로 전환되었다.
+
+## 4. 실제 공개 점수: 동일 출처와 버전으로 읽기
+
+[Thinking Machines Lab 발표](https://thinkingmachines.ai/news/inkling-2-mini/)는 2026년 11월 20일 다음 값을 제시했다. 이는 발표자의 표를 인용한 것이며 독립 재실행 결과가 아니다.
+
+| 모델 | AA v5.0 | Vals v2.2 |
+|---|---:|---:|
+| Inkling 2 Mini | 20.1 | 46.5% |
+| Gemma 4 31B | 4.4 | — |
+| Muse Glimmer | 6.3 | — |
+| Qwen3.8-27B | 20.1 | — |
+| Nemotron 3.5 Super VL | 13.6 | 29.8% |
+
+대시는 미보고를 뜻한다. 0점이 아니다. 같은 AA 점수의 두 모델도 하위 항목에서는 큰 차이가 있을 수 있다.
+
+Vals 자체 리더보드의 2026년 11월 21일 스냅샷은 Claude Fable 5.2 70.06%, Gemini 4 Neon 69.23%, GPT-6.2 Astra 66.27%를 표시한다. [공식 Vals 리더보드](https://www.vals.ai/benchmarks/vals_index)의 해당 날짜 기준이다. 다른 발표자의 표 또는 이후 업데이트된 결과와 혼합하여 하나의 순위표를 만들지 않는다.
+
+지수에 들어간 터미널 시험까지 거슬러 올라가면 비교 조건을 더 정확히 알 수 있다. 예컨대 코딩 항목에서 두 시스템이 모두 60%를 얻었다고 하자. 한쪽은 과업당 1회, 다른 쪽은 5회 생성 후 검증기로 고른 결과라면, 점수만 옮겨 적을 때 재시도 비용이 사라진다. 하위 점수 옆에 하네스 버전, 허용 시도, 시간 제한을 한 줄씩 적어 보면 종합 지수로 답할 수 있는 질문의 범위가 드러난다. 이 60%는 설명용 수치다. [Stanford의 평가 프로토콜 강의](https://web.stanford.edu/class/cs329z/slides/lecture13.pdf#page=65) · [Terminal-Bench 버전별 명세](https://www.tbench.ai/benchmarks)
+
+## 5. 가중치가 순위를 바꾸는 이유
+
+가상 모델 A는 금융 70, 코딩 40, 법률 50, 세무 50이다. 모델 B는 금융 50, 코딩 70, 법률 50, 세무 50이다.
+
+| 모델 | 네 영역 단순 평균 | Vals 가중 평균 |
+|---|---:|---:|
+| A | 52.50% | 56.80% |
+| B | 55.00% | 57.32% |
+
+이 예시에서 B가 두 집계 모두 앞선다. A의 금융 점수를 72로 바꾸면 단순 평균은 53%로 여전히 B보다 낮지만, Vals 가중 평균은 약 57.84%로 B를 앞선다. 따라서 순위는 능력의 절대적 서열이 아니라 선택된 가중치와 평가 결과의 결합이다.
+
+GDP 비중은 AI가 실제로 대체할 수 있는 노동의 비중과 동일하지 않다. 산업별 채택률, 오류 비용, 규정, 사람의 검토, 지연 시간과 운영 비용을 포함해야 경제 효과를 추정할 수 있다.
+
+Part I을 마쳤다. Part II에서는 지식·추론·수학 벤치마크의 실제 문제 구조와 정답 검증 방식으로 들어간다.
+
+## 참고 자료
+
+- [Artificial Analysis — Intelligence Index v5 (2026-10-27)](https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v5/)
+- [Artificial Analysis — current index](https://artificialanalysis.ai/)
+- [Vals Index v2.2 — methodology and leaderboard](https://www.vals.ai/benchmarks/vals_index)
+- [Thinking Machines Lab — Inkling 2 Mini (2026-11-20)](https://thinkingmachines.ai/news/inkling-2-mini/)

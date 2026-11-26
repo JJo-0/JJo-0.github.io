@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import sharp from 'sharp';
 import { BASE, startPreview, startChrome, Cdp, attach, stopChild, removeProfile, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
 const out = process.env.JJO_SELF_IMPROVING_ARTIFACTS || path.join(os.tmpdir(), 'jjo-self-improving');
@@ -248,6 +249,9 @@ try {
     for (const asset of manifest.assets) {
       const data = fs.readFileSync(path.resolve('..', asset.path));
       assert.equal(crypto.createHash('sha256').update(data).digest('hex'), asset.sha256);
+      const original = await sharp(data).metadata();
+      assert.equal(original.width, asset.width, 'Full-size slide width: ' + asset.src);
+      assert.equal(original.height, asset.height, 'Full-size slide height: ' + asset.src);
       const record = { path: asset.path, sha256: asset.sha256, source: asset.source };
       if (process.env.JJO_SMOKE_BASE_URL) {
         const response = await fetch(new URL(asset.src, process.env.JJO_SMOKE_BASE_URL), { signal: AbortSignal.timeout(30000), cache: 'no-store' });

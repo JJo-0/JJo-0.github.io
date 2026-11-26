@@ -1,0 +1,113 @@
+---
+title: "AI 벤치마크 03 — Pass@k, Pass^k와 반복 실험"
+description: "여러 번 시도하는 모델의 성공률과 신뢰성, 조합론적 추정식, Wilson 신뢰구간, 짝지어진 비교를 계산합니다."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-03-reliability-and-uncertainty
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - statistics
+  - reliability
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 3
+---
+
+import Math from '@/components/post/Math.astro';
+
+한 번이라도 맞히는 것과 매번 맞히는 것은 서로 다른 요구사항이다. 코딩 후보를 여러 개 생성하는 평가와 금융·로봇 운영의 안정성을 시험하는 평가를 구분하자.
+
+## 1. 세 가지 성공률
+
+과업 하나의 독립 시도 성공 확률을 p로 가정한다. 한 번의 시도는 Pass@1, k번 중 하나 이상 성공하는 사건은 Pass@k, 모든 시도가 성공하는 사건은 Pass^k로 나타낼 수 있다.
+
+<Math display tex={"P_{\\ge1}(k)=1-(1-p)^k,\\qquad P_{\\mathrm{all}}(k)=p^k"} />
+
+p=0.8인 가상의 동일 과업에서 5회 시도하면 적어도 한 번 성공할 확률은 99.968%, 모든 시도 성공은 32.768%이다.
+
+| k | 하나 이상 성공 | 모두 성공 |
+|---:|---:|---:|
+| 1 | 80% | 80% |
+| 2 | 96% | 64% |
+| 3 | 99.2% | 51.2% |
+| 5 | 99.968% | 32.768% |
+
+이 수치는 동일한 p, 독립성, 고정된 조건을 가정한다. 어려운 과업과 쉬운 과업이 섞이면 전체 평균 p를 공식에 대입하는 것만으로는 실제 반복 성공률을 얻을 수 없다.
+
+예약 에이전트 두 과업을 초기화해서 각각 세 번씩 실행해 보자. 가상의 성공 기록이 첫 과업은 ‘성공·성공·실패’, 둘째는 ‘실패·실패·성공’이면 두 과업 모두 적어도 한 번 성공했고 세 번 모두 성공한 과업은 없다. 과업별 관측값을 평균하면 pass@3은 100%, pass^3은 0%, 개별 실행 성공률은 3/6이다. 이 계산은 여섯 번의 관측을 요약한 것이므로 독립 시도를 가정할 필요가 없다. 고객이 매번 예약을 한 번만 요청한다면 어떤 수치를 먼저 보여 줄지도 달라진다. [Stanford CS329Z 평가 인프라 강의](https://web.stanford.edu/class/cs329z/slides/lecture15.pdf#page=83) · [도구 호출 강의 1:17:50](https://www.youtube.com/watch?v=s0S38lz6O7M&t=4670s)
+
+## 2. HumanEval의 조합론적 추정식
+
+[HumanEval 논문](https://arxiv.org/abs/2107.03374)의 Pass@k는 n개 생성 후보 중 c개가 정확할 때, 무작위 k개 후보를 선택했을 때 성공 후보가 적어도 하나 포함될 확률의 추정치를 사용한다.
+
+<Math display tex={"\\widehat{\\mathrm{pass@}k}=1-\\frac{\\binom{n-c}{k}}{\\binom{n}{k}},\\qquad n\\ge k"} />
+
+n=10, c=3, k=2이면 전체 후보 조합은 45개이고 모두 실패하는 조합은 21개다. 따라서 24/45=53.33%이다. 과업별 값을 먼저 구한 뒤 평균을 내야 한다.
+
+실행기가 10개 후보 중 정답을 골라낼 수 있는지와는 별개다. 숨겨진 테스트가 실제 운용에서는 제공되지 않는다면 Pass@k는 정답 후보를 선택할 능력을 측정하지 않는다. 같은 후보 집합의 all-pass 표본 추정량은 조합 수의 비율로 표현할 수 있다.
+
+<Math display tex={"\\widehat{P}_{\\mathrm{all}}(k)=\\frac{\\binom{c}{k}}{\\binom{n}{k}}"} />
+
+위 예시에서 all-pass는 3/45=6.67%이다.
+
+## 3. 신뢰구간: 80점의 불확실성
+
+100개의 독립 베르누이 과업에서 80개가 성공했다고 하자. 추정치는 0.8이다. 정규 근사보다 경계에서 안정적인 Wilson 구간은 다음과 같다. z=1.96일 때 약 95% 구간이다.
+
+<Math display tex={"\\frac{\\hat p+z^2/(2n)\\ \\pm\\ z\\sqrt{\\hat p(1-\\hat p)/n+z^2/(4n^2)}}{1+z^2/n}"} />
+
+n=100이면 약 71.1–86.7%, n=1000이고 800개 성공이면 약 77.4–82.4%이다. 점수는 같아도 불확실성은 다르다. [Brown, Cai & DasGupta (2001)](https://doi.org/10.1214/ss/1009213286)는 이항 비율 신뢰구간을 비교한다.
+
+유한한 시험 전체를 그대로 채점한 점수라면 이 구간은 그 시험 점수의 오차가 아니라 더 큰 대상 모집단으로 일반화하려는 가정에 해당한다. 동일 저장소의 여러 문제는 독립이라고 보기 어려울 수 있다. 이때 과업 또는 저장소 단위로 묶은 부트스트랩을 고려한다.
+
+## 4. 모델 비교는 짝지어 진행한다
+
+동일한 100개 과업을 두 모델에 제공했다. 둘 다 성공 65개, A만 성공 15개, B만 성공 10개, 둘 다 실패 10개라면 A=80%, B=75%이고 차이는 5%p이다. 핵심 정보는 두 모델의 결과가 불일치하는 25개 과업이다.
+
+McNemar 검정은 짝지어진 이진 결과의 불일치 쌍을 이용한다. 이 예시에서 귀무가설 아래 두 방향이 동일한 확률이라는 정확 이항 검정을 하면 양측 p값은 약 0.424이다. 5%p 차이만으로 우월성을 확정할 수 없다. 효과 크기와 신뢰구간도 보고한다.
+
+과업이 서로 다른 경우에는 짝지어진 검정을 적용하지 않는다. 반복 실행에서는 동일 과업 내부의 의존성을 보존하면서 과업 단위로 집계한다.
+
+## 5. 실습 코드와 실행 기록
+
+정답 후보와 반복 신뢰성의 계산을 재현할 수 있다. 아래 코드는 학습용 예제이며 모델 호출은 수행하지 않는다.
+
+
+```python
+from math import comb, sqrt
+
+def pass_at_k(n, c, k):
+    if not (0 <= c <= n and 1 <= k <= n):
+        raise ValueError("invalid counts")
+    return 1 - comb(n-c, k)/comb(n, k) if n-c >= k else 1.0
+
+def wilson(c, n, z=1.96):
+    if not (n > 0 and 0 <= c <= n):
+        raise ValueError("invalid counts")
+    p = c/n
+    d = 1 + z*z/n
+    mid = (p+z*z/(2*n))/d
+    half = z*sqrt(p*(1-p)/n+z*z/(4*n*n))/d
+    return mid-half, mid+half
+
+print(pass_at_k(10, 3, 2), wilson(80, 100))
+```
+
+
+실제 평가에서는 시도 번호, 과업 ID, 모델 버전, 하네스, 시간 초과, 종료 사유, 비용을 함께 남긴다. 실패한 시도를 제거하면 성공률이 부풀려질 수 있다. 인프라 오류를 재시도할 경우 규칙을 미리 고정하고 원래 오류 수를 공개한다.
+
+## 참고 자료
+
+- [HumanEval — pass@k (Chen et al., 2021)](https://arxiv.org/abs/2107.03374)
+- [τ-bench (Yao et al., 2024)](https://arxiv.org/abs/2406.12045)
+- [Brown, Cai & DasGupta — Interval estimation for a binomial proportion (2001)](https://doi.org/10.1214/ss/1009213286)
+- [McNemar test — statsmodels](https://www.statsmodels.org/stable/generated/statsmodels.stats.contingency_tables.mcnemar.html)

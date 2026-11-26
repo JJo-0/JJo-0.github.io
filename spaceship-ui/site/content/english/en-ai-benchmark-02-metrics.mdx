@@ -1,0 +1,113 @@
+---
+title: "AI Benchmark 02 — The mathematics of accuracy, F1, Elo and AUC"
+description: "Compute confusion-matrix metrics, relative ratings and areas under curves, and distinguish their units."
+pubDate: 2026-11-25
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-02-metrics
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - statistics
+  - metrics
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 2
+translationKey: en-ai-benchmark-02-metrics
+translatedPosts:
+  ko-KR: ai-benchmark-02-metrics
+---
+
+import Math from '@/components/post/Math.astro';
+
+Accuracy of 90%, F1 of 0.8, Elo of 1300 and AUC of 450 measure different quantities. This chapter calculates their denominators, units and directions and establishes when comparisons are meaningful. Numbers below are illustrative unless explicitly sourced.
+
+## 1. Start with a confusion matrix
+
+Consider a harmful-request detector. Positive means an actually harmful request. Aggregate predictions for 100 tasks.
+
+| Actual / predicted | Harmful | Benign |
+|---|---:|---:|
+| Harmful | TP = 30 | FN = 10 |
+| Benign | FP = 5 | TN = 55 |
+
+<Math display tex={"\\mathrm{Accuracy}=\\frac{TP+TN}{TP+FP+TN+FN}=\\frac{85}{100}=0.85"} />
+
+<Math display tex={"\\mathrm{Precision}=\\frac{TP}{TP+FP}=\\frac{30}{35}\\approx0.8571"} />
+
+<Math display tex={"\\mathrm{Recall}=\\frac{TP}{TP+FN}=\\frac{30}{40}=0.75"} />
+
+Precision asks what fraction of predicted positives are actually positive. Recall asks what fraction of actual positives were detected. In safety-sensitive tasks, FN and FP have asymmetric costs. A system that refuses everything may obtain 100% recall for harmful requests but also blocks benign requests.
+
+## 2. F1 and averaging
+
+F1 is the harmonic mean of precision and recall.
+
+<Math display tex={"F_1=\\frac{2PR}{P+R}=\\frac{2TP}{2TP+FP+FN}=\\frac{60}{75}=0.8"} />
+
+Specify what happens when a denominator is zero. Across classes or tasks, Macro F1 (mean of per-class F1), Micro F1 (aggregate TP, FP and FN first), and Weighted F1 (average weighted by support) differ.
+
+For example, if a model answers 9 of 10 questions in domain A and 45 of 90 in domain B correctly, overall accuracy is 54%, whereas the equal-domain average is 70%. The appropriate aggregation depends on the target distribution. See the [scikit-learn metric documentation](https://scikit-learn.org/stable/modules/model_evaluation.html) for averaging and zero-denominator options.
+
+## 3. Elo — relative comparison, not accuracy
+
+Suppose two models generate artifacts for the same task and a judge compares them. In the standard Elo model, A's expected score (a tie is worth 0.5) is:
+
+<Math display tex={"E_A=\\frac{1}{1+10^{(R_B-R_A)/400}}"} />
+
+If A is rated 1400 and B 1200, E_A is about 0.7597. With K=32, an A win gives the following updates.
+
+<Math display tex={"R_A'=R_A+K(S_A-E_A)\\approx1407.69"} />
+
+<Math display tex={"R_B'=R_B-K(S_A-E_A)\\approx1192.31"} />
+
+This is a relative expected score within an evaluation pool, not accuracy on a particular exam. Opponents, judges, rating anchors, order bias and tie treatment matter. Consult the specific official rating methodology for GDPval-AA and AA-Briefcase. The update above is a pedagogical standard Elo example.
+
+Before fitting Elo ratings to pairwise comparisons, **swap the answer order and check whether the same answer still wins**. Suppose a judge picks the first response when shown A, B and again when shown B, A. Each answer earns one win, yet these votes tell us little about a preference for its content. Recording agreement under order reversal and the tie rule alongside win rate makes this behavior visible. [Stanford CS329Z lecture on judge bias](https://web.stanford.edu/class/cs329z/slides/lecture15.pdf#page=45)
+
+## 4. AUC has multiple meanings
+
+ROC-AUC is the area under the curve of TPR against FPR as the classification threshold varies. With ties accounted for, it relates to the probability that a random positive receives a higher score than a random negative. PR-AUC and Average Precision are related but not identical, and depend on class prevalence.
+
+A time-performance AUC has different units. In a hypothetical experiment, scores at 0, 2, 4, 6, 8 and 10 hours are 0, 20, 35, 50, 60 and 70. Assuming linear interpolation, trapezoidal integration gives:
+
+<Math display tex={"A\\approx\\sum_{j=1}^{5}(t_j-t_{j-1})\\frac{s_j+s_{j-1}}{2}=400"} />
+
+The unit is score-hours. Do not read 400 as 400% accuracy. The PMPP-Hard AUC (0–10h) in the [Inkling model card](https://thinkingmachines.ai/model-card/inkling-2-mini/) must be read with its time budget. Do not assume its integration and performance curve match this illustrative calculation without checking its protocol.
+
+## 5. Compute the metrics in Python
+
+This code computes the confusion-matrix metrics and illustrative AUC without external libraries. For real data, additionally validate sampling, weights, zero denominators and time intervals.
+
+
+```python
+tp, fp, fn, tn = 30, 5, 10, 55
+accuracy = (tp + tn) / (tp + fp + fn + tn)
+precision = tp / (tp + fp)
+recall = tp / (tp + fn)
+f1 = 2 * tp / (2 * tp + fp + fn)
+
+t = [0, 2, 4, 6, 8, 10]
+s = [0, 20, 35, 50, 60, 70]
+auc = sum((b-a)*(x+y)/2
+          for a, b, x, y in zip(t, t[1:], s, s[1:]))
+print(accuracy, precision, recall, f1, auc)
+# 0.85 0.857142857... 0.75 0.8 400.0
+```
+
+
+Exercise: on a 100-sample test with only one positive, predicting negative for everything gives 99% accuracy and zero recall. Decide which failures must not be overlooked before choosing a metric.
+
+## References
+
+- [scikit-learn — model evaluation](https://scikit-learn.org/stable/modules/model_evaluation.html)
+- [HELM — multiple metrics (2022)](https://arxiv.org/abs/2211.09110)
+- [FIDE rating regulations](https://handbook.fide.com/chapter/B022024)
+- [Inkling 2 Mini model card (2026)](https://thinkingmachines.ai/model-card/inkling-2-mini/)

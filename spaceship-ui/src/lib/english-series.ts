@@ -1,5 +1,6 @@
 export const ENGLISH_SERIES_TITLES: Record<string, string> = {
   'self-improving-ai': 'Self-Improving AI',
+  'ai-benchmark': 'AI Benchmark',
   segmentation: 'Segmentation',
   'rl-robot-learning': 'Reinforcement Learning for Robotics',
   'modern-artificial-intelligence': 'Modern Artificial Intelligence',
