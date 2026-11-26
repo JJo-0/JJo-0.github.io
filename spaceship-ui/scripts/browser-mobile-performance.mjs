@@ -59,21 +59,30 @@ function verifyAtlasPaint() {
   window.__sampleAtlas = false;
   const frame = window.__atlasFrame, key = window.__atlasPositionKey;
   const theme = document.documentElement.classList.contains('dark') ? '--graph-dark' : '--graph-light';
-  const bounds = document.querySelector('.post-graph-links').getBoundingClientRect();
+  const nav = document.querySelector('.post-graph-links');
   const anchors = new Map([...document.querySelectorAll('[data-post-graph-node]')].map(a=>[a.dataset.postGraphNode,a]));
   const legend = new Map([...document.querySelectorAll('[data-graph-category]')].map(b=>[b.dataset.graphCategory,b.style.getPropertyValue(theme).trim()]));
-  let misalignedLinks = 0;
+  // A zero-sized point inherits the desktop stage's scale and rotation. Raw
+  // canvas positions are local CSS pixels; link rectangles use viewport pixels.
+  const points = document.createDocumentFragment(), centers = [];
   const articles = new Map(window.__atlasPayload.nodes.map(node=>{
     const anchor = anchors.get(node.id), style = anchor.style;
     const [x,y=0] = style.translate.split(/\s+/).map(parseFloat);
-    const rect = anchor.getBoundingClientRect();
-    if (Math.abs(rect.x + rect.width / 2 - bounds.x - x) > .5 ||
-        Math.abs(rect.y + rect.height / 2 - bounds.y - y) > .5) misalignedLinks++;
+    const point = document.createElement('span');
+    point.style.cssText = 'position:absolute;width:0;height:0;pointer-events:none;left:'+x+'px;top:'+y+'px';
+    points.append(point);
+    centers.push([anchor,point]);
     return [node.id,{
       at:key(x,y),
       ink:style.getPropertyValue(theme).trim(),category:node.category
     }];
   }));
+  nav.append(points);
+  const misalignedLinks = centers.filter(([anchor,point])=>{
+    const rect = anchor.getBoundingClientRect(), expected = point.getBoundingClientRect();
+    return Math.abs(rect.x + rect.width / 2 - expected.x) > .5 || Math.abs(rect.y + rect.height / 2 - expected.y) > .5;
+  }).length;
+  for (const [,point] of centers) point.remove();
   let mismatchedStars=0, mismatchedEdges=0, cross=0, withinTopicGradients=0;
   for (const {at,ink} of articles.values()) if (frame.stars.get(at)!==ink) mismatchedStars++;
   for (const edge of window.__atlasPayload.edges) {
