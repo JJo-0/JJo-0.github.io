@@ -42,7 +42,10 @@ export function renderAtlasPreview(graph, dark) {
     // compress well in the static first paint on a cold mobile connection.
     traceAtlasEdge(hierarchy.route(a.node,b.node).map(project),bridge,false,(x,y,dx,dy) => {
       const absolute = marks.length === 0 || (x===b.x && y===b.y);
-      const sx = Math.round(x*10), sy = Math.round(y*10);
+      // A one-pixel lattice is enough for interior monospace strokes at 480px.
+      // Keep subpixel accuracy where the paths meet article stars.
+      const precision = absolute ? 10 : 1;
+      const sx = Math.round(x*precision)*(10/precision), sy = Math.round(y*precision)*(10/precision);
       const vx = Math.round(dx*10), vy = Math.round(dy*10);
       const mark = !vy ? 'h'+vx/10 : !vx ? 'v'+vy/10 : 'l'+vx/10+' '+vy/10;
       marks.push((absolute?'M':'m') + (sx-(absolute?0:previousX))/10 + ' ' + (sy-(absolute?0:previousY))/10 + mark);

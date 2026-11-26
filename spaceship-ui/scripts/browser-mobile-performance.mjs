@@ -261,6 +261,13 @@ try {
       await checkAtlasPaint('Initial spectrum');
       const positionExpression = "document.querySelector('[data-post-graph-node]').style.translate";
       const initialPosition = await evaluate(cdp,sessionId,positionExpression);
+      const zoomOut = "document.querySelector('[data-graph-zoom=\"-1\"]')";
+      const zoomIn = "document.querySelector('[data-graph-zoom=\"1\"]')";
+      assert.equal(await evaluate(cdp,sessionId,zoomOut+".getAttribute('aria-disabled')"),'true');
+      await evaluate(cdp,sessionId,zoomIn+'.click()');
+      await waitExpression(cdp,sessionId,positionExpression+'!=='+JSON.stringify(initialPosition),'zoom changes the real 3D projection');
+      await evaluate(cdp,sessionId,zoomOut+'.click()');
+      await waitExpression(cdp,sessionId,positionExpression+'==='+JSON.stringify(initialPosition),'zoom out restores the original projection');
       const beforeRotation = await evaluate(cdp,sessionId,'window.__asciiDraws');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
       await waitExpression(cdp,sessionId,positionExpression+'!=='+JSON.stringify(initialPosition),'rotation control projects real nodes');
@@ -352,6 +359,8 @@ try {
         a.focus(); return a.getAttribute('href');
       })()`);
       await waitExpression(cdp, sessionId, "document.querySelector('[data-post-graph-tooltip]').hasAttribute('data-visible') && document.querySelector('[data-experience-canvas]').dataset.graphFocused===document.activeElement.dataset.postGraphNode", 'keyboard graph tooltip');
+      const tooltipText = await evaluate(cdp,sessionId,"document.querySelector('[data-post-graph-tooltip]').textContent");
+      assert.match(tooltipText,route==='/' ? / · (저음|중음|고음)/ : / · (Bass|Midrange|Treble)/);
       await checkAtlasPaint('Keyboard focus');
       const relation = await evaluate(cdp,sessionId,`(() => {
         const host=document.querySelector('[data-experience-canvas]'), id=host.dataset.graphFocused, data=window.__atlasPayload;

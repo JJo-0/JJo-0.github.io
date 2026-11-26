@@ -210,7 +210,14 @@ test('static SVG paints every bundled relation with both article inks and its ac
       assert.equal(attr(gradient.stops[0],'stop-color'),graphNodeVisual(a)[theme]);
       assert.equal(attr(gradient.stops.at(-1),'stop-color'),graphNodeVisual(b)[theme]);
       const d=attr(path,'d');
-      const starts=[...d.matchAll(/M\s*([-+\d.]+)[,\s]+([-+\d.]+)/gi)].map(m=>m.slice(1,3).map(Number));
+      let x=0,y=0;
+      const starts=[...d.matchAll(/([Mm])([-+\d.]+) ([-+\d.]+)([lhv])([-+\d.]+)(?: ([-+\d.]+))?/g)].map(([,move,mx,my,line,v,w])=>{
+        x=(move==='M'?0:x)+Number(mx); y=(move==='M'?0:y)+Number(my);
+        const start=[x,y];
+        if(line!=='v') x+=Number(v);
+        if(line!=='h') y+=Number(line==='v'?v:w);
+        return start;
+      });
       assert(starts.length>=3,'Connections must use a series of ASCII marks');
       for(const [pos,pt,node] of [[1,starts[0],a],[2,starts.at(-1),b]]){
         const star=stars.find(tag=>attr(tag,'fill')===graphNodeVisual(node)[theme]);
