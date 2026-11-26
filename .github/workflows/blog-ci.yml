@@ -60,8 +60,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk
           test -n "$(fc-list :lang=ko family)"
-      - name: Taxonomy contract
-        run: pnpm taxonomy:check
       - name: Lint
         run: pnpm lint
       - name: Type check
@@ -70,23 +68,27 @@ jobs:
         run: pnpm seo:check
       - name: Reader-first publishing harness
         run: pnpm blog:harness:check
-      - name: Analytics aggregate contract
-        run: node scripts/analytics-contract.mjs
+      - name: Chrome launcher regression tests
+        run: node --test scripts/browser-smoke-harness.test.mjs
       - name: Build
+        id: build
         run: pnpm build
+      # content:check includes taxonomy and the analytics aggregate contract.
       - name: Content integrity check
         shell: bash
         run: |
           mkdir -p citation-audit
           pnpm content:check 2>&1 | tee citation-audit/content-check.log
       - name: Citation DOM lifecycle browser regression
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 2
         run: node scripts/browser-citation-lifecycle.test.mjs
       - name: Browser smoke matrix
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 10
         # Semantically identical to `pnpm browser:smoke`, but the exit guard is
         # scoped to this Node process instead of leaking through NODE_OPTIONS.
-        # Preserve the existing complete matrix and its 240-second guard.
+        # Preserve the complete matrix and the existing eight-minute guard.
         # Untrusted workflow input is passed as an ordinary environment value.
         env:
           JJO_SMOKE_REQUIRE_GPU: '0'
@@ -96,11 +98,13 @@ jobs:
           mkdir -p citation-audit
           pnpm exec node --import ./scripts/browser-smoke-exit-guard.mjs scripts/browser-smoke.mjs 2>&1 | tee citation-audit/full-browser.log
       - name: Series navigation and table layout browser regression
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 4
         env:
           JJO_READER_ARTIFACTS: citation-audit/reader-layout
         run: node scripts/browser-series-table-audit.mjs
       - name: NEWS citation link browser check
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 4
         env:
           JJO_SMOKE_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || '' }}
@@ -109,6 +113,7 @@ jobs:
           mkdir -p citation-audit
           pnpm exec node scripts/browser-news-citation-audit.mjs 2>&1 | tee citation-audit/citation-browser.log
       - name: NEWS source disclosure browser regression
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 5
         run: pnpm exec node scripts/browser-news-source-disclosure.mjs
       - name: Record complete static citation evidence
