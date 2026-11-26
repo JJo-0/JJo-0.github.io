@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { graphVisual } from '../src/lib/experience/graph-visuals.mjs';
 import { Cdp, BASE, attach, evaluate, navigate, viewport, waitExpression, startPreview, startChrome, stopChild, removeProfile, sleep } from './browser-smoke-harness.mjs';
 
 const out = 'mobile-performance';
@@ -11,11 +12,108 @@ async function capture(name) {
   const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' }, sessionId);
   fs.writeFileSync(`${out}/${name}.png`, Buffer.from(data, 'base64'));
 }
+// Capture actual paint calls during requested samples. Untimed checks use the
+// same article anchors and data as keyboard navigation to identify each mark.
+function installAtlasPaintProbe() {
+  const ctx = CanvasRenderingContext2D.prototype;
+  const gradients = new WeakMap();
+  const atlas = c => c.canvas.hasAttribute('data-ascii-art');
+  let frame, segment;
+  window.__sampleAtlas = true;
+  const wrap = (prototype,name,inspect) => {
+    const original = prototype[name];
+    prototype[name] = function(...args) {
+      const result = original.apply(this,args);
+      inspect.call(this,args,result);
+      return result;
+    };
+  };
+  wrap(ctx,'createLinearGradient',function(coords,result) {
+    if (atlas(this)) gradients.set(result,{coords,stops:[]});
+  });
+  wrap(CanvasGradient.prototype,'addColorStop',function([offset,color]) {
+    gradients.get(this)?.stops.push({offset,color:color.toLowerCase()});
+  });
+  wrap(ctx,'clearRect',function() {
+    if (!atlas(this)) return;
+    window.__asciiDraws++;
+    frame = window.__sampleAtlas ? {stars:new Map(),edges:new Map()} : undefined;
+    if (frame) window.__atlasFrame = frame;
+  });
+  const key = (x,y) => x.toFixed(3)+','+y.toFixed(3);
+  window.__atlasPositionKey = key;
+  wrap(ctx,'fillText',function([,x,y]) {
+    if (frame && window.__sampleAtlas && atlas(this)) frame.stars.set(key(x,y),String(this.fillStyle));
+  });
+  wrap(ctx,'beginPath',function() { if (frame) segment = undefined; });
+  wrap(ctx,'moveTo',function([x,y]) { if (frame) segment = [key(x,y)]; });
+  wrap(ctx,'lineTo',function([x,y]) { if (frame && segment) segment.push(key(x,y)); });
+  wrap(ctx,'stroke',function() {
+    if (!frame || !window.__sampleAtlas || !atlas(this) || segment?.length!==2) return;
+    frame.edges.set(segment.join('/'),{
+      ink:this.strokeStyle, gradient:gradients.get(this.strokeStyle), dashed:this.getLineDash().length>0
+    });
+  });
+}
+function verifyAtlasPaint() {
+  window.__sampleAtlas = false;
+  const frame = window.__atlasFrame, key = window.__atlasPositionKey;
+  const theme = document.documentElement.classList.contains('dark') ? '--graph-dark' : '--graph-light';
+  const nav = document.querySelector('.post-graph-links');
+  const anchors = new Map([...document.querySelectorAll('[data-post-graph-node]')].map(a=>[a.dataset.postGraphNode,a]));
+  const legend = new Map([...document.querySelectorAll('[data-graph-category]')].map(b=>[b.dataset.graphCategory,b.style.getPropertyValue(theme).trim()]));
+  // A zero-sized point inherits the desktop stage's scale and rotation. Raw
+  // canvas positions are local CSS pixels; link rectangles use viewport pixels.
+  const points = document.createDocumentFragment(), centers = [];
+  const articles = new Map(window.__atlasPayload.nodes.map(node=>{
+    const anchor = anchors.get(node.id), style = anchor.style;
+    const [x,y=0] = style.translate.split(/\s+/).map(parseFloat);
+    const point = document.createElement('span');
+    point.style.cssText = 'position:absolute;width:0;height:0;pointer-events:none;left:'+x+'px;top:'+y+'px';
+    points.append(point);
+    centers.push([anchor,point]);
+    return [node.id,{
+      at:key(x,y),
+      ink:style.getPropertyValue(theme).trim(),category:node.category
+    }];
+  }));
+  nav.append(points);
+  const misalignedLinks = centers.filter(([anchor,point])=>{
+    const rect = anchor.getBoundingClientRect(), expected = point.getBoundingClientRect();
+    return Math.abs(rect.x + rect.width / 2 - expected.x) > .5 || Math.abs(rect.y + rect.height / 2 - expected.y) > .5;
+  }).length;
+  for (const [,point] of centers) point.remove();
+  let mismatchedStars=0, mismatchedEdges=0, cross=0, withinTopicGradients=0;
+  for (const {at,ink} of articles.values()) if (frame.stars.get(at)!==ink) mismatchedStars++;
+  for (const edge of window.__atlasPayload.edges) {
+    const source=articles.get(edge.source ?? edge[0]), target=articles.get(edge.target ?? edge[1]);
+    const line=frame.edges.get(source.at+'/'+target.at);
+    const bridge = source.category!==target.category;
+    if (bridge) cross++;
+    if (!bridge && source.ink!==target.ink) withinTopicGradients++;
+    if (line && line.dashed===bridge && source.ink===target.ink && line.ink===source.ink) continue;
+    const gradient=line?.gradient, stops=gradient?.stops ?? [];
+    if (!line || line.dashed!==bridge || stops[0]?.offset!==0 || stops[0].color!==source.ink ||
+        stops.at(-1)?.offset!==1 || stops.at(-1).color!==target.ink ||
+        key(...gradient.coords.slice(0,2))!==source.at || key(...gradient.coords.slice(2))!==target.at) mismatchedEdges++;
+  }
+  return {mismatchedStars,mismatchedEdges,misalignedLinks,cross,withinTopicGradients,legend:[...legend],theme:theme==='--graph-dark'?'dark':'light'};
+}
+async function checkAtlasPaint(label) {
+  const actual = await evaluate(cdp,sessionId,'('+verifyAtlasPaint.toString()+')()');
+  assert.equal(actual.mismatchedStars,0,label+' star inks');
+  assert.equal(actual.mismatchedEdges,0,label+' edge strokes and endpoints');
+  assert.equal(actual.misalignedLinks,0,label+' centered link hitboxes');
+  assert(actual.cross>0,label+' includes cross-topic connections');
+  assert(actual.withinTopicGradients>0,label+' distinguishes stars within one topic');
+  for (const [category,ink] of actual.legend) assert.equal(ink,graphVisual(category)[actual.theme],label+' legend band');
+}
 try {
   preview = await startPreview(); chrome = await startChrome(); cdp = await Cdp.connect(chrome.url);
   ({ sessionId } = await attach(cdp, { normalizeHistoryPath: false }));
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `
     window.__asciiDraws = 0;
+    (${installAtlasPaintProbe.toString()})();
     window.__gpuProbes = 0;
     window.__graphRequests = 0;
     const originalFetch = window.fetch;
@@ -34,11 +132,7 @@ try {
       if (type === 'webgl2' || type === 'webgpu') window.__gpuProbes++;
       return getContext.call(this,type,...args);
     };
-    const clear = CanvasRenderingContext2D.prototype.clearRect;
-    CanvasRenderingContext2D.prototype.clearRect = function(...args) {
-      if (this.canvas.matches('[data-ascii-art]')) window.__asciiDraws++;
-      return clear.apply(this, args);
-    };` }, sessionId);
+    ` }, sessionId);
   for (const width of [390, 1440]) {
     const mobile = width === 390;
     for (const route of ['/', '/en/']) {
@@ -77,14 +171,19 @@ try {
       await waitExpression(cdp, sessionId, "document.querySelector('[data-experience-canvas]').dataset.graphState==='ready' && window.__asciiDraws>0", 'automatic interactive graph painted');
       assert(await evaluate(cdp,sessionId,"document.querySelector('[data-graph-activate]').hidden && !document.querySelector('[data-graph-view-controls]').hidden && getComputedStyle(document.querySelector('[data-graph-loading]')).display==='none' && getComputedStyle(document.querySelector('.post-graph-loader-glyph')).animationName==='none'"), 'Animation removed after first paint');
       assert.equal(await evaluate(cdp,sessionId,'window.__graphRequests'), rejectFirst ? 2 : 1);
-      const xExpression = "document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')";
-      const initialX = await evaluate(cdp,sessionId,xExpression);
+      await checkAtlasPaint('Initial spectrum');
+      const positionExpression = "document.querySelector('[data-post-graph-node]').style.translate";
+      const initialPosition = await evaluate(cdp,sessionId,positionExpression);
+      const beforeRotation = await evaluate(cdp,sessionId,'window.__asciiDraws');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
-      await waitExpression(cdp,sessionId,xExpression+'!=='+JSON.stringify(initialX),'rotation control projects real nodes');
+      await waitExpression(cdp,sessionId,positionExpression+'!=='+JSON.stringify(initialPosition),'rotation control projects real nodes');
+      await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion==='still'",'rotation settles');
+      const rotationDraws = await evaluate(cdp,sessionId,'window.__asciiDraws') - beforeRotation;
+      assert(rotationDraws>=3,'Rotation must span multiple painted frames rather than jump');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-category]').click()");
       assert.equal(await evaluate(cdp,sessionId,"document.querySelector('[data-graph-category]').getAttribute('aria-pressed')"),'true');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-reset]').click()");
-      await waitExpression(cdp,sessionId,xExpression+'==='+JSON.stringify(initialX)+" && !document.querySelector('[data-graph-category][aria-pressed=\"true\"]')",'reset restores projection and category');
+      await waitExpression(cdp,sessionId,positionExpression+'==='+JSON.stringify(initialPosition)+" && !document.querySelector('[data-graph-category][aria-pressed=\"true\"]')",'reset restores projection and category');
       await sleep(700);
       const before = await evaluate(cdp, sessionId, 'window.__asciiDraws');
       await sleep(800);
@@ -105,16 +204,22 @@ try {
           return null;
         })()`);
         assert(point,'Non-link map surface available for drag');
-        const previous = await evaluate(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')`);
+        const previous = await evaluate(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.translate`);
         await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x,y:point.y},sessionId);
         await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',buttons:1,clickCount:1,x:point.x,y:point.y},sessionId);
         await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',button:'left',buttons:1,x:point.x+45,y:point.y+16},sessionId);
         await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',buttons:0,clickCount:1,x:point.x+45,y:point.y+16},sessionId);
-        await waitExpression(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')!==${JSON.stringify(previous)}`,'real drag updates graph projection');
+        await waitExpression(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.translate!==${JSON.stringify(previous)}`,'real drag updates graph projection');
       }
-      await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark')`);
-      await waitExpression(cdp, sessionId, `window.__asciiDraws > ${after}`, 'static graph repaints on theme change');
-      await capture('graph-' + width + (route === '/en/' ? '-en' : '-ko'));
+      await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion==='still'",'drag settles');
+      const screenshotPrefix='graph-' + width + (route === '/en/' ? '-en' : '-ko');
+      const initialTheme=await evaluate(cdp,sessionId,"document.documentElement.classList.contains('dark')?'dark':'light'");
+      await capture(screenshotPrefix+'-'+initialTheme);
+      const beforeTheme = await evaluate(cdp,sessionId,'window.__asciiDraws');
+      await evaluate(cdp, sessionId, `window.__sampleAtlas=true; document.documentElement.classList.toggle('dark')`);
+      await waitExpression(cdp, sessionId, `window.__asciiDraws > ${beforeTheme}`, 'static graph repaints on theme change');
+      await checkAtlasPaint('Theme change');
+      await capture(screenshotPrefix+'-'+(initialTheme==='dark'?'light':'dark'));
       await evaluate(cdp, sessionId, `document.documentElement.classList.toggle('dark')`);
       const counts = await evaluate(cdp, sessionId, `({
         actual:document.querySelectorAll('[data-post-graph-node]').length,
@@ -151,8 +256,15 @@ try {
       assert.equal(await evaluate(cdp,sessionId,'window.__asciiDraws'),offscreen,'Offscreen graph must not draw');
       await evaluate(cdp,sessionId,`document.querySelector('[data-perf-spacer]').remove();document.querySelector('[data-experience-canvas]').scrollIntoView({block:'center',behavior:'instant'})`);
       await waitExpression(cdp,sessionId,`window.__asciiDraws > ${offscreen}`,'queued offscreen update is painted on return');
-      const target = await evaluate(cdp, sessionId, `(() => {const a=document.querySelector('[data-post-graph-node]');a.focus();return a.getAttribute('href')})()`);
+      const target = await evaluate(cdp, sessionId, `(() => {
+        window.__sampleAtlas=true;
+        const data=window.__atlasPayload, categories=new Map(data.nodes.map(n=>[n.id,n.category]));
+        const cross=data.edges.find(e=>categories.get(e.source ?? e[0])!==categories.get(e.target ?? e[1]));
+        const a=document.querySelector('[data-post-graph-node="'+CSS.escape(cross.source ?? cross[0])+'"]');
+        a.focus(); return a.getAttribute('href');
+      })()`);
       await waitExpression(cdp, sessionId, "document.querySelector('[data-post-graph-tooltip]').hasAttribute('data-visible') && document.querySelector('[data-experience-canvas]').dataset.graphFocused===document.activeElement.dataset.postGraphNode", 'keyboard graph tooltip');
+      await checkAtlasPaint('Keyboard focus');
       const relation = await evaluate(cdp,sessionId,`(() => {
         const host=document.querySelector('[data-experience-canvas]'), id=host.dataset.graphFocused, data=window.__atlasPayload;
         const incident=data.edges.filter(e=>Array.isArray(e)?e[0]===id||e[1]===id:e.source===id||e.target===id);
@@ -166,7 +278,7 @@ try {
       await cdp.send('Input.dispatchKeyEvent', { type:'keyUp', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 }, sessionId);
       const path = new URL(target, BASE).pathname;
       await waitExpression(cdp, sessionId, `${JSON.stringify([path, path.endsWith('/') ? path.slice(0,-1) : path+'/'])}.includes(location.pathname)`, 'native graph link destination');
-      results.push({width,route,cold,idleDraws:after-before,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,activated});
+      results.push({width,route,cold,idleDraws:after-before,rotationDraws,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,activated});
       console.log('mobile-performance: graph/profile PASS '+JSON.stringify({width,route,idleDraws:after-before,links:counts.actual}));
     }
   }
@@ -177,6 +289,17 @@ try {
   await evaluate(cdp,sessionId,`document.querySelector('[data-profile-animation]').click()`);
   assert.equal(await evaluate(cdp,sessionId,`document.querySelector('[data-profile-animation]').dataset.profileState`),'static');
   assert(!await evaluate(cdp,sessionId,`performance.getEntriesByType('resource').some(r=>r.name.includes('mouse_surprised-once.webp'))`));
+  await evaluate(cdp,sessionId,`document.querySelector('[data-experience-canvas]').scrollIntoView({block:'center',behavior:'instant'})`);
+  await waitExpression(cdp,sessionId,"typeof window.__releaseAtlas==='function'",'reduced motion still auto-loads graph');
+  await evaluate(cdp,sessionId,'window.__releaseAtlas(false)');
+  await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphState==='ready'",'reduced-motion graph ready');
+  const reducedPosition = await evaluate(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.translate");
+  await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
+  await waitExpression(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.translate!=="+JSON.stringify(reducedPosition),'reduced-motion rotation applies');
+  assert.equal(await evaluate(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion"),'still');
+  const reducedDraws=await evaluate(cdp,sessionId,'window.__asciiDraws');
+  await sleep(350);
+  assert.equal(await evaluate(cdp,sessionId,'window.__asciiDraws'),reducedDraws,'Reduced motion must not animate after rotation');
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: false }, sessionId);
   await viewport(cdp, sessionId, { width:390, height:844, mobile:true, touch:true, reduced:false });
   await navigate(cdp, sessionId, '/news/');

@@ -99,9 +99,10 @@
   z-index: var(--node-depth, 0);
   border-radius: 50%;
   pointer-events: auto;
-  transform: translate3d(var(--node-x, -4rem), var(--node-y, -4rem), 0) translate(-50%, -50%);
+  translate: -4rem -4rem;
+  transform: translate(-50%, -50%);
 }
-[data-post-graph-node]::before {
+[data-post-graph-node]:is(:hover, :focus-visible)::before {
   content: "";
   position: absolute;
   inset: 25%;
@@ -231,7 +232,7 @@ html[data-experience-tier='ultra'] .experience-renderer__status {
   inset: 0;
   width: 100%;
   height: 100%;
-  color: var(--experience-accent-strong);
+  color: var(--color-muted-foreground);
   pointer-events: none;
 }
 [data-graph-state]:not([data-graph-state='ready']) [data-ascii-art],
@@ -270,46 +271,145 @@ html[data-experience-tier='ultra'] .experience-renderer__status {
 }
 .post-graph-controls button[aria-disabled='true'] { opacity: 0.65; cursor: wait; }
 
-/* Viewport-lazy ASCII atlas. Color and character encode the same topic. */
-.post-graph-category-ink { color: var(--graph-light); }
-html.dark .post-graph-category-ink { color: var(--graph-dark); }
+/* All atlas ink lives on the instrument surface, including in the paper theme. */
+.post-graph-category-ink,
+.post-graph-legend button,
+[data-post-graph-node],
+.post-graph-tooltip {
+  --graph-ink: var(--graph-light, var(--experience-accent-strong));
+}
+html.dark :is(.post-graph-category-ink, .post-graph-legend button, [data-post-graph-node], .post-graph-tooltip) {
+  --graph-ink: var(--graph-dark, var(--experience-accent-strong));
+}
+.post-graph-category-ink { color: var(--graph-ink); }
+.experience-renderer[data-ascii-graph='true'] {
+  container: atlas / size;
+  --atlas-sky: #141e2e;
+  --atlas-limb: #0e1726;
+  --atlas-letter: #d7e2ee;
+  --atlas-muted: #abbacf;
+  --atlas-rule: rgb(166 187 218 / 28%);
+  color: var(--atlas-letter);
+  background: radial-gradient(ellipse at 50% 52%, var(--atlas-sky) 36%, var(--atlas-limb) 100%);
+}
+html.dark .experience-renderer[data-ascii-graph='true'] {
+  --atlas-sky: #0c1423;
+  --atlas-limb: #090f1a;
+}
+.post-graph-field {
+  container-type: size;
+  /* The same framing as atlasViewport(), so first paint keeps the stars in place. */
+  position: absolute;
+  inset: calc(min(27cqh, 96px) + 10px) 18px calc(min(19cqh, 78px) + 10px);
+  pointer-events: none;
+}
+@container atlas (max-width: 519.99px) {
+  .post-graph-field { top: calc(min(27cqh, 92px) + 10px); }
+}
+.experience-renderer .post-graph-graticule {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  stroke: #b8ccec; stroke-width: .65; opacity: .19;
+}
+.post-graph-graticule g { opacity: .68; }
+.post-graph-preview {
+  inset: 50% auto auto 50%; transform: translate(-50%, -50%);
+  width: 100cqmin; height: 100cqmin;
+  background: var(--preview-light) center / 100% 100% no-repeat;
+}
+html.dark .post-graph-preview { background-image: var(--preview-dark); }
+
+/* Let the field and its reticle replace the square grid behind the graph. */
+.experience-world-stage:has([data-ascii-graph])::before,
+.experience-world-stage:has([data-ascii-graph])::after,
+.experience-world-stage:has([data-ascii-graph]) > .world-axis { display: none; }
+:is(.experience-world-stage, .research-map):has([data-ascii-graph]) {
+  scroll-margin-top: 6.25rem;
+  background: #101929;
+  border-color: #344257;
+}
+.experience-world-stage:has([data-ascii-graph]) .world-hud--top,
+.research-map:has([data-ascii-graph]) .research-map__hud {
+  align-items: baseline;
+  padding-bottom: .48rem;
+  border-bottom: 1px solid rgb(179 201 228 / 23%);
+}
+.experience-world-stage:has([data-ascii-graph]) :is(.world-hud__eyebrow, .world-hud__metric),
+.research-map:has([data-ascii-graph]) .research-map__hud {
+  color: #b9c6d6;
+  font: 500 .61rem/1.2 ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.experience-world-stage:has([data-ascii-graph]) :is(.world-hud__eyebrow, .world-hud__metric) {
+  padding: 0; border: 0; background: transparent; backdrop-filter: none;
+}
+.experience-world-stage:has([data-ascii-graph]) .world-hud__eyebrow {
+  color: #e6eafa; font-weight: 650;
+}
+[data-post-graph-node]:hover::before,
+[data-post-graph-node]:focus-visible::before { border-color: var(--graph-ink); }
+[data-post-graph-node]:focus-visible { outline-color: var(--graph-ink); }
 .post-graph-legend {
-  position: absolute; top: 3rem; left: .85rem; right: .85rem; z-index: 5;
+  position: absolute; top: 2.7rem; left: 1rem; right: 1rem; z-index: 5;
   display: flex; flex-wrap: wrap; gap: .2rem .35rem; align-content: start;
 }
 .post-graph-legend button {
-  display: inline-flex; align-items: center; gap: .28rem; padding: .25rem .42rem;
-  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
-  border-radius: .22rem; background: var(--color-background); color: var(--color-foreground);
-  font-size: .62rem; line-height: 1.1; white-space: nowrap; cursor: pointer;
+  display: inline-flex; align-items: center; gap: .32rem; padding: .23rem .35rem;
+  border: 0; border-bottom: 1px solid transparent; border-radius: 0;
+  background: transparent; color: var(--atlas-letter);
+  font: 500 .65rem/1.25 ui-monospace, monospace; white-space: nowrap; cursor: pointer;
+  transition: background-color 160ms var(--experience-ease), border-color 160ms var(--experience-ease);
 }
-.post-graph-legend button:disabled { cursor: default; opacity: .8; }
-.post-graph-legend button[aria-pressed='true'] { border-color: currentColor; box-shadow: inset 0 -2px currentColor; font-weight: 800; }
-.post-graph-legend button:focus-visible { outline: 2px solid var(--experience-accent-strong); outline-offset: 2px; }
-.post-graph-legend .post-graph-category-ink { font-family: ui-monospace, monospace; font-weight: 900; font-size: .82rem; }
+.post-graph-legend button:disabled { cursor: default; }
+.post-graph-legend button:not(:disabled):hover,
+.post-graph-legend button[aria-pressed='true'] {
+  border-bottom-color: var(--graph-ink);
+  background: color-mix(in srgb, var(--graph-ink) 12%, transparent);
+}
+.post-graph-legend button:focus-visible { outline: 2px solid var(--graph-ink); outline-offset: 1px; }
+.post-graph-legend .post-graph-category-ink {
+  font: 700 .78rem/1 ui-monospace, monospace;
+}
 .post-graph-loading {
   display: none; position: absolute; left: 50%; top: 51%; transform: translate(-50%, -50%);
   z-index: 6; align-items: center; gap: .5rem; padding: .65rem .9rem;
-  border: 1px solid var(--experience-accent); background: var(--color-background); color: var(--color-foreground);
+  border: 1px solid var(--atlas-rule); background: var(--atlas-sky); color: var(--atlas-letter);
   font-family: ui-monospace, monospace; font-size: .75rem; pointer-events: none;
 }
 [data-graph-state='loading'] .post-graph-loading { display: flex; }
-.post-graph-loader-glyph { font-size: 1.15rem; font-weight: 900; color: var(--experience-accent-strong); }
+.post-graph-loader-glyph { font-size: 1.15rem; font-weight: 900; color: #dfccaa; }
 [data-graph-state='loading'][data-graph-in-view='true'] .post-graph-loader-glyph { animation: atlas-loading .8s steps(4, end) infinite; }
 @keyframes atlas-loading { to { transform: rotate(180deg); } }
-.post-graph-hint { width: 100%; text-align: right; font-size: .62rem; color: var(--color-muted-foreground); pointer-events: none; }
+.post-graph-hint { width: 100%; text-align: right; font-size: .65rem; color: var(--atlas-muted); pointer-events: none; }
 .post-graph-view-controls { display: inline-flex; gap: .2rem; }
 .post-graph-view-controls[hidden], [data-graph-activate][hidden] { display: none; }
 .post-graph-view-controls button { min-width: 1.85rem; min-height: 1.85rem; padding: .25rem .4rem; font-family: ui-monospace, monospace; font-size: .9rem; }
-.post-graph-tooltip { font-size: .73rem; max-height: 11rem; overflow: hidden; }
+.post-graph-controls :is(a, button) {
+  border: 1px solid var(--atlas-rule); border-radius: .2rem;
+  background: var(--atlas-limb); color: var(--atlas-letter);
+}
+.post-graph-controls :is(a, button):hover { border-color: var(--atlas-muted); }
+.post-graph-controls :is(a, button):focus-visible { outline-color: #c5dafa; }
+.post-graph-tooltip {
+  font-size: .73rem; max-height: 11rem; overflow: hidden;
+  border: 1px solid var(--atlas-rule); border-inline-start: 2px solid var(--graph-ink); border-radius: .24rem;
+  background: var(--atlas-limb); color: var(--atlas-letter);
+}
 .post-graph-tooltip strong { font-size: .88rem; }
-.post-graph-tooltip .post-graph-relation { color: var(--color-foreground); }
+.post-graph-tooltip span { color: var(--atlas-muted); }
+.post-graph-tooltip .post-graph-relation { color: var(--atlas-letter); }
+@media (max-width: 1023px) {
+  :is(.experience-world-stage, .research-map):has([data-ascii-graph]) {
+    scroll-margin-top: calc(9rem + env(safe-area-inset-top, 0px));
+  }
+}
 @media (max-width: 640px) {
-  .post-graph-legend { top: 2.65rem; left: .55rem; right: .55rem; gap: .18rem; }
-  .post-graph-legend button { font-size: .56rem; padding: .2rem .3rem; gap: .2rem; }
+  .post-graph-legend { top: 2.4rem; left: .65rem; right: .65rem; gap: .18rem; }
+  .post-graph-legend button { font-size: .62rem; padding: .22rem .32rem; gap: .22rem; }
   .post-graph-controls { right: .65rem; bottom: .6rem; max-width: calc(100% - 5.6rem); gap: .25rem; }
-  .post-graph-hint { font-size: .55rem; }
+  .post-graph-hint { font-size: .61rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-graph-state='loading'] .post-graph-loader-glyph { animation: none !important; }
+  .post-graph-legend button, [data-post-graph-node]::before { transition: none; }
 }
