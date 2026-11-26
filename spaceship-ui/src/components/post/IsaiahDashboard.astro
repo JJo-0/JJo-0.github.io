@@ -5,17 +5,18 @@ interface Props { order: number; }
 const { order } = Astro.props;
 const entry = series.entries.find((item) => item.order === order);
 if (!entry) throw new Error(`Unknown Isaiah dashboard: ${order}`);
-const src = `/assets/interactive/${entry.slug}.html`;
+const english = Astro.url.pathname.startsWith('/en/');
+const src = english ? `/en/assets/interactive/isaiah-dashboard-${order}.html` : `/assets/interactive/${entry.slug}.html`;
 const next = series.entries.find((item) => item.order === order + 1);
 ---
 <jjo-isaiah-dashboard class="not-prose" data-isaiah-dashboard={order} data-isaiah-reader={entry.slug}>
   <div class="dashboard-toolbar">
-    <a href={src} target="_blank" rel="noopener" data-astro-reload>대시보드 전체 화면 ↗</a>
-    <a href="/bible">전체 학습 순서</a>
-    {next && <a href={`/posts/${next.slug}`}>다음 {next.order}편 →</a>}
+    <a href={src} target="_blank" rel="noopener" data-astro-reload>{english ? 'Open English dashboard ↗' : '대시보드 전체 화면 ↗'}</a>
+    <a href={english ? '/en/posts/' : '/bible'}>{english ? 'English series' : '전체 학습 순서'}</a>
+    {next && <a href={`${english ? '/en' : ''}/posts/${next.slug}`}>{english ? 'Next study' : '다음'} {next.order} →</a>}
   </div>
-  <iframe data-isaiah-frame src={src} title={entry.sourceTitle} loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe>
-  <noscript><p><a href={src}>대시보드 별도 페이지 열기</a> — 탭·검색·차트는 JavaScript를 사용합니다.</p></noscript>
+  <iframe data-isaiah-frame src={src} title={english ? `Isaiah 43:18–21 · Study ${order}` : entry.sourceTitle} loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe>
+  <noscript><p><a href={src}>{english ? 'Open the English dashboard separately' : '대시보드 별도 페이지 열기'}</a> — {english ? 'Tabs, search, and charts require JavaScript.' : '탭·검색·차트는 JavaScript를 사용합니다.'}</p></noscript>
 </jjo-isaiah-dashboard>
 <script>
   class IsaiahDashboardElement extends HTMLElement {

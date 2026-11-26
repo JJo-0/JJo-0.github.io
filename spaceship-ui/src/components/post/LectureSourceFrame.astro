@@ -1,0 +1,130 @@
+---
+interface Props { video: string; time: number; label: string; lecun?: boolean }
+const { video, time, label, lecun = false } = Astro.props;
+const en = Astro.url.pathname.startsWith('/en/');
+const frameTitle = label || (en ? 'Official lecture recording' : '공식 강연 영상');
+const Frame = lecun ? 'lecun-source-frame' : 'lecture-source-frame';
+const source = 'https://www.youtube-nocookie.com/embed/' + video + '?start=' + time + '&playsinline=1&enablejsapi=1';
+---
+<Frame data-time={time} data-label={frameTitle} data-source={source}>
+  <div class="viewport">
+    <div class="mount"></div>
+    <noscript><iframe src={source} title={frameTitle} loading="lazy" allow="encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></noscript>
+  </div>
+  <span class="source-label">{label}</span>
+  {lecun && <a href={'https://www.youtube.com/watch?v=' + video + '&t=' + time + 's'} data-lecun-play={time}>{en ? 'Open this scene in the large player' : '이 장면 크게 재생'}</a>}
+  <a class="direct" href={'https://www.youtube.com/watch?v=' + video + '&t=' + time + 's'} data-youtube-direct target="_blank" rel="noopener">{en ? 'Watch on YouTube' : 'YouTube에서 보기'}</a>
+</Frame>
+<script>
+  interface Player {
+    mute(): void;
+    playVideo(): void;
+    pauseVideo(): void;
+    seekTo(seconds: number, allowSeekAhead: boolean): void;
+    getCurrentTime(): number;
+    destroy(): void;
+  }
+  interface Api {
+    Player: new (frame: HTMLIFrameElement, opts: {
+      events: {
+        onReady: (e: {target: Player}) => void;
+        onStateChange: (e: {target: Player; data: number}) => void;
+        onAutoplayBlocked: () => void;
+      }
+    }) => Player;
+  }
+  const apiWindow = window as Window & {YT?: Api; onYouTubeIframeAPIReady?: () => void};
+  let ready: Promise<Api> | undefined;
+  function getApi() {
+    if (apiWindow.YT?.Player) return Promise.resolve(apiWindow.YT);
+    if (ready) return ready;
+    ready = new Promise<Api>((resolve, reject) => {
+      const previous = apiWindow.onYouTubeIframeAPIReady;
+      apiWindow.onYouTubeIframeAPIReady = () => {
+        previous?.();
+        if (apiWindow.YT?.Player) resolve(apiWindow.YT);
+      };
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      tag.onerror = () => {ready = undefined; tag.remove(); reject(new Error('Embedded player API unavailable'));};
+      document.head.append(tag);
+    });
+    return ready;
+  }
+  class LectureSourceFrame extends HTMLElement {
+    private near?: IntersectionObserver;
+    private far?: IntersectionObserver;
+    private frame?: HTMLIFrameElement;
+    private player?: Player;
+    private timer?: number;
+
+    connectedCallback() {
+      if (!('IntersectionObserver' in window)) { this.mount(); return; }
+      this.near = new IntersectionObserver(([entry]) => {if (entry.isIntersecting) this.mount();}, {rootMargin:'15% 0px'});
+      this.far = new IntersectionObserver(([entry]) => {if (!entry.isIntersecting) this.unmount();}, {rootMargin:'160% 0px'});
+      this.near.observe(this);
+      this.far.observe(this);
+    }
+    disconnectedCallback() {
+      this.near?.disconnect();
+      this.far?.disconnect();
+      this.unmount();
+    }
+    private mount() {
+      const mount = this.querySelector('.mount');
+      if (this.frame || !mount || !this.dataset.source) return;
+      const frame = document.createElement('iframe');
+      const source = new URL(this.dataset.source);
+      source.searchParams.set('origin', window.location.origin);
+      frame.src = source.href;
+      frame.title = this.dataset.label ?? '';
+      frame.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture';
+      frame.allowFullscreen = true;
+      frame.referrerPolicy = 'strict-origin-when-cross-origin';
+      this.frame = frame;
+      mount.replaceChildren(frame);
+      const time = Number(this.dataset.time);
+      void getApi().then((api) => {
+        if (this.frame !== frame) return;
+        let preview = true;
+        this.player = new api.Player(frame, {events: {
+          onReady: ({target}) => {
+            if (this.frame !== frame) return;
+            target.mute();
+            target.seekTo(time, true);
+            target.playVideo();
+          },
+          onStateChange: ({target, data}) => {
+            if (!preview || data !== 1 || this.frame !== frame) return;
+            preview = false;
+            this.timer = window.setTimeout(() => {
+              if (this.frame === frame) {
+                target.pauseVideo();
+                if (Math.abs(target.getCurrentTime() - time) > 1) target.seekTo(time, true);
+              }
+            }, 250);
+          },
+          onAutoplayBlocked: () => { preview = false; },
+        }});
+      }).catch(() => { /* The native iframe keeps its timestamp and controls. */ });
+    }
+    private unmount() {
+      window.clearTimeout(this.timer);
+      this.player?.destroy();
+      this.player = undefined;
+      this.frame?.remove();
+      this.frame = undefined;
+    }
+  }
+  if (!customElements.get('lecture-source-frame')) customElements.define('lecture-source-frame', LectureSourceFrame);
+  if (!customElements.get('lecun-source-frame')) customElements.define('lecun-source-frame', class extends LectureSourceFrame {});
+</script>
+<style>
+  :global(lecture-source-frame), :global(lecun-source-frame) {display:block;margin:.55rem 0 1rem}
+  .viewport {width:100%;min-height:200px;aspect-ratio:16/9;background:#171717}
+  .mount,.viewport :global(iframe) {display:block;width:100%;height:100%;min-height:200px;aspect-ratio:16/9;border:0}
+  .mount:empty {display:none}
+  .source-label,a {font-size:.85rem}
+  .source-label {margin-inline-end:.8rem;color:var(--color-muted-foreground)}
+  .direct {margin-inline-start:.8rem}
+</style>

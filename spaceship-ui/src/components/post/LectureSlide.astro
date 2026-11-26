@@ -1,0 +1,22 @@
+---
+interface Props {
+  page: number;
+  lecture?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+  caption: string;
+  priority?: boolean;
+}
+const { page, lecture = 1, caption, priority = false } = Astro.props;
+const pageLimits = { 1: 44, 2: 46, 3: 45, 4: 45, 5: 36, 6: 39, 7: 39, 8: 55, 9: 59, 10: 57, 11: 50 } as const;
+if (!pageLimits[lecture] || !Number.isInteger(page) || page < 1 || page > pageLimits[lecture]) throw new Error('Invalid lecture slide page');
+const label = `P${String(page).padStart(3, '0')}`;
+const src = `https://raw.githubusercontent.com/SRA-VJTI/robotics-study-group/077f2bfe53b01005e0b2e29ae43b6f0c0ba3c0a8/assets/lectures/week-${String(lecture).padStart(2, '0')}/slide-${page}.jpg`;
+---
+<figure class="lecture-slide" data-lecture-slide={label} data-lecture-number={lecture} aria-labelledby={`slide-${label}`}>
+  <img src={src} alt={`${label} — ${caption}. Oier Mees, ETH Zurich Robot Learning 2026.`} width="1600" height="900" loading={priority ? 'eager' : 'lazy'} decoding="async" fetchpriority={priority ? 'high' : 'auto'} referrerpolicy="no-referrer" />
+  <figcaption id={`slide-${label}`}>{label} — {caption}</figcaption>
+</figure>
+<style>
+  .lecture-slide { width: 100%; min-width: 0; margin: 2.5rem 0 1.25rem; }
+  .lecture-slide img { display: block; width: 100%; max-width: 100%; height: auto; margin: 0; border: 1px solid var(--color-border); background: #fff; object-fit: contain; }
+  .lecture-slide figcaption { display: block; margin: .4rem 0 0; font-size: 12px; line-height: 1.6; font-weight: 400; color: var(--color-muted-foreground); text-align: left; }
+</style>

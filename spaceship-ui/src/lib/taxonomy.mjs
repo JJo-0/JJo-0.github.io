@@ -128,7 +128,27 @@ export const RESEARCH_AREA_META = Object.freeze({
   },
 });
 
-export function getPostCategoryMeta(category) {
+const englishDescriptions = {
+  'ai-machine-learning': 'Machine learning, mathematics, evaluation, industrial AI, consciousness and interpretability.',
+  'vision-perception-neuroscience': 'Computer vision, human pose and motion, camera geometry and visual neuroscience.',
+  'robotics-embedded': 'Implementation and testing in ROS 2, SLAM, robot learning, industrial communications and embedded systems.',
+  'software-engineering-cs': 'Programming, data structures, algorithms, web development and Linux and Docker environments.',
+  'research-methods-tools': 'Deep Research, prompt design and research workflows that others can verify.',
+  'health-lifestyle': 'Evidence-based notes on nutrition, health, supplements and everyday purchases.',
+  'finance-industry': 'Companies, industrial structures, energy and commodity markets, and investment analysis.',
+  'biblical-studies': 'Personal studies of biblical texts, their literary and historical settings, and theological questions.',
+  meta: 'Notes on running the blog and documenting its work.',
+};
+
+export function getPostCategoryMeta(category, en = false) {
+  if (en && POST_CATEGORY_META[category]) {
+    const meta = POST_CATEGORY_META[category];
+    return {
+      ...meta,
+      ...(category === 'biblical-studies' ? { label: 'Biblical Studies', shortLabel: 'Bible' } : {}),
+      description: englishDescriptions[category],
+    };
+  }
   return (
     POST_CATEGORY_META[category] ?? {
       label: category,

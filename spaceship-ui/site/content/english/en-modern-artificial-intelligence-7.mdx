@@ -1,0 +1,289 @@
+---
+title: Modern Artificial Intelligence VII — Image Denoising, VAEs, and Diffusion Models
+description: From MMSE and nonlinear filters to VAE ELBOs, reparameterization, and
+  DDPM forward/reverse diffusion.
+pubDate: 2026-08-25
+updatedDate: 2026-09-17
+category: ai-machine-learning
+subcategory: generative-models
+type: study-note
+tags:
+- image-denoising
+- variational-autoencoder
+- diffusion-model
+- classifier-free-guidance
+- score-matching
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 9
+featured: true
+lang: en
+series:
+  id: modern-artificial-intelligence
+  order: 7
+slug: 2026-08-25-modern-artificial-intelligence-7
+draft: false
+translationKey: series-modern-artificial-intelligence-7-20261109
+translatedPosts:
+  ko-KR: 2026-08-25-modern-artificial-intelligence-7
+---
+
+
+import PaperReadingFigure from '@/components/post/PaperReadingFigure.astro';
+import AdditionalPaperFigure from '@/components/post/AdditionalPaperFigure.astro';
+import ModernAiConceptVisual from '@/components/post/ModernAiConceptVisual.astro';
+import ModernAiSourceEquation from '@/components/post/ModernAiSourceEquation.astro';
+import Math from '@/components/post/Math.astro';
+import { modernAiFormula } from '@/lib/modern-ai-parts6-8';
+
+Image denoising and generative modeling both relate observations to latent clean signals, but they are different tasks. Distinguish <strong>what is estimated, which distribution is learned, and whether information available during training is also available at inference</strong>. Existing lecture equations are retained, with original-paper evidence and separate worked examples added. Small numbers and tensor sizes in these examples are not reproduced paper experiments.
+
+## 7.1 Denoising as estimation
+
+Suppose noise corrupts a clean value x to produce observation y. MSE evaluates a restorer through squared error between prediction and target. <strong>The decision minimizing squared error can differ from the decision to sample from the original distribution.</strong>
+
+<ModernAiConceptVisual kind="denoising-estimator" />
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-001')} />
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-002')} />
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-003')} />
+
+For the linear coefficient formula `Rzz⁻¹rzx`, check invertibility and whether variables are centered. A bias-free linear estimator differs from an affine estimator on nonzero-mean data. Numerically, solve the linear system rather than explicitly forming an inverse, and specify treatment of singular or ill-conditioned cases. These mathematical conditions explain how to apply the source’s compact equation.
+
+<strong>Worked example.</strong> After observing y, suppose x equals −1 or +1 with probability 1/2 each. A constant prediction a has the following conditional squared error.
+
+<Math display tex={String.raw`\tfrac12(-1-a)^2+\tfrac12(1-a)^2=1+a^2`} />
+
+The minimum is a=0, although clean x never equals 0 in this example. The conditional mean being optimal for squared error does not require every generated sample to equal that mean. Averaging alternative image details can likewise produce blur, but this example does not explain every restorer’s blur.
+
+## 7.2 Why medians resist impulse noise
+
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-004')} />
+
+<strong>Worked example.</strong> For window values `[10, 11, 12, 13, 255]`, the mean is <strong>60.2</strong> and the median <strong>12</strong>. Unlike the mean, which the single value 255 pulls upward, the median depends on order. A median minimizes summed absolute deviations, but need not be unique: for the even-sized sample `[0, 2]`, every value between 0 and 2 gives the same sum.
+
+A restoration metric specifies which errors matter. In PSNR, L is the peak dynamic range used for the comparison. Interpret the following equation for MSE>0.
+
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-005')} />
+
+For L=1, MSE=0.01 gives <strong>20 dB</strong>; MSE=0.0025 gives approximately <strong>26.0206 dB</strong>. Quartering squared error gains about 6.0206 dB. Mixing 0–255 and 0–1 images while changing only L or MSE units produces invalid scores. The ideal MSE=0 case gives infinity; document any small constant used instead. PSNR alone cannot assess all texture realism or downstream detection performance.
+
+## 7.3 Discriminative and generative models
+
+A classifier’s `p(y|x)` and a generator’s `p(x)` serve different purposes. A latent-variable model samples z from a prior, then generates x through `pθ(x|z)`. Inferring z from observed x instead concerns posterior `pθ(z|x)`. Below, encoder means `qφ`, which constructs an approximate posterior; decoder means `pθ(x|z)`, which constructs the likelihood.
+
+A stochastic decoder’s outputs differ from a deterministic value interpreted as the target image itself. A Bernoulli likelihood outputs pixel probabilities; a Gaussian likelihood outputs means and a chosen variance structure. Connect BCE or MSE reconstruction losses to this observation model. [Kingma and Welling, Auto-Encoding Variational Bayes, §2–3](https://arxiv.org/html/1312.6114v11)
+
+## 7.4 VAE: Learning a tractable posterior approximation
+
+The VAE problem is more specific than adding noise to a latent. A complex decoder makes `pθ(x)=∫pθ(x,z)dz` hard to compute, and this value also appears in the posterior denominator. Instead of repeating expensive inference for every x, train a neural-network approximation `qφ(z|x)`. The paper first appeared in 2013; the linked text is <strong>v11, revised 2022-12-10</strong>. Distinguish the original release from the consulted version.
+
+<ModernAiConceptVisual kind="vae" />
+<PaperReadingFigure figure="vae-fig-1" alt="Figure 1 from Auto-Encoding Variational Bayes. Solid lines show the generative model from z to x; dashed lines show the variational inference path from observed x to z.">
+Do not reverse the solid generative and dashed inference directions. θ and φ are different parameter groups, not two names for one variable. N marks the plate repeating latent variables over observations. This is not a layer-by-layer convolutional encoder or U-Net diagram.
+</PaperReadingFigure>
+
+### Distinguishing the two KL divergences in the ELBO
+
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-006')} />
+
+The following restates the relations in original equations (1)–(3). The first KL measures <strong>the gap between the approximate and true posteriors</strong>; the second measures <strong>the gap between the approximate posterior and the prior</strong>.
+
+<Math display tex={String.raw`\log p_\theta(x)=\mathcal{L}_{\mathrm{ELBO}}+D_{\mathrm{KL}}\bigl(q_\phi(z\mid x)\Vert p_\theta(z\mid x)\bigr)`} />
+<Math display tex={String.raw`\mathcal{L}_{\mathrm{ELBO}}=\mathbb E_q[\log p_\theta(x\mid z)]-D_{\mathrm{KL}}\bigl(q_\phi(z\mid x)\Vert p(z)\bigr)`} />
+
+Their right-hand distributions differ. ELBO is not used because the first KL can be evaluated directly. Since the true posterior is difficult, optimize the tractable lower bound on the second line. At fixed θ, increasing ELBO narrows the posterior-approximation gap; joint training of θ does not guarantee true likelihood increases monotonically at every minibatch.
+
+<strong>Derivation.</strong> Substitute `log pθ(x,z)=log pθ(z|x)+log pθ(x)` into `Eq[log pθ(x,z)−log q]`. Since log pθ(x) does not depend on z, it leaves the expectation; the remaining `Eq[log q−log posterior]` is KL. Nonnegativity gives the lower bound. Turning maximization into an optimizer’s minimization loss changes the sign to <strong>−ELBO = reconstruction NLL + KL</strong>.
+
+### Calculating Gaussian KL numerically
+
+A standard-normal prior and diagonal Gaussian posterior give the following closed form. μ and σ are latent means and standard deviations; σ² is variance. [AEVB, Appendix B](https://arxiv.org/html/1312.6114v11)
+
+<Math display tex={String.raw`D_{\mathrm{KL}}=\tfrac12\sum_j\left(\mu_j^2+\sigma_j^2-1-\log\sigma_j^2\right)`} />
+
+<strong>Worked example.</strong> For one latent dimension with μ=1 and σ=0.5, KL is <strong>0.818147… nats</strong>. Substitute σ²=0.25. Conversely, μ=0 and σ=1 match the prior and give KL=0. If an implementation outputs `logvar`, then `σ=exp(logvar/2)`, not `exp(logvar)`.
+
+Trace tensors in a small explanatory model: MNIST-like inputs with latent size 20. This table does not claim to represent every experiment in the paper.
+
+| Value | Shape | Role |
+|---|---|---|
+| Input x | B×784 | Flattened 28×28 observation |
+| μ, logvar | B×20 each | Posterior parameters, not samples |
+| ε and z | B×20 each | External noise and reparameterized sample |
+| Decoder logits | B×784 | Per-pixel logits for a Bernoulli likelihood |
+| Reconstruction NLL, KL | B each | Per-sample sums over feature/latent axes |
+| Final loss | Scalar | Chosen batch reduction |
+
+Averaging over 784 pixels while summing 20 KL dimensions weights the terms differently from summing both per sample and then averaging the batch. Check whether a smaller loss reflects improvement or merely a changed reduction.
+
+### Reparameterization does not eliminate sampling
+
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-007')} />
+
+Sample ε from a standard normal independent of θ and φ. Holding ε fixed expresses z as a differentiable function of μ and σ, letting the chain rule carry decoder loss through z to encoder parameters. This Gaussian formula does not apply unchanged to every random variable, such as categorical samples.
+
+<strong>Worked example.</strong> With μ=1, logvar=log(0.25), and ε=2, z=2; `∂z/∂μ=1` and `∂z/∂logvar=0.5σε=0.5`. Always fixing ε=0 changes the stochastic estimator’s objective; detaching z cuts the reconstruction gradient to the encoder. The package’s verification code checks the logvar derivative against finite differences.
+
+<strong>Reading the experiments.</strong> Figure 2 compares variational lower bounds against the amount of data processed, not FID or exact marginal likelihood for every model. The paper examines generative/inference learning on MNIST and Frey Face, among others. It does not prove that large KL weights always cause collapse or small ones always improve generation. Posterior collapse requires examining decoder, objective, and optimization together. [AEVB, §5, Figures 2–3](https://arxiv.org/html/1312.6114v11)
+
+## 7.5 Diffusion: A known corruption process and learned restoration
+
+DDPM specifies a known rule for adding noise to data and approximates reverse conditional distributions. It is <strong>a model generating new data-distribution samples from noise, not an algorithm that always exactly inverts a particular corrupted sample</strong>. The reference is Ho, Jain, and Abbeel, `2006.11239v2`.
+
+<ModernAiConceptVisual kind="diffusion" />
+<PaperReadingFigure figure="ddpm-fig-2" alt="Figure 2 from the DDPM paper. Dashed forward transitions and solid learned reverse transitions connect data x0 and noise xT.">
+Do not assume time increases from left to right: x0 is on the right, xT on the left. First identify q and the learned pθ arrows. The face is an example, not a restriction to face generation.
+</PaperReadingFigure>
+
+### Why training need not run T successive noising steps
+
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-008')} />
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-009')} />
+
+`αt=1−βt` and `barαt=∏αs`. Linear combinations of independent Gaussian noise remain Gaussian, so conditional means and variances can be written directly for arbitrary t. <strong>Do not confuse αt with its cumulative product barαt.</strong>
+
+<strong>Worked example.</strong> With barαt=0.64, x0=0.5, and ε=−1, `xt=0.8×0.5+0.6×(−1)=−0.2`. Predicting ε=−0.8 gives estimated x0 `(-0.2+0.6×0.8)/0.8=0.35`. Only knowing the actual ε=−1 recovers x0=0.5 exactly through this formula. Seeing a noisy input does not uniquely reveal the injected ε.
+
+<Math display tex={String.raw`\widehat x_0=\frac{x_t-\sqrt{1-\bar\alpha_t}\,\epsilon_\theta(x_t,t)}{\sqrt{\bar\alpha_t}}`} />
+
+For images, x0, xt, ε, and predicted ε share shape B×C×H×W. Usually t is sampled per item and passed through a timestep embedding. With different t values in a batch, broadcast sample-specific coefficients as `[B,1,1,1]`. Avoid applying the first item’s coefficients to the entire batch.
+
+### Precisely stating which reverse posterior is unknown
+
+Given training data x0 as well, <strong>q(x_&#123;t−1&#125;|xt,x0) is a closed-form Gaussian</strong>. The difficult distribution is the reverse process without knowing x0. Treating these as the same posterior obscures DDPM’s training derivation. [DDPM, §2–3, equations (6)–(7)](https://arxiv.org/html/2006.11239v2)
+
+<Math display tex={String.raw`\widetilde\beta_t=\frac{1-\bar\alpha_{t-1}}{1-\bar\alpha_t}\beta_t`} />
+<Math display tex={String.raw`\widetilde\mu_t=\frac{\sqrt{\bar\alpha_{t-1}}\beta_t}{1-\bar\alpha_t}x_0+\frac{\sqrt{\alpha_t}(1-\bar\alpha_{t-1})}{1-\bar\alpha_t}x_t`} />
+
+Substituting the ε-based expression for x0 into this mean parameterizes the model mean through a noise predictor.
+
+<Math display tex={String.raw`\mu_\theta(x_t,t)=\frac{1}{\sqrt{\alpha_t}}\left(x_t-\frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\epsilon_\theta(x_t,t)\right)`} />
+
+<strong>Worked example.</strong> For two steps with β1=0.1 and β2=0.2, α1=0.9, α2=0.8, and barα2=0.72. At t=2, posterior variance is `(0.1/0.28)×0.2=1/14≈0.0714286`, not β2=0.2. This is an explanatory schedule, not the paper’s actual 1000-step schedule.
+
+### Lsimple changes the weighting of the ELBO objective
+
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-010')} />
+
+Noise MSE relates to the variational bound, but <strong>Lsimple, which drops timestep-dependent coefficients, is not numerically identical to that bound</strong>. Section 3.4 explains that this changes how reconstruction aspects are weighted. Do not claim the optimum and training path must remain identical merely because equations were rearranged. [DDPM, equations (12)–(14)](https://arxiv.org/html/2006.11239v2)
+
+Basic training samples x0, t, and ε, constructs xt, and evaluates the network <strong>once at that t</strong>. Generation starts from xT and evaluates repeatedly while decreasing t. The original uses T=1000 with β increasing linearly from 0.0001 to 0.02. Other samplers, step counts, and variance parameterizations are separate choices.
+
+```text
+Training: sample x0, t, ε → construct xt → εθ(xt,t) → noise MSE → parameter update
+Generation: xT ~ Normal(0,I)
+      t = T, ..., 1:
+          Calculate μθ(xt,t)
+          If t > 1, add Gaussian noise using the chosen σt
+          At t = 1, set the final-step noise to 0
+```
+
+Specify the σt selection rule in code. Confusing βt with posterior variance, adding noise at the final step, or misaligning t with zero-based arrays produces a different generation process.
+
+<strong>What did the experiments show?</strong> In Table 2’s unconditional CIFAR-10 experiment with ε prediction and fixed isotropic variance, bound training gives FID <strong>13.51</strong> and Lsimple gives <strong>3.17</strong>. Objective choice matters for sample quality; improved FID does not necessarily mean improved NLL. Table 1 reports both separately. [DDPM Tables 1–2, PDF p.5](https://arxiv.org/pdf/2006.11239v2#page=5)
+
+The FID reference set also matters. The paper calculates 3.17 against the training set and reports 5.24 against the test set; these are not improvements between models. DDPM’s U-Net includes timestep conditioning and attention and differs in layers and losses from VI’s original 2015 segmentation U-Net.
+
+## 7.6 Conditioning and steering generation
+
+Passing class labels or text c to the denoiser gives a conditional model. Classifier-free guidance (CFG) uses the difference between conditional and unconditional predictions instead of a separate classifier gradient. The consulted Ho–Salimans version is `2207.12598v1`. Figure 1 gives sample images; Figure 4, excerpted below, gives ImageNet 64×64 IS–FID curves. Distinguish generated examples from quantitative evaluation. [CFG paper](https://arxiv.org/html/2207.12598v1)
+
+<ModernAiConceptVisual kind="guidance" />
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-011')} />
+
+The existing lecture’s w follows the <strong>convention common in code</strong>, equivalent to s below. Its reference point may differ from the paper’s even when names match.
+
+<Math display tex={String.raw`\epsilon_s=\epsilon_u+s(\epsilon_c-\epsilon_u)=(1+w_{\mathrm{paper}})\epsilon_c-w_{\mathrm{paper}}\epsilon_u,\qquad s=1+w_{\mathrm{paper}}`} />
+
+s=0 is unconditional and s=1 conditional prediction. s>1 extrapolates along the conditioning direction rather than interpolating. In the paper’s convention, w_paper=0 is conditional. Identical numbers such as “guidance 3” are not comparable across conventions.
+
+<strong>Worked example.</strong> With εu=0.2, εc=−0.1, and s=3, the result is <strong>−0.7</strong>, outside −0.1 to 0.2. Treating s=3 as the paper’s weight 3 yields −1.0, a different setting. This checks notation reference points, not a guarantee of probabilistically correct guidance.
+
+Dropping conditioning with some probability during training teaches the unconditional mode too. Inference obtains both predictions for the same xt and t. Combining requests into one batch does not eliminate either branch’s computation. Evaluate alignment, diversity, and distortion under strong guidance; higher scale does not simply mean greater accuracy.
+
+<AdditionalPaperFigure figure="cfg-fig-4" alt="Figure 4 from the CFG paper. ImageNet 64×64 curves plot Inception Score horizontally and FID vertically, comparing guidance sweeps for unconditional training probabilities 0.1, 0.2, and 0.5.">
+The horizontal axis is IS, not guidance weight; higher is better. The vertical axis is FID; lower is better. Legend values are training condition-drop probabilities p_uncond; points along each curve sweep inference guidance. Selecting only high IS can overlook worsening FID. This is a matched-evaluation trade-off plot, not an architecture diagram.
+</AdditionalPaperFigure>
+
+On the same page, Table 1 gives FID 1.80 at w_paper=0, 1.55 at 0.1, and 2.04 at 0.2 for p_uncond=0.1. Improvement followed by deterioration contradicts monotonic FID improvement with larger w. Read these through s=w_paper+1; they do not set 0.1 as optimal for every dataset. [CFG v1, Figure 4 and Table 1, PDF p.7](https://arxiv.org/pdf/2207.12598v1#page=7)
+
+
+## 7.7 Beyond pixels: Latent diffusion
+
+Latent diffusion first compresses spatial image information with an autoencoder, then learns denoising in that representation. Generation still needs repeated network evaluations: <strong>diffusion iterations run in latent space, and the final latent is decoded into an image separately</strong>. [Rombach et al., `2112.10752v2`, §3, Figure 3](https://arxiv.org/html/2112.10752v2)
+
+<ModernAiConceptVisual kind="latent-diffusion" />
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-012')} />
+
+
+<AdditionalPaperFigure figure="ldm-fig-3" alt="Figure 3 from the LDM paper. Pixel-space encoder/decoder at left, latent diffusion and its denoising U-Net in the center, and a condition encoder with Q/K/V cross-attention paths at right.">
+The red region E/D links images and latents; the green central region performs iterative diffusion and denoising. Conditions enter through concatenation or cross-attention depending on the task. In attention, image features supply Q and condition representations supply K/V. Distinguish the top diffusion arrows from the U-Net denoising path; not every condition enters identically.
+</AdditionalPaperFigure>
+
+Connect Figure 3’s spatial regions to the compression example below. The diagram does not mandate 512×512 inputs and four latent channels for every LDM. Having encoder/decoder paths also does not mean both run at every inference denoising step. [LDM v2, §3.2–3.3 and Figure 3, PDF p.4](https://arxiv.org/pdf/2112.10752v2#page=4)
+
+<strong>Worked example — one f=8 configuration.</strong> Compress a 512×512×3 input to 64×64×4. Spatial positions decrease 262144→4096, to <strong>1/64</strong>; scalars decrease 786432→16384, to <strong>1/48</strong>. A “64-fold dimensional reduction” depends on whether channels are counted. Not all LDMs use f=8 or four channels; this is arithmetic for one chosen configuration.
+
+Cross-attention conditioning can also be traced through tensors. The following explanatory notation describes one head, with L image positions, M text tokens, and head dimension d.
+
+<Math display tex={String.raw`Q\in\mathbb R^{L\times d},\quad K,V\in\mathbb R^{M\times d},\qquad A=\operatorname{softmax}_{M}(QK^\top/\sqrt d),\quad AV\in\mathbb R^{L\times d}`} />
+
+For L=4096, M=77, d=64, attention scores have shape <strong>4096×77</strong>. Softmax normalizes over text tokens at each image position. Simply concatenating text onto image channels and producing 4096×4096 self-attention would be a different operation. The output supplies one feature per image position.
+
+Read compression experiments in terms of <strong>reconstruction quality, generation quality, and training/sampling cost</strong> separately. The paper’s autoencoder and f-dependent generation comparisons examine losses in detail at excessive compression. Reconstruction FID differs from final generation FID. Scalar-count ratios do not establish speedups on untested hardware.
+
+## 7.8 A unified view through score matching and SDEs
+
+A score is the log-density’s <strong>gradient with respect to input</strong>, not the training gradient with respect to model parameters. It is a local vector field toward higher density, not a probability or class confidence. [Song et al., `2011.13456v2`, §3–4](https://arxiv.org/html/2011.13456v2)
+
+<AdditionalPaperFigure figure="score-sde-fig-1" alt="Figure 1 from the Score-SDE paper. Forward SDE from data to noise, reverse SDE from noise to data, and the score needed for reverse drift.">
+The upper arrow adds noise from x(0) to x(T); the lower generates from x(T) to x(0). The highlighted score enters the reverse drift and is estimated for time-varying distributions. The central image illustrates change, not guaranteed exact recovery of a particular photo. Figure 1 itself does not compare probability-flow ODE paths.
+</AdditionalPaperFigure>
+
+
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-013')} />
+<ModernAiSourceEquation part={7} {...modernAiFormula(7, 'MAI-P7-014')} />
+
+Under Gaussian forward perturbation, the <strong>conditional score given x0</strong> directly relates to injected noise as below. The noisy marginal score without x0 instead relates to the noise target’s conditional mean; do not substitute one sample value for both scores.
+
+<Math display tex={String.raw`\nabla_{x_t}\log q(x_t\mid x_0)=-\frac{x_t-\sqrt{\bar\alpha_t}x_0}{1-\bar\alpha_t}=-\frac{\epsilon}{\sqrt{1-\bar\alpha_t}}`} />
+
+With barα=0.64, xt=−0.2, x0=0.5 as above, the conditional score is <strong>5/3≈1.666667</strong>. If x0~N(0,1), the same VP perturbation preserves a marginal N(0,1), whose score at xt=−0.2 is <strong>0.2</strong>. Different conditioning explains the different values.
+
+
+<AdditionalPaperFigure figure="score-sde-fig-2" alt="Figure 2 from the Score-SDE paper. Data distributions at both ends, a central prior, stochastic SDE paths, and smooth probability-flow ODE paths are compared in one figure.">
+Both ends are data distributions; the center is the prior. Distinguish background distributions from individual sample paths. Rough SDE and smooth ODE paths need not coincide sample by sample. The connection concerns continuous-time marginal distributions; read it alongside the required 1/2 coefficient in the ODE’s score term below.
+</AdditionalPaperFigure>
+
+With the paper’s scalar diffusion coefficient g(t), the reverse-time SDE is as follows. Here, <strong>integrating t from T to 0 makes dt negative</strong>. Switching to a positive reverse-time variable requires transforming drift signs.
+
+<Math display tex={String.raw`dx=\left[f(x,t)-g(t)^2\nabla_x\log p_t(x)\right]dt+g(t)d\overline W_t`} />
+<Math display tex={String.raw`dx=\left[f(x,t)-\tfrac12 g(t)^2\nabla_x\log p_t(x)\right]dt\qquad\text{(probability-flow ODE)}`} />
+
+The probability-flow ODE is not obtained merely by removing diffusion noise from the reverse SDE: its score coefficient is <strong>1/2</strong>. Exact scores under continuous-time conditions can give matching timewise marginals, not identical individual paths. Learned-score and numerical-integration errors remain separate.
+
+<strong>Worked example.</strong> For standard-normal score=−x and VP β=1, f=−x/2 and g²=1. Reverse-SDE drift is x/2; probability-flow ODE drift is 0. Since reverse dt&lt;0, drift moves positive x toward the mean. Zero ODE drift is a special case where all timewise marginals already remain standard normal, not a claim that general image generation stays still.
+
+Original Figure 1 illustrates forward/reverse SDEs, and Figure 2 relates SDEs to the probability-flow ODE. Section 4 describes numerical solvers such as predictor–corrector methods. Good sample quality reflects score model, architecture, and solver settings together. <strong>It is not evidence that changing SDE notation alone outperformed all earlier models.</strong> Both original conceptual figures are excerpted here, but do not establish solver rankings. Not every solver ablation was transcribed or training independently reproduced.
+
+## 7.9 Connecting the pieces
+
+MMSE concerns optimal estimation under a specified loss; VAE learns an approximation to an intractable posterior; DDPM models reversal of a specified perturbation. CFG combines conditional and unconditional predictions, LDM changes the space in which iteration occurs, and Score-SDE explains noisy distributions and solvers in continuous time.
+
+Keep <strong>prior versus posterior, α versus its cumulative product, analytic conditional posterior versus learned reverse distribution, original bound versus reweighted loss, code versus paper guidance scales, and spatial compression versus total tensor elements</strong> distinct. Implementation begins by substituting actual numbers to verify shapes, signs, and units, rather than memorizing one equation.
+
+{/* source-content:P7-C001 */}
+{/* source-content:P7-C002 */}
+{/* source-content:P7-C003 */}
+{/* source-content:P7-C004 */}
+{/* source-content:P7-C005 */}
+{/* source-content:P7-C006 */}
+{/* source-content:P7-C007 */}
+{/* source-content:P7-C008 */}
+{/* source-visual:P7-V001 */}
+{/* source-visual:P7-V002 */}
+{/* source-visual:P7-V003 */}
+{/* source-visual:P7-V004 */}
+{/* source-visual:P7-V005 */}
+{/* source-annotation:P7-ANNOTATION-LEDGER */}
+{/* source-page:P7-P01 source-page:P7-P02 source-page:P7-P03 source-page:P7-P04 source-page:P7-P05 source-page:P7-P06 source-page:P7-P07 source-page:P7-P08 source-page:P7-P09 source-page:P7-P10 source-page:P7-P11 source-page:P7-P12 source-page:P7-P13 source-page:P7-P14 source-page:P7-P15 source-page:P7-P16 source-page:P7-P17 source-page:P7-P18 source-page:P7-P19 source-page:P7-P20 source-page:P7-P21 source-page:P7-P22 source-page:P7-P23 source-page:P7-P24 source-page:P7-P25 source-page:P7-P26 source-page:P7-P27 source-page:P7-P28 source-page:P7-P29 source-page:P7-P30 source-page:P7-P31 source-page:P7-P32 source-page:P7-P33 source-page:P7-P34 source-page:P7-P35 */}

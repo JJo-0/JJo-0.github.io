@@ -1,0 +1,87 @@
+---
+title: "선형 어텐션의 기억을 곡률로 청소하다"
+description: "EMNLP 2026 Best Paper CCQ가 키 공분산으로 선형 어텐션의 질의를 보정해 장기 검색을 개선한 원리와 반증 실험, 실제 계산비용을 검토한다."
+pubDate: 2026-11-02T00:00:00+09:00
+updatedDate: 2026-11-02
+publicationTimeZone: Asia/Seoul
+slug: 2026-11-02-ccq-linear-attention-news
+category: ai-machine-learning
+subcategory: linear-attention
+type: paper-review
+tags:
+  - frontier-one
+  - linear-attention
+  - long-context
+  - efficient-llm
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+import Math from '@/components/post/Math.astro';
+
+> **SELECTED · frontier-one 연구 초안.** 기준일 2026-11-02 KST · 월요일 AI/ML · 점수 96/100(문제 19·새로움 15·증거 25·파급 18·최신성 10·설명성 9, 감점 0) · 증거 등급 `OFFICIAL_AWARD`. EMNLP 공식 Best Paper 표기와 ACL Anthology 최종 PDF 20쪽을 Abstract → Introduction → 핵심 Figure 1·3·4 → Method → Main Results → Ablation/Control → Limitations → Conclusion → Appendix → Code 순서로 확인했다. 이 글은 발행 전 연구 작업본이다.
+
+## 1. 한 문장 결론
+
+**Curvature-Conditioned Query(CCQ)는 선형 어텐션이 과거 키를 한 상태에 계속 더하면서 생기는 ‘자주 반복된 방향의 기억 간섭’을 키 공분산으로 추정하고, 그 방향을 질의에서 줄여 장기 검색 성능을 높였다.** <a href="#news-ref-1" data-news-citation="1">[1]</a>
+
+## 2. 왜 어려운가
+
+Softmax attention은 새 질의가 들어올 때 모든 과거 키와의 유사도를 다시 계산한다. 문맥 길이가 늘면 시간과 메모리가 제곱으로 커진다. Linear attention은 과거를 고정 크기 상태로 접어 선형 비용을 얻지만, 서로 다른 토큰의 키 방향이 한 상태에 누적된다. 흔한 패턴은 상태의 큰 분산 방향을 차지하고, 드물지만 검색해야 할 키는 가려진다. 길이가 짧을 때는 잘 작동해도 needle-in-a-haystack처럼 정확한 과거 항목을 꺼내야 할 때 실패하기 쉬운 이유다.
+
+## 3. 기초 개념
+
+선형 어텐션은 값 벡터 <Math tex={"v_t"} />와 키 <Math tex={"k_t"} />의 외적을 상태에 더하고, 질의 <Math tex={"q_t"} />로 그 상태를 읽는다.
+
+<Math display tex={"S_t=S_{t-1}+v_t k_t^\\top,\\qquad o_t=S_tq_t"} />
+
+여기서 <Math tex={"S_t"} />는 누적 기억, <Math tex={"o_t"} />는 출력이다. 핵심은 어떤 키 방향이 반복되면 상태가 그 방향에 과도하게 민감해진다는 점이다. CCQ는 이를 키의 평균 <Math tex={"\\mu_t"} />와 공분산 <Math tex={"\\Sigma_t"} />로 측정한다.
+
+## 4. 기존 방식의 한계
+
+Transformer는 정확한 전역 비교가 가능하지만 긴 문맥의 계산비가 크다. Mamba2 같은 state-space model, GLA와 Gated DeltaNet 같은 recurrent linear attention은 고정 상태로 효율을 얻지만 제한된 기억에 정보를 압축한다. 기존 방식은 쓰기·망각 규칙을 주로 바꿨다. CCQ의 차이는 상태를 다시 쓰지 않고, **읽는 순간의 질의**를 상태의 기하에 맞춰 고친다는 데 있다.
+
+## 5. 새 방법의 세 단계
+
+첫째, 지금까지의 키에서 1차·2차 모멘트를 함께 누적해 공분산을 만든다.
+
+<Math display tex={"\\Sigma_t=\\mathbb{E}[k k^\\top]-\\mu_t\\mu_t^\\top"} />
+
+둘째, 현재 질의로부터 학습 가능한 스칼라 게이트 <Math tex={"\\lambda_t"} />를 구한다. 셋째, 공분산이 큰 방향을 질의에서 빼고 그 정제된 질의로 기존 상태를 읽는다.
+
+<Math display tex={"q_t^{\\mathrm{clean}}=(I-\\lambda_t\\Sigma_t)q_t=q_t-\\lambda_t\\Sigma_tq_t"} />
+
+이는 Softmax의 log-partition을 질의 원점에서 2차 Taylor 전개했을 때 Hessian이 키 공분산이 된다는 관찰에서 나온다. 단위는 임베딩 좌표계에 따르며, <Math tex={"\\lambda_t"} />가 스케일을 학습한다. 경계조건은 ‘유용한 검색 키가 고분산 잡음 방향과 완전히 겹치지 않는다’는 가정이다.
+
+## 6. 핵심 시스템과 비교조건
+
+연구진은 GLA와 Gated DeltaNet에 CCQ를 붙였다. 5억 파라미터 모델은 150억 토큰, 13억 모델은 400억 토큰으로 FineWeb-Edu에서 학습했다. 학습 길이는 4K이고, 토크나이저·옵티마이저·토큰 예산을 맞췄다. 비교군은 Transformer, Mamba2, GLA, GLA-Hedgehog, Gated DeltaNet이다. 평가는 일반 언어모델 과제, 1K–8K synthetic needle retrieval, 4K–20K 길이 외삽, LongBench로 나뉜다. 따라서 서로 다른 학습 예산의 외부 모델과 직접 비교한 기록이 아니다.
+
+## 7. 가장 강한 실험 증거와 수치
+
+13억 CCQ-GLA의 WikiText perplexity는 16.92로 GLA 18.80보다 낮았고, LAMBADA perplexity는 11.39 대 12.31이었다. CCQ-Gated DeltaNet의 7개 과제 평균은 56.24로 원형 55.64보다 0.60점 높았다. 장기 검색에서는 CCQ-GLA가 S-NIAH1 4K에서 49.0점, S-NIAH2 8K에서 29.4점, S-NIAH3 4K에서 35.6점 개선됐다고 보고했다. LongBench 14개 과제 평균은 CCQ-GLA 15.77로 GLA보다 1.70점 높았다. <a href="#news-ref-1" data-news-citation="1">[1]</a>
+
+## 8. 반대 증거와 통제
+
+가장 중요한 반증은 추론 시 CCQ 보정을 꺼도 이미 학습된 CCQ-Gated DeltaNet의 pass-key 변화가 최대 2.2점, number/UUID가 최대 1.6점에 그쳤다는 결과다. 즉 추론 순간의 ‘질의 청소’만이 향상의 원인이라고 말할 수 없다. 연구진도 이 실험은 학습 중 개선 원인을 식별하지 못한다고 적었다. 중심화하지 않은 2차 모멘트와 고정 게이트도 일부 개선했지만, 학습형 게이트가 특히 S3-4K에서 가장 좋았다. 평균 게이트는 일반 텍스트 약 0.29, 검색 질의 위치 약 0.40이었다.
+
+## 9. 한계와 실패조건
+
+검증 규모는 5억·13억 파라미터와 최대 400억 학습 토큰에 머문다. 7B 이상, Mamba·RWKV, 대화형·에이전트 환경은 확인되지 않았다. 유용한 키가 반복 패턴과 같은 고분산 방향에 놓이면 CCQ가 신호까지 누를 수 있다. 또 CCQ의 감쇠 없는 공분산은 망각 게이트가 있는 backbone의 실제 유효 기억과 어긋날 수 있다. 현재 구현은 학습 처리량 약 16% 감소, prefill 지연 8–10% 증가, decode 처리량 약 35% 감소, recurrent state 64→96 MiB/sequence(fp32)를 보고한다. <a href="#news-ref-1" data-news-citation="1">[1]</a>
+
+## 10. 실제로 무엇이 바뀌나
+
+CCQ는 선형 어텐션의 병목을 ‘상태 용량이 작다’에서 ‘어떤 방향으로 읽느냐’로 다시 정의한다. 기존 backbone을 유지한 채 작은 통계 상태와 질의 보정기를 붙일 수 있다는 점은 설계상 매력적이다. 그러나 decode 비용과 상태 메모리 증가는 선형 어텐션을 쓰는 본래 목적과 충돌한다. 지금 단계의 결론은 상용 대체가 아니라, **기억 간섭을 공분산 기하로 다룰 수 있다는 강한 동료평가 증거**다.
+
+## 11. 다음 재검토 트리거
+
+7B 이상에서의 동일 예산 재현, Triton/CUDA 최적화 뒤 실제 latency·energy 측정, 장기 대화·에이전트 기억, 다른 recurrent backbone, 공개 코드의 독립 재실행이 승격 조건이다. 반대로 고분산 방향에 정답 키가 놓인 통제 실험에서 성능이 무너지거나 학습 보정 없이 이득이 사라지면 설명 범위를 좁혀야 한다.
+
+## 12. 출처
+
+<ol>
+  <li id="news-ref-1" data-news-reference>Ledong Wang 외, “Don't Read Everything: A Curvature-Conditioned Query for Linear Attention,” EMNLP 2026 Best Paper, DOI <a href="https://doi.org/10.18653/2026.emnlp-main.1153">10.18653/2026.emnlp-main.1153</a>; <a href="https://aclanthology.org/2026.emnlp-main.1153/">ACL Anthology 원문</a>; <a href="https://github.com/ledong0110/ccq">공식 코드</a>.</li>
+  <li id="news-ref-2" data-news-reference><a href="https://2026.emnlp.org/program/awards_papers/">EMNLP 2026 공식 수상 논문 목록</a>, 확인일 2026-11-02 KST.</li>
+</ol>
+

@@ -13,6 +13,9 @@ import { auditRenderer } from './browser-renderer-audit-v2.mjs';
 import { auditInteractions } from './browser-interaction-audits-v4.mjs';
 import { auditNewsMedia } from './browser-news-media-audit.mjs';
 import { auditActsStudies } from './browser-acts-study-audit.mjs';
+import { auditRobotLearning } from './browser-robot-learning-audit.mjs';
+import { auditLectureImages } from './browser-lecture-image-audit.mjs';
+import { auditAnalytics } from './browser-analytics-audit.mjs';
 
 async function closeAuditTarget(cdp, target) {
   if (!target) return;
@@ -62,6 +65,7 @@ async function installFirstPartyLinkIsolation(cdp, sessionId) {
 
 async function main() {
   let preview, chrome, cdp, mobileTarget, homeMediaTarget, newsTarget, actsTarget, rendererTarget, interactionTarget;
+  let clicks;
   try {
     preview = await startPreview();
     chrome = await startChrome();
@@ -92,6 +96,9 @@ async function main() {
     // The six Acts articles extend the suite without replacing existing checks.
     actsTarget = await attach(cdp);
     await auditActsStudies(cdp, actsTarget.sessionId);
+    await auditRobotLearning(cdp, actsTarget.sessionId);
+    await auditLectureImages(cdp, actsTarget.sessionId);
+    await auditAnalytics(cdp, actsTarget.sessionId);
     await closeAuditTarget(cdp, actsTarget);
     actsTarget = null;
 
@@ -111,8 +118,7 @@ async function main() {
     setReducedMotionOverride(true);
     interactionTarget = await attach(cdp);
     await installFirstPartyLinkIsolation(cdp, interactionTarget.sessionId);
-    const clicks = await auditInteractions(cdp, interactionTarget.sessionId);
-    console.log(`browser-smoke: PASS complete matrix and ${clicks} stable trusted core-route clicks`);
+    clicks = await auditInteractions(cdp, interactionTarget.sessionId);
   } finally {
     setReducedMotionOverride(null);
     await closeAuditTarget(cdp, interactionTarget);
@@ -126,6 +132,7 @@ async function main() {
     await stopChild(preview, 'SIGTERM');
     removeProfile(chrome?.profile);
   }
+  console.log(`browser-smoke: PASS complete matrix and ${clicks} stable trusted core-route clicks`);
 }
 
 main()

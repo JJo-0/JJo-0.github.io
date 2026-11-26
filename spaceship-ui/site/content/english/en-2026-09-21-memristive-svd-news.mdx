@@ -1,0 +1,168 @@
+---
+title: Computing singular value decompositions in memory
+description: MSVD implements iterative SVD on a physical 130 nm memristor chip. The reported 29.9× energy efficiency and 19× speed results
+  come from a separate system model. Here is how to read the two experiments.
+pubDate: 2026-09-21 00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+category: finance-industry
+subcategory: memristive-computing
+type: paper-review
+tags:
+- frontier-one
+- compute-in-memory
+slug: 2026-09-21-memristive-svd-news
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-21-memristive-svd-news
+translationKey: en-2026-09-21-memristive-svd-news
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import CandidateTable from '@/components/post/CandidateTable.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import Math from '@/components/post/Math.astro';
+
+<NewsFigure media="msvd-fig-2" lang="en" priority />
+
+Imagine keeping just a few important patterns in a large dataset: a photograph's main contours, signals that move together across sensors, or directions with a strong influence in a learned matrix. Singular value decomposition (SVD) is a basic tool for finding such patterns. This study builds a system that <strong>uses stored electrical states to perform matrix multiplication, then feeds the results back into an iterative computation</strong>. Its aim is to reduce repeated movement of data out of memory.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<small>This review covers the Nature Communications paper published September 20, 2026, and its supplementary information. Equation numbers below belong to this article. Adaptations of the paper's equations and illustrative worked examples are identified separately.</small>
+
+## 1. How SVD breaks a large matrix into pieces
+
+An image can be represented as a matrix of pixel brightness values. Muscle signals from multiple people can also be arranged into a matrix, with measured features along one axis and observations along the other. Finding a few recurring patterns that explain much of the data can reduce storage and computation. Start with the mathematical operation on a real matrix.
+
+SVD expresses a matrix in terms of left and right directions that are orthogonal within each set, together with a magnitude for each pair. In the paper's notation, <Math tex={String.raw`X=USV^{\mathsf T}`} />. The diagonal entries of <Math tex={String.raw`S`} /> are the singular values, ordered from largest to smallest. Imagine rotating the coordinate axes and finding the directions of greatest stretching. Orthogonal directions help avoid counting the same pattern repeatedly.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<CandidateEquation lang="en" id="msvd-svd" title="How do a singular value and two vectors form one piece of a matrix?" tex={String.raw`\begin{aligned}X&=USV^{\mathsf T}\\&=\sum_{i=1}^{r}s_i u_i v_i^{\mathsf T}\end{aligned}\tag{1}`}>
+
+For <Math tex={String.raw`X`} /> of size <Math tex={String.raw`m\times n`} />, <Math tex={String.raw`u_i`} /> is a column vector of length <Math tex={String.raw`m`} /> and <Math tex={String.raw`v_i`} /> has length <Math tex={String.raw`n`} />. The outer product <Math tex={String.raw`u_i v_i^{\mathsf T}`} /> multiplies their entries across rows and columns to form one <Math tex={String.raw`m\times n`} /> pattern. Its weight is <Math tex={String.raw`s_i`} />. The number of nonzero singular values is <Math tex={String.raw`r`} />. Summing all components gives the original matrix. Keeping only the leading components gives a low-rank approximation.
+
+Take the diagonal matrix <Math tex={String.raw`X=\operatorname{diag}(3,1)`} /> with entries 3 and 1. The first component is <Math tex={String.raw`\operatorname{diag}(3,0)`} /> and the second is <Math tex={String.raw`\operatorname{diag}(0,1)`} />. Their sum is the original matrix. Keeping just the first loses the smaller direction with value 1 but preserves the larger one with value 3. The retained fraction by sum of squares is <Math tex={String.raw`9/(9+1)=0.9`} />. This is the fraction of energy in the example matrix. It is neither the paper's compression ratio nor an accuracy score for an actual photograph.
+
+Rapidly decreasing singular values can make data easy to compress with few components. A small singular value may nevertheless carry an important signal. Selecting components is an application decision in addition to performing the decomposition.
+
+</CandidateEquation>
+
+The hardware issue now comes into view. Once the pieces are known, they simplify the data, but finding them repeatedly multiplies the same matrix by vectors. The paper targets both arithmetic and data movement within that loop.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 2. Where does a memristor multiply and add?
+
+A memristor stores information in an adjustable electrical resistance. The design maps a matrix entry to conductance, the reciprocal of resistance. Applying voltage to a device gives <Math tex={String.raw`I=GV`} />: conductance <Math tex={String.raw`G`} /> multiplied by voltage <Math tex={String.raw`V`} /> yields current <Math tex={String.raw`I`} />. Currents from several devices add on a shared line. The array can therefore perform multiplication and accumulation for matrix–vector products.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Negative numbers and a broad range of real values cannot simply be written as a single resistance. Peripheral circuits encode sign and magnitude into available states, apply voltage pulses, and digitize the resulting current. Compute-in-memory (CIM) here means <strong>performing many multiplications together at the location of a large stored matrix</strong>. It still needs supporting computation.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Figure 2a at the top shows two paths: the data matrix <Math tex={String.raw`X`} /> and <Math tex={String.raw`V`} />, which stores previously found right singular vectors (RSVs). Blue arrows denote iterative updates of the current direction. Red arrows denote storage of a newly converged RSV. The second path computes the contribution to remove so the next component does not repeatedly rediscover an earlier direction.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The chip photograph shows a 1024×128 1T1R array made in a 130 nm process. Each 1T1R cell pairs one transistor with one resistive memory element. A memristor board, power board, and FPGA control board form the experimental platform. According to Methods, the FPGA and CPU handle operations such as normalization, subtraction, and convergence decisions. <strong>Parallel matrix multiplication in the array works with digital control to complete the SVD.</strong><a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+## 3. Why repeated multiplication reveals an important direction
+
+Finding the right singular vector for the largest singular value is related to finding the leading eigenvector of <Math tex={String.raw`X^{\mathsf T}X`} />. Its eigenvalues are the squared singular values. On repeated multiplication, the component along a larger eigenvalue grows faster relative to the others. Normalizing after each update prevents unbounded growth and makes the direction easier to follow. This is the intuition behind power iteration.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<CandidateEquation lang="en" id="msvd-iteration" title="How do repeated multiplication and normalization select a direction?" tex={String.raw`\begin{aligned}z^{(t+1)}&=X^{\mathsf T}(Xv^{(t)})\\v^{(t+1)}&=\frac{z^{(t+1)}}{\lVert z^{(t+1)}\rVert_2}\end{aligned}\tag{2}`}>
+
+<Math tex={String.raw`v^{(t)}`} /> is the current direction estimate. First evaluate <Math tex={String.raw`Xv^{(t)}`} />, then apply <Math tex={String.raw`X^{\mathsf T}`} /> to that result. The parentheses show how two matrix–vector products avoid explicitly forming the large intermediate matrix <Math tex={String.raw`X^{\mathsf T}X`} />. The denominator is the vector's Euclidean length. Dividing every component by the same positive length preserves direction and gives unit length. A zero denominator requires separate handling.
+
+In the example <Math tex={String.raw`X=\operatorname{diag}(3,1)`} />, start with equal components. After one update their ratio is <Math tex={String.raw`9:1`} />, giving the normalized value <Math tex={String.raw`(9,1)^{\mathsf T}/\sqrt{82}`} />. Another multiplication changes the ratio to <Math tex={String.raw`81:1`} />. The smaller direction remains present but accounts for a decreasing fraction. The example assumes ideal arithmetic, a nonzero initial component in the desired direction, and a distinct leading eigenvalue.
+
+The gap between the first two eigenvalues affects convergence. When they are close, one direction does not rapidly dominate. Interpreting an iteration count therefore requires the singular-value distribution as well as the dimensions of the matrix.
+
+</CandidateEquation>
+
+After finding a direction, the paper uses <Math tex={String.raw`s_i^2=v_i^{\mathsf T}X^{\mathsf T}Xv_i`} /> to compute the squared singular value and <Math tex={String.raw`u_i=\operatorname{norm}(Xv_i)`} /> to obtain its corresponding left direction. Its norm notation denotes normalization to unit length. The implementation also sets an iteration limit. Overall convergence depends on more than the speed of a single device multiplication.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 4. Why subtracting earlier components can amplify error
+
+After the first direction is found, repeating the same procedure can find it again. Deflation removes the component already explained. A common illustration subtracts a low-rank component from the data. Here the circuit <strong>stores earlier RSVs in a separate array and removes their contribution from the iterative update</strong>, avoiding repeated writes of a new residual data matrix.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<CandidateEquation lang="en" id="msvd-deflation" title="Why subtract a previous direction, and what does the chip store?" tex={String.raw`\begin{aligned}z&=X^{\mathsf T}X\widetilde v\\&\quad-V_{i-1}S_{i-1}^{2}V_{i-1}^{\mathsf T}\widetilde v\\v_i&=\operatorname{norm}(z)\end{aligned}\tag{3}`}>
+
+These two steps expand Equation (4) in the paper's Methods. <Math tex={String.raw`\widetilde v`} /> is the current iteration input. <Math tex={String.raw`V_{i-1}`} /> holds the <Math tex={String.raw`i-1`} /> previously found right vectors. <Math tex={String.raw`V_{i-1}^{\mathsf T}\widetilde v`} /> measures overlap between the input and those directions. <Math tex={String.raw`S_{i-1}^2`} /> weights the coordinates by the corresponding eigenvalues. <Math tex={String.raw`V_{i-1}`} /> maps those coordinates back to a vector in the original space. The second line is therefore the contribution of previously found directions. Subtracting it exposes the next one.
+
+Suppose <Math tex={String.raw`X^{\mathsf T}X=\operatorname{diag}(9,1)`} />, and the first direction has been found exactly. The term to remove has matrix <Math tex={String.raw`\operatorname{diag}(9,0)`} />, leaving <Math tex={String.raw`\operatorname{diag}(0,1)`} />. If the leading singular value of 3 is underestimated as 2.9, then <Math tex={String.raw`9-2.9^2=0.59`} /> remains along the first direction. That residual is appreciable compared with the value 1 in the direction to be found next. This is an illustrative calculation of error propagation.
+
+The larger the first component, the easier it is for its subtraction error to mask a smaller component. The authors concentrate precision on this sensitive path instead of increasing precision throughout the array.
+
+</CandidateEquation>
+
+Their selectively reinforced representation architecture (SREA) combines two measures. <strong>DPM stores higher and lower digits differently</strong>, while <strong>VPR increases input precision and spatial redundancy for vectors on the deflation path</strong>. Figure 2d shows where the measures act.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+To see the rationale for DPM, split an eight-bit number into two high bits and six low bits: <Math tex={String.raw`173=2\times64+45`} />. An error of one in the high part changes the original number by 64. An error of one in the low part changes it by 1. The method distinguishes fewer conductance levels more reliably for the high part and uses more levels for finer representation of the low part. Lower resolution for the high bits helps prevent large errors in the more significant positions.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+VPR assigns more input bits to RSVs scaled by squared singular values. It also stores RSV replicas at several locations and averages their outputs. Under independent, zero-mean noise, averaging four replicas can halve the standard deviation. Shared temperature changes or common bias can survive averaging. The redundancy benefit must be interpreted with those assumptions in mind.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+## 5. What improved on the actual chip?
+
+On the IRIS data, the authors compared baseline MSVD, DPM alone, VPR alone, and their combination in SREA. These ablations help separate their contributions. The split between high and low bits varies with the dataset and experiment. The earlier 2+6 illustration is not a universal setting.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+For IRIS, SREA used the <Math tex={String.raw` (2,5) `} /> mapping, an input six bits wider than the standard eight bits, and four replicas. The reported improvement in mean normalized singular-value error was about 8.0× for DPM, 3.4× for VPR, and up to 13× for the combination. These are <strong>ratios describing a decrease in the chosen error measure</strong>. They do not multiply a percentage accuracy beyond 100%.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<NewsFigure media="msvd-fig-4" lang="en" />
+
+Figure 4a shows the image-processing workflow. Figure 4b compares software SVD, baseline MSVD, and MSVD with SREA. The authors divided a 256×256 image into 16×16 blocks and kept the first four of 16 components in each block. Calculations on the small blocks were combined to reconstruct the image. The reported PSNR of 31.0 dB and SSIM of 0.940 measure <strong>agreement with software performing the same processing</strong>.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+PSNR is a logarithmic measure that rises as error falls. SSIM assesses structural similarity. Together they capture complementary aspects of pixel error and shape preservation. The software reference here differs from a clean, unprocessed original. A comparison to denoising scores from another paper could silently change the reference.
+
+Figure 4c and subsequent panels decompose and reconstruct recorded COVID-19 hospitalizations. The authors report correlations of 0.999 with software for the leading two components and 0.995 for the third. Agreement in the shapes of the time series supports <strong>accurate approximation of the recorded signal decomposition</strong>. It does not measure prediction of future hospitalizations.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+## 6. Reusing directions stored in memory
+
+Rewriting the full matrix and decomposing it from scratch on every new observation can make updates expensive. Incremental MSVD also explores incorporating new data using singular components already computed. With wearable sensors that acquire new users and observations, the cost of subsequent learning matters alongside the first decomposition.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The paper evaluates how low-dimensional representations feed later learning in electromyography (EMG) gesture classification and sleep-stage classification. SVD prepares features for a downstream model. Decomposition error and classifier accuracy are different outcomes, so the authors examine both algorithmic convergence and the final task.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+<CandidateTable id="msvd-evidence" label="MSVD results grouped by physical array experiments and system modeling">
+
+| Result | Comparison | Scope of the evidence |
+|---|---|---|
+| 130 nm, 1024×128 1T1R | Physical array with FPGA and CPU control | Device- and board-based MSVD experiment |
+| Up to 13× improvement in IRIS error | With and without SREA | Specified normalized-error metric |
+| 31.0 dB PSNR / 0.940 SSIM | Software reference for the same image processing | Numerical and structural agreement on the physical chip |
+| Correlations 0.999 / 0.995 | Component references for the hospitalization time series | Reconstruction of recorded data |
+| 29.9× energy efficiency | EMG SVD versus A100 | 32 nm architecture model |
+| 19.0× normalized speed | Area-normalized decomposition speed | Separate from end-to-end training wall-clock time |
+
+</CandidateTable>
+
+Keeping results on the board allows reuse, but consumes memory. More RSV replicas can improve noise averaging at a cost in cells and read resources. Higher input precision can require additional voltage pulses. These accuracy, area, and time trade-offs explain the decision to reinforce the smaller RSV path selectively.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+## 7. How to read Figure 7's LLaMA results and GPU comparison
+
+<NewsFigure media="msvd-fig-7" lang="en" />
+
+Figure 7a illustrates adapting model weights along a low-rank path. PiSSA builds a starting point for adaptation using important singular components. Substituting MSVD tests whether decomposition with hardware error can still provide a good initialization. An altered decomposition can affect the subsequent learning outcome.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Figure 7b reports language-model task scores. On GSM8K with LLaMA 3.2-3B, the baseline adaptation scored 46.40, PiSSA with MSVD scored 51.25, and software PiSSA scored 51.40. The first two differ by 4.85 percentage points and the two PiSSA implementations by 0.15 points. These results come from <strong>simulation including memristor variation</strong>. The data size used in the chip experiments and the environment used for the model evaluation are different.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+Figure 7c gives a separate system comparison. The authors used XPESim with measured device characteristics and a validated design to model a 32 nm architecture. The EMG results of 29.9× energy efficiency and 19.0× normalized speed, and the LLM initialization results of 41.6× and 23.1×, belong to this evaluation. The paper separately estimates an energy advantage of approximately 10× under the current 130 nm conditions.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+<CandidateEquation lang="en" id="msvd-energy" title="Why does 29.9× the energy efficiency not imply 29.9× less time?" tex={String.raw`R_E=\frac{E_{\mathrm{GPU}}}{E_{\mathrm{MSVD}}}\tag{4}`}>
+
+<Math tex={String.raw`E_{\mathrm{GPU}}`} /> and <Math tex={String.raw`E_{\mathrm{MSVD}}`} /> are the energies required to complete the same task. Placing the smaller energy in the denominator gives a ratio above one. For a ratio of <Math tex={String.raw`29.9`} />, the energy used is approximately <Math tex={String.raw`1/29.9\simeq3.34\%`} /> of the reference. The fractional saving is <Math tex={String.raw`(1-1/29.9)\times100\%\simeq96.66\%`} />. This unpacks the reported ratio without supplying a new power measurement.
+
+Power is energy per unit time. Total energy integrates power over the duration of the run. The same energy can be used at high power over a short time or at low power over a long time. Energy ratios therefore do not determine execution-time ratios. The paper's speed metric also includes chip-area normalization, further distinguishing it from total program runtime.
+
+A practical comparison must count writes, conversion circuits, control, result transfers, and iteration counts within comparable boundaries. The supplement specifies what the model includes. These results do not come from matched wall-outlet measurements of the physical 130 nm board and an A100.
+
+</CandidateEquation>
+
+## 8. Questions for the next experiments
+
+The study moves beyond a one-off matrix multiplication to <strong>a numerical linear algebra system that updates its iterative input and removes previously identified directions</strong>. Large products run on the analog array while the most error-sensitive path receives additional protection. This specific design question can also be asked of other iterative algorithms.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+Further tests should establish whether accuracy and cost remain favorable together. How much do early deflation errors distort later components? Do orthogonality and convergence survive partitioning across chips? How often must drift in stored conductance be corrected? Scientific calculations requiring precise signs and normalization can be particularly sensitive to these conditions.
+
+Error tolerances also vary by use. An approximation adequate for a visually similar compressed image may fail an analysis whose subject is a small singular value. Evaluation should therefore include the downstream decision as well as discrepancy from software. Public code and data give a starting point, while running the software and reproducing the physical devices in another laboratory are separate checks.<a href="#news-ref-3" data-news-citation="3" aria-label="Go to reference 3" data-astro-reload>[3]</a>
+
+<strong>Which operations moved into memory, which error path received extra protection, and which results were measured or modeled?</strong> Keeping these three questions separate makes it possible to identify both what MSVD achieved and what still requires testing.
+
+## 9. Sources
+
+<p><a id="news-ref-1" data-news-reference="1" href="https://www.nature.com/articles/s41467-026-76272-2" target="_blank" rel="noopener noreferrer">[1] Ding et al., Memristive singular value decomposition. Nature Communications, September 20, 2026. Main text, Methods, figures, and results tables.</a></p>
+
+<p><a id="news-ref-2" data-news-reference="2" href="https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-026-76272-2/MediaObjects/41467_2026_76272_MOESM1_ESM.pdf" target="_blank" rel="noopener noreferrer">[2] Supplementary Information for the same paper. Design, devices, experimental conditions, and system evaluation.</a></p>
+
+<p><a id="news-ref-3" data-news-reference="3" href="https://github.com/Dchenc12/memristive_svd" target="_blank" rel="noopener noreferrer">[3] Authors' public code and data: Dchenc12/memristive_svd.</a></p>

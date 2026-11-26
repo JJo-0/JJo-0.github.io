@@ -1,4 +1,5 @@
 ---
+import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
 import Math from './Math.astro';
 import FormulaGuide from './FormulaGuide.astro';
 import { formulaCardTitle } from '@/lib/modern-ai-formula-guide.mjs';
@@ -28,30 +29,37 @@ const {
   display = formula.display === 'display',
   part = 2,
 } = Astro.props;
-const title = formulaCardTitle({
+const isEnglish = Astro.url.pathname.startsWith('/en/');
+const t = (value: string) => isEnglish ? englishFormulaText(value) : value;
+const title = t(formulaCardTitle({
   formulaId: formula.formulaId,
   section: formula.articleSection,
   tex: formula.sourceLatex,
-});
+}));
 
-const statusLabel = {
+const statusLabel = t({
   'source-exact': '원자료 수식',
   'source-suspect': '원자료 표기 확인 필요',
   'editorially-completed': '원자료 빈칸의 완성식',
   'corrected-variant': '수학적 교정식',
-}[formula.status];
+}[formula.status]);
 
-const sourceLabel = `PDF ${formula.pdfPage}쪽${formula.sourceEquationNumber ? ` · 식 ${formula.sourceEquationNumber}` : ''}`;
+const sourceLabel = isEnglish ? `PDF p. ${formula.pdfPage}${formula.sourceEquationNumber ? ` · Eq. ${formula.sourceEquationNumber}` : ''}` : `PDF ${formula.pdfPage}쪽${formula.sourceEquationNumber ? ` · 식 ${formula.sourceEquationNumber}` : ''}`;
 const showReaderProvenance = part < 5;
-const readerSourceLabel = showReaderProvenance ? sourceLabel : formula.articleSection;
+const readerSourceLabel = showReaderProvenance ? sourceLabel : t(formula.articleSection);
 const readerStatusLabel =
-  part >= 5 && formula.status === 'source-exact' ? '핵심 수식' : statusLabel;
+  part >= 5 && formula.status === 'source-exact' ? t('핵심 수식') : statusLabel;
 const guideNote =
-  formula.note ||
+  (formula.note ? t(formula.note) : null) ||
   (formula.status === 'source-exact'
     ? null
-    : '원자료의 빈칸·표기 문제를 숨기지 않고 원문과 완성식·교정식을 분리해 표시한다.');
+    : t('원자료의 빈칸·표기 문제를 숨기지 않고 원문과 완성식·교정식을 분리해 표시한다.'));
 const aria = `${title}, ${readerSourceLabel}, ${readerStatusLabel}`;
+// Translate prose inside two source equations; retain original TeX in the ledger and copy control.
+const displayTex = isEnglish
+  ? formula.sourceLatex.replace('가 모두 bounded여야 하는가?', 'must both be bounded?').replace('의 단위', ': units')
+  : formula.sourceLatex;
+const translatedSourceProse = isEnglish && displayTex !== formula.sourceLatex;
 ---
 
 {
@@ -87,23 +95,24 @@ const aria = `${title}, ${readerSourceLabel}, ${readerStatusLabel}`;
           type="button"
           class="formula-copy rounded-full border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:border-primary/40 hover:text-primary"
           data-copy-tex={formula.sourceLatex}
-          aria-label={`${title} LaTeX 복사`}
+          aria-label={`${title} ${t('LaTeX 복사')}`}
         >
-          수식 복사
+          {t('수식 복사')}
         </button>
       </div>
 
       <div class="overflow-x-auto overflow-y-hidden px-3 py-2 sm:px-5">
-        <Math tex={formula.sourceLatex} display label={aria} />
+        <Math tex={displayTex} display label={aria} />
       </div>
 
+      {translatedSourceProse && <p class="mx-5 text-xs text-muted-foreground">English rendering translates prose within this source formula. Copy retains the original TeX.</p>}
       <FormulaGuide
         formulaId={formula.formulaId}
         tex={formula.sourceLatex}
         section={formula.articleSection}
         part={part}
         sourceLabel={
-          showReaderProvenance ? `${sourceLabel} · ${formula.articleSection}` : undefined
+          showReaderProvenance ? `${sourceLabel} · ${t(formula.articleSection)}` : undefined
         }
         note={guideNote}
         statusLabel={readerStatusLabel}
@@ -121,7 +130,7 @@ const aria = `${title}, ${readerSourceLabel}, ${readerStatusLabel}`;
       data-formula-display="inline"
       title={showReaderProvenance ? `${sourceLabel} · ${statusLabel}` : title}
     >
-      <Math tex={formula.sourceLatex} label={aria} />
+      <Math tex={displayTex} label={aria} />
     </span>
   )
 }

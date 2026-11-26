@@ -1,0 +1,1607 @@
+---
+title: Modern Artificial Intelligence III — Perceptrons, MLPs, CNNs, and Convolution
+description: A complete ledger of fifteen ECE5992 pages, paragraphs, tables, figures,
+  equations, and handwriting, connecting perceptron learning, XOR, MLP forward passes,
+  Dropout/DropConnect, 1D/2D convolution, boundaries, patch matrices, and PyTorch
+  modules to research through 2026.
+pubDate: 2026-08-20
+updatedDate: 2026-08-20
+category: ai-machine-learning
+subcategory: neural-network-foundations
+type: study-note
+tags:
+- deep-learning
+- perceptron
+- multilayer-perceptron
+- convolution
+- convolutional-neural-network
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 5
+featured: true
+lang: en
+series:
+  id: modern-artificial-intelligence
+  order: 3
+slug: 2026-08-20-modern-artificial-intelligence-3
+draft: false
+translationKey: series-modern-artificial-intelligence-3-20261109
+translatedPosts:
+  ko-KR: 2026-08-20-modern-artificial-intelligence-3
+---
+
+
+import SourceFormula from '@/components/post/SourceFormula.astro';
+import { part3Formula } from '@/lib/modern-ai-part3';
+
+> **Completeness contract**  
+> This article follows all fifteen pages of `4_CH4-Backgrounds for AI(1).pdf`. Ledgers cover numbered and unnumbered displayed equations, meaningful inline mathematics, figure equations and numbers, `?`, `??`, blanks, every table cell, captions, footnotes, references, and legible handwriting. Source blanks and notation issues remain visible; completions and corrections receive separate statuses.
+
+> **Keep three layers distinct.**  
+> Separate **the 2025 PDF reconstruction**, **editorial and mathematical verification**, and **the research update dated August 18, 2026**. Later research does not retroactively rewrite the lecture's claims.
+
+## Ledger status
+
+- PDF mapping: **15 of 15 pages**
+- Total equation records: **163** (`MAI-P3-001`–`MAI-P3-163`)
+- Source equations: **140**
+- Displayed-equation explanation cards: **99**
+- Equation statuses: `source-exact`, `source-suspect`, `editorially-completed`, `corrected-variant`
+- Source PDF SHA-256: `2a3855c52d688a79d38e714ab7ef7223dd7a5bc5b46f8385f55da777aa1c78af`
+- New SVG/HTML diagrams preserve figure structures, numbers, and relationships without reproducing original images.
+
+---
+
+# Reconstructing the PDF source
+
+{/* source-content:P3-C001 */}
+## 3. Backgrounds for AI and deep learning
+
+
+{/* source-content:P3-C002 */}
+The chapter begins with a single perceptron, then develops multilayer perceptrons (MLPs), convolutional neural networks (CNNs), global/local matrix representations of convolution, and core PyTorch modules.
+
+
+{/* source-content:P3-C003 */}
+## 3.1 A single perceptron model
+
+
+{/* source-content:P3-C004 */}
+A perceptron mathematically simplifies a biological neuron. The lecture relates dendrites, synapses, and firing thresholds to numerical inputs, weights, weighted sums, and activation functions.
+
+
+{/* source-figure:P3-FIG-01 */}
+<figure class="my-8 overflow-hidden rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-2">
+    <section class="rounded-xl border border-border/70 bg-background/80 p-4">
+      <h4 class="mt-0">Biological neuron</h4>
+      <svg viewBox="0 0 420 170" role="img" aria-label="A new biological-neuron diagram showing dendrites, cell body, axon, and synapses" class="w-full">
+        <circle cx="130" cy="85" r="32" fill="none" stroke="currentColor" stroke-width="3" />
+        <path d="M98 84 C70 55,50 42,22 26 M98 75 C65 76,42 67,18 60 M99 94 C65 107,45 121,18 142" fill="none" stroke="currentColor" stroke-width="3" />
+        <path d="M162 85 C220 85,272 83,340 84" fill="none" stroke="currentColor" stroke-width="4" />
+        <path d="M340 84 C365 65,385 55,405 48 M340 84 C370 84,388 84,408 84 M340 84 C366 103,387 116,405 126" fill="none" stroke="currentColor" stroke-width="3" />
+        <text x="82" y="22" font-size="15">dendrite</text><text x="113" y="91" font-size="15">soma</text><text x="230" y="72" font-size="15">axon</text><text x="350" y="42" font-size="15">synapse</text>
+      </svg>
+    </section>
+    <section class="rounded-xl border border-border/70 bg-background/80 p-4">
+      <h4 class="mt-0">Perceptron</h4>
+      <svg viewBox="0 0 420 170" role="img" aria-label="A new perceptron diagram showing inputs, weights, summation, a step function, and output" class="w-full">
+        <g font-size="15"><text x="10" y="35">x₁</text><text x="10" y="80">x₂</text><text x="10" y="125">xₙ</text></g>
+        <g stroke="currentColor" stroke-width="2"><line x1="42" y1="30" x2="160" y2="82"/><line x1="42" y1="75" x2="160" y2="82"/><line x1="42" y1="120" x2="160" y2="82"/></g>
+        <circle cx="180" cy="82" r="27" fill="none" stroke="currentColor" stroke-width="3"/><text x="169" y="89" font-size="24">Σ</text>
+        <line x1="207" y1="82" x2="270" y2="82" stroke="currentColor" stroke-width="3"/><rect x="270" y="55" width="70" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="3"/><path d="M282 94 L298 94 L298 70 L328 70" fill="none" stroke="currentColor" stroke-width="3"/><line x1="340" y1="82" x2="405" y2="82" stroke="currentColor" stroke-width="3"/><text x="352" y="70" font-size="15">output</text><text x="116" y="45" font-size="14">weights</text><text x="266" y="42" font-size="14">sign / step</text>
+      </svg>
+    </section>
+  </div>
+  <div class="mt-4 overflow-x-auto">
+    <table class="m-0 min-w-[680px]">
+      <thead><tr><th>Biological neuron</th><th>Perceptron</th></tr></thead>
+      <tbody>
+        <tr><td>Dendrites receive electrical signals from other neurons' axons.</td><td>Represent electrical signals as numerical inputs.</td></tr>
+        <tr><td>Synapses between dendrites and axons modulate signals by different amounts.</td><td>Model this by multiplying each input by a weight.</td></tr>
+        <tr><td>Firing occurs when total input exceeds a threshold, and output passes to other neurons.</td><td>Calculate a weighted sum, apply an activation such as sign, and pass the output to the next perceptron.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p. 1 table, reconstructed.</strong> New diagrams and a table preserve both columns' correspondences and all three explanations without copying the neuron photograph or historical web diagram.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C005 */}
+### 3.1.1 Linear discriminant
+
+
+{/* source-content:P3-C006 */}
+One perceptron learns a linear boundary between two linearly separable classes. A 2D line is <SourceFormula formula={part3Formula('MAI-P3-001')} part={3} display={false} />, where coefficient b, not multiplying a coordinate, is the bias.
+
+
+{/* source-content:P3-C007 */}
+An N-dimensional point has coordinates <SourceFormula formula={part3Formula('MAI-P3-002')} part={3} display={false} />, and boundary coefficients are <SourceFormula formula={part3Formula('MAI-P3-003')} part={3} display={false} />.
+
+
+{/* source-content:P3-C008 */}
+Rearranging <SourceFormula formula={part3Formula('MAI-P3-004')} part={3} display={false} /> gives <SourceFormula formula={part3Formula('MAI-P3-005')} part={3} display={false} />. A more general two-variable linear boundary takes this form.
+
+
+{/* source-content:P3-C009 */}
+<SourceFormula formula={part3Formula('MAI-P3-006')} part={3} display={true} />
+
+
+{/* source-content:P3-C010 */}
+The source asks how to rewrite `y=ax+c` as `w₁x₁+w₂x₂+b=0` and leaves `?`. The question is preserved, with its completed answer in the editorial layer.
+
+
+{/* source-content:P3-C011 */}
+For N-dimensional features, classification uses this hyperplane.
+
+
+{/* source-content:P3-C012 */}
+<SourceFormula formula={part3Formula('MAI-P3-007')} part={3} display={true} />
+
+
+{/* source-content:P3-C013 */}
+Vector notation is <SourceFormula formula={part3Formula('MAI-P3-008')} part={3} display={true} />, with <SourceFormula formula={part3Formula('MAI-P3-009')} part={3} display={false} /> a column vector. Here, w is the weight vector and b the bias.
+
+
+{/* source-content:P3-C014 */}
+The classifier applies a sign decision rule to linear score g.
+
+
+{/* source-content:P3-C015 */}
+<SourceFormula formula={part3Formula('MAI-P3-010')} part={3} display={true} />
+
+
+{/* source-content:P3-C016 */}
+Its activation is the threshold-type sign function.
+
+
+{/* source-content:P3-C017 */}
+<SourceFormula formula={part3Formula('MAI-P3-011')} part={3} display={true} />
+
+
+{/* source-content:P3-C018 */}
+- The boundary is perpendicular to the weight vector. The PDF writes distance from the origin as <SourceFormula formula={part3Formula('MAI-P3-012')} part={3} display={false} />.
+
+
+{/* source-content:P3-C019 */}
+- The PDF writes distance from point x to the boundary as <SourceFormula formula={part3Formula('MAI-P3-013')} part={3} display={false} />.
+
+
+{/* source-content:P3-C020 */}
+- On the boundary, <SourceFormula formula={part3Formula('MAI-P3-014')} part={3} display={false} />; on the positive side indicated by w, <SourceFormula formula={part3Formula('MAI-P3-015')} part={3} display={false} />; on the opposite side, <SourceFormula formula={part3Formula('MAI-P3-016')} part={3} display={false} />.
+
+
+{/* source-content:P3-C021 */}
+Let the linearly separable training set be <SourceFormula formula={part3Formula('MAI-P3-017')} part={3} display={false} />. Correct classification of every sample expands classwise as follows.
+
+
+{/* source-content:P3-C022 */}
+<SourceFormula formula={part3Formula('MAI-P3-018')} part={3} display={true} />
+
+
+{/* source-content:P3-C023 */}
+This compresses into a zero-empirical-risk condition.
+
+
+{/* source-content:P3-C024 */}
+<SourceFormula formula={part3Formula('MAI-P3-019')} part={3} display={true} />
+
+
+{/* source-content:P3-C025 */}
+### 3.1.2 Perceptron learning by gradient descent
+
+
+{/* source-content:P3-C026 */}
+The initial learning model starts from a necessary and sufficient condition for zero empirical risk.
+
+
+{/* source-content:P3-C027 */}
+<SourceFormula formula={part3Formula('MAI-P3-020')} part={3} display={true} />
+
+
+{/* source-content:P3-C028 */}
+The lecture first constructs reward maximization by increasing the sum of all signed scores.
+
+
+{/* source-content:P3-C029 */}
+<SourceFormula formula={part3Formula('MAI-P3-021')} part={3} display={true} />
+
+
+{/* source-content:P3-C030 */}
+It then writes the equivalent loss-minimization problem.
+
+
+{/* source-content:P3-C031 */}
+<SourceFormula formula={part3Formula('MAI-P3-022')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-01 */}
+> **Lecture annotation — PDF p. 2**  
+> The sketch shows **w perpendicular to the boundary**, with perpendicular distance normalized by `‖w‖`. The notation `No training error` appears beside the signed-margin condition. Other small notes lack sufficient context and remain **uncertain to read**.
+
+
+{/* source-content:P3-C032 */}
+Applying gradient descent to equation (1) requires derivatives with respect to w and b. The source leaves both as `??`.
+
+
+{/* source-content:P3-C033 */}
+<SourceFormula formula={part3Formula('MAI-P3-023')} part={3} display={true} />
+
+
+{/* source-content:P3-C034 */}
+<SourceFormula formula={part3Formula('MAI-P3-024')} part={3} display={true} />
+
+
+{/* source-content:P3-C035 */}
+It then gives these two updates.
+
+
+{/* source-content:P3-C036 */}
+<SourceFormula formula={part3Formula('MAI-P3-025')} part={3} display={true} />
+
+
+{/* source-content:P3-C037 */}
+<SourceFormula formula={part3Formula('MAI-P3-026')} part={3} display={true} />
+
+
+{/* source-content:P3-C038 */}
+The iteration index is <SourceFormula formula={part3Formula('MAI-P3-027')} part={3} display={false} />; initial values <SourceFormula formula={part3Formula('MAI-P3-037')} part={3} display={false} /> are chosen arbitrarily.
+
+
+{/* source-content:P3-C039 */}
+- Linear separability ensures at least one pair (w,b) satisfying <SourceFormula formula={part3Formula('MAI-P3-028')} part={3} display={false} />.
+
+
+{/* source-content:P3-C040 */}
+- The lecture explains that any solution attaining an equal or smaller value suffices for this gradient-descent objective.
+
+
+{/* source-content:P3-C041 */}
+But equation (1) is unbounded below. Once loss is negative, positive scaling of w or b can yield <SourceFormula formula={part3Formula('MAI-P3-029')} part={3} display={false} />, making the objective numerically unsuitable.
+
+
+{/* source-content:P3-C042 */}
+The modified model focuses only on misclassified points, defining an error set each iteration.
+
+
+{/* source-content:P3-C043 */}
+<SourceFormula formula={part3Formula('MAI-P3-030')} part={3} display={true} />
+
+
+{/* source-content:P3-C044 */}
+Summing loss only over that set gives equation (2).
+
+
+{/* source-content:P3-C045 */}
+<SourceFormula formula={part3Formula('MAI-P3-031')} part={3} display={true} />
+
+
+{/* source-content:P3-C046 */}
+- Signed scores in E are negative, so <SourceFormula formula={part3Formula('MAI-P3-032')} part={3} display={false} />.
+
+
+{/* source-content:P3-C047 */}
+- Since <SourceFormula formula={part3Formula('MAI-P3-033')} part={3} display={false} />, zero loss means every sample is correctly classified.
+
+
+{/* source-content:P3-C048 */}
+Gradient updates likewise use only samples in the error set.
+
+
+{/* source-content:P3-C049 */}
+<SourceFormula formula={part3Formula('MAI-P3-034')} part={3} display={true} />
+
+
+{/* source-content:P3-C050 */}
+<SourceFormula formula={part3Formula('MAI-P3-035')} part={3} display={true} />
+
+
+{/* source-content:P3-C051 */}
+<SourceFormula formula={part3Formula('MAI-P3-036')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-02 */}
+> **Lecture annotation — PDF p. 3**  
+> Handwritten **`-Σ yₘxₘ`** and **`-Σ yₘ`** appear beside the two `??` placeholders. A lower note connects loss and objective functions as descriptions of the same optimization goal. Some Korean handwriting is blurred and remains **uncertain to read**.
+
+
+{/* source-figure:P3-FIG-02 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 900 300" role="img" aria-label="A new diagram routes digit images through convolution and subsampling to a fully connected classifier" class="w-full">
+    <rect x="25" y="95" width="90" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="3"/><text x="68" y="151" text-anchor="middle" font-size="46">3</text>
+    <g stroke="currentColor" fill="none" stroke-width="3"><path d="M125 140 L210 140"/><path d="M315 140 L390 140"/><path d="M500 140 L575 140"/><path d="M680 140 L755 140"/></g>
+    <g fill="none" stroke="currentColor" stroke-width="3"><rect x="210" y="55" width="105" height="170" rx="10"/><rect x="390" y="80" width="110" height="120" rx="10"/><rect x="575" y="95" width="105" height="90" rx="10"/></g>
+    <text x="262" y="42" text-anchor="middle" font-size="17">5×5 convolution</text><text x="445" y="68" text-anchor="middle" font-size="17">2×2 subsampling</text><text x="627" y="84" text-anchor="middle" font-size="17">feature maps</text>
+    <g fill="none" stroke="currentColor" stroke-width="2"><circle cx="780" cy="65" r="10"/><circle cx="780" cy="105" r="10"/><circle cx="780" cy="145" r="10"/><circle cx="780" cy="185" r="10"/><circle cx="780" cy="225" r="10"/><line x1="680" y1="140" x2="770" y2="65"/><line x1="680" y1="140" x2="770" y2="225"/></g>
+    <text x="818" y="150" font-size="17">0 … 9</text><text x="445" y="270" text-anchor="middle" font-size="20">feature extraction</text><text x="790" y="270" text-anchor="middle" font-size="20">classification</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 1, reconstructed.</strong> Preserve the progression from input digits through two convolution/subsampling stages to a fully connected 0–9 classifier.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C052 */}
+An alternative learns by minimizing MSE between desired and actual linear responses.
+
+
+{/* source-content:P3-C053 */}
+<SourceFormula formula={part3Formula('MAI-P3-038')} part={3} display={true} />
+
+
+{/* source-content:P3-C054 */}
+Here, <SourceFormula formula={part3Formula('MAI-P3-039')} part={3} display={false} />, the augmented parameters are <SourceFormula formula={part3Formula('MAI-P3-040')} part={3} display={false} />, and the augmented input is <SourceFormula formula={part3Formula('MAI-P3-041')} part={3} display={false} />. The source states <SourceFormula formula={part3Formula('MAI-P3-042')} part={3} display={false} />.
+
+
+{/* source-content:P3-C055 */}
+The source leaves this MSE's gradient as `??`.
+
+
+{/* source-content:P3-C056 */}
+<SourceFormula formula={part3Formula('MAI-P3-043')} part={3} display={true} />
+
+
+{/* source-content:P3-C057 */}
+Its LMS-style update accumulates residuals multiplied by inputs.
+
+
+{/* source-content:P3-C058 */}
+<SourceFormula formula={part3Formula('MAI-P3-044')} part={3} display={true} />
+
+
+{/* source-content:P3-C059 */}
+The lecture states <SourceFormula formula={part3Formula('MAI-P3-045')} part={3} display={false} /> is necessary but insufficient for convergence and gives typical range <SourceFormula formula={part3Formula('MAI-P3-046')} part={3} display={false} />. The exact data-dependent upper bound is checked separately in the editorial layer.
+
+
+{/* source-content:P3-C060 */}
+## 3.2 Nonlinear discriminants: FCNs and MLPs
+
+
+{/* source-content:P3-C061 */}
+### 3.2.1 Limits of a single perceptron
+
+
+{/* source-content:P3-C062 */}
+XOR cannot be solved by one linear boundary. The source places false-class points at <SourceFormula formula={part3Formula('MAI-P3-047')} part={3} display={false} /> and true-class points at <SourceFormula formula={part3Formula('MAI-P3-048')} part={3} display={false} />.
+
+
+{/* source-content:P3-C063 */}
+Geometry shows no single separating line. The source proposes two linear boundaries or a nonlinear boundary such as a quadratic.
+
+
+{/* source-annotation:P3-ANN-03 */}
+> **Lecture annotation — PDF p. 4**  
+> A sketch stacks `w` with `b`, and `x` with constant 1, into augmented vectors. Beside the MSE blank is **derive the gradient directly**; beside the learning rate are **lower bound / upper bound**. Remaining small writing is **uncertain to read**.
+
+
+{/* source-content:P3-C064 */}
+The source asks readers to sketch the geometry of both proposed solutions and leaves the answer blank.
+
+
+{/* source-content:P3-C065 */}
+<SourceFormula formula={part3Formula('MAI-P3-049')} part={3} display={true} />
+
+
+{/* source-content:P3-C066 */}
+It then asks whether multiple perceptrons can solve XOR and, if so, the minimum number of units.
+
+
+{/* source-content:P3-C067 */}
+<SourceFormula formula={part3Formula('MAI-P3-050')} part={3} display={true} />
+
+
+{/* source-content:P3-C068 */}
+### 3.2.2 MLP overview
+
+
+{/* source-content:P3-C069 */}
+Figure 2 depicts a general multilayer network. The lecture defines:
+
+
+{/* source-content:P3-C070 */}
+- A column of nodes forms a layer.
+
+
+{/* source-content:P3-C071 */}
+- Every node is an artificial neuron.
+
+
+{/* source-content:P3-C072 */}
+- A network is fully connected when each node's output connects to every node in the next layer.
+
+
+{/* source-content:P3-C073 */}
+- A network without loops is feedforward.
+
+
+{/* source-content:P3-C074 */}
+- Neuron k's output or activation in layer l is <SourceFormula formula={part3Formula('MAI-P3-051')} part={3} display={false} />.
+
+
+{/* source-content:P3-C075 */}
+The goal is classifying unknown input-image patterns. A network with N_L outputs selects the class with greatest output activation.
+
+
+{/* source-content:P3-C076 */}
+<SourceFormula formula={part3Formula('MAI-P3-052')} part={3} display={true} />
+
+
+{/* source-content:P3-C077 */}
+### 3.2.3 Forward pass
+
+
+{/* source-content:P3-C078 */}
+A forward pass maps input x to output-layer values used for classification. Equation (4) gives neuron i's scalar net input and activation.
+
+
+{/* source-content:P3-C079 */}
+<SourceFormula formula={part3Formula('MAI-P3-053')} part={3} display={true} />
+
+
+{/* source-content:P3-C080 */}
+Output nodes are <SourceFormula formula={part3Formula('MAI-P3-054')} part={3} display={false} /> and the input layer is initialized with <SourceFormula formula={part3Formula('MAI-P3-055')} part={3} display={false} />.
+
+
+{/* source-content:P3-C081 */}
+A footnote allows softmax instead of sigmoid in the final layer. Its activations sum to one and permit probabilistic interpretation.
+
+
+{/* source-content:P3-C082 */}
+<SourceFormula formula={part3Formula('MAI-P3-056')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-04 */}
+> **Lecture annotation — PDF p. 5**  
+> Near XOR and forward-pass equations are `MLP` and arrows indicating activations. Most short symbols and English notes remain **uncertain to read** because of resolution and overlapping handwriting.
+
+
+{/* source-figure:P3-FIG-03 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 900 500" role="img" aria-label="A new fully connected MLP diagram with input, two hidden layers, and output" class="w-full">
+    <defs><marker id="p3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+    <g stroke="currentColor" stroke-width="1.2" opacity=".42">
+      <path d="M110 100 L330 80 M110 100 L330 180 M110 100 L330 280 M110 210 L330 80 M110 210 L330 180 M110 210 L330 280 M110 320 L330 80 M110 320 L330 180 M110 320 L330 280"/>
+      <path d="M350 80 L570 100 M350 80 L570 210 M350 80 L570 320 M350 180 L570 100 M350 180 L570 210 M350 180 L570 320 M350 280 L570 100 M350 280 L570 210 M350 280 L570 320"/>
+      <path d="M590 100 L790 145 M590 100 L790 255 M590 210 L790 145 M590 210 L790 255 M590 320 L790 145 M590 320 L790 255"/>
+    </g>
+    <g fill="var(--background, white)" stroke="currentColor" stroke-width="3">
+      <circle cx="100" cy="100" r="24"/><circle cx="100" cy="210" r="24"/><circle cx="100" cy="320" r="24"/>
+      <circle cx="340" cy="80" r="24"/><circle cx="340" cy="180" r="24"/><circle cx="340" cy="280" r="24"/>
+      <circle cx="580" cy="100" r="24"/><circle cx="580" cy="210" r="24"/><circle cx="580" cy="320" r="24"/>
+      <circle cx="800" cy="145" r="24"/><circle cx="800" cy="255" r="24"/>
+    </g>
+    <g font-size="18" text-anchor="middle"><text x="100" y="420">Layer 1 · input</text><text x="460" y="420">hidden layers</text><text x="800" y="420">Layer L · output</text><text x="100" y="106">x₁</text><text x="100" y="216">x₂</text><text x="100" y="326">xₙ</text><text x="800" y="151">a₁</text><text x="800" y="261">aₙ</text></g>
+    <rect x="292" y="15" width="335" height="62" rx="10" fill="none" stroke="currentColor" stroke-width="2"/><text x="460" y="42" text-anchor="middle" font-size="17">zᵢ(l) = weighted sum + bias</text><text x="460" y="64" text-anchor="middle" font-size="17">aᵢ(l) = h(zᵢ(l))</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 2, reconstructed.</strong> A new SVG shows inputs, hidden and output layers, fully connected interlayer edges, and weighted-sum→activation processing inside a neuron.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C083 */}
+Collecting equation (4) into vector/matrix operations gives the activation/net-input relationship in equation (5).
+
+
+{/* source-content:P3-C084 */}
+<SourceFormula formula={part3Formula('MAI-P3-057')} part={3} display={true} />
+
+
+{/* source-figure:P3-FIG-04 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-5 md:grid-cols-2">
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">(a) DropOut</h4><svg viewBox="0 0 390 240" role="img" aria-label="A new dropout diagram masking one activation to zero" class="w-full"><g stroke="currentColor" stroke-width="2" opacity=".55"><line x1="50" y1="40" x2="175" y2="60"/><line x1="50" y1="95" x2="175" y2="60"/><line x1="50" y1="150" x2="175" y2="115"/><line x1="50" y1="205" x2="175" y2="170"/></g><g fill="none" stroke="currentColor" stroke-width="3"><circle cx="40" cy="40" r="17"/><circle cx="40" cy="95" r="17"/><circle cx="40" cy="150" r="17"/><circle cx="40" cy="205" r="17"/><circle cx="190" cy="60" r="20"/><circle cx="190" cy="115" r="20"/><circle cx="190" cy="170" r="20"/><circle cx="310" cy="60" r="18"/><circle cx="310" cy="115" r="18"/><circle cx="310" cy="170" r="18"/></g><line x1="210" y1="60" x2="292" y2="60" stroke="currentColor" stroke-width="3"/><line x1="210" y1="115" x2="292" y2="115" stroke="currentColor" stroke-width="3" stroke-dasharray="7 7"/><line x1="210" y1="170" x2="292" y2="170" stroke="currentColor" stroke-width="3"/><path d="M244 96 L270 134 M270 96 L244 134" stroke="currentColor" stroke-width="5"/><text x="230" y="220" font-size="16">activation mask m</text></svg></section>
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">(b) DropConnect</h4><svg viewBox="0 0 390 240" role="img" aria-label="A new DropConnect diagram masking selected weight edges" class="w-full"><g stroke="currentColor" stroke-width="2"><line x1="50" y1="40" x2="190" y2="60"/><line x1="50" y1="95" x2="190" y2="60" stroke-dasharray="7 7"/><line x1="50" y1="150" x2="190" y2="115"/><line x1="50" y1="205" x2="190" y2="170" stroke-dasharray="7 7"/><line x1="50" y1="40" x2="190" y2="170"/><line x1="50" y1="205" x2="190" y2="60"/></g><g fill="none" stroke="currentColor" stroke-width="3"><circle cx="40" cy="40" r="17"/><circle cx="40" cy="95" r="17"/><circle cx="40" cy="150" r="17"/><circle cx="40" cy="205" r="17"/><circle cx="200" cy="60" r="20"/><circle cx="200" cy="115" r="20"/><circle cx="200" cy="170" r="20"/><circle cx="330" cy="60" r="18"/><circle cx="330" cy="115" r="18"/><circle cx="330" cy="170" r="18"/></g><g stroke="currentColor" stroke-width="3"><line x1="220" y1="60" x2="312" y2="60"/><line x1="220" y1="115" x2="312" y2="115"/><line x1="220" y1="170" x2="312" y2="170"/></g><text x="210" y="220" font-size="16">weight mask M ⊙ W</text></svg></section>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 3, reconstructed.</strong> Dropout masks activations; DropConnect masks weight connections. Dashed lines and X marks preserve that source distinction.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C085 */}
+<SourceFormula formula={part3Formula('MAI-P3-058')} part={3} display={true} />
+
+
+{/* source-content:P3-C086 */}
+<SourceFormula formula={part3Formula('MAI-P3-059')} part={3} display={true} />
+
+
+{/* source-content:P3-C087 */}
+Equation (6) defines layer l's weight matrix, but every source entry remains `??`.
+
+
+{/* source-content:P3-C088 */}
+<SourceFormula formula={part3Formula('MAI-P3-060')} part={3} display={true} />
+
+
+{/* source-content:P3-C089 */}
+Previous activations are <SourceFormula formula={part3Formula('MAI-P3-061')} part={3} display={false} />, bias <SourceFormula formula={part3Formula('MAI-P3-062')} part={3} display={false} />, and net input <SourceFormula formula={part3Formula('MAI-P3-063')} part={3} display={false} />. The source writes node indices as <SourceFormula formula={part3Formula('MAI-P3-064')} part={3} display={false} /> and inputs as <SourceFormula formula={part3Formula('MAI-P3-065')} part={3} display={false} />.
+
+
+{/* source-content:P3-C090 */}
+To classify N_p patterns together, collect their vectors as columns.
+
+
+{/* source-content:P3-C091 */}
+<SourceFormula formula={part3Formula('MAI-P3-066')} part={3} display={true} />
+
+
+{/* source-content:P3-C092 */}
+Initial activation is <SourceFormula formula={part3Formula('MAI-P3-067')} part={3} display={false} />; the minibatch forward pass follows.
+
+
+{/* source-content:P3-C093 */}
+<SourceFormula formula={part3Formula('MAI-P3-068')} part={3} display={true} />
+
+
+{/* source-content:P3-C094 */}
+The source gives previous-activation shape <SourceFormula formula={part3Formula('MAI-P3-069')} part={3} display={false} /> and duplicated-bias matrix <SourceFormula formula={part3Formula('MAI-P3-070')} part={3} display={false} />. Each output column contains one pattern's output activations.
+
+
+{/* source-content:P3-C095 */}
+### Dropout and DropConnect
+
+
+{/* source-content:P3-C096 */}
+- Dropout drops activations.
+
+
+{/* source-content:P3-C097 */}
+- DropConnect drops weights, introduced as a generalization of dropout.
+
+
+{/* source-content:P3-C098 */}
+They mask different locations, as shown in source Figure 3 and its reconstruction.
+
+
+{/* source-content:P3-C099 */}
+## 3.3 Convolutional neural networks
+
+
+{/* source-content:P3-C100 */}
+### 3.3.1 Convolution as a core DNN operator
+
+
+{/* source-content:P3-C101 */}
+Continuous convolution reflects one function about the vertical axis, shifts it, and integrates the product of both functions.
+
+
+{/* source-content:P3-C102 */}
+<SourceFormula formula={part3Formula('MAI-P3-071')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-05 */}
+> **Lecture annotation — PDF p. 7**  
+> Handwritten additions mask part of the activation vector for dropout and multiply a mask into the weight matrix for DropConnect. The phrases **more samples**, **reduce complexity**, and **only training** are legible. The convolution introduction includes a kernel-flipping sketch.
+
+
+{/* source-content:P3-C103 */}
+Engineering often uses notation `f(t)*g(t)`. Discrete convolution has these equivalent definitions.
+
+
+{/* source-content:P3-C104 */}
+<SourceFormula formula={part3Formula('MAI-P3-072')} part={3} display={true} />
+
+
+{/* source-content:P3-C105 */}
+<SourceFormula formula={part3Formula('MAI-P3-073')} part={3} display={true} />
+
+
+{/* source-content:P3-C106 */}
+### 3.3.2 Two-dimensional convolution
+
+
+{/* source-content:P3-C107 */}
+The Kronecker impulse's sifting property expresses any 2D discrete signal as a sum of shifted impulses.
+
+
+{/* source-content:P3-C108 */}
+<SourceFormula formula={part3Formula('MAI-P3-074')} part={3} display={true} />
+
+
+{/* source-content:P3-C109 */}
+For linear shift-invariant systems, superposition sums responses to each shifted impulse.
+
+
+{/* source-content:P3-C110 */}
+<SourceFormula formula={part3Formula('MAI-P3-075')} part={3} display={true} />
+
+
+{/* source-content:P3-C111 */}
+Thus, a general 2D discrete-space LSI system's input–output relationship is a 2D convolution sum.
+
+
+{/* source-content:P3-C112 */}
+<SourceFormula formula={part3Formula('MAI-P3-076')} part={3} display={true} />
+
+
+{/* source-content:P3-C113 */}
+The source's boxed note: **An LSI system is fully specified by its impulse response.**
+
+
+{/* source-content:P3-C114 */}
+#### Computing 2D convolution
+
+
+{/* source-content:P3-C115 */}
+1. Flip h[k,l] about the origin to obtain <SourceFormula formula={part3Formula('MAI-P3-077')} part={3} display={false} />.
+
+
+{/* source-content:P3-C116 */}
+2. Shift it by m,n to obtain <SourceFormula formula={part3Formula('MAI-P3-078')} part={3} display={false} />.
+
+
+{/* source-content:P3-C117 */}
+3. Multiply the shifted kernel and f[k,l] elementwise.
+
+
+{/* source-content:P3-C118 */}
+4. Sum over every k,l.
+
+
+{/* source-content:P3-C119 */}
+5. Repeat for every output location m,n.
+
+
+{/* source-content:P3-C120 */}
+Paper mathematics permits infinite images, but computers handle finite-support images implicitly zero outside a rectangle. MATLAB `conv2` requires users to track the origin.
+
+
+{/* source-content:P3-C121 */}
+Full convolution of M₁×N₁ and M₂×N₂ images has size:
+
+
+{/* source-content:P3-C122 */}
+<SourceFormula formula={part3Formula('MAI-P3-079')} part={3} display={true} />
+
+
+{/* source-content:P3-C123 */}
+The option `conv2(..., "same")` discards boundary pixels to match the first input's size.
+
+
+{/* source-annotation:P3-ANN-06 */}
+> **Lecture annotation — PDF p. 8**  
+> The top sketches a flipped, shifted 1D kernel; the right side shows input/kernel grids and summation of products. The meaning of `flip` and weighted sums is clear, but some Korean explanations remain **uncertain to read**.
+
+
+{/* source-content:P3-C124 */}
+The first example calculates full convolution g from given h and f.
+
+
+{/* source-content:P3-C125 */}
+<SourceFormula formula={part3Formula('MAI-P3-080')} part={3} display={true} />
+
+
+{/* source-content:P3-C126 */}
+<SourceFormula formula={part3Formula('MAI-P3-081')} part={3} display={true} />
+
+
+{/* source-content:P3-C127 */}
+<SourceFormula formula={part3Formula('MAI-P3-082')} part={3} display={true} />
+
+
+{/* source-content:P3-C128 */}
+<SourceFormula formula={part3Formula('MAI-P3-083')} part={3} display={true} />
+
+
+{/* source-content:P3-C129 */}
+The second applies a 3×3 moving-average system to an infinite checkerboard.
+
+
+{/* source-content:P3-C130 */}
+<SourceFormula formula={part3Formula('MAI-P3-084')} part={3} display={true} />
+
+
+{/* source-content:P3-C131 */}
+<SourceFormula formula={part3Formula('MAI-P3-085')} part={3} display={true} />
+
+
+{/* source-content:P3-C132 */}
+The input alternates +1 and −1.
+
+
+{/* source-content:P3-C133 */}
+<SourceFormula formula={part3Formula('MAI-P3-086')} part={3} display={true} />
+
+
+{/* source-content:P3-C134 */}
+<SourceFormula formula={part3Formula('MAI-P3-087')} part={3} display={true} />
+
+
+{/* source-content:P3-C135 */}
+#### Computation and separability
+
+
+{/* source-content:P3-C136 */}
+The source approximates operation count for convolving N₁×M₁ and N₂×M₂ images as follows.
+
+
+{/* source-content:P3-C137 */}
+<SourceFormula formula={part3Formula('MAI-P3-088')} part={3} display={true} />
+
+
+{/* source-content:P3-C138 */}
+For N₁=M₁=N much larger than kernel size M, this is roughly <SourceFormula formula={part3Formula('MAI-P3-089')} part={3} display={false} />.
+
+
+{/* source-content:P3-C139 */}
+A separable kernel <SourceFormula formula={part3Formula('MAI-P3-090')} part={3} display={false} /> permits rearranging the double sum into two 1D convolutions.
+
+
+{/* source-content:P3-C140 */}
+<SourceFormula formula={part3Formula('MAI-P3-091')} part={3} display={true} />
+
+
+{/* source-content:P3-C141 */}
+- The inner sum <SourceFormula formula={part3Formula('MAI-P3-092')} part={3} display={false} /> applies h₂ along each column.
+
+
+{/* source-content:P3-C142 */}
+- The outer sum <SourceFormula formula={part3Formula('MAI-P3-093')} part={3} display={false} /> applies h₁ along each intermediate row.
+
+
+{/* source-content:P3-C143 */}
+For a large N×N image and small separable M×M kernel, cost is roughly <SourceFormula formula={part3Formula('MAI-P3-094')} part={3} display={false} />. The source states an approximately <SourceFormula formula={part3Formula('MAI-P3-095')} part={3} display={false} />-fold computational gain.
+
+
+{/* source-content:P3-C144 */}
+Since M is usually at least three, the source asks for the minimum reduction as <SourceFormula formula={part3Formula('MAI-P3-096')} part={3} display={false} /> and leaves it blank.
+
+
+{/* source-content:P3-C145 */}
+### 3.3.3 A global matrix representation of convolution
+
+
+{/* source-content:P3-C146 */}
+Begin with 1D convolution for simplicity.
+
+
+{/* source-content:P3-C147 */}
+<SourceFormula formula={part3Formula('MAI-P3-097')} part={3} display={true} />
+
+
+{/* source-content:P3-C148 */}
+The aim is to express a DSP relationship as matrix–vector multiplication.
+
+
+{/* source-content:P3-C149 */}
+<SourceFormula formula={part3Formula('MAI-P3-098')} part={3} display={true} />
+
+
+{/* source-content:P3-C150 */}
+For N≥M, a footnote says carefully implemented convolution of N- and M-point signals requires <SourceFormula formula={part3Formula('MAI-P3-099')} part={3} display={false} /> and nearly as many additions.
+
+
+{/* source-annotation:P3-ANN-07 */}
+> **Lecture annotation — PDF p. 9**  
+> Above the first example is a handwritten 180°-rotated kernel `[[3,2,1],[6,4,2]]`, with calculated entries in part of the output grid. **Factorization / outer product** appears beside separability, and lower notes connect periodic convolution with Fourier transforms. Some overlapping frequency-domain expressions remain **uncertain to read**.
+
+
+{/* source-figure:P3-FIG-05 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 lg:grid-cols-3">
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">Zero</h4><pre class="overflow-x-auto text-xs">4 2 0 0 0 0
+1 4 2 0 0 0
+0 1 4 2 0 0
+0 0 1 4 2 0
+0 0 0 1 4 2
+0 0 0 0 1 4</pre></section>
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">Extended</h4><pre class="overflow-x-auto text-xs">1 4 2 0 0 0 0 0
+0 1 4 2 0 0 0 0
+0 0 1 4 2 0 0 0
+0 0 0 1 4 2 0 0
+0 0 0 0 1 4 2 0
+0 0 0 0 0 1 4 2</pre></section>
+    <section class="rounded-xl border border-border/70 p-4"><h4 class="mt-0">Periodic</h4><pre class="overflow-x-auto text-xs">4 2 0 0 0 1
+1 4 2 0 0 0
+0 1 4 2 0 0
+0 0 1 4 2 0
+0 0 0 1 4 2
+2 0 0 0 1 4</pre></section>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 4, reconstructed.</strong> For h[n]={2,4,1} and N=6, preserve every number showing how zero, extended, and periodic boundaries change the system matrix.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C151 */}
+<SourceFormula formula={part3Formula('MAI-P3-100')} part={3} display={true} />
+
+
+{/* source-content:P3-C152 */}
+<SourceFormula formula={part3Formula('MAI-P3-101')} part={3} display={true} />
+
+
+{/* source-content:P3-C153 */}
+<SourceFormula formula={part3Formula('MAI-P3-102')} part={3} display={true} />
+
+
+{/* source-content:P3-C154 */}
+<SourceFormula formula={part3Formula('MAI-P3-103')} part={3} display={true} />
+
+
+{/* source-content:P3-C155 */}
+Vectors y and x have finite column length, and h[n] determines A. Although mathematical convolution allows arbitrary indices, finite storage requires choosing A and x according to boundary conditions.
+
+
+{/* source-content:P3-C156 */}
+In every case, vectorize measurements g[n] as follows.
+
+
+{/* source-content:P3-C157 */}
+<SourceFormula formula={part3Formula('MAI-P3-104')} part={3} display={true} />
+
+
+{/* source-content:P3-C158 */}
+Matrix indices start at one and signal indices at zero, giving <SourceFormula formula={part3Formula('MAI-P3-105')} part={3} display={false} />. Define noise vectors similarly.
+
+
+{/* source-content:P3-C159 */}
+The example's three-point impulse response is:
+
+
+{/* source-content:P3-C160 */}
+<SourceFormula formula={part3Formula('MAI-P3-106')} part={3} display={true} />
+
+
+{/* source-content:P3-C161 */}
+The Kronecker impulse is this piecewise function.
+
+
+{/* source-content:P3-C162 */}
+<SourceFormula formula={part3Formula('MAI-P3-107')} part={3} display={true} />
+
+
+{/* source-content:P3-C163 */}
+#### Zero boundary conditions
+
+
+{/* source-content:P3-C164 */}
+The simplest model assumes <SourceFormula formula={part3Formula('MAI-P3-108')} part={3} display={false} /> and restricts convolution to <SourceFormula formula={part3Formula('MAI-P3-109')} part={3} display={false} />. This is also called a Dirichlet boundary condition.
+
+
+{/* source-content:P3-C165 */}
+<SourceFormula formula={part3Formula('MAI-P3-110')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-08 */}
+> **Lecture annotation — PDF p. 10**  
+> Handwriting above the matrices contrasts zero, extended, and periodic boundaries and marks circular boundaries. Some numbers match the source matrix, but most overlapping prose remains **uncertain to read**.
+
+
+{/* source-content:P3-C166 */}
+Equation (10)'s N×N A is Toeplitz, constant along each diagonal. The source cites references [1,2] for relatively fast algorithms handling these matrices.
+
+
+{/* source-content:P3-C167 */}
+<SourceFormula formula={part3Formula('MAI-P3-111')} part={3} display={true} />
+
+
+{/* source-content:P3-C168 */}
+For shift-invariant problems, pass h and f to a convolution routine rather than storing A explicitly. Matrix notation remains useful for analysis.
+
+
+{/* source-content:P3-C169 */}
+For shift-variant problems, A may be stored explicitly, with sparse representations efficient when h has few nonzero entries.
+
+
+{/* source-content:P3-C170 */}
+#### Extended boundary conditions
+
+
+{/* source-content:P3-C171 */}
+In optical imaging, PSF spreading lets scenes outside the measured field of view affect observations. Zero boundaries can be unrealistic; regularization or constraints may recover parts of an object vector longer than the measurement vector.
+
+
+{/* source-content:P3-C172 */}
+<SourceFormula formula={part3Formula('MAI-P3-112')} part={3} display={true} />
+
+
+{/* source-content:P3-C173 */}
+A has shape <SourceFormula formula={part3Formula('MAI-P3-113')} part={3} display={false} />, with L=3 here. The author considers extended boundaries the most realistic choice for many restoration problems when feasible.
+
+
+{/* source-content:P3-C174 */}
+MATLAB note: for row vector <SourceFormula formula={part3Formula('MAI-P3-114')} part={3} display={false} />, `convmtx(fliplr(b), N)` constructs this A. It relates to the `valid` option of 2D `conv2`.
+
+
+{/* source-content:P3-C175 */}
+#### Periodic boundary conditions
+
+
+{/* source-content:P3-C176 */}
+Another choice assumes <SourceFormula formula={part3Formula('MAI-P3-115')} part={3} display={false} />. Though rarely exact for real images, it is useful in frequency-domain analysis.
+
+
+{/* source-content:P3-C177 */}
+<SourceFormula formula={part3Formula('MAI-P3-116')} part={3} display={true} />
+
+
+{/* source-content:P3-C178 */}
+The periodically overlapped and summed impulse response is equation (12).
+
+
+{/* source-content:P3-C179 */}
+<SourceFormula formula={part3Formula('MAI-P3-117')} part={3} display={true} />
+
+
+{/* source-content:P3-C180 */}
+The footnote defines modulo and floor as follows.
+
+
+{/* source-content:P3-C181 */}
+<SourceFormula formula={part3Formula('MAI-P3-118')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-09 */}
+> **Lecture annotation — PDF p. 11**  
+> Marks around Toeplitz, extended, and periodic boundaries connect Fourier analysis and circulant structure. Complete sentences cannot be reliably transcribed and remain **uncertain to read**.
+
+
+{/* source-content:P3-C182 */}
+Assuming the blur kernel vanishes for |n|≥N simplifies equation (12) as follows.
+
+
+{/* source-content:P3-C183 */}
+<SourceFormula formula={part3Formula('MAI-P3-119')} part={3} display={true} />
+
+
+{/* source-content:P3-C184 */}
+Circular convolution's N×N system matrix is circulant, as in equation (13).
+
+
+{/* source-content:P3-C185 */}
+<SourceFormula formula={part3Formula('MAI-P3-120')} part={3} display={true} />
+
+
+{/* source-content:P3-C186 */}
+Its entries satisfy <SourceFormula formula={part3Formula('MAI-P3-121')} part={3} display={false} />, described as an approximation of Toeplitz form.
+
+
+{/* source-content:P3-C187 */}
+#### Mirror conditions
+
+
+{/* source-content:P3-C188 */}
+The source prints reflective boundaries as `Nuemann boundary conditions`. The usual term is **Neumann boundary conditions**: mirror the signal at both boundaries.
+
+
+{/* source-content:P3-C189 */}
+<SourceFormula formula={part3Formula('MAI-P3-122')} part={3} display={true} />
+
+
+{/* source-content:P3-C190 */}
+#### 2D matrix-vector representations
+
+
+{/* source-content:P3-C191 */}
+The principle extends to 2D and higher dimensions. A becomes more complicated, but both 1D and 2D retain matrix–vector form <SourceFormula formula={part3Formula('MAI-P3-123')} part={3} display={false} />.
+
+
+{/* source-content:P3-C192 */}
+### 3.3.4 Local or patch-based convolution representation
+
+
+{/* source-content:P3-C193 */}
+Input f includes padding and has size <SourceFormula formula={part3Formula('MAI-P3-124')} part={3} display={false} />. Output g has the unpadded input's pixel count, <SourceFormula formula={part3Formula('MAI-P3-125')} part={3} display={false} />.
+
+
+{/* source-content:P3-C194 */}
+Define the P-location neighborhood of pixel s as window W(s).
+
+
+{/* source-content:P3-C195 */}
+<SourceFormula formula={part3Formula('MAI-P3-126')} part={3} display={true} />
+
+
+{/* source-content:P3-C196 */}
+Here, <SourceFormula formula={part3Formula('MAI-P3-127')} part={3} display={false} /> denotes an index neighbor.
+
+
+{/* source-content:P3-C197 */}
+The text defines z_s as a column of f's window pixels, but its printed expression uses y. That source notation is preserved.
+
+
+{/* source-content:P3-C198 */}
+<SourceFormula formula={part3Formula('MAI-P3-128')} part={3} display={true} />
+
+
+{/* source-content:P3-C199 */}
+The column h collects filter parameters.
+
+
+{/* source-content:P3-C200 */}
+<SourceFormula formula={part3Formula('MAI-P3-129')} part={3} display={true} />
+
+
+{/* source-content:P3-C201 */}
+Interior pixels are defined by <SourceFormula formula={part3Formula('MAI-P3-130')} part={3} display={false} />, <SourceFormula formula={part3Formula('MAI-P3-131')} part={3} display={false} />, and <SourceFormula formula={part3Formula('MAI-P3-132')} part={3} display={false} />.
+
+
+{/* source-content:P3-C202 */}
+Stacking patches as rows gives design matrix Z.
+
+
+{/* source-content:P3-C203 */}
+<SourceFormula formula={part3Formula('MAI-P3-133')} part={3} display={true} />
+
+
+{/* source-annotation:P3-ANN-10 */}
+> **Lecture annotation — PDF p. 12**  
+> The top sketches FCN weight shapes, the middle compares zero/circular system matrices, and the bottom shows **patch extraction → dot product**: flatten an image patch and dot it with a filter for one output. Some blue Korean notes remain **uncertain to read**.
+
+
+{/* source-content:P3-C204 */}
+The source's stacked output vector contains an isolated x before its last entry.
+
+
+{/* source-content:P3-C205 */}
+<SourceFormula formula={part3Formula('MAI-P3-134')} part={3} display={true} />
+
+
+{/* source-content:P3-C206 */}
+It then states <SourceFormula formula={part3Formula('MAI-P3-135')} part={3} display={false} /> and summarizes patch convolution in one line.
+
+
+{/* source-content:P3-C207 */}
+<SourceFormula formula={part3Formula('MAI-P3-136')} part={3} display={true} />
+
+
+{/* source-content:P3-C208 */}
+## 3.4 Core DNN modules
+
+
+{/* source-content:P3-C209 */}
+DNNs chain or repeat operators. The lecture recommends assembling networks from these layers in PyTorch's `torch.nn` documentation.
+
+
+{/* source-content:P3-C210 */}
+- `nn.Linear`: fully connected networks or MLPs.
+
+
+{/* source-content:P3-C211 */}
+- `nn.Conv2d`: CNNs; `out_channels` and `kernel_size` control feature count and filter size.
+
+
+{/* source-content:P3-C212 */}
+- `nn.ConvTranspose2d`: upsampling through transposed convolution.
+
+
+{/* source-content:P3-C213 */}
+- `nn.ReLU`: interlayer nonlinearity through <SourceFormula formula={part3Formula('MAI-P3-137')} part={3} display={false} />.
+
+
+{/* source-content:P3-C214 */}
+- `nn.MaxPool2d` and `nn.AvgPool2d`: two pooling types.
+
+
+{/* source-content:P3-C215 */}
+- `nn.Upsample`: interpolation-based activation-map enlargement, common in U-Net.
+
+
+{/* source-content:P3-C216 */}
+- `nn.Dropout`: reducing overfitting.
+
+
+{/* source-content:P3-C217 */}
+### PyTorch convolution
+
+
+{/* source-content:P3-C218 */}
+The source includes API-signature screenshots for `Conv1d`, `Conv2d`, and `Conv3d`. Its example settings follow.
+
+
+{/* source-content:P3-C292 */}
+The screenshots each show `[SOURCE]` at right for documentation links. Visible signatures are transcribed below, but absent active URI annotations prevent reliable destination recovery.
+
+
+{/* source-content:P3-C293 */}
+- `torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)`
+
+
+{/* source-content:P3-C294 */}
+- `torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)`
+
+
+{/* source-content:P3-C295 */}
+- `torch.nn.Conv3d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)`
+
+
+{/* source-content:P3-C219 */}
+<SourceFormula formula={part3Formula('MAI-P3-138')} part={3} display={true} />
+
+
+{/* source-figure:P3-FIG-06 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 980 390" role="img" aria-label="A reconstructed Conv2d diagram with 64 input channels, 64 filters of size 3×3×64, 64 output channels, and stride-one movement" class="w-full">
+    <defs>
+      <marker id="p3-conv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" /></marker>
+    </defs>
+    <g fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="55" y="82" width="220" height="190" rx="10" />
+      <rect x="70" y="67" width="220" height="190" rx="10" opacity=".62" />
+      <rect x="85" y="52" width="220" height="190" rx="10" opacity=".34" />
+      <rect x="390" y="108" width="92" height="92" rx="8" stroke-width="3" />
+      <path d="M421 108 V200 M451 108 V200 M390 139 H482 M390 169 H482" opacity=".58" />
+      <rect x="675" y="82" width="220" height="190" rx="10" />
+      <rect x="690" y="67" width="220" height="190" rx="10" opacity=".62" />
+      <rect x="705" y="52" width="220" height="190" rx="10" opacity=".34" />
+      <path d="M320 150 H370" marker-end="url(#p3-conv-arrow)" />
+      <path d="M500 150 H650" marker-end="url(#p3-conv-arrow)" />
+      <rect x="105" y="92" width="70" height="70" rx="5" stroke-width="4" />
+      <rect x="735" y="92" width="18" height="18" rx="3" stroke-width="4" />
+      <path d="M140 290 H735" stroke-dasharray="8 7" opacity=".55" />
+      <rect x="145" y="315" width="220" height="48" rx="8" />
+      <rect x="175" y="323" width="62" height="32" rx="4" stroke-width="4" />
+      <path d="M385 339 H565" marker-end="url(#p3-conv-arrow)" />
+      <rect x="585" y="315" width="220" height="48" rx="8" />
+      <rect x="625" y="323" width="62" height="32" rx="4" stroke-width="4" />
+    </g>
+    <g fill="currentColor" font-size="20" text-anchor="middle">
+      <text x="180" y="35" font-weight="700">Input feature volume</text>
+      <text x="180" y="297">64 input channels</text>
+      <text x="436" y="84" font-weight="700">one 3×3×64 filter</text>
+      <text x="436" y="229">64 filters → 64 outputs</text>
+      <text x="800" y="35" font-weight="700">Output feature volume</text>
+      <text x="800" y="297">padding 1 · stride 1</text>
+      <text x="475" y="305" font-weight="700">same filter, next spatial position</text>
+      <text x="255" y="382">Step 1</text><text x="695" y="382">Step 2 · shift by one cell</text>
+    </g>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF pp. 13–14, reconstructed.</strong> Each output channel dots 64 input channels against 64 3×3 slices; 64 filters produce 64 output channels. The Step 1–2 diagram also preserves movement by one spatial position with padding one and stride one.</figcaption>
+</figure>
+
+
+{/* source-annotation:P3-ANN-11 */}
+> **Lecture annotation — PDF p. 13**  
+> **Read by myself** appears beside core modules. Arrows connect `ConvTranspose2d` with kernel flipping, and notes point to ReLU and layers; some remain **uncertain to read**.
+
+
+{/* source-content:P3-C220 */}
+Step 2 on PDF p. 14 continues the same 3×3 filter at the next spatial position, filling an output voxel.
+
+
+{/* source-content:P3-C221 */}
+### 3.4.1 PyTorch max pooling
+
+
+{/* source-content:P3-C222 */}
+The source shows `MaxPool1d`, `MaxPool2d`, and `MaxPool3d` signatures, then calculates a 2D example in stages with these settings.
+
+
+{/* source-content:P3-C296 */}
+Each MaxPool screenshot also shows `[SOURCE]` at right. The visible signatures follow; only their displayed text is recorded because link URIs are absent.
+
+
+{/* source-content:P3-C297 */}
+- `torch.nn.MaxPool1d(kernel_size, stride=None, padding=0, dilation=1, return_indices=False, ceil_mode=False)`
+
+
+{/* source-content:P3-C298 */}
+- `torch.nn.MaxPool2d(kernel_size, stride=None, padding=0, dilation=1, return_indices=False, ceil_mode=False)`
+
+
+{/* source-content:P3-C299 */}
+- `torch.nn.MaxPool3d(kernel_size, stride=None, padding=0, dilation=1, return_indices=False, ceil_mode=False)`
+
+
+{/* source-content:P3-C223 */}
+<SourceFormula formula={part3Formula('MAI-P3-139')} part={3} display={false} />
+
+
+{/* source-figure:P3-FIG-07 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="overflow-x-auto">
+    <div class="grid min-w-[720px] grid-cols-[1fr_auto_1fr] items-center gap-6">
+      <section>
+  <h4 class="mt-0">Padded input</h4>
+  <pre class="rounded-xl border border-border bg-background p-4 text-sm">{`0 0 0 0 0 0 0
+0 1 3 2 3 3 0
+0 3 1 2 1 1 0
+0 3 3 3 1 2 0
+0 2 2 1 2 1 0
+0 2 3 2 1 2 0
+0 0 0 0 0 0 0`}</pre>
+</section>
+      <div class="text-center"><p class="font-black">3×3 window</p><p>stride 2</p><p>padding 1</p><p class="text-3xl">→</p></div>
+      <section>
+  <h4 class="mt-0">Source-visible progress</h4>
+  <pre class="rounded-xl border border-border bg-background p-4 text-sm">{`Step 1: 3 · ·
+        · · ·
+        · · ·
+
+Step 2: 3 3 ·
+        · · ·
+        · · ·`}</pre>
+</section>
+    </div>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF pp. 14–15, reconstructed.</strong> The source pads a 5×5 input by one cell to 7×7, then uses a 3×3 window and stride two. It fills only the first two output cells and leaves the rest blank.</figcaption>
+</figure>
+
+
+{/* source-content:P3-C224 */}
+<SourceFormula formula={part3Formula('MAI-P3-140')} part={3} display={true} />
+
+
+{/* source-content:P3-C225 */}
+## References in the lecture material
+
+
+{/* source-content:P3-C226 */}
+1. R. H.-F. Chan and X.-Q. Jin, *An Introduction to Iterative Toeplitz Solvers*. Society for Industrial and Applied Mathematics, 2007.
+
+
+{/* source-content:P3-C227 */}
+2. W. H. Press, S. A. Teukolsky, W. T. Vetterling, and B. P. Flannery, *Numerical Recipes in C*, 2nd ed., Cambridge, U.K., 1992.
+
+
+{/* source-content:P3-C228 */}
+3. P. C. Hansen, J. G. Nagy, and D. P. O’Leary, *Deblurring Images: Matrices, Spectra, and Filtering*. SIAM, 2006, vol. 3.
+
+
+{/* source-content:P3-C229 */}
+4. I. Y. Chun and J. A. Fessler, “Convolutional dictionary learning: Acceleration and convergence,” *IEEE Transactions on Image Processing*, 27(4), 1697–1712, 2018, DOI 10.1109/TIP.2017.2761545.
+
+
+{/* source-content:P3-C230 */}
+5. I. Y. Chun and J. A. Fessler, “Convolutional analysis operator learning: Acceleration and convergence,” *IEEE Transactions on Image Processing*, 29, 2108–2122, 2020, DOI 10.1109/TIP.2019.2937734.
+
+
+{/* source-content:P3-C231 */}
+The PDF shows `this link`, `Wiki`, and PyTorch documentation references, but not every URI can be recovered reliably. Visible source labels are preserved without inventing destinations.
+
+
+# Editorial and mathematical audit
+
+
+{/* source-content:P3-C232 */}
+## Completing the general line equation
+
+
+{/* source-content:P3-C233 */}
+Set x₁=x and x₂=y and move all terms to one side to complete `?` on PDF p. 1.
+
+
+{/* source-content:P3-C234 */}
+<SourceFormula formula={part3Formula('MAI-P3-141')} part={3} display={true} />
+
+
+{/* source-content:P3-C235 */}
+## Absolute value in origin-to-hyperplane distance
+
+
+{/* source-content:P3-C236 */}
+The source's b/‖w‖₂ can be signed. Geometric distance requires its absolute value.
+
+
+{/* source-content:P3-C237 */}
+<SourceFormula formula={part3Formula('MAI-P3-142')} part={3} display={true} />
+
+
+{/* source-content:P3-C238 */}
+## Absolute value in point-to-hyperplane distance
+
+
+{/* source-content:P3-C239 */}
+g(x)/‖w‖₂ is signed distance; geometric distance is |g(x)|/‖w‖₂.
+
+
+{/* source-content:P3-C240 */}
+<SourceFormula formula={part3Formula('MAI-P3-143')} part={3} display={true} />
+
+
+{/* source-content:P3-C241 */}
+## Completing the perceptron w gradient
+
+
+{/* source-content:P3-C242 */}
+Differentiating equation (1) with respect to w gives the negative sum of yₘxₘ.
+
+
+{/* source-content:P3-C243 */}
+<SourceFormula formula={part3Formula('MAI-P3-144')} part={3} display={true} />
+
+
+{/* source-content:P3-C244 */}
+## Completing the perceptron b gradient
+
+
+{/* source-content:P3-C245 */}
+Differentiating equation (1) with respect to b gives the negative label sum.
+
+
+{/* source-content:P3-C246 */}
+<SourceFormula formula={part3Formula('MAI-P3-145')} part={3} display={true} />
+
+
+{/* source-content:P3-C247 */}
+## Completing the MSE gradient
+
+
+{/* source-content:P3-C248 */}
+Apply the chain rule to half the squared residual.
+
+
+{/* source-content:P3-C249 */}
+<SourceFormula formula={part3Formula('MAI-P3-146')} part={3} display={true} />
+
+
+{/* source-content:P3-C250 */}
+## A data-dependent learning-rate correction
+
+
+{/* source-content:P3-C251 */}
+A fixed `0 < α < 2` alone cannot guarantee general MSE convergence. The largest Hessian eigenvalue determines the upper bound.
+
+
+{/* source-content:P3-C252 */}
+<SourceFormula formula={part3Formula('MAI-P3-147')} part={3} display={true} />
+
+
+{/* source-content:P3-C253 */}
+## Completing XOR's two-line boundary
+
+
+{/* source-content:P3-C254 */}
+Separate points between two parallel lines from those outside using x₁+x₂ to match the source classes.
+
+
+{/* source-content:P3-C255 */}
+<SourceFormula formula={part3Formula('MAI-P3-148')} part={3} display={true} />
+
+
+{/* source-content:P3-C256 */}
+## Minimum units for XOR
+
+
+{/* source-content:P3-C257 */}
+A standard threshold network uses two hidden units and one output unit.
+
+
+{/* source-content:P3-C258 */}
+<SourceFormula formula={part3Formula('MAI-P3-149')} part={3} display={true} />
+
+
+{/* source-content:P3-C259 */}
+## Completing weight-matrix equation (6)
+
+
+{/* source-content:P3-C260 */}
+Rows correspond to current-layer neurons and columns to previous-layer activations.
+
+
+{/* source-content:P3-C261 */}
+<SourceFormula formula={part3Formula('MAI-P3-150')} part={3} display={true} />
+
+
+{/* source-content:P3-C262 */}
+## Correcting scalar forward-pass indices
+
+
+{/* source-content:P3-C263 */}
+Use `N_l` for current-layer width and `N_{l−1}` for previous-layer width.
+
+
+{/* source-content:P3-C264 */}
+<SourceFormula formula={part3Formula('MAI-P3-151')} part={3} display={true} />
+
+
+{/* source-content:P3-C265 */}
+## Correcting vector forward-pass dimensions
+
+
+{/* source-content:P3-C266 */}
+Activations, net inputs, and biases all have current-layer width N_l.
+
+
+{/* source-content:P3-C267 */}
+<SourceFormula formula={part3Formula('MAI-P3-152')} part={3} display={true} />
+
+
+{/* source-content:P3-C268 */}
+## Correcting batch forward-pass dimensions
+
+
+{/* source-content:P3-C269 */}
+Separate minibatch column count N_p from current-layer width N_l.
+
+
+{/* source-content:P3-C270 */}
+<SourceFormula formula={part3Formula('MAI-P3-153')} part={3} display={true} />
+
+
+{/* source-content:P3-C271 */}
+## Completing the flipped 2D kernel
+
+
+{/* source-content:P3-C272 */}
+Mathematical 2D convolution rotates the kernel 180° about the origin.
+
+
+{/* source-content:P3-C273 */}
+<SourceFormula formula={part3Formula('MAI-P3-154')} part={3} display={true} />
+
+
+{/* source-content:P3-C274 */}
+## Completing the full 2D convolution grid
+
+
+{/* source-content:P3-C275 */}
+Sum overlapping-entry products at every position to obtain the 5×7 full output.
+
+
+{/* source-content:P3-C276 */}
+<SourceFormula formula={part3Formula('MAI-P3-155')} part={3} display={true} />
+
+
+{/* source-content:P3-C277 */}
+## Checkerboard response to a moving average
+
+
+{/* source-content:P3-C278 */}
+A 3×3 window contains five matching and four opposite signs, leaving one ninth of the original sign.
+
+
+{/* source-content:P3-C279 */}
+<SourceFormula formula={part3Formula('MAI-P3-156')} part={3} display={true} />
+
+
+{/* source-content:P3-C280 */}
+## Reduction from separable convolution
+
+
+{/* source-content:P3-C281 */}
+Replacing M² operations by 2M gives reduction fraction 1−2/M.
+
+
+{/* source-content:P3-C282 */}
+<SourceFormula formula={part3Formula('MAI-P3-157')} part={3} display={true} />
+
+
+{/* source-content:P3-C283 */}
+## Correcting f/y in the patch vector
+
+
+{/* source-content:P3-C284 */}
+This variant changes y_W(s) to f_W(s), matching the surrounding definition.
+
+
+{/* source-content:P3-C285 */}
+<SourceFormula formula={part3Formula('MAI-P3-158')} part={3} display={true} />
+
+
+{/* source-content:P3-C286 */}
+## Correcting the output vector's last entry
+
+
+{/* source-content:P3-C287 */}
+Remove the isolated x and use one consistent s-index rule throughout.
+
+
+{/* source-content:P3-C288 */}
+<SourceFormula formula={part3Formula('MAI-P3-159')} part={3} display={true} />
+
+
+{/* source-content:P3-C289 */}
+## Completing the 3×3 MaxPool output grid
+
+
+{/* source-content:P3-C290 */}
+Calculate source-blank cells with the same window, stride, and padding rules.
+
+
+{/* source-content:P3-C291 */}
+<SourceFormula formula={part3Formula('MAI-P3-160')} part={3} display={true} />
+
+
+{/* source-content:P3-C300 */}
+## Nonnegativity of MSE loss
+
+
+{/* source-content:P3-C301 */}
+The source calls squared-sum loss always positive, but exact fitting permits zero; nonnegative is precise.
+
+
+{/* source-content:P3-C302 */}
+<SourceFormula formula={part3Formula('MAI-P3-161')} part={3} display={true} />
+
+
+{/* source-content:P3-C303 */}
+## Including zero margin in the error set
+
+
+{/* source-content:P3-C304 */}
+With labels ±1, g(x)=0 produces sign output zero and is not correct classification. A companion variant extends the initial strict `<0` to `≤0`.
+
+
+{/* source-content:P3-C305 */}
+<SourceFormula formula={part3Formula('MAI-P3-162')} part={3} display={true} />
+
+
+{/* source-content:P3-C306 */}
+## Including zero margin in each iteration's error set
+
+
+{/* source-content:P3-C307 */}
+For the same reason, iteration-specific error sets should include zero-margin patterns.
+
+
+{/* source-content:P3-C308 */}
+<SourceFormula formula={part3Formula('MAI-P3-163')} part={3} display={true} />
+
+
+---
+
+# Research update: August 18, 2026
+
+> This is not PDF source material. It extends the perceptron, MLP, CNN, and convolution topics through peer-reviewed papers, proceedings, and official implementation documents available by August 18, 2026, without rewriting source claims retroactively.
+
+## 1. Activation and normalization extend far beyond ReLU alone
+
+The lectures introduce sign and ReLU. Practice now includes **GELU, SiLU/Swish, gated and task-specific activations**, while normalization choices include LayerNorm, RMSNorm, GroupNorm, and Global Response Normalization (GRN), selected for architecture and batch regime.
+
+- **BatchNorm — ICML 2015, peer-reviewed:** a foundational method stabilizing training through minibatch statistics. [PMLR paper](https://proceedings.mlr.press/v37/ioffe15.html)
+- **RMSNorm — NeurIPS 2019, peer-reviewed:** removes recentering and normalizes by root mean square, simplifying LayerNorm computation. [Official proceedings](https://proceedings.neurips.cc/paper/2019/hash/1e8a19426224ca89e83cef47f1e7f53b-Abstract.html)
+- **ConvNeXt V2 — CVPR 2023, peer-reviewed:** jointly designs a fully convolutional masked autoencoder and GRN to strengthen interchannel feature competition. [CVF paper](https://openaccess.thecvf.com/content/CVPR2023/html/Woo_ConvNeXt_V2_Co-Designing_and_Scaling_ConvNets_With_Masked_Autoencoders_CVPR_2023_paper.html)
+- **Transformers without Normalization — CVPR 2025, peer-reviewed:** Dynamic Tanh replaces normalization with an elementwise tanh mapping, reporting comparable or better results in several vision/language settings. This challenges universal necessity claims without providing a universal removal method for all CNNs and MLPs. [CVF paper](https://openaccess.thecvf.com/content/CVPR2025/html/Zhu_Transformers_without_Normalization_CVPR_2025_paper.html)
+- **Dynamic Group Normalization — CVPR 2025, peer-reviewed:** adapts channel groups during training according to statistics rather than fixing them. [CVF paper](https://openaccess.thecvf.com/content/CVPR2025/html/Smadar_Dynamic_Group_Normalization_Spatio-Temporal_Adaptation_to_Evolving_Data_Statistics_CVPR_2025_paper.html)
+- **Stronger Normalization-Free Transformers — CVPR 2026, peer-reviewed:** systematically compares pointwise stabilizing functions after DyT, expanding normalization-free design beyond one tanh alternative. [CVF paper](https://openaccess.thecvf.com/content/CVPR2026/html/Chen_Stronger_Normalization-Free_Transformers_CVPR_2026_paper.html)
+- **AcTTA — CVPR 2026, peer-reviewed:** adapts ReLU/GELU thresholds and gradient sensitivity at test time rather than relying only on normalization affine parameters, making activations themselves targets of shift adaptation. [CVF paper](https://openaccess.thecvf.com/content/CVPR2026/html/Kim_AcTTA_Rethinking_Test-Time_Adaptation_via_Dynamic_Activation_CVPR_2026_paper.html)
+
+Evaluate activation and normalization together with **gradient scale, residual paths, batch size, pretraining objectives, and hardware kernels**, rather than as isolated decorations.
+
+## 2. CNN versus Transformer: combining biases and recipes rather than declaring an intrinsically superior operator
+
+- **ConvNeXt — CVPR 2022, peer-reviewed:** progressively modernizes ResNet with Transformer-era training and blocks, showing pure ConvNets can compete with Swin-family models. [CVF paper](https://openaccess.thecvf.com/content/CVPR2022/html/Liu_A_ConvNet_for_the_2020s_CVPR_2022_paper.html)
+- **ConvNeXt V2 — CVPR 2023:** demonstrates joint architecture and self-supervised-pretraining design rather than separate optimization.
+- **ShiftwiseConv — CVPR 2025, peer-reviewed:** decomposes large-kernel benefits into feature granularity and multipath fusion, building long-range sparse dependencies with small 3×3 kernels. [CVF paper](https://openaccess.thecvf.com/content/CVPR2025/html/Li_ShiftwiseConv_Small_Convolutional_Kernel_with_Large_Kernel_Effect_CVPR_2025_paper.html)
+- **MobileNetV4 — ECCV 2024, peer-reviewed:** integrates inverted bottlenecks, ConvNeXt, FFNs, and extra depthwise designs in one Universal Inverted Bottleneck search block and evaluates accelerator-aware attention. [ECVA paper](https://www.ecva.net/papers/eccv_2024/papers_ECCV/html/5647_ECCV_2024_paper.php)
+- **ConvNeur — CVPR 2026, peer-reviewed:** separates global reasoning and locality-preserving representations into gated branches, treating CNNs and attention as complementary roles. [CVF paper](https://openaccess.thecvf.com/content/CVPR2026/html/Yang_Efficiency_Follows_Global-Local_Decoupling_CVPR_2026_paper.html)
+
+Comparisons require matched **throughput, latency, memory bandwidth, accelerator mapping, detection/segmentation transfer, pretraining data, and recipes**, beyond parameter counts or ImageNet top-1 alone.
+
+## 3. Gradient descent selects more than just any minimum: implicit bias and feature learning
+
+Perceptron updates specify a rule, but overparameterized networks admit many equal-training-loss solutions. Selection depends on optimizer, initialization, parameterization, batch size, and weight decay.
+
+- **Soudry et al. — JMLR 2018, peer-reviewed:** prove max-margin implicit bias: gradient-descent directions converge to the hard-margin SVM solution in separable logistic regression. [JMLR paper](https://www.jmlr.org/papers/v19/18-188.html)
+- **Tensor Programs IV — ICML 2021, peer-reviewed:** gives parameterization-dependent conditions retaining feature learning rather than a kernel regime at infinite width. [PMLR paper](https://proceedings.mlr.press/v139/yang21c.html)
+- **Critical feature learning — ICML 2024, peer-reviewed:** analyzes wide-network feature-learning regimes through scaling. [PMLR paper](https://proceedings.mlr.press/v235/bordelon24a.html)
+- **SGD with Weight Decay Secretly Minimizes the Ranks of Your Neural Networks — CPAL 2025, peer-reviewed:** reports theoretical and experimental low-rank bias strengthened by small batches, large learning rates, and strong decay. [PMLR paper](https://proceedings.mlr.press/v280/galanti25a.html)
+- **How Does the ReLU Activation Affect the Implicit Bias… — COLT 2026, peer-reviewed:** analyzes conditions for near-minimum-ℓ₂-norm interpolation and rapid activation-pattern stabilization in shallow ReLU regression on high-dimensional random data. Activations and data spectra jointly shape implicit bias. [PMLR paper](https://proceedings.mlr.press/v336/lai26a.html)
+- **When Both Layers Learn — COLT 2026, peer-reviewed:** studies dynamics toward global minima from random initialization and sample complexity when both layers of a one-hidden-layer ReLU network learn, providing a simplified end-to-end feature-learning theory. [PMLR paper](https://proceedings.mlr.press/v336/tinaz26a.html)
+
+Reducing training loss and learning particular representations are separate questions. Extend the lecture's updates by measuring **margins, norms, rank, feature drift, and lazy/rich regimes**.
+
+## 4. Efficient convolution: from separability to depthwise, grouped, and reparameterized designs
+
+PDF p. 9 reduces M² operations to 2M through separability. Modern CNNs extend efficiency choices into channels.
+
+- **Depthwise convolution** filters each channel spatially; **pointwise 1×1 convolution** mixes channels.
+- **Grouped convolution** partitions channels to control connections and computation.
+- **Structural reparameterization** trains multiple branches and algebraically fuses them into one convolution before inference. RepVGG exemplifies this, followed by mobile and large-kernel architectures. [RepVGG, CVPR 2021](https://openaccess.thecvf.com/content/CVPR2021/html/Ding_RepVGG_Making_VGG-Style_ConvNets_Great_Again_CVPR_2021_paper.html)
+- **MobileNetV4** codesigns blocks for Pareto frontiers on CPUs, DSPs, GPUs, and NPUs.
+- **ShiftwiseConv** offers another route to large-kernel effects through small operators.
+- **PFGNet — CVPR 2026, peer-reviewed:** decomposes spatially adaptive large-kernel responses into separable `1×k` and `k×1` convolutions, reducing per-channel cost from `O(k²)` to `O(2k)`. This directly extends classical separability into dynamic receptive-field design. [CVF paper](https://openaccess.thecvf.com/content/CVPR2026/html/Cai_PFGNet_A_Fully_Convolutional_Frequency-Guided_Peripheral_Gating_Network_for_Efficient_CVPR_2026_paper.html)
+
+Lower FLOPs do not guarantee lower latency. Measure memory access, kernel launches, fusion, group counts, and target hardware together.
+
+## 5. What PyTorch convolution actually computes
+
+The lecture moves from kernel-flipped mathematical convolution to PyTorch `Conv2d`. Keep these conventions separate.
+
+- Official PyTorch `Conv2d` computes **valid 2D cross-correlation**, without mathematical kernel flipping. [Official documentation](https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html)
+- `ConvTranspose2d` can be viewed as the input gradient of `Conv2d` but **is not the actual inverse of convolution**. With stride greater than one, it inserts zeros between input elements. [Official documentation](https://docs.pytorch.org/docs/stable/generated/torch.nn.ConvTranspose2d.html)
+- `MaxPool2d` padding is conceptually negative infinity, preventing zero padding from incorrectly becoming the maximum for negative inputs. [Official documentation](https://docs.pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html)
+- `Dropout` zeros elements with a Bernoulli mask during training and scales retained values by `1/(1-p)`, yielding identity behavior during evaluation. [Official documentation](https://docs.pytorch.org/docs/stable/generated/torch.nn.Dropout.html)
+
+When comparing papers, DSP libraries, and frameworks, specify **flipping, padding, tensor layout, groups, dilation, bias, and train/eval mode**.
+
+## 6. Open research questions
+
+1. Under matched compute, data, and training, how do CNN/Transformer biases differ for OOD performance, robustness, and dense prediction?
+2. Which activation, residual-scaling, and optimizer conditions maintain stability when normalization changes or is removed?
+3. Which margin, rank, or feature-movement measurements best predict downstream generalization?
+
+## Key terms
+
+- **Perceptron convergence:** finite-mistake or convergence properties under linear separability and specified update rules.
+- **Feature learning:** hidden representations adapting to the task rather than merely fitting linear models over fixed kernels.
+- **Structural reparameterization:** exactly combining multiple training branches into a single inference operator.
+- **Depthwise separable convolution:** separating spatial filtering from channel mixing for efficiency.
+- **Cross-correlation convention:** sliding dot products without kernel flipping, as used in deep-learning frameworks.

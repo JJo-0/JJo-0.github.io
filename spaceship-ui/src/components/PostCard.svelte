@@ -18,9 +18,10 @@
     };
     readTime: string;
     slug: string;
+    href?: string;
   }
 
-  let { post, readTime, slug }: Props = $props();
+  let { post, readTime, slug, href }: Props = $props();
 </script>
 
 <article
@@ -30,7 +31,7 @@
     <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-4">
       <h2 class="post-card-title text-lg sm:text-xl tracking-tight leading-tight">
         <a
-          href={`/posts/${slug}`}
+          href={href ?? `/posts/${slug}`}
           class="transition-colors no-underline"
           data-post-transition-slug={slug}
         >

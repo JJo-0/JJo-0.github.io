@@ -1,0 +1,184 @@
+---
+title: How does an optical chip read its own learning signal?
+description: Follow INSPIRE’s measurements of the forward and error fields through to the gradient formula in the supplement. The matrix
+  experiment, task-specific learning, simulations, and whole-system performance each answer a different question.
+pubDate: 2026-10-05 00:05:00+09:00
+updatedDate: 2026-10-21
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-05-inspire-photonic-in-situ-learning-news
+category: ai-machine-learning
+subcategory: photonic-in-situ-learning
+type: paper-review
+tags:
+- frontier-one
+- photonic-ai
+- neuromorphic-computing
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-10-05-inspire-photonic-in-situ-learning-news
+translationKey: en-2026-10-05-inspire-photonic-in-situ-learning-news
+---
+
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import NewsCitation from '@/components/post/NewsCitation.astro';
+
+{/* Private working revision. Related NIST photograph is not the INSPIRE device.
+    Full Methods, five-reader review and production-theme QA remain pending. */}
+
+> **Evidence status.** This peer-reviewed study includes optical experiments and simulations. This prepublication commentary draws on the public supplement, selected source data, and code. The full derivation and comparison conditions in the subscription-only article and Methods remain unverified.
+
+## The 30-second version
+
+A chip that computes with light still needs information about which settings to change, and in which direction, to reduce its error. INSPIRE obtains that information by measuring light carrying data forward and light carrying an error signal backward through the device. It reads both intensity and phase. <NewsCitation n={1} /> <NewsCitation n={2} />
+
+The most directly checkable result was the fit to a 4×4 complex matrix. An independent calculation using its 16 published entries gave a relative error of about 0.26067%, consistent with the abstract’s 0.26%. That number measures the matrix fit. The abstract separately reports 251-fold model compression and 136-fold acceleration of task-specific learning. Their precise baselines and timing boundaries still need checking against the full paper. None of these numbers measures classification accuracy. <NewsCitation n={1} /> <NewsCitation n={3} />
+
+Keep one question in mind. **Can measurements of light inside the chip tell us which way to turn its controls?**
+
+## 1. Computing and learning are different operations
+
+Imagine a small calculator with four inputs, four outputs, and an array of knobs that mix the inputs. At first the outputs miss their targets. With suitable knob settings, the results come out as desired. Producing the outputs is computation. Adjusting the knobs to improve the next result is learning.
+
+The analogy covers the sequence from input, through a configurable transformation, to output and adjustment. The actual instrument takes optical fields as inputs, transforms them along optical paths, then detects them. Calculator buttons have no counterpart to optical phase or detector noise.
+
+A gradient describes how the error changes in response to small changes in the settings. Knowing the output is wrong leaves open which of many controls to move. Software can differentiate a computational model. Real hardware also responds to fabrication variation, environmental changes, and its calibration state. A setting that works in the model need not work equally well on a chip.
+
+The study asks how to obtain learning information by measuring the physical system directly. Earlier work also trained optical devices in situ. Section 5 compares the approaches. <NewsCitation n={1} /> <NewsCitation n={2} />
+
+<figure id="inspire-related-photo" style="margin:1.5rem 0">
+  <img src="/inspire-related-photonic-wafer-nist.png" width="1108" height="1029" alt="Photograph of a circular silicon wafer patterned with an array of integrated photonic chips" loading="lazy" decoding="async" />
+  <figcaption>Silicon wafer bearing integrated photonic chips. The photograph illustrates the technology and shows a different device from INSPIRE. N. Nader/NIST · <a href="https://www.nist.gov/image/silicon-wafer-integrated-photonic-chips">Original</a> · <a href="https://www.nist.gov/copyrights-disclaimers">Reuse information</a>. Unedited.</figcaption>
+</figure>
+
+A training cycle takes the data input, computes the error, measures a backward error field, and updates the settings. The photograph shows what a fabricated photonic wafer looks like. It provides no evidence about these steps or their performance. Fast optical propagation alone does not set the duration of a complete cycle.
+
+## 2. What brightness leaves out
+
+Light has an amplitude, the magnitude of its field, and a phase that describes the state of the wave. Two fields can have the same measured intensity and different phases. When combined, waves can reinforce or cancel through interference. Their separate intensity measurements alone cannot predict the combined result.
+
+A complex field represents both properties. Complex numbers supply a mathematical way to keep track of magnitude and phase. The measurement principle is to compare the signal with a reference light field so that phase becomes observable.
+
+The supplement’s Hologram procedure takes four readings. I₀ measures the signal alone, I₁ the reference alone, I₂ the two together, and I₃ the two together after shifting the reference phase by 90 degrees. The last reading resolves a phase-sign ambiguity that the first three leave open. A single intensity image omits these steps. <NewsCitation n={2} /> (Note 3)
+
+
+<CandidateEquation lang="en" id="inspire-field-recovery" title="Recovering amplitude and phase from four intensity measurements" tex={String.raw`A=\sqrt{I_0},\quad A_{\rm ref}=\sqrt{I_1},\quad \phi=\pm\arccos\!\left(\frac{I_2-I_0-I_1}{2\sqrt{I_0I_1}}\right),\quad E=Ae^{j\phi}`}>
+
+See Note 3, pseudocode lines 36–45 on pages 5–6 of the public supplementary PDF. These equations estimate amplitude and phase. The ± sign is shorthand used here. The source first takes the positive arccosine and switches to the negative branch after checking I₃.
+
+I₀ and I₁ are the signal and reference intensity readings, respectively, and I₂ is the combined reading. A and Aref are field magnitudes obtained by taking square roots. The relative phase φ is measured in radians, and j is the imaginary unit with square −1. E represents magnitude A and phase φ together. The pseudocode specifies neither absolute intensity units nor the physical calibration factor for the field. Assigning W or V/m would require further information.
+
+The numerator I₂−I₀−I₁ subtracts the separate intensities to isolate the interference term. Both field magnitudes enter the denominator. If I₀ or I₁ is zero, this division cannot recover the phase. The arccosine argument must also lie between −1 and 1. The pseudocode reviewed here does not specify a tolerance or procedure when noise pushes the ratio outside that interval.
+
+Take the invented, consistent relative readings I₀=I₁=1 and I₂=3. The ratio is (3−1−1)/2=0.5, giving a phase magnitude of π/3, or 60 degrees. The same three values allow +60 or −60 degrees. This illustrates why the procedure checks I₃. These numbers are not experimental readings.
+
+The source selects the negative branch if I₃ differs from |Aref+j A exp(jφ)|². The numerical tolerance for “differs” in real noise, the direction of the phase shift, and the complex-number conventions need to be checked in the full Methods. The shorthand equation does not specify a complete device calibration or implementation.
+
+</CandidateEquation>
+
+What happens if the reference almost vanishes but the signal stays bright? Phase recovery still suffers because the reference magnitude appears in the denominator. A bright signal cannot replace a usable interference measurement. This is why the procedure measures the reference by itself.
+
+## 3. How do the two measured fields give a gradient?
+
+On the forward pass, the system measures the local field Edata produced by the input and the output field Eout. A loss quantifies the discrepancy between output and target. The supplement constructs an error-field input from the derivative of loss with respect to output, sends it through an error port, and measures the backward local field Eerr. <NewsCitation n={2} /> (Note 3)
+
+The next operation combines the forward and backward fields at the same location. The equation in the pseudocode gives information a generic gradient-descent rule would leave unspecified. It shows how INSPIRE finds the direction in which to adjust a control.
+
+<details>
+<summary>Undergraduate detail on sending the error backward</summary>
+
+<CandidateEquation lang="en" id="inspire-output-loss-field" title="The output loss field defined in the supplement" tex={String.raw`E_{\mathrm{loss}}=\frac{\partial L(E_{\mathrm{out}},T)}{\partial E_{\mathrm{out}}}`}>
+
+Note 3, pseudocode lines 27–31 on page 5 of the supplementary PDF, gives this definition. L is a loss comparing the measured output field E_out with target T. The partial derivative ∂ describes the sensitivity of the loss to an output change. The notation alone specifies neither a particular loss norm nor physical units for the loss field.
+
+One cannot generally replace this derivative with target minus output. The choice of loss and the convention for complex derivatives matter. The procedure turns the definition into an error input, propagates it backward, and measures a local field. E_loss at the output and E_err,n at location n describe distinct quantities.
+
+This expression defines output-level loss information. The device sends that information back through the physical system, then combines it with the forward field to obtain a gradient at a control. A later rule actually updates the settings. <NewsCitation n={2} />
+
+</CandidateEquation>
+
+</details>
+
+<CandidateEquation lang="en" id="inspire-local-gradient" title="Where do the two measured fields meet?" tex={String.raw`g_n=\operatorname{Re}\!\left(jE_{{\rm data},n}E_{{\rm err},n}\right)`}>
+
+See Note 3, pseudocode line 10 on page 5. The source’s vector expression g ← Real(j Edata Eerr) is written here for a single component n to show which measurements at a common location are combined. This is an explanatory expansion of the notation, not a new physical derivation.
+
+Index n identifies a local measurement and control element. Edata,n is its complex field when the data pass through, and Eerr,n its complex field when the error travels backward. Re takes the real part, and j is the imaginary unit. The expression follows the source’s conjugation convention. It gives a gradient. A separate rule determines how much to change a voltage or phase.
+
+With both fields equal to 1, the real part of j×1×1 is zero. With one field equal to 1 and the other to j, j×1×j=−1 and its real part is −1. The magnitudes are the same in the two cases, but their phase relation changes the result. These normalized, invented complex values illustrate the operation. They do not reproduce a measured gradient or its units.
+
+The pseudocode labels both fields N×1 and g as 1×N. That one line leaves the precise product and orientation open. It also leaves unclear how the input x is normalized relative to the units and scale of the measured fields. The convention for differentiating a complex output and the conversion to physical phase and voltage require the full paper and Methods. No particular units for g or general derivation for every optical system follow from the example.
+
+</CandidateEquation>
+
+### Calculating a gradient and updating a setting
+
+In version 1 of the public Zenodo code, `train_script.py` first conjugates the difference between output and target to create the error input (line 134). Later it uses a product of local fields to calculate the gradient (line 166). Taking a conjugate while preparing the error and adding a conjugation to the local-field product are different operations. The equation above follows the supplement.
+
+The code then changes the controls. Lines 184–189 average the batch gradients and subtract that average times the learning rate from the phase settings. The optimizer object’s `step` method is also called in this section, but its stored return value does not enter that phase update. This observation describes the code version reviewed. It is neither an executed replication nor a conclusion about optimizer use throughout the paper.
+
+Converting a phase setting into a voltage is another operation. `data_convert.py::amp2volts` and `utils.py::voltage_cvt` contain conversion and reverse-coupling compensation. The local field product determines the gradient. A learning rate and update rule determine the new setting. Calibration and conversion translate it into device control. Each stage can introduce errors and cost. The supplement and code v1 released on August 13 were reviewed. Whether every detail matches the article published October 5 is still open. <NewsCitation n={2} /> <NewsCitation n={4} />
+
+Does the same gradient always produce the same voltage change? The learning rate, update rule, voltage conversion, and calibration also enter the decision. The local gradient expression describes only one part of the loop.
+
+Optical computation does not by itself demonstrate all-optical training. The public procedure uses control to connect measurement, loss computation, and updates. The example code also includes electronic optimization and setting changes. Optical propagation supplies gradient information within this larger loop. <NewsCitation n={2} /> <NewsCitation n={4} />
+
+## 4. Where does calibration enter before training?
+
+Applying a voltage to one actuator can affect more than that actuator. Supplementary Note 1 describes compensating for electrical coupling in the wiring and measuring the relationship between voltage and phase. The calibration treats the influence of 82 drive pins with an 82×82 matrix. The 128-channel signal board pictured with the apparatus has a different count. <NewsCitation n={2} />
+
+A physical gradient measurement still incurs calibration costs. Within-loop measurements tell the system how to adjust its present setting. Calibration before training establishes what a control input does to the device.
+
+<CandidateEquation lang="en" id="inspire-voltage-calibration" title="Fitting intensity during a voltage scan" tex={String.raw`I=a\sin(bx^2+c)+d`}>
+
+Supplementary Note 1, equation S1 on PDF page 3, gives this voltage–intensity calibration fit. The x² term is retained as printed. The equation describes calibration rather than a training loss or update.
+
+Here x is the scanned voltage in V, and I is the measured intensity reading. The amplitude a and offset d have the units of I. Parameter c is a phase offset. For bx²+c to be a dimensionless phase, b has units V⁻². The formula does not determine the absolute intensity units. The supplement describes measuring 150 evenly spaced points from 0 to 10 V.
+
+For example, set b=1 V⁻² and c=0. The sine argument is 1 at x=1 V and 4 at x=2 V. Doubling the voltage quadruples the argument. Calculating an actual I also requires a and d, and the sine makes the voltage–intensity relationship nonmonotonic in general. These illustrative parameters are not fitted device coefficients.
+
+Whether S1 still holds outside its calibration range or its coefficients survive a temperature change requires separate verification. Knowing the functional form does not calibrate another device.
+
+</CandidateEquation>
+
+## 5. How does this compare with earlier approaches?
+
+Supplementary Table 1 compares how methods obtain gradients and where they apply. Perturbation methods vary settings to approximate gradients. Hybrid methods run a forward pass on hardware and a backward pass in software. Earlier categories also include in situ backpropagation and fully forward learning. The table does not rank numerical performance. <NewsCitation n={2} /> (Table 1)
+
+Some earlier categories already use analytical gradients. The authors present local complex-field measurements as a route to treating nonunitary circuits and scattering media. Here “unitary” specifies a mathematical property of a transformation. It does not indicate generic efficiency and is distinct from symmetry.
+
+Table 1 does not compare the methods on an identical task, device, and timing boundary. The original papers and this study’s full conditions would be needed to trace precise relationships and limitations. The contribution concerns the measurements and calculations that extract a gradient from real fields, and the range of devices to which they might apply.
+
+## 6. Three different ways to read the results
+
+First, how closely did a small matrix match its target? A 4×4 transformation has 16 complex input–output coefficients. Using the target and realized entries in Source Data Fig. 2e, this review summed the squared magnitudes of the complex differences, divided by the sum of squared target magnitudes, and took the square root. The result was 0.26067%, numerically consistent with 0.26% in the abstract. Exact agreement with the metric as defined in the full paper remains to be verified. The number does not establish the error for every chip or task. <NewsCitation n={1} /> <NewsCitation n={3} />
+
+Second, what model and learning procedure are needed when the task changes? In optical meta-learning, the abstract reports 251-fold model compression and 136-fold faster task-specific learning. The former compares model size. The latter compares adaptation to a particular task. Multiplying them or treating 136× as total AI training speedup would change their meaning. The public code includes separate simulation and hardware training examples. Its availability alone does not verify the full conditions behind either number. <NewsCitation n={1} /> <NewsCitation n={4} />
+
+Third, what happens at larger scales? The supplement separately estimates scaling with optical splitting, propagation and crossing losses, and detector noise. It also studies multiwavelength fitting and simulates a nonlinear extension. Measurements on a small device, models of a larger device, and dataset simulations provide different kinds of evidence. A multiwavelength extension must also account for signal, control degrees of freedom, and error together. <NewsCitation n={2} /> (Notes 4–7)
+
+
+## 7. What remains to be checked?
+
+A system-level comparison with electronic hardware requires timing a complete training cycle, including laser drive, detection and readout, error computation, and setting changes. It must match the work performed and account for power, accuracy, batch size, and calibration. The material reviewed here does not establish an advantage over general GPU training in total time or energy.
+
+Replication should examine phase-reference stability, estimation with a weak reference, gradient and update stability under noise, and how long calibration holds. For a researcher, the chain to trace runs from the definition of the measured field through complex differentiation and local-product scaling to conversion into a control change and an observed decrease in loss. The public pseudocode connects these steps. The complete derivation remains to be verified against the full article and Methods.
+
+The study treats optical hardware as a source of learning information about its own present state, beyond its use as a once-configured computing device. Its experiments connect a physical system with a learning procedure. They do not establish deployment at scale or a general theorem for all optical systems.
+
+<details id="inspire-sources" data-news-source-disclosure>
+<summary>Expand sources, figure rights, and scope of review</summary>
+
+## Sources, figure rights, and scope of review
+
+1. <a id="news-ref-1" data-news-reference="1" href="https://www.nature.com/articles/s43588-026-01057-y" target="_blank" rel="noopener noreferrer">Original Nature Computational Science paper</a>, DOI 10.1038/s43588-026-01057-y, published October 5, 2026. The abstract, publication details, data links, and rights notice were reviewed. The full subscription-only article and Methods were unavailable.
+2. <a id="news-ref-2" data-news-reference="2" href="https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs43588-026-01057-y/MediaObjects/43588_2026_1057_MOESM1_ESM.pdf" target="_blank" rel="noopener noreferrer">Official Supplementary Information</a>. The review checked the relevant equations, procedures, and explanations in Notes 1–7, plus selected text and image regions in Table 1 and S1–S12. Page references above refer to the PDF. No units or comparison conditions absent from the source have been assigned.
+3. <a id="news-ref-3" data-news-reference="3" href="https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs43588-026-01057-y/MediaObjects/43588_2026_1057_MOESM3_ESM.xlsx" target="_blank" rel="noopener noreferrer">Official Source Data for Fig. 2</a>. The independent calculation used the 16 target and realized complex values for Fig. 2e. Reviewing file structure and selected rows for Figs. 3–5 did not constitute a full reanalysis.
+4. <a id="news-ref-4" data-news-reference="4" href="https://zenodo.org/records/21918485" target="_blank" rel="noopener noreferrer">Zenodo INSPIRE code v1</a>. Relevant parts of the experimental training and optical meta-learning simulation code were read. The code was not run to replicate the study.
+
+**Photograph credit.** The related photonic wafer photograph by N. Nader/NIST is used without edits. The original NIST page and reuse guidance were checked. Reuse rights for INSPIRE’s original figures were unconfirmed, and they are not reproduced. Three earlier editorial SVGs were excluded from this draft. The study’s actual apparatus appears in supplementary Fig. S1. The public site’s media register and channel links still require review.
+
+**Manuscript status.** This is a private working draft with an expanded technical explanation. A bidirectional completeness check against every source formula and figure, evaluation by five reader profiles, mobile and desktop checks on the production theme, and a standalone Blogger draft remain pending. The source disclosure alone does not complete those checks.
+
+</details>

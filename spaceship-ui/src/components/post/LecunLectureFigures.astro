@@ -1,0 +1,50 @@
+---
+import slides from '@/data/lecun-ntu-slides.json';
+import SourceFrame from './LecunSourceFrame.astro';
+
+interface Props { from: number; until: number }
+interface Slide {
+  number: number;
+  first: number;
+  start: number;
+  time: number;
+  title: string;
+  caption: string;
+  referencePage: number;
+  stills?: { time: number; label: string }[];
+  returns?: number[];
+}
+const { from, until } = Astro.props;
+const selection: Slide[] = slides.filter(s => s.first >= from && s.first < until);
+const timestamp = (sec: number) => {
+  const s = String(sec % 60).padStart(2, '0');
+  const m = Math.floor(sec / 60);
+  return m < 60 ? m + ':' + s : Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0') + ':' + s;
+};
+const video = 'https://www.youtube.com/watch?v=LYZCbAyssgw&t=';
+---
+{selection.map(s => (
+  <figure id={'lecun-slide-' + s.number} data-lecture-slide={s.number} class="plate">
+    <figcaption><span>강연 화면 {String(s.number).padStart(2,'0')}</span><strong>{s.title}</strong></figcaption>
+    <SourceFrame time={s.time} label={timestamp(s.time) + ' · ' + s.title} />
+    <p>{s.caption}</p>
+    <p class="links">
+      <a href={video + s.start + 's'} data-lecun-play={s.start}>이 대목 듣기 · {timestamp(s.start)}</a>
+      <a href="https://drive.google.com/file/d/1O4Bde20aiBCKS-WYeCXkiR6vvv3lYrFD/view" target="_blank" rel="noopener">다트머스 비교 자료 · {s.referencePage}쪽</a>
+    </p>
+    {s.stills && <ul class="moments">{s.stills.map(item =>
+      <li><a href={video + item.time + 's'} data-lecun-play={item.time}>{item.label} · {timestamp(item.time)}</a></li>
+    )}</ul>}
+    {s.returns && <p class="links"><span>같은 슬라이드가 다시 나오는 시각</span>{s.returns.map(time =>
+      <a href={video + time + 's'} data-lecun-play={time}>{timestamp(time)}</a>
+    )}</p>}
+  </figure>
+))}
+<style>
+  .plate {margin:2.1rem 0 2.7rem;scroll-margin-top:6rem}
+  .plate figcaption {display:flex;flex-wrap:wrap;align-items:baseline;gap:.3rem .8rem;text-align:left;margin:0 0 .6rem}
+  .plate figcaption strong {font-size:1.06rem;line-height:1.45;color:var(--color-foreground)}
+  .plate figcaption span,.links,.moments {font-size:.85rem;color:var(--color-muted-foreground)}
+  .plate p {margin:.5rem 0;line-height:1.65}
+  .links {display:flex;gap:.25rem 1rem;flex-wrap:wrap}
+</style>

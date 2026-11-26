@@ -1,10 +1,16 @@
 ---
-import { getPublishedPosts, getPostSlug } from '@/lib/utils/posts';
+import { getPostSlug, getPostSeriesId, compareSeriesPosts } from '@/lib/utils/posts';
+import { getLocalizedPosts } from '@/lib/localized-posts';
+import { englishSwitchPath } from '@/lib/locales';
 import modernAiSeries from '@/data/modern-ai-series.json';
+import { getSelfImprovingPart, selfImprovingSeries } from '@/lib/self-improving-series';
+import SelfImprovingSeriesMap from './SelfImprovingSeriesMap.astro';
 
 interface Props {
+  en?: boolean;
   seriesId: string;
   currentPostId: string;
+  position?: 'top' | 'bottom';
 }
 
 interface ModernAiEntry {
@@ -15,26 +21,43 @@ interface ModernAiEntry {
   source: string;
 }
 
-const { seriesId, currentPostId } = Astro.props;
+const { seriesId, currentPostId, position = 'top', en = false } = Astro.props;
 
-const allPosts = await getPublishedPosts();
+const allPosts = await getLocalizedPosts(en);
+const link = (path: string) => en ? englishSwitchPath(path) : path;
 const seriesPosts = allPosts
-  .filter((post) => post.data.series?.id === seriesId)
-  .sort((a, b) => (a.data.series?.order ?? 0) - (b.data.series?.order ?? 0));
+  .filter((post) => getPostSeriesId(post) === seriesId)
+  .sort((a, b) => compareSeriesPosts(a, b, seriesId));
 
-const currentPost = seriesPosts.find((post) => post.id === currentPostId);
-const currentOrder = currentPost?.data.series?.order;
+const currentIndex = seriesPosts.findIndex((post) => post.id === currentPostId);
+const currentPost = seriesPosts[currentIndex];
+const previousPost = seriesPosts[currentIndex - 1];
+const nextPost = seriesPosts[currentIndex + 1];
+const currentOrder = currentPost?.data.series?.order ?? currentIndex + 1;
 const isModernAiSeries = seriesId === modernAiSeries.id;
+const isSelfImprovingSeries = seriesId === selfImprovingSeries.id;
+const currentPart = getSelfImprovingPart(currentPost?.data.series);
+const previousPart = getSelfImprovingPart(previousPost?.data.series);
+const nextPart = getSelfImprovingPart(nextPost?.data.series);
 const modernAiEntries = (modernAiSeries.entries as ModernAiEntry[]).map((entry) => ({
   ...entry,
   post: seriesPosts.find((post) => post.data.series?.order === entry.order),
 }));
 
-if (!isModernAiSeries && seriesPosts.length <= 1) {
+if (currentIndex < 0 || (position === 'top' && !isModernAiSeries && !isSelfImprovingSeries && seriesPosts.length <= 1)) {
   return null;
 }
 ---
 
+{position === 'bottom' ? (
+  <nav class="series-reading-navigation" aria-label={en ? 'Continue reading' : '시리즈 이어 읽기'} data-series-reading-navigation={seriesId} data-series-order={currentOrder} data-series-part={currentPart?.number}>
+    {previousPost && <a href={link(`/posts/${getPostSlug(previousPost)}/`)} rel="prev"><span>{en ? 'Previous' : '이전 편'}{previousPart && ` · ${en ? 'Part ' + previousPart.number : previousPart.label}`}</span><strong>{previousPost.data.title}</strong></a>}
+    <a class="back-to-top" href="#main-content"><span aria-hidden="true">↑</span> {en ? 'Back to top' : '맨 위로'}</a>
+    {nextPost && <a href={link(`/posts/${getPostSlug(nextPost)}/`)} rel="next"><span>{en ? 'Next' : '다음 편'}{nextPart && ` · ${en ? 'Part ' + nextPart.number : nextPart.label}`}</span><strong>{nextPost.data.title}</strong></a>}
+  </nav>
+) : isSelfImprovingSeries ? (
+  <SelfImprovingSeriesMap {en} posts={seriesPosts} {currentPostId} />
+) : (
 <section
   class="series-map mt-8 mb-12 overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-sm"
   aria-labelledby={`series-map-${seriesId}`}
@@ -62,12 +85,12 @@ if (!isModernAiSeries && seriesPosts.length <= 1) {
           Series map
         </div>
         <h2 id={`series-map-${seriesId}`} class="text-xl font-black tracking-tight text-foreground sm:text-2xl">
-          {isModernAiSeries ? `${modernAiSeries.title} · ${modernAiSeries.total}편 학습 지도` : '시리즈'}
+          {en ? (isModernAiSeries ? 'Modern Artificial Intelligence · Study map' : 'Series') : isModernAiSeries ? `${modernAiSeries.title} · ${modernAiSeries.total}편 학습 지도` : '시리즈'}
         </h2>
         {
           isModernAiSeries && (
             <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              {modernAiSeries.subtitle}. 빈 번호나 자리 채우기용 글 없이, 실제 확보된 강의자료를 여덟 단계로 연결한다.
+              {en ? 'Eight lessons from mathematical foundations to generative models and representation learning.' : `${modernAiSeries.subtitle}. 빈 번호나 자리 채우기용 글 없이, 실제 확보된 강의자료를 여덟 단계로 연결한다.`}
             </p>
           )
         }
@@ -76,7 +99,7 @@ if (!isModernAiSeries && seriesPosts.length <= 1) {
       {
         isModernAiSeries && currentOrder && (
           <div class="flex shrink-0 items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
-            <span aria-hidden="true">현재</span>
+            <span aria-hidden="true">{en ? 'Current' : '현재'}</span>
             <span>{currentOrder} / {modernAiSeries.total}</span>
           </div>
         )
@@ -86,7 +109,7 @@ if (!isModernAiSeries && seriesPosts.length <= 1) {
 
   {
     isModernAiSeries ? (
-      <ol class="grid gap-3 p-4 sm:grid-cols-2 sm:p-5" aria-label="현대 인공지능 8편 구성">
+      <ol class="grid gap-3 p-4 sm:grid-cols-2 sm:p-5" aria-label={en ? 'Eight lessons in modern AI' : '현대 인공지능 8편 구성'}>
         {modernAiEntries.map((entry) => {
           const isCurrent = entry.order === currentOrder;
           const isPublished = Boolean(entry.post);
@@ -112,17 +135,17 @@ if (!isModernAiSeries && seriesPosts.length <= 1) {
               <span class="min-w-0 flex-1">
                 <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span class="text-[0.68rem] font-black uppercase tracking-[0.14em] text-primary/80">
-                    {entry.stage}
+                    {en ? ['Foundations','Learning tasks','Neural networks','Optimization','Image classification','Pixel prediction','Generative models','Representation learning'][entry.order - 1] : entry.stage}
                   </span>
                   <span class="text-[0.68rem] font-bold text-muted-foreground">
-                    {isCurrent ? '읽는 중' : isPublished ? '게시됨' : '후속 편'}
+                    {en ? (isCurrent ? 'Reading' : isPublished ? 'Published' : 'Upcoming') : (isCurrent ? '읽는 중' : isPublished ? '게시됨' : '후속 편')}
                   </span>
                 </span>
                 <span class="mt-1 block text-sm font-bold leading-5 text-foreground">
-                  {entry.title}
+                  {en && entry.post ? entry.post.data.title : entry.title}
                 </span>
                 <span class="mt-1.5 block text-xs leading-5 text-muted-foreground">
-                  {entry.description}
+                  {en && entry.post ? entry.post.data.description : entry.description}
                 </span>
               </span>
             </>
@@ -139,7 +162,7 @@ if (!isModernAiSeries && seriesPosts.length <= 1) {
                 </div>
               ) : entry.post ? (
                 <a
-                  href={`/posts/${getPostSlug(entry.post)}`}
+                  href={link(`/posts/${getPostSlug(entry.post)}`)}
                   class={`flex h-full items-start gap-3 rounded-xl border p-4 transition-colors ${itemClass}`}
                 >
                   {content}
@@ -167,7 +190,7 @@ if (!isModernAiSeries && seriesPosts.length <= 1) {
                   <span class="font-medium text-foreground">{post.data.title}</span>
                 </div>
               ) : (
-                <a href={`/posts/${getPostSlug(post)}`} class="group flex items-start gap-3">
+                <a href={link(`/posts/${getPostSlug(post)}`)} class="group flex items-start gap-3">
                   <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-border transition-all group-hover:text-primary group-hover:ring-primary/50">
                     {post.data.series?.order}
                   </span>
@@ -186,8 +209,19 @@ if (!isModernAiSeries && seriesPosts.length <= 1) {
   {
     isModernAiSeries && (
       <div class="border-t border-border/70 px-5 py-3 text-xs leading-5 text-muted-foreground sm:px-6">
-        게시된 편만 링크로 연결된다. 후속 PDF의 내용을 담은 글이 공개되면 같은 위치가 자동으로 활성화되며, 빈 게시물은 만들지 않는다.
+        {en ? 'Links open the published lessons in reading order.' : '게시된 편만 링크로 연결된다. 후속 PDF의 내용을 담은 글이 공개되면 같은 위치가 자동으로 활성화되며, 빈 게시물은 만들지 않는다.'}
       </div>
     )
   }
 </section>
+)}
+<style>
+  .series-reading-navigation { display: flex; flex-wrap: wrap; align-items: stretch; gap: .8rem; margin: 2.5rem 0; padding-top: 1.5rem; border-top: 1px solid var(--color-border); }
+  .series-reading-navigation a { display: flex; flex: 1 1 14rem; flex-direction: column; justify-content: center; min-width: 0; gap: .4rem; padding: 1rem; border: 1px solid var(--color-border); border-radius: .6rem; color: var(--color-foreground); }
+  .series-reading-navigation a:hover { background: var(--color-muted); }
+  .series-reading-navigation a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+  .series-reading-navigation span { font-size: .8rem; color: var(--color-muted-foreground); }
+  .series-reading-navigation strong { font-size: .95rem; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
+  .series-reading-navigation .back-to-top { flex: 0 1 auto; flex-direction: row; align-items: center; font-size: .9rem; }
+  @media (max-width: 640px) { .series-reading-navigation a { flex-basis: 100%; } .series-reading-navigation .back-to-top { flex-basis: 100%; } }
+</style>

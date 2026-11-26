@@ -39,13 +39,16 @@ for lang,route,attribute,key in [('ko','news','data-news-card','slug'),('en','en
   else:raise AssertionError('Reversed English edition order accepted')
 # Check the actual serialized graph, without reducing its node inventory.
 home=(R/'dist/index.html').read_text();hp=Page(home)
-graph_match=re.search(r'<script\b[^>]*data-post-graph-source[^>]*>([\s\S]*?)</script>',home)
-assert graph_match, 'Complete graph JSON payload required'
-graph=json.loads(graph_match.group(1))
-# Later published editions add legitimate NEWS cards to the Home graph.
-# Keep the same bounded allowance as the current performance contract.
+host=next(a for t,a in hp.tags if a.get('data-experience-canvas')=='home')
+assert not re.search(r'<script\b[^>]*data-post-graph-source',home), 'Graph must not be inlined on the cold path'
+assert host.get('data-graph-url','').startswith('/writing-graph/ko.json?v=')
+graph=json.loads((R/'dist/writing-graph/ko.json').read_text())
 assert len(home.encode())<=252*1024
-assert len(graph['nodes'])==len([1 for t,a in hp.tags if t=='a' and 'data-post-graph-node' in a])
+assert int(host['data-graph-count'])==len(graph['nodes'])
+assert len({n['id'] for n in graph['nodes']})==len(graph['nodes'])
+assert not any('data-post-graph-node' in a for t,a in hp.tags), 'Interactive links are mounted on demand'
+ids={n['id'] for n in graph['nodes']}
+assert all(edge[0] in ids and edge[1] in ids for edge in graph['edges'])
 for node in graph['nodes']:
  for axis in ['x','y','z']:assert abs(node[axis]-round(node[axis],4))<1e-10
 for entry in E['entries']:assert any(n['href'].rstrip('/')=='/posts/'+entry['slug'] for n in graph['nodes'])

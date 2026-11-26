@@ -1,0 +1,1122 @@
+---
+title: 'Modern Artificial Intelligence IV — Gradient-Based Optimization: From GD to
+  OGM'
+description: A complete ledger of nineteen ECE5992 optimization pages, text, equations,
+  tables, figures, questions, and annotations, connecting Lipschitz continuity, GD/PSD/PGD/FGM/OGM,
+  complex descent directions, efficient line search, and logistic regression to research
+  through 2026.
+pubDate: 2026-08-21
+updatedDate: 2026-08-21
+category: ai-machine-learning
+subcategory: optimization
+type: study-note
+tags:
+- gradient-descent
+- convex-optimization
+- accelerated-optimization
+- preconditioning
+- logistic-regression
+researchArea: ml-foundations-evaluation
+researchFeatured: true
+researchOrder: 6
+featured: true
+lang: en
+series:
+  id: modern-artificial-intelligence
+  order: 4
+slug: 2026-08-21-modern-artificial-intelligence-4
+draft: false
+translationKey: series-modern-artificial-intelligence-4-20261109
+translatedPosts:
+  ko-KR: 2026-08-21-modern-artificial-intelligence-4
+---
+
+
+import SourceFormula from '@/components/post/SourceFormula.astro';
+import { part4Formula } from '@/lib/modern-ai-part4';
+
+> **Completeness contract**  
+> This article follows **19 of 19 pages** of `5_Ch4-General-purpose gradient-based opt(1).pdf`. Ledgers cover numbered and unnumbered displayed equations, meaningful inline mathematics, tables, figures, captions, multiple-choice questions, `??`, blanks, footnotes, references, and legible handwriting. Source blanks and suspected errors are preserved; completed and corrected expressions receive separate statuses.
+
+> **Keep three layers distinct.**  
+> Separate **the 2025 PDF reconstruction**, **editorial and mathematical verification**, and **the research update dated August 18, 2026**.
+
+## Ledger status
+
+- PDF: **19 of 19 pages**
+- PDF SHA-256: `23272c39a5ad9c0dddf24eb7d42fdebe8575344f74bac3de761b7844fd81e58c`
+- Total equation records: **211**
+- Source-derived equations: **188**
+- Displayed equations: **110**; inline equations: **101**
+- Content records: **151**
+- Figures/tables: **10**
+- Handwritten annotations: **17**
+- Editorial completions/corrections: **23**
+
+---
+{/* source-content:P4-C001 */}
+# Reconstructing the PDF source
+
+{/* source-content:P4-C002 */}
+## 4. General-purpose gradient-based optimization methods
+
+{/* source-content:P4-C003 */}
+Unconstrained optimization begins by minimizing cost function <SourceFormula formula={part4Formula('MAI-P4-005')} part={4} display={false} />:
+
+<SourceFormula formula={part4Formula('MAI-P4-001')} part={4} display={true} />
+
+Choose an initial estimate <SourceFormula formula={part4Formula('MAI-P4-002')} part={4} display={false} />, construct iterates <SourceFormula formula={part4Formula('MAI-P4-003')} part={4} display={false} />, and seek <SourceFormula formula={part4Formula('MAI-P4-004')} part={4} display={false} /> in a suitable norm.
+
+{/* source-content:P4-C004 */}
+The lecture uses <SourceFormula formula={part4Formula('MAI-P4-006')} part={4} display={false} /> to cover real or complex applications. Its focus is smooth convex objectives with Lipschitz-continuous gradients, including least squares as a special case.
+
+{/* source-figure:P4-FIG-01 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 940 270" role="img" aria-label="Nested function classes, from nonsmooth functions to quadratic least squares, under increasingly strong assumptions" class="w-full">
+    <g fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="24" y="24" width="892" height="220" rx="16"/>
+      <rect x="145" y="42" width="750" height="184" rx="14"/>
+      <rect x="285" y="60" width="588" height="148" rx="12"/>
+      <rect x="425" y="78" width="426" height="112" rx="10"/>
+      <rect x="575" y="96" width="254" height="76" rx="8"/>
+      <rect x="705" y="112" width="102" height="44" rx="6"/>
+    </g>
+    <g font-size="17" text-anchor="middle">
+      <text x="83" y="140">nonsmooth</text><text x="214" y="140">composite</text>
+      <text x="350" y="140">differentiable</text><text x="500" y="130">Lipschitz</text><text x="500" y="153">gradient</text>
+      <text x="636" y="130">bounded</text><text x="636" y="153">curvature</text><text x="756" y="140">quadratic LS</text>
+    </g>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p. 1 Venn diagram, reconstructed.</strong> Within convex functions, assumptions strengthen through nonsmooth, composite, differentiable, Lipschitz-gradient, bounded-curvature, and quadratic least-squares classes.</figcaption>
+</figure>
+
+{/* source-content:P4-C005 */}
+### Motivating application: edge-preserving image recovery
+
+{/* source-content:P4-C006 */}
+With measurement model <SourceFormula formula={part4Formula('MAI-P4-007')} part={4} display={false} />, combine data fidelity and a convex smooth regularizer to solve:
+
+<SourceFormula formula={part4Formula('MAI-P4-008')} part={4} display={true} />
+
+The regularizer sums potentials over transform coefficients in form <SourceFormula formula={part4Formula('MAI-P4-009')} part={4} display={false} />.
+
+{/* source-figure:P4-FIG-02 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+    <div class="rounded-xl border border-border bg-muted/30 p-5 text-center"><p class="m-0 text-lg font-black">11×11 uniform blur</p><p class="mb-0 mt-2 text-sm text-muted-foreground">additive noise · 60 dB blurred SNR</p></div>
+    <div class="text-center text-3xl" aria-hidden="true">→</div>
+    <div class="rounded-xl border border-border bg-background p-5 text-center"><p class="m-0 text-lg font-black">edge-preserving recovery</p><p class="mb-0 mt-2 text-sm text-muted-foreground">smooth convex regularization + gradient method</p></div>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 1 structure, reconstructed from PDF pp. 1–2.</strong> Preserve degradation conditions and the contrast with restoration results without copying the original photographs.</figcaption>
+</figure>
+
+{/* source-annotation:P4-ANN-01 */}
+> **Lecture annotation — PDF p. 1.** Brief notes connect contours, gradient directions, step sizes, and Lipschitz constants. Uncertain small handwriting is not expanded through guessing.
+
+{/* source-content:P4-C007 */}
+## 4.1 Lipschitz continuity
+
+{/* source-content:P4-C008 */}
+A function <SourceFormula formula={part4Formula('MAI-P4-010')} part={4} display={false} /> is Lipschitz continuous if some finite <SourceFormula formula={part4Formula('MAI-P4-012')} part={4} display={false} /> satisfies:
+
+<SourceFormula formula={part4Formula('MAI-P4-011')} part={4} display={true} />
+
+The smallest valid constant is the best Lipschitz constant. Unless stated otherwise, the lecture uses Euclidean norms.
+
+{/* source-content:P4-C009 */}
+Write the best constants for f and g as <SourceFormula formula={part4Formula('MAI-P4-013')} part={4} display={false} />.
+
+{/* source-content:P4-C010 */}
+- **Scaling:** <SourceFormula formula={part4Formula('MAI-P4-014')} part={4} display={false} />
+- **Translation:** <SourceFormula formula={part4Formula('MAI-P4-015')} part={4} display={false} />
+- **Addition:** <SourceFormula formula={part4Formula('MAI-P4-016')} part={4} display={false} />
+- **Composition:** <SourceFormula formula={part4Formula('MAI-P4-017')} part={4} display={false} />
+- **Affine transformation:** <SourceFormula formula={part4Formula('MAI-P4-018')} part={4} display={false} />
+- **Multiplication:** <SourceFormula formula={part4Formula('MAI-P4-019')} part={4} display={false} />
+
+{/* source-content:P4-C011 */}
+A true/false question asks whether products of Lipschitz functions are always Lipschitz on the full real line, leaving the answer blank.
+
+<SourceFormula formula={part4Formula('MAI-P4-020')} part={4} display={true} />
+
+{/* source-content:P4-C012 */}
+A sufficient product condition and its proof are also left blank.
+
+<SourceFormula formula={part4Formula('MAI-P4-021')} part={4} display={true} />
+
+<SourceFormula formula={part4Formula('MAI-P4-022')} part={4} display={true} />
+
+<SourceFormula formula={part4Formula('MAI-P4-023')} part={4} display={true} />
+
+{/* source-content:P4-C013 */}
+The next page asks whether boundedness is necessary: <SourceFormula formula={part4Formula('MAI-P4-024')} part={4} display={false} />.
+
+{/* source-annotation:P4-ANN-02 */}
+> **Lecture annotation — PDF p. 2.** Handwritten additions indicate adding and subtracting terms before applying the triangle inequality, with boundedness marked. Uncertain small handwriting is not reconstructed speculatively.
+
+{/* source-content:P4-C014 */}
+### Smooth function: Lipschitz-continuous gradient
+
+{/* source-content:P4-C015 */}
+Here, smoothness means differentiability with gradient satisfying:
+
+<SourceFormula formula={part4Formula('MAI-P4-025')} part={4} display={true} />
+
+Complex derivatives require more care, so this definition is first made in real space.
+
+{/* source-content:P4-C016 */}
+For least-squares example <SourceFormula formula={part4Formula('MAI-P4-026')} part={4} display={false} />, gradient <SourceFormula formula={part4Formula('MAI-P4-027')} part={4} display={false} /> gives:
+
+<SourceFormula formula={part4Formula('MAI-P4-028')} part={4} display={true} />
+
+and hence:
+
+<SourceFormula formula={part4Formula('MAI-P4-029')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C017 */}
+For twice-differentiable functions, a Hessian spectral-norm bound
+
+<SourceFormula formula={part4Formula('MAI-P4-030')} part={4} display={true} />
+
+is sufficient for a Lipschitz gradient. The proof uses Taylor's integral form
+
+<SourceFormula formula={part4Formula('MAI-P4-031')} part={4} display={true} />
+
+and the norm bound
+
+<SourceFormula formula={part4Formula('MAI-P4-032')} part={4} display={true} />
+
+together. The lecture explicitly states sufficiency rather than necessity.
+
+{/* source-content:P4-C018 */}
+Quadratic examples include <SourceFormula formula={part4Formula('MAI-P4-033')} part={4} display={false} />, rank-one form <SourceFormula formula={part4Formula('MAI-P4-034')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-035')} part={4} display={false} />, and:
+
+<SourceFormula formula={part4Formula('MAI-P4-036')} part={4} display={true} />
+
+
+
+{/* source-annotation:P4-ANN-03 */}
+> **Lecture annotation — PDF p. 3.** Notes trace least-squares gradients, Hessian spectral norms, and singular-value/eigenvalue relationships. Uncertain small handwriting is not reconstructed speculatively.
+
+{/* source-content:P4-C019 */}
+### Fair potential and edge-preserving regularization
+
+{/* source-content:P4-C020 */}
+The Fair potential is:
+
+<SourceFormula formula={part4Formula('MAI-P4-037')} part={4} display={true} />
+
+It satisfies:
+
+<SourceFormula formula={part4Formula('MAI-P4-038')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-039')} part={4} display={true} />
+
+It is approximately quadratic near zero and grows like |x| for large |x|. A nonnegative second derivative makes it convex.
+
+{/* source-figure:P4-FIG-03 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 760 330" role="img" aria-label="The Fair potential: quadratic near zero and nearly linear at large magnitudes" class="w-full">
+    <line x1="55" y1="278" x2="715" y2="278" stroke="currentColor"/><line x1="385" y1="34" x2="385" y2="300" stroke="currentColor"/>
+    <path d="M75 72 C180 138 285 232 385 270 C485 232 590 138 695 72" fill="none" stroke="currentColor" stroke-width="4"/>
+    <path d="M260 205 Q385 298 510 205" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="8 7"/>
+    <text x="90" y="55" font-size="18">approximately |x|</text><text x="500" y="220" font-size="18">quadratic near 0</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p. 4 curve, reconstructed.</strong> A new SVG shows both regimes for δ=1.</figcaption>
+</figure>
+
+{/* source-content:P4-C021 */}
+The lecture asks whether the potential itself is Lipschitz continuous, leaving <SourceFormula formula={part4Formula('MAI-P4-040')} part={4} display={false} />.
+
+{/* source-content:P4-C022 */}
+An exercise derives the regularizer gradient and Lipschitz constant by composition, beginning with:
+
+<SourceFormula formula={part4Formula('MAI-P4-041')} part={4} display={true} />
+
+and leaving <SourceFormula formula={part4Formula('MAI-P4-042')} part={4} display={false} /> and
+
+<SourceFormula formula={part4Formula('MAI-P4-043')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-044')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-045')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-046')} part={4} display={true} />
+
+as blanks.
+
+{/* source-annotation:P4-ANN-04 */}
+> **Lecture annotation — PDF p. 4.** Notes connect the Fair potential's quadratic regime with edge preservation and mark chain-rule order beside the regularizer exercise. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C023 */}
+## 4.2 Gradient descent for smooth convex functions
+
+{/* source-content:P4-C024 */}
+Assume finite minimizer <SourceFormula formula={part4Formula('MAI-P4-047')} part={4} display={false} />, Lipschitz gradient <SourceFormula formula={part4Formula('MAI-P4-048')} part={4} display={false} />, and step size <SourceFormula formula={part4Formula('MAI-P4-049')} part={4} display={false} />. The iteration is:
+
+<SourceFormula formula={part4Formula('MAI-P4-050')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C025 */}
+Listed properties include monotone cost <SourceFormula formula={part4Formula('MAI-P4-051')} part={4} display={false} />, monotone distance to a minimizer <SourceFormula formula={part4Formula('MAI-P4-052')} part={4} display={false} />, and convergence to a minimizer. For <SourceFormula formula={part4Formula('MAI-P4-055')} part={4} display={false} />, the lecture gives:
+
+<SourceFormula formula={part4Formula('MAI-P4-053')} part={4} display={true} />
+
+It conjectures that the same bound also holds for <SourceFormula formula={part4Formula('MAI-P4-054')} part={4} display={false} />.
+
+{/* source-content:P4-C026 */}
+Convergence rates consider objective gap <SourceFormula formula={part4Formula('MAI-P4-056')} part={4} display={false} />, gradient norm <SourceFormula formula={part4Formula('MAI-P4-057')} part={4} display={false} />, and iterate error <SourceFormula formula={part4Formula('MAI-P4-058')} part={4} display={false} />, globally or locally. GD with fixed α=1/L has tight worst-case objective bound:
+
+<SourceFormula formula={part4Formula('MAI-P4-059')} part={4} display={true} />
+
+Nesterov FGM achieves rate <SourceFormula formula={part4Formula('MAI-P4-060')} part={4} display={false} />.
+
+{/* source-content:P4-C027 */}
+The slow least-squares example uses <SourceFormula formula={part4Formula('MAI-P4-061')} part={4} display={false} /> and <SourceFormula formula={part4Formula('MAI-P4-062')} part={4} display={false} />. Even an optimal fixed step zigzags through elongated contours. The lecture proposes preconditioning and line search as practical acceleration routes.
+
+{/* source-figure:P4-FIG-04 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 820 380" role="img" aria-label="Gradient descent zigzags toward a minimum across elongated elliptical contours" class="w-full">
+    <g fill="none" stroke="currentColor" opacity=".62"><ellipse cx="550" cy="190" rx="230" ry="120"/><ellipse cx="550" cy="190" rx="185" ry="92"/><ellipse cx="550" cy="190" rx="135" ry="66"/><ellipse cx="550" cy="190" rx="80" ry="38"/></g>
+    <polyline points="105,75 350,305 438,92 500,250 530,140 548,220 555,165 560,205 563,184 566,194" fill="none" stroke="currentColor" stroke-width="4"/>
+    <g fill="currentColor"><circle cx="105" cy="75" r="7"/><circle cx="350" cy="305" r="6"/><circle cx="438" cy="92" r="6"/><circle cx="500" cy="250" r="6"/><circle cx="530" cy="140" r="6"/><circle cx="566" cy="194" r="7"/></g>
+    <text x="70" y="60" font-size="18">x⁽⁰⁾</text><text x="575" y="190" font-size="18">x̂=0</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>Figure 2, reconstructed from PDF pp. 5–6.</strong> Preserve the alternating gradient directions and slow unpreconditioned convergence in anisotropic least squares.</figcaption>
+</figure>
+
+{/* source-annotation:P4-ANN-05 */}
+> **Lecture annotation — PDF p. 5.** Notes compare O(1/k) with O(1/k²) and link large condition numbers to zigzagging. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C028 */}
+## 4.3 Preconditioned steepest descent and PGD
+
+{/* source-content:P4-C029 */}
+PSD combines negative preconditioned gradient <SourceFormula formula={part4Formula('MAI-P4-063')} part={4} display={false} />, one-dimensional line search <SourceFormula formula={part4Formula('MAI-P4-064')} part={4} display={false} />, and update:
+
+<SourceFormula formula={part4Formula('MAI-P4-065')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C030 */}
+Quadratics admit analytical line search <SourceFormula formula={part4Formula('MAI-P4-066')} part={4} display={false} />. Under <SourceFormula formula={part4Formula('MAI-P4-068')} part={4} display={false} />, strict decrease when needed gives <SourceFormula formula={part4Formula('MAI-P4-067')} part={4} display={false} />, but nonquadratic objectives incur line-search costs each iteration.
+
+{/* source-content:P4-C031 */}
+The first-order condition for exact line search is:
+
+<SourceFormula formula={part4Formula('MAI-P4-069')} part={4} display={true} />
+
+Thus the next gradient is orthogonal to the current search direction. Inexact searches give only approximate orthogonality.
+
+{/* source-content:P4-C032 */}
+Fixed-step PGD uses:
+
+<SourceFormula formula={part4Formula('MAI-P4-070')} part={4} display={true} />
+
+With <SourceFormula formula={part4Formula('MAI-P4-071')} part={4} display={false} /> and coordinate change <SourceFormula formula={part4Formula('MAI-P4-072')} part={4} display={false} />, transform the original problem into:
+
+<SourceFormula formula={part4Formula('MAI-P4-073')} part={4} display={true} />
+
+
+
+{/* source-annotation:P4-ANN-06 */}
+> **Lecture annotation — PDF p. 6.** Marks indicate post-search gradient/direction orthogonality and note that FGM/OGM need no line search when L is known. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C033 */}
+The chain rule gives transformed-coordinate GD:
+
+<SourceFormula formula={part4Formula('MAI-P4-074')} part={4} display={true} />
+
+Multiplying by T gives PGD. The lecture leaves this equivalence as <SourceFormula formula={part4Formula('MAI-P4-075')} part={4} display={false} />.
+
+{/* source-content:P4-C034 */}
+For least squares, α=1 and <SourceFormula formula={part4Formula('MAI-P4-076')} part={4} display={false} /> give <SourceFormula formula={part4Formula('MAI-P4-077')} part={4} display={false} />, motivating <SourceFormula formula={part4Formula('MAI-P4-078')} part={4} display={false} /> as an ideal preconditioner. A good preconditioner creates coordinates with nearly spherical level sets.
+
+{/* source-figure:P4-FIG-05 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-5 md:grid-cols-[1fr_auto_1fr] md:items-center">
+    <svg viewBox="0 0 320 220" role="img" aria-label="Elongated elliptical contours before preconditioning" class="w-full"><ellipse cx="160" cy="110" rx="130" ry="48" fill="none" stroke="currentColor" stroke-width="3"/><ellipse cx="160" cy="110" rx="85" ry="31" fill="none" stroke="currentColor" opacity=".6"/><line x1="45" y1="170" x2="250" y2="55" stroke="currentColor" stroke-dasharray="7 6"/><text x="105" y="205" font-size="17">ill-conditioned x-space</text></svg>
+    <div class="text-center text-3xl">→</div>
+    <svg viewBox="0 0 320 220" role="img" aria-label="Circular contours after preconditioning" class="w-full"><circle cx="160" cy="110" r="90" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="160" cy="110" r="55" fill="none" stroke="currentColor" opacity=".6"/><line x1="55" y1="165" x2="160" y2="110" stroke="currentColor" stroke-dasharray="7 6"/><text x="92" y="205" font-size="17">nearly spherical z-space</text></svg>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p. 7 geometry, reconstructed.</strong> Interpret preconditioning as a coordinate change intended to make elongated level sets spherical.</figcaption>
+</figure>
+
+{/* source-content:P4-C035 */}
+### Descent direction
+
+{/* source-content:P4-C036 */}
+Definition 4.5 defines local decrease by:
+
+<SourceFormula formula={part4Formula('MAI-P4-079')} part={4} display={true} />
+
+The zero vector is also a degenerate descent direction. In real space, with the earlier positive-definite P, a nonzero
+
+<SourceFormula formula={part4Formula('MAI-P4-080')} part={4} display={true} />
+
+is a descent direction, with proof sketch:
+
+<SourceFormula formula={part4Formula('MAI-P4-081')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C037 */}
+Representative choices include positive diagonal <SourceFormula formula={part4Formula('MAI-P4-082')} part={4} display={false} /> and:
+
+<SourceFormula formula={part4Formula('MAI-P4-083')} part={4} display={true} />
+
+For circulant structure, the latter permits fast preconditioned-gradient products through FFTs.
+
+{/* source-annotation:P4-ANN-07 */}
+> **Lecture annotation — PDF p. 7.** Marks show the ellipse-to-circle coordinate change, ideal inverse-Hessian preconditioning, and unitary diagonalization. Uncertain small handwriting is not reconstructed speculatively.
+
+{/* source-content:P4-C038 */}
+### Descent direction: complex case
+
+{/* source-content:P4-C039 */}
+Although <SourceFormula formula={part4Formula('MAI-P4-084')} part={4} display={false} /> is not holomorphic, for positive-definite P,
+
+<SourceFormula formula={part4Formula('MAI-P4-085')} part={4} display={true} />
+
+is a descent direction. The source uses <SourceFormula formula={part4Formula('MAI-P4-086')} part={4} display={false} /> as a gradient-like quantity producing negative descent rather than an ordinary complex derivative, then prints stationarity as <SourceFormula formula={part4Formula('MAI-P4-087')} part={4} display={false} />.
+
+{/* source-content:P4-C040 */}
+## 4.4 Descent directions for complex edge-preserving regularizers
+
+{/* source-content:P4-C041 */}
+The complex regularizer is:
+
+<SourceFormula formula={part4Formula('MAI-P4-088')} part={4} display={true} />
+
+Assume f is real-valued, nondecreasing on nonnegative arguments, and differentiable; <SourceFormula formula={part4Formula('MAI-P4-089')} part={4} display={false} /> is well-defined even at zero and satisfies <SourceFormula formula={part4Formula('MAI-P4-090')} part={4} display={false} />. For the Fair potential, <SourceFormula formula={part4Formula('MAI-P4-091')} part={4} display={false} />.
+
+{/* source-content:P4-C042 */}
+The claim is that
+
+<SourceFormula formula={part4Formula('MAI-P4-092')} part={4} display={true} />
+
+is a descent direction. Its intuition is <SourceFormula formula={part4Formula('MAI-P4-093')} part={4} display={false} />.
+
+{/* source-content:P4-C043 */}
+For one row, the proof uses <SourceFormula formula={part4Formula('MAI-P4-094')} part={4} display={false} /> and contraction:
+
+<SourceFormula formula={part4Formula('MAI-P4-095')} part={4} display={true} />
+
+The step interval is <SourceFormula formula={part4Formula('MAI-P4-096')} part={4} display={false} />, and the source writes the final comparison as <SourceFormula formula={part4Formula('MAI-P4-097')} part={4} display={false} />.
+
+{/* source-annotation:P4-ANN-08 */}
+> **Lecture annotation — PDF p. 8.** Notes reuse gradient notation for negative descent without directly introducing Wirtinger derivatives and mark Hermitian transpose. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C044 */}
+### Lipschitz constants and practical bounds for a complex descent field
+
+{/* source-content:P4-C045 */}
+The lecture decomposes <SourceFormula formula={part4Formula('MAI-P4-098')} part={4} display={false} /> into <SourceFormula formula={part4Formula('MAI-P4-099')} part={4} display={false} />. It leaves <SourceFormula formula={part4Formula('MAI-P4-100')} part={4} display={false} /> blank for real arguments and conjectures <SourceFormula formula={part4Formula('MAI-P4-101')} part={4} display={false} /> and <SourceFormula formula={part4Formula('MAI-P4-102')} part={4} display={false} /> for complex arguments from numerical evidence. These remain research-in-progress source statements, not established theorems.
+
+{/* source-content:P4-C046 */}
+A periodic 1D finite-difference operator is circulant and normal, allowing spectral radius:
+
+<SourceFormula formula={part4Formula('MAI-P4-103')} part={4} display={true} />
+
+For nonperiodic boundaries, use:
+
+<SourceFormula formula={part4Formula('MAI-P4-104')} part={4} display={true} />
+
+and the convenient 1-norm bound:
+
+<SourceFormula formula={part4Formula('MAI-P4-105')} part={4} display={true} />
+
+This gives practical choice <SourceFormula formula={part4Formula('MAI-P4-106')} part={4} display={false} />.
+
+{/* source-content:P4-C047 */}
+For preconditioned fixed steps, calculate transformed objective <SourceFormula formula={part4Formula('MAI-P4-107')} part={4} display={false} />, gradient <SourceFormula formula={part4Formula('MAI-P4-108')} part={4} display={false} />, and Lipschitz bound:
+
+<SourceFormula formula={part4Formula('MAI-P4-109')} part={4} display={true} />
+
+
+
+{/* source-annotation:P4-ANN-09 */}
+> **Lecture annotation — PDF p. 9.** Notes supplement periodic/circulant differences, spectral radius near two, and a matrix 1-norm calculation yielding four. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C048 */}
+Returning transformed-coordinate GD to x-space gives:
+
+<SourceFormula formula={part4Formula('MAI-P4-110')} part={4} display={true} />
+
+A valid fixed step is:
+
+<SourceFormula formula={part4Formula('MAI-P4-111')} part={4} display={true} />
+
+Preconditioning therefore does not require line search.
+
+{/* source-content:P4-C049 */}
+## 4.5 General inverse problems with efficient line search
+
+{/* source-content:P4-C050 */}
+A representative inverse problem is:
+
+<SourceFormula formula={part4Formula('MAI-P4-112')} part={4} display={true} />
+
+The source leaves its containing general form as:
+
+<SourceFormula formula={part4Formula('MAI-P4-113')} part={4} display={true} />
+
+Each B_i has shape M_i×N and f_i is usually convex.
+
+{/* source-content:P4-C051 */}
+The special-case mapping is:
+
+<SourceFormula formula={part4Formula('MAI-P4-114')} part={4} display={true} />
+
+For the Fair potential, the exercise asks for f₂'s best gradient constant:
+
+<SourceFormula formula={part4Formula('MAI-P4-115')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C052 */}
+Naive line search <SourceFormula formula={part4Formula('MAI-P4-116')} part={4} display={false} /> repeats B_i products at every trial. Precomputing them gives:
+
+<SourceFormula formula={part4Formula('MAI-P4-117')} part={4} display={true} />
+
+The outer update then allows recursive reuse through:
+
+<SourceFormula formula={part4Formula('MAI-P4-118')} part={4} display={true} />
+
+In this simplified form, the line derivative's Lipschitz constant does not directly require B_i operator norms.
+
+{/* source-annotation:P4-ANN-10 */}
+> **Lecture annotation — PDF p. 10.** The diagram caches B_i x and B_i d before line search and recursively updates them afterward. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C053 */}
+## 4.6 Convergence rates
+
+{/* source-content:P4-C054 */}
+Under local strict convexity and twice differentiability, PGD, PSD, and PCG asymptotics are summarized by:
+
+<SourceFormula formula={part4Formula('MAI-P4-119')} part={4} display={true} />
+
+with root-convergence factor <SourceFormula formula={part4Formula('MAI-P4-120')} part={4} display={false} /> and preconditioned Hessian/condition number <SourceFormula formula={part4Formula('MAI-P4-121')} part={4} display={false} />.
+
+{/* source-figure:P4-FIG-06 */}
+<figure class="my-8 overflow-hidden rounded-2xl border border-border bg-card/50">
+  <figcaption class="border-b border-border px-4 py-3 font-black">PDF p. 11 convergence-factor table, reconstructed</figcaption>
+  <div class="overflow-x-auto p-4">
+  <div role="table" aria-label="PGD, PSD, PCG convergence factors" class="min-w-[720px] overflow-hidden rounded-xl border border-border">
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] bg-muted/60 font-black"><div role="columnheader" class="p-3">Method</div><div role="columnheader" class="p-3">ρ</div><div role="columnheader" class="p-3">κ=10²</div></div>
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] border-t border-border"><div role="cell" class="p-3">PGD standard step</div><div role="cell" class="p-3"><SourceFormula formula={part4Formula('MAI-P4-122')} part={4} display={false} /></div><div role="cell" class="p-3">0.99</div></div>
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] border-t border-border"><div role="cell" class="p-3">PGD optimal step</div><div role="cell" class="p-3"><SourceFormula formula={part4Formula('MAI-P4-123')} part={4} display={false} /></div><div role="cell" class="p-3">0.98</div></div>
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] border-t border-border"><div role="cell" class="p-3">PSD exact line search</div><div role="cell" class="p-3"><SourceFormula formula={part4Formula('MAI-P4-124')} part={4} display={false} /></div><div role="cell" class="p-3">0.98</div></div>
+    <div role="row" class="grid grid-cols-[1.4fr_1fr_0.6fr] border-t border-border"><div role="cell" class="p-3">PCG exact line search</div><div role="cell" class="p-3"><SourceFormula formula={part4Formula('MAI-P4-125')} part={4} display={false} /></div><div role="cell" class="p-3">0.82</div></div>
+  </div>
+</div>
+</figure>
+
+{/* source-content:P4-C055 */}
+The lecture then states <SourceFormula formula={part4Formula('MAI-P4-126')} part={4} display={false} /> and says these ρ values match lower bounds.
+
+{/* source-annotation:P4-ANN-11 */}
+> **Lecture annotation — PDF p. 11.** The comparison 0.99, 0.98, and 0.82 at κ=100 highlights preconditioning and PCG. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C056 */}
+### Generalized S-Lipschitz PGD analysis
+
+{/* source-content:P4-C057 */}
+Definition 4.7 specifies anisotropic smoothness by:
+
+<SourceFormula formula={part4Formula('MAI-P4-127')} part={4} display={true} />
+
+The classical condition returns at <SourceFormula formula={part4Formula('MAI-P4-128')} part={4} display={false} />. Theorem 4.8 assumes matrix condition:
+
+<SourceFormula formula={part4Formula('MAI-P4-129')} part={4} display={true} />
+
+For the following PGD:
+
+<SourceFormula formula={part4Formula('MAI-P4-130')} part={4} display={true} />
+
+it gives decrease:
+
+<SourceFormula formula={part4Formula('MAI-P4-131')} part={4} display={true} />
+
+and convergence of gradient norms.
+
+{/* source-content:P4-C058 */}
+With SPD P, the condition is <SourceFormula formula={part4Formula('MAI-P4-132')} part={4} display={false} /> and weighted distance <SourceFormula formula={part4Formula('MAI-P4-133')} part={4} display={false} /> decreases. The choice <SourceFormula formula={part4Formula('MAI-P4-134')} part={4} display={false} /> matches an MM method and gives the classical bound:
+
+<SourceFormula formula={part4Formula('MAI-P4-135')} part={4} display={true} />
+
+, 2014 tight bound 
+
+<SourceFormula formula={part4Formula('MAI-P4-136')} part={4} display={true} />
+
+A Huber-like function makes the bound tight.
+
+{/* source-content:P4-C059 */}
+A diagonal A with heterogeneous physical units illustrates the scalar Lipschitz constant's units:
+
+<SourceFormula formula={part4Formula('MAI-P4-137')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C060 */}
+### Generalized Nesterov fast gradient method(FGM)
+
+{/* source-content:P4-C061 */}
+Generalized FGM combines <SourceFormula formula={part4Formula('MAI-P4-138')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-139')} part={4} display={false} />, and <SourceFormula formula={part4Formula('MAI-P4-140')} part={4} display={false} /> as:
+
+<SourceFormula formula={part4Formula('MAI-P4-141')} part={4} display={true} />
+
+Setting every t=1 recovers ordinary GD. For convex S-Lipschitz objectives:
+
+<SourceFormula formula={part4Formula('MAI-P4-142')} part={4} display={true} />
+
+gives an O(1/k²) worst-case rate. For quadratics in R^N, CG can terminate within N steps in exact arithmetic, so worst-case bounds may be pessimistic for particular applications.
+
+{/* source-content:P4-C062 */}
+Newton's method is the second-order baseline:
+
+<SourceFormula formula={part4Formula('MAI-P4-143')} part={4} display={true} />
+
+Large problems make full Hessian construction/inversion impractical, motivating first-order methods.
+
+{/* source-annotation:P4-ANN-12 */}
+> **Lecture annotation — PDF p. 12.** Notes compare O(1/k), O(1/k²), momentum, and Newton inverse-Hessian costs. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C063 */}
+## 4.7 Accelerated first-order methods
+
+{/* source-content:P4-C064 */}
+The general first-order class is:
+
+<SourceFormula formula={part4Formula('MAI-P4-144')} part={4} display={true} />
+
+The fixed-coefficient FO class is:
+
+<SourceFormula formula={part4Formula('MAI-P4-145')} part={4} display={true} />
+
+The source asks which algorithms belong to FO:
+
+<SourceFormula formula={part4Formula('MAI-P4-146')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C065 */}
+Barzilai–Borwein combines <SourceFormula formula={part4Formula('MAI-P4-147')} part={4} display={false} />, <SourceFormula formula={part4Formula('MAI-P4-148')} part={4} display={false} />, and <SourceFormula formula={part4Formula('MAI-P4-149')} part={4} display={false} /> in:
+
+<SourceFormula formula={part4Formula('MAI-P4-150')} part={4} display={true} />
+
+It belongs to GFO but not fixed-step FO, since its coefficients depend on the trajectory.
+
+{/* source-content:P4-C066 */}
+Research questions include rates for given coefficients, coefficient optimization, efficient recursions, L-independent universal designs, and possible advantages of GFO.
+
+{/* source-content:P4-C067 */}
+### Recursive and FO forms of Nesterov FGM1
+
+{/* source-content:P4-C068 */}
+Nesterov's iteration uses GD step <SourceFormula formula={part4Formula('MAI-P4-151')} part={4} display={false} />, momentum factor <SourceFormula formula={part4Formula('MAI-P4-152')} part={4} display={false} />, and updates <SourceFormula formula={part4Formula('MAI-P4-153')} part={4} display={false} /> and <SourceFormula formula={part4Formula('MAI-P4-154')} part={4} display={false} />:
+
+<SourceFormula formula={part4Formula('MAI-P4-155')} part={4} display={true} />
+
+Implementation is recursive, while analysis can expand it into FO coefficients.
+
+{/* source-annotation:P4-ANN-13 */}
+> **Lecture annotation — PDF p. 13.** Marks show FO/GFO inclusion and Barzilai–Borwein's use of previous iterate and gradient differences. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C069 */}
+FGM1's fixed-step coefficients are:
+
+<SourceFormula formula={part4Formula('MAI-P4-156')} part={4} display={true} />
+
+A lower-triangular numerical coefficient matrix is shown for n=0,…,5.
+
+{/* source-figure:P4-FIG-07 */}
+<figure class="my-8 overflow-hidden rounded-2xl border border-border bg-card/50">
+  <figcaption class="border-b border-border px-4 py-3 font-black">PDF p. 14 FGM coefficient matrix, reconstructed</figcaption>
+  <div class="overflow-x-auto p-4">
+  <div role="table" aria-label="FGM fixed-step coefficient matrix" class="min-w-[620px] overflow-hidden rounded-xl border border-border text-center tabular-nums">
+    <div role="row" class="grid grid-cols-6"><div role="cell" class="p-2">1.00</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">1.25</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0.10</div><div role="cell" class="p-2">1.40</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0.05</div><div role="cell" class="p-2">0.20</div><div role="cell" class="p-2">1.50</div><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0.03</div><div role="cell" class="p-2">0.11</div><div role="cell" class="p-2">1.29</div><div role="cell" class="p-2">1.57</div><div role="cell" class="p-2">0</div></div>
+    <div role="row" class="grid grid-cols-6 border-t border-border"><div role="cell" class="p-2">0</div><div role="cell" class="p-2">0.02</div><div role="cell" class="p-2">0.07</div><div role="cell" class="p-2">0.18</div><div role="cell" class="p-2">0.36</div><div role="cell" class="p-2">1.62</div></div>
+  </div>
+</div>
+</figure>
+
+{/* source-content:P4-C070 */}
+The primary-sequence bound is:
+
+<SourceFormula formula={part4Formula('MAI-P4-157')} part={4} display={true} />
+
+Nesterov's worst-function lower bound is:
+
+<SourceFormula formula={part4Formula('MAI-P4-158')} part={4} display={true} />
+
+The secondary-sequence bound is:
+
+<SourceFormula formula={part4Formula('MAI-P4-159')} part={4} display={true} />
+
+Both upper bounds are asymptotically tight, but their leading constants leave room for improvement.
+
+{/* source-content:P4-C071 */}
+The exercise asks for iterations needed for ε accuracy:
+
+<SourceFormula formula={part4Formula('MAI-P4-160')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C072 */}
+### Optimized gradient method(OGM)
+
+{/* source-content:P4-C073 */}
+D. Kim introduces optimized coefficients:
+
+<SourceFormula formula={part4Formula('MAI-P4-161')} part={4} display={true} />
+
+with horizon-dependent θ recurrence:
+
+<SourceFormula formula={part4Formula('MAI-P4-162')} part={4} display={true} />
+
+The analytical bound:
+
+<SourceFormula formula={part4Formula('MAI-P4-163')} part={4} display={true} />
+
+retains O(1/N²) while improving FGM's leading constant by a factor of two.
+
+{/* source-annotation:P4-ANN-14 */}
+> **Lecture annotation — PDF p. 14.** Notes compare FGM coefficients with OGM's special final-horizon coefficient and mark a square root beside ε complexity. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C074 */}
+Efficient OGM recursion combines GD step <SourceFormula formula={part4Formula('MAI-P4-164')} part={4} display={false} />, horizon-aware <SourceFormula formula={part4Formula('MAI-P4-165')} part={4} display={false} />, and a two-momentum update:
+
+<SourceFormula formula={part4Formula('MAI-P4-166')} part={4} display={true} />
+
+Removing the new final momentum recovers Nesterov FGM. The drawback is choosing N beforehand for the final bound.
+
+{/* source-content:P4-C075 */}
+The primary sequence satisfies:
+
+<SourceFormula formula={part4Formula('MAI-P4-167')} part={4} display={true} />
+
+The newer OGM′ uses standard recurrence <SourceFormula formula={part4Formula('MAI-P4-168')} part={4} display={false} /> and overrelaxed gradient plus FGM momentum:
+
+<SourceFormula formula={part4Formula('MAI-P4-169')} part={4} display={true} />
+
+It avoids fixing N in advance. The lecture also gives <SourceFormula formula={part4Formula('MAI-P4-170')} part={4} display={false} /> in a footnote.
+
+{/* source-figure:P4-FIG-08 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <svg viewBox="0 0 900 330" role="img" aria-label="Comparing gradient and momentum structures in GD, FGM, and OGM" class="w-full">
+    <defs><marker id="arr-p4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+    <g fill="none" stroke="currentColor" stroke-width="2.5" marker-end="url(#arr-p4)"><path d="M90 85H330"/><path d="M90 165H330"/><path d="M90 245H330"/><path d="M390 165H650"/><path d="M390 245H650"/></g>
+    <g font-size="18"><text x="30" y="91">GD</text><text x="30" y="171">FGM</text><text x="30" y="251">OGM</text><text x="125" y="70">gradient step</text><text x="420" y="145">FGM momentum</text><text x="420" y="225">extra over-relaxed gradient momentum</text><text x="680" y="171">O(1/k²)</text><text x="680" y="251">same order, better constant</text></g>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF pp. 15–16 momentum diagram, reconstructed.</strong> OGM adds gradient-related momentum to FGM momentum, with an overrelaxation factor approaching two.</figcaption>
+</figure>
+
+{/* source-content:P4-C076 */}
+The intuition uses overrelaxed gradient multiplier <SourceFormula formula={part4Formula('MAI-P4-171')} part={4} display={false} />.
+
+{/* source-content:P4-C077 */}
+### OGM's GFO worst-case optimality
+
+{/* source-content:P4-C078 */}
+OGM uses optimized h within fixed-step class <SourceFormula formula={part4Formula('MAI-P4-172')} part={4} display={false} /> to satisfy:
+
+<SourceFormula formula={part4Formula('MAI-P4-173')} part={4} display={true} />
+
+Drori proves a lower bound over the full GFO class <SourceFormula formula={part4Formula('MAI-P4-174')} part={4} display={false} /> in large-scale settings with d>N:
+
+<SourceFormula formula={part4Formula('MAI-P4-175')} part={4} display={true} />
+
+Within this oracle model, OGM therefore has optimal worst-case complexity.
+
+{/* source-figure:P4-FIG-09 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-5 md:grid-cols-2">
+    <section class="rounded-xl border border-border p-4"><h4 class="mt-0">Huber-like worst case</h4><svg viewBox="0 0 340 210" class="w-full" role="img" aria-label="Huber-like worst-case function"><line x1="30" y1="175" x2="315" y2="175" stroke="currentColor"/><line x1="170" y1="25" x2="170" y2="190" stroke="currentColor"/><path d="M45 60L120 145Q170 188 220 145L295 60" fill="none" stroke="currentColor" stroke-width="3"/><g fill="currentColor"><circle cx="105" cy="130" r="5"/><circle cx="140" cy="163" r="5"/><circle cx="190" cy="170" r="5"/></g></svg></section>
+    <section class="rounded-xl border border-border p-4"><h4 class="mt-0">Quadratic worst case</h4><svg viewBox="0 0 340 210" class="w-full" role="img" aria-label="quadratic worst-case function"><line x1="30" y1="175" x2="315" y2="175" stroke="currentColor"/><line x1="170" y1="25" x2="170" y2="190" stroke="currentColor"/><path d="M50 35Q170 210 290 35" fill="none" stroke="currentColor" stroke-width="3"/><polyline points="55,42 120,132 215,164 285,45" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="7 6"/><g fill="currentColor"><circle cx="55" cy="42" r="5"/><circle cx="120" cy="132" r="5"/><circle cx="215" cy="164" r="5"/><circle cx="285" cy="45" r="5"/></g></svg></section>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF p. 16 worst-case panels, reconstructed.</strong> Conceptual Huber-like and quadratic examples show two ways OGM iterates attain the upper bound.</figcaption>
+</figure>
+
+{/* source-annotation:P4-ANN-15 */}
+> **Lecture annotation — PDF p. 16.** Notes emphasize worst-case optimality in the GFO oracle model as well as fixed-step FO and mark Huber/quadratic worst-case paths. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C079 */}
+For both worst-case families:
+
+<SourceFormula formula={part4Formula('MAI-P4-176')} part={4} display={true} />
+
+However, in general FGM/OGM satisfy:
+
+<SourceFormula formula={part4Formula('MAI-P4-177')} part={4} display={true} />
+
+A bound decreasing with k does not make actual iterate costs monotone.
+
+{/* source-content:P4-C080 */}
+## 4.8 Machine learning: Binary classification with logistic regression
+
+{/* source-content:P4-C081 */}
+For feature vectors v_m∈R^N, labels `y_m∈{±1}`, and regularization β>0, minimize:
+
+<SourceFormula formula={part4Formula('MAI-P4-178')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C082 */}
+Desired classifier margins satisfy:
+
+<SourceFormula formula={part4Formula('MAI-P4-179')} part={4} display={true} />
+
+Use sign(⟨x,v_m⟩) for class decisions.
+
+{/* source-content:P4-C083 */}
+The logistic surrogate has <SourceFormula formula={part4Formula('MAI-P4-180')} part={4} display={false} />, derivative <SourceFormula formula={part4Formula('MAI-P4-181')} part={4} display={false} />, and curvature:
+
+<SourceFormula formula={part4Formula('MAI-P4-182')} part={4} display={true} />
+
+These permit computing a gradient Lipschitz constant.
+
+{/* source-figure:P4-FIG-10 */}
+<figure class="my-8 rounded-2xl border border-border bg-card/50 p-5">
+  <div class="grid gap-5 lg:grid-cols-2">
+    <section><h4 class="mt-0">Surrogate losses</h4><svg viewBox="0 0 420 280" role="img" aria-label="exponential hinge logistic zero-one surrogate losses" class="w-full"><line x1="45" y1="235" x2="390" y2="235" stroke="currentColor"/><line x1="210" y1="25" x2="210" y2="250" stroke="currentColor"/><path d="M60 35 C120 85 190 155 360 224" fill="none" stroke="currentColor" stroke-width="2"/><path d="M60 80 L210 180 L360 235" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="8 6"/><path d="M60 120 C150 150 220 190 360 228" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60 180 H210 V235 H360" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 5"/><text x="275" y="65" font-size="15">exponential / hinge / logistic / 0–1</text></svg></section>
+    <section><h4 class="mt-0">Decision boundary update</h4><svg viewBox="0 0 420 280" role="img" aria-label="green and blue training points with initial final and ideal decision boundaries" class="w-full"><line x1="45" y1="235" x2="390" y2="235" stroke="currentColor"/><line x1="45" y1="30" x2="45" y2="235" stroke="currentColor"/><g fill="none" stroke="currentColor"><line x1="80" y1="210" x2="340" y2="55" stroke-width="2"/><line x1="65" y1="175" x2="355" y2="85" stroke-width="4" stroke-dasharray="8 6"/><line x1="100" y1="220" x2="310" y2="45" stroke-width="2" stroke-dasharray="3 5"/></g><g fill="currentColor"><circle cx="110" cy="185" r="5"/><circle cx="145" cy="165" r="5"/><circle cx="175" cy="195" r="5"/><circle cx="275" cy="80" r="5"/><circle cx="315" cy="105" r="5"/><circle cx="335" cy="65" r="5"/></g></svg></section>
+  </div>
+  <figcaption class="mt-3 text-sm text-muted-foreground"><strong>PDF pp. 17–18 figures, reconstructed.</strong> New SVGs compare surrogate-loss shapes and initial, final, and ideal boundaries on labeled points.</figcaption>
+</figure>
+
+{/* source-content:P4-C084 */}
+The exercise leaves the general inverse-form correspondence as:
+
+<SourceFormula formula={part4Formula('MAI-P4-183')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-184')} part={4} display={true} />
+
+It defines <SourceFormula formula={part4Formula('MAI-P4-185')} part={4} display={false} />. The gradient and practical constant are:
+
+<SourceFormula formula={part4Formula('MAI-P4-186')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C085 */}
+Practical notes normalize V's columns to unit norm to reduce exponential overflow, tune β through cross-validation, and use the smooth convex objective with FGM/OGM. For very large N and sparse classifiers, replace ℓ₂ with ℓ₁ and use FISTA or POGM.
+
+{/* source-content:P4-C086 */}
+The sparse variant changes the regularizer to <SourceFormula formula={part4Formula('MAI-P4-187')} part={4} display={false} />.
+
+{/* source-content:P4-C087 */}
+The numerical example compares initial, optimized, and ideal boundaries for M=100, N=7 labeled samples. The source itself asks “large scale?”
+
+{/* source-annotation:P4-ANN-16 */}
+> **Lecture annotation — PDF p. 17.** Notes compare logistic, hinge, exponential, and 0–1 surrogates and stack data as V=[y₁v₁,…]. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-annotation:P4-ANN-17 */}
+> **Lecture annotation — PDF p. 18.** Column normalization, cross-validation, and sparse ℓ₁ variants are emphasized beside implementation notes. Uncertain small writing is not reconstructed speculatively.
+
+{/* source-content:P4-C088 */}
+## 4.9 Summary
+
+{/* source-content:P4-C089 */}
+The chapter surveys gradient methods for differentiable unconstrained objectives. Gradient computation is often the costliest part of each iteration.
+
+{/* source-content:P4-C090 */}
+PSD and PCG add line search, itself a 1D optimization with repeated cost/gradient evaluations. For equation (12)'s structure, cached products and recursive updates from §4.5 reduce this cost.
+
+{/* source-content:P4-C091 */}
+The final question asks whether the general form is a strict subset of all Lipschitz-gradient objectives:
+
+<SourceFormula formula={part4Formula('MAI-P4-188')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C092 */}
+## References in the lecture material
+
+{/* source-content:P4-C093 */}
+1. R. C. Fair, “On the robust estimation of econometric models,” Annals of Economic and Social Measurement, 1974.
+
+{/* source-content:P4-C094 */}
+2. K. Lange, “Convergence of EM image reconstruction algorithms with Gibbs smoothing,” IEEE Transactions on Medical Imaging, 1990.
+
+{/* source-content:P4-C095 */}
+3. X. Zheng et al., “Sparse-view X-ray CT reconstruction using ℓ1 prior with learned transform,” submitted 2019; arXiv:1711.00905.
+
+{/* source-content:P4-C096 */}
+4. B. T. Polyak, Introduction to Optimization, 1987.
+
+{/* source-content:P4-C097 */}
+5. Y. Drori and M. Teboulle, “Performance of first-order methods for smooth convex minimization: a novel approach,” Mathematical Programming, 2014.
+
+{/* source-content:P4-C098 */}
+6. A. B. Taylor, J. M. Hendrickx, and F. Glineur, “Smooth strongly convex interpolation and exact worst-case performance of first-order methods,” Mathematical Programming, 2017.
+
+{/* source-content:P4-C099 */}
+7. D. Kim and J. A. Fessler, “Optimized first-order methods for smooth convex minimization,” Mathematical Programming, 2016.
+
+{/* source-content:P4-C100 */}
+8. Y. Nesterov, Lectures on Convex Optimization, 2018.
+
+{/* source-content:P4-C101 */}
+9. I. Y. Chun and J. A. Fessler, “Convolutional analysis operator learning: Acceleration and convergence,” IEEE Transactions on Image Processing, 2020.
+
+{/* source-content:P4-C102 */}
+10. J. Barzilai and J. M. Borwein, “Two-point step size gradient methods,” IMA Journal of Numerical Analysis, 1988.
+
+{/* source-content:P4-C103 */}
+11. Y. Nesterov, “A method for unconstrained convex minimization problem with the rate of convergence O(1/k²),” 1983.
+
+{/* source-content:P4-C104 */}
+12. Y. Nesterov, “Smooth minimization of non-smooth functions,” Mathematical Programming, 2005.
+
+{/* source-content:P4-C105 */}
+13. O. Güler, “New proximal point algorithms for convex minimization,” SIAM Journal on Optimization, 1992.
+
+{/* source-content:P4-C106 */}
+14. D. Kim and J. A. Fessler, “On the convergence analysis of the optimized gradient method,” Journal of Optimization Theory and Applications, 2017.
+
+{/* source-content:P4-C107 */}
+15. Y. Drori, “The exact information-based complexity of smooth convex minimization,” Journal of Complexity, 2017.
+
+{/* source-content:P4-C108 */}
+16. A. Beck and M. Teboulle, “A fast iterative shrinkage-thresholding algorithm for linear inverse problems,” SIAM Journal on Imaging Sciences, 2009.
+
+{/* source-content:P4-C109 */}
+17. A. B. Taylor, J. M. Hendrickx, and F. Glineur, “Exact worst-case performance of first-order methods for composite convex optimization,” SIAM Journal on Optimization, 2017.
+
+{/* source-content:P4-C110 */}
+# Editorial and mathematical audit
+
+{/* source-content:P4-C111 */}
+This section preserves source-suspect and blank equations above. Completions and corrections are separately recorded through `corrects` links rather than overwriting the PDF.
+
+{/* source-content:P4-C112 */}
+## Products of Lipschitz functions: the global claim is false; boundedness suffices
+
+{/* source-content:P4-C113 */}
+A counterexample is:
+
+<SourceFormula formula={part4Formula('MAI-P4-189')} part={4} display={true} />
+
+If |f|≤fmax and |g|≤gmax, the decomposition:
+
+<SourceFormula formula={part4Formula('MAI-P4-190')} part={4} display={true} />
+
+gives the bound:
+
+<SourceFormula formula={part4Formula('MAI-P4-191')} part={4} display={true} />
+
+Boundedness is sufficient but not necessary. Weaker cases, such as a bounded factor multiplied by a constant factor, can also be Lipschitz.
+
+{/* source-content:P4-C114 */}
+## Completing Fair-potential and real-regularizer blanks
+
+{/* source-content:P4-C115 */}
+The potential itself has constant:
+
+<SourceFormula formula={part4Formula('MAI-P4-192')} part={4} display={true} />
+
+The real chain rule gives:
+
+<SourceFormula formula={part4Formula('MAI-P4-193')} part={4} display={true} />
+
+Component constants and vector bounds are:
+
+<SourceFormula formula={part4Formula('MAI-P4-194')} part={4} display={true} />
+
+, 
+
+<SourceFormula formula={part4Formula('MAI-P4-195')} part={4} display={true} />
+
+The final regularizer-gradient constant is:
+
+<SourceFormula formula={part4Formula('MAI-P4-196')} part={4} display={true} />
+
+When Ldotψ≤1, the source multiple-choice answer is C.
+
+{/* source-content:P4-C116 */}
+## Completing preconditioning blanks
+
+{/* source-content:P4-C117 */}
+The coordinate-change answer is:
+
+<SourceFormula formula={part4Formula('MAI-P4-197')} part={4} display={true} />
+
+Unitary diagonalization is:
+
+<SourceFormula formula={part4Formula('MAI-P4-198')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C118 */}
+## Correcting complex transposes and the proof's final comparison
+
+{/* source-content:P4-C119 */}
+Complex least-squares stationarity requires Hermitian rather than ordinary transpose:
+
+<SourceFormula formula={part4Formula('MAI-P4-199')} part={4} display={true} />
+
+The single-term proof ends with the correction:
+
+<SourceFormula formula={part4Formula('MAI-P4-200')} part={4} display={true} />
+
+The real symmetric derivative blank is:
+
+<SourceFormula formula={part4Formula('MAI-P4-201')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C120 */}
+## Completing the general inverse form and line-search exercise
+
+{/* source-content:P4-C121 */}
+Equation (12)'s blank becomes:
+
+<SourceFormula formula={part4Formula('MAI-P4-202')} part={4} display={true} />
+
+The normalized Fair-potential multiple-choice answer is:
+
+<SourceFormula formula={part4Formula('MAI-P4-203')} part={4} display={true} />
+
+Thus the answer is B.
+
+{/* source-content:P4-C122 */}
+## Distinguishing PCG's “quadratic convergence” wording
+
+{/* source-content:P4-C123 */}
+The source phrase can be confused with quadratic convergence in general numerical-analysis terminology. A safer correction is:
+
+<SourceFormula formula={part4Formula('MAI-P4-204')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C124 */}
+## Multiple-choice answers and the OGM recurrence correction
+
+{/* source-content:P4-C125 */}
+The heterogeneous-unit example's answer is:
+
+<SourceFormula formula={part4Formula('MAI-P4-205')} part={4} display={true} />
+
+The fixed-coefficient FO answer is:
+
+<SourceFormula formula={part4Formula('MAI-P4-206')} part={4} display={true} />
+
+The ε complexity is:
+
+<SourceFormula formula={part4Formula('MAI-P4-207')} part={4} display={true} />
+
+The corrected final-horizon OGM index is:
+
+<SourceFormula formula={part4Formula('MAI-P4-208')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C126 */}
+## Completing the logistic-regression mapping
+
+{/* source-content:P4-C127 */}
+Equation (21) is <SourceFormula formula={part4Formula('MAI-P4-209')} part={4} display={false} />; its exact mapping is:
+
+<SourceFormula formula={part4Formula('MAI-P4-210')} part={4} display={true} />
+
+
+
+{/* source-content:P4-C128 */}
+## The final strict-subset question
+
+{/* source-content:P4-C129 */}
+If f_i can be arbitrary Lipschitz-gradient functions, I=1 and B₁=I represent every Ψ, giving:
+
+<SourceFormula formula={part4Formula('MAI-P4-211')} part={4} display={true} />
+
+It is a proper subset only when further structural restrictions apply.
+
+{/* source-content:P4-C130 */}
+# Research update: August 18, 2026
+
+{/* source-content:P4-C131 */}
+This is not 2025 lecture material. It extends GD, FGM, and OGM through peer-reviewed proceedings and public preprints available by August 18, 2026, keeping their claims separate.
+
+{/* source-content:P4-C132 */}
+## 1. Worst-case analysis expands into PEP/SDP-based algorithm design
+
+{/* source-content:P4-C133 */}
+Drori–Teboulle's Performance Estimation Problem asks for the worst function and iterates under a specified oracle model as an optimization problem. The [original paper](https://arxiv.org/abs/1206.3209) develops tight smooth-convex first-order analysis and coefficient design; [PEPit](https://arxiv.org/abs/2201.04040) automates gradient, proximal, and projection-oracle analysis through Python and SDP.
+
+{/* source-content:P4-C134 */}
+The 2025 [Numerical Design of Optimized First-Order Algorithms](https://arxiv.org/abs/2507.20773) uses PEP to design memoryless/full-memory coefficients. OGM is one instance of optimizing algorithms under stated function classes, oracles, metrics, and horizons, rather than an endpoint.
+
+{/* source-content:P4-C135 */}
+PEP provides worst-case certificates under explicit assumptions. Stochastic noise, mixed precision, finite batches, or distributed communication require new PEP formulations or separate stability models.
+
+{/* source-content:P4-C136 */}
+## 2. Acceleration also concerns oscillation, restart, and monotonicity
+
+{/* source-content:P4-C137 */}
+FGM/OGM objectives need not decrease every iteration. [Adaptive Restart for Accelerated Gradient Schemes](https://arxiv.org/abs/1204.3982) detects excess-momentum oscillations with function- or gradient-based restarts. The 2025 [Restarts Subject to Approximate Sharpness](https://link.springer.com/article/10.1007/s10208-024-09673-8) extends parameter-free analysis to approximately known sharpness.
+
+{/* source-content:P4-C138 */}
+Monitor objective spikes, gradient norms, validation, restart counts, wall-clock time, and overflow alongside theoretical rates. Separate iteration count from each iteration's cost and stability.
+
+{/* source-content:P4-C139 */}
+## 3. Large-model optimizers diversify into diagonal adaptation, low-rank state, and matrix geometry
+
+{/* source-content:P4-C140 */}
+Elementwise Adam moments are not the only option. ICLR 2025's [SPAM](https://openreview.net/forum?id=L9eBxTCpQG) detects gradient spikes and combines momentum resets with clipping; [LDAdam](https://openreview.net/forum?id=Zkp1GuHerF) reduces memory using low-dimensional gradient statistics and projection-aware state transport.
+
+{/* source-content:P4-C141 */}
+ICLR 2026's [Muon Outperforms Adam in Tail-End Associative Memory Learning](https://openreview.net/forum?id=twbMFL0DMp) reports more isotropic singular spectra and improved tail-class learning in heavy-tailed associative-memory tasks. This extends preconditioning into neural matrix geometry without proving universal superiority across architectures or datasets.
+
+{/* source-content:P4-C142 */}
+## 4. Nonconvex and distributed settings change guarantee targets
+
+{/* source-content:P4-C143 */}
+Deep-network training generally targets stationarity, gradient norms, stochastic variance, and communication complexity rather than convex-minimizer guarantees. [BnB-PEP](https://arxiv.org/abs/2203.07305) addresses convex/nonconvex method design through branch and bound; ICLR 2026's [Error Feedback for Muon and Friends](https://openreview.net/forum?id=rex7s82Iav) connects non-Euclidean matrix optimizers with stochastic/distributed compression.
+
+{/* source-content:P4-C144 */}
+Do not transfer the lecture's `0 < α < 2/L` theorem directly into LLM training. Specify objective class, norm geometry, stochastic oracle, optimizer state, and distributed operators first.
+
+{/* source-content:P4-C145 */}
+## 5. Higher-order methods trade iteration count against step cost
+
+{/* source-content:P4-C146 */}
+ICLR 2025's [OPTAMI](https://openreview.net/forum?id=Cpr6Wv2tfr) provides global superlinear analysis and PyTorch implementations for high-order convex methods. Hessian/higher-order information can reduce iterations while increasing derivative, solve, memory, and accelerator-mapping costs.
+
+{/* source-content:P4-C147 */}
+Optimizer selection is not choosing a name among GD, FGM, OGM, Adam, Muon, and Newton. It is a quality–cost–stability trade-off involving curvature access, batch noise, matrix shape, memory, communication, horizon, and target accuracy.
+
+{/* source-content:P4-C148 */}
+## Key terms
+
+{/* source-content:P4-C149 */}
+- **L-smoothness:** first-order regularity bounding gradient changes by input changes.
+- **Performance Estimation Problem:** a framework for calculating and designing worst-case performance through methods such as SDP.
+- **Restart:** resetting momentum to reduce oscillation and local mismatch in accelerated methods.
+- **Preconditioning:** changing coordinates or norm geometry to reduce curvature anisotropy and condition numbers.
+- **Matrix optimizer:** an update family directly using parameter-matrix singular spectra or non-Euclidean norms.
+- **Optimizer-state efficiency:** reducing memory and communication of moments or preconditioners.
+
+{/* source-content:P4-C150 */}
+## Research questions
+
+{/* source-content:P4-C151 */}
+1. Do PEP-designed finite-horizon optimizers preserve their rankings under stochastic minibatches and mixed precision?
+2. Which objective, gradient, or validation restart triggers give stable wall-clock cost and final generalization?
+3. How can diagonal Adam, low-rank adaptive methods, and Muon-style geometry be compared fairly under equal compute and memory budgets?

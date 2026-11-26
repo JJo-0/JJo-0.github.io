@@ -1,0 +1,117 @@
+---
+title: How accurately can a diffusion model sample?
+description: FORS, recognized with an ICML 2026 Outstanding Paper Award, revisits sampling, scores, and error in diffusion models. What
+  does its theoretical guarantee tell us about the speed of an image generator?
+pubDate: 2026-09-14
+updatedDate: 2026-09-14
+slug: 2026-09-14-fors-diffusion-sampling-news
+category: ai-machine-learning
+subcategory: diffusion-models
+type: research-report
+tags:
+- frontier-candidate
+- diffusion-models
+- sampling-theory
+- mathematics
+researchFeatured: false
+featured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-09-14-fors-diffusion-sampling-news
+translationKey: en-2026-09-14-fors-diffusion-sampling-news
+---
+
+import Math from "@/components/post/Math.astro";
+import NewsFigure from "@/components/post/NewsFigure.astro";
+
+<NewsFigure media="fors-accuracy-map" lang="en" priority />
+
+## 1. Why fewer steps alone do not establish faster image generation
+
+An image generator often begins with coarse noise and refines it through repeated updates. This process of drawing an output is called <strong>sampling</strong>. Each refinement can require a model evaluation, so the number of steps affects speed and cost. Can a diffusion model produce the same quality with fewer steps?
+
+The ICML 2026 Outstanding Paper <em>High-accuracy sampling for diffusion models and log-concave distributions</em> gives a theoretical answer.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a> As the target error becomes very small, the required number of score-function evaluations can grow like a <strong>polynomial in the logarithm of the reciprocal of the error</strong>. Earlier bounds grew polynomially in the reciprocal error itself. The motivation is concrete: what happens to the computational burden when we demand ten or a hundred times more precision?
+
+The result does not imply that image-generation services immediately become hundreds of times faster. The paper gives a step-count upper bound under the assumption of access to a highly accurate <strong>score estimate</strong>. It does not time a particular release of Stable Diffusion or a video-generation product.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> In deployment, the accuracy and cost of each score evaluation, memory, input resolution, safety filters, and postprocessing all affect elapsed time.
+
+<strong>FORS advances a theoretical question about high accuracy: how far can the step count fall when the sampler has access only to scores?</strong> Turning that result into a faster production solver is a further step. To see the distinction, consider what a diffusion model repeats.
+
+## 2. What does a diffusion model learn to do?
+
+Imagine adding small amounts of noise to a clear photograph until the scene becomes a random pattern. A diffusion model learns to reverse this process. Starting from near-random noise, it estimates a direction in which the current pattern could move a little closer to plausible data. A succession of these updates turns noise into a photograph, drawing, or sound.
+
+The <strong>score</strong> is the gradient of the log density of the current data distribution. Picture an arrow at the current point that indicates a local direction toward more probable data. The true arrow is usually unavailable, so the model learns an approximation from many training examples.
+
+<details>
+  <summary><strong>Four terms used in the article</strong></summary>
+
+  - <strong>A distribution</strong> describes how probability is spread across possible outcomes represented by the data.
+  - <strong>A sample</strong> is one outcome drawn from that distribution. One generated image is a sample.
+  - <strong>A score function</strong> gives a mathematical signal about a local direction of increasing density. Here “score” has a different meaning from a grade or user rating.
+  - <strong>Error</strong> measures how far the distribution of generated results is from the target distribution in the mathematical sense used in the paper. Human judgments of appearance can differ.
+</details>
+
+A deliberately simplified update illustrates the idea.
+
+<Math display label="Illustrative update 1" tex={String.raw`x_{t-1}=x_t+\text{small step proposed by the score}+\text{required randomness}.`} />
+
+Here x<sub>t</sub> is a state that still contains noise, and x<sub>t-1</sub> is the state after one further refinement. Actual diffusion solvers handle step sizes, variances, and correction terms in far greater detail. The expression conveys the intuition behind repeatedly querying the score and moving a short distance. It does not implement the paper's algorithm.
+
+The difficulty is repetition. Inaccurate directions or an overly large move can send a point far off course, so a solver often takes many small steps. A handful may deliver a plausible result, yet the number needed to approach the target distribution very closely can grow rapidly. FORS focuses on this final, high-accuracy regime.
+
+## 3. Why higher accuracy gets expensive
+
+Let δ denote the target error. Think of 0.1 as a relatively loose tolerance and 0.001 as a substantially tighter one. In earlier discretization-based approaches, the number of steps can grow as a polynomial in 1/δ. Tightening the tolerance can therefore increase computation sharply.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a>
+
+The two lines in the diagram do not give GPU timings. They illustrate <strong>how theoretical complexity grows as the error tolerance shrinks</strong>. Neither the polynomial nor the polylogarithmic curve incorporates the constants, dimension, or time to run the model once. Large constants can make an asymptotically favorable algorithm slower on a given problem.
+
+At very high accuracy, however, the growth rate can be the binding constraint. Simulations, statistical sampling, and physical or scientific computations may need to preserve tails of distributions or small differences that a superficially plausible image would conceal. The paper also connects its diffusion sampling result to sampling from <strong>log-concave distributions</strong>.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+ICML's account and the paper use “exponential improvement” for the change from polynomial dependence on 1/δ to polylog(1/δ).<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a><a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> This compares <strong>how computational complexity changes as the permitted error becomes extremely small</strong>. It gives no fixed wall-clock speed ratio on a particular model, computer, and dataset.
+
+## 4. FORS: accepting or rejecting a candidate without evaluating its density
+
+<strong>FORS stands for First-Order Rejection Sampling.</strong> Rejection sampling is a long-established way to sample from a difficult distribution. Draw a candidate from a more tractable proposal distribution, then accept or reject it according to how well it fits the target. Under the requisite conditions, the accepted samples follow the target distribution exactly.
+
+A <strong>density value</strong> is usually helpful for making this decision. Diffusion models often provide the direction of change in log density through the score, while direct access to the density is difficult. Imagine a map with arrows showing slopes but no elevation readings. The arrows alone do not directly tell you the altitude at any point. This mismatch has made it hard to apply earlier high-accuracy rejection samplers directly to score models.
+
+FORS constructs a meta-algorithm that emulates rejection sampling using only queries for <strong>first-order information</strong>, such as the score or log-density gradient.<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a> “Emulates” is important here. The algorithm combines several first-order queries to realize an acceptance probability without gaining direct access to the density.
+
+<NewsFigure media="fors-oracle-map" lang="en" />
+
+The diagram uses the term “oracle” in its algorithmic sense: a function or model that returns a specified type of information when queried. Here the oracle is the score estimator. In a practical generator, a neural network would approximate the score. To obtain the guarantee, that network's error must satisfy the assumptions of the paper.
+
+## 5. What the paper assumes and proves
+
+To achieve δ error, the paper assumes that the score estimate is accurate to roughly <Math tex={String.raw`\widetilde O(\delta)`} />.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> The tilde on O suppresses slowly varying factors such as logarithms. Tighter target error therefore requires a more accurate score estimate. Improvements in sampling do not eliminate the model's approximation error.
+
+Under that condition and minimal data assumptions, the paper reports complexity of the form <Math tex={String.raw`\widetilde O(d\,\mathrm{polylog}(1/\delta))`} /> in dimension d. When the data have effective low-dimensional structure, an intrinsic dimension d<sub>★</sub> enters the analysis. The authors also study a more refined dependence under a nonuniform Lipschitz condition.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> These results aim to capture the structure of the data in a high-dimensional image space, beyond simply counting pixels.
+
+For intuition about a log-concave distribution, think of probability concentrating around a peak without irregular, separated modes. Such distributions occur throughout statistics and optimization. The authors claim the first polylog(1/δ) bound for general log-concave sampling using only gradient evaluations.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> Real image and video distributions need not be log-concave. This result expands the scope of first-order sampling theory in its own right.
+
+The ICML Outstanding Paper citation emphasizes a longstanding question: can score evaluations alone produce ε error in polylog(1/ε) steps?<a href="#news-ref-1" data-news-citation="1" aria-label="Go to reference 1" data-astro-reload>[1]</a> This theoretical contribution is the reason for including the paper in the research selection. It does not supply a performance ranking of image-generation products.
+
+## 6. Questions that remain for a product
+
+First, <strong>how accurate is the score model in practice?</strong> The guarantee requires an L² score estimate sufficiently accurate relative to δ. Whether a large image model satisfies that condition at a given resolution, prompt, and data distribution, and how much training it costs to get there, remain empirical questions.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a>
+
+Second, <strong>what does one step cost?</strong> If a FORS step requires several score queries or additional calculations, fewer steps need not translate into a commensurate wall-clock gain. The analysis concerns oracle complexity as a function of target error. It does not time an end-to-end comparison with a 20-step sampler on a consumer GPU. A lower number of function evaluations (NFE) and shorter user waiting time are distinct claims.
+
+Third, <strong>what does accuracy measure?</strong> The paper's δ error is defined through a mathematical distance between distributions. Visual style preferences, prompt adherence, and anatomically plausible fingers each require their own assessments. A good sampling guarantee can be relevant without being sufficient for those product goals.
+
+Fourth, <strong>what has been reproduced?</strong> The arXiv paper is public. At the time of this review, the linked page did not establish the availability of official code, checkpoints, or a large-scale image-model experimental package.<a href="#news-ref-2" data-news-citation="2" aria-label="Go to reference 2" data-astro-reload>[2]</a> Verifying a proof, implementing an algorithm, and integrating it into an actual diffusion model are separate tasks.
+
+## 7. What should researchers and developers measure next?
+
+For researchers, four questions follow. How close is the intended score model to the required error? Which application-specific quality, safety, or statistical-confidence requirement corresponds to δ? What are the total runtime and memory costs, counting each FORS query? Is the comparison with ordinary or higher-order ODE/SDE solvers and guidance methods fair at matched quality?
+
+For developers, compare total latency and failure rate at the same resolution, model, prompts, and quality metric. Step count alone leaves each of these open. Users cannot infer the quality of an output from the word “polylog.” To compare products, one needs to know which algorithm each uses and which data were used to measure its quality.
+
+If sufficiently accurate scores suffice for high-accuracy diffusion sampling, solver designers have more options. What the paper supplies is <strong>a theoretical route that establishes the possibility under stated assumptions</strong>. Runtime and quality on actual image, video, and scientific models remain for implementations and subsequent experiments to evaluate.
+
+## 8. Sources and visual material
+
+1. <a id="news-ref-1" href="https://blog.icml.cc/2026/07/05/announcing-the-icml-2026-awards/" data-news-reference="1" target="_blank" rel="noopener noreferrer">Official ICML 2026 awards announcement</a> — the research question behind FORS and the context of its Outstanding Paper Award.
+2. Chen, Chewi, Daskalakis, and Rakhlin, <a id="news-ref-2" href="https://arxiv.org/abs/2602.01338" data-news-reference="2" target="_blank" rel="noopener noreferrer">High-accuracy sampling for diffusion models and log-concave distributions</a>, arXiv:2602.01338v2, April 27, 2026 — assumptions, complexity, and the log-concave result.
+3. JJo created both diagrams to explain the problem formulation. They use no original paper figures and make no claim to measured axes, runtime, or product performance. The arXiv release carries a [nonexclusive distribution license](https://arxiv.org/licenses/nonexclusive-distrib/1.0/license.html). This review did not identify separate permission to freely reuse the original figures, so they have not been redistributed.

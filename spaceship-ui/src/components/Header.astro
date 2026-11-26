@@ -1,7 +1,5 @@
 ---
 import { SITE } from '@/config';
-import { englishSwitchPath, nativeAlternates } from '@/lib/locales';
-import { getEnglishPosts } from '@/lib/english';
 import ThemeToggle from '@/components/ThemeToggle.astro';
 import Search from '@/components/Search.svelte';
 import { getCollection } from 'astro:content';
@@ -13,51 +11,36 @@ interface NavLink {
 }
 
 interface Props {
-  pageLang?: string;
   englishPath?: string;
+  koreanPath?: string;
 }
 
-const { englishPath } = Astro.props;
-const isKoreanPage = !Astro.url.pathname.startsWith('/en/');
-const showEnglishLink = isKoreanPage && typeof englishPath === 'string' && englishPath.length > 0;
+const { englishPath, koreanPath } = Astro.props;
 const currentPath = Astro.url.pathname;
 const isEnglish = currentPath.startsWith('/en/');
 const localePrefix = isEnglish ? '/en' : '';
-const postPrefix = `${localePrefix}/posts/`;
-// Section navigation is useful even when the two archives are not equivalent
-// translations for SEO. Do not add these fallbacks to nativeAlternates().
-const koreanSections = new Map([['/en/posts', '/posts'], ['/en/translations', '/posts']]);
-const koreanPath = nativeAlternates(currentPath)['ko-KR'] || koreanSections.get(currentPath.replace(/\/+$/, '')) || '/';
-const currentPostSlug = currentPath.startsWith(postPrefix)
-  ? decodeURIComponent(currentPath.slice(postPrefix.length).replace(/\/$/, ''))
-  : null;
+const originalPath = isEnglish ? koreanPath : currentPath;
+const currentPostSlug = originalPath?.startsWith('/posts/') && !originalPath.startsWith('/posts/tag/')
+  ? decodeURIComponent(originalPath.slice('/posts/'.length).replace(/\/$/, ''))
+  : undefined;
 
 const [projects, appearances, currentPost] = await Promise.all([
   SITE.publicSections.projects ? getCollection('projects') : Promise.resolve([]),
   SITE.publicSections.appearances ? getCollection('appearances') : Promise.resolve([]),
   currentPostSlug
-    ? isEnglish
-      ? getEnglishPosts().then((posts) => posts.find((post) => post.data.slug === currentPostSlug))
-      : getPublishedPosts().then((posts) => posts.find((post) => getPostSlug(post) === currentPostSlug))
+    ? getPublishedPosts().then((posts) => posts.find((post) => getPostSlug(post) === currentPostSlug))
     : Promise.resolve(undefined),
 ]);
 
-const currentPostIsNews = Boolean(currentPost?.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate'));
-
-const navLinks: NavLink[] = isEnglish ? [
-  { name: 'Research', href: '/en/research/' }, { name: 'Writing', href: '/en/posts/' },
-  { name: 'News', href: '/en/news/' }, { name: 'About', href: '/en/about/' },
-] : [
-  { name: 'Research', href: '/research' },
-  { name: 'Writing', href: '/posts' },
-  { name: 'News', href: '/news' },
-  ...(SITE.publicSections.projects && projects.length > 0
-    ? [{ name: 'Projects', href: '/projects' }]
-    : []),
-  ...(SITE.publicSections.appearances && appearances.length > 0
-    ? [{ name: 'Appearances', href: '/appearances' }]
-    : []),
-  { name: 'About', href: '/about' },
+const currentPostIsNews = currentPost?.data.tags.some((tag) => tag === 'frontier-one' || tag === 'frontier-candidate');
+const sectionHref = (path: string) => isEnglish ? `/en${path}/` : path;
+const navLinks: NavLink[] = [
+  { name: 'Research', href: sectionHref('/research') },
+  { name: 'Writing', href: sectionHref('/posts') },
+  { name: 'News', href: sectionHref('/news') },
+  ...(projects.length ? [{ name: 'Projects', href: '/projects' }] : []),
+  ...(appearances.length ? [{ name: 'Appearances', href: '/appearances' }] : []),
+  { name: 'About', href: sectionHref('/about') },
 ];
 
 const isActive = (href: string) => {
@@ -88,12 +71,13 @@ const navClass = (href: string) => [
         <small>Research notes · Seoul</small>
       </a>
 
-      <nav aria-label="Primary navigation" class="hidden md:flex items-center gap-4 lg:gap-6">
+      <nav aria-label="Primary navigation" class="hidden lg:flex items-center gap-4 lg:gap-6">
         {
           navLinks.map((link) => (
             <a
               href={link.href}
               data-astro-reload={link.href === '/about' || link.href.startsWith('/en/') ? true : undefined}
+              data-astro-prefetch={!isEnglish && !isActive(link.href) && link.href !== '/about' ? 'hover' : undefined}
               aria-current={isActive(link.href) ? 'page' : undefined}
               class:list={navClass(link.href)}
             >
@@ -104,22 +88,14 @@ const navClass = (href: string) => [
       </nav>
 
       <div class="flex shrink-0 items-center gap-1 sm:gap-2">
-        {
-          showEnglishLink && (
-            <a
-              href={englishPath}
-              data-locale-choice="en" data-astro-reload
-              hreflang="en"
-              class="language-header-switch"
-              aria-label="View this page in English"
-              title="View in English"
-            >
-              EN
-            </a>
-          )
-        }
-        {isEnglish && <a href={koreanPath} data-locale-choice="ko" data-astro-reload lang="ko" hreflang="ko-KR" class="language-header-switch" aria-label="한국어로 보기">KO</a>}
-        {isKoreanPage && !showEnglishLink && <a href={englishSwitchPath(currentPath)} data-locale-choice="en" data-astro-reload class="language-header-switch" aria-label="English edition and translation availability" title="English edition — check translation availability">EN</a>}
+        {!isEnglish && englishPath && (
+          <a href={englishPath} data-locale-choice="en" data-locale-context data-astro-reload
+            lang="en" hreflang="en" class="language-header-switch" aria-label="View this page in English">EN</a>
+        )}
+        {isEnglish && koreanPath && (
+          <a href={koreanPath} data-locale-choice="ko" data-locale-context={!currentPath.startsWith('/en/translations')}
+            data-astro-reload hreflang="ko-KR" class="language-header-switch" aria-label="View this page in Korean">KO</a>
+        )}
         <Search client:load />
         <ThemeToggle />
       </div>
@@ -127,13 +103,14 @@ const navClass = (href: string) => [
 
     <nav
       aria-label="Primary navigation mobile"
-      class="mt-3 flex items-center gap-4 overflow-x-auto overscroll-x-contain border-t border-border/60 pt-2 pb-0.5 md:hidden"
+      class="mt-3 flex items-center gap-4 overflow-x-auto overscroll-x-contain border-t border-border/60 pt-2 pb-0.5 lg:hidden"
     >
       {
         navLinks.map((link) => (
           <a
             href={link.href}
             data-astro-reload={link.href === '/about' || link.href.startsWith('/en/') ? true : undefined}
+            data-astro-prefetch={!isEnglish && !isActive(link.href) && link.href !== '/about' ? 'hover' : undefined}
             aria-current={isActive(link.href) ? 'page' : undefined}
             class:list={navClass(link.href)}
           >

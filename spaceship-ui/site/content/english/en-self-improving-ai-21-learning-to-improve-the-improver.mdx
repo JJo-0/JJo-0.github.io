@@ -1,0 +1,281 @@
+---
+title: "Self-Improving AI 21 — Can an agent improve the way it makes its next edit?"
+description: "NTU Part II, pages 36–40. Follow an edit across generations, compare three parent-selection rules in Hyperagents, and calculate how Learning to Self-Evolve rewards an editor. Seven worked examples separate task performance from editing skill."
+pubDate: 2026-11-21T10:06:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-21-learning-to-improve-the-improver
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - ai-agents
+  - prompt-optimization
+  - ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 21
+translationKey: en-self-improving-ai-21-learning-to-improve-the-improver
+translatedPosts:
+  ko-KR: self-improving-ai-21-learning-to-improve-the-improver
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+An inspection camera reads the digit 0 in a part number as the letter O. Someone adds “check for a zero first in a numeric field” to the reading instructions, and errors fall. So far, the <strong>inspection instructions</strong> have improved. Now suppose the next time a different error appears, the system also changes which failures it reads first and how it proposes a revision. That changes <strong>how edits are made</strong>. How could we tell which of the two improvements we are seeing?
+
+[Chapter 20](/en/posts/self-improving-ai-20-retaining-skills-and-improving-the-improver/) tested whether old skills survived a change to an agent’s harness, the code and instructions around its model. Pages 36–40 of Part II turn to the <strong>improver</strong> itself. Hyperagents gives us an agent and a candidate-selection rule to examine. Learning to Self-Evolve shows how researchers train a model to edit context. The camera and part numbers are worked examples. The paper figures and tables carry the experimental results.
+
+<strong>Worked examples</strong>　[Matched editors](#worked-example-1-does-changing-one-editing-rule-help-two-different-inspectors) · [Math accuracy](#worked-example-2-what-does-a-108-point-difference-in-math-accuracy-measure) · [Improvement in 50 iterations](#worked-example-3-hold-the-editor-fixed-and-measure-its-gain-over-50-revisions) · [Choosing a parent](#worked-example-4-why-revisit-the-parent-with-the-lower-score) · [Reading the three scores](#worked-example-5-how-large-is-the-gain-in-the-orange-bar-and-how-uncertain-is-it) · [Reward for an edit](#worked-example-6-why-can-a-high-final-score-still-give-the-editor-a-negative-reward) · [Updating edit probability](#worked-example-7-how-does-that-reward-change-the-chance-of-proposing-the-same-edit-again)
+
+<details>
+<summary>Video guide by slide</summary>
+
+| Part II page | Lecture video | What to listen for |
+|---|---|---|
+| 36 | [Slide at 34:20](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2060s) · [Discussion at 35:08](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2108s) | How does the lecture move from a fixed editor to an agent that edits itself? |
+| 37 | [35:16](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2116s) | What does it mean for a revised harness to act as the next editor? |
+| 38 | [35:48](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2148s) | Who chooses the starting point for the next edit from a pool of candidates? |
+| 39 | [36:33](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2193s) | How did three parent-selection rules compare on training and test tasks? |
+| 40 | [37:29](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2249s) | What signal should train the model that proposes an edit? |
+
+Each link opens the discussion of that topic. [NTU lecture for May 22, 2026](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+</details>
+
+## Part II, page 36 — What gets edited, and who does the editing?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/ntu-36-original.png"
+  alt="The current harness h receives its own design and execution feedback, then proposes h′. The label h appears in two places in the bottom row."
+  caption="Part II, page 36. The same harness is both the design being edited and the editor."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=36"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+*Recording at 34:20. The heading changes from “How to improve ‘improve harness’?” in the PDF to “How to improve ‘improvement module’?” in the lecture. It asks how to improve the procedure that edits the harness. [View the lecture frame](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2060s)*
+
+The top row, h → h′, shows the inspection agent’s harness changing to a new version. The bottom row uses h twice. <strong>The h on the left</strong> is the object to be edited. Beside it, L(Aₕ) is the loss incurred by the agent when it performs the task with that harness. <strong>The h beneath the central robot</strong> is the harness of the agent that reads this information and proposes an edit. The current agent can therefore edit its own harness. For that edit to change how the next generation improves itself, it must affect <strong>the part that proposes the next edit</strong>. [NTU lecture, 35:08](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2108s)
+
+### Worked example 1. Does changing one editing rule help two different inspectors?
+
+Consider a tabletop camera that inspects parts. In this <strong>hypothetical experiment</strong>, inspector A sometimes fails on reflections from metal, while inspector B struggles with partly occluded edges. Give the original editing rule U₀ and its replacement U₁ the same parent inspector and the same failure records. Each rule gets one edit under the same model-call and token budget. For each parent, set aside 20 labeled images that the editors never see. Score the parent and both children on those same 20 images.
+
+| Parent inspector | Correct before editing | After an edit by U₀ | After an edit by U₁ |
+|---|---:|---:|---:|
+| A · metal reflections | 14/20 | 15/20 | 17/20 |
+| B · occluded edges | 16/20 | 18/20 | 17/20 |
+
+Let Δᵢ(U) be the accuracy gain produced by rule U on parent i, and nᵢ the number of correct predictions in the table. Editing A with U₁ adds three correct predictions, a 15-percentage-point gain. Editing B with U₁ adds one, a gain of 5 points.
+
+<Math tex={String.raw`\Delta_i(U)=\frac{n_i(\mathrm{after}\ U)-n_i(\mathrm{before})}{20},\qquad \Delta_A(U_1)=\frac{17-14}{20}=0.15,\quad \Delta_B(U_1)=\frac{17-16}{20}=0.05`} display />
+
+Under the original rule U₀, A gained 5 points and B gained 10. Subtract the two rules’ gains within each parent, then take the mean, weighting each parent equally.
+
+<Math tex={String.raw`\frac{(0.15-0.05)+(0.05-0.10)}{2}=0.025`} display />
+
+Changing the rule produced an average <strong>additional gain of 2.5 percentage points</strong>. For reflection-prone A, U₁ gained 10 points more than U₀. For edge inspector B, it gained 5 points less. Those differences disappear if we look only at the two final U₁ scores, both 17/20. Evidence that the editor also improves in a new inspection setting would require further parent inspectors and independently repeated edits.
+
+### Supplementary lecture · How do we test the ability to adapt to a new task?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/stanford-cs330-05-meta-learning-tasks.png"
+  alt="A MiniImageNet classification example from Stanford, with distinct classes in meta-training and meta-testing."
+  caption="Stanford CS330, page 5. Each of five classes has one labeled example for adaptation."
+  source="https://cs330.stanford.edu/materials/cs330_optbased_metalearning_2023.pdf#page=5"
+  credit="Chelsea Finn / Stanford CS330"
+  label="Supplementary material"
+  width={1800} height={1013}
+/>
+
+In Stanford CS330’s MiniImageNet diagram, one task is a five-class image classification problem. <strong>5-way</strong> counts the classes in that task. <strong>1-shot</strong> means that the learner sees one labeled image per class. Given those five images, it classifies other images from the same classes. At meta-test time, tasks are built from classes unseen during meta-training to check whether the adaptation procedure transfers. The connection to the two inspectors is in the evaluation design. <strong>Keep the evidence used for adaptation separate from the examples used to score the result, and vary the starting task.</strong> The Stanford example measures adaptation to new classes. The self-editing harness is the additional mechanism in the NTU example. [Stanford CS330, Optimization-Based Meta-Learning, p. 5](https://cs330.stanford.edu/materials/cs330_optbased_metalearning_2023.pdf#page=5)
+
+## Part II, page 37 — The revised agent becomes the next editor
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/ntu-37-original.png"
+  alt="The revised agent h′ takes the editor’s position and produces the next harness h″."
+  caption="Part II, page 37. A change inherited from the previous round can also change the next edit."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=37"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+In the top row, h′ is a harness that has already been revised once. The arrow leads to its successor, h″. In the bottom row, h′ appears twice. On the left it labels <strong>what gets edited</strong>. On the robot in the middle it identifies <strong>who does the editing</strong>. That robot receives the current version and feedback from its execution, L(A_h′), and proposes the next version. Consider a math grader. Revising its marking rules can change the grade it assigns today. Revising how it selects errors to review during the next revision can also change which grader it produces tomorrow. We can test those capabilities separately. [NTU slide 37](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=37)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/hyperagents-fig1-editable-agent.png"
+  alt="A hyperagent is selected and modified, then evaluated on a task. The enlarged paths distinguish the task agent and the meta agent."
+  caption="Zhang et al., Figure 1, lower panel with the task-agent and meta-agent paths enlarged."
+  source="https://arxiv.org/pdf/2603.19461v1#page=4"
+  credit="Jenny Zhang et al. / CC BY 4.0"
+  label="Supplementary material"
+  width={1801} height={1191}
+/>
+
+In Figure 1 of Zhang and colleagues’ *Hyperagents*, the <strong>task agent</strong> takes an input and performs the task. The <strong>meta agent</strong> proposes a new agent. Both live in one program, so a child can inherit both a method for solving a task and a method for generating successors. Assigning accurate grades to Olympiad solutions and improving the grader are separate abilities. The authors measured both the score of a grader and the improvement an editor could produce within a limited number of revisions. The figures here come from the <strong>March 2026 version</strong> available before the May NTU lecture. [Hyperagents, Fig. 1 and §3](https://arxiv.org/pdf/2603.19461v1#page=4)
+
+At three minutes in the ACL author presentation, one slide compares a hand-designed agent, automated design with a fixed editor, and a design that can modify its editor. Follow the returning arrow in the right-hand design. Then pause at 6:02 to see how the authors evaluated the resulting agent on individual tasks. [ACL presentation, 3:00 · three designs](https://aclanthology.org/2025.acl-long.1354.mp4#t=180) · [6:02 · task results](https://aclanthology.org/2025.acl-long.1354.mp4#t=362)
+
+### Worked example 2. What does a 10.8-point difference in math accuracy measure?
+
+The other paper cited on the slide, Yin and colleagues’ *Gödel Agent*, allows changes to both the policy that performs a task and the procedure that improves the policy. Table 1 evaluates the resulting <strong>task-solving policy</strong> on MGSM, a multilingual collection of grade-school math word problems. The matched comparison uses Gödel-base, which is closed-book and uses GPT-3.5 to execute the final policy. The MGSM evaluation used 128 validation problems and 800 test problems. Meta Agent Search achieved 53.4% test accuracy and Gödel-base achieved 64.2%. [Gödel Agent, Table 1](https://aclanthology.org/2025.acl-long.1354.pdf#page=6) · [Appendix B, evaluation protocol](https://aclanthology.org/2025.acl-long.1354.pdf#page=13)
+
+<Math tex={String.raw`\Delta_{\mathrm{abs}}=64.2\%-53.4\%=10.8\ \mathrm{pp}`} display />
+
+<Math tex={String.raw`\Delta_{\mathrm{rel}}=\frac{64.2-53.4}{53.4}=\frac{10.8}{53.4}\simeq 0.202=20.2\%.`} display />
+
+The difference between the two accuracies is 10.8 percentage points. Relative to the 53.4% baseline, that is a 20.2% increase. Gödel-free scored 90.6% in the same table under different execution constraints, so it falls outside this comparison. The two matched scores tell us which resulting policy answered more MGSM problems correctly. Measuring <strong>the editor’s own ability to improve</strong> calls for observing the successors it produces on a new task.
+
+### Worked example 3. Hold the editor fixed and measure its gain over 50 revisions
+
+The Hyperagents authors transferred agents developed in paper review and robotics reward design to <strong>grading Olympiad-level math solutions</strong>. The grader receives a problem, a candidate solution, reference solutions, and grading guidelines. It predicts one of the expert grades 0, 1, 6, or 7. Accuracy is the fraction of solutions whose predicted grade matches the expert’s grade, with 100 examples in each of the training, validation, and test splits. Could the transferred meta agent, held fixed, produce a better task agent in this new domain? [Hyperagents, §5.2](https://arxiv.org/pdf/2603.19461v1#page=9) · [Appendix C.4, grading data](https://arxiv.org/pdf/2603.19461v1#page=33)
+
+Generate candidates for up to k revisions, then select a candidate by <strong>validation accuracy</strong>. The difference between that candidate’s <strong>test accuracy</strong> and the starting agent’s test accuracy is improvement@k. Here A₀ is the starting grader and Aᵢ is the ith candidate.
+
+<Math tex={String.raw`\begin{aligned}i^\star&\in\operatorname*{arg\,max}_{1\leq i\leq k} S_{\mathrm{val}}(A_i),\\\mathrm{imp}@k&=S_{\mathrm{test}}(A_{i^\star})-S_{\mathrm{test}}(A_0).\end{aligned}`} display />
+
+<Math tex={String.raw`\mathrm{imp}@50=0.630-0.000=0.630\quad(63.0\ \mathrm{pp}).`} display />
+
+This is the reported median across five runs. The transferred agent began at zero on the new task. The candidates produced by its meta agent, selected on validation data, reached a median test score of 0.630 (95% bootstrap confidence interval for the gain, 0.540–0.630). With the same 50-revision budget, fixing the original, inexperienced meta agent instead yielded a median gain of 0.000. <strong>Fifty counts revisions. One hundred counts test solutions.</strong> The 0.630 measures agreement with expert grades. It does not count Olympiad problems solved by the agent. [Hyperagents, Fig. 3 and accompanying text](https://arxiv.org/pdf/2603.19461v1#page=10) · [Transfer results](https://arxiv.org/pdf/2603.19461v1#page=11)
+
+## Part II, page 38 — Which parent to revisit can change too
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/ntu-38-original.png"
+  alt="A gray archive holds candidates. A new blue candidate returns to it, while a red dotted line loops back toward selection."
+  caption="Part II, page 38. Follow the archive update and the feedback into the choice of parent."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=38"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The gray box is an archive of past candidates. Follow the upper dotted arrow out of the archive to the candidates on the right, where a new candidate is produced. The lower dotted arrow returns it to the archive. The red dotted arc draws attention to a separate decision upstream. <strong>Which past version will serve as the starting point for the next revision?</strong> Page 37 considered changing how an editor works. Here the rule for choosing the parent it edits can change as well. The circles distinguish versions. The slide gives no score or dataset legend for their colors. [NTU slide 38](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=38)
+
+The paper separates these choices experimentally. The main experiments fixed a handcrafted parent-selection rule that accounts for performance and how many children a candidate already has. This lets the authors study changes to the editor separately. In the additional experiment in Appendix E.5, the system starts with random selection and may revise <strong>the selection rule itself</strong>. Across runs the authors observed variants of upper confidence bound (UCB) selection, which combine a performance score with an exploration bonus for less-tested candidates. [Hyperagents, §3](https://arxiv.org/pdf/2603.19461v1#page=5) · [Appendix E.5, parent selection](https://arxiv.org/pdf/2603.19461v1#page=57)
+
+### Worked example 4. Why revisit the parent with the lower score?
+
+Suppose we are improving a grader. Parent A has a normalized evaluation score of 0.82 and has already produced 15 children. Parent B has a score of 0.70 and has produced three. We will plug <strong>illustrative values</strong> into the form of exploration bonus observed in the appendix. Let N be the total number of children, nᵢ the number from parent i, sᵢ its score, and c the weight on exploration. In this example we make one choice by taking the parent with the higher selection score U.
+
+<Math tex={String.raw`\begin{aligned}U_i&=s_i+c\sqrt{\frac{\ln(N+1)}{n_i+1}},\\N&=15+3=18,\qquad\ln 19\simeq2.9444.\end{aligned}`} display />
+
+<Math tex={String.raw`\begin{aligned}U_A&=0.82+0.4\sqrt{2.9444/16}\simeq0.992,\\U_B&=0.70+0.4\sqrt{2.9444/4}\simeq1.043.\end{aligned}`} display />
+
+A leads by 0.12 on the evaluation score alone. B’s exploration bonus is about 0.343, compared with about 0.172 for A. Since the difference exceeds 0.12, the rule with c=0.4 chooses B. Lower c to 0.2 and A scores about 0.906 against B’s 0.872, reversing the choice. B’s 1.043 can exceed one because it ranks candidates. It is neither a predicted accuracy nor a probability that B’s child will succeed. Page 39 compares whether changing how parents are prioritized also changes <strong>final test performance</strong>. [Hyperagents, Appendix E.5](https://arxiv.org/pdf/2603.19461v1#page=57)
+
+## Part II, page 39 — Does letting agents choose their own parents produce better agents?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/ntu-39-original.png"
+  alt="Training trajectories of the best agents found so far appear on the left. Three held-out test scores appear on the right."
+  caption="Part II, page 39. The training search and the final comparison use different tasks."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=39"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+The red dotted arrow on page 38 suggests an experiment. <strong>Which agent emerges if the system can change how it chooses a starting point for the next edit?</strong> All three conditions generate and evaluate candidates. They differ in how they select the next parent. Green selects at random throughout. Orange starts with random selection and can revise the selection rule. Blue keeps the researchers’ rule, which accounts for a candidate’s score and the number of its children that compiled successfully. The authors ran each condition five times. [NTU lecture, 36:33](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2193s) · [Hyperagents, version available at the time of the lecture, Appendix E.5](https://arxiv.org/pdf/2603.19461v1#page=57)
+
+Read the left panel first. The horizontal axis counts iterations. The vertical axis averages scores in two domains, paper review and reward design for simulated robots. Each line tracks the <strong>best candidate found so far on training tasks</strong>. A low-scoring new candidate leaves the previous record intact. The right panel evaluates the best agents discovered by each method on <strong>held-out test tasks</strong>. The last point on a line and the corresponding bar come from different problems.
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/hyperagents-fig11-parent-selection-intervals.png"
+  alt="Reported test scores of 0.428, 0.491 and 0.532 with their bootstrap confidence intervals."
+  caption="Test results replotted from Zhang et al., Figure 11 and Appendix E.5. Each point is a median across five runs."
+  source="https://arxiv.org/pdf/2603.19461v1#page=57"
+  credit="Jenny Zhang et al. / CC BY 4.0"
+  label="Supplementary material"
+  width={1800} height={1225}
+/>
+
+### Worked example 5. How large is the gain in the orange bar, and how uncertain is it?
+
+| Parent selection | Reported test score | Reported confidence interval |
+|---|---:|---:|
+| Fixed random selection | 0.428 | 0.407–0.432 |
+| Start at random and allow edits to the selection rule | 0.491 | 0.387–0.512 |
+| Fixed rule devised by the researchers | 0.532 | 0.384–0.586 |
+
+The table combines two kinds of aggregation. The score for one run is the <strong>mean of its two domain scores</strong>. The representative score for each method is the <strong>median across runs</strong>. The authors obtained 95% bootstrap confidence intervals by resampling the five runs 1,000 times. The following subtraction compares the reported medians. [Statistical protocol](https://arxiv.org/pdf/2603.19461v1#page=7) · [Figure 11 and reported scores](https://arxiv.org/pdf/2603.19461v1#page=57)
+
+<Math tex={String.raw`0.491-0.428=0.063,\qquad 0.532-0.491=0.041`} display />
+
+The initial agent scored 0.030. Measured from that starting point, the median in the orange condition rose by 0.461. To ask how much of that gain is associated with <strong>permission to edit the selection rule</strong>, compare it with the condition that keeps improving candidates while continuing to choose their parents at random.
+
+<Math tex={String.raw`(0.491-0.030)-(0.428-0.030)=0.063`} display />
+
+The observed difference is 0.063 score units. Because the score combines both domains, it cannot tell us how much the robot’s success rate changed. Across five runs, the authors found no statistically significant difference between conditions (p > 0.05). The blue bar had the largest median in this experiment. The five runs leave uncertainty about the ranking in future experiments.
+
+## Part II, page 40 — What reward should an editor receive for a good revision?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/ntu-40-original.png"
+  alt="The editor proposes a new harness, then receives the difference between the loss before and after the edit."
+  caption="Part II, page 40. The dotted return path connects the outcome of an edit to training its proposer."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=40"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+*Recording at 38:25. The heading again reads “How to improve ‘improvement module’?” Beside the blue robot, “fine-tuned parameters” identifies the editor weights trained from the before-and-after loss difference. [View the lecture frame](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2305s)*
+
+Trace the two arrows into the blue robot. From the left come the current harness h and its recorded performance. The robot proposes an edited harness h′. The dotted line then feeds <strong>the original loss minus the post-edit loss</strong> back to the editor. Page 38 examined changes to a selection rule. Here, “fine-tuned” labels <strong>the model that proposes revised instructions</strong>. [NTU lecture, 37:29](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2249s) · [Lee compares the two scores at 38:20](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2300s)
+
+In Chen and colleagues’ <em>Learning to Self-Evolve</em> (LSE), an action policy solves problems under a given context. An editing policy reads that context and feedback from previous attempts and revises the <strong>instruction field</strong>. Training updates the editor’s weights. At test time, the trained editor proposes a series of contexts, while the action policy’s weights stay fixed. In the figure, follow the multi-round search on the left and the single-step training signal on the right. [LSE, Figure 1](https://arxiv.org/pdf/2603.18620v1#page=2) · [Sections 3.1–3.2](https://arxiv.org/pdf/2603.18620v1#page=4)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-21-learning-to-improve-the-improver/lse-fig1-policy-training.png"
+  alt="The left panel searches a tree of contexts. The right panel trains an editing policy using the change in reward from one edit."
+  caption="Figure 1 from Chen et al. The action model solves tasks and the editing policy revises the instructions."
+  source="https://arxiv.org/pdf/2603.18620v1#page=2"
+  credit="Xiaoyin Chen et al. / CC BY 4.0"
+  label="Supplementary material"
+  width={1801} height={886}
+/>
+
+### Worked example 6. Why can a high final score still give the editor a negative reward?
+
+Consider <strong>a hypothetical edit</strong> to an instruction for reading part numbers in inspection images. Within each row, score both versions on the same 20 images, awarding one point for each correct part number. Starting instruction A goes from 16 correct to 15. Starting instruction B goes from 9 to 13.
+
+| Starting instruction | Accuracy before editing | Accuracy after editing | Gain from this edit |
+|---|---:|---:|---:|
+| A | 16/20 = 0.80 | 15/20 = 0.75 | −0.05 |
+| B | 9/20 = 0.45 | 13/20 = 0.65 | +0.20 |
+
+A delivers the higher final score. The ranking changes when we ask <strong>what the edit accomplished</strong>. The net change in correct predictions is a loss of one for A and a gain of four for B. Equation 7 of the paper denotes the mean reward under context c by R̄(c) and subtracts the pre-edit reward from the post-edit reward. The slide uses loss, where smaller values are better, so the order is reversed. If loss is the error rate, the two expressions agree exactly.
+
+<Math tex={String.raw`L(c)=1-\bar R(c),\qquad L(c_0)-L(c_1)=\bar R(c_1)-\bar R(c_0)`} display />
+
+<Math tex={String.raw`r_A=(1-0.80)-(1-0.75)=-0.05,\quad r_B=(1-0.45)-(1-0.65)=0.20`} display />
+
+If we score an edit on easier images than its starting instruction, the measured difference also picks up the change in difficulty. The paper compares contexts on a fixed holdout set separate from the batches that supply feedback each round. Repeatedly using that holdout to select candidates also gives its score a different interpretation from a one-time evaluation on fresh data. [LSE, Equation 4](https://arxiv.org/pdf/2603.18620v1#page=4) · [Equation 7 and evaluation procedure](https://arxiv.org/pdf/2603.18620v1#page=5)
+
+### Worked example 7. How does that reward change the chance of proposing the same edit again?
+
+Suppose the policy can propose either of two edits, A and B, from the <strong>same starting context</strong>. This calculation is independent of the preceding table. A raises accuracy by 0.15 and B lowers it by 0.05. With probability p of proposing A and probability 1−p of proposing B, the expected gain J for one edit is
+
+<Math tex={String.raw`J=p(0.15)+(1-p)(-0.05)=0.20p-0.05`} display />
+
+Let z be the difference between the policy’s two logits, its preference scores before normalization, and compute p with a sigmoid. When z is zero, the two edits are equally likely. The gradient at that point is 0.05. Take one step with a learning rate of 0.4 in the direction that <strong>increases</strong> expected gain.
+
+<Math tex={String.raw`p=\frac{1}{1+e^{-z}},\qquad \frac{dJ}{dz}=0.20p(1-p)=0.05\quad(p=0.5)`} display />
+
+<Math tex={String.raw`z_{\mathrm{new}}=0+0.4(0.05)=0.02,\qquad p_{\mathrm{new}}=\frac{1}{1+e^{-0.02}}\approx0.5050`} display />
+
+The chance of proposing A rose from 50% to about 50.5%. That 50.5% measures <strong>the probability of choosing a particular edit</strong>. Part-number recognition accuracy measures the performance of the resulting instruction. In Equations 9–10, the authors sample an actual text edit and weight the gradient of its log probability by the measured improvement. With just two possible edits in our example, we could differentiate the expected gain directly. [LSE, Equations 9–10](https://arxiv.org/pdf/2603.18620v1#page=6)
+
+### Supplementary paper · Which model did what to earn 67.3%?
+
+In BIRD, the task is to translate natural-language questions into SQL. Accuracy is measured by executing the resulting queries. <strong>Qwen3-4B-Instruct writes the SQL in every row</strong> of Table 1. The methods differ in how they produce the instructions. Across the five database domains, LSE scored 72.0, 68.5, 72.0, 59.8 and 64.0%. With equal weight per domain, the mean is 67.26%, or <strong>67.3%</strong> after rounding. The starting instructions scored 57.2%, the Qwen editor without specific training for editing scored 62.2%, and the GPT-5 editor scored 65.2%. With the same action model, the LSE-trained editor gained 10.1, 5.1 and 2.1 percentage points over those baselines, respectively. Within each domain, the authors averaged performance over eight generations on a fixed holdout of 50 problems and reported the best holdout performance reached in 25 rounds of evolution. [LSE, Table 1](https://arxiv.org/pdf/2603.18620v1#page=6) · [Section 4.2, main results](https://arxiv.org/pdf/2603.18620v1#page=7) · [Appendix A, evaluation procedure](https://arxiv.org/pdf/2603.18620v1#page=12)
+
+In Part 20, we repeated the same task before and after an edit to see whether the agent retained a skill. Here we need one more record. <strong>Which editor produced the gain, from which starting point, and on which evaluation problems?</strong> Recording all three lets us test the quality of a harness and the ability to improve a harness separately. On page 41, the lecture turns to updating model parameters. [NTU Part II, p. 41](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=41)
+
+The Hyperagents and Learning to Self-Evolve figures are credited in their captions. [License for these paper figures](https://creativecommons.org/licenses/by/4.0/)

@@ -1,0 +1,388 @@
+---
+title: Self-Improving AI 07 — When should self-training stop and adaptation begin?
+description: Input perplexity, early gains and collapse in unsupervised RLVR introduce test-time training. A worked
+  example compares episodic and cumulative adaptation.
+pubDate: 2026-11-17
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-07-unsupervised-rlvr-and-test-time-training
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- unsupervised-rlvr
+- test-time-training
+- perplexity
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 7
+translationKey: en-self-improving-ai-07-unsupervised-rlvr-and-test-time-training
+translatedPosts:
+  ko-KR: self-improving-ai-07-unsupervised-rlvr-and-test-time-training
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>A model can generate its own learning signal. Whether its answers grow more accurate as it follows that signal is a separate question. This lesson examines the limits of self-training and the use of brief adaptation at test time.</strong>
+
+[Part 6 — Does greater confidence make an AI more accurate?](/posts/self-improving-ai-06-self-evaluation-and-entropy/) examined self-evaluation, majority voting and entropy. We now look at using the input itself as a learning signal and briefly updating parameters at test time.
+
+<details>
+<summary>Video guide by slide</summary>
+
+| Slide | Video segment | Topic |
+|---|---|---|
+| Slides 31–32 | [31:13–31:57](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1873s) | How well self-rewarded learning works and the URLVR paper |
+| Slide 32 | [31:58–32:52](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1918s) | Comparing learning curves for majority-vote and ground-truth rewards |
+| Slide 33 | [32:52–33:34](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1972s) | Initial gains and subsequent declines across five methods |
+| Slide 34 | [33:34–34:46](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2014s) | Connecting inputs, learning signals, parameter updates and new outputs |
+| Slides 34–35 | [34:46–36:00](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2086s) | Limited adaptation and its connection to Lecture 8 from 2025 |
+
+</details>
+
+## Slide 31 — Can the input itself supply a learning signal?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/ntu-self-improving-31-en.png"
+  alt="Original diagram connecting model inputs, outputs and loss. The lower path uses the likelihood of input x. The text explains the sign and transformation of the loss."
+  caption="P031 — A learning signal derived from the likelihood of the input."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=31"
+  credit="Hung-yi Lee / NTU Machine Learning 2026."
+  width={1800}
+  height={1013}
+/>
+
+The upper half shows a familiar arrangement: the model produces outputs from inputs and aggregates losses. The lower half adds a path based on <strong>the likelihood of generating the input x</strong> and links to a paper. The learning target shifts from confidence in the answer to how well the model predicts the sentence it has just received. [Original slide 31](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=31)
+
+### Input NLL and perplexity
+
+Hu and colleagues’ <em>Test-Time Learning for Large Language Models</em>, linked from the slide, proposes TLM. The method combines selective sample learning and LoRA to reduce <strong>perplexity</strong> on unlabeled test inputs. [Paper §4, PDF pp. 4–5](https://arxiv.org/pdf/2505.20633v1#page=4) · [ICML 2025 proceedings](https://proceedings.mlr.press/v267/hu25z.html)
+
+Write the observed input as a sequence of tokens. The following mean negative log-likelihood (NLL) scores the prediction of each token from those preceding it.
+
+<Math tex={String.raw`x=(x_1,\ldots,x_T),\qquad
+\ell_{\mathrm{in}}(\theta;x)=-\frac{1}{T}\sum_{t=1}^{T}\log p_\theta(x_t\mid x_{<t}).`} display />
+
+<Math tex={String.raw`\operatorname{PPL}_\theta(x)=\exp\!\bigl(\ell_{\mathrm{in}}(\theta;x)\bigr).`} display />
+
+A start token can supply context for the first token. The logarithm is natural. Since the exponential function is increasing, NLL and perplexity rank objective values in the same order for the same input and length normalization. However, <strong>their gradient magnitudes can differ.</strong> A single update at the same learning rate can therefore produce different results.
+
+Minimizing the slide’s “likelihood” literally would reverse the direction. Better prediction raises likelihood and lowers NLL and perplexity. The yellow loss box is schematic. Check the sign, logarithm and normalization in the implementation.
+
+<strong>Worked example.</strong> Suppose the probabilities assigned to two observed tokens rise from 0.5 and 0.25 to 0.8 and 0.5.
+
+<Math tex={String.raw`\operatorname{PPL}_{\mathrm{before}}
+=(0.5\times0.25)^{-1/2}=\sqrt{8}\approx2.8284,\qquad
+\operatorname{PPL}_{\mathrm{after}}
+=(0.8\times0.5)^{-1/2}=\sqrt{2.5}\approx1.5811.`} display />
+
+The result tells us that <strong>the model assigned higher probabilities to the two observed input tokens</strong>. It says nothing by itself about the correctness of a future answer or the truth of the input. A model can assign high likelihood to a false statement.
+
+### Further reading A — An experiment where input and output perplexity moved together
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/tlm-v1-figure1.png"
+  alt="Original TLM Figure 1 showing an input perplexity minimization experiment, normalized trends in input and output perplexity, and a sample selection comparison."
+  caption="TLM Figure 1 — Effects of input perplexity minimization and sample selection (PDF p. 4)."
+  source="https://arxiv.org/pdf/2505.20633v1#page=4"
+  credit="Jinwu Hu et al., Test-Time Learning for Large Language Models, arXiv v1 (2025)."
+  width={1801}
+  height={520}
+/>
+
+The left panel compares objectives. The middle shows <strong>normalized trends</strong> in input and output perplexity, and the right compares ways of selecting training samples. The middle axis has no universal absolute perplexity scale. The observations apply to the conditions tested. They do not establish that a better input fit always yields more correct answers. [TLM Figure 1, PDF p. 4](https://arxiv.org/pdf/2505.20633v1#page=4)
+
+Why does that qualification matter? The direction that reduces input loss must also improve the answer. We can inspect this condition through the gradients. For analysis, define a loss that requires access to the correct answer.
+
+<Math tex={String.raw`\ell_{\mathrm{ans}}(\theta;x,y^*)=-\log p_\theta(y^*\mid x),\qquad
+\theta'=\theta-\eta\nabla_\theta\ell_{\mathrm{in}}(\theta;x).`} display />
+
+Assuming twice continuously differentiable losses in a neighborhood and a sufficiently small learning rate, a first-order Taylor expansion gives the following expression.
+
+<Math tex={String.raw`\ell_{\mathrm{ans}}(\theta')
+=\ell_{\mathrm{ans}}(\theta)
+-\eta\left\langle\nabla\ell_{\mathrm{ans}}(\theta),
+\nabla\ell_{\mathrm{in}}(\theta)\right\rangle
++O(\eta^2).`} display />
+
+A positive inner product between the two gradients makes the first-order term reduce answer loss. A negative inner product reverses the effect. When it is zero, the first-order term is inconclusive. At a finite step size, the remainder also matters. The paper uses a gradient alignment assumption. <strong>The answer-loss gradient serves as an analytical tool here. An unlabeled deployment does not supply this signal.</strong> [TLM equation (4), PDF p. 5](https://arxiv.org/pdf/2505.20633v1#page=5)
+
+The slide’s broad use of RLAIF also needs care. TLM cannot be classified as reinforcement learning from an AI judge’s scores on that basis alone. A self-supervised update that minimizes input NLL differs from a policy-gradient update that maximizes reward. Algorithm 1 predicts a batch and then updates. The conceptual diagram on slide 34 need not use the same order. [TLM Algorithm 1](https://arxiv.org/pdf/2505.20633v1#page=4)
+
+## Slide 32 — Why can early gains disappear with further training?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/ntu-self-improving-32-en.png"
+  alt="Original slide comparing mean accuracy curves for models trained with majority-vote and ground-truth rewards on AIME 2024, AIME 2025 and AMC 2023."
+  caption="P032 — Learning curves for majority-vote and ground-truth rewards."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=32"
+  credit="Hung-yi Lee / NTU Machine Learning 2026."
+  width={1800}
+  height={1013}
+/>
+
+<strong>Video · [31:13–32:52](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1873s).</strong> The lecturer asks how long self-rewarded learning can continue. The curves for majority-vote and ground-truth rewards initially look similar, then diverge. A “human reward” here need not mean that a person grades each training step in real time.
+
+The accuracy panels come from Figure 2 of He and colleagues’ <em>How Far Can Unsupervised RLVR Scale LLM Training?</em> The experiment trains Qwen3-1.7B-Base on DAPO-17k and evaluates it on AIME 2024, AIME 2025 and AMC 2023. [Paper §4.1.1, PDF p. 12](https://arxiv.org/pdf/2603.08660v1#page=12)
+
+### Read the axes and the unit of evaluation
+
+The horizontal axis gives the training step. Each panel uses a different evaluation dataset, and their vertical ranges differ. Line heights cannot be compared directly across panels. <strong>avg@32 is mean accuracy across 32 generated answers per problem.</strong> By contrast, pass@32 counts a success if any one of the 32 answers is correct. [Figure 2 evaluation setup](https://arxiv.org/pdf/2603.08660v1#page=12)
+
+The figure reports accuracy measured separately against ground truth. The proxy reward used during training is a different quantity. <strong>Training can omit answer labels while evaluation still requires them.</strong> “Unsupervised” describes the signal at this training stage. Pretraining data, human-defined tasks, reward rules and evaluation design still matter.
+
+### What a majority vote verifies
+
+Consider a simple procedure that generates K answers to one question and uses the most frequent answer as a pseudo-label.
+
+<Math tex={String.raw`\hat y(x)=\operatorname*{arg\,max}_{a}
+\sum_{k=1}^{K}\mathbf 1[y_k=a],\qquad
+r_{\mathrm{vote}}(x,y)=\mathbf 1[y=\hat y(x)].`} display />
+
+<Math tex={String.raw`r_{\mathrm{GT}}(x,y)=\mathbf 1[y=y^*(x)].`} display />
+
+When the pseudo-label agrees with the correct answer, both rewards can point in the same direction. When they differ, training the model to produce the pseudo-label more often can preferentially reward a wrong answer. An implementation also needs rules for extracting answers, recognizing equivalent answers and breaking ties. Counting “0.5” and “1/2” separately mistakes different notation for disagreement.
+
+<strong>Worked example: three independent binary answers.</strong> Let p be the probability of a correct answer. Assume the answers are conditionally independent and share a single wrong alternative. The probability that a majority of three answers is correct is then as follows.
+
+<Math tex={String.raw`P(\text{majority correct})
+=p^3+3p^2(1-p)=3p^2-2p^3.`} display />
+
+<Math tex={String.raw`p=0.7:\quad 3p^2-2p^3=0.784,\qquad
+p=0.4:\quad 3p^2-2p^3=0.352.`} display />
+
+Majority voting benefits a model that already favors the correct answer and can worsen performance when it favors the wrong one. This calculation depends on its assumptions. Language models have more than two possible answers, and their samples can share a misconception or reasoning pattern. Generating several answers does not automatically provide independent verification.
+
+Tracking whether proxy reward rose is insufficient in practice. <strong>Track proxy reward, ground-truth performance and output diversity separately.</strong> Without access to correct answers, an operating system cannot simply read off the onset of degradation as we can in this figure.
+
+## Slide 33 — Five methods, different failure patterns
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/ntu-self-improving-33-en.png"
+  alt="Original slide comparing learning curves for majority voting, Self-Certainty, token entropy, trajectory entropy and probability rewards. Some curves remain above zero throughout the displayed interval."
+  caption="P033 — Early gains and later changes under different self-reward methods."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=33"
+  credit="Hung-yi Lee / NTU Machine Learning 2026."
+  width={1800}
+  height={1013}
+/>
+
+<strong>Video · [32:52–33:34](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1972s).</strong> The lecturer compares the stability of five methods. Self-training can provide early gains. Problems may emerge as the model continues to follow the same signal.
+
+The figure includes majority voting, Self-Certainty, token-level entropy, trajectory-level entropy and probability-based reward. <strong>Only some curves fall to zero during the displayed training window.</strong> This figure cannot establish inevitable collapse for every model, reward and form of self-training. [Paper Figure 3 and §4.1.2, PDF p. 13](https://arxiv.org/pdf/2603.08660v1#page=13)
+
+The paper analyzes several patterns in this setting: gradual decline, excessively short answers and repetition. Implementation details and length handling matter. A weakness of one probability reward does not establish an inherent defect in all probability-based methods. [Failure analysis](https://arxiv.org/pdf/2603.08660v1#page=13)
+
+### How does a score influence the form of an answer?
+
+Suppose we score a complete answer using the product of conditional token probabilities. The probability of a finite token sequence, including termination, factors as follows.
+
+<Math tex={String.raw`p_\theta(y\mid x)=\prod_{t=1}^{|y|}p_\theta(y_t\mid x,y_{<t}).`} display />
+
+To isolate the length effect, consider a hypothetical example in which every conditional probability is 0.9.
+
+<Math tex={String.raw`0.9^{10}\approx0.348678,\qquad
+0.9^{100}\approx0.0000265614.`} display />
+
+The score does not directly measure completeness. A shorter sequence can win by omitting a necessary explanation. Mean log probability can adjust for length without guaranteeing correctness. Conversely, minimizing average token entropy can favor easy-to-predict repetitions. <strong>Try constructing a counterexample that exposes what the proposed score misses.</strong>
+
+To detect reward hacking, monitor answer length, repetition, the fraction of valid answers, termination and refusals alongside accuracy. An arbitrary length limit does not correct a mismatch between the reward and the objective.
+
+### Further reading B — Small datasets and small batches
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/urlvr-v1-figure6.png"
+  alt="Original Figure 6 comparing ground-truth reward, majority-vote reward and reward accuracy across training dataset sizes. Stability on small datasets was observed under the specific experimental conditions."
+  caption="Unsupervised RLVR Figure 6 — Accuracy and reward accuracy by training dataset size (PDF p. 16)."
+  source="https://arxiv.org/pdf/2603.08660v1#page=16"
+  credit="Bingxiang He et al., How Far Can Unsupervised RLVR Scale LLM Training?, arXiv v1 (2026)."
+  width={1801}
+  height={390}
+/>
+
+Figure 6 varies total dataset size while holding batch size at 32 and optimization steps at 600. Performance remained stable over the observed interval with 32 and 128 samples and declined in larger settings. <strong>The value 128 is not a general safety threshold for other models.</strong> [Paper §5.1, PDF p. 16](https://arxiv.org/pdf/2603.08660v1#page=16)
+
+Here 32 and 128 refer to <strong>the total number of distinct training problems</strong>, not merely the minibatch size. Holding the number of steps fixed changes the frequency with which each problem is encountered. Dataset size changes the training experience as well as the count of examples.
+
+<strong>Additional calculation.</strong> With 32 inputs in each batch and 600 updates, the input count is 19,200, excluding generated rollouts. Assuming uniform use, each problem appears 600 times on average with 32 problems, 150 times with 128 and 37.5 times with 512.
+
+<Math tex={String.raw`E_{\mathrm{nominal}}=\frac{B K}{N},\qquad
+\frac{32\times600}{32}=600,\quad
+\frac{32\times600}{128}=150,\quad
+\frac{32\times600}{512}=37.5.`} display />
+
+These are equivalent input exposures, excluding rollout generations. <strong>Record dataset size, batch size, steps, generation count and actual parameter displacement separately.</strong> Keeping small-data findings distinct from large-scale training results helps explain the following TTT setup.
+
+## Slide 34 — Briefly updating parameters during inference
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/ntu-self-improving-34-en.png"
+  alt="Diagram of test-time training. A test input x supplies a learning signal for a parameter update, after which the model produces a new output y prime for the same x."
+  caption="P034 — Updating parameters using a test input."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=34"
+  credit="Hung-yi Lee / NTU Machine Learning 2026."
+  width={1800}
+  height={1013}
+/>
+
+<strong>Video · [33:34–34:46](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2014s).</strong> The lecturer traces a path from a test input to an output, a parameter update using a self-generated signal, and a new output for the same input. The user sees the final answer. A training step takes place inside the procedure.
+
+### Distinguishing the input from its answer label
+
+In ordinary fixed-model inference, the model produces an output without changing its weights. In the test-time training (TTT) considered here, <strong>unlabeled test inputs update the parameters designated as trainable</strong>. The update receives no answer labels. Sun and colleagues’ 2020 TTT method illustrates this approach by converting a single test input into a self-supervised task. [Original TTT paper, §2](https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=2)
+
+Here is an <strong>illustrative general expression</strong> for gradient-based adaptation. Write <Math tex={String.raw`\phi`} /> for the trainable parameters and <Math tex={String.raw`\mathcal B`} /> for a test input or batch. Other weights may remain fixed.
+
+<Math tex={String.raw`\phi^{(0)}=\phi_0,\qquad
+\phi^{(k+1)}=\phi^{(k)}-\eta_k\nabla_\phi
+\ell_{\mathrm{proxy}}(\phi^{(k)};\mathcal B),\qquad k=0,\ldots,K-1.`} display />
+
+<Math tex={String.raw`y'=f_{\phi^{(K)}}(x).`} display />
+
+The choice of trainable parameters, loss and number of updates determines the method. Check precisely which adapters, normalization coefficients or feature extractors are updated before drawing conclusions about the full network.
+
+<strong>TTT need not begin by generating a complete answer y.</strong> Input-token NLL and auxiliary tasks such as rotation prediction produce learning signals without such an answer. Conversely, learning from rewards on sampled answers requires a procedure such as policy gradient. One cannot simply differentiate through discrete tokens. The general expression assumes a suitable objective has already been constructed.
+
+### Further reading C — Thinking longer and training at test time
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/ntu2025-post-p86-ttt-vs-reasoning.png"
+  alt="Slide contrasting test-time training through parameter fine-tuning with test-time computing through longer inference."
+  caption="NTU GenAI-ML 2025 — Updating parameters versus increasing inference computation (PDF p. 86)."
+  source="https://speech.ee.ntu.edu.tw/~hylee/GenAI-ML/2025-fall-course-data/Post.pdf#page=86"
+  credit="Hung-yi Lee / NTU GenAI-ML 2025, Lecture 8."
+  width={1800}
+  height={1013}
+/>
+
+The upper half of the 2025 slide shows parameter fine-tuning, and the lower half increases inference computation. Generating a longer reasoning trace or selecting from more candidates differs from updating weights with a loss. [NTU GenAI-ML 2025, Post PDF p. 86](https://speech.ee.ntu.edu.tw/~hylee/GenAI-ML/2025-fall-course-data/Post.pdf#page=86)
+
+| Method | What changes | Question to ask |
+|---|---|---|
+| Longer reasoning or candidate generation | Generated tokens and candidate pool | Did computation increase with fixed weights? |
+| In-context examples or retrieved material | Input context read by the model | Did the model receive additional information? |
+| Gradient-based TTT | Designated trainable parameters | Was there a loss, backward pass and update? |
+
+These distinctions can coexist in one system. For example, the model can generate candidates, select a pseudo-label and then train on it. Record candidate selection and parameter learning separately. Similarly, storing more intermediate computations in a KV cache provides no evidence by itself of weight learning.
+
+### A small step can still go in the wrong direction
+
+A small amount of learning offers no guarantee. Reduce the gradient alignment argument to one variable and calculate the update direction using simple quadratic losses.
+
+<Math tex={String.raw`\ell_{\mathrm{true}}(\theta)=\frac12(\theta-1)^2,\qquad
+\ell_{\mathrm{proxy}}(\theta)=\frac12(\theta+1)^2,\qquad \theta_0=0.`} display />
+
+<Math tex={String.raw`\eta=0.1\quad\Longrightarrow\quad
+\theta_1=0-0.1(0+1)=-0.1.`} display />
+
+<Math tex={String.raw`\ell_{\mathrm{proxy}}:0.5\to0.405,\qquad
+\ell_{\mathrm{true}}:0.5\to0.605.`} display />
+
+The proxy loss falls while the true target loss rises. <strong>Brief adaptation can limit the extent of failure, but it leaves a misaligned objective misaligned.</strong> Assess the real goal independently as well as recording update counts.
+
+## Slide 35 — After adapting to one problem, which state should persist?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/ntu-self-improving-35-en.png"
+  alt="Original slide 35 quotes a 2025 lecture diagram of standard TTT that restarts from the base model for each input."
+  caption="P035 — Test-time training starting from the base model for each input."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=35"
+  credit="Hung-yi Lee / NTU Machine Learning 2026."
+  width={1800}
+  height={1013}
+/>
+
+<strong>Video · [34:46–36:00](https://www.youtube.com/watch?v=s06mSAGN4gM&t=2086s).</strong> The lecturer connects small datasets and limited updates to TTT and refers readers to Lecture 8 from 2025 for further detail. A small adaptation budget alone cannot establish safety across deployment settings.
+
+The slide links to [1:36:04 in Lecture 8, 2025](https://www.youtube.com/watch?v=EnWz5XuOnIQ&t=5764s). The three rows on slide 35 illustrate <strong>standard TTT restarting from the base model for each input</strong>. [Post PDF p. 95](https://speech.ee.ntu.edu.tw/~hylee/GenAI-ML/2025-fall-course-data/Post.pdf#page=95)
+
+### Episodic and continual adaptation
+
+Write U for the update on one input. The following notation compares resetting the model between inputs with carrying updates forward.
+
+<Math tex={String.raw`\text{Episodic:}\quad \theta_i'=U(\theta_0;x_i),\qquad
+\text{Continual:}\quad \theta_i=U(\theta_{i-1};x_i).`} display />
+
+Episodic adaptation discards weight changes before processing the next input. Continual or online adaptation inherits previous updates. This can help the model track a changing distribution and can also propagate a bad update to later inputs. The original 2020 TTT paper specifies this initialization difference for its standard and online variants. [Sun et al., §2, PDF p. 2](https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=2)
+
+<strong>Worked example.</strong> Use the following simplified auxiliary loss for each input. Here a denotes a hypothetical target for the auxiliary task.
+
+<Math tex={String.raw`\ell_i(\theta)=\frac12(\theta-a_i)^2,\qquad
+U(\theta;a_i)=(1-\eta)\theta+\eta a_i.`} display />
+
+<Math tex={String.raw`\theta_0=0,\quad\eta=0.5,\quad(a_1,a_2)=(2,-2).`} display />
+
+| Procedure | Result after first update | Starting value for second input | Result after second update |
+|---|---:|---:|---:|
+| Reset for each input | 1 | 0 | −1 |
+| Carry the previous value forward | 1 | 1 | −0.5 |
+
+The same inputs and learning rate produce different second results. Reversing the order in the continual setting gives a final value of +0.5. Record input order and reset rules when comparing results. An implementation should also specify what happens to optimizer momentum, statistics and adapter state when weights are reset.
+
+### Further reading D — Constructing a loss without the target label
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-07-unsupervised-rlvr-and-test-time-training/ntu2025-post-p94-pretext-task.png"
+  alt="Original TTT slide distinguishing the main task of identifying a bird species from the auxiliary task of predicting its rotation."
+  caption="NTU GenAI-ML 2025 — Rotation prediction as an auxiliary task for classification (PDF p. 94)."
+  source="https://speech.ee.ntu.edu.tw/~hylee/GenAI-ML/2025-fall-course-data/Post.pdf#page=94"
+  credit="Hung-yi Lee / NTU GenAI-ML 2025, Lecture 8."
+  width={1800}
+  height={1013}
+/>
+
+The main task identifies a bird species. The auxiliary task predicts how far the image has been rotated. The species label may be unavailable, but the program knows it rotated the image by 180 degrees. <strong>The transformation itself supplies the pretext-task label.</strong> Self-supervised learning need not copy the model’s own answer as a target. [NTU Post PDF p. 94](https://speech.ee.ntu.edu.tw/~hylee/GenAI-ML/2025-fall-course-data/Post.pdf#page=94)
+
+The original TTT paper shares a feature extractor between rotation prediction and the main task. At test time it adjusts the shared part using the auxiliary loss and then predicts the main task. Check independently whether this relationship transfers to another task. [Sun et al., §2, equations (2)–(3)](https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=2)
+
+For example, an orientation-sensitive task can need a different representation from one that should ignore changes in orientation. Easy-to-generate labels alone do not make a good auxiliary task. Identify which information or invariance the task teaches and whether it helps the final prediction.
+
+### What to specify before an adaptation experiment
+
+Set the following conditions before running the experiment.
+
+| Item | Specify in advance |
+|---|---|
+| Accessible data | Test inputs only, or additional sources, tools or human feedback |
+| Parameters to update | Which layers, adapters or normalization coefficients change and which stay fixed |
+| Adaptation budget | Learning rate, maximum updates, batch size, generated candidates and latency |
+| State lifetime | Reset per input, carry state forward, and conditions for rollback |
+| Evaluation | Performance relative to a fixed model, failure and repetition, regressions on other tasks, computational cost |
+
+Adapting on test inputs can be part of a TTT evaluation protocol. Concealing that access and reporting the comparison as fixed-model inference distorts the result. Also distinguish using test answers to construct a loss from repeatedly inspecting test scores to select the learning rate or stopping point. Document the roles of validation and final evaluation data separately.
+
+In machine vision, one can test adaptation to lighting or noise changes. In real-time robot control, latency and recovery after failure also matter. Assess input changes, estimation performance and timing separately, and retain a base model to restore if adaptation fails.
+
+## How the five slides fit together
+
+Slide 31 explains how the input can supply a learning signal. Slides 32–33 distinguish early gains from long-term self-reinforcement. Slides 34–35 specify what to update and reset when applying the idea to a limited set of test inputs.
+
+<strong>Evaluate self-training by the source of its signal, its connection to the goal, the scope of updates and independent evidence.</strong> Falling proxy loss, rising accuracy and sustained generalization measure different things.
+
+<strong>Check 1.</strong> Does lower input perplexity imply a correct answer? It shows better prediction of the input tokens. A link to answer correctness needs conditions and evidence.
+
+<strong>Check 2.</strong> Does the 128-sample condition in Figure 6 set a safety limit for all models? It is an observation for a particular model, dataset, reward and budget. Keep total dataset size distinct from minibatch size.
+
+<strong>Check 3.</strong> Does generating more inference tokens count as TTT? That alone is insufficient. The gradient-based TTT in this article includes a parameter update.
+
+Next is <strong>Part 8, original slides 36–40</strong>. The lecture’s “Math Warning” section examines how to compute and optimize entropy in an enormous output space. Continue to [Self-Improving AI 08 — Finding the missing gradient in entropy minimization](/posts/self-improving-ai-08-entropy-estimation-and-gradients/).
+
+## Videos, slides and papers
+
+| Resource | Location | Connection |
+|---|---|---|
+| [NTU Self-Improving lecture, first half](https://www.youtube.com/watch?v=s06mSAGN4gM&t=1873s) | 31:13–36:00 | Self-rewarded learning and test-time adaptation |
+| [NTU Self-Improving PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=31) | May 8, 2026 lecture, pp. 31–35 | Self-rewarded learning and test-time adaptation |
+| [Test-Time Learning for Large Language Models](https://arxiv.org/pdf/2505.20633v1#page=4) | arXiv v1, May 27, 2025, Figure 1, Algorithm 1, §4.1 | Input perplexity and conditional gradient alignment |
+| [How Far Can Unsupervised RLVR Scale LLM Training?](https://arxiv.org/pdf/2603.08660v1#page=12) | arXiv v1, March 9, 2026, Figures 2, 3 and 6, §§4.1 and 5.1 | Early improvement, later decline and dataset-size comparisons |
+| [NTU GenAI-ML 2025 Lecture 8, Post](https://speech.ee.ntu.edu.tw/~hylee/GenAI-ML/2025-fall-course-data/Post.pdf#page=86) | Fall 2025, PDF pp. 86 and 94–96 | TTT, inference compute, rotation as an auxiliary task, reset and accumulation |
+| [Original TTT paper](https://proceedings.mlr.press/v119/sun20b/sun20b.pdf#page=2) | ICML 2020, §§2 and 4 | Self-supervised TTT procedure and conditions of use |
+
+[Official course materials](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php) · [Lecture PDF](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf) · [Lecture video](https://www.youtube.com/watch?v=s06mSAGN4gM)

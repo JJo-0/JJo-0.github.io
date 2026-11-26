@@ -26,6 +26,7 @@ function requireMarkers(source, filename, markers) {
 const post = read(postPath);
 const cover = read(coverPath);
 const index = read(`${assetRoot}/index.html`);
+const englishIndex = read(`${assetRoot}/index.en.html`);
 const css = read(`${assetRoot}/app.css`);
 const app = read(`${assetRoot}/app.js`);
 const loader = read(`${assetRoot}/graph-loader.js`);
@@ -51,6 +52,15 @@ requireMarkers(index, `${assetRoot}/index.html`, [
   'id="node-table-body"',
   'graph.json 다운로드',
 ]);
+requireMarkers(englishIndex, `${assetRoot}/index.en.html`, [
+  'lang="en"',
+  'href="/en/posts/semiconductor-supply-chain-universe-map/"',
+]);
+if (/[가-힣]/u.test(englishIndex)) issues.push('English atlas entry contains Korean copy');
+const mapControls = (html) => html.match(/(?:\bid|data-focus-node|data-lens|src)="[^"]+"/g) || [];
+if (JSON.stringify(mapControls(index)) !== JSON.stringify(mapControls(englishIndex))) {
+  issues.push('The Korean and English atlas must expose the same controls and data scripts');
+}
 requireMarkers(app, `${assetRoot}/app.js`, [
   "import { WebGPURenderer } from 'three/webgpu'",
   'OrbitControls',

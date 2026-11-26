@@ -1,0 +1,295 @@
+---
+title: "자가개선 AI 23 — AI가 만든 학습법은 새 과제에서도 통할까?"
+description: "NTU 하편 46–50쪽을 따라 SEAL의 자기 편집 보상, 두 학습 시간 척도, 학습된 최적화기와 MAML을 살펴본다. 식 풀이 일곱 개로 모델과 학습 규칙의 갱신을 구분한다."
+pubDate: 2026-11-21T11:32:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-23-self-edits-and-meta-learning
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+  - self-improvement
+  - ai-agents
+  - prompt-optimization
+  - ntu
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 23
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+검사 카메라의 판독기를 학습시킨 뒤, 따로 남겨 둔 부품 사진 20장에서 오답이 10개에서 0개로 줄었다. 확인한 것은 <strong>이 검사기가 이 사진들에서 나아졌다</strong>는 사실이다. 새 카메라에 같은 학습법을 넘기면 더 적은 예시로도 적응할 수 있을까? 두 번째 질문에 답하려면 배운 값을 초기화하고, 그 방법을 다른 과제에서 다시 시험해야 한다.
+
+[22편](/posts/self-improving-ai-22-learning-the-parameter-update-rule/)에서는 모델의 가중치를 바꾸는 규칙을 비교했다. 하편 46–50쪽에서는 모델이 스스로 제안한 학습 자료를 채점하는 SEAL에서 출발한다. 이어서 하나의 모델이 배우는 <strong>안쪽 갱신(inner update)</strong>과, 여러 학습 결과를 보고 방법을 고치는 <strong>바깥 갱신(outer update)</strong>을 나눠 본다. 카메라와 보정값은 손계산용 가상 예제다. SEAL과 MAML의 실험 수치에는 논문의 표와 평가 단위를 붙였다.
+
+<strong>식 풀이 바로가기</strong>　[편집안 보상](#식-풀이-1-정답을-낸-사본-두-개는-원래-모델에-무엇을-돌려줄까) · [ARC 성공률](#식-풀이-2-seal의-성공률-725에서-분모는-무엇일까) · [학습 속도](#식-풀이-3-마지막에-16장을-맞힌-두-검사기-중-어느-쪽이-먼저-배웠을까) · [보정 규칙의 전이](#식-풀이-4-다음-카메라에-넘길-것은-보정값일까-보정하는-방법일까) · [학습률 미분](#식-풀이-5-학습률을-바꾸려면-무엇을-미분할까) · [초기값 학습](#식-풀이-6-maml은-두-카메라에서-어떤-초기값을-배울까) · [지원 이미지 수](#식-풀이-7-5-way-1-shot에서-5-shot으로-바꾸면-무엇이-다섯-배가-될까)
+
+<details>
+<summary>슬라이드별 영상 위치</summary>
+
+| 하편 원본 | 강의 영상 | 이 시각에 들을 질문 |
+|---|---|---|
+| 46쪽 | [40:22](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2422s) | 어떤 자기 편집안을 다시 생성하도록 학습할까? |
+| 47쪽 | [42:02](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2522s) | 한 번의 학습과 학습 규칙의 개선은 어떻게 다른가? |
+| 48쪽 | [44:14](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2654s) | 한 생애와 여러 세대를 비교하는 이유는 무엇일까? |
+| 49쪽 | [42:54](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2574s) | θ를 업데이트하는 함수에서 φ는 무엇을 결정할까? |
+| 50쪽 | [42:45](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2565s) | 강사가 어떤 메타학습 강의를 다시 보라고 할까? |
+
+표와 본문은 PDF의 쪽 순서를 따른다. 영상은 <strong>46→47→50→49→48쪽</strong> 순서로 재생된다. 링크는 각 주제의 설명이 시작되는 대목이다. [NTU 2026년 5월 22일 강의](https://speech.ee.ntu.edu.tw/~hylee/ml/2026-spring.php)
+
+</details>
+
+## 하편 46쪽 — 스스로 만든 학습법은 어떤 답을 보고 채점할까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-46-original.png"
+  alt="하나의 모델에서 세 자기 편집안이 갈라진다. 각 사본을 학습시키고 답을 확인한 결과가 바깥 정책 갱신으로 돌아간다."
+  caption="하편 46쪽 · 왼쪽에서 한 갈래를 골라 편집안, 적응한 사본, 답변, 바깥 보상의 순서로 읽어 보자."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=46"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+그림의 왼쪽에서 하나의 선이 세 갈래로 나뉜다. <strong>하나의 모델이 같은 과제를 학습할 방법을 여러 개 제안했다</strong>는 뜻이다. SEAL(Self-Adapting LLMs)은 각 제안을 자기 편집안(self-edit, SE)이라고 부른다. 지문을 기억하는 과제라면 편집안은 지문에서 도출한 학습용 문장들이다. 색 격자의 변환 규칙을 찾는 ARC 과제라면 편집안은 예시를 어떻게 회전·반사할지, 어떤 학습률로 몇 번 훈련할지 지정하는 설정이다. [NTU 강의 40:22](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2422s) · [SEAL 논문, 두 가지 편집안 예시](https://arxiv.org/pdf/2506.10943v2#page=5)
+
+한 갈래만 따라가자. 현재 모델 θₜ가 입력 C를 보고 편집안 eⱼ를 쓴다. 같은 θₜ에서 출발한 사본에 그 편집안으로 지도 미세조정(supervised fine-tuning, SFT)을 적용하면 새 가중치 θ′ⱼ를 얻는다. 이 사본이 예시에 없던 문제를 풀면 채점자가 답과 정답을 비교한다. <strong>안쪽 갱신</strong>은 문제를 풀 사본을 바꾼다. <strong>바깥쪽 갱신</strong>은 채점 결과를 이용해 다음 편집안을 제안할 모델을 바꾼다. 그림 오른쪽의 θₜ₊₁을 만들 때는 출발 모델 θₜ에서 다시 시작한다. [SEAL, 그림 1](https://arxiv.org/pdf/2506.10943v2#page=2) · [알고리즘 1의 4–8행](https://arxiv.org/pdf/2506.10943v2#page=4)
+
+### 식 풀이 1. 정답을 낸 사본 두 개는 원래 모델에 무엇을 돌려줄까?
+
+<strong>설명용 격자 문제</strong>에서 같은 시범 예시를 보고 1번, 2번, 3번 편집안을 하나씩 뽑았다고 하자. 세 안을 각각 새 사본에 적용한다. 1번과 2번으로 학습한 사본은 새 격자의 색과 위치를 모두 맞혔고, 3번 사본은 한 칸을 틀렸다. 이 예에서 모든 후보는 같은 계산 예산을 지켰다. 아래에서 rⱼ는 정답이면 1, 오답이면 0인 보상이다. y⋆는 정답 격자, ŷⱼ는 j번째 사본이 예측한 격자다.
+
+<Math tex={String.raw`\theta'_j=\operatorname{SFT}(\theta_t,e_j),\qquad r_j=\mathbf 1[\hat y_j=y^\star],\qquad (r_1,r_2,r_3)=(1,1,0).`} display />
+
+이제 세 편집안을 각각 한 토큰짜리 선택지로 단순화하자. 출발 모델이 같은 입력 문맥에서 각 선택지를 낼 확률 pⱼ를 차례로 1/2, 1/4, 1/4로 둔다. 논문 식 3처럼 후보 세 개로 평균을 내고 보상은 고정한 채, 음의 로그확률 손실을 계산한다.
+
+<Math tex={String.raw`\ell=-\tfrac13\sum_{j=1}^{3}r_j\ln p_j=-\tfrac13\bigl(\ln 0.5+\ln 0.25+0\bigr)=\ln 2\approx0.693.`} display />
+
+마지막 항이 0인 이유는 3번의 보상이 0이기 때문이다. 1번과 2번에서 되돌려 주는 학습 표본은 <strong>입력 문맥과 성공한 편집안의 쌍</strong>이다. 이를 바깥 모델이 다시 생성하도록 훈련한다. 실제 편집안은 여러 토큰으로 된 문장이므로 토큰별 로그확률을 더한다. 연구진은 성공한 출력을 골라 미세조정하는 ReST<sup>EM</sup>을 사용했다. ARC 실험에서는 375단계를 넘기는 설정도 제외했다. [SEAL, 식 3–4](https://arxiv.org/pdf/2506.10943v2#page=4) · [훈련 예산, 부록 A.2](https://arxiv.org/pdf/2506.10943v2#page=18) · [성공한 편집안을 고르는 공식 코드](https://github.com/Continual-Intelligence/SEAL/blob/6d9c9f9ee392c6cc618e771f399d436d190f6ca4/few-shot/BC-self-edit.py#L61-L80)
+
+### 식 풀이 2. SEAL의 성공률 72.5%에서 분모는 무엇일까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/seal-arc-success.png"
+  alt="ARC에서 보고한 네 조건의 성공률은 문맥 학습 0%, 바깥 학습 전 20%, SEAL 72.5%, 사람이 정한 TTT 설정 100%다."
+  caption="SEAL 표 1의 ARC 결과 · 가운데 두 값은 생성된 편집안을 과제에 하나씩 적용해 얻은 성공률이다."
+  source="https://arxiv.org/pdf/2506.10943v2#page=7"
+  credit="JJo 도표 · 출처 Adam Zweiger et al."
+  label="보충 자료"
+  width={1800} height={1375}
+/>
+
+보충 그림은 강의 도식의 체크 표시가 ARC 실험에서는 무엇을 뜻하는지 보여 준다. 연구진은 Llama-3.2-1B-Instruct로 실험했다. 적절한 테스트 시점 학습(test-time training, TTT) 설정에서 이 모델이 풀 수 있는 ARC 과제들을 골랐다. 훈련 과제 11개에서 편집안 생성 방법을 익힌 뒤, 별도로 남긴 평가 과제 8개에 각기 5개의 편집안을 생성했다. 매번 같은 출발 가중치에서 편집안 하나만 적용했다. 따라서 표의 자기 편집 두 조건에서 세는 단위는 <strong>한 과제에 편집안 하나를 적용한 시도</strong>다. [SEAL, 실험 설정 §4.1](https://arxiv.org/pdf/2506.10943v2#page=6) · [부록 A.3, 평가 단위](https://arxiv.org/pdf/2506.10943v2#page=19)
+
+<Math tex={String.raw`N=8\times5=40,\qquad 0.725\times40=29,\qquad 0.20\times40=8.`} display />
+
+<Math tex={String.raw`\Delta=\frac{29-8}{40}=0.525=52.5\ \mathrm{pp}.`} display />
+
+바깥 학습을 거친 SEAL은 40번 중 29번, 이 학습 없이 편집안을 생성한 조건은 8번 성공했다. 차이는 21번, 즉 52.5%p다. 같은 과제에서 나온 다섯 시도는 같은 격자 규칙을 공유한다. 이 집계만으로는 ‘다섯 번 중 한 번이라도 맞힌 과제가 몇 개인가’를 알 수 없다. 그림의 0%는 시범 예시만 프롬프트에 넣어 푼 조건(ICL), 100%는 사람이 고른 TTT 설정을 적용한 조건이다. [SEAL, 표 1](https://arxiv.org/pdf/2506.10943v2#page=7)
+
+<strong>지식을 기억하는 실험</strong>은 채점 단위가 달라진다. Qwen2.5-7B가 지문 한 개씩 학습한 뒤, 평가 때는 지문을 다시 보여 주지 않고 관련 질문에 답하게 했다. 지문만으로 학습하면 평균 정답률이 33.5%, 바깥 학습 전 모델이 만든 문장을 지문에 더하면 39.7%, SEAL이 만든 문장을 더하면 47.0%였다. 같은 단일 지문 조건에서 학습된 생성 방식의 차이는 47.0−39.7=7.3%p다. 이 실험의 바깥 훈련에서는 한 지문에 쓴 다섯 후보를 각각 세 난수 시드로 평가하고, 평균 점수가 가장 높은 편집안 하나를 남겼다. [SEAL, 표 2 첫 열](https://arxiv.org/pdf/2506.10943v2#page=8) · [부록 B.2, 편집안 선택 방법](https://arxiv.org/pdf/2506.10943v2#page=20)
+
+## 하편 47쪽 — 로봇이 나아진 것과 배우는 속도가 빨라진 것을 어떻게 가릴까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-47-original.png"
+  alt="위쪽에는 네 에이전트의 변화가, 아래쪽에는 도구를 든 두 로봇 사이의 변화가 그려져 있다."
+  caption="하편 47쪽 · 위쪽의 모델 변화와 아래쪽의 학습 규칙 변화를 서로 다른 기준으로 채점한다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=47"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+먼저 위쪽 로봇만 보자. 가로 화살표는 에이전트가 한 상태에서 다음 상태로 바뀌는 과정을 그린다. 이번에는 로봇 아래의 중괄호를 보자. 각 묶음에는 공구를 든 작은 로봇이 하나씩 있다. 아래 로봇 사이에도 화살표가 있다. 강사는 이를 두 층으로 나눈다. 위에서는 <strong>과제를 수행하는 에이전트</strong>가 바뀌고, 아래에서는 <strong>그 에이전트의 다음 변화를 정하는 규칙</strong>도 바뀔 수 있다. 그림에는 아직 점수나 시간축 눈금이 없다. 로봇의 모습이 화려해진 것만 보고 몇 배 빨리 학습했다고 계산할 수는 없다. [NTU 하편 47쪽](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=47) · [강의 42:02](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2522s)
+
+### 식 풀이 3. 마지막에 16장을 맞힌 두 검사기 중 어느 쪽이 먼저 배웠을까?
+
+<strong>가상 실험</strong>에서 흠집 검사기의 같은 초기 모델을 두 개 복사한다. 각 사본은 규칙 A 또는 B로 갱신한다. 두 규칙은 매회 같은 학습 사진을 같은 순서로 받고 같은 계산 예산을 쓴다. 매회 갱신 직후, 학습에 쓰지 않은 고정 사진 20장으로 두 사본을 채점한다. 표의 수는 같은 20장에 대한 정답 수다.
+
+| 갱신 횟수 | 시작 | 1회 | 2회 | 3회 |
+|---|---:|---:|---:|---:|
+| 규칙 A로 학습한 검사기 | 10 | 12 | 14 | 16 |
+| 규칙 B로 학습한 검사기 | 10 | 15 | 16 | 16 |
+
+마지막 정확도는 둘 다 16/20=80%다. 그런데 두 번째 갱신 직후 현장에 투입한다면 A는 70%, B는 80%다. <strong>80%에 처음 도달할 때까지의 갱신 횟수</strong>를 T라고 쓰자. cₖ는 k회 갱신 뒤 정답 수이고, min은 기준을 만족한 첫 회차를 고른다.
+
+<Math tex={String.raw`T_{0.8}=\min\{k:c_k/20\ge 0.8\},\qquad T_{0.8}(A)=3,\quad T_{0.8}(B)=2.`} display />
+
+세 회차 중 어느 시점에 쓸지 몰라서 각 시점의 정확도에 똑같은 비중을 준다고 하자. 시작 모델은 양쪽이 같으므로 여기서는 <strong>갱신 후 세 시점</strong>만 평균한다.
+
+<Math tex={String.raw`\bar a_A=\frac{12+14+16}{3\cdot20}=0.700,\qquad \bar a_B=\frac{15+16+16}{3\cdot20}\approx0.783.`} display />
+
+B의 회차별 평균 정확도가 약 8.3%p 높다. 분모 60은 <strong>사진 20장 × 평가 3회</strong>이므로 서로 독립인 사진 60장에 대한 정확도로 해석할 수는 없다. 아래쪽 화살표의 성과를 측정하려면 먼저 묻자. 정해진 예산을 전부 쓴 뒤의 성능이 중요한가, 아니면 쓸 만한 성능에 더 일찍 도달하는 것이 중요한가? 두 질문은 같은 표에서도 다른 결론을 준다.
+
+## 하편 48쪽 — 한 생애의 변화와 여러 세대에 걸친 변화는 어떻게 다른가?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-48-original.png"
+  alt="두 집단에서 한 생애의 성장 과정을 각각 묶고, 아래의 두 DNA 기호 사이에는 화살표를 놓았다."
+  caption="하편 48쪽 · 한 생애의 변화와 세대를 거친 변화를 서로 다른 시간 척도로 읽는다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=48"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+위쪽의 두 중괄호에는 각각 아이에서 어른으로 자라는 모습이 있다. 아래쪽에는 DNA 그림 두 개와 한쪽에서 다른 쪽으로 가는 화살표가 있다. 강사는 이 그림으로 <strong>한 생애 안에서 뇌의 연결이 달라지는 시간</strong>과 <strong>여러 세대를 거쳐 학습에 영향을 주는 특성의 분포가 달라지는 시간</strong>을 구분한다. 강의 영상에서는 이 비유를 49쪽의 기호를 소개한 뒤에 설명한다. 여기서 빌려올 점은 시간 척도의 구분이다. 앞사람이 배운 기억이 다음 사람에게 그대로 전달된다거나, 오른쪽 집단이 모든 환경에서 더 뛰어나다는 주장까지 이 비유에서 끌어낼 근거는 없다. [NTU 하편 48쪽](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=48) · [강의 44:14](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2654s)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-video-48-en.png"
+  alt="두 생애와 아래의 DNA 화살표가 함께 보인다. 첫 생애 위의 식은 고정한 φ를 사용해 θ를 한 번 갱신한다."
+  caption="녹화 화면 44:20 · 생애 안에서의 갱신식과 세대 사이의 DNA 화살표가 한 화면에 겹친다. 식을 제자리에 다시 식자했다."
+  source="https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2660s"
+  credit="Hung-yi Lee / NTU ML 2026"
+  label="강의 녹화"
+  width={1280} height={720}
+/>
+
+<Math tex={String.raw`\theta_{t_1+1}=F\!\left(\theta_{t_1};\phi_{t'}\right).`} display />
+
+첫 생애 안에서 한 칸 움직여 보자. 현재 상태 θ와 그 세대의 학습 규칙을 정하는 φ를 F에 넣으면 다음 상태 θ가 나온다. 왼쪽의 생애 시점 t₁은 1만큼 늘고, 오른쪽의 세대 표지 t′는 그대로다. 아래 DNA 화살표는 다른 시간 척도에서 **학습 규칙을 정하는 φ도 달라질 수 있다**는 비유다. 강의는 [49쪽의 두 기호](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2574s)를 먼저 소개한 뒤 이 그림에 겹쳐 읽는다.
+
+### 식 풀이 4. 다음 카메라에 넘길 것은 보정값일까, 보정하는 방법일까?
+
+비유를 <strong>가상의 카메라 보정 실험</strong>으로 바꿔 보자. 새 카메라를 연결할 때마다 밝기 보정값 θ를 0으로 초기화한다. 장치마다 밝기 차이를 세 번 측정한다. 규칙 U는 현재까지 측정한 값 중 <strong>맨 마지막 값</strong>을, 규칙 V는 <strong>중앙값</strong>을 현재 θ로 삼는다. 아래 표는 같은 측정 세 개를 모두 받은 뒤의 결과다. 기준값은 독립된 기준기로 그 시점에 측정하며, 두 규칙에는 보여 주지 않는다. 보정값과 오차의 단위는 모두 밝기 단위다.
+
+| 카메라와 조건 | 순서대로 관측한 값 | 기준값 | U의 보정값 | V의 보정값 |
+|---|---|---:|---:|---:|
+| A · 안정 상태, 마지막 측정에 잡음 | 3, 4, 17 | 4 | 17 | 4 |
+| B · 안정 상태 | −1, −3, −2 | −2 | −2 | −2 |
+| C · 실제 밝기 차이가 빠르게 변함 | 1, 5, 9 | 9 | 9 | 5 |
+
+먼저 안정 상태인 A·B에서만 규칙을 비교하자. 오차는 추정한 보정값과 기준값의 차이에 절댓값을 취해 구한다. 평균 절대 오차(mean absolute error, MAE)는 장치별 오차의 평균이다.
+
+<Math tex={String.raw`\mathrm{MAE}_{A,B}(U)=\frac{|17-4|+|-2-(-2)|}{2}=6.5,\qquad \mathrm{MAE}_{A,B}(V)=0.`} display />
+
+이 기준으로 고른 V에서 C로 넘어가는 것은 <strong>‘측정값의 중앙값을 사용하라’는 규칙</strong>이다. A의 4 또는 B의 −2를 C에 복사하지 않는다. C는 자기 측정값 1, 5, 9로 새 보정값 5를 얻는다. C에서는 오차의 순서도 바뀐다.
+
+<Math tex={String.raw`e_C(U)=|9-9|=0,\qquad e_C(V)=|5-9|=4.`} display />
+
+안정된 장치에서는 튄 측정 한 건을 무시하는 것이 유리했고, C에서는 마지막 관측이 실제 변화를 가장 잘 반영했다. 새 장치에 <strong>방법</strong>을 가져갈 수 있어도 성능은 그 장치에서 다시 재야 한다. 49쪽은 이 두 층에 θ와 φ라는 기호를 붙인다. θ는 특정 과제를 수행하는 동안 바뀌는 값이고, φ는 그 값의 갱신 방법을 정한다.
+
+## 하편 49쪽 — θ가 바뀔 때와 φ가 바뀔 때를 어떻게 구분할까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-49-original.png"
+  alt="위쪽 모델 가중치 θ는 같은 괄호 안에서 여러 번 변한다. 아래에는 각 구간의 갱신을 결정하는 φ가 표시된다."
+  caption="하편 49쪽 · 위의 t는 모델 갱신을, 아래의 t′는 갱신 규칙이 바뀌는 회차를 센다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=49"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+그림 왼쪽 괄호 안에서 위쪽 화살표 하나를 따라가자. 현재 모델의 가중치 θ를 갱신 함수 F에 넣으면 다음 가중치가 나온다. 이때 아래쪽의 φ는 <strong>F가 어떤 계산을 할지</strong> 정한다. 같은 괄호 안에서는 θ가 여러 번 움직여도 같은 φ를 쓴다. 오른쪽 괄호에서는 학습 규칙이 새 버전으로 바뀐다. 그림의 아래첨자 t는 안쪽 학습의 시계, t′는 그 규칙을 바꾸는 바깥 학습의 시계다. 둘 다 1씩 증가한다고 해서 같은 시간이 흐른 것은 아니다. [46–50쪽 중 49쪽 원본](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=49) · [강의 42:54](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2574s)
+
+### 식 풀이 5. 학습률을 바꾸려면 무엇을 미분할까?
+
+검사 카메라의 밝기 보정을 <strong>가상 예제</strong>로 생각하자. 작은 학습 표본으로 추정한 보정 목표는 2이고, 따로 둔 검증 표본에서 얻은 보정 목표는 3이다. θ는 현재 보정값, φ는 한 번 움직일 때의 학습률이다. θ₀=0을 고정하고, 학습 손실을 목표 2와의 오차 제곱의 절반으로 둔다. 시작점의 기울기는 −2다. φ=0.25이면 한 번 학습한 보정값은 0.5가 된다.
+
+<Math tex={String.raw`L_S(\theta)=\tfrac12(\theta-2)^2,\quad \theta_1=\theta_0-\phi(\theta_0-2)=2\phi.`} display />
+
+<Math tex={String.raw`J(\phi)=\tfrac12(\theta_1-3)^2=\tfrac12(2\phi-3)^2,\qquad J(0.25)=3.125.`} display />
+
+
+이제 묻는 것은 “현재 보정값을 어느 쪽으로 옮길까?”에서 “어떤 보폭을 주면 <strong>한 번 학습한 뒤</strong> 검증 오차가 줄까?”로 바뀐다. 뒤의 식을 미분할 때는 두 변화율을 곱한다. 새 보정값에서의 검증 기울기는 0.5−3=−2.5이고, 학습률을 1만큼 바꾸면 새 보정값은 2만큼 달라진다. 따라서 바깥 기울기는 −5다.
+
+<Math tex={String.raw`\frac{dJ}{d\phi}=\frac{\partial J}{\partial\theta_1}\frac{\partial\theta_1}{\partial\phi}=(2\phi-3)\cdot2=-5\quad(\phi=0.25).`} display />
+
+<Math tex={String.raw`\phi_{\rm new}=0.25-0.05(-5)=0.50,\qquad \theta_1^{\rm new}=1,\qquad J(0.50)=2.`} display />
+
+
+마지막 줄의 0.05는 <strong>규칙을 바꾸는 학습률</strong>, 0.50은 <strong>바뀐 규칙이 모델에 적용할 학습률</strong>이다. 시작값 0에서 똑같이 한 번씩 학습시킨 결과, 검증 손실이 3.125에서 2로 줄었다. 검증 표본이 φ를 고르는 데 쓰였으므로, 새 카메라에서도 이 규칙이 나은지는 별도의 과제에서 재야 한다.
+
+### 보충 논문 · 보폭 하나에서 학습된 최적화기로
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/learned-optimizer-coordinate-update.png"
+  alt="두 좌표가 같은 최적화기 가중치 φ를 사용한다. 각 좌표의 기울기와 내부 상태를 받아 변화량과 새 상태를 출력한다."
+  caption="Andrychowicz 외, 식 3과 그림 3을 바탕으로 그린 도식 · 좌표들이 공유하는 가중치와 각자 유지하는 내부 상태를 구분한다."
+  source="https://papers.nips.cc/paper_files/paper/2016/file/fb87582825f9d28a8d42c5e5e5e8b23d-Paper.pdf#page=3"
+  credit="JJo 도표 · 출처 Marcin Andrychowicz et al."
+  label="보충 자료"
+  width={1800} height={1237}
+/>
+
+2016년 Andrychowicz 등의 연구에서는 작은 순환 신경망이 최적화기(optimizer) 역할을 한다. 현재 과제의 기울기와 이전 내부 상태를 받으면, 가중치에 <strong>더할 변화량</strong>과 다음 내부 상태를 출력한다. 가중치 좌표마다 같은 최적화기 파라미터 φ를 공유하지만 각 좌표의 내부 상태는 따로 유지한다. 앞의 손계산에서 F가 할 수 있던 일은 기울기에 숫자 하나를 곱하는 것이었다. 이 연구에서는 지나온 기울기 기록에 따라 같은 현재 기울기에도 다른 변화를 제안할 수 있다. [논문 식 3, 갱신과 학습 목표](https://papers.nips.cc/paper_files/paper/2016/file/fb87582825f9d28a8d42c5e5e5e8b23d-Paper.pdf#page=3) · [그림 3, 좌표별 상태와 공유 파라미터](https://papers.nips.cc/paper_files/paper/2016/file/fb87582825f9d28a8d42c5e5e5e8b23d-Paper.pdf#page=4)
+
+같은 기울기에 왜 다른 갱신이 나올까? 단순한 모멘텀(momentum) 규칙으로 축소해 보자. 직전 누적값에 0.5를 곱하고 새 기울기를 더한다. 지금 기울기가 두 좌표 모두 1이어도 직전 누적값이 +2와 −2라면 새 누적값은 각각 2와 0이다. 보폭이 0.1이면 두 좌표는 −0.2와 0만큼 움직인다. 두 좌표에서 <strong>공유한 규칙은 같고, 저장된 이력이 다르다</strong>. 이 손계산은 상태의 역할을 설명한다. 논문에서 학습한 LSTM은 이보다 복잡한 함수를 표현한다.
+
+## 하편 50쪽 — 메타학습은 새 과제에서 무엇으로 평가할까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/ntu-50-english.png"
+  alt="2021년 메타학습 강의 두 편의 썸네일과 주소가 나란히 있다. 썸네일 아래 중국어 영상 제목을 영어로 옮겼다."
+  caption="하편 50쪽 · 첫 강의는 과제별 손실을 모으는 방법을, 둘째 강의는 학습 절차에서 바꿀 수 있는 대상을 다룬다."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=50"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+이 페이지는 2021년 NTU 강의 두 편을 가리킨다. 첫 영상은 <strong>학습 알고리즘이 한 과제를 풀고 나서 어떻게 점수를 받을지</strong> 설명한다. 둘째 영상은 <strong>학습 과정의 어느 부분을 학습 대상으로 삼을지</strong> 묻는다. 원본 PDF에서는 49쪽 다음에 놓였지만 본강의에서는 두 영상을 먼저 소개한 뒤 θ와 φ의 식으로 돌아간다. [본강의 42:45](https://www.youtube.com/watch?v=cQLKVzbwN7I&t=2565s) · [NTU 2021 강의 자료](https://speech.ee.ntu.edu.tw/~hylee/ml/2021-spring.html)
+
+첫 영상을 19:20에서 멈추면 두 과제의 손실을 모아 규칙을 평가하는 식이 보인다. 과제마다 자기 자료로 먼저 학습한 뒤 얻은 점수가 합에 들어간다. 둘째 영상의 13:20에서는 기울기를 받아 가중치를 바꾸는 연산이 확대된다. 같은 과제 점수를 바깥 기준으로 두더라도 안쪽에서 바꿀 수 있는 대상은 출발 가중치, 보폭, 최적화기 등 여러 가지다. [첫 영상 19:20](https://www.youtube.com/watch?v=xoastiYx9JU&t=1160s) · [해당 강의 19쪽](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/meta_v3.pdf#page=19) · [둘째 영상 13:20](https://www.youtube.com/watch?v=Q68Eh-wm1Ts&t=800s) · [해당 강의 41쪽](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2021-course-data/meta_v3.pdf#page=41)
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/stanford-cs330-inner-outer-datasets.png"
+  alt="과제를 뽑고 과제별 훈련 데이터로 안쪽 파라미터를 구한 뒤 따로 뽑은 데이터로 바깥 갱신을 하는 네 단계가 표시된다."
+  caption="Stanford CS330, 20쪽 알고리즘 발췌와 수식 확대 · 같은 과제에서도 안쪽 적응과 바깥 학습에 서로 다른 예시를 쓴다."
+  source="https://cs330.stanford.edu/materials/cs330_optbased_metalearning_2023.pdf#page=20"
+  credit="Chelsea Finn / Stanford CS330"
+  label="보충 자료"
+  width={1801} height={958}
+/>
+
+Stanford CS330의 한 과제(episode)에서는 소수의 예시인 <strong>지원 집합(support set)</strong>으로 적응하고 따로 남겨 둔 <strong>질의 집합(query set)</strong>에서 적응 후 성능을 측정한다. 메타훈련 중에는 질의 손실이 바깥 파라미터를 학습하는 신호다. 최종 메타테스트에서는 그동안 학습 규칙을 고르는 데 쓰지 않은 새 과제를 꺼낸다. 각 과제 안에서 지원·질의를 나누는 것과 과제 자체를 훈련용·시험용으로 나누는 것은 다른 분할이다. [Stanford CS330, 20쪽](https://cs330.stanford.edu/materials/cs330_optbased_metalearning_2023.pdf#page=20)
+
+### 식 풀이 6. MAML은 두 카메라에서 어떤 초기값을 배울까?
+
+MAML(Model-Agnostic Meta-Learning)은 <strong>새 과제에 몇 번만 적응해도 잘 맞는 초기 가중치</strong>를 학습한다. 49쪽의 φ는 갱신 규칙을 나타냈다. 이번 예제에서 바깥쪽이 선택하는 값은 공통 출발점 w이고, 안쪽 보폭 α=0.5는 고정한다. 두 카메라 A와 B를 별개 과제로 둔다. s는 지원 사진에서 얻은 목표 보정값, q는 별도 질의 사진의 목표 보정값이다. 다음 수치는 <strong>원리를 보여 주는 가상 데이터</strong>다. [MAML, 알고리즘 1](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=3) · [지도학습 알고리즘 2](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=4)
+
+| 카메라 | 지원 목표 s | 질의 목표 q | w=0에서 한 번 적응한 값 | 질의 손실 |
+|---|---:|---:|---:|---:|
+| A | −2 | −3 | −1 | 2 |
+| B | 4 | 5 | 2 | 4.5 |
+
+보정값과 목표의 차이를 제곱해 2로 나눈다. 지원 집합에서 한 번 갱신하면 보정값은 공통 출발점과 지원 목표의 중간에 놓인다. A의 질의 오차는 −1−(−3)=2이고, B의 질의 오차는 2−5=−3이다.
+
+<Math tex={String.raw`w'_i=w-0.5(w-s_i)=0.5w+0.5s_i,\qquad J(w)=\tfrac12\sum_{i\in\{A,B\}}\tfrac12(w'_i-q_i)^2.`} display />
+
+<Math tex={String.raw`J(0)=\frac{2+4.5}{2}=3.25,\qquad \frac{dJ}{dw}\bigg|_0=\frac{2(0.5)+(-3)(0.5)}{2}=-0.25.`} display />
+
+
+두 과제에서 나온 질의 기울기에 0.5를 곱하는 이유는 출발점 w가 1만큼 움직여도 한 번 적응한 값은 0.5만큼만 움직이기 때문이다. 바깥 보폭을 0.4로 두면 새 초기값은 0.1이다. 두 카메라에 다시 같은 지원 사진을 주어 계산해 보자.
+
+<Math tex={String.raw`w_{\rm new}=0-0.4(-0.25)=0.1,\qquad (w'_A,w'_B)=(-0.95,2.05).`} display />
+
+<Math tex={String.raw`J(0.1)=\frac{(2.05)^2+(-2.95)^2}{4}=3.22625.`} display />
+
+
+평균 손실은 조금 줄었고 A의 오차는 조금 커졌다. 여러 과제의 평균에 맞춰 출발점을 골랐기 때문이다. 실제 MAML은 모델이 가진 많은 가중치를 대상으로 이 계산을 수행한다. 지정한 학습률 한 개를 고르는 실험과도, SEAL처럼 이산적인 자기 편집 문장을 보상으로 선별하는 절차와도 구분할 수 있다.
+
+### 식 풀이 7. 5-way 1-shot에서 5-shot으로 바꾸면 무엇이 다섯 배가 될까?
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-23-self-edits-and-meta-learning/maml-miniimagenet-accuracy.png"
+  alt="miniImageNet 5-way에서 MAML의 1-shot 정확도는 48.70±1.84%, 5-shot은 63.11±0.92%다."
+  caption="MAML 표 1 아래쪽의 두 평균과 95% 신뢰구간 · shot은 한 클래스에서 적응에 쓴 이미지 수다."
+  source="https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=7"
+  credit="JJo 도표 · 출처 Chelsea Finn, Pieter Abbeel and Sergey Levine"
+  label="보충 자료"
+  width={1800} height={1162}
+/>
+
+Finn 등의 2017년 논문 표 1 아래쪽은 miniImageNet의 새 클래스에서 분류한 결과다. <strong>5-way</strong>는 한 과제 안에서 다섯 클래스를 구분한다는 뜻이고, <strong>1-shot·5-shot</strong>은 클래스당 라벨이 있는 지원 이미지 수다. 따라서 적응할 때 보는 이미지는 각각 5장, 25장이다. 표의 정확도는 지원 이미지를 외운 비율이 아니라, 적응한 모델이 질의 이미지를 얼마나 맞혔는지 나타낸다. [MAML, 실험 설정](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=6) · [표 1, miniImageNet 결과](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf#page=7)
+
+<Math tex={String.raw`N_{\rm support}=5\times 1=5\quad\text{or}\quad 5\times 5=25,\qquad 63.11\%-48.70\%=14.41\ \mathrm{pp}.`} display />
+
+
+MAML 행의 정확도는 1-shot에서 48.70±1.84%, 5-shot에서 63.11±0.92%다. <strong>14.41%p</strong>는 두 조건에서 보고한 평균 정확도의 차이다. 그림의 오차 막대는 과제에 걸쳐 추정한 각 평균의 95% 신뢰구간이다. 표에는 두 점수 차이 자체의 신뢰구간이 주어지지 않는다. SEAL에서 센 한 번의 ‘성공’은 ARC 편집으로 적응한 뒤 격자 문제를 푼 경우였다. 여기서 분모가 되는 단위는 새 이미지의 분류 결과이므로, 두 논문의 백분율은 각각의 과제 안에서 읽어야 한다.
+
+22편에서는 학습 알고리즘 후보를 비교했다. 이번에는 <strong>무엇을 새로 고르고, 그 선택을 어떤 데이터로 채점하는지</strong>까지 표시했다. 51쪽에서는 새 입력을 읽을 때 순환 신경망의 내부 상태가 어떻게 변하는지로 질문이 옮겨간다. [하편 51쪽 미리 보기](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/self-evolving-agent.pdf#page=51)

@@ -1,0 +1,301 @@
+---
+title: Self-Improving AI 13 — Improving agents through harnesses, tools and memory
+description: ReAct, Generative Agents, Reflexion and SWE-agent show how weights, harness design and runtime state
+  affect behavior and what makes an evaluation fair.
+pubDate: 2026-11-18 16:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: self-improving-ai-13-agent-harness-and-system-improvement
+category: ai-machine-learning
+subcategory: self-improving-ai
+type: study-note
+tags:
+- self-improvement
+- ai-agents
+- harness
+- memory
+- ntu
+researchFeatured: false
+draft: false
+lang: en
+showCTA: false
+showComments: false
+series:
+  id: self-improving-ai
+  order: 13
+translationKey: en-self-improving-ai-13-agent-harness-and-system-improvement
+translatedPosts:
+  ko-KR: self-improving-ai-13-agent-harness-and-system-improvement
+---
+
+import LearningFigure from '@/components/post/LearningFigure.astro';
+import Math from '@/components/post/Math.astro';
+
+> <strong>The same model can act as a different agent depending on what it reads, which tools it uses, and how past failures inform its next action.</strong>
+
+[Part 12](/posts/self-improving-ai-12-weak-to-strong-generalization/) distinguished an AI designing a student's learning procedure from evidence that the researcher itself improved. Here the question extends beyond the model: <strong>Can an agent do its job better while its model weights stay fixed?</strong>
+
+The length of a retrieved document, the retry chosen after a tool fails, and the records loaded from earlier tasks all change the model's next input. The execution system that makes these decisions is itself a target for improvement.
+
+The final two slides introduce this perspective and lead into the next lecture. ReAct, Generative Agents, Reflexion, and SWE-agent are <strong>supplementary papers</strong> that develop the idea. Their designs help distinguish learning weights, updating memory, and revising a harness.
+
+<details>
+<summary>Video locations by slide</summary>
+
+| Slide | Video | Topic |
+|---|---|---|
+| 61 | [From 1:03:02](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3782s) | The language model, harness, and files created during interaction |
+| 62 | [From 1:03:40](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3820s) | The question leading into the next lecture |
+
+</details>
+
+## Slide 61 — An agent includes components outside the model
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-13-agent-harness-and-system-improvement/ntu-self-improving-61-en.png"
+  alt="A user interacts with the agent through a phone. The harness exchanges information with the language model, and the resulting files appear below."
+  caption="Slide 61 — A user reaches the agent through its harness. Files created during the interaction appear below."
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=61"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+[Lecture at 1:03:30](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3810s)
+
+At [1:03:14](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3794s), the lecturer explains that an agent encompasses more than the parameters of its language model. The <strong>harness</strong> region of the slide lists OpenClaw, Cowork, Claude Code, and Hermes. The language model region lists Claude, GPT, and Gemini. These examples illustrate the distinction the lecturer makes.
+
+The harness calls the model, carries out tool requests, and packages results into subsequent inputs. It may determine which information and actions the model can access, how to maintain the task history, and when to stop. Its precise scope varies by system. This is why the lecturer says that improving the model alone improves just one part of the agent. [Lecture at 1:03:20](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3800s)
+
+It helps to distinguish the model, the harness, and the state accumulated during execution.
+
+| Component | What it contains | Example change |
+|---|---|---|
+| Model parameters θ | Weights obtained through pretraining or fine-tuning | Training changes the conditional distribution of the next token |
+| Harness H | Input assembly, tool interfaces, and rules for logging, retrying, and stopping | Modify the search result format or error handling |
+| Execution state s | Current conversation, plans, observations, stored memories, and files | Read new search results and append to the task history |
+
+A file's format alone does not tell you its role. An observation log is execution state. A rules file read on the next run can become part of the harness configuration. Generated code that has yet to run is an output artifact. To explain how improvement happened, check <strong>which content actually informed the next action</strong>.
+
+### Tracing the inputs to the model
+
+The following notation illustrates the architecture without reproducing a particular paper's algorithm. Given task x and execution state sₜ, suppose the harness uses a context builder C to assemble cₜ for the model.
+
+<Math tex={String.raw`c_t=C_H(x,s_t),\qquad a_t\sim p_\theta(\,\cdot\mid c_t).`} display />
+
+Here aₜ is the next action proposed by the model. It could be a tool call or a final answer. Even with the same θ, the distribution over actions can change depending on which search results, failure messages, or relevant memories appear in cₜ.
+
+Executing a tool action in environment state eₜ yields a new state and an observation oₜ₊₁. The harness incorporates this observation into the execution state.
+
+<Math tex={String.raw`\begin{aligned}
+(o_{t+1},e_{t+1})&\sim P_H(\,\cdot\mid e_t,a_t),\\
+s_{t+1}&=U_H(s_t,a_t,o_{t+1}).
+\end{aligned}`} display />
+
+P represents interaction with the environment through the tool interface. U is the rule for updating or summarizing the record. The environment can return different results on different runs. <strong>The model weights θ remain fixed throughout this loop.</strong>
+
+A new observation can improve an answer. That improvement alone does not establish that θ learned anything or that the rules in H were automatically redesigned. Changing state and changing the rules for processing state are distinct operations.
+
+## Supplement A — ReAct connects observations to the next action
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-13-agent-harness-and-system-improvement/react-v3-figure1.png"
+  alt="Examples from question answering and ALFWorld compare direct answers, reasoning alone, acting alone, and ReAct. ReAct adjusts subsequent actions in response to search results and observations."
+  caption="ReAct Figure 1 — Observations connect reasoning to action."
+  source="https://arxiv.org/pdf/2210.03629v3#page=2"
+  credit="Shunyu Yao et al. / ICLR 2023"
+  width={1801} height={1484}
+/>
+
+ReAct interleaves reasoning and acting. In the question-answering example at the top, the agent chooses a search query, reads the tool's response, and decides whether to search again or answer. In the environment task below, it checks whether it actually found an object as it carries out its plan. [ReAct, section 2 and Figure 1](https://arxiv.org/pdf/2210.03629v3#page=2)
+
+The purpose is to <strong>connect model output with external feedback</strong> so that an observation can change the next action when an initial assumption fails. Longer reasoning traces are incidental. Some tasks in the paper use reasoning only occasionally, rather than before every action. [ReAct, sections 2–3](https://arxiv.org/pdf/2210.03629v3#page=3)
+
+For example, imagine an agent looking for a function in a repository. An empty search result might prompt it to conclude that the function is absent. Alternatively, it could check the name and search scope and try again. The latter requires retaining the observation in the input and providing actions that can change the search strategy. This example is illustrative.
+
+Here we focus on the paper's <strong>prompted ReAct setting, which supplies demonstrations in the prompt</strong>. It shows how to design the sequence of interactions while keeping weights fixed. The original paper also reports separate fine-tuning experiments. [ReAct, sections 3.2–3.3](https://arxiv.org/pdf/2210.03629v3#page=5)
+
+## Supplement B — Generative Agents separates storage from retrieval
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-13-agent-harness-and-system-improvement/generative-agents-v2-figure5.png"
+  alt="Generative Agents stores observations in a memory stream, retrieves memories to guide action, and writes plans and reflections back into memory."
+  caption="Generative Agents Figure 5 — Experiences are stored and relevant memories are retrieved for planning and action."
+  source="https://arxiv.org/pdf/2304.03442v2#page=8"
+  credit="Joon Sung Park et al. / UIST 2023"
+  width={1801} height={672}
+/>
+
+Generative Agents centers on a <strong>memory stream</strong> that records experiences in natural language. The agent retrieves relevant memories to choose an action, then stores reflections drawn from several memories as well as plans. The study concerns plausible human behavior in a virtual environment. Its findings do not establish gains on every kind of task. [Generative Agents, section 4 and Figure 5](https://arxiv.org/pdf/2304.03442v2#page=8)
+
+Logging more is insufficient on its own. Records left in storage cannot be read directly by a model call unless they enter its context. Conversely, repeatedly retrieving an old conjecture because it appears relevant can carry a mistaken assumption into later actions.
+
+The paper combines recency, importance, and relevance. Recency uses elapsed game time since the last retrieval, importance uses a model-assigned rating, and relevance uses cosine similarity between query and memory embeddings. Each component undergoes min–max normalization to the 0–1 range before combination. [Generative Agents, section 4.1](https://arxiv.org/pdf/2304.03442v2#page=9)
+
+### Worked example 1 — A retrieval rule can change the ranking of the same memories
+
+These <strong>hypothetical scores</strong> illustrate checking the deployment procedure for a repository. The three records are the entire candidate set for this example. R is a previously computed recency value, I is importance, and Q is relevance to the current question.
+
+| Memory | R | I | Q |
+|---|---:|---:|---:|
+| A: General task note just recorded | 0.98 | 2 | 0.1 |
+| B: Previously verified deployment rule | 0.80 | 9 | 0.9 |
+| C: Recent deployment checklist | 0.89 | 5 | 0.7 |
+
+Normalize each column across candidates before combining raw scores that use different scales. For a component j whose maximum and minimum differ, the calculation is:
+
+<Math tex={String.raw`\widetilde z_{ij}=\frac{z_{ij}-\min_k z_{kj}}{\max_k z_{kj}-\min_k z_{kj}}.`} display />
+
+For C, normalized importance is (5−2)/(9−2)=3/7, and normalized relevance is (0.7−0.1)/(0.9−0.1)=0.75. If every candidate has the same value in a column, the denominator is zero. The verification code below gives such a column zero contribution because it cannot distinguish candidates. That convention is specific to this example.
+
+Apply weights to the normalized components. The original paper's implementation gives all three a weight of 1.
+
+<Math tex={String.raw`S_i=\alpha_R\widetilde R_i+\alpha_I\widetilde I_i+\alpha_Q\widetilde Q_i.`} display />
+
+| Memory | Normalized (R, I, Q) | Score with weights (1, 1, 1) | Score emphasizing recency (0.8, 0.1, 0.1) |
+|---|---|---:|---:|
+| A | (1, 0, 0) | 1.0000 | 0.8000 |
+| B | (0, 1, 1) | 2.0000 | 0.2000 |
+| C | (0.5, 3/7, 0.75) | 1.6786 | 0.5179 |
+
+B ranks first with equal weights, and A ranks first with the illustrative recency-heavy weights. The memories and model weights are identical: <strong>the retrieval rule changes which information the model sees.</strong> These scores can sum to more than 1 because they are not probabilities.
+
+Retrieving B does not guarantee a correct answer. Looking important, resembling the question, and being factually correct are different properties. The example demonstrates the ranking calculation. Determining which weights work on real tasks requires a separate evaluation.
+
+## Supplement C — Reflexion carries an explanation of failure into the next attempt
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-13-agent-harness-and-system-improvement/reflexion-v4-figure2a.png"
+  alt="Reflexion connects an actor, evaluator, and self-reflection module to the environment. The current trial trajectory and long-term experience memory inform subsequent actions."
+  caption="Reflexion Figure 2(a) — Feedback from the current trial becomes a verbal memory for the next one."
+  source="https://arxiv.org/pdf/2303.11366v4#page=4"
+  credit="Noah Shinn et al. / Reflexion, 2023"
+  width={1801} height={1595}
+/>
+
+Reflexion connects the actor's trial, the evaluator's feedback, and the explanation produced by self-reflection. The current trajectory is a short-term record. An explanation of the failure enters the experience memory available to later trials. Feedback may come from external outcomes, rules, or a model's own evaluation. [Reflexion, section 3 and Figure 2(a)](https://arxiv.org/pdf/2303.11366v4#page=4)
+
+The following notation simplifies the architecture. j indexes the trial, τ records its actions and observations, r is feedback, and m is memory retained between trials. As before, θ refers only to the language model weights.
+
+<Math tex={String.raw`\begin{aligned}
+v_j&=\operatorname{Reflect}_\theta(\tau_j,r_j),\\
+m_{j+1}&=\operatorname{Keep}_H(m_j\mathbin{\Vert}v_j),\\
+\theta_{j+1}&=\theta_j.
+\end{aligned}`} display />
+
+Here ∥ denotes concatenating text records, and Keep is the rule for retaining records for the next trial. This expression illustrates the roles rather than reproducing the full algorithm. <strong>Appending a reflection involves no gradient update to the weights.</strong> The authors call this feedback path verbal reinforcement. [Reflexion, introduction and section 3](https://arxiv.org/pdf/2303.11366v4#page=2)
+
+After a failed test, an agent might record, “I missed a boundary condition. Next time I will try empty input first.” If the next trial reads that sentence and changes its behavior, the agent has reused experience. A reflection that misdiagnoses the cause can lead to the same error under a different description.
+
+Fluent reflection alone is insufficient evidence of improvement. Check whether the revised behavior passed verification and whether the failure recurred less often. Tests written by a model can contain errors, so distinguish passing those tests from passing an independent final evaluation.
+
+If H still uses the same rule for appending memories, the quantity that changed is m. A change to H would also be at issue if the agent altered the memory format or retention rule and actually applied it on the next run. Both changes can help, through different mechanisms.
+
+## Supplement D — SWE-agent shows why tool interfaces affect performance
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-13-agent-harness-and-system-improvement/swe-agent-v3-figure1.png"
+  alt="SWE-agent places an ACI between a language model agent and the terminal and file system. The diagram shows repository navigation, file search and viewing, line editing, and environment feedback."
+  caption="SWE-agent Figure 1 — Designing both the commands a model can use and the feedback it receives."
+  source="https://arxiv.org/pdf/2405.15793v3#page=1"
+  credit="John Yang et al. / NeurIPS 2024"
+  width={1801} height={559}
+/>
+
+SWE-agent focuses on the <strong>agent–computer interface (ACI)</strong> between a model and a computer. Its design covers commands for navigating a repository and reading and editing files, as well as the format of command results. The paper explicitly studies improvements to that interface with a fixed language model. [SWE-agent, section 2](https://arxiv.org/pdf/2405.15793v3#page=3)
+
+Repeatedly printing an entire file produces a different context from displaying the current location, line numbers, and relevant excerpt. Immediate feedback from a syntax check also changes the agent's opportunity to detect an error and choose its next action. The paper treats navigation, editing, and feedback as parts of ACI design. [SWE-agent, sections 2–3](https://arxiv.org/pdf/2405.15793v3#page=3)
+
+Saying an agent “can use tools” is only the starting point. Execution depends on the granularity of available actions, the specificity of failure messages, and how much old output remains in context. Harness changes shape how a model's capabilities translate into work.
+
+Gains from extra calls need to be distinguished from the effect of the interface itself. The calculation below shows why both success rate and budget matter.
+
+### Worked example 2 — Retries change both the probability of success and the cost
+
+Consider a tool request subject to transient failures. Assume the probability p of success is constant across independent attempts, and a success is detected perfectly and stops the process immediately. With at most K calls, the probability of at least one success is:
+
+<Math tex={String.raw`P_K=1-(1-p)^K.`} display />
+
+This subtracts the probability of K consecutive failures from 1. K counts all attempts, including the first call. The example models the success of a single tool request. It does not estimate whole-task agent success or a model's empirical pass@k.
+
+Let N be the number of calls actually made. Reaching call j+1 requires that all of the preceding j attempts failed. The mean number of calls is therefore:
+
+<Math tex={String.raw`\mathbb E[N]=\sum_{j=0}^{K-1}(1-p)^j
+=\frac{1-(1-p)^K}{p}\quad(0<p\leq1).`} display />
+
+With <strong>p=0.6 for illustration</strong> and equal cost per call, the results are:
+
+| Maximum calls K | Probability of at least one success | Mean calls E[N] | Residual failure probability |
+|---:|---:|---:|---:|
+| 1 | 60.0% | 1.00 | 40.0% |
+| 2 | 84.0% | 1.40 | 16.0% |
+| 3 | 93.6% | 1.56 | 6.4% |
+
+A cap of three calls does not mean every request uses all three. Stopping at the first success brings the average to 1.56. Single-call success probability remains 0.6. The increase in overall success comes from allowing further attempts.
+
+If p=0, any finite K yields zero probability of success and K calls. A persistent cause, such as an incorrect address or a lasting permissions error, also undermines the independence assumption. An actual agent might revise its request after each observation, changing the success probability. The expression above should not be applied directly as a performance prediction.
+
+## What should stay the same when comparing improvements?
+
+Compare a new harness H₁ with the original H₀ using the same model, tasks, resources, and access to information. If repeated inspection of evaluation scores influenced the choice of H₁, that evaluation set was part of the design process. As in the earlier discussion of automated research, reserve separate tasks for the final comparison.
+
+| Condition to fix or record | Practical meaning |
+|---|---|
+| Model and generation settings | Use identical weights, versions, and sampling settings |
+| Tasks and initial state | Match questions, repository state, initial memory, and tool access |
+| Repeated runs | Use a shared, predetermined set of seeds and record external tool variability |
+| Budget B | Set model-call, tool-call, token, and time limits in advance |
+| Success criterion | Use the same independent check and include timeouts and failed runs in the denominator |
+
+Even a shared seed cannot ensure that remote services and tools behave identically. Repeat runs and report variability. To test memory, match the initial contents, then apply each condition's update rule. Otherwise answers from earlier evaluations could be available to only one condition.
+
+Index matched tasks and run conditions by i. The following expression summarizes the difference in success between two harnesses under budget B. This is notation for a comparison design and contains no measurements from a paper.
+
+<Math tex={String.raw`\widehat{\Delta}(B)=\frac{1}{n}\sum_{i=1}^{n}
+\left[Y_i(H_1;B)-Y_i(H_0;B)\right],\qquad Y_i\in\{0,1\}.`} display />
+
+Δ is the mean difference in success across all n runs. Even under the same cap B, actual usage can differ. Record cost and elapsed time for all runs. Comparisons at several values of B can reveal whether a harness helps under tight resource constraints or requires many attempts.
+
+Averaging costs only across successes leaves out resources spent on failures. Likewise, a gain under one budget does not establish an advantage on all tasks and models. An improvement is easier to reuse when the evaluation identifies which component helped in which environment.
+
+ReAct, Generative Agents, and SWE-agent illustrate <strong>components of human-designed harnesses</strong>. In Reflexion, the specific change examined here is an update to text memory for the next trial. These architectures alone cannot establish that an AI repeatedly improved by designing and replacing its own harness.
+
+To evaluate a claim that AI improved its harness, identify the revisions it proposed. Track the tasks used to verify the candidates, the adoption criterion, and whether an adopted rule actually ran in the next execution. The chain <strong>proposal → verification → adoption → new execution</strong>, together with an independent performance comparison, establishes who made the change and what it achieved.
+
+## Slide 62 — The target of self-improvement expands to the system
+
+<LearningFigure
+  src="/assets/posts/self-improving-ai-13-agent-harness-and-system-improvement/ntu-self-improving-62-en.png"
+  alt="The final slide reads “To be continued” and introduces the next lecture."
+  caption="Slide 62 — How can the execution system surrounding a model improve?"
+  source="https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=62"
+  credit="Hung-yi Lee / NTU ML 2026"
+  width={1800} height={1013}
+/>
+
+At [1:03:28](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3808s) the lecturer says that harness adjustment will be covered in the next lecture, and closes at [1:03:40](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3820s). These two slides introduce a question. They supply neither an automatic harness improvement algorithm nor experimental results.
+
+The supplementary papers give that question concrete form. ReAct connects observations to actions. Generative Agents handles experience as retrievable memories. Reflexion preserves feedback for the next attempt, and SWE-agent designs the interface for actions and observations. Each exposes a component that can change outside the model.
+
+When a system reportedly improved itself, ask three questions: <strong>Did the model weights change? Did execution state or memory change? Did the rules of the harness change?</strong> Was the change applied on the next run, and did it help on new tasks under comparable conditions?
+
+These distinctions connect a specific change to the capability that improved. The next subject is both the learning signal that helps an agent choose better actions and the architecture that remembers, verifies, and reuses it.
+
+The distinctions from the first half carry into [Part 14, the opening of the second half](/posts/self-improving-ai-14-proposer-solver-verifier/). It examines the self-learning loop formed by a problem setter, solver, and verifier, and distinguishes decreasing training loss from improved ability on new tasks.
+
+<details>
+<summary>Calculations and code</summary>
+
+[Python calculations](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/verify_examples_13.py) · [Results](https://github.com/JJo-0/JJo-0.github.io/blob/main/docs/self-improving-ai/reviews/numeric-checks-13.json)
+
+These two educational examples verify memory score normalization and ranking, changes in weights, handling constant columns, and the success probability and expected call count for bounded independent retries. The code illustrates the calculations without running an actual agent or reproducing the papers' benchmarks.
+
+</details>
+
+## Further reading
+
+| Resource | Relevant topic |
+|---|---|
+| [NTU Self-Improving lecture](https://www.youtube.com/watch?v=s06mSAGN4gM&t=3782s) · [Slides 61–62](https://speech.ee.ntu.edu.tw/~hylee/ml/ml2026-course-data/Self-Improving.pdf#page=61) | Agent improvement beyond model parameters |
+| [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/pdf/2210.03629v3) | Prompts and execution structure connecting reasoning, actions, and observations |
+| [Generative Agents: Interactive Simulacra of Human Behavior](https://arxiv.org/pdf/2304.03442v2) | Memory streams, retrieval, reflection, and planning |
+| [Reflexion: Language Agents with Verbal Reinforcement Learning](https://arxiv.org/pdf/2303.11366v4) | Using experience on a subsequent trial without a weight update |
+| [SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering](https://arxiv.org/pdf/2405.15793v3) | Designing model commands and environmental feedback |

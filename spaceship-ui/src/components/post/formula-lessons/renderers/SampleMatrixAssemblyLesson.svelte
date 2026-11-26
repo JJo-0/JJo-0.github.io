@@ -1,4 +1,7 @@
 <script>
+ import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
+ const formulaEnglish = document.documentElement.lang === 'en';
+ const formulaText = value => formulaEnglish ? englishFormulaText(value) : value;
   import { computeSampleMatrixAssembly } from '@/lib/formula-lessons/sample-matrix.mjs';
 
   export let lesson;
@@ -33,7 +36,7 @@
 <div class="assembly-layout" data-sample-matrix-focus={lesson.focus}>
   <section class="outer-panel">
     <header>
-      <div><p>현재 수식의 초점</p><h6>{spec.focusLabels[lesson.focus]}</h6></div>
+      <div><p>{formulaText("현재 수식의 초점")}</p><h6>{spec.focusLabels[lesson.focus]}</h6></div>
       <span>sample {selectedSample + 1} / {spec.samples.length}</span>
     </header>
 
@@ -51,7 +54,7 @@
 
     <div class="matrix-flow">
       <article>
-        <small>샘플 벡터</small>
+        <small>{formulaText("샘플 벡터")}</small>
         <strong>xₗ</strong>
         <div class="column-vector">
           {#each spec.samples[selectedSample] as value, index (index)}<span>{format(value, 1)}</span>{/each}
@@ -59,7 +62,7 @@
       </article>
       <b>× xₗᵀ →</b>
       <article class:active={lesson.focus === 'outer-product-accumulation'}>
-        <small>현재 외적</small>
+        <small>{formulaText("현재 외적")}</small>
         <strong>xₗxₗᵀ</strong>
         <table>
           <tbody>
@@ -69,9 +72,9 @@
           </tbody>
         </table>
       </article>
-      <b>누적 Σ →</b>
+      <b>{formulaText("누적 Σ →")}</b>
       <article>
-        <small>1…{selectedSample + 1} 누적</small>
+        <small>1…{selectedSample + 1} {formulaText("누적")}</small>
         <strong>Σ xₗxₗᵀ</strong>
         <table>
           <tbody>
@@ -84,7 +87,7 @@
     </div>
 
     <div class="final-gram">
-      <span>전체 샘플을 더하면</span>
+      <span>{formulaText("전체 샘플을 더하면")}</span>
       <strong>XᵀX</strong>
       <table>
         <tbody>
@@ -97,27 +100,27 @@
   </section>
 
   <section class="control-panel">
-    <header><p>목적함수에 쓰는 가중치</p><h6>w</h6></header>
+    <header><p>{formulaText("목적함수에 쓰는 가중치")}</p><h6>w</h6></header>
     <div class="controls">
       <label><span>w₀</span><output>{format(w0, 2)}</output><input bind:value={w0} type="range" min="-1" max="2" step="0.05" /></label>
       <label><span>w₁</span><output>{format(w1, 2)}</output><input bind:value={w1} type="range" min="-1" max="2" step="0.05" /></label>
-      <button type="button" on:click={reset}>예제값 복원</button>
+      <button type="button" on:click={reset}>{formulaText("예제값 복원")}</button>
     </div>
 
     <ol class="equivalence-rail">
       <li class:active={lesson.focus === 'samplewise-objective'}>
-        <b>샘플별</b>
+        <b>{formulaText("샘플별")}</b>
         <span>Σₗ(wᵀxₗ−yₗ)²</span>
         <strong>{format(result.samplewiseObjective)}</strong>
       </li>
       <li class:active={lesson.focus === 'stacked-objective'}>
-        <b>행렬형</b>
+        <b>{formulaText("행렬형")}</b>
         <span>‖Xw−y‖₂²</span>
         <strong>{format(result.stackedResidualNormSquared)}</strong>
       </li>
       <li class="check">
-        <b>검산</b>
-        <span>두 표현의 차이</span>
+        <b>{formulaText("검산")}</b>
+        <span>{formulaText("두 표현의 차이")}</span>
         <strong>{equalityError.toExponential(1)}</strong>
       </li>
     </ol>
@@ -126,7 +129,7 @@
 
 <section class="sample-table-wrap">
   <table class="sample-table">
-    <thead><tr><th>l</th><th>xₗ</th><th>yₗ</th><th>wᵀxₗ</th><th>잔차</th><th>제곱오차</th></tr></thead>
+    <thead><tr><th>l</th><th>xₗ</th><th>yₗ</th><th>wᵀxₗ</th><th>{formulaText("잔차")}</th><th>{formulaText("제곱오차")}</th></tr></thead>
     <tbody>
       {#each spec.samples as sample, index (index)}
         <tr class:selected={selectedSample === index} on:click={() => (selectedSample = index)}>
@@ -139,12 +142,12 @@
         </tr>
       {/each}
     </tbody>
-    <tfoot><tr><th colspan="5">합계</th><th>{format(result.samplewiseObjective)}</th></tr></tfoot>
+    <tfoot><tr><th colspan="5">{formulaText("합계")}</th><th>{format(result.samplewiseObjective)}</th></tr></tfoot>
   </table>
 </section>
 
 <aside class="assumptions">
-  <strong>같은 계산을 세 표현으로 본다</strong>
+  <strong>{formulaText("같은 계산을 세 표현으로 본다")}</strong>
   <ul>
     {#each spec.assumptions as assumption, index (index)}
       <li>{assumption}</li>

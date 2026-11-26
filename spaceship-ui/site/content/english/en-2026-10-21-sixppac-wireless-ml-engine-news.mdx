@@ -1,0 +1,135 @@
+---
+title: What did a wireless chip do with 4.18 nJ?
+description: SIXPPAC integrates two SAR ADCs and a binary-weight neural network. Its maximum reported energy of 4.18 nJ applies to one
+  block-mode measurement. Streaming uses a different input path and has its own figures.
+pubDate: 2026-10-21 00:00:00+09:00
+updatedDate: 2026-10-28
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-21-sixppac-wireless-ml-engine-news
+category: robotics-embedded
+subcategory: wireless-baseband-accelerator
+type: research-report
+tags:
+- frontier-candidate
+- wireless-baseband
+- ml-accelerator
+- semiconductor
+researchFeatured: false
+draft: false
+lang: en
+translatedPosts:
+  ko-KR: 2026-10-21-sixppac-wireless-ml-engine-news
+translationKey: en-2026-10-21-sixppac-wireless-ml-engine-news
+---
+
+import NewsFigure from '@/components/post/NewsFigure.astro';
+import CandidateEquation from '@/components/post/CandidateEquation.astro';
+import Math from '@/components/post/Math.astro';
+
+## What calculation used 4.18 nJ?
+
+A nanojoule (nJ) is one billionth of a joule of energy. Energy per inference makes an appealing comparison for wireless chips, but it depends on the input, the number of layers, and whether analog-to-digital conversion is included. In Figure 10 of the SIXPPAC paper, 4.18 nJ is the largest value among several conditions. It comes from six-layer block processing with random weights and a 50% input toggle rate, meaning half the input bits change state between successive processing instants. The same figure separately reports lower values for two-layer streaming.
+
+This review uses arXiv v1, released October 19, 2026. The authors report presenting the paper at ESSERC 2026, and the official conference program lists it in the September 9 Hardware Accelerators session. The final proceedings file and DOI were not separately verified. References below to the paper are to arXiv v1.
+
+## What the radio receives in I and Q
+
+A radio signal arriving at an antenna is a waveform that varies over time. The chip’s baseband representation expresses it in two numerical components, I and Q. One records the component aligned with a reference waveform and the other the component in quadrature. Reading these values quickly can help a receiver estimate when a Wi-Fi preamble arrived or how strong the signal is relative to noise (SNR).
+
+An ADC converts an analog voltage into a digital number. The chip has two 8-bit successive-approximation-register (SAR) ADCs for I and Q. A SAR converter makes successive comparisons to determine the digital code. The chip routes samples from both ADCs to its neural engine, keeping the path between conversion and compute on the same die.
+
+<NewsFigure media="sixppac-system-boundary" lang="en" />
+
+The diagram distinguishes two modes. Streaming feeds a window of 128 I/Q samples through two layers. Block mode reads a 256-dimensional vector from test memory and runs it through all six layers. The paper describes dedicated hardware for each layer and on-chip storage for weights, biases, and activations. These modes use different input and output paths.
+
+The sustained 105 MS/s figure is the intake rate for 8-bit I/Q samples. MS/s means millions of samples per second. It does not specify the number of layers in an inference. With 8-bit inputs, the digital core operates at up to 840 MHz at 0.8 V, and the ADC achieves 7.30 effective bits (ENOB) at 105 MS/s. ENOB expresses measured conversion error relative to an ideal converter. It differs from the nominal 8-bit resolution.
+
+Eight bits specify the ADC sample precision. The ±1 values below represent the binary-weight dot product. The introduction (PDF page 1) explains that a parallel-to-serial converter accepts the 8-bit parallel input. Bit-serial operation takes one bit of every input-vector element per clock cycle. The authors say processing just one bit per I/Q sample can raise the sample rate eightfold. Equations (1)–(4) therefore describe logical products and correction sums for binary weights and one input bit slice. A full 8-bit I/Q sample can take more than two values.
+
+## Computing with ±1 using zeros and ones
+
+A binary weight has two states, which can be written as +1 and −1 for a mathematical dot product. Digital hardware stores logical HI and LO as 1 and 0. Here <Math tex={String.raw`\widetilde{w}_i,\widetilde{x}_i\in\{-1,+1\}`} /> denotes the mathematical signs, and <Math tex={String.raw`b_i,c_i\in\{0,1\}`} /> the 0/1 hardware codes. HI (1) corresponds to +1 and LO (0) to −1. The notation distinguishes quantities for which the paper reuses symbols.
+
+<NewsFigure media="sixppac-bit-encoding" lang="en" />
+
+Equation (1) expresses the dot product of two sign vectors using XNOR matches. XNOR gives 1 for matching input bits and 0 otherwise. The original uses the same symbols for ±1 on the left and the logical XNOR inputs on the right. This restatement separates them.
+
+<CandidateEquation lang="en" id="sixppac-equation-1" title="How do bit matches give a ±1 dot product?" tex={String.raw`\widetilde{\mathbf w}^{\mathsf T}\widetilde{\mathbf x}=2\sum_{i=1}^{N}\operatorname{XNOR}(b_i,c_i)-N`}>
+<p>The left side multiplies each pair of ±1 values and sums the products. The right side counts matching hardware bits. The vector length N is a dimensionless count. All matches give +N and all mismatches give −N. With m matches, the remaining N−m positions have opposite signs. Their sum is m−(N−m)=2m−N, which explains why we double the match count and subtract N.</p>
+<p>The equations below restate the paper’s notation for clarity. They add no new performance formula or circuit result.</p>
+</CandidateEquation>
+
+The conventional XNOR path compares bits directly. The authors describe implementing it with AND products and correction sums. A position matches if both bits are one or if both are zero. These events are mutually exclusive, so adding their indicators counts matches. This is the starting point for equation (2).
+
+<CandidateEquation lang="en" id="sixppac-equation-2" title="Splitting an XNOR match into two AND conditions" tex={String.raw`\operatorname{XNOR}(b_i,c_i)=(b_i\wedge c_i)\vee((1-b_i)\wedge(1-c_i))`}>
+<p>Here b and c are 0 or 1. <Math tex={String.raw`\wedge`} /> means AND, <Math tex={String.raw`\vee`} /> means OR, and <Math tex={String.raw`1-b`} /> and <Math tex={String.raw`1-c`} /> are the respective complements. Since the two AND terms cannot both be 1, OR and addition give the same result here. This restates the per-position logic of equation (2).</p>
+</CandidateEquation>
+
+For 0/1 bits, AND acts as multiplication, and subtracting a bit from 1 complements it. Substitution gives <Math tex={String.raw`2b_ic_i-b_i-c_i+1`} /> for one XNOR match. The expansion includes both a product and terms correcting for the input and weight sums. Replacing XNOR with an AND gate therefore requires peripheral circuitry to compute these sums as well.
+
+<CandidateEquation lang="en" id="sixppac-equation-3" title="Expanding one XNOR result in 0/1 arithmetic" tex={String.raw`\operatorname{XNOR}(b_i,c_i)=b_ic_i+(1-b_i)(1-c_i)=2b_ic_i-b_i-c_i+1`}>
+<p>This is equation (3) with distinct symbols. <Math tex={String.raw`b_ic_i`} /> is one only when both bits are HI, while <Math tex={String.raw`(1-b_i)(1-c_i)`} /> is one only when both are LO. The expression uses dimensionless bit arithmetic. It is not a power or energy equation.</p>
+</CandidateEquation>
+
+Summing over the vector gives equation (4). The XNOR term disappears and the AND products plus separate input and weight sums remain. Row peripherals accumulate multibit inputs, apply a 14-bit scale and a trained 13-bit bias, and perform linear or ReLU activation. The AND formulation is logically exact. Whether the circuit costs more area or saves energy requires separate evidence.
+
+<CandidateEquation lang="en" id="sixppac-equation-4" title="A bipolar dot product using AND and correction sums" tex={String.raw`\widetilde{\mathbf w}^{\mathsf T}\widetilde{\mathbf x}=4\sum_{i=1}^{N}b_ic_i-2\sum_{i=1}^{N}b_i-2\sum_{i=1}^{N}c_i+N`}>
+<p>In this restatement of equation (4), the first term accumulates positions where both bits are 1. The following two sums count the ones in each vector so that the 0/1 representation preserves the ±1 meaning. Every term is dimensionless and N counts positions. The circuit obtains the bipolar dot product from equation (1) using AND and correction sums.</p>
+</CandidateEquation>
+
+### Follow both calculations through four positions
+
+Consider the illustrative vectors <Math tex={String.raw`b=(1,0,1,1)`} /> and <Math tex={String.raw`c=(1,1,0,1)`} />. Compare corresponding positions. Bit 1 denotes +1 and bit 0 denotes −1. These vectors are independent of the chip measurements.
+
+<NewsFigure media="sixppac-four-bit-walkthrough" lang="en" />
+
+1. **Read each position as ±1.** The first and fourth match and each contribute +1. The second and third differ and each contribute −1. The dot product is <Math tex={String.raw`(+1)+(-1)+(-1)+(+1)=0`} />.
+2. **Count XNOR matches.** Two positions match out of <Math tex={String.raw`N=4`} />. Equation (1) gives <Math tex={String.raw`2\times2-4=0`} />. Each XNOR output is 1 for a match and 0 for a mismatch.
+3. **Accumulate AND products and corrections.** Both bits are 1 twice, so <Math tex={String.raw`\sum b_i c_i=2`} />. Both <Math tex={String.raw`b`} /> and <Math tex={String.raw`c`} /> contain three ones. Equation (4) gives <Math tex={String.raw`4\times2-2\times3-2\times3+4=0`} />. The AND sum alone is 2. Correcting for each vector’s one count recovers the original ±1 dot product.
+4. **Change one input.** Changing the last <Math tex={String.raw`c_4`} /> from 1 to 0 turns the last +1 into −1. Matches fall from two to one, and the result changes from 0 to −2. This checks the formulas and provides no measurement of chip performance or training accuracy.
+
+## Conditions behind 4.18 nJ and the other results
+
+Figure 10 reports two modes separately. Its left group uses 0.8 V, 840 MHz, 105 MS/s, and B=8. Six-layer block inference consumed 4.18 nJ for random data, 2.35 nJ for DICHASUS CSI, and 1.90 nJ for the indoor data. Two-layer streaming consumed 1.09 nJ under random conditions, 1.02 nJ for time synchronization, and 0.89 nJ for SNR estimation. The 4.18 nJ result is the figure’s maximum. It does not describe every application or typical two-layer streaming.
+
+The caption explicitly includes ADC energy. For the random condition, half the weights are LO and the input toggle rate is 50%. The caption does not establish whether test-memory reads and writes are included throughout Figure 10. The figures cannot establish total wireless terminal power including all data movement.
+
+Figure 9 separately compares DICHASUS with 8-bit and 6-bit inputs at 0.8 V. The authors report 33% more throughput and 28% less energy at the cost of a 15 cm increase in mean position error. The lower-voltage bars in Figure 10 use a different operating point of 0.48 V, 323 MHz, 53.8 MS/s, and B=6. Six-layer block results for random/DICHASUS/indoor are 1.10/0.57/0.48 nJ. Two-layer streaming results for random/time sync/SNR are 0.29/0.27/0.22 nJ.
+
+The denominator, one inference, also differs by mode. Block mode runs a 256-dimensional input through six layers. Streaming applies two layers to a window of 128 I/Q samples from the ADCs. The sampling rate of 105 MS/s and energy in nJ/inference use different units. The device does not necessarily run all six layers for each sample. The text reports an average of 1.9 nJ and a maximum of 4.18 nJ at 8 bits and 0.8 V but does not define exactly which bars enter the average.
+
+The authors report that their AND-based dot product with correction sums uses 32% less energy and 16% more area than the conventional XNOR approach. Figure 5 gives a post-layout simulation of a 1-bit matrix–vector multiplication (MVM) with N=256, 50% input toggle rate, 0.8 V, and 800 MHz. Figure 10 measures the whole chip under different conditions. LO weights prevent AND outputs from toggling, saving energy, and the added sum hardware costs area. In a sparser case with 75% LO weights, the reported MVM energy falls another 33% relative to 50% LO. These results depend on the weight distribution and circuit implementation.
+
+## What did the wireless tasks demonstrate?
+
+The first application synchronizes with a Wi-Fi preamble by estimating its arrival from 128 ADC I/Q samples without prior channel knowledge. The paper reports that a conventional correlator made no errors for a one-tap frequency-flat channel. SIXPPAC had lower error on multitap frequency-selective channels. The figure counts any timing deviation as a synchronization error, although an OFDM system can tolerate a small deviation inside the cyclic prefix. This strict criterion matters for the comparison.
+
+The second application performs blind SNR estimation from the observed signal alone. The neural input is again a window of 128 I/Q samples. The M2M4 baseline estimates SNR from moments of the signal and noise. Figure 8 compares M2M4 errors and SIXPPAC estimates in the low-SNR region. The experiment does not establish better stability for all modulations, channels, or noise conditions.
+
+The third application uses a different input for localization. Block mode processes external channel-state information (CSI) obtained at multiple antenna locations, rather than I/Q samples from the chip’s ADCs. For DICHASUS, indoor, and outdoor data, the figure gives SIXPPAC mean distance errors of 0.46 m, 0.69 m, and 2.13 m. The FP32 baseline gives 0.24 m, 0.46 m, and 1.07 m. The binary-weight chip had greater error in all three comparisons. The study demonstrates that low-precision hardware can process positioning information.
+
+## What has been demonstrated and what remains open?
+
+The team fabricated SIXPPAC in 12 nm 12LP+ FinFET and measured its two SAR ADCs together with the neural engine. The reported engine area is 0.765 mm². The die photograph caption in Figure 6 gives a full die size of 2 mm × 2.5 mm. The researchers measured digital-core voltage and frequency operation, ADC speed and ENOB, and demonstrated I/Q processing and external CSI block processing across three applications.
+
+These experiments do not establish performance, power, or environmental stability for a commercial wireless device. The four-page paper identifies room temperature (300 K) in Figure 7. It does not report broad temperature and process variation testing, calibration procedures, or validation across many wireless standards and channels. It links no public code or raw measurement data for independent reruns. The comparison table’s 0.42 POPS/W is normalized to 1-bit×1-bit operations among selected in-memory computing accelerators. Input precision, operations, ADC inclusion, and energy measurement conditions vary across the other chips, preventing a comparison at a common system boundary.
+
+Open issues include whether Figure 10 includes test-memory reads and writes, how the device operates outside 300 K, and how the synchronization metric relates to the timing tolerance inside an actual OFDM guard interval. The paper therefore cannot establish 4.18 nJ and 105 MS/s as power and performance guarantees for a complete radio.
+
+## Further reading
+
+- **XNOR and AND logic.** MIT OpenCourseWare’s [CMOS Logic Gates materials](https://ocw.mit.edu/courses/6-004-computation-structures-spring-2009/8aab78cf087999514dd6e0b73c6ab43e_MIT6_004s09_study_digital_guide.pdf) explain the XNOR, AND, and OR truth tables and Boolean notation used in equations (2)–(3).
+- **Background on ±1 neural networks.** Courbariaux et al.’s [Binarized Neural Networks](https://arxiv.org/abs/1602.02830) examines constraining weights and activations to ±1 in training and inference. It provides context for binary networks, independent of SIXPPAC’s radio measurements.
+- **Computing vectors in memory.** Castañeda et al.’s [original PPAC paper](https://arxiv.org/abs/1907.08641), cited as a predecessor by SIXPPAC, explores in-memory matrix–vector operations. The specific binary dot-product equations and chip results come from the SIXPPAC paper.
+
+<details>
+<summary>Primary sources and scope of rights</summary>
+
+- Primary source: Oscar Castañeda et al., “A 105 MS/s 4.18 nJ/inference 0.765 mm² Mixed-Signal Streaming ML Engine for Wireless Baseband in 12LP+ FinFET,” [arXiv:2610.26552v1](https://arxiv.org/abs/2610.26552), October 19, 2026. The full text, equations (1)–(4), Figures 1–10, and Tables I–II were reviewed.
+- The official ESSERC 2026 [Hardware Accelerators session](https://epapers2.org/esserc2026/ESR/session_view.php?session_id=41) lists the September 9, 2026 presentation. The final proceedings version and DOI were not independently confirmed.
+- The source separates the two streaming applications from external CSI localization. Figure 10 expressly includes ADC energy. Inclusion of test-memory reads and writes remains unclear.
+- The acknowledgments credit SERI/SwissChips and Rigoletto/Chips JU for support and GlobalFoundries for 12LP+ fabrication support. There is no separate competing-interests statement in the four-page version reviewed. Its absence does not establish that there were no conflicts.
+- As checked November 3, 2026, arXiv’s license grants nonexclusive distribution rights to arXiv and does not establish separate rights to reuse author figures on the blog. The paper figures and die photograph were neither copied nor traced. The three editorial SVGs independently illustrate example vectors and system relationships described in the text. The six values from Figure 10 are listed by condition in the text, without recreating the plot.
+- No separate supplement was found in the arXiv record. Public SIXPPAC code and raw measurements were also unconfirmed. This article does not claim independent replication.
+
+</details>

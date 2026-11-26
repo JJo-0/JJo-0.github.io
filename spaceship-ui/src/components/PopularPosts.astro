@@ -1,0 +1,126 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import rawFeed from '../../site/assets/analytics/popular.json';
+import { normalizePublicPostPath } from '@/lib/analytics/public-feed.mjs';
+import { englishPostPathForSlug } from '@/lib/locales';
+import { getPostSlug } from '@/lib/utils/posts';
+
+interface Props {
+  en: boolean;
+  posts: CollectionEntry<'posts'>[];
+}
+interface PublicFeed {
+  version: number;
+  updatedAt: string | null;
+  posts: Array<{ path: string; views: number }>;
+}
+
+const { en, posts } = Astro.props;
+const feed: PublicFeed = rawFeed;
+const locale = en ? 'en-US' : 'ko-KR';
+// Render only the public aggregate. Skip a full bilingual lookup when empty.
+const date = feed.updatedAt ? new Date(feed.updatedAt) : null;
+const refreshed = feed.version === 1 && date && !Number.isNaN(date.getTime())
+  ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Seoul' }).format(date)
+  : null;
+const wanted = new Set(refreshed ? feed.posts.map(post => normalizePublicPostPath(post.path)).filter(Boolean) : []);
+const lookup = new Map<string, { href: string; title: string }>();
+if (wanted.size) {
+  for (const post of posts) {
+    const slug = getPostSlug(post);
+    const sourcePath = '/posts/' + slug;
+    const englishPath = englishPostPathForSlug(slug);
+    const englishKey = englishPath.replace(/\/+$/, '');
+    if (!wanted.has(sourcePath) && !wanted.has(englishKey)) continue;
+    const item = { href: en ? englishPath : sourcePath, title: post.data.title };
+    lookup.set(sourcePath, item);
+    lookup.set(englishKey, item);
+  }
+}
+const rankings = refreshed ? feed.posts.flatMap(({ path, views }) => {
+  const item = lookup.get(normalizePublicPostPath(path) ?? '');
+  return item && Number.isSafeInteger(views) && views > 0 ? [{ ...item, views }] : [];
+}).slice(0, 5) : [];
+const counts = new Intl.NumberFormat(locale);
+const emptyMessage = refreshed
+  ? (en ? 'No ranked articles in the last 30 days.' : '지난 30일에 집계된 인기 글이 없습니다.')
+  : (en ? 'View statistics are not available yet.' : '인기 글 집계 연결을 준비 중입니다.');
+---
+
+<section
+  class="experience-section popular-posts"
+  data-popular-posts
+  data-reveal
+  aria-labelledby="popular-heading"
+>
+  <div class="experience-section-header">
+    <h2 id="popular-heading" class="experience-section-label">Popular Writing</h2>
+    <span aria-hidden="true"></span>
+    <p class="popular-posts__period">{en ? 'Past 30 days · By views' : '지난 30일 · 조회수 기준'}</p>
+  </div>
+  {rankings.length > 0 ? (
+    <ol class="popular-posts__list" data-popular-list>
+      {rankings.map((post, index) => (
+        <li><a href={post.href}>
+          <span class="popular-posts__rank">{String(index + 1).padStart(2, '0')}</span>
+          <span class="popular-posts__title">{post.title}</span>
+          <span class="popular-posts__views">{counts.format(post.views)}{en ? (post.views === 1 ? ' view' : ' views') : '회'}</span>
+        </a></li>
+      ))}
+    </ol>
+  ) : <p class="popular-posts__empty text-sm text-muted-foreground" data-popular-state>{emptyMessage}</p>}
+  {refreshed && <p class="popular-posts__updated text-xs text-muted-foreground" data-popular-updated>
+    {en ? 'Updated: ' : '통계 갱신: '}{refreshed}
+  </p>}
+</section>
+
+<style is:global>
+  [data-popular-posts] .popular-posts__period {
+    font-size: .78rem;
+    color: var(--color-muted-foreground);
+    white-space: nowrap;
+  }
+  [data-popular-posts] .popular-posts__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  [data-popular-posts] .popular-posts__list li {
+    border-bottom: 1px solid var(--color-border);
+  }
+  [data-popular-posts] .popular-posts__list a {
+    display: flex;
+    align-items: baseline;
+    gap: clamp(.75rem, 2vw, 1.5rem);
+    padding: 1rem .25rem;
+    color: var(--color-foreground);
+    text-decoration: none;
+    transition: color .2s ease;
+  }
+  [data-popular-posts] .popular-posts__list a:hover {
+    color: var(--color-primary);
+  }
+  [data-popular-posts] .popular-posts__rank {
+    min-width: 2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-muted-foreground);
+  }
+  [data-popular-posts] .popular-posts__title {
+    flex: 1;
+    min-width: 0;
+    font-size: clamp(1rem, 1.6vw, 1.25rem);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  [data-popular-posts] .popular-posts__views {
+    flex-shrink: 0;
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-muted-foreground);
+  }
+  [data-popular-posts] .popular-posts__updated {
+    margin-top: .65rem;
+  }
+</style>

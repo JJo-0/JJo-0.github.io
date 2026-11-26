@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+const english = document.documentElement.lang === 'en';
 const shell = document.querySelector('.atlas-shell');
 const canvas = document.querySelector('#universe-canvas');
 const backendPill = document.querySelector('#backend-pill');
@@ -352,7 +353,7 @@ function renderInspector(node) {
   inspectorEmpty.hidden=true; inspectorContent.hidden=false;
   nodeKind.textContent=`${node.kind} · ${node.group}`;
   nodeTitle.textContent=node.label;
-  nodeTitleKo.textContent=node.labelKo||'';
+  nodeTitleKo.textContent=english ? '' : node.labelKo || '';
   nodeId.textContent=node.id;
   nodeDescription.textContent=node.description||'';
   nodeBadges.innerHTML=[
@@ -462,7 +463,7 @@ function showSearchResults() {
 function renderTable(filter='') {
   const q=filter.trim().toLowerCase();
   const rows=nodes.filter(n=>!q||[n.id,n.label,n.labelKo,n.kind,n.group,n.status,n.region].filter(Boolean).join(' ').toLowerCase().includes(q));
-  tableBody.innerHTML=rows.map(n=>`<tr data-node-id="${escapeHtml(n.id)}"><td>${escapeHtml(n.id)}</td><td>${escapeHtml(n.label)}${n.labelKo?`<br><small>${escapeHtml(n.labelKo)}</small>`:''}</td><td>${escapeHtml(n.kind)}</td><td>${escapeHtml(n.group)}</td><td>${escapeHtml(n.status)}</td><td>${escapeHtml(n.evidence)}</td></tr>`).join('');
+  tableBody.innerHTML=rows.map(n=>`<tr data-node-id="${escapeHtml(n.id)}"><td>${escapeHtml(n.id)}</td><td>${escapeHtml(n.label)}${!english && n.labelKo?`<br><small>${escapeHtml(n.labelKo)}</small>`:''}</td><td>${escapeHtml(n.kind)}</td><td>${escapeHtml(n.group)}</td><td>${escapeHtml(n.status)}</td><td>${escapeHtml(n.evidence)}</td></tr>`).join('');
   for (const row of tableBody.querySelectorAll('tr')) row.addEventListener('click',()=>selectNode(row.dataset.nodeId,true));
 }
 
@@ -641,7 +642,7 @@ async function init() {
     frameHandle=requestAnimationFrame(animate);
   } catch(error) {
     console.error(error); window.__semiconductorAtlasReady=true; shell.dataset.atlasState='error'; backendPill.textContent='2D FALLBACK';
-    loadingCard.innerHTML=`<strong>3D renderer unavailable</strong><span>${escapeHtml(error.message)} · 아래 2D table과 graph.json은 계속 사용할 수 있습니다.</span>`;
+    loadingCard.innerHTML=`<strong>3D renderer unavailable</strong><span>${escapeHtml(error.message)} · ${english ? 'The 2D table and graph.json download are still available below.' : '아래 2D table과 graph.json은 계속 사용할 수 있습니다.'}</span>`;
   }
 }
 

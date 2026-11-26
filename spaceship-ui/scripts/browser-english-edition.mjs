@@ -3,48 +3,129 @@ import fs from 'node:fs';
 import { Cdp, BASE, attach, evaluate, navigate, viewport, waitExpression, startPreview, startChrome, stopChild, removeProfile } from './browser-smoke-harness.mjs';
 import { checkPowerBankPage } from './power-bank-browser-check.mjs';
 import { checkWritingCategoryPage } from './writing-category-browser-check.mjs';
+import { checkEnglishInteractivePage } from './english-interactive-browser-check.mjs';
 import { checkSocOverviewPage } from './soc-overview-browser-check.mjs';
 const manifest=JSON.parse(fs.readFileSync(new URL('../site/english-edition.json',import.meta.url),'utf8'));
 const out='english-review';fs.mkdirSync(out,{recursive:true});
-const results=[];const powerBankResults=[];const writingCategoryResults=[];const socResults=[];let preview,chrome,cdp,sessionId;
-const hardStop=setTimeout(()=>{console.error('English audit timed out');process.exit(1)},180_000);
+const results=[];const powerBankResults=[];const writingCategoryResults=[];const socResults=[];let preview,chrome,cdp,sessionId;let citationBackCases=0;
+// Each article makes a round trip between translations at both viewport sizes.
+const auditTimeoutMs = Math.max(420_000, 90_000 + 4_000 * manifest.pairs.length);
+const hardStop=setTimeout(()=>{console.error('English audit timed out');process.exit(1)},auditTimeoutMs);
 async function enter(selector){
   await waitExpression(cdp,sessionId,`document.readyState === 'complete' && (()=>{const element=document.querySelector(${JSON.stringify(selector)});return Boolean(element) && !element.closest('astro-island')?.hasAttribute('ssr')})()`,'interactive element ready before one native input');
   await evaluate(cdp,sessionId,`(()=>{const a=document.querySelector(${JSON.stringify(selector)});if(!a)throw new Error('Missing native link');a.scrollIntoView({block:'center',behavior:'instant'});a.focus()})()`);
   await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',text:'\r',unmodifiedText:'\r',windowsVirtualKeyCode:13},sessionId);
   await cdp.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13},sessionId);
 }
+async function checkNumberBaseball(lang) {
+  for (const [guess, strikes] of [['9465888', 4], ['9465201', 7]]) {
+    await evaluate(cdp, sessionId, `document.querySelector('#guess').value = '${guess}'`);
+    await enter('#number-baseball-game button');
+    const result = await evaluate(cdp, sessionId, "document.querySelector('#result-text').innerText");
+    assert(result.startsWith(lang === 'en' ? `${strikes} strikes` : `${strikes} 스트라이크`));
+    assert.equal(result.includes(lang === 'en' ? 'all seven' : '축하합니다'), strikes === 7);
+  }
+}
+async function checkHomeParity(cdp, sessionId) {
+  const state = `(async () => {
+    const home = document.querySelector('[data-experience-page="home"]');
+    const list = selector => [...home.querySelectorAll(selector)];
+    return {
+      sections: list('section[aria-labelledby]').map(section => section.getAttribute('aria-labelledby')),
+      areas: list('[data-world-chapter]').map(section => section.dataset.worldChapter),
+      layout: getComputedStyle(home.querySelector('[data-world-shell]')).display,
+      profile: home.querySelector('.experience-mouse-frame img')?.getAttribute('src'),
+      cards: list('[data-post-transition-slug]').map(a => a.pathname),
+      graph: list('[data-post-graph-node]').map(a => a.pathname),
+      edges: (await (await fetch(home.querySelector('[data-graph-url]').dataset.graphUrl)).json()).edges,
+      overflow: document.documentElement.scrollWidth > innerWidth + 2,
+      hasKoreanCopy: /[가-힣]/.test(home.innerText),
+      coverageLink: Boolean(home.querySelector('a[href^="/en/translations"]')),
+    };
+  })()`;
+  async function activateGraph() {
+    await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0},sessionId);
+    await waitExpression(cdp,sessionId,`document.querySelector('[data-experience-canvas]') !== null`,'map available');
+    await evaluate(cdp,sessionId,`document.querySelector('[data-experience-canvas]').scrollIntoView({block:'center',behavior:'instant'})`);
+    await waitExpression(cdp,sessionId,`document.querySelector('[data-experience-canvas]').dataset.graphState==='ready' && !!document.querySelector('[data-post-graph-node]')`,'complete interactive graph');
+  }
+  await navigate(cdp, sessionId, '/');
+  await activateGraph();
+  const ko = await evaluate(cdp, sessionId, state);
+  await enter('header a[data-locale-choice="en"]');
+  await waitExpression(cdp, sessionId, `location.pathname === '/en/' && document.documentElement?.lang === 'en' && !!document.querySelector('[data-graph-activate]')`, 'English home after switching language');
+  await activateGraph();
+  const en = await evaluate(cdp, sessionId, state);
+  assert.deepEqual(en.sections, ko.sections, 'Both homepages show the same sections in order');
+  assert.deepEqual(en.areas, ko.areas);
+  assert.equal(en.layout, ko.layout);
+  assert.equal(en.profile, '/assets/profile/mouse_surprised-still.webp');
+  assert.equal(en.profile, ko.profile);
+  assert(en.sections.includes('popular-heading'));
+  assert(!en.overflow && !ko.overflow);
+  assert(!en.hasKoreanCopy && !en.coverageLink);
+  const enSlugs = new Map(manifest.pairs.map(pair => [pair.koSlug, pair.enSlug]));
+  const englishPath = pathname => {
+    const slug = pathname.replace(/^\/posts\//, '').replace(/\/+$/, '');
+    return `/en/posts/${enSlugs.get(slug) ?? slug}/`;
+  };
+  assert(ko.cards.length > 0 && ko.graph.length > 0);
+  assert.deepEqual(en.cards, ko.cards.map(englishPath), 'Selected and latest cards keep their order');
+  assert.deepEqual(en.graph, ko.graph.map(englishPath), 'Every map node opens its English interface');
+  assert.deepEqual(en.edges, ko.edges, 'Switching language keeps the same graph relationships');
+}
 async function screen(name){const {data}=await cdp.send('Page.captureScreenshot',{format:'png'},sessionId);fs.writeFileSync(`${out}/${name}.png`,Buffer.from(data,'base64'));}
 try{
   preview=await startPreview();chrome=await startChrome();cdp=await Cdp.connect(chrome.url);({sessionId}=await attach(cdp,{normalizeHistoryPath:false}));
   for(const width of [390,1440]){
     await viewport(cdp,sessionId,{width,height:900,mobile:width===390,touch:width===390,reduced:false});
+    await checkHomeParity(cdp, sessionId);
     writingCategoryResults.push(await checkWritingCategoryPage({cdp,sessionId,width,enter,screen}));
     for(const pair of manifest.pairs){
+      const seriesTranslation=pair.translationMethod==='direct-chat-translation';
       const powerBank=pair.key==='lifestyle-power-bank-20260926';
       const soc=pair.key==='soc-00-20260928';
       const visualSelector=soc?'[data-soc-figure]':powerBank?'[data-pb-visual]':'[data-news-figure]';
-      const parentNav=(powerBank||soc)?'/en/posts/':'/en/news/';
       await navigate(cdp,sessionId,`/posts/${pair.koSlug}/`);
+      const sourceSection = await evaluate(cdp,sessionId,
+        "document.querySelector('header nav a[aria-current=page]')?.pathname.replace(/\\/$/, '')");
+      assert(['/news','/posts'].includes(sourceSection), pair.koSlug + ' has an active archive');
+      const parentNav = '/en' + sourceSection + '/';
+      if(pair.koFile==='2024-08-09.md')await checkNumberBaseball('ko');
       if(powerBank)powerBankResults.push(await checkPowerBankPage({cdp,sessionId,width,lang:'ko',enter,screen}));
       if(soc)socResults.push(await checkSocOverviewPage({cdp,sessionId,width,lang:'ko',enter,screen}));
       await enter('header a[data-locale-choice="en"]');
       await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/${pair.enSlug}/' && document.documentElement?.lang === 'en' && document.readyState === 'complete' && Boolean(document.querySelector('[data-english-article]'))`,'KO to exact EN article');
+      if(seriesTranslation){
+        await waitExpression(cdp,sessionId,`[...document.querySelectorAll('[data-english-article] iframe[src^="/en/assets/"]')].every(frame=>frame.contentDocument?.readyState==='complete' && frame.contentDocument.body?.innerText.length>200)`,'complete English embedded research body');
+      }
+      if(pair.koFile==='2024-08-09.md')await checkNumberBaseball('en');
+      await checkEnglishInteractivePage({cdp,sessionId,slug:pair.enSlug,enter,width});
       for(const dark of [false,true]){
         await evaluate(cdp,sessionId,`document.documentElement.classList.toggle('dark',${dark})`);
-        const rendered=await evaluate(cdp,sessionId,`(()=>{const article=document.querySelector('[data-english-article]');return {language:document.documentElement.lang,text:article.innerText.length,korean:/[가-힣]/.test(article.innerText),images:article.querySelectorAll('${visualSelector}').length,news:Boolean(document.querySelector('header a[href="${parentNav}"][aria-current="page"]')),overflow:document.documentElement.scrollWidth>innerWidth+2,mathErrors:article.querySelectorAll('.katex-error').length}})()`);
-        assert.equal(rendered.language,'en');assert(rendered.text>9000 && !rendered.korean && rendered.news && !rendered.overflow && rendered.images>0 && !rendered.mathErrors,JSON.stringify(rendered));
+        const rendered=await evaluate(cdp,sessionId,`(()=>{const article=document.querySelector('[data-english-article]');return {language:document.documentElement.lang,text:article.innerText.length,embeddedText:[...article.querySelectorAll('iframe[src^="/en/assets/"]')].reduce((n,f)=>n+(f.contentDocument?.body?.innerText.length||0),0),korean:/[가-힣]/.test(article.innerText),images:article.querySelectorAll('${visualSelector}').length,news:Boolean(document.querySelector('header a[href="${parentNav}"][aria-current="page"]')),overflow:document.documentElement.scrollWidth>innerWidth+2,mathErrors:article.querySelectorAll('.katex-error').length}})()`);
+        assert.equal(rendered.language,'en');
+        if(seriesTranslation){
+          assert(rendered.text+rendered.embeddedText>200 && !rendered.korean && rendered.news && !rendered.overflow && !rendered.mathErrors,JSON.stringify({slug:pair.enSlug,...rendered}));
+        }else{
+          assert(rendered.text>9000 && !rendered.korean && rendered.news && !rendered.overflow && rendered.images>0 && !rendered.mathErrors,JSON.stringify(rendered));
+        }
         if(powerBank)assert.equal(rendered.images,10,'Consumer guide retains all ten explanatory diagrams');
         if(soc)assert.equal(rendered.images,5,'SoC lesson retains all five explanatory diagrams');
         results.push({width,slug:pair.enSlug,dark,...rendered});
       }
       if(powerBank)powerBankResults.push(await checkPowerBankPage({cdp,sessionId,width,lang:'en',enter,screen}));
       if(soc)socResults.push(await checkSocOverviewPage({cdp,sessionId,width,lang:'en',enter,screen}));
-      const history=await cdp.send('Page.getNavigationHistory',{},sessionId);const before=history.entries[history.currentIndex].id;
-      await enter('article a[data-news-citation="1"]');
-      await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/${pair.enSlug}/' && location.hash === '#news-ref-1'`,'native EN citation');
-      await cdp.send('Page.navigateToHistoryEntry',{entryId:before},sessionId);
-      await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/${pair.enSlug}/' && location.hash === ''`,'native Back');
+      const hasCitation=await evaluate(cdp,sessionId,`Boolean(document.querySelector('article a[data-news-citation="1"]'))`);
+      if(!seriesTranslation)assert(hasCitation,'Original English news retains citation 1');
+      if(hasCitation){
+        const history=await cdp.send('Page.getNavigationHistory',{},sessionId);const before=history.entries[history.currentIndex].id;
+        await enter('article a[data-news-citation="1"]');
+        await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/${pair.enSlug}/' && location.hash === '#news-ref-1'`,'native EN citation');
+        await cdp.send('Page.navigateToHistoryEntry',{entryId:before},sessionId);
+        await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/${pair.enSlug}/' && location.hash === ''`,'native Back');
+        citationBackCases++;
+      }
       await enter('header a[data-locale-choice="ko"]');
       await waitExpression(cdp,sessionId,`location.pathname === '/posts/${pair.koSlug}/' && document.readyState === 'complete' && Boolean(document.querySelector('article'))`,'EN to exact KO article');
     }
@@ -59,6 +140,21 @@ try{
         await waitExpression(cdp,sessionId,`['/posts','/posts/'].includes(location.pathname) && document.readyState === 'complete'`,'KO keeps the Writing archive context');
       }
     }
+  }
+  await navigate(cdp,sessionId,'/posts/#biblical-studies');
+  await enter('header a[data-locale-choice="en"]');
+  await waitExpression(cdp,sessionId,`location.pathname === '/en/posts/' && location.hash === '#biblical-studies' && Boolean(document.getElementById('biblical-studies'))`,'Writing switch keeps the category');
+  await enter('header a[data-locale-choice="ko"]');
+  await waitExpression(cdp,sessionId,`['/posts','/posts/'].includes(location.pathname) && location.hash === '#biblical-studies'`,'Writing category round trip');
+  const translatedSlugs = new Set(manifest.pairs.map(pair => pair.koSlug));
+  const sourceIndex = JSON.parse(fs.readFileSync(new URL('../dist/api/search.json',import.meta.url),'utf8'));
+  const pending = sourceIndex.find(entry => !translatedSlugs.has(entry.id));
+  if (pending) {
+    await navigate(cdp,sessionId,`/posts/${pending.id}/`);
+    await enter('header a[data-locale-choice="en"]');
+    await waitExpression(cdp,sessionId,`location.pathname === ${JSON.stringify('/en/posts/'+pending.id+'/')} && document.documentElement?.lang === 'en' && Boolean(document.querySelector('article[lang^="ko"]'))`,'Korean original in the English interface');
+    await enter('header a[data-locale-choice="ko"]');
+    await waitExpression(cdp,sessionId,`location.pathname === ${JSON.stringify('/posts/'+pending.id+'/')}`,'Original article round trip');
   }
   console.log('english-browser: article/locale/citation/index cases passed');
   await navigate(cdp,sessionId,'/en/news/');await enter('header button[aria-label="Search"]');
@@ -80,14 +176,14 @@ try{
   const missingResponse=await fetch(new URL(missing,BASE));
   assert.equal(missingResponse.status,404,'Unknown English URL must remain a real HTTP 404');
   await navigate(cdp,sessionId,missing);
-  await waitExpression(cdp,sessionId,`document.documentElement.lang === 'en' && document.documentElement.dataset.englishNotFound === 'true'`,'root 404 recovery recognizes the requested English path');
+  await waitExpression(cdp,sessionId,`document.documentElement?.lang === 'en' && document.documentElement.dataset.englishNotFound === 'true'`,'root 404 recovery recognizes the requested English path');
   assert.equal(await evaluate(cdp,sessionId,`document.querySelector('header [data-site-brand]').getAttribute('href')`),'/en/');
   assert.equal(await evaluate(cdp,sessionId,`document.querySelector('header [data-locale-choice="ko"]').getAttribute('href')`),'/posts');
   assert.equal(await evaluate(cdp,sessionId,`[...document.querySelectorAll('header nav a')].every(a=>a.getAttribute('href').startsWith('/en/'))`),true);
   await screen('english-404');
   await enter('header [data-site-brand]');
   await waitExpression(cdp,sessionId,`location.pathname === '/en/' && document.documentElement?.lang === 'en'`,'English 404 returns to English home');
-  fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,results,powerBankResults,writingCategoryResults,socResults,nativeLanguageRoundTrips:manifest.pairs.length*2,nativeCitationBack:manifest.pairs.length*2,archiveSwitches:4,english404:true,search:true,preference:true},null,2));
+  fs.writeFileSync(`${out}/browser.json`,JSON.stringify({base:BASE,results,powerBankResults,writingCategoryResults,socResults,nativeLanguageRoundTrips:manifest.pairs.length*2,nativeCitationBack:citationBackCases,archiveSwitches:4,english404:true,search:true,preference:true},null,2));
   console.log('english-browser: PASS '+results.length+' article/theme/viewport cases plus exact language navigation, citations/Back, index pages, search, language preference and real English 404 recovery');
 }catch(error){console.error(error);fs.writeFileSync(`${out}/failure.json`,JSON.stringify({error:String(error),results,powerBankResults,writingCategoryResults,socResults},null,2));if(cdp&&sessionId)await screen('failure').catch(()=>{});process.exitCode=1;}
 finally{cdp?.close();await stopChild(chrome?.child,'SIGKILL');await stopChild(preview,'SIGTERM');removeProfile(chrome?.profile);clearTimeout(hardStop);process.exit(process.exitCode||0);}

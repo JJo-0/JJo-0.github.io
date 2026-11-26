@@ -1,0 +1,32 @@
+---
+interface Props {
+  src: string;
+  alt: string;
+  caption: string;
+  source: string;
+  credit: string;
+  width: number;
+  height: number;
+  maxWidth?: number;
+  label?: string;
+}
+const { src, alt, caption, source, credit, width, height, maxWidth = 1000, label } = Astro.props;
+const en = Astro.url.pathname.startsWith('/en/');
+const sourceLabel = en ? 'Original source' : '원본 자료';
+const fullSizeLabel = en ? 'Full-size image' : '원본 이미지 크게 보기';
+const localLectureImage = src.startsWith('/assets/posts/self-improving-ai-');
+---
+<figure class:list={["learning-figure", label && "supplementary-figure"]} data-learning-figure data-supplementary-figure={label ? true : undefined} style={`max-width: ${label ? Math.min(maxWidth, 560) : maxWidth}px`}>
+  {label && <div class="supplementary-label">{label}</div>}
+  <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" />
+  <figcaption>{caption}<small>{credit} · <a href={source} target="_blank" rel="noopener noreferrer">{sourceLabel}</a>{localLectureImage && <> · <a href={src} data-lecture-original target="_blank" rel="noopener noreferrer">{fullSizeLabel}</a></>}</small></figcaption>
+</figure>
+<style>
+  .learning-figure { width:100%; margin:1.8rem auto; min-width:0; }
+  .learning-figure img { display:block; width:100%; height:auto; margin:0; background:white; }
+  .learning-figure figcaption { margin-top:.4rem; color:var(--color-muted-foreground); font-size:12px; line-height:1.7; }
+  .learning-figure small { display:block; font-size:12px; }
+  .learning-figure a { text-decoration:underline; text-underline-offset:.15em; }
+  .supplementary-figure { padding: .85rem; border: 1px solid var(--color-border); border-radius: .6rem; background: var(--color-muted); }
+  .supplementary-label { margin-bottom: .7rem; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--color-muted-foreground); }
+</style>

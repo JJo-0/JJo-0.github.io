@@ -1,0 +1,89 @@
+---
+title: "VLA에 반사신경을 붙인 안전 계층"
+description: "VLA의 짧은 동작 궤적을 의도로 보존하면서 강화학습 안전 정책이 정적·동적 장애물에 반응하도록 만든 VLA-Stem의 구조와 실물 검증 한계를 분석한다."
+pubDate: 2026-10-30T00:00:00+09:00
+updatedDate: 2026-10-30
+publicationTimeZone: Asia/Seoul
+slug: 2026-10-30-vla-stem-safety-layer-news
+category: robotics-embedded
+subcategory: vla-safety-control
+type: research-report
+tags:
+  - frontier-one
+  - vision-language-action
+  - robot-safety
+  - reinforcement-learning
+researchFeatured: false
+draft: true
+lang: ko
+---
+
+import Math from '@/components/post/Math.astro';
+
+> **SELECTED · frontier-one 연구 초안.** 기준일 2026-10-30 KST · 점수 92/100(문제 20·새로움 14·증거 20·파급 18·최신성 10·설명성 10, 감점 0) · 증거 등급 `EARLY_SIGNAL`. arXiv v1 PDF 12쪽의 본문·Appendix, Figure 1–5와 Table I–IV를 검토했다. 동료평가 전 결과이며 사람과 함께 일하는 로봇의 안전 인증을 입증한 연구가 아니다.
+
+## 1. 한 문장 결론
+
+**VLA-Stem은 frozen VLA가 낸 짧은 동작 궤적을 ‘해야 할 일’의 공간적 기준으로 유지하고, 별도 강화학습 정책이 장애물에 맞춰 속도와 경로를 수정해 충돌 없는 과제 성공률을 시뮬레이션 평균 23.7%에서 52.8%로 높였다.**
+
+## 2. 왜 어려운가
+
+Vision-Language-Action(VLA) 모델은 지시를 action chunk로 바꾸지만 낯선 장애물에 빠르게 반응하기 어렵다. Control Barrier Function(CBF)은 충돌을 줄여도 grasp 궤적을 끊을 수 있고, VLA 전체를 다시 학습하면 원래 조작 능력이 약해질 수 있다.
+
+## 3. 기초 개념
+
+VLA-Stem은 고차원 계획과 반사 회로를 나눈 비유를 쓴다. frozen VLA의 <Math tex={String.raw`h=8`} /> step action chunk를 end-effector 궤적으로 바꾸고, Stem은 reference·관절 자세·최대 세 장애물을 받아 실행 action을 낸다. 목표는 회피 뒤 같은 task intent로 복귀하는 것이다.
+
+## 4. 기존 방식의 한계
+
+VLA-finetune은 정밀 grasp와 회피가 한 정책에서 충돌할 수 있다. VLSA의 CBF correction은 local constraint를 만족시켜도 다음 waypoint와의 정렬을 잃는다. PickCube-Static에서 VLSA-ARM은 충돌률 0.2253·성공률 0.1516, VLA-Stem은 0.2316·0.5219였다.
+
+## 5. 새 방법의 세 단계
+
+첫째, VLA action chunk를 기준 시점에 대한 상대 자세 궤적으로 바꾼다.
+
+<Math display tex={String.raw`\Delta T_{c,k}=(T^w_{t_c})^{-1}T^w_{t_c+k},\qquad \tau_c^{\mathrm{rel}}=\{\Delta T_{c,k}\}_{k=1}^{h}`} />
+
+둘째, 현재 end-effector를 reference의 한 점이 아니라 앞으로 진행하는 local segment에 투영한다. position distance와 quaternion geodesic distance를 합친 편차를 계산하고, matching index가 뒤로 가지 못하게 해 시간 지연이나 detour를 허용하면서도 진행 방향을 보존한다.
+
+셋째, target object 위치를 볼 수 있는 privileged teacher를 PPO로 먼저 학습하고, 배포 때 그 정보가 없는 student로 distill한다. curriculum은 trajectory following → static obstacle → dynamic obstacle 순서다.
+
+## 6. 핵심 수식과 시스템 경계
+
+실행 정책은
+
+<Math display tex={String.raw`a_t^{\mathrm{exec}}=\pi_{\mathrm{stem}}(x_t,o_t^{\mathrm{obs}},\tau_c^{\mathrm{rel}}),\qquad t_c\le t<t_c+h`} />
+
+로 표현된다. <Math tex={String.raw`x_t`} />는 proprioception, <Math tex={String.raw`o_t^{\mathrm{obs}}`} />는 장애물 표현, <Math tex={String.raw`\tau_c^{\mathrm{rel}}`} />는 VLA reference다. 보상은
+
+<Math display tex={String.raw`r_t=w_{\mathrm{task}}r_t^{\mathrm{task}}+w_{\mathrm{coll}}r_t^{\mathrm{coll}}+w_{\mathrm{guidance}}r_t^{\mathrm{guidance}}`} />
+
+이며 collision 항은 위반 때 -1이다. 이 시스템 경계에는 장애물 pose가 이미 주어진다고 가정한다. 원시 카메라에서 장애물을 안정적으로 검출하는 perception uncertainty, 사람 예측, 힘·접촉 안전, 인증 가능한 hard guarantee는 포함하지 않는다.
+
+## 7. 실험과 수치
+
+ManiSkill의 세 과제를 normal/static/dynamic으로 나눠 각 task–scenario당 3,200 episode를 평가했다. 여섯 constrained setting의 평균 collision-free success는 52.8%, 가장 강한 safety baseline은 23.7%였다. normal 성공률도 base <Math tex={String.raw`\pi_{0.5}`} />보다 낮아지지 않았다.
+
+실물은 두 과제, 세 scenario, 조건당 15회다. 논문 표기의 UR7e와 RealSense D435i 두 대, obstacle pose용 D455·AprilTag를 사용했다. static/dynamic에서 충돌률은 base VLA의 73–100%에서 20–40%로, 성공률은 0–20%에서 47–60%로 바뀌었다. safety policy는 simulation에서만 학습한 뒤 실물에 직접 배포했다.
+
+## 8. 반대 증거와 통제
+
+reference와 guidance를 함께 제거하면 세 조건 성공률이 모두 0이어서 VLA 의도 신호가 핵심임을 보였다. distillation을 제거하면 constrained 평균 성공률이 63%에서 14%로 떨어지고 충돌률은 15%에서 37%로 늘었다. 반면 VLA-Stem도 충돌을 없애지 못했고, StackCube-Static 충돌률은 0.3353이었다. 낮은 충돌률만으로 안전과 task success를 동시에 보장할 수 없다는 점이 결과 자체에 드러난다.
+
+## 9. 한계
+
+preprint v1이며 코드·checkpoint·dataset 공개를 확인하지 못했다. 실물 시험은 과제당 45회 규모이고 장애물은 AprilTag와 저차원 bounding box로 제공됐다. 사람의 비정형 움직임, perception dropout, self-collision, force limit, emergency stop, 최악조건 latency는 평가하지 않았다. 따라서 산업용 SSM이나 협동로봇 안전규격을 대체할 수 없다.
+
+## 10. 실제로 무엇이 바뀌나
+
+핵심은 VLA를 다시 학습시키는 대신 **의도를 reference trajectory로 외부화하고 빠른 실행 계층이 수정한다**는 분리다. HRI에서도 안전 correction 뒤 task recovery까지 고려해야 한다는 설계 교훈이 있다.
+
+## 11. 다음 재검토 트리거
+
+코드·checkpoint 공개, 다른 VLA와 로봇에서의 독립 재현, raw vision 기반 장애물 불확실성, 사람 접근 실험, worst-case latency와 control frequency, CBF·reachability와 결합한 hard safety guarantee, peer review가 승격 조건이다.
+
+## 12. 출처
+
+- arXiv: [2610.37378](https://arxiv.org/abs/2610.37378), v1 2026-10-27.
+- [공식 PDF](https://arxiv.org/pdf/2610.37378) — 12쪽, Figure 1–5, Table I–IV, Appendix 확인.
+- Code/Data: 전용 공개 저장소를 확인하지 못함.

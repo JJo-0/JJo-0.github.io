@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import katex from 'katex';
 import { assertNewsProseLength } from './news-prose-policy.mjs';
+import { newsBodyMediaIds } from './news-media-source-file.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (p) => fs.readFileSync(new URL(p, root), 'utf8');
@@ -58,7 +59,8 @@ for (const [, , tex] of equations)
     strict: 'error',
     trust: false,
   });
-assert.equal(equations.length, 3);
+assert.equal(equations.length, entry.equations.length);
+assert(equations.length >= 3);
 for (const id of entry.tableIds) {
   const table = source.match(
     new RegExp(`<CandidateTable id="${id}"[^>]*>([\\s\\S]*?)</CandidateTable>`)
@@ -75,7 +77,7 @@ for (const [number, count] of Object.entries(entry.citationCounts)) {
   );
   assert.equal([...source.matchAll(new RegExp(`id="news-ref-${number}"`, 'g'))].length, 1);
 }
-assert.equal((source.match(/data-news-reference=/g) || []).length, 5);
+assert.equal((source.match(/id="news-ref-\d+"/g) || []).length, entry.referenceCount);
 assert(!source.includes('chatgpt-content-reference') && !source.includes('utm_source='));
 for (const value of [
   's41587-026-03331-w',
@@ -118,19 +120,19 @@ if (fs.existsSync(new URL(`dist/posts/${entry.slug}/index.html`, root))) {
   rendered = true;
   const html = read(`dist/posts/${entry.slug}/index.html`);
   assert(!html.includes('katex-error'));
-  assert.equal((html.match(/data-candidate-equation=/g) || []).length, 3);
-  assert.equal((html.match(/data-news-reference=/g) || []).length, 5);
+  assert.equal((html.match(/data-candidate-equation=/g) || []).length, entry.equations.length);
+  assert.equal((html.match(/data-news-reference=/g) || []).length, entry.referenceCount);
   assert(html.includes(entry.primerSelector));
   for (const id of entry.tableIds)
     assert(new RegExp(`data-candidate-table="${id}"[^>]*><table>`).test(html));
-  for (const id of entry.mediaIds) assert(html.includes(`data-news-figure="${id}"`));
+  for (const id of newsBodyMediaIds(entry, source)) assert(html.includes(`data-news-figure="${id}"`));
   assert(read('dist/news/index.html').includes(`data-news-card="${entry.slug}"`));
 }
 fs.mkdirSync(new URL('sep29-review/', root), { recursive: true });
 fs.writeFileSync(
   new URL('sep29-review/static.json', root),
   JSON.stringify(
-    { entry, rendered, images: 4, equations: 3, rights: 'CC BY 4.0 author preprint' },
+    { entry, rendered, images: newsBodyMediaIds(entry, source).length, equations: equations.length, rights: 'CC BY 4.0 author preprint' },
     null,
     2
   )
@@ -138,7 +140,7 @@ fs.writeFileSync(
 console.log(
   'sep29-contract: PASS',
   entry.bodyCharacters,
-  'characters, 4 original figures, 3 equations, handoff and Blogger'
+  `characters, ${newsBodyMediaIds(entry, source).length} body originals, ${equations.length} equations; historical handoff and private Blogger retained`
 );
 
 const silicon = edition.entries.find((item) => item.key === 'silicon-battery');
@@ -278,5 +280,5 @@ for (const boundary of [
 ])
   assert(lc1Source.includes(boundary), `LC-1 evidence boundary missing: ${boundary}`);
 console.log(
-  'sep29-trilogy-contract: PASS three authorized NEWS cards; public-source LC-1 limits; rights and hashes; beginner guides; nine equations'
+  `sep29-trilogy-contract: PASS three authorized NEWS cards; public-source LC-1 limits; rights and hashes; beginner guides; ${edition.entries.reduce((n, item) => n + item.equations.length, 0)} declared equations`
 );

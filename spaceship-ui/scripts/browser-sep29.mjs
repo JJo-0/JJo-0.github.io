@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { newsBodyMediaIds } from './news-media-source-file.mjs';
 import {
   Cdp,
   BASE,
@@ -112,7 +113,7 @@ try {
         await js(`document.documentElement.classList.toggle('dark',${dark})`);
         await js('document.fonts.ready.then(()=>true)');
         const images = [];
-        for (const mediaId of entry.mediaIds) {
+        for (const mediaId of newsBodyMediaIds(entry, fs.readFileSync(new URL(`../site/content/posts/${entry.slug}.mdx`, import.meta.url), 'utf8'))) {
           const selector = `[data-news-figure="${mediaId}"]`;
           await point(selector);
           await waitExpression(

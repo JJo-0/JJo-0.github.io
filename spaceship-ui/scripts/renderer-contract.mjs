@@ -168,7 +168,7 @@ requireMarkers(asciiArt, 'ascii-art.ts', [
   'prefers-reduced-motion: reduce',
   'IntersectionObserver',
 ]);
-requireMarkers(component, 'ExperienceCanvas.astro', ['data-ascii-art', 'installAsciiArtRuntime']);
+requireMarkers(component, 'ExperienceCanvas.astro', ['data-ascii-art', 'installGraphLoader']);
 for (const obsoleteId of OBSOLETE_RESEARCH_IDS) {
   for (const [filename, source] of [
     ['state.ts', state],
@@ -400,8 +400,8 @@ if (!workflow.includes('Browser smoke matrix') || !workflow.includes('pnpm brows
 if (count(homePage, '<ExperienceCanvas variant="home" graph={postGraph} />') !== 1) {
   issues.push('index.astro: expected exactly one Home renderer shell');
 }
-if (!homePage.includes('/image/mouse_surprised.gif')) {
-  issues.push('index.astro: requested mouse GIF fallback must remain');
+if (!homePage.includes('/assets/profile/mouse_surprised-still.webp') || !fs.existsSync(path.join(root, 'site/assets/image/mouse_surprised.gif'))) {
+  issues.push('index.astro: static profile or archived original GIF missing');
 }
 if (count(researchMap, '<ExperienceCanvas variant="research" graph={graph} />') !== 1) {
   issues.push('ResearchMap.astro: expected exactly one Research renderer shell');
@@ -415,8 +415,8 @@ if (count(homeHtml, 'data-experience-canvas="home"') !== 1) {
 if (count(researchHtml, 'data-experience-canvas="research"') !== 1) {
   issues.push('dist/research/index.html: expected exactly one Research renderer shell');
 }
-if (!homeHtml.includes('/image/mouse_surprised.gif')) {
-  issues.push('dist/index.html: static mouse GIF fallback missing');
+if (!homeHtml.includes('/assets/profile/mouse_surprised-still.webp')) {
+  issues.push('dist/index.html: static profile missing');
 }
 if (!homeHtml.includes('data-site-brand')) {
   issues.push('dist/index.html: inset-safe site brand marker missing');
