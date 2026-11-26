@@ -97,7 +97,9 @@ export function graphStar(strength) {
 /** @param {number} depth @param {number} strength */
 export function graphStarSize(depth, strength) {
   const magnitude = Math.min(1, Math.max(0, strength / 85));
-  return (strength < 48 ? 15 : 7) + magnitude * 5 + graphDepth(depth) * 5;
+  const baseSize = strength < 48 ? 16 : strength < 64 ? 8 : 11;
+  // A half-pixel grid bounds the font cache while preserving depth cues.
+  return Math.round((baseSize + magnitude * 5 + graphDepth(depth) * 5) * 2) / 2;
 }
 
 /** @param {number} depth */
@@ -106,7 +108,9 @@ export function graphStarOpacity(depth) { return .76 + graphDepth(depth) * .24; 
 /** @param {number} depth @param {number} weight */
 export function graphEdgeAppearance(depth, weight) {
   const strength = Math.min(1, Math.max(0, weight / 20));
-  return { opacity: .28 + graphDepth(depth) * .23 + strength * .11, width: .6 + strength * .65 };
+  // Keep the numerous ordinary relations quiet; rarer strong ones trace a
+  // readable constellation even where several projected lines cross.
+  return { opacity: .14 + graphDepth(depth) * .10 + strength ** 3 * .21, width: .55 + strength * .50 };
 }
 
 /** @param {number} angle */
@@ -152,7 +156,7 @@ export function atlasProjectionRadius(nodes) {
 
 /** @param {number} width @param {number} height */
 export function atlasViewport(width, height) {
-  const top = Math.min(height * .27, width < 520 ? 112 : 96);
+  const top = Math.min(height * .27, width < 520 ? 92 : 96);
   const bottom = Math.min(height * .19, 78);
   return {
     centerX: width / 2,
