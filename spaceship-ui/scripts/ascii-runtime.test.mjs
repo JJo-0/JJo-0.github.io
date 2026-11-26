@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import test from 'node:test';
-import { graphVisual, atlasProjectionRadius, projectAtlas, stepAtlasRotation, wrapAtlasYaw } from '../src/lib/experience/graph-visuals.mjs';
+import { graphVisual, graphNodeVisual, graphEdgeStops, graphStar, graphStarSize, atlasProjectionRadius, projectAtlas, stepAtlasRotation, wrapAtlasYaw } from '../src/lib/experience/graph-visuals.mjs';
+import { renderAtlasPreview } from '../src/lib/experience/graph-preview.mjs';
 import { POST_CATEGORIES } from '../src/lib/taxonomy.mjs';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
@@ -127,7 +128,7 @@ test('failed graph request does not loop and can retry explicitly',async()=>{
   assert.equal(f.trigger.hidden,true);
 });
 
-test('atlas palette maintains distinct symbols and contrast on editorial card/paper', () => {
+test('star and legend inks are distinguishable against the observatory sky in both themes', () => {
   const styles = POST_CATEGORIES.map(graphVisual);
   assert.equal(new Set(styles.map(s=>s.glyph)).size, styles.length);
   const luminance = hex => {
@@ -135,8 +136,80 @@ test('atlas palette maintains distinct symbols and contrast on editorial card/pa
     return rgb.map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[0.2126,0.7152,0.0722][i],0);
   };
   const contrast = (a,b) => (Math.max(luminance(a),luminance(b))+.05)/(Math.min(luminance(a),luminance(b))+.05);
-  for (const style of styles) for (const [ink,paper] of [[style.light,'#f3efe4'],[style.light,'#f8f4ea'],[style.dark,'#1c211d'],[style.dark,'#232923']]) {
-    assert(contrast(ink,paper)>=4.5, ink+' / '+paper);
+  for (const [theme,sky] of [['light','#141e2e'],['dark','#0c1423']]) {
+    assert.equal(new Set(styles.map(style=>style[theme])).size, styles.length);
+    for (const style of styles) assert(contrast(style[theme],sky)>=4.5, style[theme]+' / '+sky);
+  }
+});
+test('edges traverse the same stellar spectrum from either endpoint', () => {
+  const categories = [...POST_CATEGORIES].sort((a,b)=>graphVisual(a).index-graphVisual(b).index);
+  const inks = categories.map(graphVisual);
+  assert.deepEqual(inks.map(style=>style.index), categories.map((_,index)=>index));
+  for (const source of categories) for (const target of categories) {
+    const first = graphVisual(source), last = graphVisual(target);
+    const stops = graphEdgeStops(source,target);
+    assert.equal(stops[0].offset,0);
+    assert.equal(stops.at(-1).offset,1);
+    assert(stops.every((s,i)=>i===0 || s.offset>stops[i-1].offset));
+    for (const theme of ['light','dark']) {
+      assert.equal(stops[0][theme],first[theme]);
+      assert.equal(stops.at(-1)[theme],last[theme]);
+      const reversed = graphEdgeStops(target,source);
+      let prior = -1;
+      for (const s of stops) {
+        const idx = inks.findIndex(ink=>ink[theme]===s[theme]);
+        assert(idx>=Math.min(first.index,last.index) && idx<=Math.max(first.index,last.index));
+        const distance = Math.abs(idx-first.index);
+        assert(distance>=prior);
+        prior = distance;
+      }
+      assert.equal(reversed[0][theme],last[theme]);
+    }
+  }
+  assert(graphEdgeStops(categories[0],categories.at(-1)).length>=3,'Distant bands must pass through intermediate spectral colors');
+});
+test('star magnitude varies with weighted degree and projected depth', () => {
+  assert.deepEqual([0,48,64].map(graphStar),['·','+','✦']);
+  assert(graphStarSize(2,64)>graphStarSize(-2,64));
+  assert.notEqual(graphStarSize(0,0),graphStarSize(0,64));
+});
+test('two articles within one topic have their own stable spectrum endpoints', () => {
+  const category = POST_CATEGORIES[4];
+  const near = graphNodeVisual({category,z:1.5}), far = graphNodeVisual({category,z:-1.5});
+  const stops = graphEdgeStops(far,near);
+  for (const theme of ['light','dark']) {
+    assert.notEqual(far[theme],near[theme]);
+    assert.equal(stops[0][theme],far[theme]);
+    assert.equal(stops.at(-1)[theme],near[theme]);
+    assert.equal(graphNodeVisual({category,z:1.5})[theme],near[theme]);
+  }
+});
+test('static SVG shares the article inks, two endpoint colors and line types with Canvas', () => {
+  const nodes = [
+    {id:'a',category:POST_CATEGORIES[1],x:0,y:0,z:-1.5},
+    {id:'b',category:POST_CATEGORIES[1],x:1,y:1,z:1.5},
+    {id:'c',category:POST_CATEGORIES[7],x:2,y:0,z:1},
+  ];
+  const edges = [{source:'a',target:'b',weight:10},{source:'b',target:'c',weight:12}];
+  for (const theme of ['light','dark']) {
+    const svg = renderAtlasPreview({nodes,edges},theme==='dark');
+    const attr = (tag,key) => tag.match(new RegExp(key+'="([^"]+)"'))?.[1];
+    const gradients = new Map([...svg.matchAll(/<linearGradient ([^>]+)>(.*?)<\/linearGradient>/g)]
+      .map(([,tag,body])=>[attr(tag,'id'),{tag,stops:[...body.matchAll(/<stop ([^>]+)\/>/g)].map(([,s])=>s)}]));
+    const lines = [...svg.matchAll(/<line ([^>]+)\/>/g)].map(([,tag])=>tag);
+    assert.equal(lines.length,edges.length);
+    for (const [i,line] of lines.entries()) {
+      const a=nodes[i], b=nodes[i+1];
+      const gradient=gradients.get(attr(line,'stroke')?.match(/^url\(#(.+)\)$/)?.[1]);
+      assert(gradient,'Expected a colored SVG gradient for distinct endpoint inks');
+      assert.equal(attr(gradient.tag,'gradientUnits'),'userSpaceOnUse');
+      for (const axis of ['x1','y1','x2','y2']) assert.equal(attr(gradient.tag,axis),attr(line,axis));
+      assert.equal(attr(gradient.stops[0],'stop-color'),graphNodeVisual(a)[theme]);
+      assert.equal(attr(gradient.stops.at(-1),'stop-color'),graphNodeVisual(b)[theme]);
+      assert.equal(attr(line,'stroke-dasharray')!==undefined,a.category!==b.category);
+    }
+    const fills = [...svg.matchAll(/<text ([^>]+)>/g)].map(([,tag])=>attr(tag,'fill'));
+    assert.deepEqual(fills.sort(),nodes.map(node=>graphNodeVisual(node)[theme]).sort());
   }
 });
 test('rotation eases across frame rates, follows shortest yaw, settles exactly and honors reduced motion', () => {
