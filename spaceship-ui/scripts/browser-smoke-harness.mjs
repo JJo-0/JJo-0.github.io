@@ -7,10 +7,13 @@ import { spawn, spawnSync } from 'node:child_process';
 export const HOST = '127.0.0.1';
 export const PORT = Number(process.env.JJO_SMOKE_PORT || 4321);
 export const BASE = process.env.JJO_SMOKE_BASE_URL || `http://${HOST}:${PORT}`;
-export const DEBUG_PORT = Number(process.env.JJO_SMOKE_DEBUG_PORT || 9222);
+export const DEBUG_PORT = Number(process.env.JJO_SMOKE_DEBUG_PORT || 0);
 export const REQUIRE_GPU = process.env.JJO_SMOKE_REQUIRE_GPU === '1';
 export const TIMEOUT = 20_000;
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const CHROME_DIAGNOSTIC_LIMIT = 8_192;
+const DEVTOOLS_ENDPOINT = /^DevTools listening on (ws:\/\/127\.0\.0\.1:\d+\/devtools\/browser\/[\w-]+)\r?$/m;
 
 const TRANSIENT_NAVIGATION_ERROR_PATTERNS = Object.freeze([
   /Inspected target navigated or closed/i,
@@ -172,6 +175,9 @@ export async function startChrome() {
       '/usr/bin/chromium',
     ]);
   if (!chrome) throw new Error('Chrome/Chromium not found');
+  if (!Number.isInteger(DEBUG_PORT) || DEBUG_PORT < 0 || DEBUG_PORT > 65_535) {
+    throw new Error('JJO_SMOKE_DEBUG_PORT must be an integer from 0 to 65535');
+  }
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jjo-smoke-'));
   const child = spawn(
     chrome,
@@ -192,6 +198,7 @@ export async function startChrome() {
       '--ignore-gpu-blocklist',
       '--use-angle=swiftshader',
       '--enable-unsafe-swiftshader',
+      `--remote-debugging-address=${HOST}`,
       `--remote-debugging-port=${DEBUG_PORT}`,
       `--user-data-dir=${profile}`,
       'about:blank',
@@ -199,26 +206,43 @@ export async function startChrome() {
     { stdio: ['ignore', 'ignore', 'pipe'] },
   );
   let stderr = '';
+  let endpoint;
+  let spawnError;
+  child.once('error', (error) => { spawnError = error; });
   child.stderr.on('data', (chunk) => {
-    stderr += chunk;
+    stderr = (stderr + chunk).slice(-CHROME_DIAGNOSTIC_LIMIT);
+    // Use this child's announcement. A probe on a shared port could attach
+    // the test to a different browser, even when this child failed to start.
+    endpoint ??= stderr.match(DEVTOOLS_ENDPOINT)?.[1];
   });
-  const info = await poll(async () => {
+  try {
+    const url = await poll(() => {
+      if (spawnError) throw spawnError;
+      if (child.exitCode !== null || child.signalCode !== null) {
+        throw new Error(`Chrome exited before startup (${child.signalCode || child.exitCode})`);
+      }
+      return endpoint;
+    }, 'Chrome DevTools endpoint');
+    return { child, profile, url };
+  } catch (error) {
     try {
-      const response = await fetch(`http://${HOST}:${DEBUG_PORT}/json/version`);
-      return response.ok ? response.json() : null;
-    } catch {
-      return null;
+      await stopChild(child);
+    } finally {
+      removeProfile(profile);
     }
-  }, 'Chrome DevTools endpoint');
-  if (!info.webSocketDebuggerUrl) throw new Error(`No DevTools URL\n${stderr}`);
-  return { child, profile, url: info.webSocketDebuggerUrl };
+    throw new Error(`${error.message}\nChrome stderr (tail):\n${stderr.trim() || '(empty)'}`, { cause: error });
+  }
 }
 
 export async function stopChild(child, signal = 'SIGTERM') {
-  if (!child || child.exitCode !== null) return;
+  if (!child?.pid || child.exitCode !== null || child.signalCode !== null) return;
+  const exited = once(child, 'exit');
   child.kill(signal);
-  await Promise.race([once(child, 'exit'), sleep(1_500)]);
-  if (child.exitCode === null) child.kill('SIGKILL');
+  await Promise.race([exited, sleep(1_500)]);
+  if (child.exitCode === null && child.signalCode === null) {
+    child.kill('SIGKILL');
+    await Promise.race([exited, sleep(1_500)]);
+  }
 }
 
 export async function attach(cdp, { normalizeHistoryPath = true } = {}) {
