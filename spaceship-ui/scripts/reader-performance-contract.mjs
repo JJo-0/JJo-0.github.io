@@ -94,6 +94,17 @@ for (const file of ['dist/index.html','dist/en/index.html','dist/posts/index.htm
   summary.push({ file, cards: cards.length, rawBytes: Buffer.byteLength(html), gzipBytes: gzipSync(html).byteLength, fontPreloads: fonts.length });
 }
 assert(read('astro.config.mjs').includes('prefetchAll: false'));
+// Formula-only scoped styles must never block non-lesson routes.
+const lazyLessonNames = ["DotProductPredictionLesson","GeneralizationGapLesson","NormalEquationLesson","ResidualGradientLesson","RidgeRegularizationLesson","SampleMatrixAssemblyLesson"];
+const lessonCss = new RegExp('/(?:' + lazyLessonNames.join('|') + ')\\.[^/]+\\.css(?:$|\\?)');
+for (const file of ['dist/index.html','dist/en/index.html','dist/news/index.html','dist/en/news/index.html','dist/posts/index.html','dist/en/posts/index.html']) {
+  const doc = parse(read(file));
+  const links = nodes(doc, n => n.tagName === 'link' && attr(n, 'rel') === 'stylesheet');
+  assert(!links.some(n => lessonCss.test(attr(n, 'href') ?? '')), file + ': disclosure-only formula CSS must not block initial render');
+}
+for (const name of lazyLessonNames) {
+  assert(read('src/components/post/formula-lessons/renderers/' + name + '.svelte').includes('<svelte:options css="injected" />'), name + ': style must follow lazy component mount');
+}
 // Measure actual uncompressed output separately from the compressed Actions artifact.
 const distribution = { files: 0, bytes: 0, groups: {} };
 function measureDist(dir) {
