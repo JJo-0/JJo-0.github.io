@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import sharp from 'sharp';
 import { BASE, startPreview, startChrome, Cdp, attach, stopChild, removeProfile, evaluate, navigate, viewport, waitExpression } from './browser-smoke-harness.mjs';
 
 const out = process.env.JJO_SELF_IMPROVING_ARTIFACTS || path.join(os.tmpdir(), 'jjo-self-improving');
@@ -248,6 +249,9 @@ try {
     for (const asset of manifest.assets) {
       const data = fs.readFileSync(path.resolve('..', asset.path));
       assert.equal(crypto.createHash('sha256').update(data).digest('hex'), asset.sha256);
+      const original = await sharp(data).metadata();
+      assert.equal(original.width, asset.width, 'Full-size slide width: ' + asset.src);
+      assert.equal(original.height, asset.height, 'Full-size slide height: ' + asset.src);
       const record = { path: asset.path, sha256: asset.sha256, source: asset.source };
       if (process.env.JJO_SMOKE_BASE_URL) {
         const response = await fetch(new URL(asset.src, process.env.JJO_SMOKE_BASE_URL), { signal: AbortSignal.timeout(30000), cache: 'no-store' });
@@ -260,9 +264,11 @@ try {
     }
   }
   if (!process.env.JJO_SMOKE_BASE_URL) preview = await startPreview();
-  const previewReport = await fetch(new URL('/assets/lecture-previews/manifest.json', BASE));
-  assert(previewReport.ok, 'Lecture preview manifest must be available');
-  const previewImages = new Map((await previewReport.json()).images.map(image => [image.src, image]));
+  const previewResponse = await fetch(new URL('/assets/lecture-previews/manifest.json', BASE), { signal: AbortSignal.timeout(30000) });
+  assert(previewResponse.ok, 'Responsive lecture preview manifest is required');
+  const previewManifest = await previewResponse.json();
+  const previewSources = new Map(previewManifest.images.map(row => [row.src, row]));
+  const verifiedVariants = new Set();
   chrome = await startChrome();
   cdp = await Cdp.connect(chrome.url);
   const { sessionId: session } = await attach(cdp);
@@ -277,31 +283,12 @@ try {
         await evaluate(cdp, session, `document.querySelectorAll('article figure[data-learning-figure]')[${index}].scrollIntoView({block:'center',behavior:'instant'})`);
         await waitExpression(cdp, session, `(()=>{const image=document.querySelectorAll('article figure[data-learning-figure] img')[${index}];return image.complete && image.naturalWidth>0 && image.naturalHeight>0;})()`, 'Lesson image decoded');
       }
-      const view = await evaluate(cdp, session, `(async()=>{
+      const view = await evaluate(cdp, session, `(()=>{
         const figures=Array.from(document.querySelectorAll('article figure[data-learning-figure]'));
         const navigation=document.querySelector('[data-series-reading-navigation="self-improving-ai"]');
         return { url:location.href, width:innerWidth,
           overflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),
-          figures:await Promise.all(figures.map(async figure => {
-            const image = figure.querySelector('img');
-            const original = figure.querySelector('a[data-lecture-original]');
-            const optimized = image.dataset.lecturePreview === 'true';
-            let fullSize = image;
-            if (optimized) {
-              // A width-descriptor srcset reports density-corrected preview dimensions.
-              fullSize = new Image();
-              fullSize.src = original.href;
-              await fullSize.decode();
-            }
-            return {
-              src: image.getAttribute('src'), currentSrc: image.currentSrc, optimized,
-              originalLink: original?.getAttribute('href'),
-              naturalWidth: fullSize.naturalWidth, naturalHeight: fullSize.naturalHeight,
-              previewWidth: image.naturalWidth, previewHeight: image.naturalHeight,
-              alt: image.alt, source: figure.querySelector('figcaption a')?.href,
-              caption: figure.querySelector('figcaption')?.textContent
-            };
-          })),
+          figures:figures.map(f=>{const i=f.querySelector('img'),a=f.querySelector('figcaption a');return {src:i.getAttribute('src'),currentSrc:i.currentSrc,srcset:i.getAttribute('srcset'),width:Number(i.getAttribute('width')),height:Number(i.getAttribute('height')),naturalWidth:i.naturalWidth,naturalHeight:i.naturalHeight,original:f.querySelector('a[data-lecture-original]')?.getAttribute('href'),alt:i.alt,source:a?.href,caption:f.querySelector('figcaption')?.textContent};}),
           math:document.querySelectorAll('article .katex').length,
           mathErrors:document.querySelectorAll('.katex-error').length,
           previous:navigation?.querySelector('[rel="prev"]')?.getAttribute('href') || null,
@@ -332,13 +319,30 @@ try {
       for (const figure of view.figures) {
         const expected = manifests.get(chapter.number).assets.find(asset => asset.src === figure.src);
         assert(expected, `Unexpected image ${figure.src}`);
-        assert.equal(figure.originalLink, expected.src, 'Link to the original slide');
-        const variants = previewImages.get(expected.src)?.candidates ?? [];
-        assert.equal(figure.optimized, variants.length > 0, 'Responsive preview matches build manifest');
-        const allowed = [expected.src, ...variants.map(candidate => candidate.url)];
-        assert(allowed.some(src => new URL(src, BASE).href === figure.currentSrc), 'Displayed slide belongs to its original');
-        assert.equal(figure.naturalWidth, expected.width, 'Original slide width: ' + expected.src);
-        assert.equal(figure.naturalHeight, expected.height, 'Original slide height: ' + expected.src);
+        assert.equal(figure.width, expected.width, 'Original intrinsic width remains declared');
+        assert.equal(figure.height, expected.height, 'Original intrinsic height remains declared');
+        assert.equal(figure.original, expected.src, 'Full-size link retains the exact original');
+        const source = previewSources.get(figure.src);
+        assert(source && source.sha256 === expected.sha256, 'Preview manifest retains original hash');
+        const selected = new URL(figure.currentSrc);
+        assert.equal(selected.origin, new URL(BASE).origin);
+        if (selected.pathname === figure.src && !figure.srcset) {
+          assert.equal(figure.naturalWidth, expected.width);
+          assert.equal(figure.naturalHeight, expected.height);
+        } else {
+          const candidate = selected.pathname === figure.src
+            ? { width: expected.width, height: expected.height, bytes: source.originalBytes }
+            : source.candidates.find(c => c.url === selected.pathname);
+          assert(candidate, 'Displayed image must be an original or manifest-listed derivative');
+          // naturalWidth is density-corrected for width-descriptor srcset.
+          assert(Math.abs(figure.naturalHeight - figure.naturalWidth * candidate.height / candidate.width) <= 2,
+            'Responsive rendering preserves aspect ratio');
+          if (!verifiedVariants.has(selected.href)) {
+            const decoded = await evaluate(cdp, session, `(async()=>{const r=await fetch(${JSON.stringify(selected.href)});if(!r.ok)throw Error('Preview request failed');const blob=await r.blob();const bitmap=await createImageBitmap(blob);const size={width:bitmap.width,height:bitmap.height,bytes:blob.size};bitmap.close();return size;})()`);
+            assert.deepEqual(decoded, { width: candidate.width, height: candidate.height, bytes: candidate.bytes }, 'Actual selected pixels and bytes match manifest');
+            verifiedVariants.add(selected.href);
+          }
+        }
         assert.equal(figure.source, expected.source);
         assert(figure.alt.length > 10 && figure.caption.length > 20);
         if (expected.sourceType === 'pdf') assert(figure.source?.includes('#page='));

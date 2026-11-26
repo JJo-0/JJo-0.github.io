@@ -149,7 +149,11 @@ for (const [name, budget] of [['mouse_surprised-still.webp', 15 * 1024], ['mouse
 const graphComponent = read('src/components/experience/ExperienceCanvas.astro');
 forbidText(graphComponent, 'ExperienceCanvas.astro', 'data-post-graph-source');
 requireText(graphComponent, 'ExperienceCanvas.astro', 'data-graph-preview');
+requireText(graphComponent, 'ExperienceCanvas.astro', 'data-graph-loading');
+requireText(graphComponent, 'ExperienceCanvas.astro', 'data-graph-auto');
 requireText(read('src/lib/experience/graph-loader.ts'), 'graph-loader.ts', "import('./ascii-art')");
+requireText(read('src/lib/experience/graph-loader.ts'), 'graph-loader.ts', 'requestIdleCallback');
+requireText(read('src/lib/experience/graph-loader.ts'), 'graph-loader.ts', 'IntersectionObserver');
 for (const [language, prefix] of [['ko', ''], ['en', 'en/']]) {
   const payloadPath = path.join(dist, 'writing-graph', language + '.json');
   if (!fs.existsSync(payloadPath)) { issues.push('Missing graph JSON: ' + language); continue; }

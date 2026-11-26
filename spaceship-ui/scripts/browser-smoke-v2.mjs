@@ -65,6 +65,7 @@ async function installFirstPartyLinkIsolation(cdp, sessionId) {
 
 async function main() {
   let preview, chrome, cdp, mobileTarget, homeMediaTarget, newsTarget, actsTarget, rendererTarget, interactionTarget;
+  let clicks;
   try {
     preview = await startPreview();
     chrome = await startChrome();
@@ -117,8 +118,7 @@ async function main() {
     setReducedMotionOverride(true);
     interactionTarget = await attach(cdp);
     await installFirstPartyLinkIsolation(cdp, interactionTarget.sessionId);
-    const clicks = await auditInteractions(cdp, interactionTarget.sessionId);
-    console.log(`browser-smoke: PASS complete matrix and ${clicks} stable trusted core-route clicks`);
+    clicks = await auditInteractions(cdp, interactionTarget.sessionId);
   } finally {
     setReducedMotionOverride(null);
     await closeAuditTarget(cdp, interactionTarget);
@@ -132,6 +132,7 @@ async function main() {
     await stopChild(preview, 'SIGTERM');
     removeProfile(chrome?.profile);
   }
+  console.log(`browser-smoke: PASS complete matrix and ${clicks} stable trusted core-route clicks`);
 }
 
 main()

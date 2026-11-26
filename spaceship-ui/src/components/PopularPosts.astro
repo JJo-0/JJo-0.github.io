@@ -18,21 +18,25 @@ interface PublicFeed {
 const { en, posts } = Astro.props;
 const feed: PublicFeed = rawFeed;
 const locale = en ? 'en-US' : 'ko-KR';
-const lookup = new Map<string, { href: string; title: string }>();
-for (const post of posts) {
-  const slug = getPostSlug(post);
-  const sourcePath = `/posts/${slug}`;
-  const englishPath = englishPostPathForSlug(slug);
-  const item = { href: en ? englishPath : sourcePath, title: post.data.title };
-  lookup.set(sourcePath, item);
-  lookup.set(englishPath.replace(/\/+$/, ''), item);
-}
-
-// The deploy pipeline exports the public aggregate immediately before building Pages.
+// Render only the public aggregate. Skip a full bilingual lookup when empty.
 const date = feed.updatedAt ? new Date(feed.updatedAt) : null;
 const refreshed = feed.version === 1 && date && !Number.isNaN(date.getTime())
   ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Seoul' }).format(date)
   : null;
+const wanted = new Set(refreshed ? feed.posts.map(post => normalizePublicPostPath(post.path)).filter(Boolean) : []);
+const lookup = new Map<string, { href: string; title: string }>();
+if (wanted.size) {
+  for (const post of posts) {
+    const slug = getPostSlug(post);
+    const sourcePath = '/posts/' + slug;
+    const englishPath = englishPostPathForSlug(slug);
+    const englishKey = englishPath.replace(/\/+$/, '');
+    if (!wanted.has(sourcePath) && !wanted.has(englishKey)) continue;
+    const item = { href: en ? englishPath : sourcePath, title: post.data.title };
+    lookup.set(sourcePath, item);
+    lookup.set(englishKey, item);
+  }
+}
 const rankings = refreshed ? feed.posts.flatMap(({ path, views }) => {
   const item = lookup.get(normalizePublicPostPath(path) ?? '');
   return item && Number.isSafeInteger(views) && views > 0 ? [{ ...item, views }] : [];

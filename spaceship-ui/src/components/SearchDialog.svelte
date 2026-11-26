@@ -1,59 +1,48 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { uiState } from '@/lib/ui.svelte';
+  import { loadSearchIndex, matchSearchRows, SEARCH_PAGE_SIZE } from '@/lib/search-index.mjs';
 
-  interface Post {
-    id: string;
-    href?: string;
-    data: {
-      title: string;
-      description: string;
-    };
+  type Post = Awaited<ReturnType<typeof loadSearchIndex>>[number];
+  let posts = $state.raw<Post[]>([]);
+  let query = $state('');
+  let limit = $state(SEARCH_PAGE_SIZE);
+  let status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  let en = $state(false);
+  let live = true;
+  let searchInput = $state<HTMLInputElement>();
+  let filteredPosts = $derived(matchSearchRows(posts, query));
+  let visiblePosts = $derived(filteredPosts.slice(0, limit));
+
+  async function load() {
+    status = 'loading';
+    try {
+      const rows = await loadSearchIndex(document.documentElement.lang);
+      if (live) { posts = rows; status = 'ready'; }
+    } catch {
+      if (live) status = 'error';
+    }
   }
 
-  let posts = $state<Post[]>([]);
-  let query = $state('');
-
-  let filteredPosts = $derived(
-    query.length > 0
-      ? posts.filter(
-          (post) =>
-            post.data.title.toLowerCase().includes(query.toLowerCase()) ||
-            post.data.description.toLowerCase().includes(query.toLowerCase())
-        )
-      : []
-  );
-
-  let searchInput = $state<HTMLInputElement>();
-
+  // Opening the dialog alone needs no index download.
+  $effect(() => {
+    if (query.trim().length && status === 'idle') void load();
+  });
   $effect(() => {
     if (uiState.isSearchOpen && searchInput) {
-      setTimeout(() => searchInput?.focus(), 10);
+      const timer = setTimeout(() => searchInput?.focus(), 10);
+      return () => clearTimeout(timer);
     }
   });
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      uiState.closeSearch();
-    }
+    if (e.key === 'Escape') uiState.closeSearch();
   }
 
   onMount(() => {
+    en = document.documentElement.lang.toLowerCase().startsWith('en');
     window.addEventListener('keydown', handleKeydown);
-
-    (async () => {
-      try {
-        const prefix = document.documentElement.lang.toLowerCase().startsWith('en') ? '/en' : '';
-        const res = await fetch(`${prefix}/api/search.json`);
-        if (res.ok) {
-          posts = await res.json();
-        }
-      } catch (err) {
-        console.error('Failed to load search index:', err);
-      }
-    })();
-
-    return () => window.removeEventListener('keydown', handleKeydown);
+    return () => { live = false; window.removeEventListener('keydown', handleKeydown); };
   });
 </script>
 
@@ -82,6 +71,7 @@
       <input
         bind:this={searchInput}
         bind:value={query}
+        oninput={() => limit = SEARCH_PAGE_SIZE}
         type="text"
         placeholder="Search post titles or descriptions..."
         class="flex-1 bg-transparent border-none outline-none text-base sm:text-lg text-foreground placeholder:text-muted-foreground/40 font-medium"
@@ -95,11 +85,18 @@
     </div>
 
     <div class="max-h-[60vh] sm:max-h-[400px] 3xl:max-h-[600px] overflow-y-auto p-2 sm:p-4">
-      {#if query.length === 0}
+      {#if query.trim().length === 0}
         <div class="p-12 text-center">
           <p class="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
             Start typing to search...
           </p>
+        </div>
+      {:else if status === 'idle' || status === 'loading'}
+        <p class="p-8 text-center text-sm text-muted-foreground" role="status">{en ? 'Loading search index…' : '검색 목록 불러오는 중…'}</p>
+      {:else if status === 'error'}
+        <div class="p-8 text-center" role="status">
+          <p>{en ? 'Search could not load.' : '검색 목록을 불러오지 못했습니다.'}</p>
+          <button class="mt-3 rounded-lg border border-border px-4 py-2 text-sm" onclick={() => void load()}>{en ? 'Retry' : '다시 시도'}</button>
         </div>
       {:else if filteredPosts.length === 0}
         <div class="p-12 text-center">
@@ -109,7 +106,7 @@
         </div>
       {:else}
         <div class="space-y-1">
-          {#each filteredPosts as post (post.id)}
+          {#each visiblePosts as post (post.id)}
             <a
               href={post.href || `/posts/${post.id}`}
               class="block p-4 sm:p-5 rounded-xl hover:bg-accent transition-all no-underline group"
@@ -125,6 +122,11 @@
               </p>
             </a>
           {/each}
+          {#if visiblePosts.length < filteredPosts.length}
+            <button data-search-more class="w-full rounded-lg border border-border px-4 py-3 text-sm font-semibold" onclick={() => limit += SEARCH_PAGE_SIZE}>
+              {en ? 'Show more' : '더 보기'} ({visiblePosts.length}/{filteredPosts.length})
+            </button>
+          {/if}
         </div>
       {/if}
     </div>

@@ -3,6 +3,7 @@ import {
   BASE,
   evaluate,
   navigate,
+  poll,
   viewport,
   waitExpression,
 } from './browser-smoke-harness.mjs';
@@ -144,8 +145,12 @@ function stablePointExpression(link) {
 }
 
 async function trustedClick(cdp, sessionId, pointExpression, label) {
-  const point = await waitExpression(cdp, sessionId, pointExpression, `${label} hit-test`, 20_000);
-  assert.equal(point?.blocked, undefined, `${label}: click target blocked: ${JSON.stringify(point)}`);
+  const point = await poll(
+    () => evaluate(cdp, sessionId, pointExpression),
+    `${label} hit-test`,
+    20_000,
+    (point) => point && !point.blocked,
+  );
   assert.ok(Number.isFinite(point?.x) && Number.isFinite(point?.y), `${label}: invalid point`);
 
   await cdp.send(
@@ -441,7 +446,7 @@ async function auditSearch(cdp, sessionId) {
   await trustedClick(
     cdp,
     sessionId,
-    selectorPoint(`document.querySelector(${JSON.stringify(`a[href="${href}"]`)})`),
+    selectorPoint(`document.querySelector(${JSON.stringify(`[data-search-dialog] a[href="${href}"]`)})`),
     'Search result',
   );
   await expectUrl(cdp, sessionId, new URL(href, BASE), 'search result destination');

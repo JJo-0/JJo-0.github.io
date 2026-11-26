@@ -1,3 +1,5 @@
+<svelte:options css="injected" />
+
 <script>
  import { englishFormulaText } from '@/lib/modern-ai-english.mjs';
  const formulaEnglish = document.documentElement.lang === 'en';
