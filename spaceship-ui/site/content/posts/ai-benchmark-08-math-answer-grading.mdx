@@ -1,0 +1,125 @@
+---
+title: "AI 벤치마크 08 — 같은 수학 답안이 왜 다른 점수를 받을까?"
+description: "GSM8K, MATH, AIME, MathArena Apex의 답안 추출과 채점 규칙을 비교하고, 카메라 보정 예제와 원본 그림으로 정답률의 분모를 검산합니다."
+pubDate: 2026-11-27T00:00:00+09:00
+publicationTimeZone: Asia/Seoul
+slug: ai-benchmark-08-math-answer-grading
+category: ai-machine-learning
+subcategory: ai-benchmark
+type: study-note
+tags:
+  - ai-benchmark
+  - model-evaluation
+  - mathematics
+  - metrics
+researchFeatured: false
+draft: false
+lang: ko
+showCTA: false
+showComments: false
+series:
+  id: ai-benchmark
+  order: 8
+---
+
+import Math from '@/components/post/Math.astro';
+
+[07편](/posts/ai-benchmark-07-mmlu-mmlu-pro-gpqa/)에서는 같은 100개 답안을 문항별로 평균하면 A가 84%로 앞서고, 과목별로 평균하면 B가 85%로 앞섰다. 이번에는 평균을 내기 **한 단계 앞**으로 가 보자. 카메라 보정 문제의 정답이 `3/8`인데 모델이 `0.375`를 썼다면, 정답 수에 1을 더해야 할까? 사람이 보기에는 같은 수다. 실제 벤치마크의 답은 **무엇을 최종 답으로 추출하고 어떤 두 표현을 동등하게 인정하는지**에 달려 있다.
+
+## 1. 수학 점수표에서 분모부터 읽는 법
+
+| 평가와 범위 | 한 문항에서 받는 것 | 점수 옆에서 확인할 조건 |
+|---|---|---|
+| GSM8K · 원본 배포본 | 초등 수준 문장제의 풀이와 마지막 수치. 학습 7,473문항, 시험 1,319문항 | 최종 수치를 추출하는 표식, 직접 생성인지 여러 후보 중 하나를 골랐는지 |
+| MATH · 원본 전체 | 7개 분야의 경시 문제와 풀이. 학습 7,500문항, 시험 5,000문항 | 최종 수식 추출 방식, 동치 판정 코드, 전체 시험인지 부분집합인지 |
+| AIME · 2026년 대회 | 시험지당 15문항, 정수 답 0–999 | I 또는 II 한 회인지, 두 시험지를 모은 30문항 모델 평가인지 |
+| MathArena Apex · 2025년 8월 발표 | 당시 모델로 선별한 12문항에 대한 최종 답 | 문제당 시도 횟수, 후보 선택에 사용한 모델, 점수를 낸 날짜 |
+
+MATH의 5,000은 원본 시험 집합의 크기다. `MATH-500`이라고 적힌 결과와는 분모가 다르다. AIME의 30은 모델 평가용으로 두 시험지를 합친 수다. 2026년 한 응시자의 시험은 15문항이었다. 이 두 가지를 먼저 구분하면 같은 ‘정답률’ 열에 어떤 수치를 나란히 놓을지 결정할 수 있다. [GSM8K 데이터 카드](https://huggingface.co/datasets/openai/gsm8k#data-splits) · [MATH §3.1, PDF 4–5쪽](https://arxiv.org/pdf/2103.03874v2#page=4) · [MAA 2026 일정](https://maa.org/news/2025-26-aime-thresholds-are-now-available/) · [MathArena AIME 2026 데이터 카드](https://huggingface.co/datasets/MathArena/aime_2026/blob/main/README.md) · [Apex 원 발표](https://matharena.ai/apex/)
+
+## 2. GSM8K와 MATH의 공개 코드에 같은 값을 넣어 보기
+
+채점에는 두 단계가 있다. <strong>추출기(extractor)</strong>가 응답의 어느 부분을 답으로 사용할지 정한다. <strong>동치 판정기(equivalence checker)</strong>가 그 답과 기준 답을 비교한다. 두 단계 가운데 어느 곳에서 점수가 달라졌는지 알아야 모델의 계산 실수와 출력 형식 문제를 구별할 수 있다.
+
+GSM8K 공개 구현은 `#### ` 뒤에 지정된 숫자 패턴이 처음 나타난 곳을 찾고 쉼표를 제거한 뒤 문자열을 비교한다. MATH의 공개 도구에는 마지막 `\boxed` 표현을 찾아 중괄호의 짝을 따라가는 추출 함수와, 몇 가지 LaTeX 표기를 정규화한 뒤 문자열을 비교하는 함수가 있다. 아래 MATH 행은 이미 상자에서 추출한 문자열을 비교 함수에 직접 넣은 결과다. 표의 입력은 이 글에서 만들었고, 판정은 링크한 커밋의 함수로 확인했다. [GSM8K 추출·채점 코드 24–41행](https://github.com/openai/grade-school-math/blob/3101c7d5072418e28b9008a6636bde82a006892c/grade_school_math/dataset.py#L24-L41) · [MATH 상자 추출 16–41행](https://github.com/hendrycks/math/blob/985bdc1696e88e8643f081a0ff4719da39f2ae2a/modeling/dataset/util.py#L16-L41) · [MATH 비교 함수 126–152행](https://github.com/hendrycks/math/blob/985bdc1696e88e8643f081a0ff4719da39f2ae2a/modeling/math_equivalence.py#L126-L152)
+
+| 공개 구현 | 모델 응답 또는 추출된 답 | 기준 답 | 판정과 이유 |
+|---|---|---|---|
+| GSM8K | `#### 1,200` | `#### 1200` | 통과. 쉼표를 제거하면 두 문자열이 같다. |
+| GSM8K | `#### 24.0` | `#### 24` | 실패. 소수점 표기는 그대로 남는다. |
+| GSM8K | `24` | `#### 24` | 실패. 수치는 맞지만 이 함수가 요구하는 표식이 없다. |
+| MATH | `0.5` | `\frac{1}{2}` | 통과. 이 소수에 대한 명시적 변환 규칙이 있다. |
+| MATH | `2/4` | `1/2` | 실패. 분수 표기를 바꾼 뒤에도 분자와 분모가 서로 다르다. |
+
+MATH 논문 5쪽의 *Formatting and Automatically Assessing Generated Answers*는 `4(x+1)(x-1)`과 `4(x-1)(x+1)`처럼 인수 순서가 바뀐 답도 인정한다고 설명한다. 위 커밋의 `is_equiv`에 그 두 문자열을 넣으면 `False`다. 특정 라이브러리에서 ‘MATH 정확도’를 재현할 때에는 **논문 판본과 실제로 실행한 비교 함수의 버전**을 함께 기록해야 한다. [논문의 해당 문단, PDF 5쪽](https://arxiv.org/pdf/2103.03874v2#page=5) · [실행한 함수 138–152행](https://github.com/hendrycks/math/blob/985bdc1696e88e8643f081a0ff4719da39f2ae2a/modeling/math_equivalence.py#L138-L152)
+
+최종 수치가 맞아도 풀이 중간이 틀릴 수 있다. GSM8K 연구진은 이 한계를 설명하고, 후보 풀이 100개를 만든 뒤 검증기(verifier)가 고른 **하나**를 제출하는 실험을 보고했다. 후보 안에 정답이 있어도 검증기가 오답을 골랐다면 이 시스템의 제출은 실패다. Stanford CS329Z의 ‘Evaluation Protocol’ 슬라이드는 이 차이를 기록할 자리를 알려 준다. 문제당 시도 횟수, 종료 예산, 허용한 도구, 집계 방식을 점수와 함께 남긴다. [GSM8K §4.2 및 그림 5, PDF 7–8쪽](https://arxiv.org/pdf/2110.14168v2#page=7) · [Stanford CS329Z, 2026년 11월 4일, PDF 37쪽](https://web.stanford.edu/class/cs329z/slides/lecture13.pdf#page=37)
+
+## 3. 카메라 보정 답안 여섯 개를 직접 채점하기
+
+07편의 카메라에서 일정한 깊이에 놓인 표식을 평행하게 3 mm 이동시켰더니 영상에서 8픽셀 움직였다고 하자. 여기서는 그 구간의 길이를 픽셀 이동량으로 나눈 **국소 변환 계수**만 구한다. 정답과 모든 출력의 단위는 mm/pixel로 고정한다. 같은 입력을 여섯 번 주는 이 예제는 채점 규칙을 비교하기 위해 만든 것이다.
+
+<Math display tex={String.raw`s=\frac{\Delta X}{\Delta u}=\frac{3\ \mathrm{mm}}{8\ \mathrm{pixel}}=0.375\ \mathrm{mm/pixel}`} />
+
+기준 문자열은 `3/8`이다. 첫 번째 채점기는 문자열 그대로, 두 번째는 정확한 유리수(rational number)로 바꾸어 비교한다. 세 번째는 정답과의 절대 오차가 허용 오차(tolerance) 이내인지 본다. 반환된 수치를 <Math tex="v" />, 기준값을 <Math tex="s" />, 허용 오차를 <Math tex={String.raw`\varepsilon=0.001\ \mathrm{mm/pixel}`} />로 둔다.
+
+<Math display tex={String.raw`g_{\varepsilon}(v,s)=\mathbf{1}\!\left[\lvert v-s\rvert\leq\varepsilon\right]`} />
+
+지시 함수(indicator)는 조건이 참이면 1, 거짓이면 0을 준다. 예정된 요청에 답이 없으면 이번 실험에서는 0점이다. 표에서 숫자 1은 통과, 0은 실패다.
+
+| 모델의 최종 출력 | 절대 오차 (mm/pixel) | 문자열 일치 | 유리수 일치 | 허용 오차 이내 |
+|---|---:|---:|---:|---:|
+| `3/8` | 0 | 1 | 1 | 1 |
+| `0.375` | 0 | 0 | 1 | 1 |
+| `0.374` | 0.001 | 0 | 0 | 1 |
+| `0.373` | 0.002 | 0 | 0 | 0 |
+| `3/4` | 0.375 | 0 | 0 | 0 |
+| 무응답 | 계산 불가 | 0 | 0 | 0 |
+
+세 번째 행은 경계값이다. 분모를 1,000으로 맞추면 기준은 375/1000, 응답은 374/1000이므로 차이는 정확히 1/1000이다. 위 수식은 등호를 포함해 이 답을 통과시킨다. 엄격한 부등호를 썼다면 탈락한다. 검산에서는 유한소수를 유리수로 읽어 컴퓨터의 이진 부동소수점 반올림이 이 판정을 바꾸지 않게 했다.
+
+예정된 여섯 응답을 분모에 두면 점수는 **1/6 → 2/6 → 3/6**, 각각 16.67%, 33.33%, 50.00%다. 같은 마지막 규칙에서 응답을 받은 다섯 건으로 분모를 바꾸면 3/5 = 60.00%다. 후자는 ‘응답이 있었을 때 허용 오차를 만족할 비율’이다. 서비스를 평가한다면 응답률 5/6과 전체 요청 성공률 3/6도 함께 읽어야 한다. 이 허용 오차는 예제에서 정한 값이다. AIME 대회의 정수 정답이나 두 공개 코드의 공식 채점 규칙에 적용하지 않는다.
+
+## 4. AIME의 한 문제는 몇 퍼센트포인트일까?
+
+2026년 AIME I은 2월 5일, 대체 시험인 AIME II는 2월 11일에 열렸다. 한 응시자는 한 시험지의 15문제를 3시간 동안 풀었다. 반면 MathArena의 2026년 AIME 데이터 카드에는 30행이 들어 있다. 모델 결과표의 ‘AIME 2026’만 보고는 어느 쪽 분모를 썼는지 알 수 없다. [MAA 2025–26 대회 운영 안내, PDF 6쪽](https://maa.org/wp-content/uploads/2025/08/2025-2026-Hosting-MAA-Competitions-Guide.pdf#page=6) · [MAA 공식 시험일](https://maa.org/news/2025-26-aime-thresholds-are-now-available/) · [MathArena 배포 명세](https://huggingface.co/datasets/MathArena/aime_2026/blob/main/README.md)
+
+전 문항에 한 번씩 답하고 문제마다 같은 비중일 때, 정답이 하나 늘면 정답률은 <Math tex={String.raw`100/N`} />퍼센트포인트(%p) 오른다. 한 시험지에서는 100/15 ≈ **6.67%p**, 두 시험지를 합치면 100/30 ≈ **3.33%p**다. 여러 번 풀어 평균한 수치라면 문제당 시도 횟수도 분모에 들어간다. 정수 채점에서는 선행 0을 허용할지 출력 형식에 명시할 수 있다. 해설이나 근삿값에 점수를 줄지도 별도의 규칙이다.
+
+판본은 여기서도 중요하다. MAA가 미국·캐나다 응시자에게 공지한 2027년 방식은 2월 5–6일 시험 기간에 응시자 한 명이 15문항을 **8문항과 7문항**, 각 90분으로 나누어 푸는 방식이다. 2026년의 I·II 두 시험지와 2027년 한 시험의 두 구간은 다른 단위다. [MAA 공식 안내 ‘What are the changes to AIME?’](https://maa.org/maa-invitational-competitions/)
+
+## 5. MathArena 원본 그림에서 5.2%와 25%를 다시 계산하기
+
+2025년 8월 18일 공개된 Apex는 당시 네 모델이 각각 네 번씩 풀었을 때 한 번이라도 맞힌 후보를 제외해 12문항을 골랐다. 여섯 문항은 원래 최종 답을 요구했고, 여섯 문항은 증명 문제를 단답형으로 바꿨다. 이 선정 자체가 당시 모델들에 어려운 문제를 남기는 과정이다. 아래 수치는 그날 보고된 실험에 한정된다. [Apex 원 발표 ‘Methodology’와 ‘Aggregate Results’](https://matharena.ai/apex/)
+
+**그림 3 읽기.** 가로축은 1–12번 문제, 각 행은 모델이다. 셀의 분자는 정답 횟수, 분모는 그 모델이 그 문제에 시도한 횟수다. Qwen3-A22B-2507-Think 행에서 1번은 7/16, 5번은 2/16, 7번은 1/16, 나머지는 0/16이다. 같은 그림에서 GPT-5 에이전트는 내부 반복 비용 때문에 문제당 네 번만 실행했다. 모델 간 비교에서 모든 행의 분모를 16으로 두면 안 되는 이유다. [2025년 8월 원본 그림 3](https://matharena.ai/static/images/apex_results.png) · [그림 설명과 실행 조건](https://matharena.ai/apex/)
+
+문제 수를 <Math tex="N" />, 문제별 시도 수를 <Math tex="K" />, 문제 <Math tex="i" />의 정답 횟수를 <Math tex="c_i" />라 하자. 모든 문제에 똑같이 <Math tex="K" />번씩 실행했다면, **시도별 정답률**과 **한 번 이상 성공한 문제 비율**은 아래처럼 계산한다. 두 식은 이미 얻은 기록을 집계하므로 시도 사이의 독립성을 가정할 필요가 없다.
+
+<Math display tex={String.raw`A_{\mathrm{trial}}=\frac{\sum_{i=1}^{N}c_i}{NK},\qquad A_{\mathrm{any}}=\frac{\sum_{i=1}^{N}\mathbf{1}[c_i>0]}{N}`} />
+
+Qwen 행에서 정답 횟수는 7 + 2 + 1 = 10이다. 시도별 정답률은 10/(12 × 16) = **5.2083…%**, 그림의 반올림 값은 <strong>5.2%</strong>다. 한 번 이상 성공한 문제는 1·5·7번이므로 3/12 = <strong>25%</strong>다. 새 문제에서 후보 열여섯 개 중 정답을 스스로 골라낼 수 있는지는 이 두 수치만으로 알 수 없다. 03편에서 다룬 ‘한 번 이상 성공’과 ‘실제 제출 성공’의 차이가 원본 실험에서도 그대로 드러난다. [03편의 반복 실험 풀이](/posts/ai-benchmark-03-reliability-and-uncertainty/)
+
+**다른 분모로 한 번 더 검산.** 2026년 5월 12일 공개된 후속 연구에서 연구팀은 새 후보 176문항을 Gemini 3.1 Pro로 네 번씩 풀었다. 아래 표는 후속 발표 그림 3의 14문항에 본문에서 보고한 4회 모두 정답인 162문항을 더해 재작성한 것이다. 오른쪽 열의 단위는 ‘문항’이 아니라 ‘정답을 낸 시도’다. [후속 발표 ‘Construction Process and Results’, 그림 3](https://matharena.ai/no_final_answer/)
+
+| 문제당 정답 횟수 | 문항 수 | 전체 정답 시도에 기여한 수 |
+|---:|---:|---:|
+| 0/4 | 0 | 0 |
+| 1/4 | 1 | 1 |
+| 2/4 | 6 | 12 |
+| 3/4 | 7 | 21 |
+| 4/4 | 162 | 648 |
+
+네 번 중 1~3회 맞힌 **14문항**의 정답률은 (1 + 12 + 21)/(14 × 4) = <strong>34/56 = 60.71%</strong>다. **176문항 전체**에서는 (34 + 648)/(176 × 4) = <strong>682/704 = 96.875%</strong>다. 한 번이라도 성공한 문항은 176/176이고, 매번 성공한 문항은 162/176이다. 기존 Apex 기준은 모든 시도에서 실패한 문제를 요구했기에 이 후보군에서 남은 문제는 0개였다. 연구팀은 Apex v2를 발행하지 않았다. 두 해의 결과는 대상 문항과 모델이 달라 한 모델의 전년 대비 향상률로 해석할 수 없다. [2026년 5월 후속 결론](https://matharena.ai/no_final_answer/)
+
+## 6. 점수를 다시 만들 때 남길 것
+
+이번 편의 검산 스크립트는 표의 원시 횟수와 보정 예제의 문자열에서 시작한다. 저장소 루트에서 아래 명령을 실행하면 열두 개의 분자·분모 검사가 수행된다. 모델 호출은 필요 없다. [검산 코드 고정판](https://github.com/JJo-0/JJo-0.github.io/blob/7778227ccccef338ec60e6f1a6d91edb2cdf4009/docs/ai-benchmark/check-chapter-08.py) · [원본 위치와 채점기 입력·출력](https://github.com/JJo-0/JJo-0.github.io/blob/4cbdf4a89ce99a2eb71c18292730a8535e73be31/docs/ai-benchmark/08-sources-and-checks.md)
+
+```bash
+python3 docs/ai-benchmark/check-chapter-08.py
+```
+
+수학 점수를 기록할 때는 **시험·연도·부분집합, 채점기 커밋, 출력 형식과 무응답 처리, 시도 횟수와 후보 선택 방식, 정답 수/분모**를 함께 적자. 예컨대 “Apex 5.2%”를 위 조건으로 풀어 쓰면 “2025년 8월 Qwen 행, 12문항 × 16회 직접 생성, 최종 답 정답 10/192”가 된다. 독자는 이 한 줄에서 무엇을 분모로 삼았는지 알아낼 수 있다.
+
+다음 09편은 *Humanity’s Last Exam*과 *HLE-Diamond*를 다룰 예정이다. 이번에는 정답을 쉽게 검증할 수 있는 문제 중에서 어려운 후보가 남는지를 살폈다. 다음 질문은 **분야 전문가가 직접 만든 고난도 문항에서, 어떤 근거로 정답과 문항 품질을 검증하는가**다.

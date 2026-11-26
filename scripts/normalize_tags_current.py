@@ -681,6 +681,7 @@ POST_TAXONOMY.update({
     "ai-benchmark-05-contamination-and-reward-hacking.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "ai-safety", "data-quality")),
     "ai-benchmark-06-composite-indices.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "llm", "metrics")),
     "ai-benchmark-07-mmlu-mmlu-pro-gpqa.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "llm", "metrics")),
+    "ai-benchmark-08-math-answer-grading.mdx": Taxonomy("ai-machine-learning", "ai-benchmark", "study-note", ("ai-benchmark", "model-evaluation", "mathematics", "metrics")),
 })
 
 if __name__ == "__main__":
