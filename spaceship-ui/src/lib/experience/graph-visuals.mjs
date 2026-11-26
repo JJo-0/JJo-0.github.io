@@ -1,15 +1,15 @@
-// The order runs from blue-violet through pearl to red copper. A topic keeps
+// The order runs from violet through green and amber to rose. A topic keeps
 // its place as the view rotates, the theme changes or new articles arrive.
 const SPECTRUM = [
-  { category: 'ai-machine-learning', glyph: '@', light: '#afa9fa', dark: '#b9b2ff' },
-  { category: 'vision-perception-neuroscience', glyph: '#', light: '#91aff1', dark: '#9ebaf8' },
-  { category: 'robotics-embedded', glyph: '+', light: '#9bcff0', dark: '#a7d9f9' },
-  { category: 'software-engineering-cs', glyph: '=', light: '#bcd9e5', dark: '#c7e3ed' },
-  { category: 'research-methods-tools', glyph: '*', light: '#e5e5d9', dark: '#f0efe2' },
-  { category: 'health-lifestyle', glyph: 'o', light: '#edd8b2', dark: '#f8e2bc' },
-  { category: 'finance-industry', glyph: '$', light: '#eab978', dark: '#f3c78d' },
-  { category: 'biblical-studies', glyph: '%', light: '#dfa07f', dark: '#ecad8b' },
-  { category: 'meta', glyph: ':', light: '#e79085', dark: '#f09d92' },
+  { category: 'ai-machine-learning', glyph: '@', light: '#67487e', dark: '#c4a9ee' },
+  { category: 'vision-perception-neuroscience', glyph: '#', light: '#435884', dark: '#9dbcf0' },
+  { category: 'robotics-embedded', glyph: '+', light: '#156668', dark: '#71d7c3' },
+  { category: 'software-engineering-cs', glyph: '=', light: '#326746', dark: '#a4d699' },
+  { category: 'research-methods-tools', glyph: '*', light: '#636121', dark: '#cfda8b' },
+  { category: 'health-lifestyle', glyph: 'o', light: '#875d20', dark: '#e5c17d' },
+  { category: 'finance-industry', glyph: '$', light: '#924f26', dark: '#efad7a' },
+  { category: 'biblical-studies', glyph: '%', light: '#8a3e3d', dark: '#f09887' },
+  { category: 'meta', glyph: ':', light: '#884163', dark: '#eaa6c9' },
 ].map((style, index) => ({ ...style, index, position: index }));
 const STYLES = new Map(SPECTRUM.map(style => [style.category, style]));
 const UNKNOWN_STYLE = { ...SPECTRUM[4], category: '', glyph: '?' };
@@ -103,7 +103,7 @@ export function graphStarSize(depth, strength) {
 }
 
 /** @param {number} depth */
-export function graphStarOpacity(depth) { return .76 + graphDepth(depth) * .24; }
+export function graphStarOpacity(depth) { return .56 + graphDepth(depth) * .44; }
 
 /** @param {number} depth @param {number} weight */
 export function graphEdgeAppearance(depth, weight) {
@@ -165,21 +165,45 @@ export function atlasViewport(width, height) {
   };
 }
 
-// Fixed fit over all rotations prevents zoom "breathing" during dragging.
-// Reserve space for the legend and controls at every orientation.
+/**
+ * Build the camera transform once per orientation. Use the same transform for
+ * article hit targets, hierarchical edge controls and the initial SVG.
+ * @param {number} width @param {number} height
+ * @param {number} rotationX @param {number} rotationY @param {number} fitRadius
+ * @param {number} [lens]
+ */
+export function atlasProjector(width, height, rotationX, rotationY, fitRadius, lens = 0) {
+  const cx = Math.cos(rotationX), sx = Math.sin(rotationX);
+  const cy = Math.cos(rotationY), sy = Math.sin(rotationY);
+  const { centerX, centerY, diameter } = atlasViewport(width, height);
+  const scale = diameter * .45 / Math.max(.1, fitRadius);
+  return (/** @type {{x:number,y:number,z:number}} */ node,
+          /** @type {{x:number,y:number,z:number}} */ out = { x: 0, y: 0, z: 0 }) => {
+    let x = node.x * cy - node.z * sy;
+    const z = node.x * sy + node.z * cy;
+    let y = node.y * cx - z * sx;
+    let depth = node.y * sx + z * cx;
+    if (lens > 0 && depth > 0) {
+      const length = Math.hypot(x, y, depth), xy = Math.hypot(x, y);
+      if (xy > 1e-6) {
+        const angle = Math.atan2(xy, depth);
+        const warped = angle + lens * .37 * Math.sin(2 * angle);
+        const stretch = length * Math.sin(warped) / xy;
+        x *= stretch; y *= stretch; depth = length * Math.cos(warped);
+      }
+    }
+    const perspective = 4.8 / Math.max(1.6, 5.8 - depth);
+    out.x = centerX + x * perspective * scale;
+    out.y = centerY + y * perspective * scale;
+    out.z = depth;
+    return out;
+  };
+}
+
 /** @param {{id:string,x:number,y:number,z:number}[]} nodes
  * @param {number} width @param {number} height
  * @param {number} rotationX @param {number} rotationY @param {number} [fitRadius] */
 export function projectAtlas(nodes, width, height, rotationX, rotationY, fitRadius = atlasProjectionRadius(nodes)) {
-  const cx = Math.cos(rotationX), sx = Math.sin(rotationX);
-  const cy = Math.cos(rotationY), sy = Math.sin(rotationY);
-  const rows = nodes.map(node => {
-    const x = node.x * cy - node.z * sy, z = node.x * sy + node.z * cy;
-    const y = node.y * cx - z * sx, depth = node.y * sx + z * cx;
-    const perspective = 4.8 / Math.max(1.6, 5.8 - depth);
-    return { id: node.id, x: x * perspective, y: y * perspective, z: depth };
-  });
-  const { centerX, centerY, diameter } = atlasViewport(width, height);
-  const scale = diameter / (2 * Math.max(0.1, fitRadius));
-  return rows.map(row => ({ id: row.id, x: centerX + row.x * scale, y: centerY + row.y * scale, z: row.z }));
+  const project = atlasProjector(width, height, rotationX, rotationY, fitRadius);
+  return nodes.map(node => ({id: node.id, ...project(node)}));
 }
