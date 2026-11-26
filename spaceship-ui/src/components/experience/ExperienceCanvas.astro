@@ -2,7 +2,7 @@
 import '@/styles/renderer.css';
 import type { PostGraph } from '@/lib/experience/post-graph';
 import { createHash } from 'node:crypto';
-import { graphVisual, projectAtlas } from '@/lib/experience/graph-visuals.mjs';
+import { graphVisual } from '@/lib/experience/graph-visuals.mjs';
 import { getPostCategoryMeta } from '@/lib/taxonomy.mjs';
 
 interface Props {
@@ -14,24 +14,19 @@ const en = /^\/en(?:\/|$)/.test(Astro.url.pathname);
 const archive = en ? '/en/posts/' : '/posts';
 const graphVersion = graph ? createHash('sha256').update(JSON.stringify(graph)).digest('hex').slice(0, 16) : '';
 const graphUrl = '/writing-graph/' + (en ? 'en' : 'ko') + '.json?v=' + graphVersion;
-// Compact SSR preview; no graph JSON, animation or GPU work before visibility.
-const categories = [...new Set(graph?.nodes.map(node => node.category) ?? [])].map(id => ({
-  id, label: getPostCategoryMeta(id, en).shortLabel, ...graphVisual(id),
-}));
-const points = new Map(projectAtlas(graph?.nodes ?? [], 1000, 1000, -0.34, 0.18).map(p => [p.id, p]));
-const byId = new Map(graph?.nodes.map(node => [node.id, node]) ?? []);
-const edgePaths = [false, true].map(cross => ({
-  cross,
-  d: (graph?.edges ?? []).filter(edge => (byId.get(edge.source)?.category !== byId.get(edge.target)?.category) === cross)
-    .map(edge => {
-      const a = points.get(edge.source), b = points.get(edge.target);
-      return a && b ? 'M' + Math.round(a.x) + ' ' + Math.round(a.y) + 'L' + Math.round(b.x) + ' ' + Math.round(b.y) : '';
-    }).join(''),
-}));
-const groups = categories.map(category => {
-  const nodes = (graph?.nodes ?? []).filter(node => node.category === category.id).map(node => points.get(node.id)!).sort((a,b) => a.z-b.z);
-  return { ...category, x: nodes.map(p => Math.round(p.x)).join(' '), y: nodes.map(p => Math.round(p.y)).join(' '), count: nodes.length };
-});
+const edition = en ? 'en' : 'ko';
+const previewUrl = (theme: 'light' | 'dark') => `/atlas-preview/${edition}-${theme}.svg?v=${graphVersion}`;
+const categories = [...new Set(graph?.nodes.map(node => node.category) ?? [])]
+  .map(id => ({ id, label: getPostCategoryMeta(id, en).shortLabel, ...graphVisual(id) }))
+  .sort((a, b) => a.index - b.index);
+
+// The reticle belongs to the instrument. Only the article stars rotate.
+const ticks = Array.from({ length: 72 }, (_, i) => {
+  const angle = i * Math.PI / 36;
+  const radius = i % 6 === 0 ? 183 : 186;
+  const point = (r: number) => `${(200 + r * Math.cos(angle)).toFixed(1)} ${(200 + r * Math.sin(angle)).toFixed(1)}`;
+  return `M${point(radius)}L${point(188)}`;
+}).join('');
 ---
 
 <div
@@ -50,13 +45,19 @@ const groups = categories.map(category => {
 >
   {graph && (
     <>
-      <svg class="post-graph-preview" data-graph-preview viewBox="0 0 1000 1000" aria-hidden="true">
-        {edgePaths.map(path => <path d={path.d} fill="none" stroke="currentColor" stroke-width={path.cross ? 2.3 : 1.9} stroke-dasharray={path.cross ? '7 7' : undefined} opacity={path.cross ? 0.46 : 0.52} />)}
-        {groups.map(group => group.count > 0 && (
-          <text class="post-graph-category-ink" style={`--graph-light:${group.light};--graph-dark:${group.dark}`} x={group.x} y={group.y} fill="currentColor" font-family="ui-monospace, monospace"
-            font-weight="750" font-size="23" text-anchor="middle" dominant-baseline="middle">{group.glyph.repeat(group.count)}</text>
-        ))}
-      </svg>
+      <div class="post-graph-field" aria-hidden="true">
+        <svg class="post-graph-graticule" viewBox="0 0 400 400" fill="none" focusable="false">
+          <circle cx="200" cy="200" r="188" />
+          <path d={ticks} />
+          <g transform="rotate(-23 200 200)">
+            <circle cx="200" cy="200" r="174" stroke-dasharray="1 5" />
+            <ellipse cx="200" cy="200" rx="174" ry="53" />
+            <ellipse cx="200" cy="200" rx="67" ry="174" stroke-dasharray="2 5" />
+          </g>
+        </svg>
+        <div class="post-graph-preview" data-graph-preview
+          style={`--preview-light:url('${previewUrl('light')}');--preview-dark:url('${previewUrl('dark')}')`}></div>
+      </div>
       <div class="post-graph-legend" aria-label={en ? 'Article categories' : '게시글 카테고리'}>
         {categories.map(category => <button type="button" data-graph-category={category.id} aria-pressed="false" disabled
           style={`--graph-light:${category.light};--graph-dark:${category.dark}`}>
@@ -68,7 +69,7 @@ const groups = categories.map(category => {
         <span>{en ? 'Building atlas…' : '지도 불러오는 중…'}</span>
       </div>
       <div class="post-graph-controls">
-        <span class="post-graph-hint">{en ? 'Drag to rotate · Solid: topic · Dashed: cross-topic' : '드래그 회전 · 실선: 같은 분야 · 점선: 분야 간'}</span>
+        <span class="post-graph-hint">{en ? 'Drag to rotate · Solid within topics · Dashed between topics' : '드래그로 회전 · 같은 분야는 실선, 다른 분야는 점선'}</span>
         <div class="post-graph-view-controls" data-graph-view-controls hidden>
           <button type="button" data-graph-rotate="-1" aria-label={en ? 'Rotate left' : '왼쪽 회전'}>←</button>
           <button type="button" data-graph-rotate="1" aria-label={en ? 'Rotate right' : '오른쪽 회전'}>→</button>
