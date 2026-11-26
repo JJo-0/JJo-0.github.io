@@ -29,11 +29,27 @@ import NewsFigure from '@/components/post/NewsFigure.astro';
 
 <strong>When someone takes over from an automated driving system, the event can reveal what the model missed.</strong> HugCL incorporates human guidance into continual learning and reports experiments in simulation and on a real vehicle. This account draws on the public research description. It gives no unverified mileage or accident-reduction figures. [Original paper][primary]
 
+### The change is in behavior planning
+
+An automated-driving stack includes perception, localization, behavior planning, and steering and braking control. This work concentrates on the planner. Human guidance updates choices such as staying in lane, changing lanes, accelerating, or slowing down. It is separate from training an entire camera-to-control system end to end. [Methods][primary]
+
+A maneuver can avoid a collision yet still stop too late for a pedestrian's comfort or impose an unreasonable burden on another driver. Conversely, an intervention can reflect rules, ride comfort, or operating policy without implying that a collision was imminent. The study considers these different requirements.
+
+To learn from an intervention, identify the state the driver observed, the actions available, and why another action was preferred. Then test whether incorporating that example degrades a situation the old policy already handled well.
+
 ## A trained model can stand still while the world changes
 
 A robot that navigates a familiar corridor reliably might fail at a new construction site or when a pedestrian moves in an unfamiliar way. Its training data may never have covered these situations. Collecting a full dataset and training from scratch for every new situation is expensive.
 
 A system trained only on recent encounters can also lose skills it had previously mastered, a phenomenon called catastrophic forgetting. Continual learning must address both rapid adaptation to new experience and retention of earlier capabilities.
+
+### Adaptation and forgetting can follow the same update
+
+Training on new examples changes network parameters. The change can help in the new setting and disturb a previously useful decision. Learning to yield around frequent pedestrians might, for example, lead to unnecessary stops elsewhere. This illustrates a possible failure, rather than an observed incident in the paper.
+
+Continual learning balances <strong>stability</strong>, which preserves existing abilities, and <strong>plasticity</strong>, which allows adaptation. Frozen parameters do not forget through training but cannot learn from new examples. Large updates based only on new data may adapt quickly while eroding earlier performance.
+
+Replaying all historical data would require storage, access, and training time. HugCL instead uses regularization to summarize aspects of earlier knowledge and combines multiple learners when updating from new guidance. The compute and memory required to incorporate an example therefore matter alongside performance. [Continual-learning design][primary]
 
 ## Separating the policy from the human intervention
 
@@ -45,6 +61,18 @@ Here θ denotes the model parameters. The auxiliary record c describes why the p
 
 Training only on interventions also introduces selection bias. A stretch of driving without a takeover does not establish that it was safe, and drivers can have different thresholds for acting. An intervention log needs a record of the conditions encountered throughout the drive.
 
+### A Q-value assesses an action
+
+The base policy uses value-based offline reinforcement learning. A Q-value estimates the cumulative future reward associated with taking an action in a state. It has a different meaning from an immediate physical command such as a target speed. The reward definition determines how efficiency, rule compliance, and consideration for other road users enter that evaluation. [Base policy and action space][primary]
+
+Offline learning trains on previously collected data. Conservative Q-learning aims to limit overestimation of actions outside the data distribution. Conservatism in its objective does not certify a physical safety limit.
+
+HugCL compares the Q-value of the human-selected action with those of available alternatives. The update favors the guided action relative to those alternatives. Changes in surrounding speed or distance can make a different action appropriate, so the state in which guidance was given is essential. [Equation 6 and explanation][primary]
+
+### The start and end of an intervention also carry information
+
+Drivers observe, decide, and act with a delay. The sensor timestamp and the moment a driver takes over can differ, and releasing control has a different meaning from initiating a takeover. Reproducing the paper's data structure requires the state and action definitions from its code and simulator. The tuple above illustrates this issue.
+
 ## Balancing new situations with previously learned ones
 
 A general learning objective illustrates the challenge of preserving existing capabilities.
@@ -55,6 +83,20 @@ A general learning objective illustrates the challenge of preserving existing ca
 
 Implementations can replay earlier data, restrict how far the new policy can move from the old one, or weight situations differently. Reproducing the work requires checking the published objective, algorithm, and configuration together.
 
+### Memory protection and active forgetting in the methods
+
+The paper approximates the posterior locally around the previous policy and uses this information for regularization. Online elastic weight consolidation (EWC) penalizes changes in parameters important to previously learned behavior. The authors approximate curvature with diagonal Fisher information to make the computation practical. [Methods, Equations 1–5][primary]
+
+An intuitive question is which parameter changes would most disturb earlier behavior. The diagonal summary helps answer it but omits interactions between parameters. Computational and memory savings still need to be checked against measured performance.
+
+Active forgetting relaxes the force retaining previous settings to make room for different actions. Protection and forgetting serve a common aim: keeping useful decisions while allowing corrections. Their balance depends on the reward, data, and model size.
+
+### Why use more than one learner?
+
+HugCL combines multiple Q-learners with weights to produce the final action value. Learners responding differently to the same input may divide their expertise across situations. Several learners trained on similar data and structures can still share errors; they do not constitute independent validators. [Ensemble design][primary]
+
+An ensemble can increase memory and compute, so check whether a comparison matches the parameter budget. The generalization analysis bounds an error under stated assumptions. It does not certify operation in every road condition.
+
 ## Why intervention counts can give the wrong ranking
 
 <Math display tex={String.raw`r_{\rm int}=\frac{N_{\rm interventions}}{D_{\rm exposure}}`} label="Intervention rate per unit of driving exposure" />
@@ -63,17 +105,53 @@ With distance in the denominator, the unit is interventions per kilometer. With 
 
 Even under the strong simplifying assumption of Poisson events, zero observed events still gives a positive upper bound. A rough 95% upper bound is three divided by exposure. Real driving hazards may violate the assumptions of independent events and a constant event rate, so this approximation alone cannot certify safety.
 
+### What the driving and risk scores measure
+
+The study scores legal and social interactions alongside collisions. Knowing how those measures were defined is essential. For example, a hazard index capturing proximity to a pedestrian does not acquire the units or interpretation of actual crash probability.
+
+Yielding early and avoiding a collision by last-second braking can have different implications for comfort and surrounding users at the same nominal success rate. Look separately at collisions, traffic violations, driving efficiency, and interactions to identify what changed in a composite score.
+
+Intervention rate also depends on the driver's threshold. Earlier intervention can increase the count; waiting longer can reduce it while raising risk. Comparable guidance and exposure conditions help distinguish a policy change from a change in driver behavior.
+
 ## What evidence would establish continual learning?
 
 Performance in a newly encountered situation needs to be shown alongside performance in earlier ones. Repeated practice on the same route may produce gains that do not persist with other pedestrians or roads. The amount of human guidance, the volume of past data retained, and retraining time are all costs.
 
 When reading the paper's graphs, check new and previous tasks at each update. A video of successful runs alone cannot reveal rare failures or regression. Ablations should measure how much human guidance and the continual-learning components each contribute.
 
+### Leaving rare situations in a long-tail experiment
+
+The authors created 20 driving situations with unequal representation in training. Some were common, while others had few examples. They added guidance for situations the base policy handled poorly and tested the updated policies. This reveals changes in rare failures that an overall average could obscure. [Long-tail cases in Results][primary]
+
+The paper reports repeated assessments in the scenarios, three continual-learning rounds, and comparisons of retention. The guidance amounted to roughly 1% of the base policy's training data in this setting. That ratio applies to additional guidance for this trained policy, scenario selection, and action space. [Figure 3 and accompanying text][primary]
+
+Changes in some scenarios without guidance suggest possible transfer. Test success and failure of transfer separately across scenarios. The paper notes that limited guidance cannot address every situation and that other road users introduce variability.
+
+### What the real-vehicle test covered
+
+The test vehicle used LiDAR, cameras, radar, localization, controllers, and onboard computing with an Autoware-based stack. The experiment placed the modified behavior planner inside real perception, localization, and control systems. The platform alone does not establish coverage of all conditions for a consumer vehicle. [Vehicle configuration][primary]
+
+The approximately 1.2 km test track included a tunnel and grades. The authors compared risk indices across interactions gathered over repeated drives. The 1.2 km is the circuit length, not total validated mileage. Weather, speed, traffic, and geography on public roads can differ from the test site. [Figure 4 and accompanying text][primary]
+
+The study also varies the order of learning new scenarios. Failures in deployment do not arrive in a fixed syllabus. Large changes with different orderings would indicate path-dependent results even with the same guidance examples.
+
 ## Implications for robotics research
 
 For camera perception or obstacle avoidance on an autonomous mobile robot, a failure record can identify whether the data, policy, or state estimate contributed to the problem. Saving an encounter as a training example and deploying a new policy in a physical controller require separate approvals.
 
 <strong>Fewer interventions by themselves are an insufficient objective.</strong> Did the vehicle perform more maneuvers safely on its own, or did people have fewer opportunities to intervene? HugCL investigates this question. The results leave the safety performance of a large commercial fleet to be established.
+
+### Learning and deployment are distinct stages
+
+For an autonomous mobile robot or collaborative robot, first record failure episodes. Use them for training and offline evaluation, then revisit established scenarios and hazard limits before a deployment to equipment. Connecting these stages does not require a single automatic authorization for all three.
+
+A human guide cannot substitute for an independent safeguard. Occluded sensors and excessive control delay can cause failures even when planning improves. Imitating a guided action does not establish stopping distance or protective separation. Learned decisions and independent means of risk control both matter in physical operation.
+
+HugCL turns a correction that might otherwise end with recovery into data for improving future behavior. Evidence of improvement must cover adaptation, retention, order of training, and real test conditions. The contribution of a human in the loop depends on how that person's decisions are recorded and evaluated.
+
+### The original chart of legal and ethical scenarios
+
+Figure 2 compares scenarios and the risks assigned to different action choices. Read the action within its own scenario. A simulation score cannot be interpreted directly as a public-road crash rate or legal safety certification. [Publisher's Figure 2 and caption](https://www.nature.com/articles/s41467-026-77370-x/figures/2)
 
 ## Sources
 

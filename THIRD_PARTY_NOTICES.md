@@ -57,6 +57,14 @@ These third-party images are not relicensed under the repository MIT license. Se
 - `cover-imec-nbtin` — ©imec · 2026 · Figure 1; imec 보도·발표용 사진 이용 조건; https://www.imec-int.com/en/press/imec-advances-scalable-superconducting-technology-world-first-nbtin-circuits-and-30nm
 - `cover-rentosertib-aging` — Alex Zhavoronkov 외 · Nature Biotechnology · 2026 · Figure 1; CC BY 4.0; https://www.nature.com/articles/s41587-026-03286-y
 
+## Additional NEWS source figures (2026-09-13)
+
+The two figure excerpts below appear with their original captions under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Each publisher article includes the images under its license unless a separate credit line provides otherwise. These specific figure captions give no separate credit exclusion. On 2026-11-27 the lossless WebP images were checked pixel by pixel against the recorded PDF crops. The two source links, PDF digests, crop coordinates, dimensions, and output checksums are in `spaceship-ui/site/assets/assets/posts/news-depth-20260913/provenance.json`.
+
+- Yang Liu et al., *Nature Communications*, 2026. [Optical properties of BTBTT8-syn phototransistor, Fig. 2](https://www.nature.com/articles/s41467-026-77523-y/figures/2).
+- Michihiro Hashimoto et al., *Nature Communications*, 2026. [Glud1 inhibition supports HSC maintenance in the context of robust cytokine responses, Fig. 4](https://www.nature.com/articles/s41467-026-77151-6/figures/4).
+
+For the five additional figures from CC BY-NC-ND articles, the new explanatory sections link to the publisher's figure pages and captions.
 
 ## September 15, 2026 NEWS background research figures
 

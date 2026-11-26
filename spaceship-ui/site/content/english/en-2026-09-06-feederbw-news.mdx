@@ -30,11 +30,27 @@ import NewsFigure from '@/components/post/NewsFigure.astro';
 
 FeederBW provides minute-level measurements and metadata from 200 German low-voltage distribution feeders between 2023 and 2025. Its contribution is access to real grid data against which researchers can test forecasting methods and other distribution-grid applications. [Scientific Data paper][primary]
 
+### Why measurements from working distribution networks are valuable
+
+National demand or total power-station output can conceal local stress. At the same moment, one neighborhood may import power for vehicle charging while another exports rooftop solar. Aggregating the two can hide large flows on their respective lines, just as a national traffic average can hide a blocked street.
+
+FeederBW's contribution is a common source of operating data. The utility measured 200 low-voltage feeders from April 2023 to March 2025. The release connects those measurements with weather and equipment metadata. Researchers can now compare methods against shared inputs instead of unrelated private datasets. [Dataset paper][primary]
+
+The release does not include the entire network topology. Time series of load and generation cannot supply the connectivity and line impedances required for a line-by-line power-flow analysis. [Data description][primary]
+
 ## The network between a power plant and a home
 
 Can total generation at a large power plant tell us what is happening on a neighborhood grid? Households use power at different times. Rooftop solar, EV charging, and heating equipment can coincide, concentrating the load on one line even when the total stays the same.
 
 A feeder is a circuit that distributes power to several points of demand. The load at one home can have a very different profile from the net power measured upstream of several homes. Before interpreting a trace, establish where the meter sits and what crosses that boundary.
+
+### A feeder measurement combines many users
+
+A feeder is a branch carrying power from a substation toward connected customers. Its head-end reading combines the contributions of homes, businesses, chargers, and photovoltaic systems. A rise in the aggregate cannot identify a particular household appliance.
+
+The metadata describe residential units, industrial or commercial facilities, and installed capacity for photovoltaics, heat pumps, and EV chargers. A charger listed in the inventory does not establish that a vehicle was connected at a given minute. Similarly, installed solar capacity differs from instantaneous output. [Equipment metadata][primary]
+
+The German low-voltage feeders have multiple phases, and the release includes per-phase currents and power factors. A phase importing power can partly offset another exporting power in the total. Small net power can therefore coexist with significant currents on individual conductors.
 
 ## Power and energy have different units
 
@@ -50,11 +66,33 @@ A simple expression for net power is:
 
 Check the sign convention in the file documentation. Automatically dropping negative values as sensor errors could erase power fed back into the grid by solar generation.
 
+### Check the sign and aggregation convention first
+
+Active power is positive for flow from the upstream grid into the low-voltage network and negative for reverse flow. Dropping negatives as invalid readings could remove real solar exports. The sign records direction. [Measurement conventions][primary]
+
+The authors also caution against reconstructing feeder-level apparent power from the square root of total active power squared plus total reactive power squared. Combining three phases, which may carry power in opposite directions, changes what the totals represent. A familiar equation must match the measured quantity and aggregation rule. [Data definitions][primary]
+
+Energy requires a time interval. For one-minute readings in kilowatts, convert minutes to hours when summing. An illustrative constant 6 kW load over 10 minutes uses 1 kWh. Check actual timestamps around gaps rather than treating every pair of adjacent rows as one minute apart.
+
 ## More timestamps do not necessarily mean more independent observations
 
 One-minute sampling gives 1,440 observations per day. Neighboring minutes are not independent trials. Temperature, daily routines, and sunlight persist from one reading to the next and can create strong temporal correlations.
 
 Millions of rows alone do not establish statistical coverage. The number of regions, seasons, and equipment configurations matters. Two hundred feeders cannot represent every distribution system in another country.
+
+### Row count and independent evidence
+
+The paper reports 209,189,649 feeder rows, arising from minute sampling across 200 feeders over two years. Neighboring minutes are usually related. The number of independent networks observed is much smaller than the number of rows. [Paper][primary]
+
+The column-oriented Parquet files are organized by feeder. Selecting just the required feeders, dates, and columns reduces memory use. An analysis using active power and temperature need not load every measurement.
+
+Feeder measurements are minute-level, weather is hourly, and installation metadata change on effective dates. Join by feeder, time, and the period for which a metadata record was valid. The paper supplies UTC and local time; daylight-saving transitions can repeat or skip local clock times. [File descriptions][primary]
+
+### Investigate missingness before interpolation
+
+Instrument installation and operating conditions affect available readings. For example, the paper describes substituting 230 V for a power calculation when a voltage reading is zero. Derived power in that case and a direct voltage observation do not provide independent evidence of the same certainty. [Data processing][primary]
+
+Flag interpolated values. A smooth line across a long gap can create apparent stability in an analysis of sharp peaks. Compare results before and after interpolation to distinguish an apparent forecasting gain from an effect of preprocessing.
 
 ## How information leaks into a forecast evaluation
 
@@ -66,17 +104,37 @@ Randomly shuffling timestamps into training and test sets puts similar patterns 
 
 Computing a normalization mean or standard deviation, or fitting a model for imputing missing values, on the full dataset also leaks information. Define what would be available at training time first.
 
+### Use only information available at forecast time
+
+Installation records change with time. Feeding a solar installation added in 2024 to a model predicting 2023 leaks future information. A time-aware join defines what a forecaster could know at each decision.
+
+The weather information comes from ICON-D2 and is associated with feeder regions. Reconstructing past load with finalized weather data and forecasting next-day load with the weather forecast available the previous day are distinct tasks. Report the information cutoff. [Weather data][primary]
+
+The authors propose a geographic split using feeders 1–160 for training and 161–200 for testing, as well as splits by year. Common splits aid comparison. Predicting the future at a familiar feeder and transferring to a new location can require different tests. [Proposed splits][primary]
+
+Some feeders share a substation and voltage series. The metadata identify that relationship. To claim transfer to independent substations, check that connected branches do not straddle training and test sets. [Substation metadata][primary]
+
 ## What to look for in the published graphs
 
 Read the diagrams of meter locations and equipment metadata alongside quality flags, gaps over time, and daily and seasonal load patterns. One sunny day cannot characterize the full effect of solar generation. Averaging to a coarser resolution can hide short peaks, so distinguish the native sampling interval from aggregation used for display.
 
 Where voltage, current, or per-phase readings are supplied, verify the units and meter positions. Compare the documented fields with the columns in the downloaded files. Check the license for the data files separately from the article license.
 
+A mean curve is easy to read but can obscure peaks and reverse flow. The authors plot quantiles by time of week and minima and maxima over longer periods. A quantile describes a position in a distribution. Joining the quantile at each time of week does not reconstruct the path of a particular observed week.
+
+Changes after a solar installation illustrate concept drift between training and operation. At F63 the authors identify changes consistent with installation records and changes those metadata do not explain. A kink in a plot need not have a documented cause. [F63 example][primary]
+
 ## What could researchers compare?
 
 Possible tests include peak underestimation, robustness to missing sensors, transfer to new feeders, and empirical coverage of uncertainty intervals, alongside forecast accuracy. These are experiments the dataset makes possible. The release itself does not establish an improvement on any of them.
 
 <strong>FeederBW gives researchers common real-world records on which to compare what works and where a method falls short.</strong> Reproducible data splits and quality handling come before the choice of algorithm.
+
+Start with a baseline such as the previous day's or previous week's value at the same time on the same feeder. Compare it with a forecast that adds weather and installation data. This helps establish the incremental value of those inputs before adding model complexity.
+
+Match the metric to the use case. Low mean error can coexist with missed overload peaks, especially if low-load intervals dominate the dataset. Separate results by feeder, net consumption versus export, and season to see which conditions the model predicts well.
+
+The release represents one German utility. Voltage systems, consumption patterns, solar installations, and heating technology vary by region. Applying a result to Korea requires checking local measurement and equipment conditions. <strong>A public dataset makes experiments comparable; applying them elsewhere still takes local evidence.</strong>
 
 ## Reading the original plots by week and season
 
@@ -87,6 +145,14 @@ Follow the recurring times of day along the horizontal axis and compare feeders.
 <ReferenceFigure src="/assets/posts/frontier-sep5-8/feeder-seasonal.webp" alt="FeederBW Figure 5 compares feeder power profiles across seasons" caption="Figure 5. Compare the seasonal profiles with the weekly patterns. Interpret positive and negative power according to the paper’s metering convention." source="https://www.nature.com/articles/s41597-026-08152-9" credit="Original authors · Scientific Data · CC BY 4.0" width={1200} height={784} />
 
 A shift in a seasonal average cannot be attributed to a single cause from this plot. Consumption, solar generation, temperature, and the observation period can all change. Holding out a season or a feeder provides a more informative test.
+
+### Trace how a signal was produced
+
+The paper distinguishes measured voltage and current from power calculated from those readings. Some feeders share a substation's single-phase voltage. Deleting identical voltage series as duplicate files can erase a real feature of the measurement system. [Measurement architecture][primary]
+
+A timestamp can denote a previous-minute average or an observation immediately before that time. The documentation specifies the latter here. Do not reinterpret it as a direct reading of interval energy or a continuous maximum. [Timestamp definition][primary]
+
+Publish the source version, feeders selected, time-zone conversion, missing-data rules, and training/test boundaries with preprocessing code. The same dataset and model name can yield different results under different choices. FeederBW makes the entire route from measurements to a forecasting task available for comparison.
 
 ## Sources
 
