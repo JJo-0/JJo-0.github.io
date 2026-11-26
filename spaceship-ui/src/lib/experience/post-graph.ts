@@ -104,7 +104,7 @@ function spherePositions(posts: GraphPost[]) {
     topic.members.forEach((post, i) => {
       const [sx, sy, sz] = topic.sites[i];
       const dir = direction([[sx * .855 + x * .145, sy * .855 + y * .145, sz * .855 + z * .145]]);
-      positions.set(post.id, dir.map(v => Number((v * 1.9).toFixed(5))) as Vector);
+      positions.set(post.id, dir.map(v => Number((v * 1.9).toFixed(4))) as Vector);
     });
   }
   return positions;
