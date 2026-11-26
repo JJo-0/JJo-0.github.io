@@ -5,8 +5,14 @@ const SUCCESS_MARKER = 'browser-smoke: PASS complete matrix';
 const FAILURE_MARKER = 'browser-smoke: FAIL';
 // The full matrix now covers 60+ news routes, nine Acts dashboards, and
 // trusted-link navigation against both preview and live Pages. Keep the guard
-// finite, while allowing the additional Chapter 03 image/math matrix and live-network runs.
-const MAX_RUNTIME_MS = Number(process.env.JJO_SMOKE_MAX_RUNTIME_MS || 480_000);
+// finite. The hosted full matrix reached the Home trusted-link pass at 456 s
+// before exhausting the former 480 s budget. Leave room for the remaining
+// Research, About, archive, search and theme audits; individual CDP/poll
+// timeouts and all assertions are unchanged.
+const MAX_RUNTIME_MS = Number(process.env.JJO_SMOKE_MAX_RUNTIME_MS || 1_200_000);
+if (!Number.isSafeInteger(MAX_RUNTIME_MS) || MAX_RUNTIME_MS <= 0) {
+  throw new Error('JJO_SMOKE_MAX_RUNTIME_MS must be a positive integer');
+}
 const LIVE_BASE_URL = process.env.JJO_SMOKE_BASE_URL?.trim().replace(/\/+$/, '') || '';
 const LIVE_HEAD_RETRY_ATTEMPTS = 4;
 const LIVE_HEAD_RETRY_BASE_DELAY_MS = 300;

@@ -7,7 +7,18 @@ const out = 'mobile-performance';
 fs.mkdirSync(out, { recursive: true });
 let preview, chrome, cdp, sessionId;
 const results = [];
-const hardStop = setTimeout(() => { console.error('mobile-performance: hard timeout'); process.exit(1); }, 120_000);
+// Four language/viewport cases, reduced motion, and NEWS run sequentially.
+// Hosted CI completed the two mobile cases in ~100 s under the old 120 s cap.
+// This is an aggregate harness deadline, not a product-performance threshold.
+const maxRuntime = Number(process.env.JJO_MOBILE_MAX_RUNTIME_MS || 360_000);
+if (!Number.isSafeInteger(maxRuntime) || maxRuntime <= 0) throw new Error('Invalid JJO_MOBILE_MAX_RUNTIME_MS');
+let phase = 'startup';
+const hardStop = setTimeout(() => {
+  const error = `mobile-performance: hard timeout after ${maxRuntime} ms in ${phase}`;
+  console.error(error);
+  fs.writeFileSync(`${out}/failure.json`, JSON.stringify({ error, phase, results }, null, 2));
+  process.exit(1);
+}, maxRuntime);
 async function capture(name) {
   const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' }, sessionId);
   fs.writeFileSync(`${out}/${name}.png`, Buffer.from(data, 'base64'));
@@ -223,6 +234,8 @@ try {
   for (const width of [390, 1440]) {
     const mobile = width === 390;
     for (const route of ['/', '/en/']) {
+      phase = `graph/profile ${width}px ${route}`;
+      console.log('mobile-performance: START '+phase);
       await viewport(cdp, sessionId, { width, height: 844, mobile, touch: mobile, reduced: false });
       await cdp.send('Network.setCacheDisabled', { cacheDisabled: true }, sessionId);
       await navigate(cdp, sessionId, route);
@@ -412,11 +425,14 @@ try {
       const path = new URL(target, BASE).pathname;
       await waitExpression(cdp, sessionId, `${JSON.stringify([path, path.endsWith('/') ? path.slice(0,-1) : path+'/'])}.includes(location.pathname)`, 'native graph link destination');
       results.push({width,route,cold,idleDraws:after-before,rotationDraws,graphLinks:counts.actual,nativeLink:true,autoLoaded:true,relation,zoom,sound,activated});
+      fs.writeFileSync(`${out}/browser-progress.json`, JSON.stringify({base:BASE,results},null,2));
       console.log('mobile-performance: graph/profile PASS '+JSON.stringify({width,route,idleDraws:after-before,links:counts.actual}));
     }
   }
   // Exercise the system default in a fresh preference state, after explicit
   // toggles in the regular-motion cases above.
+  phase = 'reduced motion';
+  console.log('mobile-performance: START '+phase);
   await evaluate(cdp,sessionId,"sessionStorage.removeItem('writing-audio.reaction')");
   await viewport(cdp,sessionId,{width:390,height:844,mobile:true,touch:true,reduced:true});
   await navigate(cdp,sessionId,'/');
@@ -437,6 +453,8 @@ try {
   const reducedDraws=await evaluate(cdp,sessionId,'window.__asciiDraws');
   await sleep(350);
   assert.equal(await evaluate(cdp,sessionId,'window.__asciiDraws'),reducedDraws,'Reduced motion must not animate after rotation');
+  phase = 'NEWS thumbnails';
+  console.log('mobile-performance: START '+phase);
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: false }, sessionId);
   await viewport(cdp, sessionId, { width:390, height:844, mobile:true, touch:true, reduced:false });
   await navigate(cdp, sessionId, '/news/');
@@ -477,7 +495,7 @@ try {
   console.log('mobile-performance: PASS '+JSON.stringify(results));
 } catch (error) {
   console.error(error); process.exitCode=1;
-  fs.writeFileSync(`${out}/failure.json`,JSON.stringify({error:String(error),results},null,2));
+  fs.writeFileSync(`${out}/failure.json`,JSON.stringify({error:String(error),phase,results},null,2));
   if(cdp&&sessionId) await capture('failure').catch(()=>{});
 } finally {
   cdp?.close(); await stopChild(chrome?.child,'SIGKILL'); await stopChild(preview,'SIGTERM');

@@ -74,6 +74,7 @@ async function main() {
     // Cold mobile must not import the desktop motion engine. Keep this target
     // isolated so later GPU/desktop tests cannot warm its module graph.
     mobileTarget = await attach(cdp);
+    console.log('browser-smoke: START mobile motion');
     await auditMobileMotion(cdp, mobileTarget.sessionId);
     await closeAuditTarget(cdp, mobileTarget);
     mobileTarget = null;
@@ -82,6 +83,7 @@ async function main() {
     // decorative best-effort asset. Verify actual browser decode/paint before
     // exercising renderer mutations in a separate browsing context.
     homeMediaTarget = await attach(cdp);
+    console.log('browser-smoke: START home identity media');
     await auditHomeIdentityMedia(cdp, homeMediaTarget.sessionId);
     await closeAuditTarget(cdp, homeMediaTarget);
     homeMediaTarget = null;
@@ -89,15 +91,20 @@ async function main() {
     // Verify decoded inline NEWS images, responsive layout and the public
     // article routes in both preview CI and the deployed Pages smoke run.
     newsTarget = await attach(cdp);
+    console.log('browser-smoke: START NEWS media');
     await auditNewsMedia(cdp, newsTarget.sessionId);
     await closeAuditTarget(cdp, newsTarget);
     newsTarget = null;
 
     // The six Acts articles extend the suite without replacing existing checks.
     actsTarget = await attach(cdp);
+    console.log('browser-smoke: START Acts studies');
     await auditActsStudies(cdp, actsTarget.sessionId);
+    console.log('browser-smoke: START robot learning');
     await auditRobotLearning(cdp, actsTarget.sessionId);
+    console.log('browser-smoke: START lecture images');
     await auditLectureImages(cdp, actsTarget.sessionId);
+    console.log('browser-smoke: START analytics');
     await auditAnalytics(cdp, actsTarget.sessionId);
     await closeAuditTarget(cdp, actsTarget);
     actsTarget = null;
@@ -107,6 +114,7 @@ async function main() {
     // Renderer, GSAP, retry, theme and adaptive-quality transitions mutate a
     // substantial amount of runtime state. Exercise them in an isolated target
     // so none of that state can contaminate the later trusted-link inventory.
+    console.log('browser-smoke: START renderer');
     await auditRenderer(cdp, rendererTarget.sessionId);
     await closeAuditTarget(cdp, rendererTarget);
     rendererTarget = null;
@@ -118,6 +126,7 @@ async function main() {
     setReducedMotionOverride(true);
     interactionTarget = await attach(cdp);
     await installFirstPartyLinkIsolation(cdp, interactionTarget.sessionId);
+    console.log('browser-smoke: START trusted link interactions');
     clicks = await auditInteractions(cdp, interactionTarget.sessionId);
   } finally {
     setReducedMotionOverride(null);
