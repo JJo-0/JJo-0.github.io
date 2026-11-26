@@ -59,12 +59,18 @@ function verifyAtlasPaint() {
   window.__sampleAtlas = false;
   const frame = window.__atlasFrame, key = window.__atlasPositionKey;
   const theme = document.documentElement.classList.contains('dark') ? '--graph-dark' : '--graph-light';
+  const bounds = document.querySelector('.post-graph-links').getBoundingClientRect();
   const anchors = new Map([...document.querySelectorAll('[data-post-graph-node]')].map(a=>[a.dataset.postGraphNode,a]));
   const legend = new Map([...document.querySelectorAll('[data-graph-category]')].map(b=>[b.dataset.graphCategory,b.style.getPropertyValue(theme).trim()]));
+  let misalignedLinks = 0;
   const articles = new Map(window.__atlasPayload.nodes.map(node=>{
-    const style = anchors.get(node.id).style;
+    const anchor = anchors.get(node.id), style = anchor.style;
+    const [x,y=0] = style.translate.split(/\s+/).map(parseFloat);
+    const rect = anchor.getBoundingClientRect();
+    if (Math.abs(rect.x + rect.width / 2 - bounds.x - x) > .5 ||
+        Math.abs(rect.y + rect.height / 2 - bounds.y - y) > .5) misalignedLinks++;
     return [node.id,{
-      at:key(parseFloat(style.getPropertyValue('--node-x')),parseFloat(style.getPropertyValue('--node-y'))),
+      at:key(x,y),
       ink:style.getPropertyValue(theme).trim(),category:node.category
     }];
   }));
@@ -82,12 +88,13 @@ function verifyAtlasPaint() {
         stops.at(-1)?.offset!==1 || stops.at(-1).color!==target.ink ||
         key(...gradient.coords.slice(0,2))!==source.at || key(...gradient.coords.slice(2))!==target.at) mismatchedEdges++;
   }
-  return {mismatchedStars,mismatchedEdges,cross,withinTopicGradients,legend:[...legend],theme:theme==='--graph-dark'?'dark':'light'};
+  return {mismatchedStars,mismatchedEdges,misalignedLinks,cross,withinTopicGradients,legend:[...legend],theme:theme==='--graph-dark'?'dark':'light'};
 }
 async function checkAtlasPaint(label) {
   const actual = await evaluate(cdp,sessionId,'('+verifyAtlasPaint.toString()+')()');
   assert.equal(actual.mismatchedStars,0,label+' star inks');
   assert.equal(actual.mismatchedEdges,0,label+' edge strokes and endpoints');
+  assert.equal(actual.misalignedLinks,0,label+' centered link hitboxes');
   assert(actual.cross>0,label+' includes cross-topic connections');
   assert(actual.withinTopicGradients>0,label+' distinguishes stars within one topic');
   for (const [category,ink] of actual.legend) assert.equal(ink,graphVisual(category)[actual.theme],label+' legend band');
@@ -156,18 +163,18 @@ try {
       assert(await evaluate(cdp,sessionId,"document.querySelector('[data-graph-activate]').hidden && !document.querySelector('[data-graph-view-controls]').hidden && getComputedStyle(document.querySelector('[data-graph-loading]')).display==='none' && getComputedStyle(document.querySelector('.post-graph-loader-glyph')).animationName==='none'"), 'Animation removed after first paint');
       assert.equal(await evaluate(cdp,sessionId,'window.__graphRequests'), rejectFirst ? 2 : 1);
       await checkAtlasPaint('Initial spectrum');
-      const xExpression = "document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')";
-      const initialX = await evaluate(cdp,sessionId,xExpression);
+      const positionExpression = "document.querySelector('[data-post-graph-node]').style.translate";
+      const initialPosition = await evaluate(cdp,sessionId,positionExpression);
       const beforeRotation = await evaluate(cdp,sessionId,'window.__asciiDraws');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
-      await waitExpression(cdp,sessionId,xExpression+'!=='+JSON.stringify(initialX),'rotation control projects real nodes');
+      await waitExpression(cdp,sessionId,positionExpression+'!=='+JSON.stringify(initialPosition),'rotation control projects real nodes');
       await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion==='still'",'rotation settles');
       const rotationDraws = await evaluate(cdp,sessionId,'window.__asciiDraws') - beforeRotation;
       assert(rotationDraws>=3,'Rotation must span multiple painted frames rather than jump');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-category]').click()");
       assert.equal(await evaluate(cdp,sessionId,"document.querySelector('[data-graph-category]').getAttribute('aria-pressed')"),'true');
       await evaluate(cdp,sessionId,"document.querySelector('[data-graph-reset]').click()");
-      await waitExpression(cdp,sessionId,xExpression+'==='+JSON.stringify(initialX)+" && !document.querySelector('[data-graph-category][aria-pressed=\"true\"]')",'reset restores projection and category');
+      await waitExpression(cdp,sessionId,positionExpression+'==='+JSON.stringify(initialPosition)+" && !document.querySelector('[data-graph-category][aria-pressed=\"true\"]')",'reset restores projection and category');
       await sleep(700);
       const before = await evaluate(cdp, sessionId, 'window.__asciiDraws');
       await sleep(800);
@@ -188,12 +195,12 @@ try {
           return null;
         })()`);
         assert(point,'Non-link map surface available for drag');
-        const previous = await evaluate(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')`);
+        const previous = await evaluate(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.translate`);
         await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x,y:point.y},sessionId);
         await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',buttons:1,clickCount:1,x:point.x,y:point.y},sessionId);
         await cdp.send('Input.dispatchMouseEvent',{type:'mouseMoved',button:'left',buttons:1,x:point.x+45,y:point.y+16},sessionId);
         await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',buttons:0,clickCount:1,x:point.x+45,y:point.y+16},sessionId);
-        await waitExpression(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')!==${JSON.stringify(previous)}`,'real drag updates graph projection');
+        await waitExpression(cdp,sessionId,`document.querySelector('[data-post-graph-node]').style.translate!==${JSON.stringify(previous)}`,'real drag updates graph projection');
       }
       await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion==='still'",'drag settles');
       const screenshotPrefix='graph-' + width + (route === '/en/' ? '-en' : '-ko');
@@ -277,9 +284,9 @@ try {
   await waitExpression(cdp,sessionId,"typeof window.__releaseAtlas==='function'",'reduced motion still auto-loads graph');
   await evaluate(cdp,sessionId,'window.__releaseAtlas(false)');
   await waitExpression(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphState==='ready'",'reduced-motion graph ready');
-  const reducedX = await evaluate(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')");
+  const reducedPosition = await evaluate(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.translate");
   await evaluate(cdp,sessionId,"document.querySelector('[data-graph-rotate=\"1\"]').click()");
-  await waitExpression(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.getPropertyValue('--node-x')!=="+JSON.stringify(reducedX),'reduced-motion rotation applies');
+  await waitExpression(cdp,sessionId,"document.querySelector('[data-post-graph-node]').style.translate!=="+JSON.stringify(reducedPosition),'reduced-motion rotation applies');
   assert.equal(await evaluate(cdp,sessionId,"document.querySelector('[data-experience-canvas]').dataset.graphMotion"),'still');
   const reducedDraws=await evaluate(cdp,sessionId,'window.__asciiDraws');
   await sleep(350);

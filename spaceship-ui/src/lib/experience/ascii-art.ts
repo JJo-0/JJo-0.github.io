@@ -172,8 +172,7 @@ function installGraphCanvas(
         const point = projected.get(row.id)!;
         point.x = row.x; point.y = row.y; point.z = row.z;
         const anchor = anchors.get(row.id);
-        anchor?.style.setProperty('--node-x', point.x + 'px');
-        anchor?.style.setProperty('--node-y', point.y + 'px');
+        if (anchor) anchor.style.translate = point.x.toFixed(3) + 'px ' + point.y.toFixed(3) + 'px';
         const hit = Math.round(24 + graphDepth(point.z) * 4);
         if (point.hit !== hit) { point.hit = hit; anchor?.style.setProperty('--node-hit', hit + 'px'); }
       }
